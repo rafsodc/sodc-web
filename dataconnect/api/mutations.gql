@@ -1,0 +1,40 @@
+# SODC User Mutations
+
+# Create or update a user profile based on their auth.uid
+# The "auth.uid" server value ensures that users can only register/update their own profile.
+mutation UpsertUser(
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+) @auth(level: USER) {
+  user_upsert(
+    data: {
+      id_expr: "auth.uid"
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+    }
+  )
+}
+
+# Update user profile (users can only update their own profile)
+mutation UpdateUser(
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+) @auth(level: USER) {
+  user_update(
+    key: { id_expr: "auth.uid" }
+    data: {
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      # updatedAt and updatedBy are set automatically via defaults
+    }
+  )
+}

@@ -1,4 +1,4 @@
-connectorId: example
+connectorId: api
 generate:
   javascriptSdk:
     - outputDir: ../../src/dataconnect-generated

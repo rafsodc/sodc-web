@@ -1,0 +1,44 @@
+# SODC User Queries
+
+# @auth() directives control who can call each operation.
+
+# Get the current authenticated user's profile
+query GetCurrentUser @auth(level: USER) {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    firstName
+    lastName
+    email
+    serviceNumber
+    createdAt
+    updatedAt
+  }
+}
+
+# Get a user by ID (admin only)
+query GetUserById($id: String!) @auth(level: NO_ACCESS) {
+  user(id: $id) {
+    id
+    firstName
+    lastName
+    email
+    serviceNumber
+    createdAt
+    updatedAt
+    createdBy
+    updatedBy
+  }
+}
+
+# List all users (admin only)
+query ListUsers @auth(level: NO_ACCESS) {
+  users {
+    id
+    firstName
+    lastName
+    email
+    serviceNumber
+    createdAt
+    updatedAt
+  }
+}
