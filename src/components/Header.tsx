@@ -1,18 +1,28 @@
 import { useState } from "react";
 import { AppBar, Avatar, Box, Button, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
+import { Person } from "@mui/icons-material";
 import { signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { colors } from "../config/colors";
+import type { UserData } from "../hooks/useUserData";
 
 interface HeaderProps {
   user: User | null;
+  userData: UserData | null;
   onAccountClick: () => void;
   onJoinClick?: () => void;
   onProfileClick?: () => void;
   onSecurityClick?: () => void;
 }
 
-export default function Header({ user, onAccountClick, onJoinClick, onProfileClick, onSecurityClick }: HeaderProps) {
+function getInitials(userData: UserData | null): string {
+  if (!userData) return "";
+  const first = userData.firstName?.charAt(0).toUpperCase() || "";
+  const last = userData.lastName?.charAt(0).toUpperCase() || "";
+  return `${first}${last}` || "";
+}
+
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -67,20 +77,35 @@ export default function Header({ user, onAccountClick, onJoinClick, onProfileCli
         </Typography>
         {user ? (
           <>
-            <Avatar
-              onClick={handleAvatarClick}
-              sx={{
-                backgroundColor: colors.callToAction,
-                color: "white",
-                cursor: "pointer",
-                width: 40,
-                height: 40,
-                fontSize: "1rem",
-                fontWeight: 600,
-              }}
-            >
-              AA
-            </Avatar>
+            {userData ? (
+              <Avatar
+                onClick={handleAvatarClick}
+                sx={{
+                  backgroundColor: colors.callToAction,
+                  color: "white",
+                  cursor: "pointer",
+                  width: 40,
+                  height: 40,
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                }}
+              >
+                {getInitials(userData)}
+              </Avatar>
+            ) : (
+              <Avatar
+                onClick={handleAvatarClick}
+                sx={{
+                  backgroundColor: colors.callToAction,
+                  color: "white",
+                  cursor: "pointer",
+                  width: 40,
+                  height: 40,
+                }}
+              >
+                <Person />
+              </Avatar>
+            )}
             <Menu
               anchorEl={anchorEl}
               open={open}

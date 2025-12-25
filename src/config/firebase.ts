@@ -1,5 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getDataConnect } from "firebase/data-connect";
+import { connectorConfig } from "../dataconnect-generated";
 
 // Optional: only load Analytics in the browser and only if a measurementId is provided.
 // This avoids errors in dev/test environments and keeps the base setup simple.
@@ -27,6 +29,9 @@ const firebaseConfig = {
 
 export const firebaseApp = initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
+
+// Initialize Data Connect
+export const dataConnect = getDataConnect(connectorConfig);
 
 // Lazily initialised Analytics (optional)
 let analyticsPromise: Promise<Analytics | null> | null = null;

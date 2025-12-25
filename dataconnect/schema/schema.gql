@@ -1,15 +1,8 @@
 # SODC (Signal Officers' Dinner Club) Data Connect Schema
 
-# HasAudit interface for tracking creation and update metadata
-interface HasAudit {
-  createdAt: Timestamp!
-  updatedAt: Timestamp!
-  createdBy: String
-  updatedBy: String
-}
-
 # User table is keyed by Firebase Auth UID.
-type User @table implements HasAudit {
+# Includes HasAudit fields for tracking creation and update metadata
+type User @table {
   # `@default(expr: "auth.uid")` sets it to Firebase Auth UID during insert and upsert.
   id: String! @default(expr: "auth.uid")
   firstName: String!
