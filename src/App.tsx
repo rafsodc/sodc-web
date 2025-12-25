@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Box, CssBaseline } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "./config/firebase";
@@ -6,12 +6,15 @@ import { useUserData } from "./hooks/useUserData";
 import AuthGate from "./components/AuthGate";
 import Header from "./components/Header";
 import HomePage from "./components/HomePage";
+import Profile from "./components/Profile";
 import { colors } from "./config/colors";
 
+type View = "home" | "account" | "profile";
+
 export default function App() {
-  const [showAccount, setShowAccount] = useState(false);
+  const [view, setView] = useState<View>("home");
   const [user, setUser] = useState<User | null>(null);
-  const { userData } = useUserData(user);
+  const { userData, refetch } = useUserData(user);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -20,10 +23,22 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  const handleProfileUpdate = useCallback(() => {
+    // Refetch user data after profile update
+    if (refetch) {
+      refetch();
+    }
+  }, [refetch]);
+
   return (
     <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
       <CssBaseline />
-      <Header user={user} userData={userData} onAccountClick={() => setShowAccount(true)} />
+      <Header 
+        user={user} 
+        userData={userData} 
+        onAccountClick={() => setView("account")}
+        onProfileClick={() => setView("profile")}
+      />
       <Box
         component="main"
         sx={{
@@ -33,7 +48,7 @@ export default function App() {
           pb: 4,
         }}
       >
-        {showAccount ? (
+        {view === "account" ? (
           <Box 
             sx={{ 
               maxWidth: { sm: "600px" },
@@ -41,7 +56,22 @@ export default function App() {
               px: { xs: 3, sm: 4 },
             }}
           >
-            <AuthGate onBack={() => setShowAccount(false)} />
+            <AuthGate onBack={() => setView("home")} />
+          </Box>
+        ) : view === "profile" ? (
+          <Box 
+            sx={{ 
+              maxWidth: { sm: "600px" },
+              mx: "auto",
+              px: { xs: 3, sm: 4 },
+            }}
+          >
+            <Profile 
+              userData={userData} 
+              userEmail={user?.email || ""}
+              onBack={() => setView("home")}
+              onUpdate={handleProfileUpdate}
+            />
           </Box>
         ) : (
           <Box
