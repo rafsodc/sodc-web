@@ -1,5 +1,11 @@
 const { queryRef, executeQuery, mutationRef, executeMutation, validateArgs } = require('firebase/data-connect');
 
+const SectionType = {
+  MEMBERS: "MEMBERS",
+  EVENTS: "EVENTS",
+}
+exports.SectionType = SectionType;
+
 const connectorConfig = {
   connector: 'api',
   service: 'sodc-web',
@@ -17,6 +23,78 @@ exports.upsertUserRef = upsertUserRef;
 
 exports.upsertUser = function upsertUser(dcOrVars, vars) {
   return executeMutation(upsertUserRef(dcOrVars, vars));
+};
+
+const createSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateSection', inputVars);
+}
+createSectionRef.operationName = 'CreateSection';
+exports.createSectionRef = createSectionRef;
+
+exports.createSection = function createSection(dcOrVars, vars) {
+  return executeMutation(createSectionRef(dcOrVars, vars));
+};
+
+const createAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAccessGroup', inputVars);
+}
+createAccessGroupRef.operationName = 'CreateAccessGroup';
+exports.createAccessGroupRef = createAccessGroupRef;
+
+exports.createAccessGroup = function createAccessGroup(dcOrVars, vars) {
+  return executeMutation(createAccessGroupRef(dcOrVars, vars));
+};
+
+const addUserToAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AddUserToAccessGroup', inputVars);
+}
+addUserToAccessGroupRef.operationName = 'AddUserToAccessGroup';
+exports.addUserToAccessGroupRef = addUserToAccessGroupRef;
+
+exports.addUserToAccessGroup = function addUserToAccessGroup(dcOrVars, vars) {
+  return executeMutation(addUserToAccessGroupRef(dcOrVars, vars));
+};
+
+const removeUserFromAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RemoveUserFromAccessGroup', inputVars);
+}
+removeUserFromAccessGroupRef.operationName = 'RemoveUserFromAccessGroup';
+exports.removeUserFromAccessGroupRef = removeUserFromAccessGroupRef;
+
+exports.removeUserFromAccessGroup = function removeUserFromAccessGroup(dcOrVars, vars) {
+  return executeMutation(removeUserFromAccessGroupRef(dcOrVars, vars));
+};
+
+const grantAccessGroupToSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'GrantAccessGroupToSection', inputVars);
+}
+grantAccessGroupToSectionRef.operationName = 'GrantAccessGroupToSection';
+exports.grantAccessGroupToSectionRef = grantAccessGroupToSectionRef;
+
+exports.grantAccessGroupToSection = function grantAccessGroupToSection(dcOrVars, vars) {
+  return executeMutation(grantAccessGroupToSectionRef(dcOrVars, vars));
+};
+
+const revokeAccessGroupFromSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RevokeAccessGroupFromSection', inputVars);
+}
+revokeAccessGroupFromSectionRef.operationName = 'RevokeAccessGroupFromSection';
+exports.revokeAccessGroupFromSectionRef = revokeAccessGroupFromSectionRef;
+
+exports.revokeAccessGroupFromSection = function revokeAccessGroupFromSection(dcOrVars, vars) {
+  return executeMutation(revokeAccessGroupFromSectionRef(dcOrVars, vars));
 };
 
 const getCurrentUserRef = (dc) => {
@@ -53,4 +131,52 @@ exports.listUsersRef = listUsersRef;
 
 exports.listUsers = function listUsers(dc) {
   return executeQuery(listUsersRef(dc));
+};
+
+const listSectionsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSections');
+}
+listSectionsRef.operationName = 'ListSections';
+exports.listSectionsRef = listSectionsRef;
+
+exports.listSections = function listSections(dc) {
+  return executeQuery(listSectionsRef(dc));
+};
+
+const getSectionsForUserRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionsForUser');
+}
+getSectionsForUserRef.operationName = 'GetSectionsForUser';
+exports.getSectionsForUserRef = getSectionsForUserRef;
+
+exports.getSectionsForUser = function getSectionsForUser(dc) {
+  return executeQuery(getSectionsForUserRef(dc));
+};
+
+const listAccessGroupsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListAccessGroups');
+}
+listAccessGroupsRef.operationName = 'ListAccessGroups';
+exports.listAccessGroupsRef = listAccessGroupsRef;
+
+exports.listAccessGroups = function listAccessGroups(dc) {
+  return executeQuery(listAccessGroupsRef(dc));
+};
+
+const getUserAccessGroupsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserAccessGroups');
+}
+getUserAccessGroupsRef.operationName = 'GetUserAccessGroups';
+exports.getUserAccessGroupsRef = getUserAccessGroupsRef;
+
+exports.getUserAccessGroups = function getUserAccessGroups(dc) {
+  return executeQuery(getUserAccessGroupsRef(dc));
 };

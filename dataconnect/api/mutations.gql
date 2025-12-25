@@ -20,3 +20,85 @@ mutation UpsertUser(
     }
   )
 }
+
+# SODC Section and Access Group Mutations
+
+# Create a new section (admin only)
+mutation CreateSection(
+  $name: String!
+  $type: SectionType!
+  $description: String
+) @auth(level: NO_ACCESS) {
+  section_insert(
+    data: {
+      name: $name
+      type: $type
+      description: $description
+    }
+  )
+}
+
+# Create a new access group (admin only)
+mutation CreateAccessGroup(
+  $name: String!
+  $description: String
+) @auth(level: NO_ACCESS) {
+  accessGroup_insert(
+    data: {
+      name: $name
+      description: $description
+    }
+  )
+}
+
+# Add a user to an access group (admin only)
+mutation AddUserToAccessGroup(
+  $userId: String!
+  $accessGroupId: UUID!
+) @auth(level: NO_ACCESS) {
+  userAccessGroup_upsert(
+    data: {
+      userId: $userId
+      accessGroupId: $accessGroupId
+    }
+  )
+}
+
+# Remove a user from an access group (admin only)
+mutation RemoveUserFromAccessGroup(
+  $userId: String!
+  $accessGroupId: UUID!
+) @auth(level: NO_ACCESS) {
+  userAccessGroup_delete(
+    key: {
+      userId: $userId
+      accessGroupId: $accessGroupId
+    }
+  )
+}
+
+# Grant an access group access to a section (admin only)
+mutation GrantAccessGroupToSection(
+  $sectionId: UUID!
+  $accessGroupId: UUID!
+) @auth(level: NO_ACCESS) {
+  sectionAccessGroup_upsert(
+    data: {
+      sectionId: $sectionId
+      accessGroupId: $accessGroupId
+    }
+  )
+}
+
+# Revoke an access group's access to a section (admin only)
+mutation RevokeAccessGroupFromSection(
+  $sectionId: UUID!
+  $accessGroupId: UUID!
+) @auth(level: NO_ACCESS) {
+  sectionAccessGroup_delete(
+    key: {
+      sectionId: $sectionId
+      accessGroupId: $accessGroupId
+    }
+  )
+}

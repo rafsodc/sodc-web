@@ -42,3 +42,65 @@ query ListUsers @auth(level: NO_ACCESS) {
     updatedAt
   }
 }
+
+# SODC Section and Access Group Queries
+
+# Get all sections (admin only for now)
+query ListSections @auth(level: NO_ACCESS) {
+  sections {
+    id
+    name
+    type
+    description
+    createdAt
+    updatedAt
+  }
+}
+
+# Get sections accessible to the current user
+query GetSectionsForUser @auth(level: USER) {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    # Get access groups this user belongs to
+    accessGroups: userAccessGroups_on_user {
+      accessGroup {
+        id
+        name
+        # Get sections this access group can access
+        sections: sectionAccessGroups_on_accessGroup {
+          section {
+            id
+            name
+            type
+            description
+          }
+        }
+      }
+    }
+  }
+}
+
+# Get all access groups (admin only)
+query ListAccessGroups @auth(level: NO_ACCESS) {
+  accessGroups {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+  }
+}
+
+# Get access groups for the current user
+query GetUserAccessGroups @auth(level: USER) {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    accessGroups: userAccessGroups_on_user {
+      accessGroup {
+        id
+        name
+        description
+      }
+    }
+  }
+}

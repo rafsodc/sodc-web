@@ -1,5 +1,11 @@
 # SODC (Signal Officers' Dinner Club) Data Connect Schema
 
+# Section type enum
+enum SectionType {
+  MEMBERS
+  EVENTS
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -9,6 +15,55 @@ type User @table {
   lastName: String!
   email: String!
   serviceNumber: String!
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Section table - represents different sections of the application
+type Section @table {
+  id: UUID! @default(expr: "uuidV4()")
+  name: String!
+  type: SectionType!
+  description: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# AccessGroup table - groups that control access to sections
+type AccessGroup @table {
+  id: UUID! @default(expr: "uuidV4()")
+  name: String!
+  description: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# UserAccessGroup - junction table linking users to access groups
+# A user can be a member of multiple access groups
+type UserAccessGroup @table(key: ["user", "accessGroup"]) {
+  user: User!
+  accessGroup: AccessGroup!
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# SectionAccessGroup - junction table linking sections to access groups
+# An access group can grant access to multiple sections
+type SectionAccessGroup @table(key: ["section", "accessGroup"]) {
+  section: Section!
+  accessGroup: AccessGroup!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
