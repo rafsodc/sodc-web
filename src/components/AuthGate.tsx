@@ -90,36 +90,47 @@ export default function AuthGate({ onBack }: AuthGateProps) {
     );
   }
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!submitting && email.trim() && password.length >= 6) {
+      handleSignIn();
+    }
+  };
+
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
       <Alert severity="info">Not signed in</Alert>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <TextField
-        label="Email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        autoComplete="email"
-        fullWidth
-      />
-      <TextField
-        label="Password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        autoComplete="current-password"
-        fullWidth
-      />
+      <form onSubmit={handleSubmit}>
+        <Stack spacing={2}>
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            fullWidth
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            fullWidth
+          />
 
-      <Button
-        variant="contained"
-        onClick={handleSignIn}
-        disabled={submitting || !email.trim() || password.length < 6}
-      >
-        Sign in
-      </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={submitting || !email.trim() || password.length < 6}
+          >
+            Sign in
+          </Button>
+        </Stack>
+      </form>
 
       {onBack && (
         <Button variant="outlined" onClick={onBack}>
