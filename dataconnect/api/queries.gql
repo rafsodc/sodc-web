@@ -16,7 +16,7 @@ query GetCurrentUser @auth(level: USER) {
 }
 
 # Get a user by ID (admin only)
-query GetUserById($id: String!) @auth(level: NO_ACCESS) {
+query GetUserById($id: String!) @auth(expr: "auth.token.admin == true") {
   user(id: $id) {
     id
     firstName
@@ -31,7 +31,7 @@ query GetUserById($id: String!) @auth(level: NO_ACCESS) {
 }
 
 # List all users (admin only)
-query ListUsers @auth(level: NO_ACCESS) {
+query ListUsers @auth(expr: "auth.token.admin == true") {
   users {
     id
     firstName
@@ -45,8 +45,8 @@ query ListUsers @auth(level: NO_ACCESS) {
 
 # SODC Section and Access Group Queries
 
-# Get all sections (admin only for now)
-query ListSections @auth(level: NO_ACCESS) {
+# Get all sections (admin only)
+query ListSections @auth(expr: "auth.token.admin == true") {
   sections {
     id
     name
@@ -81,7 +81,7 @@ query GetSectionsForUser @auth(level: USER) {
 }
 
 # Get all access groups (admin only)
-query ListAccessGroups @auth(level: NO_ACCESS) {
+query ListAccessGroups @auth(expr: "auth.token.admin == true") {
   accessGroups {
     id
     name

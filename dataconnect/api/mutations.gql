@@ -28,7 +28,7 @@ mutation CreateSection(
   $name: String!
   $type: SectionType!
   $description: String
-) @auth(level: NO_ACCESS) {
+) @auth(expr: "auth.token.admin == true") {
   section_insert(
     data: {
       name: $name
@@ -42,7 +42,7 @@ mutation CreateSection(
 mutation CreateAccessGroup(
   $name: String!
   $description: String
-) @auth(level: NO_ACCESS) {
+) @auth(expr: "auth.token.admin == true") {
   accessGroup_insert(
     data: {
       name: $name
@@ -55,7 +55,7 @@ mutation CreateAccessGroup(
 mutation AddUserToAccessGroup(
   $userId: String!
   $accessGroupId: UUID!
-) @auth(level: NO_ACCESS) {
+) @auth(expr: "auth.token.admin == true") {
   userAccessGroup_upsert(
     data: {
       userId: $userId
@@ -68,7 +68,7 @@ mutation AddUserToAccessGroup(
 mutation RemoveUserFromAccessGroup(
   $userId: String!
   $accessGroupId: UUID!
-) @auth(level: NO_ACCESS) {
+) @auth(expr: "auth.token.admin == true") {
   userAccessGroup_delete(
     key: {
       userId: $userId
@@ -81,7 +81,7 @@ mutation RemoveUserFromAccessGroup(
 mutation GrantAccessGroupToSection(
   $sectionId: UUID!
   $accessGroupId: UUID!
-) @auth(level: NO_ACCESS) {
+) @auth(expr: "auth.token.admin == true") {
   sectionAccessGroup_upsert(
     data: {
       sectionId: $sectionId
@@ -94,7 +94,7 @@ mutation GrantAccessGroupToSection(
 mutation RevokeAccessGroupFromSection(
   $sectionId: UUID!
   $accessGroupId: UUID!
-) @auth(level: NO_ACCESS) {
+) @auth(expr: "auth.token.admin == true") {
   sectionAccessGroup_delete(
     key: {
       sectionId: $sectionId
