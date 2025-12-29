@@ -9,7 +9,7 @@ import HomePage from "./components/HomePage";
 import Profile from "./components/Profile";
 import { colors } from "./config/colors";
 
-type View = "home" | "account" | "profile";
+type View = "home" | "account" | "profile" | "permissions";
 
 export default function App() {
   const [view, setView] = useState<View>("home");
@@ -38,6 +38,7 @@ export default function App() {
         userData={userData} 
         onAccountClick={() => setView("account")}
         onProfileClick={() => setView("profile")}
+        onPermissionsClick={() => setView("permissions")}
       />
       <Box
         component="main"

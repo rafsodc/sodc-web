@@ -5,6 +5,7 @@ import { signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { colors } from "../config/colors";
 import type { UserData } from "../hooks/useUserData";
+import { useAdminClaim } from "../hooks/useAdminClaim";
 
 interface HeaderProps {
   user: User | null;
@@ -13,6 +14,7 @@ interface HeaderProps {
   onJoinClick?: () => void;
   onProfileClick?: () => void;
   onSecurityClick?: () => void;
+  onPermissionsClick?: () => void;
 }
 
 function getInitials(userData: UserData | null): string {
@@ -22,9 +24,12 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const adminMenuOpen = Boolean(adminAnchorEl);
+  const isAdmin = useAdminClaim(user);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -61,6 +66,21 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     }
   };
 
+  const handleAdminClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAdminAnchorEl(event.currentTarget);
+  };
+
+  const handleAdminMenuClose = () => {
+    setAdminAnchorEl(null);
+  };
+
+  const handlePermissions = () => {
+    handleAdminMenuClose();
+    if (onPermissionsClick) {
+      onPermissionsClick();
+    }
+  };
+
   return (
     <AppBar 
       position="fixed" 
@@ -72,9 +92,48 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
       }}
     >
       <Toolbar>
-        <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+        <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
           SODC
         </Typography>
+        {user && isAdmin && (
+          <Box sx={{ flexGrow: 1, display: "flex", justifyContent: "center" }}>
+            <Button
+              onClick={handleAdminClick}
+              sx={{
+                textTransform: "none",
+                backgroundColor: "white",
+                color: colors.primary,
+                borderRadius: "9999px",
+                px: 3,
+                fontWeight: 600,
+                "&:hover": {
+                  backgroundColor: "white",
+                  opacity: 0.9,
+                },
+              }}
+            >
+              Admin
+            </Button>
+            <Menu
+              anchorEl={adminAnchorEl}
+              open={adminMenuOpen}
+              onClose={handleAdminMenuClose}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "center",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "center",
+              }}
+            >
+              <MenuItem onClick={handlePermissions}>Permissions</MenuItem>
+            </Menu>
+          </Box>
+        )}
+        {!user || !isAdmin ? (
+          <Box sx={{ flexGrow: user && isAdmin ? 0 : 1 }} />
+        ) : null}
         {user ? (
           <>
             {userData ? (
