@@ -127,7 +127,19 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 horizontal: "center",
               }}
             >
-              <MenuItem onClick={handlePermissions}>Permissions</MenuItem>
+              <MenuItem 
+                onClick={handlePermissions}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Permissions
+              </MenuItem>
             </Menu>
           </Box>
         )}
@@ -178,9 +190,45 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 horizontal: "right",
               }}
             >
-              <MenuItem onClick={handleProfile}>Profile</MenuItem>
-              <MenuItem onClick={handleSecurity}>Security</MenuItem>
-              <MenuItem onClick={handleLogOut}>Log Out</MenuItem>
+              <MenuItem 
+                onClick={handleProfile}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Profile
+              </MenuItem>
+              <MenuItem 
+                onClick={handleSecurity}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Security
+              </MenuItem>
+              <MenuItem 
+                onClick={handleLogOut}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Log Out
+              </MenuItem>
             </Menu>
           </>
         ) : (

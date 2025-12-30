@@ -149,7 +149,21 @@ export default function Permissions({ onBack }: PermissionsProps) {
         </Button>
       </Box>
 
-      <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 3 }}>
+      <Tabs 
+        value={tabValue} 
+        onChange={(_, newValue) => setTabValue(newValue)} 
+        sx={{ 
+          mb: 3,
+          "& .MuiTab-root": {
+            "&:focus": {
+              outline: "none",
+            },
+            "&:focus-visible": {
+              outline: "none",
+            },
+          },
+        }}
+      >
         <Tab label="Admin Users" />
         <Tab label="Search Users" />
       </Tabs>
