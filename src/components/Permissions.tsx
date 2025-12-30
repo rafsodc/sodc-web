@@ -32,8 +32,7 @@ interface PermissionsProps {
   onBack: () => void;
 }
 
-const ADMIN_ITEMS_PER_PAGE = 20;
-const SEARCH_ITEMS_PER_PAGE = 25;
+const ITEMS_PER_PAGE = 25;
 
 export default function Permissions({ onBack }: PermissionsProps) {
   const [tabValue, setTabValue] = useState(0);
@@ -45,7 +44,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [adminEmailFilter, setAdminEmailFilter] = useState("");
+  const [adminFilter, setAdminFilter] = useState("");
   const [adminPage, setAdminPage] = useState(1);
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalPages, setSearchTotalPages] = useState(1);
@@ -80,21 +79,23 @@ export default function Permissions({ onBack }: PermissionsProps) {
     fetchAdminUsers();
   }, [fetchAdminUsers]);
 
-  // Filter admin users based on email
+  // Filter admin users based on email or display name
   useEffect(() => {
     let filtered = [...adminUsers];
 
-    // Filter by email
-    if (adminEmailFilter.trim()) {
-      const emailLower = adminEmailFilter.toLowerCase();
-      filtered = filtered.filter((user) =>
-        user.email?.toLowerCase().includes(emailLower)
-      );
+    // Filter by email or display name
+    if (adminFilter.trim()) {
+      const filterLower = adminFilter.toLowerCase();
+      filtered = filtered.filter((user) => {
+        const emailMatch = user.email?.toLowerCase().includes(filterLower);
+        const displayNameMatch = user.displayName?.toLowerCase().includes(filterLower);
+        return emailMatch || displayNameMatch;
+      });
     }
 
     setFilteredAdminUsers(filtered);
     setAdminPage(1); // Reset to first page when filters change
-  }, [adminUsers, adminEmailFilter]);
+  }, [adminUsers, adminFilter]);
 
   // Search users
   const handleSearch = useCallback(async (term: string, pageNum: number = 1) => {
@@ -107,7 +108,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
     setSearchLoading(true);
     setSearchError(null);
     try {
-      const result = await searchUsers(term, pageNum, SEARCH_ITEMS_PER_PAGE);
+      const result = await searchUsers(term, pageNum, ITEMS_PER_PAGE);
       if (result.success && result.data) {
         setSearchResults(result.data.users);
         setSearchTotalPages(result.data.totalPages);
@@ -137,9 +138,9 @@ export default function Permissions({ onBack }: PermissionsProps) {
   }, [searchTerm, tabValue, handleSearch]);
 
   // Admin pagination
-  const adminTotalPages = Math.ceil(filteredAdminUsers.length / ADMIN_ITEMS_PER_PAGE);
-  const adminStartIndex = (adminPage - 1) * ADMIN_ITEMS_PER_PAGE;
-  const paginatedAdminUsers = filteredAdminUsers.slice(adminStartIndex, adminStartIndex + ADMIN_ITEMS_PER_PAGE);
+  const adminTotalPages = Math.ceil(filteredAdminUsers.length / ITEMS_PER_PAGE);
+  const adminStartIndex = (adminPage - 1) * ITEMS_PER_PAGE;
+  const paginatedAdminUsers = filteredAdminUsers.slice(adminStartIndex, adminStartIndex + ITEMS_PER_PAGE);
 
   const handleSearchPageChange = (_: React.ChangeEvent<unknown>, newPage: number) => {
     setSearchPage(newPage);
@@ -248,12 +249,13 @@ export default function Permissions({ onBack }: PermissionsProps) {
         <>
           <Box className="filters-container">
             <TextField
-              label="Filter by Email"
+              label="Filter by Email or Display Name"
               variant="outlined"
-              value={adminEmailFilter}
-              onChange={(e) => setAdminEmailFilter(e.target.value)}
+              value={adminFilter}
+              onChange={(e) => setAdminFilter(e.target.value)}
               className="email-filter"
               size="small"
+              placeholder="Enter email or name..."
             />
             <Tooltip title="Refresh admin users list">
               <IconButton onClick={fetchAdminUsers} disabled={loading}>
