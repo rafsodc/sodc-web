@@ -77,7 +77,7 @@ export default function App() {
           </Box>
         ) : view === "permissions" ? (
           user ? (
-            <Permissions currentUser={user} onBack={() => setView("home")} />
+            <Permissions onBack={() => setView("home")} />
           ) : (
             <Box 
               sx={{ 
