@@ -149,3 +149,68 @@ export const updateDisplayName = onCall(
     }
   }
 );
+
+export const searchUsers = onCall(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+
+    if (request.auth.token.admin !== true) {
+      throw new HttpsError("permission-denied", "Admins only");
+    }
+
+    const { searchTerm, page = 1, pageSize = 25 } = request.data;
+
+    if (!searchTerm || typeof searchTerm !== "string" || searchTerm.trim().length === 0) {
+      throw new HttpsError("invalid-argument", "searchTerm is required and must be a non-empty string");
+    }
+
+    try {
+      const searchLower = searchTerm.toLowerCase().trim();
+      const listUsersResult = await admin.auth().listUsers();
+      
+      // Filter users that match email or displayName
+      const matchingUsers = listUsersResult.users
+        .map((userRecord) => {
+          const email = (userRecord.email || "").toLowerCase();
+          const displayName = (userRecord.displayName || "").toLowerCase();
+          
+          if (email.includes(searchLower) || displayName.includes(searchLower)) {
+            return {
+              uid: userRecord.uid,
+              email: userRecord.email || "",
+              displayName: userRecord.displayName || "",
+              emailVerified: userRecord.emailVerified,
+              disabled: userRecord.disabled,
+              metadata: {
+                creationTime: userRecord.metadata.creationTime,
+                lastSignInTime: userRecord.metadata.lastSignInTime,
+              },
+              customClaims: userRecord.customClaims || {},
+            };
+          }
+          return null;
+        })
+        .filter((user) => user !== null);
+
+      // Pagination
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedUsers = matchingUsers.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(matchingUsers.length / pageSize);
+
+      logger.info(`Found ${matchingUsers.length} users matching "${searchTerm}" for caller ${request.auth.uid}`);
+      return {
+        users: paginatedUsers,
+        total: matchingUsers.length,
+        page: page,
+        pageSize: pageSize,
+        totalPages: totalPages,
+      };
+    } catch (e: any) {
+      logger.error("Error searching users:", e);
+      throw new HttpsError("internal", e?.message ?? "Error searching users");
+    }
+  }
+);
