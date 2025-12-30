@@ -1,5 +1,5 @@
 import { setGlobalOptions } from "firebase-functions";
-import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 
@@ -10,75 +10,82 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-// CORS helper function
-function setCorsHeaders(res: any) {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-}
-
-export const grantAdmin = onRequest(async (req, res) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    setCorsHeaders(res);
-    res.status(204).send("");
-    return;
-  }
-
-  setCorsHeaders(res);
-
-  const uid = req.query.uid as string | undefined;
-  const authHeader = req.headers.authorization;
-
-  // Get target UID from query or body
-  const targetUid = uid || (req.body?.uid as string | undefined);
-
-  if (!targetUid || typeof targetUid !== "string") {
-    res.status(400).json({ error: "Missing uid parameter" });
-    return;
-  }
-
-  // Verify Authorization header with Firebase token
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    logger.error("Missing or invalid Authorization header");
-    res.status(401).json({ error: "Authorization header required" });
-    return;
-  }
-
-  let callerUid: string | null = null;
-
-  try {
-    const token = authHeader.split("Bearer ")[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    callerUid = decodedToken.uid;
-
-    // Check if caller has admin claim
-    if (decodedToken.admin !== true) {
-      logger.warn(`Caller uid=${callerUid} attempted to grant admin but does not have admin claim`);
-      res.status(403).json({ error: "Forbidden: Admin claim required" });
-      return;
+export const grantAdmin = onCall(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Sign in required");
     }
 
-    logger.info(`Admin claim verified for caller uid=${callerUid}`);
-  } catch (error: any) {
-    logger.error("Error verifying token:", error);
-    res.status(401).json({ error: "Invalid or expired token" });
-    return;
-  }
+    if (request.auth.token.admin !== true) {
+      throw new HttpsError("permission-denied", "Admins only");
+    }
 
-  try {
-    await admin.auth().setCustomUserClaims(targetUid, { admin: true });
-    logger.info(`Admin claim set for uid=${targetUid} by caller=${callerUid}`);
-    res.status(200).json({ 
-      success: true,
-      message: `Admin claim set for uid=${targetUid}`,
-      grantedBy: callerUid
-    });
-  } catch (e: any) {
-    logger.error("Error setting custom claim:", e);
-    res.status(500).json({ error: e?.message ?? "Error setting custom claim" });
+    const { uid } = request.data;
+
+    if (!uid || typeof uid !== "string") {
+      throw new HttpsError("invalid-argument", "uid is required and must be a string");
+    }
+
+    try {
+      await admin.auth().setCustomUserClaims(uid, { admin: true });
+      logger.info(`Admin claim set for uid=${uid} by caller=${request.auth.uid}`);
+      return { success: true, message: `Admin claim set for uid=${uid}` };
+    } catch (e: any) {
+      logger.error("Error setting custom claim:", e);
+      throw new HttpsError("internal", e?.message ?? "Error setting custom claim");
+    }
   }
-});
+);
+
+export const revokeAdmin = onCall(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+
+    if (request.auth.token.admin !== true) {
+      throw new HttpsError("permission-denied", "Admins only");
+    }
+
+    const { uid } = request.data;
+
+    if (!uid || typeof uid !== "string") {
+      throw new HttpsError("invalid-argument", "uid is required and must be a string");
+    }
+
+    try {
+      // Check how many admins exist
+      const listUsersResult = await admin.auth().listUsers();
+      const adminUsers = listUsersResult.users.filter((userRecord) => {
+        const customClaims = userRecord.customClaims || {};
+        return customClaims.admin === true;
+      });
+
+      // Prevent removing the last admin
+      if (adminUsers.length <= 1) {
+        throw new HttpsError("failed-precondition", "Cannot remove the last admin. At least one admin must remain.");
+      }
+
+      // Check if the user being revoked is actually an admin
+      const targetUser = await admin.auth().getUser(uid);
+      const targetUserClaims = targetUser.customClaims || {};
+      if (targetUserClaims.admin !== true) {
+        throw new HttpsError("failed-precondition", "User is not an admin");
+      }
+
+      // Remove admin claim
+      await admin.auth().setCustomUserClaims(uid, { admin: false });
+      logger.info(`Admin claim removed for uid=${uid} by caller=${request.auth.uid}`);
+      return { success: true, message: `Admin claim removed for uid=${uid}` };
+    } catch (e: any) {
+      if (e instanceof HttpsError) {
+        throw e;
+      }
+      logger.error("Error removing custom claim:", e);
+      throw new HttpsError("internal", e?.message ?? "Error removing custom claim");
+    }
+  }
+);
 
 export const listAdminUsers = onCall(
   async (request) => {

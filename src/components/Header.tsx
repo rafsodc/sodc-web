@@ -110,6 +110,12 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                   backgroundColor: "white",
                   opacity: 0.9,
                 },
+                "&:focus": {
+                  outline: "none",
+                },
+                "&:focus-visible": {
+                  outline: "none",
+                },
               }}
             >
               Admin
@@ -245,6 +251,12 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                   backgroundColor: "white",
                   opacity: 0.9,
                 },
+                "&:focus": {
+                  outline: "none",
+                },
+                "&:focus-visible": {
+                  outline: "none",
+                },
               }}
             >
               Log In
@@ -260,6 +272,12 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 "&:hover": {
                   backgroundColor: colors.callToAction,
                   opacity: 0.9,
+                },
+                "&:focus": {
+                  outline: "none",
+                },
+                "&:focus-visible": {
+                  outline: "none",
                 },
               }}
             >

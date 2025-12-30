@@ -23,6 +23,8 @@ import {
 import { CheckCircle, Refresh } from "@mui/icons-material";
 import { listAdminUsers, type AdminUser } from "../utils/listAdminUsers";
 import { searchUsers, type SearchUser } from "../utils/searchUsers";
+import { grantAdminClaim } from "../utils/grantAdmin";
+import { revokeAdminClaim } from "../utils/revokeAdmin";
 import { colors } from "../config/colors";
 import "./Permissions.css";
 
@@ -48,6 +50,9 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalPages, setSearchTotalPages] = useState(1);
   const [searchTotal, setSearchTotal] = useState(0);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [adminCount, setAdminCount] = useState(0);
 
   const fetchAdminUsers = useCallback(async () => {
     setLoading(true);
@@ -56,13 +61,16 @@ export default function Permissions({ onBack }: PermissionsProps) {
       const result = await listAdminUsers();
       if (result.success && result.users) {
         setAdminUsers(result.users);
+        setAdminCount(result.users.length);
       } else {
         setError(result.error || "Failed to fetch admin users");
         setAdminUsers([]);
+        setAdminCount(0);
       }
     } catch (err: any) {
       setError(err?.message || "Failed to fetch admin users");
       setAdminUsers([]);
+      setAdminCount(0);
     } finally {
       setLoading(false);
     }
@@ -138,6 +146,64 @@ export default function Permissions({ onBack }: PermissionsProps) {
     handleSearch(searchTerm, newPage);
   };
 
+  const handleGrantAdmin = async (uid: string) => {
+    setUpdatingUserId(uid);
+    setUpdateMessage(null);
+    try {
+      const result = await grantAdminClaim(uid);
+      if (result.success) {
+        setUpdateMessage({ type: "success", text: result.message || "Admin claim granted successfully" });
+        // Refresh both lists
+        await fetchAdminUsers();
+        if (tabValue === 1 && searchTerm.trim()) {
+          await handleSearch(searchTerm, searchPage);
+        }
+      } else {
+        setUpdateMessage({ type: "error", text: result.error || "Failed to grant admin claim" });
+      }
+    } catch (err: any) {
+      setUpdateMessage({ type: "error", text: err?.message || "Failed to grant admin claim" });
+    } finally {
+      setUpdatingUserId(null);
+      setTimeout(() => setUpdateMessage(null), 5000);
+    }
+  };
+
+  const handleRevokeAdmin = async (uid: string) => {
+    // Check if this would be the last admin
+    if (adminCount <= 1) {
+      setUpdateMessage({ 
+        type: "error", 
+        text: "Cannot remove the last admin. At least one admin must remain." 
+      });
+      setTimeout(() => setUpdateMessage(null), 5000);
+      return;
+    }
+
+    setUpdatingUserId(uid);
+    setUpdateMessage(null);
+    try {
+      const result = await revokeAdminClaim(uid);
+      if (result.success) {
+        setUpdateMessage({ type: "success", text: result.message || "Admin claim revoked successfully" });
+        // Refresh both lists
+        await fetchAdminUsers();
+        if (tabValue === 1 && searchTerm.trim()) {
+          await handleSearch(searchTerm, searchPage);
+        }
+      } else {
+        setUpdateMessage({ type: "error", text: result.error || "Failed to revoke admin claim" });
+      }
+    } catch (err: any) {
+      // Handle the error from the server (e.g., "Cannot remove the last admin")
+      const errorMessage = err?.message || "Failed to revoke admin claim";
+      setUpdateMessage({ type: "error", text: errorMessage });
+    } finally {
+      setUpdatingUserId(null);
+      setTimeout(() => setUpdateMessage(null), 5000);
+    }
+  };
+
   return (
     <Box className="permissions-container">
       <Box className="permissions-header">
@@ -148,6 +214,16 @@ export default function Permissions({ onBack }: PermissionsProps) {
           Back
         </Button>
       </Box>
+
+      {updateMessage && (
+        <Alert
+          severity={updateMessage.type}
+          onClose={() => setUpdateMessage(null)}
+          sx={{ mb: 2 }}
+        >
+          {updateMessage.text}
+        </Alert>
+      )}
 
       <Tabs 
         value={tabValue} 
@@ -205,12 +281,13 @@ export default function Permissions({ onBack }: PermissionsProps) {
                       <TableCell>Display Name</TableCell>
                       <TableCell>Email Verified</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {paginatedAdminUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center">
+                        <TableCell colSpan={5} align="center">
                           No admin users found
                         </TableCell>
                       </TableRow>
@@ -238,6 +315,22 @@ export default function Permissions({ onBack }: PermissionsProps) {
                                 Active
                               </Typography>
                             )}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              onClick={() => handleRevokeAdmin(user.uid)}
+                              disabled={updatingUserId === user.uid || filteredAdminUsers.length <= 1}
+                              title={filteredAdminUsers.length <= 1 ? "Cannot remove the last admin" : "Revoke admin"}
+                            >
+                              {updatingUserId === user.uid ? (
+                                <CircularProgress size={16} />
+                              ) : (
+                                "Revoke Admin"
+                              )}
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -296,12 +389,13 @@ export default function Permissions({ onBack }: PermissionsProps) {
                       <TableCell>Email Verified</TableCell>
                       <TableCell>Admin</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {searchResults.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} align="center">
+                        <TableCell colSpan={6} align="center">
                           No users found
                         </TableCell>
                       </TableRow>
@@ -337,6 +431,37 @@ export default function Permissions({ onBack }: PermissionsProps) {
                               <Typography variant="body2" color="success.main">
                                 Active
                               </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell align="center">
+                            {user.customClaims?.admin === true ? (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                onClick={() => handleRevokeAdmin(user.uid)}
+                                disabled={updatingUserId === user.uid || adminCount <= 1}
+                                title={adminCount <= 1 ? "Cannot remove the last admin" : "Revoke admin"}
+                              >
+                                {updatingUserId === user.uid ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  "Revoke Admin"
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() => handleGrantAdmin(user.uid)}
+                                disabled={updatingUserId === user.uid}
+                              >
+                                {updatingUserId === user.uid ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  "Grant Admin"
+                                )}
+                              </Button>
                             )}
                           </TableCell>
                         </TableRow>
