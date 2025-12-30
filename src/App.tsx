@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Box, CssBaseline } from "@mui/material";
+import { Box, Button, CssBaseline, Typography } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "./config/firebase";
 import { useUserData } from "./hooks/useUserData";
@@ -7,6 +7,7 @@ import AuthGate from "./components/AuthGate";
 import Header from "./components/Header";
 import HomePage from "./components/HomePage";
 import Profile from "./components/Profile";
+import Permissions from "./components/Permissions";
 import { colors } from "./config/colors";
 
 type View = "home" | "account" | "profile" | "permissions";
@@ -74,6 +75,26 @@ export default function App() {
               onUpdate={handleProfileUpdate}
             />
           </Box>
+        ) : view === "permissions" ? (
+          user ? (
+            <Permissions currentUser={user} onBack={() => setView("home")} />
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Permissions
+              </Typography>
+              <Typography>Please log in to access permissions.</Typography>
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
         ) : (
           <Box
             sx={{
