@@ -12,6 +12,7 @@ import { dataConnect } from "../config/firebase";
 import { colors } from "../config/colors";
 import { upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
 import type { UserData } from "../hooks/useUserData";
+import { updateDisplayName } from "../utils/updateDisplayName";
 
 interface ProfileProps {
   userData: UserData | null;
@@ -55,6 +56,17 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
         serviceNumber: serviceNumber.trim(),
       };
       await upsertUser(dataConnect, vars);
+      
+      // Update displayName in Firebase Auth
+      const displayName = `${lastName.trim()}, ${firstName.trim()}`.trim();
+      if (displayName) {
+        const displayNameResult = await updateDisplayName(displayName);
+        if (!displayNameResult.success) {
+          // Log error but don't fail the whole operation
+          console.warn("Failed to update display name:", displayNameResult.error);
+        }
+      }
+      
       setSuccess(true);
       if (onUpdate) {
         onUpdate();

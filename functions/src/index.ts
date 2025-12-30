@@ -81,7 +81,6 @@ export const grantAdmin = onRequest(async (req, res) => {
 });
 
 export const listAdminUsers = onCall(
-  { region: "europe-west2" },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Sign in required");
@@ -121,6 +120,32 @@ export const listAdminUsers = onCall(
     } catch (e: any) {
       logger.error("Error listing admin users:", e);
       throw new HttpsError("internal", e?.message ?? "Error listing admin users");
+    }
+  }
+);
+
+export const updateDisplayName = onCall(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+
+    const { displayName } = request.data;
+
+    if (!displayName || typeof displayName !== "string") {
+      throw new HttpsError("invalid-argument", "displayName is required and must be a string");
+    }
+
+    try {
+      await admin.auth().updateUser(request.auth.uid, {
+        displayName: displayName.trim(),
+      });
+
+      logger.info(`Display name updated for uid=${request.auth.uid}`);
+      return { success: true };
+    } catch (e: any) {
+      logger.error("Error updating display name:", e);
+      throw new HttpsError("internal", e?.message ?? "Error updating display name");
     }
   }
 );
