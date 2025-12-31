@@ -1,15 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Typography,
   CircularProgress,
   Alert,
@@ -26,18 +19,18 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import { Edit, Refresh, CheckCircle } from "@mui/icons-material";
+import { Refresh } from "@mui/icons-material";
 import { dataConnect } from "../config/firebase";
-import { searchUsers, type SearchUser } from "../utils/searchUsers";
-import { getUserById, updateUser, type UpdateUserVariables } from "../dataconnect-generated";
+import { type SearchUser } from "../utils/searchUsers";
+import { getUserById, updateUser, type UpdateUserVariables, type MembershipStatus as GeneratedMembershipStatus } from "../dataconnect-generated";
 import { colors } from "../config/colors";
+import { useUserSearch } from "../hooks/useUserSearch";
+import UsersTable from "./UsersTable";
 import "./ManageUsers.css";
 
 interface ManageUsersProps {
   onBack: () => void;
 }
-
-const ITEMS_PER_PAGE = 25;
 
 const MEMBERSHIP_STATUSES = [
   { value: "PENDING", label: "Pending" },
@@ -51,13 +44,19 @@ const MEMBERSHIP_STATUSES = [
 type MembershipStatus = "PENDING" | "SERVING" | "RETIRED" | "RESIGNED" | "LOST" | "DECEASED";
 
 export default function ManageUsers({ onBack }: ManageUsersProps) {
-  const [users, setUsers] = useState<SearchUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const {
+    users,
+    loading,
+    error,
+    page,
+    totalPages,
+    total,
+    setPage,
+    setSearchTerm,
+    searchTerm,
+    refetch,
+  } = useUserSearch("", 500);
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SearchUser | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -70,44 +69,8 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
   const [serviceNumber, setServiceNumber] = useState("");
   const [membershipStatus, setMembershipStatus] = useState<MembershipStatus>("PENDING");
 
-  // Search users - requires a search term, so we'll use a wildcard approach for "all users"
-  const fetchUsers = useCallback(async (term: string, pageNum: number = 1) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // If no search term, use a very common character to get all users
-      const searchQuery = term.trim() || "a";
-      const result = await searchUsers(searchQuery, pageNum, ITEMS_PER_PAGE);
-      if (result.success && result.data) {
-        setUsers(result.data.users);
-        setTotalPages(result.data.totalPages);
-        setTotal(result.data.total);
-      } else {
-        setError(result.error || "Failed to fetch users");
-        setUsers([]);
-      }
-    } catch (err: any) {
-      setError(err?.message || "Failed to fetch users");
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Load initial users on mount and handle debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers(searchTerm, 1);
-      setPage(1);
-    }, searchTerm ? 500 : 0); // No delay for initial load, 500ms delay for search
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]); // fetchUsers is stable (memoized), so we don't need it in deps
-
   const handlePageChange = (_: React.ChangeEvent<unknown>, newPage: number) => {
     setPage(newPage);
-    fetchUsers(searchTerm, newPage);
   };
 
   const handleEdit = async (user: SearchUser) => {
@@ -168,12 +131,12 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
-        membershipStatus: membershipStatus,
+        membershipStatus: membershipStatus as GeneratedMembershipStatus | null | undefined,
       };
       await updateUser(dataConnect, vars);
       setUpdateMessage({ type: "success", text: "User profile updated successfully" });
       // Refresh the current page
-      await fetchUsers(searchTerm, page);
+      refetch();
       setTimeout(() => {
         handleCloseEdit();
       }, 1500);
@@ -206,7 +169,7 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
           placeholder="Enter search term..."
         />
         <Tooltip title="Refresh users list">
-          <IconButton onClick={() => fetchUsers(searchTerm, page)} disabled={loading}>
+          <IconButton onClick={refetch} disabled={loading}>
             <Refresh />
           </IconButton>
         </Tooltip>
@@ -223,75 +186,12 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
           <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
             Showing {users.length} of {total} users (page {page} of {totalPages})
           </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Email Verified</TableCell>
-                  <TableCell>Admin</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      No users found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user) => (
-                    <TableRow key={user.uid}>
-                      <TableCell>{user.displayName || "-"}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        {user.emailVerified ? (
-                          <CheckCircle color="success" />
-                        ) : (
-                          <Typography variant="body2" color="textSecondary">
-                            Not verified
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {user.customClaims?.admin === true ? (
-                          <CheckCircle color="success" />
-                        ) : (
-                          <Typography variant="body2" color="textSecondary">
-                            No
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {user.disabled ? (
-                          <Typography variant="body2" color="error">
-                            Disabled
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="success.main">
-                            Active
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(user)}
-                          title="Edit user"
-                          disabled={submitting}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <UsersTable
+            users={users}
+            mode="edit"
+            onEdit={handleEdit}
+            disabled={submitting}
+          />
           {totalPages > 1 && (
             <Stack spacing={2} sx={{ mt: 3, alignItems: "center" }}>
               <Pagination

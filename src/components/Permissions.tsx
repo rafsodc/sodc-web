@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useUserSearch } from "../hooks/useUserSearch";
 import {
   Box,
   Button,
@@ -20,12 +21,12 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import { CheckCircle, Refresh } from "@mui/icons-material";
+import { Refresh, CheckCircle } from "@mui/icons-material";
 import { listAdminUsers, type AdminUser } from "../utils/listAdminUsers";
-import { searchUsers, type SearchUser } from "../utils/searchUsers";
 import { grantAdminClaim } from "../utils/grantAdmin";
 import { revokeAdminClaim } from "../utils/revokeAdmin";
 import { colors } from "../config/colors";
+import UsersTable from "./UsersTable";
 import "./Permissions.css";
 
 interface PermissionsProps {
@@ -38,21 +39,28 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const [tabValue, setTabValue] = useState(0);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [filteredAdminUsers, setFilteredAdminUsers] = useState<AdminUser[]>([]);
-  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchError, setSearchError] = useState<string | null>(null);
   const [adminFilter, setAdminFilter] = useState("");
   const [adminPage, setAdminPage] = useState(1);
-  const [searchPage, setSearchPage] = useState(1);
-  const [searchTotalPages, setSearchTotalPages] = useState(1);
-  const [searchTotal, setSearchTotal] = useState(0);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [adminCount, setAdminCount] = useState(0);
   const fetchingRef = useRef(false);
+
+  // Use the shared user search hook for the search tab
+  const {
+    users: searchResults,
+    loading: searchLoading,
+    error: searchError,
+    page: searchPage,
+    totalPages: searchTotalPages,
+    total: searchTotal,
+    setPage: setSearchPage,
+    setSearchTerm,
+    searchTerm,
+    refetch: refetchSearch,
+  } = useUserSearch("", 500);
 
   const fetchAdminUsers = useCallback(async () => {
     // Prevent duplicate concurrent calls
@@ -105,47 +113,6 @@ export default function Permissions({ onBack }: PermissionsProps) {
     setAdminPage(1); // Reset to first page when filters change
   }, [adminUsers, adminFilter]);
 
-  // Search users
-  const handleSearch = useCallback(async (term: string, pageNum: number = 1) => {
-    if (!term.trim()) {
-      setSearchResults([]);
-      setSearchError(null);
-      return;
-    }
-
-    setSearchLoading(true);
-    setSearchError(null);
-    try {
-      const result = await searchUsers(term, pageNum, ITEMS_PER_PAGE);
-      if (result.success && result.data) {
-        setSearchResults(result.data.users);
-        setSearchTotalPages(result.data.totalPages);
-        setSearchTotal(result.data.total);
-      } else {
-        setSearchError(result.error || "Failed to search users");
-        setSearchResults([]);
-      }
-    } catch (err: any) {
-      setSearchError(err?.message || "Failed to search users");
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (tabValue === 1) {
-        handleSearch(searchTerm, 1);
-        setSearchPage(1);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, tabValue]); // handleSearch is stable (memoized), so we don't need it in deps
-
   // Admin pagination
   const adminTotalPages = Math.ceil(filteredAdminUsers.length / ITEMS_PER_PAGE);
   const adminStartIndex = (adminPage - 1) * ITEMS_PER_PAGE;
@@ -153,7 +120,6 @@ export default function Permissions({ onBack }: PermissionsProps) {
 
   const handleSearchPageChange = (_: React.ChangeEvent<unknown>, newPage: number) => {
     setSearchPage(newPage);
-    handleSearch(searchTerm, newPage);
   };
 
   const handleGrantAdmin = async (uid: string) => {
@@ -166,7 +132,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
         // Refresh both lists
         await fetchAdminUsers();
         if (tabValue === 1 && searchTerm.trim()) {
-          await handleSearch(searchTerm, searchPage);
+          refetchSearch();
         }
       } else {
         setUpdateMessage({ type: "error", text: result.error || "Failed to grant admin claim" });
@@ -199,7 +165,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
         // Refresh both lists
         await fetchAdminUsers();
         if (tabValue === 1 && searchTerm.trim()) {
-          await handleSearch(searchTerm, searchPage);
+          refetchSearch();
         }
       } else {
         setUpdateMessage({ type: "error", text: result.error || "Failed to revoke admin claim" });
@@ -391,96 +357,14 @@ export default function Permissions({ onBack }: PermissionsProps) {
               <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
                 Showing {searchResults.length} of {searchTotal} users (page {searchPage} of {searchTotalPages})
               </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Display Name</TableCell>
-                      <TableCell>Email Verified</TableCell>
-                      <TableCell>Admin</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="center">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {searchResults.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center">
-                          No users found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      searchResults.map((user) => (
-                        <TableRow key={user.uid}>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.displayName || "-"}</TableCell>
-                          <TableCell>
-                            {user.emailVerified ? (
-                              <CheckCircle color="success" />
-                            ) : (
-                              <Typography variant="body2" color="textSecondary">
-                                Not verified
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {user.customClaims?.admin === true ? (
-                              <CheckCircle color="success" />
-                            ) : (
-                              <Typography variant="body2" color="textSecondary">
-                                No
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {user.disabled ? (
-                              <Typography variant="body2" color="error">
-                                Disabled
-                              </Typography>
-                            ) : (
-                              <Typography variant="body2" color="success.main">
-                                Active
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell align="center">
-                            {user.customClaims?.admin === true ? (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="error"
-                                onClick={() => handleRevokeAdmin(user.uid)}
-                                disabled={updatingUserId === user.uid || adminCount <= 1}
-                                title={adminCount <= 1 ? "Cannot remove the last admin" : "Revoke admin"}
-                              >
-                                {updatingUserId === user.uid ? (
-                                  <CircularProgress size={16} />
-                                ) : (
-                                  "Revoke Admin"
-                                )}
-                              </Button>
-                            ) : (
-                              <Button
-                                size="small"
-                                variant="contained"
-                                onClick={() => handleGrantAdmin(user.uid)}
-                                disabled={updatingUserId === user.uid}
-                              >
-                                {updatingUserId === user.uid ? (
-                                  <CircularProgress size={16} />
-                                ) : (
-                                  "Grant Admin"
-                                )}
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <UsersTable
+                users={searchResults}
+                mode="admin"
+                onGrantAdmin={handleGrantAdmin}
+                onRevokeAdmin={handleRevokeAdmin}
+                updatingUserId={updatingUserId}
+                adminCount={adminCount}
+              />
               {searchTotalPages > 1 && (
                 <Stack spacing={2} sx={{ mt: 3, alignItems: "center" }}>
                   <Pagination
