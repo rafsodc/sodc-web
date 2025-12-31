@@ -181,6 +181,8 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
         </Box>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
+      ) : searchTerm.trim() === "" ? (
+        <Alert severity="info">Enter a search term to find users</Alert>
       ) : (
         <>
           <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
