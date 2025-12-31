@@ -23,6 +23,28 @@ mutation UpsertUser(
   )
 }
 
+# Update a user profile (admin only - can update any user)
+mutation UpdateUser(
+  $userId: String!
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $membershipStatus: MembershipStatus
+) @auth(expr: "auth.token.admin == true") {
+  user_upsert(
+    data: {
+      id: $userId
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      membershipStatus: $membershipStatus
+      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+    }
+  )
+}
+
 # SODC Section and Access Group Mutations
 
 # Create a new section (admin only)

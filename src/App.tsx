@@ -8,9 +8,10 @@ import Header from "./components/Header";
 import HomePage from "./components/HomePage";
 import Profile from "./components/Profile";
 import Permissions from "./components/Permissions";
+import ManageUsers from "./components/ManageUsers";
 import { colors } from "./config/colors";
 
-type View = "home" | "account" | "profile" | "permissions";
+type View = "home" | "account" | "profile" | "permissions" | "manageUsers";
 
 export default function App() {
   const [view, setView] = useState<View>("home");
@@ -40,6 +41,7 @@ export default function App() {
         onAccountClick={() => setView("account")}
         onProfileClick={() => setView("profile")}
         onPermissionsClick={() => setView("permissions")}
+        onManageUsersClick={() => setView("manageUsers")}
       />
       <Box
         component="main"
@@ -90,6 +92,26 @@ export default function App() {
                 Permissions
               </Typography>
               <Typography>Please log in to access permissions.</Typography>
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
+        ) : view === "manageUsers" ? (
+          user ? (
+            <ManageUsers onBack={() => setView("home")} />
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Manage Users
+              </Typography>
+              <Typography>Please log in to access user management.</Typography>
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>

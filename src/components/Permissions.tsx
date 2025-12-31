@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Button,
@@ -52,8 +52,14 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [adminCount, setAdminCount] = useState(0);
+  const fetchingRef = useRef(false);
 
   const fetchAdminUsers = useCallback(async () => {
+    // Prevent duplicate concurrent calls
+    if (fetchingRef.current) {
+      return;
+    }
+    fetchingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -72,12 +78,14 @@ export default function Permissions({ onBack }: PermissionsProps) {
       setAdminCount(0);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     fetchAdminUsers();
-  }, [fetchAdminUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // fetchAdminUsers is stable (memoized), so we don't need it in deps
 
   // Filter admin users based on email or display name
   useEffect(() => {
@@ -135,7 +143,8 @@ export default function Permissions({ onBack }: PermissionsProps) {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, tabValue, handleSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, tabValue]); // handleSearch is stable (memoized), so we don't need it in deps
 
   // Admin pagination
   const adminTotalPages = Math.ceil(filteredAdminUsers.length / ITEMS_PER_PAGE);

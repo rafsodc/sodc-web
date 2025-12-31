@@ -15,6 +15,7 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onSecurityClick?: () => void;
   onPermissionsClick?: () => void;
+  onManageUsersClick?: () => void;
 }
 
 function getInitials(userData: UserData | null): string {
@@ -24,7 +25,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -74,10 +75,21 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     setAdminAnchorEl(null);
   };
 
-  const handlePermissions = () => {
+  const handlePermissions = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     handleAdminMenuClose();
     if (onPermissionsClick) {
       onPermissionsClick();
+    }
+  };
+
+  const handleManageUsers = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleAdminMenuClose();
+    if (onManageUsersClick) {
+      onManageUsersClick();
     }
   };
 
@@ -145,6 +157,19 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 }}
               >
                 Permissions
+              </MenuItem>
+              <MenuItem 
+                onClick={handleManageUsers}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Manage Users
               </MenuItem>
             </Menu>
           </Box>

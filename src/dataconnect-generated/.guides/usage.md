@@ -12,10 +12,12 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpsertUser, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup, useGrantAccessGroupToSection, useRevokeAccessGroupFromSection, useGetCurrentUser, useGetUserById, useListUsers } from '@dataconnect/generated/react';
+import { useUpsertUser, useUpdateUser, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup, useGrantAccessGroupToSection, useRevokeAccessGroupFromSection, useGetCurrentUser, useGetUserById } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
 const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
+
+const { data, isPending, isSuccess, isError, error } = useUpdateUser(updateUserVars);
 
 const { data, isPending, isSuccess, isError, error } = useCreateSection(createSectionVars);
 
@@ -32,8 +34,6 @@ const { data, isPending, isSuccess, isError, error } = useRevokeAccessGroupFromS
 const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
 
 const { data, isPending, isSuccess, isError, error } = useGetUserById(getUserByIdVars);
-
-const { data, isPending, isSuccess, isError, error } = useListUsers();
 
 ```
 
@@ -72,11 +72,14 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { upsertUser, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup, grantAccessGroupToSection, revokeAccessGroupFromSection, getCurrentUser, getUserById, listUsers } from '@dataconnect/generated';
+import { upsertUser, updateUser, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup, grantAccessGroupToSection, revokeAccessGroupFromSection, getCurrentUser, getUserById } from '@dataconnect/generated';
 
 
 // Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
 const { data } = await UpsertUser(dataConnect, upsertUserVars);
+
+// Operation UpdateUser:  For variables, look at type UpdateUserVars in ../index.d.ts
+const { data } = await UpdateUser(dataConnect, updateUserVars);
 
 // Operation CreateSection:  For variables, look at type CreateSectionVars in ../index.d.ts
 const { data } = await CreateSection(dataConnect, createSectionVars);
@@ -101,9 +104,6 @@ const { data } = await GetCurrentUser(dataConnect);
 
 // Operation GetUserById:  For variables, look at type GetUserByIdVars in ../index.d.ts
 const { data } = await GetUserById(dataConnect, getUserByIdVars);
-
-// Operation ListUsers: 
-const { data } = await ListUsers(dataConnect);
 
 
 ```

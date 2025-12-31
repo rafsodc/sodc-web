@@ -35,6 +35,18 @@ exports.upsertUser = function upsertUser(dcOrVars, vars) {
   return executeMutation(upsertUserRef(dcOrVars, vars));
 };
 
+const updateUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUser', inputVars);
+}
+updateUserRef.operationName = 'UpdateUser';
+exports.updateUserRef = updateUserRef;
+
+exports.updateUser = function updateUser(dcOrVars, vars) {
+  return executeMutation(updateUserRef(dcOrVars, vars));
+};
+
 const createSectionRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

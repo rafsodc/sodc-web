@@ -194,6 +194,19 @@ export interface Section_Key {
   __typename?: 'Section_Key';
 }
 
+export interface UpdateUserData {
+  user_upsert: User_Key;
+}
+
+export interface UpdateUserVariables {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  membershipStatus?: MembershipStatus | null;
+}
+
 export interface UpsertUserData {
   user_upsert: User_Key;
 }
@@ -228,6 +241,18 @@ export const upsertUserRef: UpsertUserRef;
 
 export function upsertUser(vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
 export function upsertUser(dc: DataConnect, vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
+
+interface UpdateUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
+  operationName: string;
+}
+export const updateUserRef: UpdateUserRef;
+
+export function updateUser(vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
+export function updateUser(dc: DataConnect, vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
 
 interface CreateSectionRef {
   /* Allow users to create refs without passing in DataConnect */
