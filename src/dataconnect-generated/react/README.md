@@ -150,6 +150,7 @@ export interface GetCurrentUserData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    membershipStatus: MembershipStatus;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -233,6 +234,7 @@ export interface GetUserByIdData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    membershipStatus: MembershipStatus;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -319,6 +321,7 @@ export interface ListUsersData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    membershipStatus: MembershipStatus;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key)[];
@@ -727,6 +730,7 @@ export interface UpsertUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  membershipStatus?: MembershipStatus | null;
 }
 ```
 ### Return Type
@@ -780,10 +784,11 @@ export default function UpsertUserComponent() {
     lastName: ..., 
     email: ..., 
     serviceNumber: ..., 
+    membershipStatus: ..., // optional
   };
   mutation.mutate(upsertUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

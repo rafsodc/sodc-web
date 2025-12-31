@@ -6,6 +6,16 @@ enum SectionType {
   EVENTS
 }
 
+# Membership status enum
+enum MembershipStatus {
+  PENDING
+  SERVING
+  RETIRED
+  RESIGNED
+  LOST
+  DECEASED
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -15,6 +25,7 @@ type User @table {
   lastName: String!
   email: String!
   serviceNumber: String!
+  membershipStatus: MembershipStatus! @default(value: PENDING)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

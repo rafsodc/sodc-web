@@ -114,6 +114,7 @@ export interface GetCurrentUserData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    membershipStatus: MembershipStatus;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -219,6 +220,7 @@ export interface GetUserByIdData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    membershipStatus: MembershipStatus;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -332,6 +334,7 @@ export interface ListUsersData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    membershipStatus: MembershipStatus;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key)[];
@@ -843,6 +846,7 @@ export interface UpsertUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  membershipStatus?: MembershipStatus | null;
 }
 ```
 ### Return Type
@@ -866,13 +870,14 @@ const upsertUserVars: UpsertUserVariables = {
   lastName: ..., 
   email: ..., 
   serviceNumber: ..., 
+  membershipStatus: ..., // optional
 };
 
 // Call the `upsertUser()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await upsertUser(upsertUserVars);
 // Variables can be defined inline as well.
-const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., });
+const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -899,12 +904,13 @@ const upsertUserVars: UpsertUserVariables = {
   lastName: ..., 
   email: ..., 
   serviceNumber: ..., 
+  membershipStatus: ..., // optional
 };
 
 // Call the `upsertUserRef()` function to get a reference to the mutation.
 const ref = upsertUserRef(upsertUserVars);
 // Variables can be defined inline as well.
-const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., });
+const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

@@ -10,6 +10,7 @@ query GetCurrentUser @auth(level: USER) {
     lastName
     email
     serviceNumber
+    membershipStatus
     createdAt
     updatedAt
   }
@@ -23,6 +24,7 @@ query GetUserById($id: String!) @auth(expr: "auth.token.admin == true") {
     lastName
     email
     serviceNumber
+    membershipStatus
     createdAt
     updatedAt
     createdBy
@@ -38,6 +40,7 @@ query ListUsers @auth(expr: "auth.token.admin == true") {
     lastName
     email
     serviceNumber
+    membershipStatus
     createdAt
     updatedAt
   }

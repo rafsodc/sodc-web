@@ -10,6 +10,7 @@ export interface UserData {
   lastName: string;
   email: string;
   serviceNumber: string;
+  membershipStatus: "PENDING" | "SERVING" | "RETIRED" | "RESIGNED" | "LOST" | "DECEASED";
   createdAt: string;
   updatedAt: string;
 }

@@ -8,6 +8,7 @@ mutation UpsertUser(
   $lastName: String!
   $email: String!
   $serviceNumber: String!
+  $membershipStatus: MembershipStatus
 ) @auth(level: USER) {
   user_upsert(
     data: {
@@ -16,6 +17,7 @@ mutation UpsertUser(
       lastName: $lastName
       email: $email
       serviceNumber: $serviceNumber
+      membershipStatus: $membershipStatus
       # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
     }
   )

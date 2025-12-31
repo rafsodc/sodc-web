@@ -12,28 +12,28 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpsertUser, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup, useGrantAccessGroupToSection, useRevokeAccessGroupFromSection, useGetCurrentUser, useGetUserById, useListUsers } from '@dataconnect/generated/react';
+import { useGetCurrentUser, useGetUserById, useListUsers, useListSections, useGetSectionsForUser, useListAccessGroups, useGetUserAccessGroups, useUpsertUser, useCreateSection, useCreateAccessGroup } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
-
-const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useCreateSection(createSectionVars);
-
-const { data, isPending, isSuccess, isError, error } = useCreateAccessGroup(createAccessGroupVars);
-
-const { data, isPending, isSuccess, isError, error } = useAddUserToAccessGroup(addUserToAccessGroupVars);
-
-const { data, isPending, isSuccess, isError, error } = useRemoveUserFromAccessGroup(removeUserFromAccessGroupVars);
-
-const { data, isPending, isSuccess, isError, error } = useGrantAccessGroupToSection(grantAccessGroupToSectionVars);
-
-const { data, isPending, isSuccess, isError, error } = useRevokeAccessGroupFromSection(revokeAccessGroupFromSectionVars);
 
 const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
 
 const { data, isPending, isSuccess, isError, error } = useGetUserById(getUserByIdVars);
 
 const { data, isPending, isSuccess, isError, error } = useListUsers();
+
+const { data, isPending, isSuccess, isError, error } = useListSections();
+
+const { data, isPending, isSuccess, isError, error } = useGetSectionsForUser();
+
+const { data, isPending, isSuccess, isError, error } = useListAccessGroups();
+
+const { data, isPending, isSuccess, isError, error } = useGetUserAccessGroups();
+
+const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
+
+const { data, isPending, isSuccess, isError, error } = useCreateSection(createSectionVars);
+
+const { data, isPending, isSuccess, isError, error } = useCreateAccessGroup(createAccessGroupVars);
 
 ```
 
@@ -72,29 +72,8 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { upsertUser, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup, grantAccessGroupToSection, revokeAccessGroupFromSection, getCurrentUser, getUserById, listUsers } from '@dataconnect/generated';
+import { getCurrentUser, getUserById, listUsers, listSections, getSectionsForUser, listAccessGroups, getUserAccessGroups, upsertUser, createSection, createAccessGroup } from '@dataconnect/generated';
 
-
-// Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
-const { data } = await UpsertUser(dataConnect, upsertUserVars);
-
-// Operation CreateSection:  For variables, look at type CreateSectionVars in ../index.d.ts
-const { data } = await CreateSection(dataConnect, createSectionVars);
-
-// Operation CreateAccessGroup:  For variables, look at type CreateAccessGroupVars in ../index.d.ts
-const { data } = await CreateAccessGroup(dataConnect, createAccessGroupVars);
-
-// Operation AddUserToAccessGroup:  For variables, look at type AddUserToAccessGroupVars in ../index.d.ts
-const { data } = await AddUserToAccessGroup(dataConnect, addUserToAccessGroupVars);
-
-// Operation RemoveUserFromAccessGroup:  For variables, look at type RemoveUserFromAccessGroupVars in ../index.d.ts
-const { data } = await RemoveUserFromAccessGroup(dataConnect, removeUserFromAccessGroupVars);
-
-// Operation GrantAccessGroupToSection:  For variables, look at type GrantAccessGroupToSectionVars in ../index.d.ts
-const { data } = await GrantAccessGroupToSection(dataConnect, grantAccessGroupToSectionVars);
-
-// Operation RevokeAccessGroupFromSection:  For variables, look at type RevokeAccessGroupFromSectionVars in ../index.d.ts
-const { data } = await RevokeAccessGroupFromSection(dataConnect, revokeAccessGroupFromSectionVars);
 
 // Operation GetCurrentUser: 
 const { data } = await GetCurrentUser(dataConnect);
@@ -104,6 +83,27 @@ const { data } = await GetUserById(dataConnect, getUserByIdVars);
 
 // Operation ListUsers: 
 const { data } = await ListUsers(dataConnect);
+
+// Operation ListSections: 
+const { data } = await ListSections(dataConnect);
+
+// Operation GetSectionsForUser: 
+const { data } = await GetSectionsForUser(dataConnect);
+
+// Operation ListAccessGroups: 
+const { data } = await ListAccessGroups(dataConnect);
+
+// Operation GetUserAccessGroups: 
+const { data } = await GetUserAccessGroups(dataConnect);
+
+// Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
+const { data } = await UpsertUser(dataConnect, upsertUserVars);
+
+// Operation CreateSection:  For variables, look at type CreateSectionVars in ../index.d.ts
+const { data } = await CreateSection(dataConnect, createSectionVars);
+
+// Operation CreateAccessGroup:  For variables, look at type CreateAccessGroupVars in ../index.d.ts
+const { data } = await CreateAccessGroup(dataConnect, createAccessGroupVars);
 
 
 ```
