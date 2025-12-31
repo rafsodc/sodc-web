@@ -1,39 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useUserSearch } from "../hooks/useUserSearch";
 import {
   Box,
-  Button,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Typography,
-  CircularProgress,
   Alert,
-  Pagination,
-  Stack,
-  IconButton,
-  Tooltip,
   Tabs,
   Tab,
+  CircularProgress,
 } from "@mui/material";
-import { Refresh, CheckCircle } from "@mui/icons-material";
 import { listAdminUsers, type AdminUser } from "../utils/listAdminUsers";
 import { grantAdminClaim } from "../utils/grantAdmin";
 import { revokeAdminClaim } from "../utils/revokeAdmin";
 import { colors } from "../config/colors";
+import { useUserSearch } from "../hooks/useUserSearch";
+import { ITEMS_PER_PAGE, SEARCH_DEBOUNCE_MS, ERROR_MESSAGE_TIMEOUT } from "../constants";
+import PageHeader from "./PageHeader";
+import SearchBar from "./SearchBar";
 import UsersTable from "./UsersTable";
+import AdminUsersTable from "./AdminUsersTable";
+import PaginationDisplay from "./PaginationDisplay";
 import "./Permissions.css";
 
 interface PermissionsProps {
   onBack: () => void;
 }
-
-const ITEMS_PER_PAGE = 25;
 
 export default function Permissions({ onBack }: PermissionsProps) {
   const [tabValue, setTabValue] = useState(0);
@@ -60,7 +49,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
     setSearchTerm,
     searchTerm,
     refetch: refetchSearch,
-  } = useUserSearch("", 500);
+  } = useUserSearch("", SEARCH_DEBOUNCE_MS);
 
   const fetchAdminUsers = useCallback(async () => {
     // Prevent duplicate concurrent calls
@@ -118,7 +107,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const adminStartIndex = (adminPage - 1) * ITEMS_PER_PAGE;
   const paginatedAdminUsers = filteredAdminUsers.slice(adminStartIndex, adminStartIndex + ITEMS_PER_PAGE);
 
-  const handleSearchPageChange = (_: React.ChangeEvent<unknown>, newPage: number) => {
+  const handleSearchPageChange = (newPage: number) => {
     setSearchPage(newPage);
   };
 
@@ -141,7 +130,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
       setUpdateMessage({ type: "error", text: err?.message || "Failed to grant admin claim" });
     } finally {
       setUpdatingUserId(null);
-      setTimeout(() => setUpdateMessage(null), 5000);
+      setTimeout(() => setUpdateMessage(null), ERROR_MESSAGE_TIMEOUT);
     }
   };
 
@@ -152,7 +141,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
         type: "error", 
         text: "Cannot remove the last admin. At least one admin must remain." 
       });
-      setTimeout(() => setUpdateMessage(null), 5000);
+      setTimeout(() => setUpdateMessage(null), ERROR_MESSAGE_TIMEOUT);
       return;
     }
 
@@ -176,20 +165,13 @@ export default function Permissions({ onBack }: PermissionsProps) {
       setUpdateMessage({ type: "error", text: errorMessage });
     } finally {
       setUpdatingUserId(null);
-      setTimeout(() => setUpdateMessage(null), 5000);
+      setTimeout(() => setUpdateMessage(null), ERROR_MESSAGE_TIMEOUT);
     }
   };
 
   return (
     <Box className="permissions-container">
-      <Box className="permissions-header">
-        <Typography variant="h4" className="permissions-title">
-          Permissions
-        </Typography>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-      </Box>
+      <PageHeader title="Permissions" onBack={onBack} />
 
       {updateMessage && (
         <Alert
@@ -222,22 +204,14 @@ export default function Permissions({ onBack }: PermissionsProps) {
 
       {tabValue === 0 && (
         <>
-          <Box className="filters-container">
-            <TextField
-              label="Filter by Email or Display Name"
-              variant="outlined"
-              value={adminFilter}
-              onChange={(e) => setAdminFilter(e.target.value)}
-              className="email-filter"
-              size="small"
-              placeholder="Enter email or name..."
-            />
-            <Tooltip title="Refresh admin users list">
-              <IconButton onClick={fetchAdminUsers} disabled={loading}>
-                <Refresh />
-              </IconButton>
-            </Tooltip>
-          </Box>
+          <SearchBar
+            value={adminFilter}
+            onChange={setAdminFilter}
+            onRefresh={fetchAdminUsers}
+            loading={loading}
+            label="Filter by Email or Display Name"
+            placeholder="Enter email or name..."
+          />
 
           {loading ? (
             <Box className="loading-container">
@@ -250,81 +224,17 @@ export default function Permissions({ onBack }: PermissionsProps) {
               <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
                 Showing {paginatedAdminUsers.length} of {filteredAdminUsers.length} admin users
               </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Display Name</TableCell>
-                      <TableCell>Email Verified</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="center">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedAdminUsers.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} align="center">
-                          No admin users found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedAdminUsers.map((user) => (
-                        <TableRow key={user.uid}>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.displayName || "-"}</TableCell>
-                          <TableCell>
-                            {user.emailVerified ? (
-                              <CheckCircle color="success" />
-                            ) : (
-                              <Typography variant="body2" color="textSecondary">
-                                Not verified
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {user.disabled ? (
-                              <Typography variant="body2" color="error">
-                                Disabled
-                              </Typography>
-                            ) : (
-                              <Typography variant="body2" color="success.main">
-                                Active
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              onClick={() => handleRevokeAdmin(user.uid)}
-                              disabled={updatingUserId === user.uid || filteredAdminUsers.length <= 1}
-                              title={filteredAdminUsers.length <= 1 ? "Cannot remove the last admin" : "Revoke admin"}
-                            >
-                              {updatingUserId === user.uid ? (
-                                <CircularProgress size={16} />
-                              ) : (
-                                "Revoke Admin"
-                              )}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              {adminTotalPages > 1 && (
-                <Stack spacing={2} sx={{ mt: 3, alignItems: "center" }}>
-                  <Pagination
-                    count={adminTotalPages}
-                    page={adminPage}
-                    onChange={(_, newPage) => setAdminPage(newPage)}
-                    color="primary"
-                  />
-                </Stack>
-              )}
+              <AdminUsersTable
+                users={paginatedAdminUsers}
+                onRevokeAdmin={handleRevokeAdmin}
+                updatingUserId={updatingUserId}
+                canRevoke={filteredAdminUsers.length > 1}
+              />
+              <PaginationDisplay
+                page={adminPage}
+                totalPages={adminTotalPages}
+                onChange={(newPage) => setAdminPage(newPage)}
+              />
             </>
           )}
         </>
@@ -332,17 +242,10 @@ export default function Permissions({ onBack }: PermissionsProps) {
 
       {tabValue === 1 && (
         <>
-          <Box className="filters-container">
-            <TextField
-              label="Search by Email or Display Name"
-              variant="outlined"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="email-filter"
-              size="small"
-              placeholder="Enter search term..."
-            />
-          </Box>
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+          />
 
           {searchLoading ? (
             <Box className="loading-container">
@@ -365,16 +268,11 @@ export default function Permissions({ onBack }: PermissionsProps) {
                 updatingUserId={updatingUserId}
                 adminCount={adminCount}
               />
-              {searchTotalPages > 1 && (
-                <Stack spacing={2} sx={{ mt: 3, alignItems: "center" }}>
-                  <Pagination
-                    count={searchTotalPages}
-                    page={searchPage}
-                    onChange={handleSearchPageChange}
-                    color="primary"
-                  />
-                </Stack>
-              )}
+              <PaginationDisplay
+                page={searchPage}
+                totalPages={searchTotalPages}
+                onChange={handleSearchPageChange}
+              />
             </>
           )}
         </>

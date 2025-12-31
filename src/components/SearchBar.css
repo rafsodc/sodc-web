@@ -1,0 +1,16 @@
+.search-bar-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.search-bar-input {
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-bar-refresh {
+  flex-shrink: 0;
+}
+

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { searchUsers, type SearchUser } from "../utils/searchUsers";
-
-const ITEMS_PER_PAGE = 25;
+import { ITEMS_PER_PAGE } from "../constants";
 
 interface UseUserSearchResult {
   users: SearchUser[];

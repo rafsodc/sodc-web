@@ -31,6 +31,8 @@ interface SearchUsersResponse {
   totalPages: number;
 }
 
+import { ITEMS_PER_PAGE } from "../constants";
+
 /**
  * Searches for users by email or display name
  * @param searchTerm - The search term to match against email or display name
@@ -41,7 +43,7 @@ interface SearchUsersResponse {
 export async function searchUsers(
   searchTerm: string,
   page: number = 1,
-  pageSize: number = 25
+  pageSize: number = ITEMS_PER_PAGE
 ): Promise<{ success: boolean; data?: SearchUsersResponse; error?: string }> {
   try {
     const functions = getFunctions(firebaseApp, "europe-west2");

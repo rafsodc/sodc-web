@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { Edit, CheckCircle } from "@mui/icons-material";
 import { type SearchUser } from "../utils/searchUsers";
+import { colors } from "../config/colors";
 
 interface UsersTableProps {
   users: SearchUser[];
@@ -77,13 +78,14 @@ export default function UsersTable({
             onClick={() => onGrantAdmin?.(user.uid)}
             disabled={updatingUserId === user.uid}
             sx={{
-              backgroundColor: "#770800",
+              backgroundColor: colors.callToAction,
               color: "white",
               "&:hover": {
-                backgroundColor: "#770800",
+                backgroundColor: colors.callToAction,
                 opacity: 0.9,
               },
             }}
+            title="Grant admin privileges"
           >
             {updatingUserId === user.uid ? (
               <CircularProgress size={16} />

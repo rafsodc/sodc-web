@@ -1,0 +1,11 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header-title {
+  color: #1A2F5A;
+}
+
