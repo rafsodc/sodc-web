@@ -116,6 +116,10 @@ export interface GetCurrentUserData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -222,6 +226,10 @@ export interface GetUserByIdData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -336,6 +344,10 @@ export interface ListUsersData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key)[];
@@ -848,6 +860,10 @@ export interface UpsertUserVariables {
   email: string;
   serviceNumber: string;
   membershipStatus?: MembershipStatus | null;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 ```
 ### Return Type
@@ -872,13 +888,17 @@ const upsertUserVars: UpsertUserVariables = {
   email: ..., 
   serviceNumber: ..., 
   membershipStatus: ..., // optional
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
 };
 
 // Call the `upsertUser()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await upsertUser(upsertUserVars);
 // Variables can be defined inline as well.
-const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
+const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -906,12 +926,16 @@ const upsertUserVars: UpsertUserVariables = {
   email: ..., 
   serviceNumber: ..., 
   membershipStatus: ..., // optional
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
 };
 
 // Call the `upsertUserRef()` function to get a reference to the mutation.
 const ref = upsertUserRef(upsertUserVars);
 // Variables can be defined inline as well.
-const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
+const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -970,6 +994,10 @@ export interface UpdateUserVariables {
   email: string;
   serviceNumber: string;
   membershipStatus?: MembershipStatus | null;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 ```
 ### Return Type
@@ -995,13 +1023,17 @@ const updateUserVars: UpdateUserVariables = {
   email: ..., 
   serviceNumber: ..., 
   membershipStatus: ..., // optional
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
 };
 
 // Call the `updateUser()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateUser(updateUserVars);
 // Variables can be defined inline as well.
-const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
+const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -1030,12 +1062,16 @@ const updateUserVars: UpdateUserVariables = {
   email: ..., 
   serviceNumber: ..., 
   membershipStatus: ..., // optional
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
 };
 
 // Call the `updateUserRef()` function to get a reference to the mutation.
 const ref = updateUserRef(updateUserVars);
 // Variables can be defined inline as well.
-const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
+const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

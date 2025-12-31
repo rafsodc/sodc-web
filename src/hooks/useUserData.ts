@@ -10,7 +10,11 @@ export interface UserData {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus: "PENDING" | "SERVING" | "RETIRED" | "RESIGNED" | "LOST" | "DECEASED";
+  membershipStatus: "PENDING" | "REGULAR" | "RESERVE" | "CIVIL_SERVICE" | "INDUSTRY" | "RETIRED" | "RESIGNED" | "LOST" | "DECEASED";
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -7,6 +7,9 @@ import {
   TextField,
   Typography,
   Alert,
+  FormControlLabel,
+  Checkbox,
+  Divider,
 } from "@mui/material";
 import { dataConnect } from "../config/firebase";
 import { colors } from "../config/colors";
@@ -26,6 +29,10 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [serviceNumber, setServiceNumber] = useState("");
+  const [isRegular, setIsRegular] = useState(false);
+  const [isReserve, setIsReserve] = useState(false);
+  const [isCivilServant, setIsCivilServant] = useState(false);
+  const [isIndustry, setIsIndustry] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -36,6 +43,10 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
       setLastName(userData.lastName || "");
       setEmail(userData.email || userEmail);
       setServiceNumber(userData.serviceNumber || "");
+      setIsRegular(userData.isRegular ?? false);
+      setIsReserve(userData.isReserve ?? false);
+      setIsCivilServant(userData.isCivilServant ?? false);
+      setIsIndustry(userData.isIndustry ?? false);
     } else {
       // New user - populate with email from Firebase Auth
       setEmail(userEmail);
@@ -54,6 +65,10 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
+        isRegular,
+        isReserve,
+        isCivilServant,
+        isIndustry,
       };
       await upsertUser(dataConnect, vars);
       
@@ -134,6 +149,59 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
             fullWidth
             disabled={submitting}
           />
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="h6" sx={{ color: colors.titlePrimary, mb: 1 }}>
+            Service Background
+          </Typography>
+
+          <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
+            Please indicate whether you are or have been a regular, reserve, civil servant, or worked in industry.
+          </Typography>
+
+          <Stack spacing={1}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isRegular}
+                  onChange={(e) => setIsRegular(e.target.checked)}
+                  disabled={submitting}
+                />
+              }
+              label="Regular"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isReserve}
+                  onChange={(e) => setIsReserve(e.target.checked)}
+                  disabled={submitting}
+                />
+              }
+              label="Reserve"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isCivilServant}
+                  onChange={(e) => setIsCivilServant(e.target.checked)}
+                  disabled={submitting}
+                />
+              }
+              label="Civil Servant"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isIndustry}
+                  onChange={(e) => setIsIndustry(e.target.checked)}
+                  disabled={submitting}
+                />
+              }
+              label="Industry"
+            />
+          </Stack>
 
           <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
             <Button

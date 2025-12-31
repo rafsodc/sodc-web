@@ -10,7 +10,10 @@ export type DateString = string;
 
 export enum MembershipStatus {
   PENDING = "PENDING",
-  SERVING = "SERVING",
+  REGULAR = "REGULAR",
+  RESERVE = "RESERVE",
+  CIVIL_SERVICE = "CIVIL_SERVICE",
+  INDUSTRY = "INDUSTRY",
   RETIRED = "RETIRED",
   RESIGNED = "RESIGNED",
   LOST = "LOST",
@@ -65,6 +68,10 @@ export interface GetCurrentUserData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -111,6 +118,10 @@ export interface GetUserByIdData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -160,6 +171,10 @@ export interface ListUsersData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key)[];
@@ -205,6 +220,10 @@ export interface UpdateUserVariables {
   email: string;
   serviceNumber: string;
   membershipStatus?: MembershipStatus | null;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 
 export interface UpsertUserData {
@@ -217,6 +236,10 @@ export interface UpsertUserVariables {
   email: string;
   serviceNumber: string;
   membershipStatus?: MembershipStatus | null;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 
 export interface UserAccessGroup_Key {

@@ -2,7 +2,10 @@ const { queryRef, executeQuery, mutationRef, executeMutation, validateArgs } = r
 
 const MembershipStatus = {
   PENDING: "PENDING",
-  SERVING: "SERVING",
+  REGULAR: "REGULAR",
+  RESERVE: "RESERVE",
+  CIVIL_SERVICE: "CIVIL_SERVICE",
+  INDUSTRY: "INDUSTRY",
   RETIRED: "RETIRED",
   RESIGNED: "RESIGNED",
   LOST: "LOST",

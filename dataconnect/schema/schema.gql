@@ -9,7 +9,10 @@ enum SectionType {
 # Membership status enum
 enum MembershipStatus {
   PENDING
-  SERVING
+  REGULAR
+  RESERVE
+  CIVIL_SERVICE
+  INDUSTRY
   RETIRED
   RESIGNED
   LOST
@@ -26,6 +29,10 @@ type User @table {
   email: String!
   serviceNumber: String!
   membershipStatus: MembershipStatus! @default(value: PENDING)
+  isRegular: Boolean @default(value: false)
+  isReserve: Boolean @default(value: false)
+  isCivilServant: Boolean @default(value: false)
+  isIndustry: Boolean @default(value: false)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

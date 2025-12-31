@@ -2,7 +2,10 @@ import { queryRef, executeQuery, mutationRef, executeMutation, validateArgs } fr
 
 export const MembershipStatus = {
   PENDING: "PENDING",
-  SERVING: "SERVING",
+  REGULAR: "REGULAR",
+  RESERVE: "RESERVE",
+  CIVIL_SERVICE: "CIVIL_SERVICE",
+  INDUSTRY: "INDUSTRY",
   RETIRED: "RETIRED",
   RESIGNED: "RESIGNED",
   LOST: "LOST",

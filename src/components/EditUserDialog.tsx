@@ -13,6 +13,10 @@ import {
   Stack,
   Alert,
   CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  Divider,
+  Typography,
 } from "@mui/material";
 import { dataConnect } from "../config/firebase";
 import { type SearchUser } from "../utils/searchUsers";
@@ -39,6 +43,10 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
   const [email, setEmail] = useState("");
   const [serviceNumber, setServiceNumber] = useState("");
   const [membershipStatus, setMembershipStatus] = useState<MembershipStatus>(MembershipStatus.PENDING);
+  const [isRegular, setIsRegular] = useState(false);
+  const [isReserve, setIsReserve] = useState(false);
+  const [isCivilServant, setIsCivilServant] = useState(false);
+  const [isIndustry, setIsIndustry] = useState(false);
 
   // Load user data when dialog opens
   useEffect(() => {
@@ -59,6 +67,10 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         setEmail(fullUser.email || userToLoad.email || "");
         setServiceNumber(fullUser.serviceNumber || "");
         setMembershipStatus(fullUser.membershipStatus || MembershipStatus.PENDING);
+        setIsRegular(fullUser.isRegular ?? false);
+        setIsReserve(fullUser.isReserve ?? false);
+        setIsCivilServant(fullUser.isCivilServant ?? false);
+        setIsIndustry(fullUser.isIndustry ?? false);
       } else {
         // Fallback if user doesn't exist in Data Connect yet
         const parsed = parseDisplayName(userToLoad.displayName);
@@ -67,6 +79,10 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         setEmail(userToLoad.email || "");
         setServiceNumber("");
         setMembershipStatus(MembershipStatus.PENDING);
+        setIsRegular(false);
+        setIsReserve(false);
+        setIsCivilServant(false);
+        setIsIndustry(false);
       }
     } catch (err) {
       // Fallback if getUserById fails
@@ -76,6 +92,10 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
       setEmail(userToLoad.email || "");
       setServiceNumber("");
       setMembershipStatus(MembershipStatus.PENDING);
+      setIsRegular(false);
+      setIsReserve(false);
+      setIsCivilServant(false);
+      setIsIndustry(false);
     } finally {
       setLoading(false);
     }
@@ -105,6 +125,10 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
         membershipStatus: membershipStatus,
+        isRegular,
+        isReserve,
+        isCivilServant,
+        isIndustry,
       };
       await updateUser(dataConnect, vars);
       setUpdateMessage({ type: "success", text: "User profile updated successfully" });
@@ -183,6 +207,59 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
                   ))}
                 </Select>
               </FormControl>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" sx={{ color: colors.titlePrimary, mb: 1 }}>
+                Service Background
+              </Typography>
+
+              <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
+                Please indicate whether you are or have been a regular, reserve, civil servant, or worked in industry.
+              </Typography>
+
+              <Stack spacing={1}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isRegular}
+                      onChange={(e) => setIsRegular(e.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
+                  label="Regular"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isReserve}
+                      onChange={(e) => setIsReserve(e.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
+                  label="Reserve"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isCivilServant}
+                      onChange={(e) => setIsCivilServant(e.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
+                  label="Civil Servant"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isIndustry}
+                      onChange={(e) => setIsIndustry(e.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
+                  label="Industry"
+                />
+              </Stack>
             </Stack>
           </>
         )}

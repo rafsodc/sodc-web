@@ -9,6 +9,10 @@ mutation UpsertUser(
   $email: String!
   $serviceNumber: String!
   $membershipStatus: MembershipStatus
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
 ) @auth(level: USER) {
   user_upsert(
     data: {
@@ -18,6 +22,10 @@ mutation UpsertUser(
       email: $email
       serviceNumber: $serviceNumber
       membershipStatus: $membershipStatus
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
       # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
     }
   )
@@ -31,6 +39,10 @@ mutation UpdateUser(
   $email: String!
   $serviceNumber: String!
   $membershipStatus: MembershipStatus
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
 ) @auth(expr: "auth.token.admin == true") {
   user_upsert(
     data: {
@@ -40,6 +52,10 @@ mutation UpdateUser(
       email: $email
       serviceNumber: $serviceNumber
       membershipStatus: $membershipStatus
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
       # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
     }
   )

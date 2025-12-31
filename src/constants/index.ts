@@ -17,7 +17,10 @@ import { MembershipStatus } from "../dataconnect-generated";
 
 export const MEMBERSHIP_STATUS_OPTIONS = [
   { value: MembershipStatus.PENDING, label: "Pending" },
-  { value: MembershipStatus.SERVING, label: "Serving" },
+  { value: MembershipStatus.REGULAR, label: "Regular" },
+  { value: MembershipStatus.RESERVE, label: "Reserve" },
+  { value: MembershipStatus.CIVIL_SERVICE, label: "Civil Service" },
+  { value: MembershipStatus.INDUSTRY, label: "Industry" },
   { value: MembershipStatus.RETIRED, label: "Retired" },
   { value: MembershipStatus.RESIGNED, label: "Resigned" },
   { value: MembershipStatus.LOST, label: "Lost" },

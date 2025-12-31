@@ -152,6 +152,10 @@ export interface GetCurrentUserData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -236,6 +240,10 @@ export interface GetUserByIdData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -323,6 +331,10 @@ export interface ListUsersData {
     email: string;
     serviceNumber: string;
     membershipStatus: MembershipStatus;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key)[];
@@ -732,6 +744,10 @@ export interface UpsertUserVariables {
   email: string;
   serviceNumber: string;
   membershipStatus?: MembershipStatus | null;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 ```
 ### Return Type
@@ -786,10 +802,14 @@ export default function UpsertUserComponent() {
     email: ..., 
     serviceNumber: ..., 
     membershipStatus: ..., // optional
+    isRegular: ..., // optional
+    isReserve: ..., // optional
+    isCivilServant: ..., // optional
+    isIndustry: ..., // optional
   };
   mutation.mutate(upsertUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -835,6 +855,10 @@ export interface UpdateUserVariables {
   email: string;
   serviceNumber: string;
   membershipStatus?: MembershipStatus | null;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 ```
 ### Return Type
@@ -890,10 +914,14 @@ export default function UpdateUserComponent() {
     email: ..., 
     serviceNumber: ..., 
     membershipStatus: ..., // optional
+    isRegular: ..., // optional
+    isReserve: ..., // optional
+    isCivilServant: ..., // optional
+    isIndustry: ..., // optional
   };
   mutation.mutate(updateUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., });
+  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
