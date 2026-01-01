@@ -67,22 +67,34 @@ export function useUserSearch(
     }
   }, []);
 
-  // Debounced search
+  // Debounced search - only triggers when searchTerm changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      performSearch(searchTerm, 1);
-      setPage(1);
+      if (searchTerm.trim()) {
+        performSearch(searchTerm, 1);
+        setPage(1);
+      } else {
+        // Clear results when search term is empty
+        setUsers([]);
+        setError(null);
+        setTotalPages(1);
+        setTotal(0);
+        setLoading(false);
+      }
     }, debounceMs);
 
     return () => clearTimeout(timer);
   }, [searchTerm, performSearch, debounceMs]);
 
-  // Handle page changes
+  // Handle page changes - only triggers when page changes (not searchTerm)
+  // Note: searchTerm is intentionally not in dependencies to avoid bypassing debounce
+  // The closure will capture the current searchTerm value when this effect runs
   useEffect(() => {
     if (searchTerm.trim()) {
       performSearch(searchTerm, page);
     }
-  }, [page, searchTerm, performSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, performSearch]); // searchTerm intentionally omitted to prevent immediate searches on typing
 
   const setSearchTerm = useCallback((term: string) => {
     setSearchTermState(term);
