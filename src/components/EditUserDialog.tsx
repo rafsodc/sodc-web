@@ -24,6 +24,7 @@ import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } f
 import { colors } from "../config/colors";
 import { MEMBERSHIP_STATUS_OPTIONS, SUCCESS_MESSAGE_TIMEOUT } from "../constants";
 import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
+import { updateUserDisplayName } from "../utils/updateUserDisplayName";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -131,6 +132,17 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         isIndustry,
       };
       await updateUser(dataConnect, vars);
+      
+      // Update displayName in Firebase Auth
+      const displayName = `${lastName.trim()}, ${firstName.trim()}`.trim();
+      if (displayName) {
+        const displayNameResult = await updateUserDisplayName(user.uid, displayName);
+        if (!displayNameResult.success) {
+          // Log error but don't fail the whole operation
+          console.warn("Failed to update display name:", displayNameResult.error);
+        }
+      }
+      
       setUpdateMessage({ type: "success", text: "User profile updated successfully" });
       onSave();
       setTimeout(() => {
