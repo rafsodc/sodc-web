@@ -10,6 +10,7 @@ import {
   IconButton,
   Button,
   CircularProgress,
+  Tooltip,
 } from "@mui/material";
 import { Edit, CheckCircle } from "@mui/icons-material";
 import { type SearchUser } from "../utils/searchUsers";
@@ -51,48 +52,64 @@ export default function UsersTable({
     } else {
       // mode === "admin"
       const isAdmin = user.customClaims?.admin === true;
+      const isEnabled = user.customClaims?.enabled === true;
       const canRevoke = adminCount === undefined || adminCount > 1;
       
       if (isAdmin) {
         return (
-          <Button
-            size="small"
-            variant="outlined"
-            color="error"
-            onClick={() => onRevokeAdmin?.(user.uid)}
-            disabled={updatingUserId === user.uid || !canRevoke}
-            title={!canRevoke ? "Cannot remove the last admin" : "Revoke admin"}
-          >
-            {updatingUserId === user.uid ? (
-              <CircularProgress size={16} />
-            ) : (
-              "Revoke Admin"
-            )}
-          </Button>
+          <Tooltip title={!canRevoke ? "Cannot remove the last admin" : "Revoke admin"}>
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                onClick={() => onRevokeAdmin?.(user.uid)}
+                disabled={updatingUserId === user.uid || !canRevoke}
+              >
+                {updatingUserId === user.uid ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  "Revoke Admin"
+                )}
+              </Button>
+            </span>
+          </Tooltip>
         );
       } else {
+        const isDisabled = updatingUserId === user.uid || !isEnabled;
+        const tooltipText = !isEnabled 
+          ? "User must be enabled (have non-restricted membership status) to grant admin" 
+          : "Grant admin privileges";
+        
         return (
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => onGrantAdmin?.(user.uid)}
-            disabled={updatingUserId === user.uid}
-            sx={{
-              backgroundColor: colors.callToAction,
-              color: "white",
-              "&:hover": {
-                backgroundColor: colors.callToAction,
-                opacity: 0.9,
-              },
-            }}
-            title="Grant admin privileges"
-          >
-            {updatingUserId === user.uid ? (
-              <CircularProgress size={16} />
-            ) : (
-              "Grant Admin"
-            )}
-          </Button>
+          <Tooltip title={tooltipText}>
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onGrantAdmin?.(user.uid)}
+                disabled={isDisabled}
+                sx={{
+                  backgroundColor: colors.callToAction,
+                  color: "white",
+                  "&:hover": {
+                    backgroundColor: colors.callToAction,
+                    opacity: 0.9,
+                  },
+                  "&:disabled": {
+                    backgroundColor: colors.callToAction,
+                    opacity: 0.5,
+                  },
+                }}
+              >
+                {updatingUserId === user.uid ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  "Grant Admin"
+                )}
+              </Button>
+            </span>
+          </Tooltip>
         );
       }
     }

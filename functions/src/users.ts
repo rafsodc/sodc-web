@@ -6,7 +6,9 @@ import { requireAuth, requireAdmin, requireString, mapUserRecord } from "./helpe
 /**
  * Updates the display name of the authenticated user
  */
-export const updateDisplayName = onCall(async (request) => {
+export const updateDisplayName = onCall(
+  { region: "europe-west2" },
+  async (request) => {
   requireAuth(request);
   const displayName = requireString(request.data.displayName, "displayName");
 
@@ -18,12 +20,15 @@ export const updateDisplayName = onCall(async (request) => {
     logger.error("Error updating display name:", e);
     throw new HttpsError("internal", e?.message ?? "Error updating display name");
   }
-});
+  }
+);
 
 /**
  * Updates the display name of any user (admin only)
  */
-export const updateUserDisplayName = onCall(async (request) => {
+export const updateUserDisplayName = onCall(
+  { region: "europe-west2" },
+  async (request) => {
   requireAdmin(request);
   const userId = requireString(request.data.userId, "userId");
   const displayName = requireString(request.data.displayName, "displayName");
@@ -36,12 +41,15 @@ export const updateUserDisplayName = onCall(async (request) => {
     logger.error("Error updating user display name:", e);
     throw new HttpsError("internal", e?.message ?? "Error updating user display name");
   }
-});
+  }
+);
 
 /**
  * Searches for users by email or display name with pagination (admin only)
  */
-export const searchUsers = onCall(async (request) => {
+export const searchUsers = onCall(
+  { region: "europe-west2" },
+  async (request) => {
   requireAdmin(request);
   const searchTerm = requireString(request.data.searchTerm, "searchTerm");
   const page = request.data.page || 1;
@@ -80,5 +88,6 @@ export const searchUsers = onCall(async (request) => {
     logger.error("Error searching users:", e);
     throw new HttpsError("internal", e?.message ?? "Error searching users");
   }
-});
+  }
+);
 

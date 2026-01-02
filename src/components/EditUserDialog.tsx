@@ -27,7 +27,7 @@ import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
 import { updateUserDisplayName } from "../utils/updateUserDisplayName";
 import { useAdminClaim } from "../hooks/useAdminClaim";
 import { auth } from "../config/firebase";
-import { canUserChangeStatus, NON_RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
+import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
 import { updateMembershipStatus } from "../utils/updateMembershipStatus";
 
 interface EditUserDialogProps {
@@ -136,8 +136,11 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       return;
     }
 
+    // Check if target user is an admin
+    const targetUserIsAdmin = user?.customClaims?.admin === true;
+    
     // Client-side validation (for immediate UX feedback)
-    const clientValidation = canUserChangeStatus(currentStatus, membershipStatus, isAdmin);
+    const clientValidation = canUserChangeStatus(currentStatus, membershipStatus, isAdmin, targetUserIsAdmin);
     if (!clientValidation.allowed) {
       setUpdateMessage({ type: "error", text: clientValidation.error || "Invalid membership status change" });
       return;
@@ -276,8 +279,15 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                   disabled={submitting}
                 >
                   {(() => {
-                    // If admin, show all options; otherwise filter to non-restricted
-                    const availableOptions = isAdmin
+                    // Check if the user being edited is an admin
+                    const targetUserIsAdmin = user?.customClaims?.admin === true;
+                    
+                    // If editing an admin user, filter out restricted statuses
+                    // If current user is admin and editing non-admin, show all options
+                    // Otherwise, filter to non-restricted
+                    const availableOptions = targetUserIsAdmin
+                      ? MEMBERSHIP_STATUS_OPTIONS.filter(option => !RESTRICTED_STATUSES.includes(option.value))
+                      : isAdmin
                       ? MEMBERSHIP_STATUS_OPTIONS
                       : MEMBERSHIP_STATUS_OPTIONS.filter(option => NON_RESTRICTED_STATUSES.includes(option.value));
                     

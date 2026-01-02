@@ -14,7 +14,9 @@ import {
  * This is the only way users can update membershipStatus - it cannot be done via UpsertUser mutation.
  * Users can only update their own status unless they are an admin.
  */
-export const updateMembershipStatus = onCall(async (request) => {
+export const updateMembershipStatus = onCall(
+  { region: "europe-west2" },
+  async (request) => {
   requireAuth(request);
 
   const { userId, newStatus } = request.data;
@@ -33,16 +35,21 @@ export const updateMembershipStatus = onCall(async (request) => {
   }
 
   try {
+    // Check if target user is an admin
+    const targetUser = await admin.auth().getUser(userId);
+    const targetUserIsAdmin = targetUser.customClaims?.admin === true;
+    
     const currentStatus = await fetchCurrentStatusFromDataConnect(userId);
     
     const validation = canUserChangeStatus(
       currentStatus,
       newStatus as MembershipStatus,
-      isAdmin
+      isAdmin,
+      targetUserIsAdmin
     );
     
     if (!validation.allowed) {
-      logger.warn(`Invalid membership status transition attempted: userId=${userId}, current=${currentStatus || "unknown"}, new=${newStatus}, admin=${isAdmin}`);
+      logger.warn(`Invalid membership status transition attempted: userId=${userId}, current=${currentStatus || "unknown"}, new=${newStatus}, admin=${isAdmin}, targetIsAdmin=${targetUserIsAdmin}`);
       throw new HttpsError("permission-denied", validation.error || "Invalid membership status transition");
     }
     
@@ -60,7 +67,8 @@ export const updateMembershipStatus = onCall(async (request) => {
     logger.error("Error updating membership status:", e);
     throw new HttpsError("internal", e?.message ?? "Error updating membership status");
   }
-});
+  }
+);
 
 /**
  * Updates the membership status in Data Connect using the Admin SDK
@@ -100,6 +108,7 @@ async function fetchCurrentStatusFromDataConnect(
  * Updates the enabled claim based on membership status
  * - enabled: true for non-restricted statuses (REGULAR, RETIRED, RESERVE, INDUSTRY, CIVIL_SERVICE)
  * - enabled: false for restricted statuses (PENDING, RESIGNED, LOST, DECEASED)
+ * - enabled: always true for admins (admins cannot have restricted statuses)
  * Preserves existing claims (like admin) when updating
  */
 async function updateEnabledClaim(
@@ -110,9 +119,11 @@ async function updateEnabledClaim(
     // Get current user to preserve existing claims
     const userRecord = await admin.auth().getUser(userId);
     const currentClaims = userRecord.customClaims || {};
+    const isAdmin = currentClaims.admin === true;
     
     // Determine if account should be enabled based on membership status
-    const shouldBeEnabled = isNonRestrictedStatus(membershipStatus);
+    // Admins must always be enabled (they cannot have restricted statuses)
+    const shouldBeEnabled = isAdmin ? true : isNonRestrictedStatus(membershipStatus);
     
     // Update claims, preserving existing ones
     const updatedClaims = {
@@ -121,7 +132,7 @@ async function updateEnabledClaim(
     };
     
     await admin.auth().setCustomUserClaims(userId, updatedClaims);
-    logger.info(`Updated enabled claim for userId=${userId}: enabled=${shouldBeEnabled} (status=${membershipStatus})`);
+    logger.info(`Updated enabled claim for userId=${userId}: enabled=${shouldBeEnabled} (status=${membershipStatus}, admin=${isAdmin})`);
   } catch (error: any) {
     logger.error(`Could not update enabled claim for userId=${userId}:`, error);
     // Don't throw - this is a side effect, we don't want to fail the status update if claim update fails
