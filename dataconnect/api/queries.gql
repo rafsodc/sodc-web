@@ -1,9 +1,16 @@
 # SODC User Queries
-
+#
+# Auth Expression Constants:
+# - User access: "auth.token.enabled == true"
+# - Admin access: "auth.token.admin == true && auth.token.enabled == true"
+# - System access: @auth(level: NO_ACCESS)
+# See AUTH_EXPRESSIONS.md for complete documentation and usage.
+#
 # @auth() directives control who can call each operation.
 
 # Get the current authenticated user's profile
-query GetCurrentUser @auth(level: USER) {
+# Requires enabled claim (admins must also be enabled)
+query GetCurrentUser @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
     id
     firstName
@@ -20,8 +27,8 @@ query GetCurrentUser @auth(level: USER) {
   }
 }
 
-# Get a user by ID (admin only)
-query GetUserById($id: String!) @auth(expr: "auth.token.admin == true") {
+# Get a user by ID (admin only - admins must also be enabled)
+query GetUserById($id: String!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   user(id: $id) {
     id
     firstName
@@ -40,8 +47,8 @@ query GetUserById($id: String!) @auth(expr: "auth.token.admin == true") {
   }
 }
 
-# List all users (admin only)
-query ListUsers @auth(expr: "auth.token.admin == true") {
+# List all users (admin only - admins must also be enabled)
+query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   users {
     id
     firstName
@@ -60,8 +67,8 @@ query ListUsers @auth(expr: "auth.token.admin == true") {
 
 # SODC Section and Access Group Queries
 
-# Get all sections (admin only)
-query ListSections @auth(expr: "auth.token.admin == true") {
+# Get all sections (admin only - admins must also be enabled)
+query ListSections @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sections {
     id
     name
@@ -73,7 +80,8 @@ query ListSections @auth(expr: "auth.token.admin == true") {
 }
 
 # Get sections accessible to the current user
-query GetSectionsForUser @auth(level: USER) {
+# Requires enabled claim (admins must also be enabled)
+query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
     id
     # Get access groups this user belongs to
@@ -95,8 +103,8 @@ query GetSectionsForUser @auth(level: USER) {
   }
 }
 
-# Get all access groups (admin only)
-query ListAccessGroups @auth(expr: "auth.token.admin == true") {
+# Get all access groups (admin only - admins must also be enabled)
+query ListAccessGroups @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   accessGroups {
     id
     name
@@ -107,7 +115,8 @@ query ListAccessGroups @auth(expr: "auth.token.admin == true") {
 }
 
 # Get access groups for the current user
-query GetUserAccessGroups @auth(level: USER) {
+# Requires enabled claim (admins must also be enabled)
+query GetUserAccessGroups @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
     id
     accessGroups: userAccessGroups_on_user {

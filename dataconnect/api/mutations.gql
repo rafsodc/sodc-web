@@ -1,10 +1,17 @@
 # SODC User Mutations
+#
+# Auth Expression Constants:
+# - User access: "auth.token.enabled == true"
+# - Admin access: "auth.token.admin == true && auth.token.enabled == true"
+# - System access: @auth(level: NO_ACCESS)
+# See AUTH_EXPRESSIONS.md for complete documentation and usage.
 
 # Create or update a user profile based on their auth.uid
 # The "auth.uid" server value ensures that users can only register/update their own profile.
 # This mutation will create the user if they don't exist, or update if they do.
 # NOTE: membershipStatus is NOT included here - it must be updated via UpdateMembershipStatus mutation
 # which validates the transition server-side to prevent bypassing restrictions.
+# Requires enabled claim (admins must also be enabled)
 mutation UpsertUser(
   $firstName: String!
   $lastName: String!
@@ -14,7 +21,7 @@ mutation UpsertUser(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
-) @auth(level: USER) {
+) @auth(expr: "auth.token.enabled == true") {
   user_upsert(
     data: {
       id_expr: "auth.uid"
@@ -35,6 +42,7 @@ mutation UpsertUser(
 # Update a user profile (admin only - can update any user)
 # NOTE: membershipStatus is NOT included here - it must be updated via updateMembershipStatus Firebase Function
 # which validates the transition server-side to prevent bypassing restrictions.
+# Admins must also be enabled
 mutation UpdateUser(
   $userId: String!
   $firstName: String!
@@ -45,7 +53,7 @@ mutation UpdateUser(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   user_upsert(
     data: {
       id: $userId
@@ -64,12 +72,12 @@ mutation UpdateUser(
 
 # SODC Section and Access Group Mutations
 
-# Create a new section (admin only)
+# Create a new section (admin only - admins must also be enabled)
 mutation CreateSection(
   $name: String!
   $type: SectionType!
   $description: String
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   section_insert(
     data: {
       name: $name
@@ -79,11 +87,11 @@ mutation CreateSection(
   )
 }
 
-# Create a new access group (admin only)
+# Create a new access group (admin only - admins must also be enabled)
 mutation CreateAccessGroup(
   $name: String!
   $description: String
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   accessGroup_insert(
     data: {
       name: $name
@@ -92,11 +100,11 @@ mutation CreateAccessGroup(
   )
 }
 
-# Add a user to an access group (admin only)
+# Add a user to an access group (admin only - admins must also be enabled)
 mutation AddUserToAccessGroup(
   $userId: String!
   $accessGroupId: UUID!
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   userAccessGroup_upsert(
     data: {
       userId: $userId
@@ -105,11 +113,11 @@ mutation AddUserToAccessGroup(
   )
 }
 
-# Remove a user from an access group (admin only)
+# Remove a user from an access group (admin only - admins must also be enabled)
 mutation RemoveUserFromAccessGroup(
   $userId: String!
   $accessGroupId: UUID!
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   userAccessGroup_delete(
     key: {
       userId: $userId
@@ -118,11 +126,11 @@ mutation RemoveUserFromAccessGroup(
   )
 }
 
-# Grant an access group access to a section (admin only)
+# Grant an access group access to a section (admin only - admins must also be enabled)
 mutation GrantAccessGroupToSection(
   $sectionId: UUID!
   $accessGroupId: UUID!
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sectionAccessGroup_upsert(
     data: {
       sectionId: $sectionId
@@ -131,11 +139,11 @@ mutation GrantAccessGroupToSection(
   )
 }
 
-# Revoke an access group's access to a section (admin only)
+# Revoke an access group's access to a section (admin only - admins must also be enabled)
 mutation RevokeAccessGroupFromSection(
   $sectionId: UUID!
   $accessGroupId: UUID!
-) @auth(expr: "auth.token.admin == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sectionAccessGroup_delete(
     key: {
       sectionId: $sectionId
