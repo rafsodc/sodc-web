@@ -1,7 +1,8 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import * as admin from "firebase-admin";
 import { requireAuth } from "./helpers";
-import { canUserChangeStatus, type MembershipStatus } from "./validation";
+import { canUserChangeStatus, isNonRestrictedStatus, type MembershipStatus } from "./validation";
 import { 
   updateUserMembershipStatus, 
   getUserMembershipStatus,
@@ -47,6 +48,9 @@ export const updateMembershipStatus = onCall(async (request) => {
     
     await updateMembershipStatusInDataConnect(userId, newStatus as MembershipStatus);
     
+    // Automatically update the enabled claim based on membership status
+    await updateEnabledClaim(userId, newStatus as MembershipStatus);
+    
     logger.info(`Membership status updated: userId=${userId}, current=${currentStatus || "unknown"}, new=${newStatus}, admin=${isAdmin}`);
     return { success: true, message: "Membership status updated successfully" };
   } catch (e: any) {
@@ -89,6 +93,38 @@ async function fetchCurrentStatusFromDataConnect(
   } catch (error: any) {
     logger.warn(`Could not fetch current status from Data Connect for userId=${userId}:`, error);
     return null;
+  }
+}
+
+/**
+ * Updates the enabled claim based on membership status
+ * - enabled: true for non-restricted statuses (REGULAR, RETIRED, RESERVE, INDUSTRY, CIVIL_SERVICE)
+ * - enabled: false for restricted statuses (PENDING, RESIGNED, LOST, DECEASED)
+ * Preserves existing claims (like admin) when updating
+ */
+async function updateEnabledClaim(
+  userId: string,
+  membershipStatus: MembershipStatus
+): Promise<void> {
+  try {
+    // Get current user to preserve existing claims
+    const userRecord = await admin.auth().getUser(userId);
+    const currentClaims = userRecord.customClaims || {};
+    
+    // Determine if account should be enabled based on membership status
+    const shouldBeEnabled = isNonRestrictedStatus(membershipStatus);
+    
+    // Update claims, preserving existing ones
+    const updatedClaims = {
+      ...currentClaims,
+      enabled: shouldBeEnabled,
+    };
+    
+    await admin.auth().setCustomUserClaims(userId, updatedClaims);
+    logger.info(`Updated enabled claim for userId=${userId}: enabled=${shouldBeEnabled} (status=${membershipStatus})`);
+  } catch (error: any) {
+    logger.error(`Could not update enabled claim for userId=${userId}:`, error);
+    // Don't throw - this is a side effect, we don't want to fail the status update if claim update fails
   }
 }
 

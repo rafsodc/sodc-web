@@ -39,6 +39,13 @@ function isRestrictedStatus(status: MembershipStatus): boolean {
 }
 
 /**
+ * Checks if a membership status is non-restricted (enabled)
+ */
+export function isNonRestrictedStatus(status: MembershipStatus): boolean {
+  return NON_RESTRICTED_STATUSES.includes(status);
+}
+
+/**
  * Validates if a user can change from one membership status to another
  * @param currentStatus - The user's current membership status (null if new user)
  * @param newStatus - The desired new membership status

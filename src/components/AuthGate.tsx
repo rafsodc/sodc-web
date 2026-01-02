@@ -10,6 +10,9 @@ import {
 } from "@mui/material";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { useEnabledClaim } from "../hooks/useEnabledClaim";
+import { useUserData } from "../hooks/useUserData";
+import AccountStatusMessage from "./AccountStatusMessage";
 
 interface AuthGateProps {
   onBack?: () => void;
@@ -24,6 +27,9 @@ export default function AuthGate({ onBack }: AuthGateProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isEnabled = useEnabledClaim(user);
+  const { userData } = useUserData(user);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -36,7 +42,9 @@ export default function AuthGate({ onBack }: AuthGateProps) {
     setError(null);
     setSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      // Force token refresh to ensure claims are up-to-date
+      await userCredential.user.getIdToken(true);
       setPassword("");
     } catch (e: any) {
       setError(e?.message ?? "Sign-in failed");
@@ -66,6 +74,12 @@ export default function AuthGate({ onBack }: AuthGateProps) {
   }
 
   if (user) {
+    // If user is signed in but not enabled, show account status message
+    if (!isEnabled) {
+      return <AccountStatusMessage userData={userData} onBack={onBack} />;
+    }
+
+    // User is signed in and enabled
     return (
       <Stack spacing={2} sx={{ mt: 2 }}>
         <Alert severity="success">Signed in</Alert>

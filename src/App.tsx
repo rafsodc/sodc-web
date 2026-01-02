@@ -3,12 +3,14 @@ import { Box, Button, CssBaseline, Typography } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "./config/firebase";
 import { useUserData } from "./hooks/useUserData";
+import { useEnabledClaim } from "./hooks/useEnabledClaim";
 import AuthGate from "./components/AuthGate";
 import Header from "./components/Header";
 import HomePage from "./components/HomePage";
 import Profile from "./components/Profile";
 import Permissions from "./components/Permissions";
 import ManageUsers from "./components/ManageUsers";
+import AccountStatusMessage from "./components/AccountStatusMessage";
 import { colors } from "./config/colors";
 
 type View = "home" | "account" | "profile" | "permissions" | "manageUsers";
@@ -17,6 +19,7 @@ export default function App() {
   const [view, setView] = useState<View>("home");
   const [user, setUser] = useState<User | null>(null);
   const { userData, refetch } = useUserData(user);
+  const isEnabled = useEnabledClaim(user);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -31,6 +34,16 @@ export default function App() {
       refetch();
     }
   }, [refetch]);
+
+  // If user is authenticated but not enabled, show account status message
+  if (user && !isEnabled) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        <AccountStatusMessage userData={userData} />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
