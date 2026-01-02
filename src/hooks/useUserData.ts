@@ -40,7 +40,30 @@ export function useUserData(firebaseUser: User | null) {
       } else {
         setUserData(null);
       }
-    } catch (err) {
+    } catch (err: any) {
+      // Check if it's an auth error (401/403) - might be stale token
+      const isAuthError = err?.code === 401 || err?.code === 403 || 
+                         err?.message?.includes("unauthorized") ||
+                         err?.message?.includes("permission");
+      
+      if (isAuthError) {
+        // Try refreshing token and retry once
+        try {
+          await firebaseUser.getIdToken(true);
+          const ref = getCurrentUserRef(dataConnect);
+          const result = await executeQuery(ref);
+          if (result.data?.user) {
+            setUserData(result.data.user as UserData);
+            return;
+          }
+        } catch (retryErr) {
+          // If retry also fails, it's a real auth error
+          setError(retryErr instanceof Error ? retryErr : new Error(String(retryErr)));
+          setUserData(null);
+          return;
+        }
+      }
+      
       // User might not exist in database yet, which is fine
       if (err instanceof Error && !err.message.includes("not found")) {
         setError(err);
