@@ -22,7 +22,7 @@ import { dataConnect } from "../config/firebase";
 import { type SearchUser } from "../utils/searchUsers";
 import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../dataconnect-generated";
 import { colors } from "../config/colors";
-import { MEMBERSHIP_STATUS_OPTIONS, SUCCESS_MESSAGE_TIMEOUT } from "../constants";
+import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
 import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
 import { updateUserDisplayName } from "../utils/updateUserDisplayName";
 import { useAdminClaim } from "../hooks/useAdminClaim";
@@ -35,9 +35,10 @@ interface EditUserDialogProps {
   user: SearchUser | null;
   onClose: () => void;
   onSave: () => void;
+  onSuccess?: (message: string) => void;
 }
 
-export default function EditUserDialog({ open, user, onClose, onSave }: EditUserDialogProps) {
+export default function EditUserDialog({ open, user, onClose, onSave, onSuccess }: EditUserDialogProps) {
   const [submitting, setSubmitting] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,13 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
     if (open && user) {
       setLoading(true);
       setUpdateMessage(null);
+      setSubmitting(false); // Reset submitting state when dialog opens
       loadUserData(user);
+    } else if (!open) {
+      // Reset all state when dialog closes
+      setSubmitting(false);
+      setUpdateMessage(null);
+      setLoading(false);
     }
   }, [open, user]);
 
@@ -116,6 +123,7 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
 
   const handleClose = () => {
     setUpdateMessage(null);
+    setSubmitting(false); // Reset submitting state when closing
     onClose();
   };
 
@@ -159,7 +167,7 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         if (!statusResult.success) {
           setUpdateMessage({ type: "error", text: statusResult.error || "Failed to update membership status" });
           setSubmitting(false);
-          return;
+          return; // Keep dialog open on error
         }
       }
       
@@ -173,14 +181,17 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         }
       }
       
-      setUpdateMessage({ type: "success", text: "User profile updated successfully" });
+      // Success - reset submitting, close dialog immediately and show success message via callback
+      setSubmitting(false);
       onSave();
-      setTimeout(() => {
-        handleClose();
-      }, SUCCESS_MESSAGE_TIMEOUT);
+      const successMessage = "User profile updated successfully";
+      if (onSuccess) {
+        onSuccess(successMessage);
+      }
+      handleClose();
     } catch (err: any) {
+      // Error - keep dialog open and show error message
       setUpdateMessage({ type: "error", text: err?.message || "Failed to update user profile" });
-    } finally {
       setSubmitting(false);
     }
   };
@@ -188,15 +199,37 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit User Profile</DialogTitle>
-      <DialogContent>
+      <DialogContent
+        sx={{
+          maxHeight: "70vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+          pr: 1, // Padding for scrollbar
+          // Ensure scrollbar is always visible when content overflows
+          "&::-webkit-scrollbar": {
+            width: "8px",
+          },
+          "&::-webkit-scrollbar-track": {
+            backgroundColor: "rgba(0, 0, 0, 0.05)",
+            borderRadius: "4px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: "rgba(0, 0, 0, 0.2)",
+            borderRadius: "4px",
+            "&:hover": {
+              backgroundColor: "rgba(0, 0, 0, 0.3)",
+            },
+          },
+        }}
+      >
         {loading ? (
           <Stack spacing={2} sx={{ mt: 2, alignItems: "center" }}>
             <CircularProgress />
           </Stack>
         ) : (
           <>
-            {updateMessage && (
-              <Alert severity={updateMessage.type} sx={{ mb: 2 }}>
+            {updateMessage && updateMessage.type === "error" && (
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {updateMessage.text}
               </Alert>
             )}

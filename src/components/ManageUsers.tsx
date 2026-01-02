@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Typography, CircularProgress, Alert } from "@mui/material";
+import { Box, Typography, CircularProgress, Alert, Snackbar } from "@mui/material";
 import { type SearchUser } from "../utils/searchUsers";
 import { colors } from "../config/colors";
 import { useUserSearch } from "../hooks/useUserSearch";
@@ -31,6 +31,7 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SearchUser | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -48,6 +49,14 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
 
   const handleSave = () => {
     refetch();
+  };
+
+  const handleSuccess = (message: string) => {
+    setSuccessMessage(message);
+  };
+
+  const handleCloseSnackbar = () => {
+    setSuccessMessage(null);
   };
 
   return (
@@ -88,7 +97,20 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
         user={editingUser}
         onClose={handleCloseEdit}
         onSave={handleSave}
+        onSuccess={handleSuccess}
       />
+
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ mt: 10 }} // Margin top to position below header
+      >
+        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: "100%" }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
