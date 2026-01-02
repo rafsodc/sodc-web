@@ -219,7 +219,6 @@ export interface UpdateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -235,7 +234,6 @@ export interface UpsertUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;

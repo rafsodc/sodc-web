@@ -3,12 +3,13 @@
 # Create or update a user profile based on their auth.uid
 # The "auth.uid" server value ensures that users can only register/update their own profile.
 # This mutation will create the user if they don't exist, or update if they do.
+# NOTE: membershipStatus is NOT included here - it must be updated via UpdateMembershipStatus mutation
+# which validates the transition server-side to prevent bypassing restrictions.
 mutation UpsertUser(
   $firstName: String!
   $lastName: String!
   $email: String!
   $serviceNumber: String!
-  $membershipStatus: MembershipStatus
   $isRegular: Boolean
   $isReserve: Boolean
   $isCivilServant: Boolean
@@ -21,7 +22,6 @@ mutation UpsertUser(
       lastName: $lastName
       email: $email
       serviceNumber: $serviceNumber
-      membershipStatus: $membershipStatus
       isRegular: $isRegular
       isReserve: $isReserve
       isCivilServant: $isCivilServant
@@ -31,14 +31,16 @@ mutation UpsertUser(
   )
 }
 
+
 # Update a user profile (admin only - can update any user)
+# NOTE: membershipStatus is NOT included here - it must be updated via updateMembershipStatus Firebase Function
+# which validates the transition server-side to prevent bypassing restrictions.
 mutation UpdateUser(
   $userId: String!
   $firstName: String!
   $lastName: String!
   $email: String!
   $serviceNumber: String!
-  $membershipStatus: MembershipStatus
   $isRegular: Boolean
   $isReserve: Boolean
   $isCivilServant: Boolean
@@ -51,7 +53,6 @@ mutation UpdateUser(
       lastName: $lastName
       email: $email
       serviceNumber: $serviceNumber
-      membershipStatus: $membershipStatus
       isRegular: $isRegular
       isReserve: $isReserve
       isCivilServant: $isCivilServant
@@ -140,5 +141,12 @@ mutation RevokeAccessGroupFromSection(
       sectionId: $sectionId
       accessGroupId: $accessGroupId
     }
+  )
+}
+
+mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: MembershipStatus!) @auth(level: NO_ACCESS) {
+  user_update(
+    id: $userId
+    data: { membershipStatus: $membershipStatus }
   )
 }

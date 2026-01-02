@@ -743,7 +743,6 @@ export interface UpsertUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -801,7 +800,6 @@ export default function UpsertUserComponent() {
     lastName: ..., 
     email: ..., 
     serviceNumber: ..., 
-    membershipStatus: ..., // optional
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -809,7 +807,7 @@ export default function UpsertUserComponent() {
   };
   mutation.mutate(upsertUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -854,7 +852,6 @@ export interface UpdateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -913,7 +910,6 @@ export default function UpdateUserComponent() {
     lastName: ..., 
     email: ..., 
     serviceNumber: ..., 
-    membershipStatus: ..., // optional
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -921,7 +917,7 @@ export default function UpdateUserComponent() {
   };
   mutation.mutate(updateUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

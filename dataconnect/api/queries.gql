@@ -119,3 +119,11 @@ query GetUserAccessGroups @auth(level: USER) {
     }
   }
 }
+
+
+# Get user status for the specified user
+query GetUserMembershipStatus($id: String!) @auth(level: NO_ACCESS) {
+  user(id: $id) {
+    membershipStatus
+  }
+}

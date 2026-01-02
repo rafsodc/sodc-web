@@ -25,6 +25,10 @@ import { colors } from "../config/colors";
 import { MEMBERSHIP_STATUS_OPTIONS, SUCCESS_MESSAGE_TIMEOUT } from "../constants";
 import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
 import { updateUserDisplayName } from "../utils/updateUserDisplayName";
+import { useAdminClaim } from "../hooks/useAdminClaim";
+import { auth } from "../config/firebase";
+import { canUserChangeStatus, NON_RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
+import { updateMembershipStatus } from "../utils/updateMembershipStatus";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -37,6 +41,10 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
   const [submitting, setSubmitting] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<MembershipStatus | null>(null);
+
+  // Get admin status
+  const isAdmin = useAdminClaim(auth.currentUser);
 
   // Form state
   const [firstName, setFirstName] = useState("");
@@ -67,7 +75,9 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         setLastName(fullUser.lastName || "");
         setEmail(fullUser.email || userToLoad.email || "");
         setServiceNumber(fullUser.serviceNumber || "");
-        setMembershipStatus(fullUser.membershipStatus || MembershipStatus.PENDING);
+        const status = fullUser.membershipStatus || MembershipStatus.PENDING;
+        setMembershipStatus(status);
+        setCurrentStatus(status);
         setIsRegular(fullUser.isRegular ?? false);
         setIsReserve(fullUser.isReserve ?? false);
         setIsCivilServant(fullUser.isCivilServant ?? false);
@@ -80,6 +90,7 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
         setEmail(userToLoad.email || "");
         setServiceNumber("");
         setMembershipStatus(MembershipStatus.PENDING);
+        setCurrentStatus(MembershipStatus.PENDING);
         setIsRegular(false);
         setIsReserve(false);
         setIsCivilServant(false);
@@ -93,6 +104,7 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
       setEmail(userToLoad.email || "");
       setServiceNumber("");
       setMembershipStatus(MembershipStatus.PENDING);
+      setCurrentStatus(MembershipStatus.PENDING);
       setIsRegular(false);
       setIsReserve(false);
       setIsCivilServant(false);
@@ -116,22 +128,40 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
       return;
     }
 
+    // Client-side validation (for immediate UX feedback)
+    const clientValidation = canUserChangeStatus(currentStatus, membershipStatus, isAdmin);
+    if (!clientValidation.allowed) {
+      setUpdateMessage({ type: "error", text: clientValidation.error || "Invalid membership status change" });
+      return;
+    }
+
     setSubmitting(true);
     setUpdateMessage(null);
     try {
+      // Update profile fields (excluding membershipStatus)
       const vars: UpdateUserVariables = {
         userId: user.uid,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
-        membershipStatus: membershipStatus,
         isRegular,
         isReserve,
         isCivilServant,
         isIndustry,
       };
       await updateUser(dataConnect, vars);
+
+      // Update membership status separately via Firebase Function (validates and enforces rules)
+      // Only call if the status has actually changed
+      if (membershipStatus && membershipStatus !== currentStatus) {
+        const statusResult = await updateMembershipStatus(user.uid, membershipStatus);
+        if (!statusResult.success) {
+          setUpdateMessage({ type: "error", text: statusResult.error || "Failed to update membership status" });
+          setSubmitting(false);
+          return;
+        }
+      }
       
       // Update displayName in Firebase Auth
       const displayName = `${lastName.trim()}, ${firstName.trim()}`.trim();
@@ -212,11 +242,18 @@ export default function EditUserDialog({ open, user, onClose, onSave }: EditUser
                   onChange={(e) => setMembershipStatus(e.target.value as MembershipStatus)}
                   disabled={submitting}
                 >
-                  {MEMBERSHIP_STATUS_OPTIONS.map((status) => (
-                    <MenuItem key={status.value} value={status.value}>
-                      {status.label}
-                    </MenuItem>
-                  ))}
+                  {(() => {
+                    // If admin, show all options; otherwise filter to non-restricted
+                    const availableOptions = isAdmin
+                      ? MEMBERSHIP_STATUS_OPTIONS
+                      : MEMBERSHIP_STATUS_OPTIONS.filter(option => NON_RESTRICTED_STATUSES.includes(option.value));
+                    
+                    return availableOptions.map((status) => (
+                      <MenuItem key={status.value} value={status.value}>
+                        {status.label}
+                      </MenuItem>
+                    ));
+                  })()}
                 </Select>
               </FormControl>
 

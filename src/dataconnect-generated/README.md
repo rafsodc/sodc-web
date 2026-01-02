@@ -859,7 +859,6 @@ export interface UpsertUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -887,7 +886,6 @@ const upsertUserVars: UpsertUserVariables = {
   lastName: ..., 
   email: ..., 
   serviceNumber: ..., 
-  membershipStatus: ..., // optional
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -898,7 +896,7 @@ const upsertUserVars: UpsertUserVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await upsertUser(upsertUserVars);
 // Variables can be defined inline as well.
-const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -925,7 +923,6 @@ const upsertUserVars: UpsertUserVariables = {
   lastName: ..., 
   email: ..., 
   serviceNumber: ..., 
-  membershipStatus: ..., // optional
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -935,7 +932,7 @@ const upsertUserVars: UpsertUserVariables = {
 // Call the `upsertUserRef()` function to get a reference to the mutation.
 const ref = upsertUserRef(upsertUserVars);
 // Variables can be defined inline as well.
-const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -993,7 +990,6 @@ export interface UpdateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
-  membershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -1022,7 +1018,6 @@ const updateUserVars: UpdateUserVariables = {
   lastName: ..., 
   email: ..., 
   serviceNumber: ..., 
-  membershipStatus: ..., // optional
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -1033,7 +1028,7 @@ const updateUserVars: UpdateUserVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateUser(updateUserVars);
 // Variables can be defined inline as well.
-const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -1061,7 +1056,6 @@ const updateUserVars: UpdateUserVariables = {
   lastName: ..., 
   email: ..., 
   serviceNumber: ..., 
-  membershipStatus: ..., // optional
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -1071,7 +1065,7 @@ const updateUserVars: UpdateUserVariables = {
 // Call the `updateUserRef()` function to get a reference to the mutation.
 const ref = updateUserRef(updateUserVars);
 // Variables can be defined inline as well.
-const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
