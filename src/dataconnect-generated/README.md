@@ -17,6 +17,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetSectionsForUser*](#getsectionsforuser)
   - [*ListAccessGroups*](#listaccessgroups)
   - [*GetUserAccessGroups*](#getuseraccessgroups)
+  - [*GetUserMembershipStatus*](#getusermembershipstatus)
 - [**Mutations**](#mutations)
   - [*UpsertUser*](#upsertuser)
   - [*UpdateUser*](#updateuser)
@@ -26,6 +27,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*RemoveUserFromAccessGroup*](#removeuserfromaccessgroup)
   - [*GrantAccessGroupToSection*](#grantaccessgrouptosection)
   - [*RevokeAccessGroupFromSection*](#revokeaccessgroupfromsection)
+  - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `api`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -792,6 +794,117 @@ const ref = getUserAccessGroupsRef();
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getUserAccessGroupsRef(dataConnect);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+## GetUserMembershipStatus
+You can execute the `GetUserMembershipStatus` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getUserMembershipStatus(vars: GetUserMembershipStatusVariables): QueryPromise<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+
+interface GetUserMembershipStatusRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetUserMembershipStatusVariables): QueryRef<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+}
+export const getUserMembershipStatusRef: GetUserMembershipStatusRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables): QueryPromise<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+
+interface GetUserMembershipStatusRef {
+  ...
+  (dc: DataConnect, vars: GetUserMembershipStatusVariables): QueryRef<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+}
+export const getUserMembershipStatusRef: GetUserMembershipStatusRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getUserMembershipStatusRef:
+```typescript
+const name = getUserMembershipStatusRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetUserMembershipStatus` query requires an argument of type `GetUserMembershipStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetUserMembershipStatusVariables {
+  id: string;
+}
+```
+### Return Type
+Recall that executing the `GetUserMembershipStatus` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetUserMembershipStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetUserMembershipStatusData {
+  user?: {
+    membershipStatus: MembershipStatus;
+  };
+}
+```
+### Using `GetUserMembershipStatus`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getUserMembershipStatus, GetUserMembershipStatusVariables } from '@dataconnect/generated';
+
+// The `GetUserMembershipStatus` query requires an argument of type `GetUserMembershipStatusVariables`:
+const getUserMembershipStatusVars: GetUserMembershipStatusVariables = {
+  id: ..., 
+};
+
+// Call the `getUserMembershipStatus()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getUserMembershipStatus(getUserMembershipStatusVars);
+// Variables can be defined inline as well.
+const { data } = await getUserMembershipStatus({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getUserMembershipStatus(dataConnect, getUserMembershipStatusVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getUserMembershipStatus(getUserMembershipStatusVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetUserMembershipStatus`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getUserMembershipStatusRef, GetUserMembershipStatusVariables } from '@dataconnect/generated';
+
+// The `GetUserMembershipStatus` query requires an argument of type `GetUserMembershipStatusVariables`:
+const getUserMembershipStatusVars: GetUserMembershipStatusVariables = {
+  id: ..., 
+};
+
+// Call the `getUserMembershipStatusRef()` function to get a reference to the query.
+const ref = getUserMembershipStatusRef(getUserMembershipStatusVars);
+// Variables can be defined inline as well.
+const ref = getUserMembershipStatusRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getUserMembershipStatusRef(dataConnect, getUserMembershipStatusVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -1756,6 +1869,118 @@ console.log(data.sectionAccessGroup_delete);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.sectionAccessGroup_delete);
+});
+```
+
+## UpdateUserMembershipStatus
+You can execute the `UpdateUserMembershipStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+interface UpdateUserMembershipStatusRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserMembershipStatusVariables): MutationRef<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+}
+export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+interface UpdateUserMembershipStatusRef {
+  ...
+  (dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationRef<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+}
+export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateUserMembershipStatusRef:
+```typescript
+const name = updateUserMembershipStatusRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateUserMembershipStatus` mutation requires an argument of type `UpdateUserMembershipStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateUserMembershipStatusVariables {
+  userId: string;
+  membershipStatus: MembershipStatus;
+}
+```
+### Return Type
+Recall that executing the `UpdateUserMembershipStatus` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateUserMembershipStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateUserMembershipStatusData {
+  user_update?: User_Key | null;
+}
+```
+### Using `UpdateUserMembershipStatus`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateUserMembershipStatus, UpdateUserMembershipStatusVariables } from '@dataconnect/generated';
+
+// The `UpdateUserMembershipStatus` mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
+const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
+  userId: ..., 
+  membershipStatus: ..., 
+};
+
+// Call the `updateUserMembershipStatus()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateUserMembershipStatus(updateUserMembershipStatusVars);
+// Variables can be defined inline as well.
+const { data } = await updateUserMembershipStatus({ userId: ..., membershipStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+updateUserMembershipStatus(updateUserMembershipStatusVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
+### Using `UpdateUserMembershipStatus`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateUserMembershipStatusRef, UpdateUserMembershipStatusVariables } from '@dataconnect/generated';
+
+// The `UpdateUserMembershipStatus` mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
+const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
+  userId: ..., 
+  membershipStatus: ..., 
+};
+
+// Call the `updateUserMembershipStatusRef()` function to get a reference to the mutation.
+const ref = updateUserMembershipStatusRef(updateUserMembershipStatusVars);
+// Variables can be defined inline as well.
+const ref = updateUserMembershipStatusRef({ userId: ..., membershipStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateUserMembershipStatusRef(dataConnect, updateUserMembershipStatusVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
 });
 ```
 

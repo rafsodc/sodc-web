@@ -12,7 +12,7 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpsertUser, useUpdateUser, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup, useGrantAccessGroupToSection, useRevokeAccessGroupFromSection, useGetCurrentUser, useGetUserById } from '@dataconnect/generated/react';
+import { useUpsertUser, useUpdateUser, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup, useGrantAccessGroupToSection, useRevokeAccessGroupFromSection, useUpdateUserMembershipStatus, useGetCurrentUser } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
 const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
@@ -31,9 +31,9 @@ const { data, isPending, isSuccess, isError, error } = useGrantAccessGroupToSect
 
 const { data, isPending, isSuccess, isError, error } = useRevokeAccessGroupFromSection(revokeAccessGroupFromSectionVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
+const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserById(getUserByIdVars);
+const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
 
 ```
 
@@ -72,7 +72,7 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { upsertUser, updateUser, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup, grantAccessGroupToSection, revokeAccessGroupFromSection, getCurrentUser, getUserById } from '@dataconnect/generated';
+import { upsertUser, updateUser, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup, grantAccessGroupToSection, revokeAccessGroupFromSection, updateUserMembershipStatus, getCurrentUser } from '@dataconnect/generated';
 
 
 // Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
@@ -99,11 +99,11 @@ const { data } = await GrantAccessGroupToSection(dataConnect, grantAccessGroupTo
 // Operation RevokeAccessGroupFromSection:  For variables, look at type RevokeAccessGroupFromSectionVars in ../index.d.ts
 const { data } = await RevokeAccessGroupFromSection(dataConnect, revokeAccessGroupFromSectionVars);
 
+// Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
+const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
+
 // Operation GetCurrentUser: 
 const { data } = await GetCurrentUser(dataConnect);
-
-// Operation GetUserById:  For variables, look at type GetUserByIdVars in ../index.d.ts
-const { data } = await GetUserById(dataConnect, getUserByIdVars);
 
 
 ```

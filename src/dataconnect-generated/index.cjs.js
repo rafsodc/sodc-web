@@ -122,6 +122,18 @@ exports.revokeAccessGroupFromSection = function revokeAccessGroupFromSection(dcO
   return executeMutation(revokeAccessGroupFromSectionRef(dcOrVars, vars));
 };
 
+const updateUserMembershipStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUserMembershipStatus', inputVars);
+}
+updateUserMembershipStatusRef.operationName = 'UpdateUserMembershipStatus';
+exports.updateUserMembershipStatusRef = updateUserMembershipStatusRef;
+
+exports.updateUserMembershipStatus = function updateUserMembershipStatus(dcOrVars, vars) {
+  return executeMutation(updateUserMembershipStatusRef(dcOrVars, vars));
+};
+
 const getCurrentUserRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
@@ -204,4 +216,16 @@ exports.getUserAccessGroupsRef = getUserAccessGroupsRef;
 
 exports.getUserAccessGroups = function getUserAccessGroups(dc) {
   return executeQuery(getUserAccessGroupsRef(dc));
+};
+
+const getUserMembershipStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserMembershipStatus', inputVars);
+}
+getUserMembershipStatusRef.operationName = 'GetUserMembershipStatus';
+exports.getUserMembershipStatusRef = getUserMembershipStatusRef;
+
+exports.getUserMembershipStatus = function getUserMembershipStatus(dcOrVars, vars) {
+  return executeQuery(getUserMembershipStatusRef(dcOrVars, vars));
 };

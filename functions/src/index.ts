@@ -4,6 +4,11 @@ import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import type { CallableRequest } from "firebase-functions/v2/https";
 import { canUserChangeStatus, type MembershipStatus } from "./validation";
+import { 
+  updateUserMembershipStatus, 
+  getUserMembershipStatus,
+  type MembershipStatus as AdminMembershipStatus
+} from "@dataconnect/admin-generated";
 
 setGlobalOptions({ region: "europe-west2", maxInstances: 10 });
 
@@ -254,9 +259,9 @@ export const updateMembershipStatus = onCall(
     }
 
     try {
-      // Fetch current status from Data Connect using HTTP request
+      // Fetch current status from Data Connect using Admin SDK
       // This prevents clients from providing a fake currentStatus
-      const currentStatus = await fetchCurrentStatusFromDataConnect(userId, request.auth!.token);
+      const currentStatus = await fetchCurrentStatusFromDataConnect(userId);
       
       // Validate the transition using server-side logic
       const validation = canUserChangeStatus(
@@ -287,52 +292,17 @@ export const updateMembershipStatus = onCall(
 
 /**
  * Updates the membership status in Data Connect for a given user
- * Uses the Data Connect REST API with the service account credentials
+ * Uses the Firebase Data Connect Admin SDK with service account credentials
  */
 async function updateMembershipStatusInDataConnect(
   userId: string,
   membershipStatus: MembershipStatus
 ): Promise<void> {
   try {
-    const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
-    if (!projectId) {
-      throw new Error("GCLOUD_PROJECT not set");
-    }
-
-    const serviceAccount = admin.app().options.credential;
-    if (!serviceAccount) {
-      throw new Error("Service account not available");
-    }
-
-    const accessTokenResult = await serviceAccount.getAccessToken();
-    const accessToken = accessTokenResult.access_token;
-    
-    if (!accessToken) {
-      throw new Error("Could not get access token for Data Connect");
-    }
-
-    // Make request to Data Connect REST API to update membership status
-    const dataConnectUrl = `https://firebasedataconnect.googleapis.com/v1/projects/${projectId}/locations/europe-west2/services/sodc-web-service/connectors/api:executeMutation`;
-    
-    const body = {
-      operationName: "UpdateUserMembershipStatus",
-      variables: { userId, membershipStatus }
-    };
-
-    const response = await fetch(dataConnectUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+    await updateUserMembershipStatus({
+      userId,
+      membershipStatus: membershipStatus as AdminMembershipStatus
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Data Connect API error: ${response.status} ${errorText}`);
-    }
-
     logger.info(`Successfully updated membership status for userId=${userId} to ${membershipStatus}`);
   } catch (error: any) {
     logger.error(`Could not update membership status in Data Connect for userId=${userId}:`, error);
@@ -342,69 +312,14 @@ async function updateMembershipStatusInDataConnect(
 
 /**
  * Fetches the current membership status from Data Connect for a given user
- * Uses the Data Connect REST API with the service account credentials
- * 
- * NOTE: This is a workaround since Firebase Functions don't have direct access to Data Connect queries.
- * In a production system, you might want to:
- * 1. Use the Data Connect Admin SDK (if available)
- * 2. Store membership status in a Firestore collection that Functions can access
+ * Uses the Firebase Data Connect Admin SDK with service account credentials
  */
 async function fetchCurrentStatusFromDataConnect(
-  userId: string,
-  authToken: admin.auth.DecodedIdToken
+  userId: string
 ): Promise<MembershipStatus | null> {
   try {
-    const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
-    if (!projectId) {
-      logger.warn("GCLOUD_PROJECT not set, cannot fetch from Data Connect");
-      return null;
-    }
-
-    // Get service account credentials
-    const serviceAccount = admin.app().options.credential;
-    if (!serviceAccount) {
-      logger.warn("Service account not available, cannot fetch from Data Connect");
-      return null;
-    }
-
-    // Get an access token for the service account
-    const accessTokenResult = await serviceAccount.getAccessToken();
-    const accessToken = accessTokenResult.access_token;
-    
-    if (!accessToken) {
-      logger.warn("Could not get access token for Data Connect");
-      return null;
-    }
-
-    // Make request to Data Connect REST API
-    const dataConnectUrl = `https://firebasedataconnect.googleapis.com/v1/projects/${projectId}/locations/europe-west2/services/sodc-web-service/connectors/api:executeQuery`;
-    
-    const body = {
-      operationName: "GetUserMembershipStatus",
-      variables: { id: userId }
-    };
-
-    const response = await fetch(dataConnectUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      // If user doesn't exist, return null (new user)
-      if (response.status === 404) {
-        return null;
-      }
-      const errorText = await response.text();
-      logger.warn(`Data Connect API error for userId=${userId}: ${response.status} ${errorText}`);
-      return null;
-    }
-
-    const result = await response.json();
-    return result.data?.user?.membershipStatus || null;
+    const result = await getUserMembershipStatus({ id: userId });
+    return result.data?.user?.membershipStatus as MembershipStatus | null || null;
   } catch (error: any) {
     // If we can't fetch from Data Connect, log and return null
     // This allows the validation to proceed, but ideally we'd want to fail securely
