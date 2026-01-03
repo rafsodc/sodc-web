@@ -15,6 +15,9 @@ export const ERROR_MESSAGE_TIMEOUT = 5000;
 // Membership status options for UI
 import { MembershipStatus } from "../dataconnect-generated";
 
+// Re-export validation constants
+export { NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
+
 export const MEMBERSHIP_STATUS_OPTIONS = [
   { value: MembershipStatus.PENDING, label: "Pending" },
   { value: MembershipStatus.REGULAR, label: "Regular" },

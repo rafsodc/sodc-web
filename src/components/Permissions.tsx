@@ -84,6 +84,14 @@ export default function Permissions({ onBack }: PermissionsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // fetchAdminUsers is stable (memoized), so we don't need it in deps
 
+  // Refresh search results when switching to the search tab
+  useEffect(() => {
+    if (tabValue === 1 && searchTerm.trim()) {
+      refetchSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue]); // Only refresh when tab changes, not on every searchTerm change
+
   // Filter admin users based on email or display name
   useEffect(() => {
     let filtered = [...adminUsers];
@@ -245,6 +253,8 @@ export default function Permissions({ onBack }: PermissionsProps) {
           <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
+            onRefresh={refetchSearch}
+            loading={searchLoading}
           />
 
           {searchLoading ? (

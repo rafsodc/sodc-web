@@ -13,6 +13,7 @@ export interface SearchUser {
   };
   customClaims: {
     admin?: boolean;
+    enabled?: boolean;
     [key: string]: any;
   };
 }
