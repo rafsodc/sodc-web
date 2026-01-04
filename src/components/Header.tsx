@@ -17,6 +17,7 @@ interface HeaderProps {
   onSecurityClick?: () => void;
   onPermissionsClick?: () => void;
   onManageUsersClick?: () => void;
+  onApproveUsersClick?: () => void;
 }
 
 function getInitials(userData: UserData | null): string {
@@ -26,7 +27,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -92,6 +93,15 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     handleAdminMenuClose();
     if (onManageUsersClick) {
       onManageUsersClick();
+    }
+  };
+
+  const handleApproveUsers = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleAdminMenuClose();
+    if (onApproveUsersClick) {
+      onApproveUsersClick();
     }
   };
 
@@ -172,6 +182,19 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 }}
               >
                 Manage Users
+              </MenuItem>
+              <MenuItem 
+                onClick={handleApproveUsers}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Approve Users
               </MenuItem>
             </Menu>
           </Box>

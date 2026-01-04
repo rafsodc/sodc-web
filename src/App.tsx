@@ -12,12 +12,13 @@ import HomePage from "./components/HomePage";
 import Profile from "./components/Profile";
 import Permissions from "./components/Permissions";
 import ManageUsers from "./components/ManageUsers";
+import ApproveUsers from "./components/ApproveUsers";
 import AccountStatusMessage from "./components/AccountStatusMessage";
 import ProfileCompletion from "./components/ProfileCompletion";
 import EmailVerificationMessage from "./components/EmailVerificationMessage";
 import { colors } from "./config/colors";
 
-type View = "home" | "account" | "profile" | "permissions" | "manageUsers" | "register" | "profileCompletion";
+type View = "home" | "account" | "profile" | "permissions" | "manageUsers" | "approveUsers" | "register" | "profileCompletion";
 
 export default function App() {
   const [view, setView] = useState<View>("home");
@@ -281,6 +282,7 @@ export default function App() {
         onProfileClick={() => setView("profile")}
         onPermissionsClick={() => setView("permissions")}
         onManageUsersClick={() => setView("manageUsers")}
+        onApproveUsersClick={() => setView("approveUsers")}
       />
       <Box
         component="main"
@@ -365,6 +367,26 @@ export default function App() {
                 Manage Users
               </Typography>
               <Typography>Please log in to access user management.</Typography>
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
+        ) : view === "approveUsers" ? (
+          user ? (
+            <ApproveUsers onBack={() => setView("home")} />
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Approve Users
+              </Typography>
+              <Typography>Please log in to access user approval.</Typography>
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>
