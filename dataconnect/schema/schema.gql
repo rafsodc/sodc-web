@@ -29,6 +29,7 @@ type User @table {
   email: String!
   serviceNumber: String!
   membershipStatus: MembershipStatus! @default(value: PENDING)
+  requestedMembershipStatus: MembershipStatus
   isRegular: Boolean @default(value: false)
   isReserve: Boolean @default(value: false)
   isCivilServant: Boolean @default(value: false)

@@ -57,6 +57,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
+  const [requestedMembershipStatus, setRequestedMembershipStatus] = useState<MembershipStatus | null>(null);
 
   // Load user data when dialog opens
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         const status = fullUser.membershipStatus || MembershipStatus.PENDING;
         setMembershipStatus(status);
         setCurrentStatus(status);
+        setRequestedMembershipStatus(fullUser.requestedMembershipStatus || null);
         setIsRegular(fullUser.isRegular ?? false);
         setIsReserve(fullUser.isReserve ?? false);
         setIsCivilServant(fullUser.isCivilServant ?? false);
@@ -98,6 +100,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         setServiceNumber("");
         setMembershipStatus(MembershipStatus.PENDING);
         setCurrentStatus(MembershipStatus.PENDING);
+        setRequestedMembershipStatus(null);
         setIsRegular(false);
         setIsReserve(false);
         setIsCivilServant(false);
@@ -298,6 +301,11 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                     ));
                   })()}
                 </Select>
+                {currentStatus === MembershipStatus.PENDING && requestedMembershipStatus && (
+                  <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
+                    User requested: {MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === requestedMembershipStatus)?.label || requestedMembershipStatus}
+                  </Typography>
+                )}
               </FormControl>
 
               <Divider sx={{ my: 2 }} />

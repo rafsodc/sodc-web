@@ -27,13 +27,13 @@ export default function AccountStatusMessage({ userData, onBack }: AccountStatus
         return {
           severity: "info" as const,
           title: "Account Pending Activation",
-          message: "Your account is pending activation. Please contact an administrator to activate your account.",
+          message: "Your account is pending activation. Please contact an administrator to activate your account should you have not heard back within 3 days.",
         };
       case "RESIGNED":
         return {
           severity: "warning" as const,
           title: "Account Deactivated",
-          message: "Your account has been deactivated due to resignation.",
+          message: "Your account has been deactivated.",
         };
       case "LOST":
         return {

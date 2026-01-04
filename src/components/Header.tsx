@@ -6,6 +6,7 @@ import { auth } from "../config/firebase";
 import { colors } from "../config/colors";
 import type { UserData } from "../hooks/useUserData";
 import { useAdminClaim } from "../hooks/useAdminClaim";
+import { useEnabledClaim } from "../hooks/useEnabledClaim";
 
 interface HeaderProps {
   user: User | null;
@@ -31,6 +32,7 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
   const open = Boolean(anchorEl);
   const adminMenuOpen = Boolean(adminAnchorEl);
   const isAdmin = useAdminClaim(user);
+  const isEnabled = useEnabledClaim(user);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -107,7 +109,7 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
         <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
           SODC
         </Typography>
-        {user && isAdmin && (
+        {user && isAdmin && isEnabled && (
           <Box sx={{ flexGrow: 1, display: "flex", justifyContent: "center" }}>
             <Button
               onClick={handleAdminClick}
@@ -221,32 +223,36 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 horizontal: "right",
               }}
             >
-              <MenuItem 
-                onClick={handleProfile}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Profile
-              </MenuItem>
-              <MenuItem 
-                onClick={handleSecurity}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Security
-              </MenuItem>
+              {isEnabled && (
+                <>
+                  <MenuItem 
+                    onClick={handleProfile}
+                    sx={{
+                      "&:focus": {
+                        outline: "none",
+                      },
+                      "&:focus-visible": {
+                        outline: "none",
+                      },
+                    }}
+                  >
+                    Profile
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={handleSecurity}
+                    sx={{
+                      "&:focus": {
+                        outline: "none",
+                      },
+                      "&:focus-visible": {
+                        outline: "none",
+                      },
+                    }}
+                  >
+                    Security
+                  </MenuItem>
+                </>
+              )}
               <MenuItem 
                 onClick={handleLogOut}
                 sx={{
