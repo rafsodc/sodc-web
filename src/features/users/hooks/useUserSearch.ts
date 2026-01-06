@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { searchUsers } from "../utils/searchUsers";
-import type { SearchUser } from "../types";
-import { ITEMS_PER_PAGE } from "../constants";
+import type { SearchUser } from "../../../types";
+import { ITEMS_PER_PAGE } from "../../../constants";
 
 interface UseUserSearchResult {
   users: SearchUser[];

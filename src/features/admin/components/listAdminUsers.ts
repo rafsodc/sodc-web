@@ -1,6 +1,6 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { firebaseApp } from "../config/firebase";
-import type { AdminUser } from "../types";
+import { firebaseApp } from "../../../config/firebase";
+import type { AdminUser } from "../../../types";
 
 export type { AdminUser };
 
@@ -18,7 +18,8 @@ export async function listAdminUsers(): Promise<{ success: boolean; users?: Admi
     const listAdminUsersCallable = httpsCallable<ListAdminUsersResponse>(functions, "listAdminUsers");
     
     const result = await listAdminUsersCallable();
-    return { success: true, users: result.data.users };
+    const data = result.data as ListAdminUsersResponse;
+    return { success: true, users: data.users };
   } catch (error: any) {
     return { 
       success: false, 

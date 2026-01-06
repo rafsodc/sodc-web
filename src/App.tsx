@@ -4,24 +4,26 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, dataConnect } from "./config/firebase";
 import { reload } from "firebase/auth";
 import { queryRef, executeQuery } from "firebase/data-connect";
-import { useUserData, type UserData } from "./hooks/useUserData";
-import { useEnabledClaim } from "./hooks/useEnabledClaim";
-import AuthGate from "./components/AuthGate";
-import Header from "./components/Header";
-import HomePage from "./components/HomePage";
-import Profile from "./components/Profile";
-import Permissions from "./components/Permissions";
-import ManageUsers from "./components/ManageUsers";
-import ApproveUsers from "./components/ApproveUsers";
-import AccountStatusMessage from "./components/AccountStatusMessage";
-import ProfileCompletion from "./components/ProfileCompletion";
-import EmailVerificationMessage from "./components/EmailVerificationMessage";
+import { useUserData } from "./features/users/hooks/useUserData";
+import type { UserData } from "./types";
+import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
+import AuthGate from "./features/auth/components/AuthGate";
+import Header from "./shared/components/Header";
+import HomePage from "./shared/components/HomePage";
+import Profile from "./features/profile/components/Profile";
+import Permissions from "./features/admin/components/Permissions";
+import ManageUsers from "./features/admin/components/ManageUsers";
+import ApproveUsers from "./features/admin/components/ApproveUsers";
+import AccountStatusMessage from "./features/users/components/AccountStatusMessage";
+import ProfileCompletion from "./features/auth/components/ProfileCompletion";
+import EmailVerificationMessage from "./features/auth/components/EmailVerificationMessage";
 import { colors } from "./config/colors";
+import { ROUTES } from "./constants";
 
-type View = "home" | "account" | "profile" | "permissions" | "manageUsers" | "approveUsers" | "register" | "profileCompletion";
+import type { Route } from "./constants/routes";
 
 export default function App() {
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<Route>("home");
   const [user, setUser] = useState<User | null>(null);
   const [emailCheckTrigger, setEmailCheckTrigger] = useState(0);
   const [logoutSuccess, setLogoutSuccess] = useState(false);
@@ -37,7 +39,7 @@ export default function App() {
       
       // If user logged out, clear state and redirect to login
       if (wasLoggedIn && isNowLoggedOut) {
-        setView("account");
+        setView(ROUTES.ACCOUNT);
         setEmailCheckTrigger(0);
         setLogoutSuccess(true);
       }
@@ -101,7 +103,7 @@ export default function App() {
       const ref = queryRef(dataConnect, "CheckUserProfileExists", {});
       executeQuery(ref)
         .then((result) => {
-          const profileData = result.data?.user;
+          const profileData = (result.data as { user?: { membershipStatus?: string } | null })?.user;
           setProfileExists(profileData !== null && profileData !== undefined);
           // Store membership status for unenabled users so we can show appropriate message
           if (profileData?.membershipStatus) {
@@ -111,7 +113,7 @@ export default function App() {
           }
           hasCheckedRef.current = user.uid; // Mark as checked for this user
         })
-        .catch((err) => {
+        .catch(() => {
           // If query fails, assume profile doesn't exist
           setProfileExists(false);
           setMembershipStatusForUnenabled(null);
@@ -137,10 +139,10 @@ export default function App() {
         <Header 
           user={user} 
           userData={userData} 
-          onAccountClick={() => setView("account")}
-          onProfileClick={() => setView("profile")}
-          onPermissionsClick={() => setView("permissions")}
-          onManageUsersClick={() => setView("manageUsers")}
+          onAccountClick={() => setView(ROUTES.ACCOUNT)}
+          onProfileClick={() => setView(ROUTES.PROFILE)}
+          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
+          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
         />
         <Box
           component="main"
@@ -164,7 +166,7 @@ export default function App() {
                 // Trigger a re-check of email verification status
                 setEmailCheckTrigger(prev => prev + 1);
               }}
-              onBack={() => setView("home")}
+              onBack={() => setView(ROUTES.HOME)}
             />
           </Box>
         </Box>
@@ -180,10 +182,10 @@ export default function App() {
         <Header 
           user={user} 
           userData={userData} 
-          onAccountClick={() => setView("account")}
-          onProfileClick={() => setView("profile")}
-          onPermissionsClick={() => setView("permissions")}
-          onManageUsersClick={() => setView("manageUsers")}
+          onAccountClick={() => setView(ROUTES.ACCOUNT)}
+          onProfileClick={() => setView(ROUTES.PROFILE)}
+          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
+          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
         />
         <Box
           component="main"
@@ -209,7 +211,7 @@ export default function App() {
                   refetch();
                 }
               }}
-              onBack={() => setView("home")}
+              onBack={() => setView(ROUTES.HOME)}
             />
           </Box>
         </Box>
@@ -226,10 +228,10 @@ export default function App() {
         <Header 
           user={user} 
           userData={userData} 
-          onAccountClick={() => setView("account")}
-          onProfileClick={() => setView("profile")}
-          onPermissionsClick={() => setView("permissions")}
-          onManageUsersClick={() => setView("manageUsers")}
+          onAccountClick={() => setView(ROUTES.ACCOUNT)}
+          onProfileClick={() => setView(ROUTES.PROFILE)}
+          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
+          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
         />
         <Box
           component="main"
@@ -282,7 +284,7 @@ export default function App() {
         onProfileClick={() => setView("profile")}
         onPermissionsClick={() => setView("permissions")}
         onManageUsersClick={() => setView("manageUsers")}
-        onApproveUsersClick={() => setView("approveUsers")}
+        onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
       />
       <Box
         component="main"
@@ -303,7 +305,7 @@ export default function App() {
           >
             <AuthGate 
               userData={userData}
-              onBack={() => setView("home")}
+              onBack={() => setView(ROUTES.HOME)}
               onRegisterComplete={() => {
                 // After registration, user will be signed in and need to verify email
                 // The flow will handle this automatically
@@ -314,7 +316,7 @@ export default function App() {
               }}
             />
           </Box>
-        ) : view === "profile" ? (
+        ) : view === ROUTES.PROFILE ? (
           <Box 
             sx={{ 
               maxWidth: { sm: "600px" },
@@ -327,12 +329,12 @@ export default function App() {
                 key={user.uid}
                 userData={userData} 
                 userEmail={user?.email || ""}
-                onBack={() => setView("home")}
+                onBack={() => setView(ROUTES.HOME)}
                 onUpdate={handleProfileUpdate}
               />
             )}
           </Box>
-        ) : view === "permissions" ? (
+        ) : view === ROUTES.PERMISSIONS ? (
           user ? (
             <Permissions onBack={() => setView("home")} />
           ) : (
@@ -352,7 +354,7 @@ export default function App() {
               </Button>
             </Box>
           )
-        ) : view === "manageUsers" ? (
+        ) : view === ROUTES.MANAGE_USERS ? (
           user ? (
             <ManageUsers onBack={() => setView("home")} />
           ) : (
@@ -372,7 +374,7 @@ export default function App() {
               </Button>
             </Box>
           )
-        ) : view === "approveUsers" ? (
+        ) : view === ROUTES.APPROVE_USERS ? (
           user ? (
             <ApproveUsers onBack={() => setView("home")} />
           ) : (

@@ -1,4 +1,4 @@
-import { MembershipStatus } from "../dataconnect-generated";
+import { MembershipStatus } from "../../../dataconnect-generated";
 
 /**
  * Non-restricted membership statuses that users can change between

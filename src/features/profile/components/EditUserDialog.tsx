@@ -18,16 +18,16 @@ import {
   Divider,
   Typography,
 } from "@mui/material";
-import { dataConnect } from "../config/firebase";
-import type { SearchUser } from "../types";
-import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../dataconnect-generated";
-import { colors } from "../config/colors";
-import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
-import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
-import { updateUserDisplayName, updateMembershipStatus } from "../shared/utils/firebaseFunctions";
-import { useAdminClaim } from "../hooks/useAdminClaim";
-import { auth } from "../config/firebase";
-import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
+import { dataConnect } from "../../../config/firebase";
+import type { SearchUser } from "../../../types";
+import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../dataconnect-generated";
+import { colors } from "../../../config/colors";
+import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import { parseDisplayName, validateUserForm } from "../../users/utils/userHelpers";
+import { updateUserDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
+import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { auth } from "../../../config/firebase";
+import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
 
 interface EditUserDialogProps {
   open: boolean;

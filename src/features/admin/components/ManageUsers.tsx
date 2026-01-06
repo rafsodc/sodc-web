@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Box, Typography, CircularProgress, Alert, Snackbar } from "@mui/material";
-import type { SearchUser } from "../types";
-import { colors } from "../config/colors";
-import { useUserSearch } from "../hooks/useUserSearch";
-import { SEARCH_DEBOUNCE_MS } from "../constants";
-import PageHeader from "./PageHeader";
-import SearchBar from "./SearchBar";
-import UsersTable from "./UsersTable";
-import EditUserDialog from "./EditUserDialog";
-import PaginationDisplay from "./PaginationDisplay";
+import type { SearchUser } from "../../../types";
+import { colors } from "../../../config/colors";
+import { useUserSearch } from "../../users/hooks/useUserSearch";
+import { SEARCH_DEBOUNCE_MS } from "../../../constants";
+import PageHeader from "../../../shared/components/PageHeader";
+import SearchBar from "../../../shared/components/SearchBar";
+import UsersTable from "../../users/components/UsersTable";
+import EditUserDialog from "../../profile/components/EditUserDialog";
+import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import "./ManageUsers.css";
 
 interface ManageUsersProps {

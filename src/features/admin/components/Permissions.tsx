@@ -7,17 +7,17 @@ import {
   Tab,
   CircularProgress,
 } from "@mui/material";
-import { listAdminUsers } from "../utils/listAdminUsers";
-import type { AdminUser } from "../types";
-import { grantAdminClaim, revokeAdminClaim } from "../shared/utils/firebaseFunctions";
-import { colors } from "../config/colors";
-import { useUserSearch } from "../hooks/useUserSearch";
-import { ITEMS_PER_PAGE, SEARCH_DEBOUNCE_MS, ERROR_MESSAGE_TIMEOUT } from "../constants";
-import PageHeader from "./PageHeader";
-import SearchBar from "./SearchBar";
-import UsersTable from "./UsersTable";
-import AdminUsersTable from "./AdminUsersTable";
-import PaginationDisplay from "./PaginationDisplay";
+import { listAdminUsers } from "./listAdminUsers";
+import type { AdminUser } from "../../../types";
+import { grantAdminClaim, revokeAdminClaim } from "../../../shared/utils/firebaseFunctions";
+import { colors } from "../../../config/colors";
+import { useUserSearch } from "../../users/hooks/useUserSearch";
+import { ITEMS_PER_PAGE, SEARCH_DEBOUNCE_MS, ERROR_MESSAGE_TIMEOUT } from "../../../constants";
+import PageHeader from "../../../shared/components/PageHeader";
+import SearchBar from "../../../shared/components/SearchBar";
+import UsersTable from "../../users/components/UsersTable";
+import AdminUsersTable from "../../users/components/AdminUsersTable";
+import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import "./Permissions.css";
 
 interface PermissionsProps {

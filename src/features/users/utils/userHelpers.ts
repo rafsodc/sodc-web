@@ -1,5 +1,3 @@
-import type { SearchUser } from "../types";
-
 /**
  * Parses a display name into first and last name
  * Handles both "LastName, FirstName" and "FirstName LastName" formats

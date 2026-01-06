@@ -15,107 +15,92 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import { dataConnect } from "../config/firebase";
-import { colors } from "../config/colors";
-import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
-import type { UserData } from "../types";
-import { updateDisplayName } from "../shared/utils/firebaseFunctions";
-import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
-import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../utils/membershipStatusValidation";
-import { updateMembershipStatus } from "../shared/utils/firebaseFunctions";
-import { auth } from "../config/firebase";
+import { dataConnect } from "../../../config/firebase";
+import { colors } from "../../../config/colors";
+import { executeMutation, mutationRef } from "firebase/data-connect";
+import { MembershipStatus } from "@dataconnect/generated";
+import { validateUserForm } from "../../users/utils/userHelpers";
+import { NON_RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
+import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import { auth } from "../../../config/firebase";
 
-interface ProfileProps {
-  userData: UserData | null;
+interface ProfileCompletionProps {
   userEmail: string;
+  onComplete?: () => void;
   onBack?: () => void;
-  onUpdate?: () => void;
 }
 
-export default function Profile({ userData, userEmail, onBack, onUpdate }: ProfileProps) {
+export default function ProfileCompletion({
+  userEmail,
+  onComplete,
+  onBack,
+}: ProfileCompletionProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(userEmail);
   const [serviceNumber, setServiceNumber] = useState("");
   const [isRegular, setIsRegular] = useState(false);
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
-  const [membershipStatus, setMembershipStatus] = useState<MembershipStatus>(MembershipStatus.PENDING);
+  const [requestedMembershipStatus, setRequestedMembershipStatus] = useState<MembershipStatus>(
+    MembershipStatus.REGULAR
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (userData) {
-      setFirstName(userData.firstName || "");
-      setLastName(userData.lastName || "");
-      setEmail(userData.email || userEmail);
-      setServiceNumber(userData.serviceNumber || "");
-      setIsRegular(userData.isRegular ?? false);
-      setIsReserve(userData.isReserve ?? false);
-      setIsCivilServant(userData.isCivilServant ?? false);
-      setIsIndustry(userData.isIndustry ?? false);
-      setMembershipStatus(userData.membershipStatus || MembershipStatus.PENDING);
-    } else {
-      // New user - populate with email from Firebase Auth
-      setEmail(userEmail);
-      setMembershipStatus(MembershipStatus.PENDING);
-    }
-  }, [userData, userEmail]);
+    setEmail(userEmail);
+  }, [userEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
-    setSubmitting(true);
 
+    const validation = validateUserForm(firstName, lastName, email, serviceNumber);
+    if (!validation.isValid) {
+      setError(validation.error || "Please fill in all required fields");
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const currentUser = auth.currentUser;
       if (!currentUser) {
-        setError("You must be logged in to update your profile");
+        setError("You must be logged in to complete your profile");
         setSubmitting(false);
         return;
       }
 
-      // Update profile fields (excluding membershipStatus)
-      const vars: UpsertUserVariables = {
+      // Use CreateUserProfile mutation which doesn't require enabled claim
+      // Note: This mutation will be available in generated SDK after schema deployment
+      // For now, using mutationRef directly
+      const mutation = mutationRef(dataConnect, "CreateUserProfile", {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
+        requestedMembershipStatus,
         isRegular,
         isReserve,
         isCivilServant,
         isIndustry,
-      };
-      await upsertUser(dataConnect, vars);
+      });
 
-      // Update membership status separately via Firebase Function (validates and enforces rules)
-      // Only call if the status has actually changed
-      const currentStatus = userData?.membershipStatus || null;
-      if (membershipStatus && membershipStatus !== currentStatus) {
-        const statusResult = await updateMembershipStatus(currentUser.uid, membershipStatus);
-        if (!statusResult.success) {
-          setError(statusResult.error || "Failed to update membership status");
-          setSubmitting(false);
-          return;
-        }
+      const result = await executeMutation(mutation);
+
+      if (!result.data) {
+        throw new Error("Failed to save profile");
       }
-      
-      // Update displayName in Firebase Auth
-      const displayName = `${lastName.trim()}, ${firstName.trim()}`.trim();
-      if (displayName) {
-        const displayNameResult = await updateDisplayName(displayName);
-        if (!displayNameResult.success) {
-          // Log error but don't fail the whole operation
-          console.warn("Failed to update display name:", displayNameResult.error);
-        }
-      }
-      
+
       setSuccess(true);
-      if (onUpdate) {
-        onUpdate();
+      if (onComplete) {
+        // Wait a moment to show success message, then call onComplete
+        setTimeout(() => {
+          onComplete();
+        }, 1500);
       }
     } catch (err: any) {
       setError(err?.message ?? "Failed to save profile");
@@ -124,17 +109,36 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
     }
   };
 
+  if (success) {
+    return (
+      <Box sx={{ maxWidth: "600px", mx: "auto" }}>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Profile submitted successfully!
+        </Alert>
+        <Typography variant="body1" sx={{ color: colors.titlePrimary, mb: 2 }}>
+          Your profile has been submitted and is pending admin approval.
+        </Typography>
+        <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
+          An administrator will review your profile and approve your account. You will be notified once your account is activated.
+        </Typography>
+        {onBack && (
+          <Button variant="outlined" onClick={onBack}>
+            Back to Home
+          </Button>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto" }}>
       <Typography variant="h4" gutterBottom sx={{ color: colors.titlePrimary, mb: 3 }}>
-        Profile
+        Complete Your Profile
       </Typography>
 
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Profile updated successfully!
-        </Alert>
-      )}
+      <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
+        Please complete your profile to continue. Your account will be pending admin approval.
+      </Typography>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -169,7 +173,8 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
             onChange={(e) => setEmail(e.target.value)}
             required
             fullWidth
-            disabled={submitting}
+            disabled={true}
+            helperText="Email cannot be changed"
           />
 
           <TextField
@@ -182,38 +187,24 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
           />
 
           <FormControl fullWidth required>
-            <InputLabel>Membership Status</InputLabel>
+            <InputLabel>Desired Membership Status</InputLabel>
             <Select
-              value={membershipStatus}
-              label="Membership Status"
-              onChange={(e) => setMembershipStatus(e.target.value as MembershipStatus)}
-              disabled={submitting || (userData?.membershipStatus && isRestrictedStatus(userData.membershipStatus))}
+              value={requestedMembershipStatus}
+              label="Desired Membership Status"
+              onChange={(e) => setRequestedMembershipStatus(e.target.value as MembershipStatus)}
+              disabled={submitting}
             >
-              {(() => {
-                // If current status is restricted, show only the current status (disabled)
-                // Otherwise, show all non-restricted statuses
-                const currentStatus = userData?.membershipStatus;
-                if (currentStatus && isRestrictedStatus(currentStatus)) {
-                  const currentOption = MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === currentStatus);
-                  return currentOption ? (
-                    <MenuItem key={currentOption.value} value={currentOption.value}>
-                      {currentOption.label}
-                    </MenuItem>
-                  ) : null;
-                }
-                // Show non-restricted options
-                return MEMBERSHIP_STATUS_OPTIONS.filter(option => NON_RESTRICTED_STATUSES.includes(option.value)).map((status) => (
-                  <MenuItem key={status.value} value={status.value}>
-                    {status.label}
-                  </MenuItem>
-                ));
-              })()}
+              {MEMBERSHIP_STATUS_OPTIONS.filter(option => 
+                NON_RESTRICTED_STATUSES.includes(option.value)
+              ).map((status) => (
+                <MenuItem key={status.value} value={status.value}>
+                  {status.label}
+                </MenuItem>
+              ))}
             </Select>
-            {userData?.membershipStatus && isRestrictedStatus(userData.membershipStatus) && (
-              <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
-                Cannot change from restricted status
-              </Typography>
-            )}
+            <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
+              Your account will start as PENDING until an admin approves your requested status.
+            </Typography>
           </FormControl>
 
           <Divider sx={{ my: 2 }} />
@@ -282,7 +273,7 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
                 },
               }}
             >
-              {submitting ? <CircularProgress size={24} /> : "Save Changes"}
+              {submitting ? <CircularProgress size={24} /> : "Submit Profile"}
             </Button>
 
             {onBack && (

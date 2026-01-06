@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { type User } from "firebase/auth";
 import { executeQuery } from "firebase/data-connect";
-import { dataConnect } from "../config/firebase";
+import { dataConnect } from "../../../config/firebase";
 import { getCurrentUserRef } from "@dataconnect/generated";
-import type { UserData } from "../types";
+import type { UserData } from "../../../types";
 
 export function useUserData(firebaseUser: User | null) {
   const [userData, setUserData] = useState<UserData | null>(null);

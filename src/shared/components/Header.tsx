@@ -2,11 +2,11 @@ import { useState } from "react";
 import { AppBar, Avatar, Box, Button, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
 import { Person } from "@mui/icons-material";
 import { signOut, type User } from "firebase/auth";
-import { auth } from "../config/firebase";
-import { colors } from "../config/colors";
-import type { UserData } from "../types";
-import { useAdminClaim } from "../hooks/useAdminClaim";
-import { useEnabledClaim } from "../hooks/useEnabledClaim";
+import { auth } from "../../config/firebase";
+import { colors } from "../../config/colors";
+import type { UserData } from "../../types";
+import { useAdminClaim } from "../../features/users/hooks/useAdminClaim";
+import { useEnabledClaim } from "../../features/users/hooks/useEnabledClaim";
 
 interface HeaderProps {
   user: User | null;

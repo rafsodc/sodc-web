@@ -1,8 +1,7 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { firebaseApp } from "../config/firebase";
-import type { SearchUser, SearchUsersRequest, SearchUsersResponse } from "../types";
-
-import { ITEMS_PER_PAGE } from "../constants";
+import { firebaseApp } from "../../../config/firebase";
+import type { SearchUsersRequest, SearchUsersResponse } from "../../../types";
+import { ITEMS_PER_PAGE } from "../../../constants";
 
 /**
  * Searches for users by email or display name

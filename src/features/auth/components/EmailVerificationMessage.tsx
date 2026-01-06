@@ -8,7 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import { sendEmailVerification, reload, type User } from "firebase/auth";
-import { colors } from "../config/colors";
+import { colors } from "../../../config/colors";
 
 interface EmailVerificationMessageProps {
   user: User;

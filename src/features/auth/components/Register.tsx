@@ -1,7 +1,6 @@
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Alert,
-  Box,
   Button,
   CircularProgress,
   Stack,
@@ -10,8 +9,8 @@ import {
   Link,
 } from "@mui/material";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { auth } from "../config/firebase";
-import { colors } from "../config/colors";
+import { auth } from "../../../config/firebase";
+import { colors } from "../../../config/colors";
 
 interface RegisterProps {
   onSuccess?: () => void;
