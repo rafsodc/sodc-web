@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Edit, CheckCircle } from "@mui/icons-material";
-import { type SearchUser } from "../utils/searchUsers";
+import type { SearchUser } from "../types";
 import { colors } from "../config/colors";
 
 interface UsersTableProps {

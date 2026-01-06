@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { onIdTokenChanged, type User } from "firebase/auth";
-import { auth } from "../config/firebase";
+import { auth } from "../../../config/firebase";
 
 // Global singleton to ensure only one onIdTokenChanged listener exists
 let tokenRefreshSetup: {

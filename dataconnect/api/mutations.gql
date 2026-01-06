@@ -6,6 +6,39 @@
 # - System access: @auth(level: NO_ACCESS)
 # See AUTH_EXPRESSIONS.md for complete documentation and usage.
 
+# Create initial user profile during registration (before enabled claim is set)
+# This allows new users to complete their profile after email verification
+# Users can only create their own profile (id_expr: "auth.uid")
+# NOTE: membershipStatus is set to PENDING by default, requestedMembershipStatus stores user's selection
+mutation CreateUserProfile(
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $requestedMembershipStatus: MembershipStatus!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
+) @auth(level: USER) {
+  user_upsert(
+    data: {
+      id_expr: "auth.uid"
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      requestedMembershipStatus: $requestedMembershipStatus
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
+      # membershipStatus defaults to PENDING
+      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+    }
+  )
+}
+
 # Create or update a user profile based on their auth.uid
 # The "auth.uid" server value ensures that users can only register/update their own profile.
 # This mutation will create the user if they don't exist, or update if they do.

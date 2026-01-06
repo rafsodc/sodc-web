@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Box, Typography, CircularProgress, Alert, Snackbar } from "@mui/material";
-import { type SearchUser } from "../utils/searchUsers";
+import type { SearchUser } from "../types";
 import { colors } from "../config/colors";
 import { useUserSearch } from "../hooks/useUserSearch";
 import { SEARCH_DEBOUNCE_MS } from "../constants";

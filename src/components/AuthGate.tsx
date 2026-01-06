@@ -7,20 +7,28 @@ import {
   Stack,
   TextField,
   Typography,
+  Link,
 } from "@mui/material";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { useEnabledClaim } from "../hooks/useEnabledClaim";
-import { useUserData } from "../hooks/useUserData";
 import AccountStatusMessage from "./AccountStatusMessage";
+import type { UserData } from "../types";
+import Register from "./Register";
+import EmailVerificationMessage from "./EmailVerificationMessage";
+import { colors } from "../config/colors";
 
 interface AuthGateProps {
+  userData?: UserData | null;
   onBack?: () => void;
+  onRegisterComplete?: () => void;
+  onProfileComplete?: () => void;
 }
 
-export default function AuthGate({ onBack }: AuthGateProps) {
+export default function AuthGate({ userData, onBack, onRegisterComplete, onProfileComplete }: AuthGateProps) {
   const [user, setUser] = useState<User | null>(null);
   const [initialising, setInitialising] = useState(true);
+  const [showRegister, setShowRegister] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +36,6 @@ export default function AuthGate({ onBack }: AuthGateProps) {
   const [error, setError] = useState<string | null>(null);
 
   const isEnabled = useEnabledClaim(user);
-  const { userData } = useUserData(user);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -74,6 +81,22 @@ export default function AuthGate({ onBack }: AuthGateProps) {
   }
 
   if (user) {
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return (
+        <EmailVerificationMessage
+          user={user}
+          onVerified={() => {
+            // After verification, check if profile needs completion
+            if (onProfileComplete) {
+              onProfileComplete();
+            }
+          }}
+          onBack={onBack}
+        />
+      );
+    }
+
     // If user is signed in but not enabled, show account status message
     if (!isEnabled) {
       return <AccountStatusMessage userData={userData} onBack={onBack} />;
@@ -101,6 +124,21 @@ export default function AuthGate({ onBack }: AuthGateProps) {
           </Button>
         )}
       </Stack>
+    );
+  }
+
+  if (showRegister) {
+    return (
+      <Register
+        onSuccess={() => {
+          setShowRegister(false);
+          if (onRegisterComplete) {
+            onRegisterComplete();
+          }
+        }}
+        onBack={() => setShowRegister(false)}
+        onSignInClick={() => setShowRegister(false)}
+      />
     );
   }
 
@@ -152,8 +190,16 @@ export default function AuthGate({ onBack }: AuthGateProps) {
         </Button>
       )}
 
-      <Typography variant="body2" sx={{ opacity: 0.75 }}>
-        Tip: create a test user in Firebase Console → Authentication → Users, then sign in here.
+      <Typography variant="body2" sx={{ textAlign: "center", color: colors.titleSecondary, mt: 2 }}>
+        Don't have an account?{" "}
+        <Link
+          component="button"
+          variant="body2"
+          onClick={() => setShowRegister(true)}
+          sx={{ cursor: "pointer" }}
+        >
+          Register
+        </Link>
       </Typography>
     </Stack>
   );

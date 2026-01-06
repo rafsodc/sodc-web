@@ -18,6 +18,7 @@ query GetCurrentUser @auth(expr: "auth.token.enabled == true") {
     email
     serviceNumber
     membershipStatus
+    requestedMembershipStatus
     isRegular
     isReserve
     isCivilServant
@@ -36,6 +37,7 @@ query GetUserById($id: String!) @auth(expr: "auth.token.admin == true && auth.to
     email
     serviceNumber
     membershipStatus
+    requestedMembershipStatus
     isRegular
     isReserve
     isCivilServant
@@ -56,6 +58,7 @@ query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == t
     email
     serviceNumber
     membershipStatus
+    requestedMembershipStatus
     isRegular
     isReserve
     isCivilServant
@@ -129,6 +132,17 @@ query GetUserAccessGroups @auth(expr: "auth.token.enabled == true") {
   }
 }
 
+
+# Check if current user's profile exists and get membership status (for users without enabled claim)
+# Allows users to check if they've completed profile registration and see their status
+query CheckUserProfileExists @auth(level: USER) {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    firstName
+    lastName
+    membershipStatus
+  }
+}
 
 # Get user status for the specified user
 query GetUserMembershipStatus($id: String!) @auth(level: NO_ACCESS) {

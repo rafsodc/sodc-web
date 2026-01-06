@@ -7,9 +7,9 @@ import {
   Tab,
   CircularProgress,
 } from "@mui/material";
-import { listAdminUsers, type AdminUser } from "../utils/listAdminUsers";
-import { grantAdminClaim } from "../utils/grantAdmin";
-import { revokeAdminClaim } from "../utils/revokeAdmin";
+import { listAdminUsers } from "../utils/listAdminUsers";
+import type { AdminUser } from "../types";
+import { grantAdminClaim, revokeAdminClaim } from "../shared/utils/firebaseFunctions";
 import { colors } from "../config/colors";
 import { useUserSearch } from "../hooks/useUserSearch";
 import { ITEMS_PER_PAGE, SEARCH_DEBOUNCE_MS, ERROR_MESSAGE_TIMEOUT } from "../constants";

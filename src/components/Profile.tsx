@@ -18,11 +18,11 @@ import {
 import { dataConnect } from "../config/firebase";
 import { colors } from "../config/colors";
 import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
-import type { UserData } from "../hooks/useUserData";
-import { updateDisplayName } from "../utils/updateDisplayName";
+import type { UserData } from "../types";
+import { updateDisplayName } from "../shared/utils/firebaseFunctions";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../utils/membershipStatusValidation";
-import { updateMembershipStatus } from "../utils/updateMembershipStatus";
+import { updateMembershipStatus } from "../shared/utils/firebaseFunctions";
 import { auth } from "../config/firebase";
 
 interface ProfileProps {

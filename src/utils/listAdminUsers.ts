@@ -1,17 +1,8 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { firebaseApp } from "../config/firebase";
+import type { AdminUser } from "../types";
 
-export interface AdminUser {
-  uid: string;
-  email: string;
-  displayName: string;
-  emailVerified: boolean;
-  disabled: boolean;
-  metadata: {
-    creationTime: string;
-    lastSignInTime: string | null;
-  };
-}
+export type { AdminUser };
 
 interface ListAdminUsersResponse {
   users: AdminUser[];

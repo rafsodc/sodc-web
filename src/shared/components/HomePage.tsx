@@ -1,5 +1,5 @@
 import { Typography } from "@mui/material";
-import { colors } from "../config/colors";
+import { colors } from "../../config/colors";
 
 export default function HomePage() {
   return (

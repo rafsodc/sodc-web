@@ -2,6 +2,12 @@
  * Application-wide constants
  */
 
+// Re-export route constants
+export * from "./routes";
+
+// Re-export auth constants
+export * from "./auth";
+
 // Pagination
 export const ITEMS_PER_PAGE = 25;
 
@@ -16,7 +22,7 @@ export const ERROR_MESSAGE_TIMEOUT = 5000;
 import { MembershipStatus } from "../dataconnect-generated";
 
 // Re-export validation constants
-export { NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
+export { NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../features/users/utils/membershipStatusValidation";
 
 export const MEMBERSHIP_STATUS_OPTIONS = [
   { value: MembershipStatus.PENDING, label: "Pending" },

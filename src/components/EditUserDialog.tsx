@@ -19,16 +19,15 @@ import {
   Typography,
 } from "@mui/material";
 import { dataConnect } from "../config/firebase";
-import { type SearchUser } from "../utils/searchUsers";
+import type { SearchUser } from "../types";
 import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../dataconnect-generated";
 import { colors } from "../config/colors";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
 import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
-import { updateUserDisplayName } from "../utils/updateUserDisplayName";
+import { updateUserDisplayName, updateMembershipStatus } from "../shared/utils/firebaseFunctions";
 import { useAdminClaim } from "../hooks/useAdminClaim";
 import { auth } from "../config/firebase";
 import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
-import { updateMembershipStatus } from "../utils/updateMembershipStatus";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -57,6 +56,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
+  const [requestedMembershipStatus, setRequestedMembershipStatus] = useState<MembershipStatus | null>(null);
 
   // Load user data when dialog opens
   useEffect(() => {
@@ -85,6 +85,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         const status = fullUser.membershipStatus || MembershipStatus.PENDING;
         setMembershipStatus(status);
         setCurrentStatus(status);
+        setRequestedMembershipStatus(fullUser.requestedMembershipStatus || null);
         setIsRegular(fullUser.isRegular ?? false);
         setIsReserve(fullUser.isReserve ?? false);
         setIsCivilServant(fullUser.isCivilServant ?? false);
@@ -98,6 +99,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         setServiceNumber("");
         setMembershipStatus(MembershipStatus.PENDING);
         setCurrentStatus(MembershipStatus.PENDING);
+        setRequestedMembershipStatus(null);
         setIsRegular(false);
         setIsReserve(false);
         setIsCivilServant(false);
@@ -298,6 +300,11 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                     ));
                   })()}
                 </Select>
+                {currentStatus === MembershipStatus.PENDING && requestedMembershipStatus && (
+                  <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
+                    User requested: {MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === requestedMembershipStatus)?.label || requestedMembershipStatus}
+                  </Typography>
+                )}
               </FormControl>
 
               <Divider sx={{ my: 2 }} />

@@ -1,36 +1,6 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { firebaseApp } from "../config/firebase";
-
-export interface SearchUser {
-  uid: string;
-  email: string;
-  displayName: string;
-  emailVerified: boolean;
-  disabled: boolean;
-  metadata: {
-    creationTime: string;
-    lastSignInTime: string | null;
-  };
-  customClaims: {
-    admin?: boolean;
-    enabled?: boolean;
-    [key: string]: any;
-  };
-}
-
-interface SearchUsersRequest {
-  searchTerm: string;
-  page?: number;
-  pageSize?: number;
-}
-
-interface SearchUsersResponse {
-  users: SearchUser[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
+import type { SearchUser, SearchUsersRequest, SearchUsersResponse } from "../types";
 
 import { ITEMS_PER_PAGE } from "../constants";
 

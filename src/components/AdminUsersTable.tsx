@@ -11,7 +11,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { CheckCircle } from "@mui/icons-material";
-import { type AdminUser } from "../utils/listAdminUsers";
+import type { AdminUser } from "../types";
 
 interface AdminUsersTableProps {
   users: AdminUser[];
