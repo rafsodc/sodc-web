@@ -18,11 +18,11 @@ import { executeQuery } from "firebase/data-connect";
 import { dataConnect } from "../config/firebase";
 import { listUsersRef } from "@dataconnect/generated";
 import { colors } from "../config/colors";
-import PageHeader from "./PageHeader";
+import PageHeader from "../shared/components/PageHeader";
 import EditUserDialog from "./EditUserDialog";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
 import { MembershipStatus } from "@dataconnect/generated";
-import type { SearchUser, UserData, PendingUser } from "../types";
+import type { SearchUser, PendingUser } from "../types";
 import { updateMembershipStatus } from "../shared/utils/firebaseFunctions";
 import { Snackbar } from "@mui/material";
 import "./ApproveUsers.css";
@@ -47,9 +47,6 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
     try {
       const ref = listUsersRef(dataConnect);
       const result = await executeQuery(ref);
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to fetch users");
-      }
       // Filter for users with PENDING status
       const pending = (result.data?.users || []).filter(
         (user) => user.membershipStatus === MembershipStatus.PENDING

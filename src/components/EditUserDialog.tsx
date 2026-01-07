@@ -25,9 +25,9 @@ import { colors } from "../config/colors";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
 import { parseDisplayName, validateUserForm } from "../utils/userHelpers";
 import { updateUserDisplayName, updateMembershipStatus } from "../shared/utils/firebaseFunctions";
-import { useAdminClaim } from "../hooks/useAdminClaim";
+import { useAdminClaim } from "../features/users/hooks/useAdminClaim";
 import { auth } from "../config/firebase";
-import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../utils/membershipStatusValidation";
+import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../features/users/utils/membershipStatusValidation";
 
 interface EditUserDialogProps {
   open: boolean;

@@ -11,13 +11,13 @@ import { listAdminUsers } from "../utils/listAdminUsers";
 import type { AdminUser } from "../types";
 import { grantAdminClaim, revokeAdminClaim } from "../shared/utils/firebaseFunctions";
 import { colors } from "../config/colors";
-import { useUserSearch } from "../hooks/useUserSearch";
+import { useUserSearch } from "../features/users/hooks/useUserSearch";
 import { ITEMS_PER_PAGE, SEARCH_DEBOUNCE_MS, ERROR_MESSAGE_TIMEOUT } from "../constants";
-import PageHeader from "./PageHeader";
-import SearchBar from "./SearchBar";
+import PageHeader from "../shared/components/PageHeader";
+import SearchBar from "../shared/components/SearchBar";
 import UsersTable from "./UsersTable";
 import AdminUsersTable from "./AdminUsersTable";
-import PaginationDisplay from "./PaginationDisplay";
+import PaginationDisplay from "../shared/components/PaginationDisplay";
 import "./Permissions.css";
 
 interface PermissionsProps {
@@ -115,7 +115,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const adminStartIndex = (adminPage - 1) * ITEMS_PER_PAGE;
   const paginatedAdminUsers = filteredAdminUsers.slice(adminStartIndex, adminStartIndex + ITEMS_PER_PAGE);
 
-  const handleSearchPageChange = (newPage: number) => {
+  const handleSearchPageChange = (newPage: number): void => {
     setSearchPage(newPage);
   };
 

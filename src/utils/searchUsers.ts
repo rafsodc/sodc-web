@@ -1,6 +1,6 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { firebaseApp } from "../config/firebase";
-import type { SearchUser, SearchUsersRequest, SearchUsersResponse } from "../types";
+import type { SearchUsersRequest, SearchUsersResponse } from "../types";
 
 import { ITEMS_PER_PAGE } from "../constants";
 

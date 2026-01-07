@@ -91,8 +91,24 @@ describe('useUserSearch', () => {
 
   it.skip('should handle successful search results', async () => {
     const mockUsers = [
-      { uid: '1', email: 'user1@example.com', displayName: 'User 1' },
-      { uid: '2', email: 'user2@example.com', displayName: 'User 2' },
+      { 
+        uid: '1', 
+        email: 'user1@example.com', 
+        displayName: 'User 1',
+        emailVerified: true,
+        disabled: false,
+        metadata: { creationTime: '2024-01-01T00:00:00Z', lastSignInTime: null },
+        customClaims: {}
+      },
+      { 
+        uid: '2', 
+        email: 'user2@example.com', 
+        displayName: 'User 2',
+        emailVerified: true,
+        disabled: false,
+        metadata: { creationTime: '2024-01-01T00:00:00Z', lastSignInTime: null },
+        customClaims: {}
+      },
     ];
 
     vi.mocked(searchUsers.searchUsers).mockResolvedValue({

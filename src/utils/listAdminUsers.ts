@@ -18,7 +18,7 @@ export async function listAdminUsers(): Promise<{ success: boolean; users?: Admi
     const listAdminUsersCallable = httpsCallable<ListAdminUsersResponse>(functions, "listAdminUsers");
     
     const result = await listAdminUsersCallable();
-    return { success: true, users: result.data.users };
+    return { success: true, users: (result.data as ListAdminUsersResponse).users };
   } catch (error: any) {
     return { 
       success: false, 
