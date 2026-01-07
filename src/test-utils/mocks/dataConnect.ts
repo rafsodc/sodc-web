@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import type { UserData } from '../../types';
+import { MembershipStatus } from '@dataconnect/generated';
 
 /**
  * Data Connect mocks
@@ -11,7 +12,7 @@ export const createMockUserData = (overrides?: Partial<UserData>): UserData => {
     lastName: 'Doe',
     email: 'john.doe@example.com',
     serviceNumber: 'SN123456',
-    membershipStatus: 'REGULAR',
+    membershipStatus: MembershipStatus.REGULAR,
     requestedMembershipStatus: null,
     isRegular: true,
     isReserve: false,

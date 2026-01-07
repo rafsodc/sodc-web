@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AUTH_EXPRESSIONS } from '../auth';
+import { AUTH_EXPRESSIONS, type AuthExpression } from '../auth';
 
 describe('auth constants', () => {
   it('should export USER_ACCESS expression', () => {

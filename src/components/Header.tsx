@@ -5,8 +5,8 @@ import { signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { colors } from "../config/colors";
 import type { UserData } from "../types";
-import { useAdminClaim } from "../hooks/useAdminClaim";
-import { useEnabledClaim } from "../hooks/useEnabledClaim";
+import { useAdminClaim } from "../features/users/hooks/useAdminClaim";
+import { useEnabledClaim } from "../features/users/hooks/useEnabledClaim";
 
 interface HeaderProps {
   user: User | null;

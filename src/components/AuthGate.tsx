@@ -11,11 +11,11 @@ import {
 } from "@mui/material";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
-import { useEnabledClaim } from "../hooks/useEnabledClaim";
+import { useEnabledClaim } from "../features/users/hooks/useEnabledClaim";
 import AccountStatusMessage from "./AccountStatusMessage";
 import type { UserData } from "../types";
-import Register from "./Register";
-import EmailVerificationMessage from "./EmailVerificationMessage";
+import Register from "../features/auth/components/Register";
+import EmailVerificationMessage from "../features/auth/components/EmailVerificationMessage";
 import { colors } from "../config/colors";
 
 interface AuthGateProps {
@@ -99,7 +99,7 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
 
     // If user is signed in but not enabled, show account status message
     if (!isEnabled) {
-      return <AccountStatusMessage userData={userData} onBack={onBack} />;
+      return <AccountStatusMessage userData={userData ?? null} onBack={onBack} />;
     }
 
     // User is signed in and enabled

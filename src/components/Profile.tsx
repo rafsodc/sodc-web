@@ -21,7 +21,7 @@ import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@datacon
 import type { UserData } from "../types";
 import { updateDisplayName } from "../shared/utils/firebaseFunctions";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
-import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../utils/membershipStatusValidation";
+import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../features/users/utils/membershipStatusValidation";
 import { updateMembershipStatus } from "../shared/utils/firebaseFunctions";
 import { auth } from "../config/firebase";
 
