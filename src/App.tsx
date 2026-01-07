@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { Box, Button, CssBaseline, Typography, Snackbar, Alert } from "@mui/material";
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
+import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, dataConnect } from "./config/firebase";
 import { reload } from "firebase/auth";
@@ -7,20 +7,29 @@ import { queryRef, executeQuery } from "firebase/data-connect";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
-import AuthGate from "./features/auth/components/AuthGate";
 import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
-import Profile from "./features/profile/components/Profile";
-import Permissions from "./features/admin/components/Permissions";
-import ManageUsers from "./features/admin/components/ManageUsers";
-import ApproveUsers from "./features/admin/components/ApproveUsers";
-import AccountStatusMessage from "./features/users/components/AccountStatusMessage";
-import ProfileCompletion from "./features/auth/components/ProfileCompletion";
-import EmailVerificationMessage from "./features/auth/components/EmailVerificationMessage";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 
 import type { Route } from "./constants/routes";
+
+// Lazy load route components for code splitting
+const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
+const Profile = lazy(() => import("./features/profile/components/Profile"));
+const Permissions = lazy(() => import("./features/admin/components/Permissions"));
+const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
+const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
+const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
+const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
+const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "200px" }}>
+    <CircularProgress />
+  </Box>
+);
 
 export default function App() {
   const [view, setView] = useState<Route>("home");
@@ -160,14 +169,16 @@ export default function App() {
               px: { xs: 3, sm: 4 },
             }}
           >
-            <EmailVerificationMessage
-              user={user}
-              onVerified={async () => {
-                // Trigger a re-check of email verification status
-                setEmailCheckTrigger(prev => prev + 1);
-              }}
-              onBack={() => setView(ROUTES.HOME)}
-            />
+            <Suspense fallback={<LoadingFallback />}>
+              <EmailVerificationMessage
+                user={user}
+                onVerified={async () => {
+                  // Trigger a re-check of email verification status
+                  setEmailCheckTrigger(prev => prev + 1);
+                }}
+                onBack={() => setView(ROUTES.HOME)}
+              />
+            </Suspense>
           </Box>
         </Box>
       </Box>
@@ -203,16 +214,18 @@ export default function App() {
               px: { xs: 3, sm: 4 },
             }}
           >
-            <ProfileCompletion
-              userEmail={user?.email || ""}
-              onComplete={() => {
-                // Refetch user data after profile completion
-                if (refetch) {
-                  refetch();
-                }
-              }}
-              onBack={() => setView(ROUTES.HOME)}
-            />
+            <Suspense fallback={<LoadingFallback />}>
+              <ProfileCompletion
+                userEmail={user?.email || ""}
+                onComplete={() => {
+                  // Refetch user data after profile completion
+                  if (refetch) {
+                    refetch();
+                  }
+                }}
+                onBack={() => setView(ROUTES.HOME)}
+              />
+            </Suspense>
           </Box>
         </Box>
       </Box>
@@ -242,18 +255,20 @@ export default function App() {
             pb: 4,
           }}
         >
-          <AccountStatusMessage 
-          userData={userData || (membershipStatusForUnenabled ? {
-            id: user.uid,
-            firstName: "",
-            lastName: "",
-            email: user.email || "",
-            serviceNumber: "",
-            membershipStatus: membershipStatusForUnenabled as UserData["membershipStatus"],
-            createdAt: "",
-            updatedAt: "",
-          } : null)} 
-        />
+          <Suspense fallback={<LoadingFallback />}>
+            <AccountStatusMessage 
+              userData={userData || (membershipStatusForUnenabled ? {
+                id: user.uid,
+                firstName: "",
+                lastName: "",
+                email: user.email || "",
+                serviceNumber: "",
+                membershipStatus: membershipStatusForUnenabled as UserData["membershipStatus"],
+                createdAt: "",
+                updatedAt: "",
+              } : null)} 
+            />
+          </Suspense>
         </Box>
       </Box>
     );
@@ -303,18 +318,20 @@ export default function App() {
               px: { xs: 3, sm: 4 },
             }}
           >
-            <AuthGate 
-              userData={userData}
-              onBack={() => setView(ROUTES.HOME)}
-              onRegisterComplete={() => {
-                // After registration, user will be signed in and need to verify email
-                // The flow will handle this automatically
-              }}
-              onProfileComplete={() => {
-                // After email verification, check if profile needs completion
-                // This is handled by the needsProfileCompletion check above
-              }}
-            />
+            <Suspense fallback={<LoadingFallback />}>
+              <AuthGate 
+                userData={userData}
+                onBack={() => setView(ROUTES.HOME)}
+                onRegisterComplete={() => {
+                  // After registration, user will be signed in and need to verify email
+                  // The flow will handle this automatically
+                }}
+                onProfileComplete={() => {
+                  // After email verification, check if profile needs completion
+                  // This is handled by the needsProfileCompletion check above
+                }}
+              />
+            </Suspense>
           </Box>
         ) : view === ROUTES.PROFILE ? (
           <Box 
@@ -325,18 +342,22 @@ export default function App() {
             }}
           >
             {user && (
-              <Profile 
-                key={user.uid}
-                userData={userData} 
-                userEmail={user?.email || ""}
-                onBack={() => setView(ROUTES.HOME)}
-                onUpdate={handleProfileUpdate}
-              />
+              <Suspense fallback={<LoadingFallback />}>
+                <Profile 
+                  key={user.uid}
+                  userData={userData} 
+                  userEmail={user?.email || ""}
+                  onBack={() => setView(ROUTES.HOME)}
+                  onUpdate={handleProfileUpdate}
+                />
+              </Suspense>
             )}
           </Box>
         ) : view === ROUTES.PERMISSIONS ? (
           user ? (
-            <Permissions onBack={() => setView("home")} />
+            <Suspense fallback={<LoadingFallback />}>
+              <Permissions onBack={() => setView("home")} />
+            </Suspense>
           ) : (
             <Box 
               sx={{ 
@@ -356,7 +377,9 @@ export default function App() {
           )
         ) : view === ROUTES.MANAGE_USERS ? (
           user ? (
-            <ManageUsers onBack={() => setView("home")} />
+            <Suspense fallback={<LoadingFallback />}>
+              <ManageUsers onBack={() => setView("home")} />
+            </Suspense>
           ) : (
             <Box 
               sx={{ 
@@ -376,7 +399,9 @@ export default function App() {
           )
         ) : view === ROUTES.APPROVE_USERS ? (
           user ? (
-            <ApproveUsers onBack={() => setView("home")} />
+            <Suspense fallback={<LoadingFallback />}>
+              <ApproveUsers onBack={() => setView("home")} />
+            </Suspense>
           ) : (
             <Box 
               sx={{ 
