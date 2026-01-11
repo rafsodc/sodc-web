@@ -71,3 +71,20 @@ export default defineConfig([
   },
 ])
 ```
+
+## Dev-only reset helper (emulator)
+
+When running the Firebase emulators you can wipe auth users, soft-reset DataConnect user rows, and seed a verified/enabled admin account.
+
+- Callable: `devResetAndSeed`
+- Payload: `{ email: "<desired-admin-email>" }`
+- Password: `password`
+- Guard:
+  - `ENV_NAME` must be `dev` or `stage` (fails otherwise).
+  - Active `projectId` (from `FIREBASE_CONFIG`/`GCLOUD_PROJECT`) must be in `PERMITTED_PROJECT_IDS` (comma-separated). If not, it fails and instructs you to add it.
+
+Example (with emulators running):
+```sh
+firebase functions:shell
+firebase > devResetAndSeed({ email: "admin@example.com" })
+```

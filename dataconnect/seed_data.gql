@@ -1,4 +1,18 @@
 # SODC Seed Data
-# Add seed data for development/testing here
-# Note: User data should typically be created through the UpsertUser mutation
-# rather than seed data, as users are keyed by Firebase Auth UID
+#
+# This file is reserved for seed data used in development and testing environments.
+#
+# Usage Guidelines:
+# - Seed data is typically used for non-user entities (sections, access groups, etc.)
+# - User data should be created through mutations (UpsertUser, CreateUserProfile) rather than seed data,
+#   as users are keyed by Firebase Auth UID which cannot be set in seed data
+# - Seed data is executed when deploying DataConnect schema
+#
+# Example seed data structure:
+#   mutation {
+#     section_insert(data: { name: "Example Section", type: MEMBERS, description: "Example" }) {
+#       id
+#     }
+#   }
+#
+# Note: Currently no seed data is defined. Add seed data here as needed for development/testing.

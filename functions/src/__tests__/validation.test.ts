@@ -4,7 +4,6 @@ import {
   canUserChangeStatus,
   NON_RESTRICTED_STATUSES,
   RESTRICTED_STATUSES,
-  type MembershipStatus,
 } from '../validation';
 
 describe('validation', () => {

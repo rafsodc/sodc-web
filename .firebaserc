@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "sodc-web"
-  }
+    "dev": "sodc-web",
+    "prod": "sodc-web-production"
+  },
+  "targets": {},
+  "etags": {}
 }

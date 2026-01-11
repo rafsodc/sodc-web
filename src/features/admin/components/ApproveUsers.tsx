@@ -97,6 +97,10 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
     fetchPendingUsers();
   };
 
+  const handleEditSuccess = (message: string) => {
+    setSuccessMessage(message);
+  };
+
   const handleAccept = async (user: PendingUser) => {
     if (!user.requestedMembershipStatus) {
       setErrorMessage("User has not specified a requested membership status");
@@ -208,6 +212,7 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
         user={viewingUser}
         onClose={handleCloseView}
         onSave={handleSave}
+        onSuccess={handleEditSuccess}
       />
 
       <Snackbar

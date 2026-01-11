@@ -1,17 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '../../../test-utils';
 import { userEvent } from '@testing-library/user-event';
 import SearchBar from '../SearchBar';
 
 describe('SearchBar', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('should render search input', () => {
     const onChange = vi.fn();
     render(<SearchBar value="" onChange={onChange} />);
