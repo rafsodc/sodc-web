@@ -1,8 +1,9 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { requireAuth } from "./helpers";
+import { requireAuth, handleFunctionError } from "./helpers";
 import { canUserChangeStatus, isNonRestrictedStatus, type MembershipStatus } from "./validation";
+import { FUNCTIONS_REGION } from "./constants";
 import { 
   updateUserMembershipStatus, 
   getUserMembershipStatus,
@@ -15,7 +16,7 @@ import {
  * Users can only update their own status unless they are an admin.
  */
 export const updateMembershipStatus = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAuth(request);
 
@@ -61,11 +62,7 @@ export const updateMembershipStatus = onCall(
     logger.info(`Membership status updated: userId=${userId}, current=${currentStatus || "unknown"}, new=${newStatus}, admin=${isAdmin}`);
     return { success: true, message: "Membership status updated successfully" };
   } catch (e: any) {
-    if (e instanceof HttpsError) {
-      throw e;
-    }
-    logger.error("Error updating membership status:", e);
-    throw new HttpsError("internal", e?.message ?? "Error updating membership status");
+    handleFunctionError(e, "updating membership status");
   }
   }
 );

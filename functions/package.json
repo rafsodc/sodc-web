@@ -11,7 +11,7 @@
     "logs": "firebase functions:log",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev-reset": "npm run build && node lib/cli-dev-reset.js"
+    "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js"
   },
   "engines": {
     "node": "24"

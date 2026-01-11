@@ -1,16 +1,17 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { requireAdmin, requireString, getAdminUsers, mapUserRecord } from "./helpers";
+import { requireAdmin, requireString, getAdminUsers, mapUserRecord, handleFunctionError } from "./helpers";
 import { getUserMembershipStatus } from "@dataconnect/admin-generated";
 import { isRestrictedStatus, type MembershipStatus } from "./validation";
+import { FUNCTIONS_REGION } from "./constants";
 
 /**
  * Grants admin claim to a user
  * Ensures the user does not have a restricted membership status
  */
 export const grantAdmin = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
   const uid = requireString(request.data.uid, "uid");
@@ -42,11 +43,7 @@ export const grantAdmin = onCall(
     logger.info(`Admin claim set for uid=${uid} by caller=${request.auth!.uid}`);
     return { success: true, message: `Admin claim set for uid=${uid}` };
   } catch (e: any) {
-    if (e instanceof HttpsError) {
-      throw e;
-    }
-    logger.error("Error setting custom claim:", e);
-    throw new HttpsError("internal", e?.message ?? "Error setting custom claim");
+    handleFunctionError(e, "setting custom claim");
   }
   }
 );
@@ -55,7 +52,7 @@ export const grantAdmin = onCall(
  * Revokes admin claim from a user, ensuring at least one admin remains
  */
 export const revokeAdmin = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
   const uid = requireString(request.data.uid, "uid");
@@ -77,11 +74,7 @@ export const revokeAdmin = onCall(
     logger.info(`Admin claim removed for uid=${uid} by caller=${request.auth!.uid}`);
     return { success: true, message: `Admin claim removed for uid=${uid}` };
   } catch (e: any) {
-    if (e instanceof HttpsError) {
-      throw e;
-    }
-    logger.error("Error removing custom claim:", e);
-    throw new HttpsError("internal", e?.message ?? "Error removing custom claim");
+    handleFunctionError(e, "removing custom claim");
   }
   }
 );
@@ -90,7 +83,7 @@ export const revokeAdmin = onCall(
  * Lists all users with admin claim
  */
 export const listAdminUsers = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
 
@@ -100,8 +93,7 @@ export const listAdminUsers = onCall(
     logger.info(`Found ${mappedUsers.length} admin users for caller ${request.auth!.uid}`);
     return { users: mappedUsers };
   } catch (e: any) {
-    logger.error("Error listing admin users:", e);
-    throw new HttpsError("internal", e?.message ?? "Error listing admin users");
+    handleFunctionError(e, "listing admin users");
   }
   }
 );

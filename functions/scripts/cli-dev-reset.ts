@@ -37,7 +37,7 @@
  * Usage:
  *   npm run dev-reset -- admin@example.com
  *   or
- *   node lib/cli-dev-reset.js admin@example.com
+ *   node lib/scripts/cli-dev-reset.js admin@example.com
  */
 
 import * as admin from "firebase-admin";
@@ -48,7 +48,7 @@ import {
   createUser,
   MembershipStatus,
 } from "@dataconnect/admin-generated";
-import { getAllowedProjectIds, getProductionProjectIds, getDefaultProjectId } from "./config";
+import { getAllowedProjectIds, getProductionProjectIds, getDefaultProjectId } from "../src/config";
 
 const DEFAULT_PASSWORD = "password";
 
@@ -350,7 +350,6 @@ async function main() {
     } else {
       console.error(error);
     }
-    
     process.exit(1);
   }
 }

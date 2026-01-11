@@ -1,0 +1,106 @@
+# SODC User Mutations
+#
+# Mutations related to user profiles and user management.
+# These mutations are accessible from the frontend/client SDK and require user authentication.
+#
+# Auth Expression Constants:
+# - User access: "auth.token.enabled == true"
+# - Admin access: "auth.token.admin == true && auth.token.enabled == true"
+# - Basic auth: @auth(level: USER)
+# See AUTH_EXPRESSIONS.md for complete documentation and usage.
+
+# Create initial user profile during registration (before enabled claim is set)
+# This allows new users to complete their profile after email verification
+# Users can only create their own profile (id_expr: "auth.uid")
+# NOTE: membershipStatus is set to PENDING by default, requestedMembershipStatus stores user's selection
+mutation CreateUserProfile(
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $requestedMembershipStatus: MembershipStatus!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
+) @auth(level: USER) {
+  user_upsert(
+    data: {
+      id_expr: "auth.uid"
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      requestedMembershipStatus: $requestedMembershipStatus
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
+      # membershipStatus defaults to PENDING
+      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+    }
+  )
+}
+
+# Create or update a user profile based on their auth.uid
+# The "auth.uid" server value ensures that users can only register/update their own profile.
+# This mutation will create the user if they don't exist, or update if they do.
+# NOTE: membershipStatus is NOT included here - it must be updated via UpdateMembershipStatus mutation
+# which validates the transition server-side to prevent bypassing restrictions.
+# Requires enabled claim (admins must also be enabled)
+mutation UpsertUser(
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
+) @auth(expr: "auth.token.enabled == true") {
+  user_upsert(
+    data: {
+      id_expr: "auth.uid"
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
+      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+    }
+  )
+}
+
+# Update a user profile (admin only - can update any user)
+# NOTE: membershipStatus is NOT included here - it must be updated via updateMembershipStatus Firebase Function
+# which validates the transition server-side to prevent bypassing restrictions.
+# Admins must also be enabled
+mutation UpdateUser(
+  $userId: String!
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  user_upsert(
+    data: {
+      id: $userId
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
+      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+    }
+  )
+}

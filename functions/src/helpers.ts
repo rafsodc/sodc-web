@@ -1,6 +1,7 @@
 import { HttpsError } from "firebase-functions/v2/https";
 import type { CallableRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import * as logger from "firebase-functions/logger";
 
 /**
  * Ensures the request is authenticated
@@ -58,5 +59,21 @@ export async function getAdminUsers(): Promise<admin.auth.UserRecord[]> {
     const customClaims = userRecord.customClaims || {};
     return customClaims.admin === true;
   });
+}
+
+/**
+ * Standardized error handling for Cloud Functions
+ * Re-throws HttpsError instances, logs other errors, and wraps them in HttpsError
+ * 
+ * @param error - The error that was caught
+ * @param context - Description of the operation that failed (e.g., "setting custom claim")
+ * @throws HttpsError - Always throws an HttpsError
+ */
+export function handleFunctionError(error: any, context: string): never {
+  if (error instanceof HttpsError) {
+    throw error;
+  }
+  logger.error(`Error ${context}:`, error);
+  throw new HttpsError("internal", error?.message ?? `Error ${context}`);
 }
 

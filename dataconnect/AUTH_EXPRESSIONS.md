@@ -5,10 +5,21 @@ This file documents all auth expressions used in queries and mutations. Use thes
 ## File Organization
 
 - **`queries.gql`** - All queries (user-facing and admin)
-- **`mutations.gql`** - User-facing mutations (require user authentication)
+- **`user-mutations.gql`** - User profile mutations (require user authentication)
+- **`access-control-mutations.gql`** - Section and access group mutations (admin only)
 - **`admin-mutations.gql`** - SDK-only mutations (NO_ACCESS, used by Firebase Functions/CLI)
+- **`mutations.gql`** - Legacy file (deprecated, kept for backward compatibility)
 
 ## Auth Expression Constants
+
+### Basic User Access (Any Authenticated User)
+**Expression:** `@auth(level: USER)`
+
+**Usage:** Any authenticated user can access these operations. Used for initial profile creation before the `enabled` claim is set.
+
+**Used in:**
+- `CheckUserProfileExists` query
+- `CreateUserProfile` mutation
 
 ### User Access (Enabled Required)
 **Expression:** `"auth.token.enabled == true"`
@@ -48,7 +59,7 @@ This file documents all auth expressions used in queries and mutations. Use thes
 - `GetUserMembershipStatus` query (queries.gql)
 - `UpdateUserMembershipStatus` mutation (admin-mutations.gql)
 - `DeleteUser` mutation (admin-mutations.gql)
-- `CreateOrUpdateUser` mutation (admin-mutations.gql)
+- `CreateUser` mutation (admin-mutations.gql)
 
 ## Notes
 

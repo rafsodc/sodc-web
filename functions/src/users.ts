@@ -1,13 +1,14 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { requireAuth, requireAdmin, requireString, mapUserRecord } from "./helpers";
+import { requireAuth, requireAdmin, requireString, mapUserRecord, handleFunctionError } from "./helpers";
+import { FUNCTIONS_REGION } from "./constants";
 
 /**
  * Updates the display name of the authenticated user
  */
 export const updateDisplayName = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAuth(request);
   const displayName = requireString(request.data.displayName, "displayName");
@@ -17,8 +18,7 @@ export const updateDisplayName = onCall(
     logger.info(`Display name updated for uid=${request.auth!.uid}`);
     return { success: true };
   } catch (e: any) {
-    logger.error("Error updating display name:", e);
-    throw new HttpsError("internal", e?.message ?? "Error updating display name");
+    handleFunctionError(e, "updating display name");
   }
   }
 );
@@ -27,7 +27,7 @@ export const updateDisplayName = onCall(
  * Updates the display name of any user (admin only)
  */
 export const updateUserDisplayName = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
   const userId = requireString(request.data.userId, "userId");
@@ -38,8 +38,7 @@ export const updateUserDisplayName = onCall(
     logger.info(`Display name updated for uid=${userId} by admin ${request.auth!.uid}`);
     return { success: true };
   } catch (e: any) {
-    logger.error("Error updating user display name:", e);
-    throw new HttpsError("internal", e?.message ?? "Error updating user display name");
+    handleFunctionError(e, "updating user display name");
   }
   }
 );
@@ -48,7 +47,7 @@ export const updateUserDisplayName = onCall(
  * Searches for users by email or display name with pagination (admin only)
  */
 export const searchUsers = onCall(
-  { region: "europe-west2" },
+  { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
   const searchTerm = requireString(request.data.searchTerm, "searchTerm");
@@ -85,8 +84,7 @@ export const searchUsers = onCall(
       totalPages: totalPages,
     };
   } catch (e: any) {
-    logger.error("Error searching users:", e);
-    throw new HttpsError("internal", e?.message ?? "Error searching users");
+    handleFunctionError(e, "searching users");
   }
   }
 );
