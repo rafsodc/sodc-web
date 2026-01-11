@@ -2,6 +2,12 @@
 
 This file documents all auth expressions used in queries and mutations. Use these exact strings to ensure consistency and avoid typing errors.
 
+## File Organization
+
+- **`queries.gql`** - All queries (user-facing and admin)
+- **`mutations.gql`** - User-facing mutations (require user authentication)
+- **`admin-mutations.gql`** - SDK-only mutations (NO_ACCESS, used by Firebase Functions/CLI)
+
 ## Auth Expression Constants
 
 ### User Access (Enabled Required)
@@ -39,8 +45,10 @@ This file documents all auth expressions used in queries and mutations. Use thes
 **Usage:** Operations used by Firebase Functions with service account credentials. No user authentication required.
 
 **Used in:**
-- `GetUserMembershipStatus` query
-- `UpdateUserMembershipStatus` mutation
+- `GetUserMembershipStatus` query (queries.gql)
+- `UpdateUserMembershipStatus` mutation (admin-mutations.gql)
+- `DeleteUser` mutation (admin-mutations.gql)
+- `CreateOrUpdateUser` mutation (admin-mutations.gql)
 
 ## Notes
 

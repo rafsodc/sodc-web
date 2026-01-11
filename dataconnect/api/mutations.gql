@@ -1,9 +1,11 @@
-# SODC User Mutations
+# SODC User-Facing Mutations
+#
+# These mutations are accessible from the frontend/client SDK and require user authentication.
+# For SDK-only mutations (used by Firebase Functions/CLI), see admin-mutations.gql
 #
 # Auth Expression Constants:
 # - User access: "auth.token.enabled == true"
 # - Admin access: "auth.token.admin == true && auth.token.enabled == true"
-# - System access: @auth(level: NO_ACCESS)
 # See AUTH_EXPRESSIONS.md for complete documentation and usage.
 
 # Create initial user profile during registration (before enabled claim is set)
@@ -182,12 +184,5 @@ mutation RevokeAccessGroupFromSection(
       sectionId: $sectionId
       accessGroupId: $accessGroupId
     }
-  )
-}
-
-mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: MembershipStatus!) @auth(level: NO_ACCESS) {
-  user_update(
-    id: $userId
-    data: { membershipStatus: $membershipStatus }
   )
 }

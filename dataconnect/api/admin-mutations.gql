@@ -1,0 +1,88 @@
+# SODC Admin SDK Mutations
+#
+# These mutations are SDK-only and use @auth(level: NO_ACCESS).
+# They can only be called from Firebase Functions or CLI scripts using the admin SDK.
+# They are NOT accessible from the frontend/client SDK.
+#
+# Auth Expression: @auth(level: NO_ACCESS)
+# See AUTH_EXPRESSIONS.md for complete documentation.
+
+# Update user membership status (SDK only)
+# Used by Firebase Functions to update membership status with server-side validation
+mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: MembershipStatus!) @auth(level: NO_ACCESS) {
+  user_update(
+    id: $userId
+    data: { membershipStatus: $membershipStatus }
+  )
+}
+
+# Delete a user (SDK only)
+# Used by Firebase Functions/CLI for dev reset operations
+mutation DeleteUser($userId: String!) @auth(level: NO_ACCESS) {
+  user_delete(id: $userId)
+}
+
+# Create a user profile (SDK only)
+# Used by Firebase Functions/CLI to create user profiles
+# This mutation works with service account credentials (no user auth token required)
+# Note: All fields with default expressions referencing auth.uid must be set explicitly
+# since auth.uid is not available in NO_ACCESS context
+mutation CreateUser(
+  $userId: String!
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
+) @auth(level: NO_ACCESS) {
+  user_insert(
+    data: {
+      id: $userId
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
+      createdBy: $userId
+      updatedBy: $userId
+      # createdAt and updatedAt are set automatically via defaults (request.time)
+    }
+  )
+}
+
+# Update a user profile (SDK only)
+# Used by Firebase Functions/CLI to update user profiles
+# This mutation works with service account credentials (no user auth token required)
+mutation UpdateUserByAdmin(
+  $userId: String!
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
+) @auth(level: NO_ACCESS) {
+  user_update(
+    id: $userId
+    data: {
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
+      updatedBy: $userId
+      # updatedAt is set automatically via defaults (request.time)
+    }
+  )
+}
