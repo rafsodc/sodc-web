@@ -23,6 +23,7 @@ import { validateUserForm } from "../../users/utils/userHelpers";
 import { NON_RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
 import { auth } from "../../../config/firebase";
+import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -93,6 +94,16 @@ export default function ProfileCompletion({
 
       if (!result.data) {
         throw new Error("Failed to save profile");
+      }
+
+      // Best-effort update of displayName in Firebase Auth
+      const displayName = `${lastName.trim()}, ${firstName.trim()}`.trim();
+      if (displayName) {
+        const displayNameResult = await updateDisplayName(displayName);
+        if (!displayNameResult.success) {
+          // Log but do not block completion
+          console.warn("Failed to update display name:", displayNameResult.error);
+        }
       }
 
       setSuccess(true);
