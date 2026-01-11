@@ -1,9 +1,18 @@
-import { CreateUserProfileData, CreateUserProfileVariables, UpsertUserData, UpsertUserVariables, UpdateUserData, UpdateUserVariables, CreateSectionData, CreateSectionVariables, CreateAccessGroupData, CreateAccessGroupVariables, AddUserToAccessGroupData, AddUserToAccessGroupVariables, RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables, GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables, RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables, GetCurrentUserData, GetUserByIdData, GetUserByIdVariables, ListUsersData, ListSectionsData, GetSectionsForUserData, ListAccessGroupsData, GetUserAccessGroupsData, CheckUserProfileExistsData, GetUserMembershipStatusData, GetUserMembershipStatusVariables, UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables, DeleteUserData, DeleteUserVariables, CreateUserData, CreateUserVariables, UpdateUserByAdminData, UpdateUserByAdminVariables } from '../';
+import { UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables, DeleteUserData, DeleteUserVariables, CreateUserData, CreateUserVariables, CreateUserProfileData, CreateUserProfileVariables, UpsertUserData, UpsertUserVariables, UpdateUserData, UpdateUserVariables, CreateSectionData, CreateSectionVariables, CreateAccessGroupData, CreateAccessGroupVariables, AddUserToAccessGroupData, AddUserToAccessGroupVariables, RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables, GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables, RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables, GetCurrentUserData, GetUserByIdData, GetUserByIdVariables, ListUsersData, ListSectionsData, GetSectionsForUserData, ListAccessGroupsData, GetUserAccessGroupsData, CheckUserProfileExistsData, GetUserMembershipStatusData, GetUserMembershipStatusVariables } from '../';
 import { UseDataConnectQueryResult, useDataConnectQueryOptions, UseDataConnectMutationResult, useDataConnectMutationOptions} from '@tanstack-query-firebase/react/data-connect';
 import { UseQueryResult, UseMutationResult} from '@tanstack/react-query';
 import { DataConnect } from 'firebase/data-connect';
 import { FirebaseError } from 'firebase/app';
 
+
+export function useUpdateUserMembershipStatus(options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+export function useUpdateUserMembershipStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+export function useDeleteUser(options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+export function useDeleteUser(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+
+export function useCreateUser(options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+export function useCreateUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
 
 export function useCreateUserProfile(options?: useDataConnectMutationOptions<CreateUserProfileData, FirebaseError, CreateUserProfileVariables>): UseDataConnectMutationResult<CreateUserProfileData, CreateUserProfileVariables>;
 export function useCreateUserProfile(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserProfileData, FirebaseError, CreateUserProfileVariables>): UseDataConnectMutationResult<CreateUserProfileData, CreateUserProfileVariables>;
@@ -58,15 +67,3 @@ export function useCheckUserProfileExists(dc: DataConnect, options?: useDataConn
 
 export function useGetUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: useDataConnectQueryOptions<GetUserMembershipStatusData>): UseDataConnectQueryResult<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
 export function useGetUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: useDataConnectQueryOptions<GetUserMembershipStatusData>): UseDataConnectQueryResult<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
-
-export function useUpdateUserMembershipStatus(options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
-export function useUpdateUserMembershipStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
-
-export function useDeleteUser(options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
-export function useDeleteUser(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
-
-export function useCreateUser(options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
-export function useCreateUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
-
-export function useUpdateUserByAdmin(options?: useDataConnectMutationOptions<UpdateUserByAdminData, FirebaseError, UpdateUserByAdminVariables>): UseDataConnectMutationResult<UpdateUserByAdminData, UpdateUserByAdminVariables>;
-export function useUpdateUserByAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserByAdminData, FirebaseError, UpdateUserByAdminVariables>): UseDataConnectMutationResult<UpdateUserByAdminData, UpdateUserByAdminVariables>;

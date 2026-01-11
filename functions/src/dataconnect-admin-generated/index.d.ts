@@ -66,7 +66,7 @@ export interface CreateSectionVariables {
 }
 
 export interface CreateUserData {
-  user_insert: User_Key;
+  user_upsert: User_Key;
 }
 
 export interface CreateUserProfileData {
@@ -91,10 +91,12 @@ export interface CreateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  membershipStatus: MembershipStatus;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+  now: TimestampString;
 }
 
 export interface DeleteUserData {
@@ -267,22 +269,6 @@ export interface Section_Key {
   __typename?: 'Section_Key';
 }
 
-export interface UpdateUserByAdminData {
-  user_update?: User_Key | null;
-}
-
-export interface UpdateUserByAdminVariables {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  serviceNumber: string;
-  isRegular?: boolean | null;
-  isReserve?: boolean | null;
-  isCivilServant?: boolean | null;
-  isIndustry?: boolean | null;
-}
-
 export interface UpdateUserData {
   user_upsert: User_Key;
 }
@@ -333,6 +319,21 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
+
+/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteUser(dc: DataConnect, vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteUser(vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to execute without passing in DataConnect. */
+export function createUser(dc: DataConnect, vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createUser(vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to execute without passing in DataConnect. */
 export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserProfileData>>;
@@ -423,24 +424,4 @@ export function checkUserProfileExists(options?: OperationOptions): Promise<Exec
 export function getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
 /** Generated Node Admin SDK operation action function for the 'GetUserMembershipStatus' Query. Allow users to pass in custom DataConnect instances. */
 export function getUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteUser(dc: DataConnect, vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteUser(vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function createUser(dc: DataConnect, vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createUser(vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateUserByAdmin' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateUserByAdmin(dc: DataConnect, vars: UpdateUserByAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserByAdminData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateUserByAdmin' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateUserByAdmin(vars: UpdateUserByAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserByAdminData>>;
 

@@ -26,6 +26,27 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
+function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUserMembershipStatus', inputVars, inputOpts);
+}
+exports.updateUserMembershipStatus = updateUserMembershipStatus;
+
+function deleteUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteUser', inputVars, inputOpts);
+}
+exports.deleteUser = deleteUser;
+
+function createUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateUser', inputVars, inputOpts);
+}
+exports.createUser = createUser;
+
 function createUserProfile(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -151,32 +172,4 @@ function getUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('GetUserMembershipStatus', inputVars, inputOpts);
 }
 exports.getUserMembershipStatus = getUserMembershipStatus;
-
-function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateUserMembershipStatus', inputVars, inputOpts);
-}
-exports.updateUserMembershipStatus = updateUserMembershipStatus;
-
-function deleteUser(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('DeleteUser', inputVars, inputOpts);
-}
-exports.deleteUser = deleteUser;
-
-function createUser(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateUser', inputVars, inputOpts);
-}
-exports.createUser = createUser;
-
-function updateUserByAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateUserByAdmin', inputVars, inputOpts);
-}
-exports.updateUserByAdmin = updateUserByAdmin;
 

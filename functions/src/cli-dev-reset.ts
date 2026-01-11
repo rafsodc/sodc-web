@@ -46,8 +46,6 @@ import {
   listUsers as dcListUsers,
   deleteUser as dcDeleteUser,
   createUser,
-  updateUserByAdmin,
-  updateUserMembershipStatus,
   MembershipStatus,
 } from "@dataconnect/admin-generated";
 import { getAllowedProjectIds, getProductionProjectIds, getDefaultProjectId } from "./config";
@@ -291,8 +289,10 @@ async function main() {
       email: validatedEmail,
       password: DEFAULT_PASSWORD,
       emailVerified: true,
-      displayName: "Dev Admin",
+      displayName: "Admin, Dev",
     });
+
+    console.log(userRecord);
 
     // Step 4: Set admin claims
     console.log("Step 4: Setting admin claims...");
@@ -311,44 +311,22 @@ async function main() {
       lastName: "Admin",
       email: validatedEmail,
       serviceNumber: serviceNumber,
+      membershipStatus: MembershipStatus.REGULAR,
       isRegular: false,
       isReserve: false,
       isCivilServant: false,
       isIndustry: false,
+      now: new Date().toISOString()
     };
     
     try {
       console.log('\n🔄 Creating user profile...');
-      try {
-        // Try to create the user first
-        await createUser(mutationVars);
-        console.log('✅ User created successfully');
-      } catch (innerError: any) {
-        // If user already exists, try updating instead
-        if (innerError?.message?.includes('already exists') || innerError?.code === 'ALREADY_EXISTS' || innerError?.code === 'data-connect/query-error') {
-          console.log('\n⚠️  User already exists, updating instead...');
-          try {
-            await updateUserByAdmin(mutationVars);
-            console.log('✅ User updated successfully');
-          } catch (updateError: any) {
-            console.error('\n❌ Failed to update user:', updateError?.message);
-            throw updateError;
-          }
-        } else {
-          throw innerError;
-        }
-      }
+      await createUser(mutationVars);
+      console.log('✅ User created successfully');
     } catch (error: any) {
-      console.error('\n❌ Error creating/updating user profile:', error?.message);
+      console.error('\n❌ Error creating user profile:', error?.message);
       throw error;
     }
-
-    // Step 6: Set membership status
-    console.log("Step 6: Setting membership status...");
-    await updateUserMembershipStatus({
-      userId: userRecord.uid,
-      membershipStatus: MembershipStatus.REGULAR,
-    });
 
     console.log(`\n✅ Successfully seeded dev admin user:`);
     console.log(`   Email: ${validatedEmail}`);

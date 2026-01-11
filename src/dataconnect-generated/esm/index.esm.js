@@ -23,6 +23,39 @@ export const connectorConfig = {
   location: 'europe-west2'
 };
 
+export const updateUserMembershipStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUserMembershipStatus', inputVars);
+}
+updateUserMembershipStatusRef.operationName = 'UpdateUserMembershipStatus';
+
+export function updateUserMembershipStatus(dcOrVars, vars) {
+  return executeMutation(updateUserMembershipStatusRef(dcOrVars, vars));
+}
+
+export const deleteUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteUser', inputVars);
+}
+deleteUserRef.operationName = 'DeleteUser';
+
+export function deleteUser(dcOrVars, vars) {
+  return executeMutation(deleteUserRef(dcOrVars, vars));
+}
+
+export const createUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateUser', inputVars);
+}
+createUserRef.operationName = 'CreateUser';
+
+export function createUser(dcOrVars, vars) {
+  return executeMutation(createUserRef(dcOrVars, vars));
+}
+
 export const createUserProfileRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -219,49 +252,5 @@ getUserMembershipStatusRef.operationName = 'GetUserMembershipStatus';
 
 export function getUserMembershipStatus(dcOrVars, vars) {
   return executeQuery(getUserMembershipStatusRef(dcOrVars, vars));
-}
-
-export const updateUserMembershipStatusRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateUserMembershipStatus', inputVars);
-}
-updateUserMembershipStatusRef.operationName = 'UpdateUserMembershipStatus';
-
-export function updateUserMembershipStatus(dcOrVars, vars) {
-  return executeMutation(updateUserMembershipStatusRef(dcOrVars, vars));
-}
-
-export const deleteUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'DeleteUser', inputVars);
-}
-deleteUserRef.operationName = 'DeleteUser';
-
-export function deleteUser(dcOrVars, vars) {
-  return executeMutation(deleteUserRef(dcOrVars, vars));
-}
-
-export const createUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateUser', inputVars);
-}
-createUserRef.operationName = 'CreateUser';
-
-export function createUser(dcOrVars, vars) {
-  return executeMutation(createUserRef(dcOrVars, vars));
-}
-
-export const updateUserByAdminRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateUserByAdmin', inputVars);
-}
-updateUserByAdminRef.operationName = 'UpdateUserByAdmin';
-
-export function updateUserByAdmin(dcOrVars, vars) {
-  return executeMutation(updateUserByAdminRef(dcOrVars, vars));
 }
 

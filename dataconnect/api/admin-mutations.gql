@@ -33,56 +33,32 @@ mutation CreateUser(
   $lastName: String!
   $email: String!
   $serviceNumber: String!
+  $membershipStatus: MembershipStatus!
   $isRegular: Boolean
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
+  $now: Timestamp!
 ) @auth(level: NO_ACCESS) {
-  user_insert(
+  user_upsert(
     data: {
       id: $userId
       firstName: $firstName
       lastName: $lastName
       email: $email
       serviceNumber: $serviceNumber
+      requestedMembershipStatus: $membershipStatus
+      membershipStatus: $membershipStatus
       isRegular: $isRegular
       isReserve: $isReserve
       isCivilServant: $isCivilServant
       isIndustry: $isIndustry
-      createdBy: $userId
-      updatedBy: $userId
-      # createdAt and updatedAt are set automatically via defaults (request.time)
+      createdBy: "system"
+      updatedBy: "system"
+      createdAt: $now
+      updatedAt: $now
     }
   )
 }
 
-# Update a user profile (SDK only)
-# Used by Firebase Functions/CLI to update user profiles
-# This mutation works with service account credentials (no user auth token required)
-mutation UpdateUserByAdmin(
-  $userId: String!
-  $firstName: String!
-  $lastName: String!
-  $email: String!
-  $serviceNumber: String!
-  $isRegular: Boolean
-  $isReserve: Boolean
-  $isCivilServant: Boolean
-  $isIndustry: Boolean
-) @auth(level: NO_ACCESS) {
-  user_update(
-    id: $userId
-    data: {
-      firstName: $firstName
-      lastName: $lastName
-      email: $email
-      serviceNumber: $serviceNumber
-      isRegular: $isRegular
-      isReserve: $isReserve
-      isCivilServant: $isCivilServant
-      isIndustry: $isIndustry
-      updatedBy: $userId
-      # updatedAt is set automatically via defaults (request.time)
-    }
-  )
-}
+

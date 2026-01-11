@@ -23,7 +23,7 @@ enum MembershipStatus {
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
   # `@default(expr: "auth.uid")` sets it to Firebase Auth UID during insert and upsert.
-  id: String! @default(expr: "auth.uid")
+  id: String!
   firstName: String!
   lastName: String!
   email: String!
