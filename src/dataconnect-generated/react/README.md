@@ -50,6 +50,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*RevokeAccessGroupFromSection*](#revokeaccessgroupfromsection)
   - [*UpdateAccessGroup*](#updateaccessgroup)
   - [*DeleteAccessGroup*](#deleteaccessgroup)
+  - [*UpdateSection*](#updatesection)
+  - [*DeleteSection*](#deletesection)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
@@ -2894,6 +2896,7 @@ The `RevokeAccessGroupFromSection` Mutation requires an argument of type `Revoke
 export interface RevokeAccessGroupFromSectionVariables {
   sectionId: UUIDString;
   accessGroupId: UUIDString;
+  purpose: SectionAccessGroupPurpose;
 }
 ```
 ### Return Type
@@ -2945,10 +2948,11 @@ export default function RevokeAccessGroupFromSectionComponent() {
   const revokeAccessGroupFromSectionVars: RevokeAccessGroupFromSectionVariables = {
     sectionId: ..., 
     accessGroupId: ..., 
+    purpose: ..., 
   };
   mutation.mutate(revokeAccessGroupFromSectionVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ sectionId: ..., accessGroupId: ..., });
+  mutation.mutate({ sectionId: ..., accessGroupId: ..., purpose: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -3164,6 +3168,198 @@ export default function DeleteAccessGroupComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.accessGroup_delete);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateSection
+You can execute the `UpdateSection` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateSection(options?: useDataConnectMutationOptions<UpdateSectionData, FirebaseError, UpdateSectionVariables>): UseDataConnectMutationResult<UpdateSectionData, UpdateSectionVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateSection(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateSectionData, FirebaseError, UpdateSectionVariables>): UseDataConnectMutationResult<UpdateSectionData, UpdateSectionVariables>;
+```
+
+### Variables
+The `UpdateSection` Mutation requires an argument of type `UpdateSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateSectionVariables {
+  id: UUIDString;
+  name: string;
+  description?: string | null;
+}
+```
+### Return Type
+Recall that calling the `UpdateSection` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateSection` Mutation is of type `UpdateSectionData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateSectionData {
+  section_update?: Section_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateSection`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateSectionVariables } from '@dataconnect/generated';
+import { useUpdateSection } from '@dataconnect/generated/react'
+
+export default function UpdateSectionComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateSection();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateSection(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateSection(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateSection(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateSection` Mutation requires an argument of type `UpdateSectionVariables`:
+  const updateSectionVars: UpdateSectionVariables = {
+    id: ..., 
+    name: ..., 
+    description: ..., // optional
+  };
+  mutation.mutate(updateSectionVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., name: ..., description: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateSectionVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.section_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## DeleteSection
+You can execute the `DeleteSection` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useDeleteSection(options?: useDataConnectMutationOptions<DeleteSectionData, FirebaseError, DeleteSectionVariables>): UseDataConnectMutationResult<DeleteSectionData, DeleteSectionVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useDeleteSection(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteSectionData, FirebaseError, DeleteSectionVariables>): UseDataConnectMutationResult<DeleteSectionData, DeleteSectionVariables>;
+```
+
+### Variables
+The `DeleteSection` Mutation requires an argument of type `DeleteSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface DeleteSectionVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `DeleteSection` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `DeleteSection` Mutation is of type `DeleteSectionData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface DeleteSectionData {
+  section_delete?: Section_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `DeleteSection`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, DeleteSectionVariables } from '@dataconnect/generated';
+import { useDeleteSection } from '@dataconnect/generated/react'
+
+export default function DeleteSectionComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useDeleteSection();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useDeleteSection(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useDeleteSection(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useDeleteSection(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useDeleteSection` Mutation requires an argument of type `DeleteSectionVariables`:
+  const deleteSectionVars: DeleteSectionVariables = {
+    id: ..., 
+  };
+  mutation.mutate(deleteSectionVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(deleteSectionVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.section_delete);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

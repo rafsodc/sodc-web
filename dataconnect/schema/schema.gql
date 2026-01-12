@@ -94,7 +94,7 @@ type UserAccessGroup @table(key: ["user", "accessGroup"]) {
 type SectionAccessGroup @table(key: ["section", "accessGroup", "purpose"]) {
   section: Section!
   accessGroup: AccessGroup!
-  purpose: SectionAccessGroupPurpose!  # VIEW: who can see the section, MEMBER: who appears in member list
+  purpose: SectionAccessGroupPurpose! @default(value: VIEW)  # VIEW: who can see the section, MEMBER: who appears in member list
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

@@ -28,6 +28,7 @@ import {
 } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
+import { colors } from "../../../config/colors";
 
 interface AuditLogsProps {
   onBack: () => void;

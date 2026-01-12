@@ -392,6 +392,30 @@ exports.deleteAccessGroup = function deleteAccessGroup(dcOrVars, vars) {
   return executeMutation(deleteAccessGroupRef(dcOrVars, vars));
 };
 
+const updateSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateSection', inputVars);
+}
+updateSectionRef.operationName = 'UpdateSection';
+exports.updateSectionRef = updateSectionRef;
+
+exports.updateSection = function updateSection(dcOrVars, vars) {
+  return executeMutation(updateSectionRef(dcOrVars, vars));
+};
+
+const deleteSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteSection', inputVars);
+}
+deleteSectionRef.operationName = 'DeleteSection';
+exports.deleteSectionRef = deleteSectionRef;
+
+exports.deleteSection = function deleteSection(dcOrVars, vars) {
+  return executeMutation(deleteSectionRef(dcOrVars, vars));
+};
+
 const updateUserMembershipStatusRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

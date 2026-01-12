@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { SectionsListErrorBoundary } from "./features/sections/components/SectionsListErrorBoundary";
+import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, dataConnect } from "./config/firebase";
@@ -24,6 +25,7 @@ const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers")
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
 const AccessGroups = lazy(() => import("./features/admin/components/AccessGroups"));
 const AuditLogs = lazy(() => import("./features/admin/components/AuditLogs"));
+const ManageSections = lazy(() => import("./features/admin/components/ManageSections"));
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
 const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
@@ -322,6 +324,7 @@ export default function App() {
         onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
         onAccessGroupsClick={() => setView(ROUTES.ACCESS_GROUPS)}
         onAuditLogsClick={() => setView(ROUTES.AUDIT_LOGS)}
+        onManageSectionsClick={() => setView(ROUTES.MANAGE_SECTIONS)}
         onSectionsClick={() => {
           setView(ROUTES.SECTIONS);
           setSelectedSectionId(null);
@@ -493,9 +496,11 @@ export default function App() {
           )
         ) : view === ROUTES.AUDIT_LOGS ? (
           user && isAdmin ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <AuditLogs onBack={() => setView("home")} />
-            </Suspense>
+            <ErrorBoundary title="Audit Logs" onBack={() => setView("home")}>
+              <Suspense fallback={<LoadingFallback />}>
+                <AuditLogs onBack={() => setView("home")} />
+              </Suspense>
+            </ErrorBoundary>
           ) : (
             <Box 
               sx={{ 
@@ -509,6 +514,36 @@ export default function App() {
               </Typography>
               {!user ? (
                 <Typography>Please log in to view audit logs.</Typography>
+              ) : !isAdmin ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
+        ) : view === ROUTES.MANAGE_SECTIONS ? (
+          user && isAdmin ? (
+            <ErrorBoundary title="Manage Sections" onBack={() => setView("home")}>
+              <Suspense fallback={<LoadingFallback />}>
+                <ManageSections onBack={() => setView("home")} />
+              </Suspense>
+            </ErrorBoundary>
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Manage Sections
+              </Typography>
+              {!user ? (
+                <Typography>Please log in to manage sections.</Typography>
               ) : !isAdmin ? (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   Access denied. Admin privileges required.
