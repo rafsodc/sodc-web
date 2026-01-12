@@ -22,9 +22,11 @@ interface UsersTableProps {
   onEdit?: (user: SearchUser) => void;
   onGrantAdmin?: (userId: string) => void;
   onRevokeAdmin?: (userId: string) => void;
+  onSelectUser?: (userId: string) => void;
   updatingUserId?: string | null;
   adminCount?: number; // Used to disable revoke if only one admin
   disabled?: boolean;
+  selectedUserId?: string | null;
 }
 
 export default function UsersTable({
@@ -33,9 +35,11 @@ export default function UsersTable({
   onEdit,
   onGrantAdmin,
   onRevokeAdmin,
+  onSelectUser,
   updatingUserId,
   adminCount,
   disabled = false,
+  selectedUserId,
 }: UsersTableProps) {
   const renderActions = (user: SearchUser) => {
     if (mode === "edit") {
@@ -137,7 +141,17 @@ export default function UsersTable({
             </TableRow>
           ) : (
             users.map((user) => (
-              <TableRow key={user.uid}>
+              <TableRow 
+                key={user.uid}
+                onClick={() => onSelectUser?.(user.uid)}
+                sx={{
+                  cursor: onSelectUser ? "pointer" : "default",
+                  backgroundColor: selectedUserId === user.uid ? "action.selected" : "inherit",
+                  "&:hover": onSelectUser ? {
+                    backgroundColor: "action.hover",
+                  } : {},
+                }}
+              >
                 <TableCell>{user.displayName || "-"}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>

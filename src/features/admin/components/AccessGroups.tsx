@@ -29,6 +29,8 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   ExpandMore as ExpandMoreIcon,
+  PersonAdd as PersonAddIcon,
+  PersonRemove as PersonRemoveIcon,
 } from "@mui/icons-material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
@@ -38,8 +40,12 @@ import {
   createAccessGroupRef,
   updateAccessGroupRef,
   deleteAccessGroupRef,
+  addUserToAccessGroupRef,
+  removeUserFromAccessGroupRef,
+  getUserWithAccessGroupsRef,
   type ListAccessGroupsData,
   type GetAccessGroupByIdData,
+  type GetUserWithAccessGroupsData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
@@ -53,7 +59,10 @@ import {
   Checkbox,
   ListItemText,
   OutlinedInput,
+  Autocomplete,
 } from "@mui/material";
+import { searchUsers } from "../../users/utils/searchUsers";
+import { canUserHaveAccessGroups } from "../../users/utils/accessGroupHelpers";
 
 interface AccessGroupsProps {
   onBack: () => void;
@@ -85,6 +94,14 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<MembershipStatus[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Add user dialog state
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [addingToGroupId, setAddingToGroupId] = useState<string | null>(null);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus }>>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   const fetchAccessGroups = useCallback(async () => {
     setLoading(true);
@@ -147,6 +164,118 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     } else {
       setExpandedGroupId(group.id);
       fetchGroupDetails(group.id);
+    }
+  };
+
+  const handleAddUser = (groupId: string) => {
+    setAddingToGroupId(groupId);
+    setUserSearchTerm("");
+    setSearchResults([]);
+    setAddUserDialogOpen(true);
+  };
+
+  const handleSearchUsers = useCallback(async (term: string) => {
+    if (!term.trim() || term.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchingUsers(true);
+    try {
+      const result = await searchUsers(term, 1, 10);
+      if (result.success && result.data) {
+        // Fetch full user data from DataConnect for each user to get membership status
+        const usersWithData = await Promise.all(
+          result.data.users.map(async (user) => {
+            try {
+              const userRef = getUserWithAccessGroupsRef(dataConnect, { id: user.uid });
+              const userResult = await executeQuery(userRef);
+              if (userResult.data?.user) {
+                return {
+                  id: userResult.data.user.id,
+                  firstName: userResult.data.user.firstName,
+                  lastName: userResult.data.user.lastName,
+                  email: userResult.data.user.email,
+                  membershipStatus: userResult.data.user.membershipStatus,
+                };
+              }
+            } catch (err) {
+              // If we can't fetch user data, use display name from search
+              const nameParts = user.displayName?.split(", ") || [];
+              return {
+                id: user.uid,
+                firstName: nameParts[1] || "",
+                lastName: nameParts[0] || "",
+                email: user.email,
+                membershipStatus: "PENDING" as MembershipStatus, // Default if we can't fetch
+              };
+            }
+            return null;
+          })
+        );
+        setSearchResults(usersWithData.filter((u): u is NonNullable<typeof u> => u !== null));
+      }
+    } catch (err: any) {
+      console.error("Failed to search users:", err);
+      setSearchResults([]);
+    } finally {
+      setSearchingUsers(false);
+    }
+  }, []);
+
+  const handleAddUserToGroup = async (userId: string) => {
+    if (!addingToGroupId) return;
+
+    // Check if user is already in the group
+    const currentDetails = groupDetails[addingToGroupId];
+    if (currentDetails?.users?.some(u => u.user.id === userId)) {
+      setError("User is already in this access group");
+      return;
+    }
+
+    setAddingUserId(userId);
+    setError(null);
+    try {
+      const ref = addUserToAccessGroupRef(dataConnect, {
+        userId,
+        accessGroupId: addingToGroupId,
+      });
+      await executeMutation(ref);
+      
+      // Refresh group details
+      delete groupDetails[addingToGroupId];
+      setGroupDetails({ ...groupDetails });
+      await fetchGroupDetails(addingToGroupId);
+      
+      setAddUserDialogOpen(false);
+      setAddingToGroupId(null);
+      setUserSearchTerm("");
+      setSearchResults([]);
+    } catch (err: any) {
+      setError(err?.message || "Failed to add user to group");
+    } finally {
+      setAddingUserId(null);
+    }
+  };
+
+  const handleRemoveUserFromGroup = async (userId: string, groupId: string) => {
+    if (!confirm("Are you sure you want to remove this user from the access group?")) {
+      return;
+    }
+
+    try {
+      const ref = removeUserFromAccessGroupRef(dataConnect, {
+        userId,
+        accessGroupId: groupId,
+      });
+      await executeMutation(ref);
+      
+      // Refresh group details
+      delete groupDetails[groupId];
+      setGroupDetails({ ...groupDetails });
+      await fetchGroupDetails(groupId);
+    } catch (err: any) {
+      setError(err?.message || "Failed to remove user from group");
     }
   };
 
@@ -365,9 +494,22 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                           <Box sx={{ p: 2 }}>
                             <Accordion defaultExpanded>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="subtitle2">
-                                  Users ({details.users?.length || 0})
-                                </Typography>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", mr: 2 }}>
+                                  <Typography variant="subtitle2">
+                                    Users ({details.users?.length || 0})
+                                  </Typography>
+                                  <Button
+                                    size="small"
+                                    startIcon={<PersonAddIcon />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddUser(group.id);
+                                    }}
+                                    variant="outlined"
+                                  >
+                                    Add User
+                                  </Button>
+                                </Box>
                               </AccordionSummary>
                               <AccordionDetails>
                                 {details.users && details.users.length > 0 ? (
@@ -377,30 +519,60 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                         <TableCell>Name</TableCell>
                                         <TableCell>Email</TableCell>
                                         <TableCell>Status</TableCell>
+                                        <TableCell align="right">Actions</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {details.users.map((userAccessGroup) => (
-                                        <TableRow key={userAccessGroup.user.id}>
-                                          <TableCell>
-                                            {userAccessGroup.user.firstName} {userAccessGroup.user.lastName}
-                                          </TableCell>
-                                          <TableCell>{userAccessGroup.user.email}</TableCell>
-                                          <TableCell>
-                                            <Chip
-                                              label={userAccessGroup.user.membershipStatus}
-                                              size="small"
-                                              variant="outlined"
-                                            />
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
+                                      {details.users.map((userAccessGroup) => {
+                                        const userStatus = userAccessGroup.user.membershipStatus;
+                                        const isStatusBased = group.membershipStatuses?.includes(userStatus);
+                                        return (
+                                          <TableRow key={userAccessGroup.user.id}>
+                                            <TableCell>
+                                              {userAccessGroup.user.firstName} {userAccessGroup.user.lastName}
+                                            </TableCell>
+                                            <TableCell>{userAccessGroup.user.email}</TableCell>
+                                            <TableCell>
+                                              <Chip
+                                                label={userStatus}
+                                                size="small"
+                                                variant="outlined"
+                                              />
+                                            </TableCell>
+                                            <TableCell align="right">
+                                              {isStatusBased ? (
+                                                <Tooltip title="User is automatically included via membership status">
+                                                  <Chip label="Auto" size="small" color="primary" variant="outlined" />
+                                                </Tooltip>
+                                              ) : (
+                                                <IconButton
+                                                  size="small"
+                                                  onClick={() => handleRemoveUserFromGroup(userAccessGroup.user.id, group.id)}
+                                                  color="error"
+                                                >
+                                                  <PersonRemoveIcon />
+                                                </IconButton>
+                                              )}
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
                                     </TableBody>
                                   </Table>
                                 ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    No users assigned to this group.
-                                  </Typography>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                      No users assigned to this group.
+                                    </Typography>
+                                    <Button
+                                      size="small"
+                                      startIcon={<PersonAddIcon />}
+                                      onClick={() => handleAddUser(group.id)}
+                                      variant="outlined"
+                                    >
+                                      Add User
+                                    </Button>
+                                  </Box>
                                 )}
                               </AccordionDetails>
                             </Accordion>
@@ -522,6 +694,98 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
           </Button>
           <Button onClick={handleSubmit} variant="contained" disabled={submitting || !groupName.trim()}>
             {submitting ? <CircularProgress size={20} /> : editingGroup ? "Update" : "Create"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addUserDialogOpen} onClose={() => setAddUserDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add User to Access Group</DialogTitle>
+        <DialogContent>
+          <Autocomplete
+            options={searchResults}
+            getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
+            loading={searchingUsers}
+            inputValue={userSearchTerm}
+            onInputChange={(_, value) => {
+              setUserSearchTerm(value);
+              handleSearchUsers(value);
+            }}
+            onChange={(_, selectedUser) => {
+              if (selectedUser) {
+                handleAddUserToGroup(selectedUser.id);
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Search Users"
+                placeholder="Type to search by name or email (min 2 characters)..."
+                margin="dense"
+                fullWidth
+                variant="outlined"
+              />
+            )}
+            renderOption={(props, option) => {
+              const canHaveGroups = canUserHaveAccessGroups(option.membershipStatus);
+              const groupDetailsForAdding = addingToGroupId ? groupDetails[addingToGroupId] : null;
+              const isAlreadyInGroup = groupDetailsForAdding?.users?.some(u => u.user.id === option.id);
+              return (
+                <Box 
+                  component="li" 
+                  {...props} 
+                  sx={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center",
+                    opacity: isAlreadyInGroup ? 0.5 : 1,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="body2">
+                      {option.firstName} {option.lastName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {option.email}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                    {isAlreadyInGroup && (
+                      <Chip label="Already in group" size="small" color="info" />
+                    )}
+                    <Chip
+                      label={option.membershipStatus}
+                      size="small"
+                      variant="outlined"
+                      color={canHaveGroups ? "default" : "error"}
+                    />
+                  </Box>
+                </Box>
+              );
+            }}
+            filterOptions={(x) => x} // We're handling filtering server-side
+            sx={{ mt: 1 }}
+            disabled={addingUserId !== null}
+            isOptionDisabled={(option) => {
+              // Disable if user can't have groups or is already in the group
+              const canHaveGroups = canUserHaveAccessGroups(option.membershipStatus);
+              const groupDetailsForAdding = addingToGroupId ? groupDetails[addingToGroupId] : null;
+              const isAlreadyInGroup = groupDetailsForAdding?.users?.some(u => u.user.id === option.id);
+              return !canHaveGroups || isAlreadyInGroup || false;
+            }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+            Search for users by name or email. Users with restricted membership statuses (PENDING, RESIGNED, LOST, DECEASED) cannot be added to access groups.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setAddUserDialogOpen(false);
+            setAddingToGroupId(null);
+            setUserSearchTerm("");
+            setSearchResults([]);
+          }} disabled={addingUserId !== null}>
+            Cancel
           </Button>
         </DialogActions>
       </Dialog>

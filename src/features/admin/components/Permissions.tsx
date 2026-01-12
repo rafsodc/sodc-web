@@ -18,6 +18,7 @@ import SearchBar from "../../../shared/components/SearchBar";
 import UsersTable from "../../users/components/UsersTable";
 import AdminUsersTable from "../../users/components/AdminUsersTable";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
+import UserAccessGroups from "./UserAccessGroups";
 import "./Permissions.css";
 
 interface PermissionsProps {
@@ -35,6 +36,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [adminCount, setAdminCount] = useState(0);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const fetchingRef = useRef(false);
 
   // Use the shared user search hook for the search tab
@@ -193,7 +195,10 @@ export default function Permissions({ onBack }: PermissionsProps) {
 
       <Tabs 
         value={tabValue} 
-        onChange={(_, newValue) => setTabValue(newValue)} 
+        onChange={(_, newValue) => {
+          setTabValue(newValue);
+          setSelectedUserId(null); // Clear selection when switching tabs
+        }} 
         sx={{ 
           mb: 3,
           "& .MuiTab-root": {
@@ -208,6 +213,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
       >
         <Tab label="Admin Users" />
         <Tab label="Search Users" />
+        <Tab label="Access Groups" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -278,6 +284,78 @@ export default function Permissions({ onBack }: PermissionsProps) {
                 updatingUserId={updatingUserId}
                 adminCount={adminCount}
               />
+              {selectedUserId && tabValue === 2 && (
+                <Box sx={{ mt: 4, p: 2, border: `1px solid ${colors.border}`, borderRadius: 1 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Manage Access Groups for {searchResults.find(u => u.uid === selectedUserId)?.displayName || "User"}
+                  </Typography>
+                  <UserAccessGroups
+                    userId={selectedUserId}
+                    userEmail={searchResults.find(u => u.uid === selectedUserId)?.email}
+                    onUpdate={() => {
+                      // Optionally refresh user data
+                    }}
+                  />
+                </Box>
+              )}
+              <PaginationDisplay
+                page={searchPage}
+                totalPages={searchTotalPages}
+                onChange={handleSearchPageChange}
+              />
+            </>
+          )}
+        </>
+      )}
+
+      {tabValue === 2 && (
+        <>
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            onRefresh={refetchSearch}
+            loading={searchLoading}
+          />
+
+          {searchLoading ? (
+            <Box className="loading-container">
+              <CircularProgress />
+            </Box>
+          ) : searchError ? (
+            <Alert severity="error">{searchError}</Alert>
+          ) : searchTerm.trim() === "" ? (
+            <Alert severity="info">Enter a search term to find users and manage their access groups</Alert>
+          ) : searchResults.length === 0 ? (
+            <Alert severity="info">No users found. Try a different search term.</Alert>
+          ) : (
+            <>
+              <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
+                Select a user to manage their access groups
+              </Typography>
+              <UsersTable
+                users={searchResults}
+                mode="admin"
+                onGrantAdmin={handleGrantAdmin}
+                onRevokeAdmin={handleRevokeAdmin}
+                onSelectUser={setSelectedUserId}
+                selectedUserId={selectedUserId}
+                updatingUserId={updatingUserId}
+                adminCount={adminCount}
+              />
+              {selectedUserId && (
+                <Box sx={{ mt: 4, p: 2, border: `1px solid ${colors.border}`, borderRadius: 1 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Manage Access Groups for {searchResults.find(u => u.uid === selectedUserId)?.displayName || "User"}
+                  </Typography>
+                  <UserAccessGroups
+                    userId={selectedUserId}
+                    userEmail={searchResults.find(u => u.uid === selectedUserId)?.email}
+                    onUpdate={() => {
+                      // Optionally refresh user data
+                    }}
+                  />
+                </Box>
+              )}
               <PaginationDisplay
                 page={searchPage}
                 totalPages={searchTotalPages}
