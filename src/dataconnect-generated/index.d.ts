@@ -138,6 +138,14 @@ export interface DeleteAccessGroupVariables {
   id: UUIDString;
 }
 
+export interface DeleteSectionData {
+  section_delete?: Section_Key | null;
+}
+
+export interface DeleteSectionVariables {
+  id: UUIDString;
+}
+
 export interface DeleteUserData {
   user_delete?: User_Key | null;
 }
@@ -507,6 +515,7 @@ export interface RevokeAccessGroupFromSectionData {
 export interface RevokeAccessGroupFromSectionVariables {
   sectionId: UUIDString;
   accessGroupId: UUIDString;
+  purpose: SectionAccessGroupPurpose;
 }
 
 export interface SectionAccessGroup_Key {
@@ -555,6 +564,16 @@ export interface UpdateAccessGroupVariables {
   description?: string | null;
   membershipStatuses?: MembershipStatus[] | null;
   subscribable?: boolean | null;
+}
+
+export interface UpdateSectionData {
+  section_update?: Section_Key | null;
+}
+
+export interface UpdateSectionVariables {
+  id: UUIDString;
+  name: string;
+  description?: string | null;
 }
 
 export interface UpdateUserData {
@@ -967,6 +986,30 @@ export const deleteAccessGroupRef: DeleteAccessGroupRef;
 
 export function deleteAccessGroup(vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
 export function deleteAccessGroup(dc: DataConnect, vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+
+interface UpdateSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateSectionVariables): MutationRef<UpdateSectionData, UpdateSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateSectionVariables): MutationRef<UpdateSectionData, UpdateSectionVariables>;
+  operationName: string;
+}
+export const updateSectionRef: UpdateSectionRef;
+
+export function updateSection(vars: UpdateSectionVariables): MutationPromise<UpdateSectionData, UpdateSectionVariables>;
+export function updateSection(dc: DataConnect, vars: UpdateSectionVariables): MutationPromise<UpdateSectionData, UpdateSectionVariables>;
+
+interface DeleteSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteSectionVariables): MutationRef<DeleteSectionData, DeleteSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DeleteSectionVariables): MutationRef<DeleteSectionData, DeleteSectionVariables>;
+  operationName: string;
+}
+export const deleteSectionRef: DeleteSectionRef;
+
+export function deleteSection(vars: DeleteSectionVariables): MutationPromise<DeleteSectionData, DeleteSectionVariables>;
+export function deleteSection(dc: DataConnect, vars: DeleteSectionVariables): MutationPromise<DeleteSectionData, DeleteSectionVariables>;
 
 interface UpdateUserMembershipStatusRef {
   /* Allow users to create refs without passing in DataConnect */

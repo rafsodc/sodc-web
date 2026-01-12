@@ -84,11 +84,13 @@ mutation GrantAccessGroupToSection(
 mutation RevokeAccessGroupFromSection(
   $sectionId: UUID!
   $accessGroupId: UUID!
+  $purpose: SectionAccessGroupPurpose!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sectionAccessGroup_delete(
     key: {
       sectionId: $sectionId
       accessGroupId: $accessGroupId
+      purpose: $purpose
     }
   )
 }
@@ -119,4 +121,29 @@ mutation DeleteAccessGroup(
   $id: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   accessGroup_delete(id: $id)
+}
+
+# Update a section (admin only - admins must also be enabled)
+# Note: type field is not included as it should not be changed after creation
+mutation UpdateSection(
+  $id: UUID!
+  $name: String!
+  $description: String
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  section_update(
+    id: $id
+    data: {
+      name: $name
+      description: $description
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}
+
+# Delete a section (admin only - admins must also be enabled)
+mutation DeleteSection(
+  $id: UUID!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  section_delete(id: $id)
 }

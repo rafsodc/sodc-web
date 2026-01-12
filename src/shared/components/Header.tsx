@@ -20,6 +20,7 @@ interface HeaderProps {
   onApproveUsersClick?: () => void;
   onAccessGroupsClick?: () => void;
   onAuditLogsClick?: () => void;
+  onManageSectionsClick?: () => void;
   onSectionsClick?: () => void;
 }
 
@@ -30,7 +31,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick, onAuditLogsClick, onSectionsClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick, onAuditLogsClick, onManageSectionsClick, onSectionsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -123,6 +124,15 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     handleAdminMenuClose();
     if (onAuditLogsClick) {
       onAuditLogsClick();
+    }
+  };
+
+  const handleManageSections = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleAdminMenuClose();
+    if (onManageSectionsClick) {
+      onManageSectionsClick();
     }
   };
 
@@ -270,6 +280,19 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                   }}
                 >
                   Audit Logs
+                </MenuItem>
+                <MenuItem 
+                  onClick={handleManageSections}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Manage Sections
                 </MenuItem>
               </Menu>
             )}

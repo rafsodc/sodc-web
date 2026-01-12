@@ -242,6 +242,20 @@ function deleteAccessGroup(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.deleteAccessGroup = deleteAccessGroup;
 
+function updateSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateSection', inputVars, inputOpts);
+}
+exports.updateSection = updateSection;
+
+function deleteSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteSection', inputVars, inputOpts);
+}
+exports.deleteSection = deleteSection;
+
 function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

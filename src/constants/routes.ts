@@ -12,6 +12,7 @@ export const ROUTES = {
   ACCESS_GROUPS: "accessGroups",
   AUDIT_LOGS: "auditLogs",
   SECTIONS: "sections",
+  MANAGE_SECTIONS: "manageSections",
   REGISTER: "register",
   PROFILE_COMPLETION: "profileCompletion",
 } as const;
