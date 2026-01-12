@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { SectionsListErrorBoundary } from "./features/sections/components/SectionsListErrorBoundary";
+import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, dataConnect } from "./config/firebase";
@@ -493,9 +494,11 @@ export default function App() {
           )
         ) : view === ROUTES.AUDIT_LOGS ? (
           user && isAdmin ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <AuditLogs onBack={() => setView("home")} />
-            </Suspense>
+            <ErrorBoundary title="Audit Logs" onBack={() => setView("home")}>
+              <Suspense fallback={<LoadingFallback />}>
+                <AuditLogs onBack={() => setView("home")} />
+              </Suspense>
+            </ErrorBoundary>
           ) : (
             <Box 
               sx={{ 
