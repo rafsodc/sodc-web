@@ -26,41 +26,6 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
-function createUserProfile(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateUserProfile', inputVars, inputOpts);
-}
-exports.createUserProfile = createUserProfile;
-
-function upsertUser(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpsertUser', inputVars, inputOpts);
-}
-exports.upsertUser = upsertUser;
-
-function updateUser(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateUser', inputVars, inputOpts);
-}
-exports.updateUser = updateUser;
-
-function registerForSection(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('RegisterForSection', inputVars, inputOpts);
-}
-exports.registerForSection = registerForSection;
-
-function unregisterFromSection(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UnregisterFromSection', inputVars, inputOpts);
-}
-exports.unregisterFromSection = unregisterFromSection;
-
 function createSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -102,6 +67,20 @@ function revokeAccessGroupFromSection(dcOrVarsOrOptions, varsOrOptions, options)
   return dcInstance.executeMutation('RevokeAccessGroupFromSection', inputVars, inputOpts);
 }
 exports.revokeAccessGroupFromSection = revokeAccessGroupFromSection;
+
+function updateAccessGroup(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateAccessGroup', inputVars, inputOpts);
+}
+exports.updateAccessGroup = updateAccessGroup;
+
+function deleteAccessGroup(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteAccessGroup', inputVars, inputOpts);
+}
+exports.deleteAccessGroup = deleteAccessGroup;
 
 function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -242,4 +221,53 @@ function getSectionById(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('GetSectionById', inputVars, inputOpts);
 }
 exports.getSectionById = getSectionById;
+
+function getAccessGroupById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAccessGroupById', inputVars, inputOpts);
+}
+exports.getAccessGroupById = getAccessGroupById;
+
+function getAllAccessGroupsWithStatuses(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAllAccessGroupsWithStatuses', undefined, inputOpts);
+}
+exports.getAllAccessGroupsWithStatuses = getAllAccessGroupsWithStatuses;
+
+function createUserProfile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateUserProfile', inputVars, inputOpts);
+}
+exports.createUserProfile = createUserProfile;
+
+function upsertUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpsertUser', inputVars, inputOpts);
+}
+exports.upsertUser = upsertUser;
+
+function updateUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUser', inputVars, inputOpts);
+}
+exports.updateUser = updateUser;
+
+function registerForSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RegisterForSection', inputVars, inputOpts);
+}
+exports.registerForSection = registerForSection;
+
+function unregisterFromSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UnregisterFromSection', inputVars, inputOpts);
+}
+exports.unregisterFromSection = unregisterFromSection;
 

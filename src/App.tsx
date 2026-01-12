@@ -20,6 +20,7 @@ const Profile = lazy(() => import("./features/profile/components/Profile"));
 const Permissions = lazy(() => import("./features/admin/components/Permissions"));
 const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
+const AccessGroups = lazy(() => import("./features/admin/components/AccessGroups"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
@@ -300,6 +301,7 @@ export default function App() {
         onPermissionsClick={() => setView("permissions")}
         onManageUsersClick={() => setView("manageUsers")}
         onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
+        onAccessGroupsClick={() => setView(ROUTES.ACCESS_GROUPS)}
       />
       <Box
         component="main"
@@ -414,6 +416,28 @@ export default function App() {
                 Approve Users
               </Typography>
               <Typography>Please log in to access user approval.</Typography>
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
+        ) : view === ROUTES.ACCESS_GROUPS ? (
+          user ? (
+            <Suspense fallback={<LoadingFallback />}>
+              <AccessGroups onBack={() => setView("home")} />
+            </Suspense>
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Access Groups
+              </Typography>
+              <Typography>Please log in to access group management.</Typography>
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>

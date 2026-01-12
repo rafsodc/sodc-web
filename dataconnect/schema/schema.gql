@@ -57,10 +57,12 @@ type Section @table {
 }
 
 # AccessGroup table - groups that control access to sections
+# Can include both individual users and membership statuses (automatically includes all users with those statuses)
 type AccessGroup @table {
   id: UUID! @default(expr: "uuidV4()")
   name: String!
   description: String
+  membershipStatuses: [MembershipStatus!]  # Membership statuses that are automatically included in this group
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

@@ -9,6 +9,7 @@ export const ROUTES = {
   PERMISSIONS: "permissions",
   MANAGE_USERS: "manageUsers",
   APPROVE_USERS: "approveUsers",
+  ACCESS_GROUPS: "accessGroups",
   REGISTER: "register",
   PROFILE_COMPLETION: "profileCompletion",
 } as const;

@@ -77,6 +77,7 @@ export interface CreateAccessGroupData {
 export interface CreateAccessGroupVariables {
   name: string;
   description?: string | null;
+  membershipStatuses?: MembershipStatus[] | null;
 }
 
 export interface CreateSectionData {
@@ -123,12 +124,52 @@ export interface CreateUserVariables {
   now: TimestampString;
 }
 
+export interface DeleteAccessGroupData {
+  accessGroup_delete?: AccessGroup_Key | null;
+}
+
+export interface DeleteAccessGroupVariables {
+  id: UUIDString;
+}
+
 export interface DeleteUserData {
   user_delete?: User_Key | null;
 }
 
 export interface DeleteUserVariables {
   userId: string;
+}
+
+export interface GetAccessGroupByIdData {
+  accessGroup?: {
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+    membershipStatuses?: MembershipStatus[] | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    users: ({
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+    })[];
+      sections: ({
+        section: {
+          id: UUIDString;
+          name: string;
+          type: SectionType;
+          description?: string | null;
+        } & Section_Key;
+      })[];
+  } & AccessGroup_Key;
+}
+
+export interface GetAccessGroupByIdVariables {
+  id: UUIDString;
 }
 
 export interface GetAccessGroupByNameData {
@@ -141,6 +182,14 @@ export interface GetAccessGroupByNameData {
 
 export interface GetAccessGroupByNameVariables {
   name: string;
+}
+
+export interface GetAllAccessGroupsWithStatusesData {
+  accessGroups: ({
+    id: UUIDString;
+    name: string;
+    membershipStatuses?: MembershipStatus[] | null;
+  } & AccessGroup_Key)[];
 }
 
 export interface GetCurrentUserData {
@@ -319,6 +368,7 @@ export interface ListAccessGroupsData {
     id: UUIDString;
     name: string;
     description?: string | null;
+    membershipStatuses?: MembershipStatus[] | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & AccessGroup_Key)[];
@@ -407,6 +457,17 @@ export interface UnregisterFromSectionVariables {
   accessGroupId: UUIDString;
 }
 
+export interface UpdateAccessGroupData {
+  accessGroup_update?: AccessGroup_Key | null;
+}
+
+export interface UpdateAccessGroupVariables {
+  id: UUIDString;
+  name: string;
+  description?: string | null;
+  membershipStatuses?: MembershipStatus[] | null;
+}
+
 export interface UpdateUserData {
   user_upsert: User_Key;
 }
@@ -457,66 +518,6 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
-
-interface CreateUserProfileRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
-  operationName: string;
-}
-export const createUserProfileRef: CreateUserProfileRef;
-
-export function createUserProfile(vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
-export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
-
-interface UpsertUserRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
-  operationName: string;
-}
-export const upsertUserRef: UpsertUserRef;
-
-export function upsertUser(vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
-export function upsertUser(dc: DataConnect, vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
-
-interface UpdateUserRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
-  operationName: string;
-}
-export const updateUserRef: UpdateUserRef;
-
-export function updateUser(vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
-export function updateUser(dc: DataConnect, vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
-
-interface RegisterForSectionRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
-  operationName: string;
-}
-export const registerForSectionRef: RegisterForSectionRef;
-
-export function registerForSection(vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
-export function registerForSection(dc: DataConnect, vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
-
-interface UnregisterFromSectionRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-  operationName: string;
-}
-export const unregisterFromSectionRef: UnregisterFromSectionRef;
-
-export function unregisterFromSection(vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-export function unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
 
 interface CreateSectionRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -589,6 +590,30 @@ export const revokeAccessGroupFromSectionRef: RevokeAccessGroupFromSectionRef;
 
 export function revokeAccessGroupFromSection(vars: RevokeAccessGroupFromSectionVariables): MutationPromise<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
 export function revokeAccessGroupFromSection(dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables): MutationPromise<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
+
+interface UpdateAccessGroupRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateAccessGroupVariables): MutationRef<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateAccessGroupVariables): MutationRef<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+  operationName: string;
+}
+export const updateAccessGroupRef: UpdateAccessGroupRef;
+
+export function updateAccessGroup(vars: UpdateAccessGroupVariables): MutationPromise<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+export function updateAccessGroup(dc: DataConnect, vars: UpdateAccessGroupVariables): MutationPromise<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+
+interface DeleteAccessGroupRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteAccessGroupVariables): MutationRef<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DeleteAccessGroupVariables): MutationRef<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+  operationName: string;
+}
+export const deleteAccessGroupRef: DeleteAccessGroupRef;
+
+export function deleteAccessGroup(vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+export function deleteAccessGroup(dc: DataConnect, vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
 
 interface UpdateUserMembershipStatusRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -829,4 +854,88 @@ export const getSectionByIdRef: GetSectionByIdRef;
 
 export function getSectionById(vars: GetSectionByIdVariables): QueryPromise<GetSectionByIdData, GetSectionByIdVariables>;
 export function getSectionById(dc: DataConnect, vars: GetSectionByIdVariables): QueryPromise<GetSectionByIdData, GetSectionByIdVariables>;
+
+interface GetAccessGroupByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAccessGroupByIdVariables): QueryRef<GetAccessGroupByIdData, GetAccessGroupByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAccessGroupByIdVariables): QueryRef<GetAccessGroupByIdData, GetAccessGroupByIdVariables>;
+  operationName: string;
+}
+export const getAccessGroupByIdRef: GetAccessGroupByIdRef;
+
+export function getAccessGroupById(vars: GetAccessGroupByIdVariables): QueryPromise<GetAccessGroupByIdData, GetAccessGroupByIdVariables>;
+export function getAccessGroupById(dc: DataConnect, vars: GetAccessGroupByIdVariables): QueryPromise<GetAccessGroupByIdData, GetAccessGroupByIdVariables>;
+
+interface GetAllAccessGroupsWithStatusesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetAllAccessGroupsWithStatusesData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetAllAccessGroupsWithStatusesData, undefined>;
+  operationName: string;
+}
+export const getAllAccessGroupsWithStatusesRef: GetAllAccessGroupsWithStatusesRef;
+
+export function getAllAccessGroupsWithStatuses(): QueryPromise<GetAllAccessGroupsWithStatusesData, undefined>;
+export function getAllAccessGroupsWithStatuses(dc: DataConnect): QueryPromise<GetAllAccessGroupsWithStatusesData, undefined>;
+
+interface CreateUserProfileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
+  operationName: string;
+}
+export const createUserProfileRef: CreateUserProfileRef;
+
+export function createUserProfile(vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
+export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
+
+interface UpsertUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
+  operationName: string;
+}
+export const upsertUserRef: UpsertUserRef;
+
+export function upsertUser(vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
+export function upsertUser(dc: DataConnect, vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
+
+interface UpdateUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
+  operationName: string;
+}
+export const updateUserRef: UpdateUserRef;
+
+export function updateUser(vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
+export function updateUser(dc: DataConnect, vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
+
+interface RegisterForSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
+  operationName: string;
+}
+export const registerForSectionRef: RegisterForSectionRef;
+
+export function registerForSection(vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
+export function registerForSection(dc: DataConnect, vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
+
+interface UnregisterFromSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+  operationName: string;
+}
+export const unregisterFromSectionRef: UnregisterFromSectionRef;
+
+export function unregisterFromSection(vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+export function unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
 

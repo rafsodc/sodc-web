@@ -26,66 +26,6 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
-const createUserProfileRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateUserProfile', inputVars);
-}
-createUserProfileRef.operationName = 'CreateUserProfile';
-exports.createUserProfileRef = createUserProfileRef;
-
-exports.createUserProfile = function createUserProfile(dcOrVars, vars) {
-  return executeMutation(createUserProfileRef(dcOrVars, vars));
-};
-
-const upsertUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpsertUser', inputVars);
-}
-upsertUserRef.operationName = 'UpsertUser';
-exports.upsertUserRef = upsertUserRef;
-
-exports.upsertUser = function upsertUser(dcOrVars, vars) {
-  return executeMutation(upsertUserRef(dcOrVars, vars));
-};
-
-const updateUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateUser', inputVars);
-}
-updateUserRef.operationName = 'UpdateUser';
-exports.updateUserRef = updateUserRef;
-
-exports.updateUser = function updateUser(dcOrVars, vars) {
-  return executeMutation(updateUserRef(dcOrVars, vars));
-};
-
-const registerForSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'RegisterForSection', inputVars);
-}
-registerForSectionRef.operationName = 'RegisterForSection';
-exports.registerForSectionRef = registerForSectionRef;
-
-exports.registerForSection = function registerForSection(dcOrVars, vars) {
-  return executeMutation(registerForSectionRef(dcOrVars, vars));
-};
-
-const unregisterFromSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UnregisterFromSection', inputVars);
-}
-unregisterFromSectionRef.operationName = 'UnregisterFromSection';
-exports.unregisterFromSectionRef = unregisterFromSectionRef;
-
-exports.unregisterFromSection = function unregisterFromSection(dcOrVars, vars) {
-  return executeMutation(unregisterFromSectionRef(dcOrVars, vars));
-};
-
 const createSectionRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -156,6 +96,30 @@ exports.revokeAccessGroupFromSectionRef = revokeAccessGroupFromSectionRef;
 
 exports.revokeAccessGroupFromSection = function revokeAccessGroupFromSection(dcOrVars, vars) {
   return executeMutation(revokeAccessGroupFromSectionRef(dcOrVars, vars));
+};
+
+const updateAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAccessGroup', inputVars);
+}
+updateAccessGroupRef.operationName = 'UpdateAccessGroup';
+exports.updateAccessGroupRef = updateAccessGroupRef;
+
+exports.updateAccessGroup = function updateAccessGroup(dcOrVars, vars) {
+  return executeMutation(updateAccessGroupRef(dcOrVars, vars));
+};
+
+const deleteAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteAccessGroup', inputVars);
+}
+deleteAccessGroupRef.operationName = 'DeleteAccessGroup';
+exports.deleteAccessGroupRef = deleteAccessGroupRef;
+
+exports.deleteAccessGroup = function deleteAccessGroup(dcOrVars, vars) {
+  return executeMutation(deleteAccessGroupRef(dcOrVars, vars));
 };
 
 const updateUserMembershipStatusRef = (dcOrVars, vars) => {
@@ -396,4 +360,88 @@ exports.getSectionByIdRef = getSectionByIdRef;
 
 exports.getSectionById = function getSectionById(dcOrVars, vars) {
   return executeQuery(getSectionByIdRef(dcOrVars, vars));
+};
+
+const getAccessGroupByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAccessGroupById', inputVars);
+}
+getAccessGroupByIdRef.operationName = 'GetAccessGroupById';
+exports.getAccessGroupByIdRef = getAccessGroupByIdRef;
+
+exports.getAccessGroupById = function getAccessGroupById(dcOrVars, vars) {
+  return executeQuery(getAccessGroupByIdRef(dcOrVars, vars));
+};
+
+const getAllAccessGroupsWithStatusesRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAllAccessGroupsWithStatuses');
+}
+getAllAccessGroupsWithStatusesRef.operationName = 'GetAllAccessGroupsWithStatuses';
+exports.getAllAccessGroupsWithStatusesRef = getAllAccessGroupsWithStatusesRef;
+
+exports.getAllAccessGroupsWithStatuses = function getAllAccessGroupsWithStatuses(dc) {
+  return executeQuery(getAllAccessGroupsWithStatusesRef(dc));
+};
+
+const createUserProfileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateUserProfile', inputVars);
+}
+createUserProfileRef.operationName = 'CreateUserProfile';
+exports.createUserProfileRef = createUserProfileRef;
+
+exports.createUserProfile = function createUserProfile(dcOrVars, vars) {
+  return executeMutation(createUserProfileRef(dcOrVars, vars));
+};
+
+const upsertUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertUser', inputVars);
+}
+upsertUserRef.operationName = 'UpsertUser';
+exports.upsertUserRef = upsertUserRef;
+
+exports.upsertUser = function upsertUser(dcOrVars, vars) {
+  return executeMutation(upsertUserRef(dcOrVars, vars));
+};
+
+const updateUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUser', inputVars);
+}
+updateUserRef.operationName = 'UpdateUser';
+exports.updateUserRef = updateUserRef;
+
+exports.updateUser = function updateUser(dcOrVars, vars) {
+  return executeMutation(updateUserRef(dcOrVars, vars));
+};
+
+const registerForSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RegisterForSection', inputVars);
+}
+registerForSectionRef.operationName = 'RegisterForSection';
+exports.registerForSectionRef = registerForSectionRef;
+
+exports.registerForSection = function registerForSection(dcOrVars, vars) {
+  return executeMutation(registerForSectionRef(dcOrVars, vars));
+};
+
+const unregisterFromSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UnregisterFromSection', inputVars);
+}
+unregisterFromSectionRef.operationName = 'UnregisterFromSection';
+exports.unregisterFromSectionRef = unregisterFromSectionRef;
+
+exports.unregisterFromSection = function unregisterFromSection(dcOrVars, vars) {
+  return executeMutation(unregisterFromSectionRef(dcOrVars, vars));
 };

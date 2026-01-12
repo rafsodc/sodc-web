@@ -1,46 +1,6 @@
-const { createUserProfileRef, upsertUserRef, updateUserRef, registerForSectionRef, unregisterFromSectionRef, createSectionRef, createAccessGroupRef, addUserToAccessGroupRef, removeUserFromAccessGroupRef, grantAccessGroupToSectionRef, revokeAccessGroupFromSectionRef, updateUserMembershipStatusRef, deleteUserRef, createUserRef, createAccessGroupAdminRef, addUserToAccessGroupAdminRef, removeUserFromAccessGroupAdminRef, getAccessGroupByNameRef, getUserAccessGroupsForAdminRef, getCurrentUserRef, getUserByIdRef, listUsersRef, listSectionsRef, getSectionsForUserRef, listAccessGroupsRef, getUserAccessGroupsRef, checkUserProfileExistsRef, getUserMembershipStatusRef, getUserWithAccessGroupsRef, getUserAccessGroupsByIdRef, getSectionByIdRef, connectorConfig } = require('../index.cjs.js');
+const { createSectionRef, createAccessGroupRef, addUserToAccessGroupRef, removeUserFromAccessGroupRef, grantAccessGroupToSectionRef, revokeAccessGroupFromSectionRef, updateAccessGroupRef, deleteAccessGroupRef, updateUserMembershipStatusRef, deleteUserRef, createUserRef, createAccessGroupAdminRef, addUserToAccessGroupAdminRef, removeUserFromAccessGroupAdminRef, getAccessGroupByNameRef, getUserAccessGroupsForAdminRef, getCurrentUserRef, getUserByIdRef, listUsersRef, listSectionsRef, getSectionsForUserRef, listAccessGroupsRef, getUserAccessGroupsRef, checkUserProfileExistsRef, getUserMembershipStatusRef, getUserWithAccessGroupsRef, getUserAccessGroupsByIdRef, getSectionByIdRef, getAccessGroupByIdRef, getAllAccessGroupsWithStatusesRef, createUserProfileRef, upsertUserRef, updateUserRef, registerForSectionRef, unregisterFromSectionRef, connectorConfig } = require('../index.cjs.js');
 const { validateArgs, CallerSdkTypeEnum } = require('firebase/data-connect');
 const { useDataConnectQuery, useDataConnectMutation, validateReactArgs } = require('@tanstack-query-firebase/react/data-connect');
-
-exports.useCreateUserProfile = function useCreateUserProfile(dcOrOptions, options) {
-  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
-  function refFactory(vars) {
-    return createUserProfileRef(dcInstance, vars);
-  }
-  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
-}
-
-exports.useUpsertUser = function useUpsertUser(dcOrOptions, options) {
-  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
-  function refFactory(vars) {
-    return upsertUserRef(dcInstance, vars);
-  }
-  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
-}
-
-exports.useUpdateUser = function useUpdateUser(dcOrOptions, options) {
-  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
-  function refFactory(vars) {
-    return updateUserRef(dcInstance, vars);
-  }
-  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
-}
-
-exports.useRegisterForSection = function useRegisterForSection(dcOrOptions, options) {
-  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
-  function refFactory(vars) {
-    return registerForSectionRef(dcInstance, vars);
-  }
-  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
-}
-
-exports.useUnregisterFromSection = function useUnregisterFromSection(dcOrOptions, options) {
-  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
-  function refFactory(vars) {
-    return unregisterFromSectionRef(dcInstance, vars);
-  }
-  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
-}
 
 exports.useCreateSection = function useCreateSection(dcOrOptions, options) {
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
@@ -86,6 +46,22 @@ exports.useRevokeAccessGroupFromSection = function useRevokeAccessGroupFromSecti
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
   function refFactory(vars) {
     return revokeAccessGroupFromSectionRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useUpdateAccessGroup = function useUpdateAccessGroup(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return updateAccessGroupRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useDeleteAccessGroup = function useDeleteAccessGroup(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return deleteAccessGroupRef(dcInstance, vars);
   }
   return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }
@@ -221,4 +197,55 @@ exports.useGetSectionById = function useGetSectionById(dcOrVars, varsOrOptions, 
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateReactArgs(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   const ref = getSectionByIdRef(dcInstance, inputVars);
   return useDataConnectQuery(ref, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useGetAccessGroupById = function useGetAccessGroupById(dcOrVars, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateReactArgs(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  const ref = getAccessGroupByIdRef(dcInstance, inputVars);
+  return useDataConnectQuery(ref, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useGetAllAccessGroupsWithStatuses = function useGetAllAccessGroupsWithStatuses(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts } = validateReactArgs(connectorConfig, dcOrOptions, options);
+  const ref = getAllAccessGroupsWithStatusesRef(dcInstance);
+  return useDataConnectQuery(ref, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+exports.useCreateUserProfile = function useCreateUserProfile(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return createUserProfileRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useUpsertUser = function useUpsertUser(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return upsertUserRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useUpdateUser = function useUpdateUser(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return updateUserRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useRegisterForSection = function useRegisterForSection(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return registerForSectionRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+exports.useUnregisterFromSection = function useUnregisterFromSection(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return unregisterFromSectionRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }

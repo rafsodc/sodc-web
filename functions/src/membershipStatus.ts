@@ -10,18 +10,8 @@ import {
   type MembershipStatus as AdminMembershipStatus
 } from "@dataconnect/admin-generated";
 
-// Status-based access groups (auto-assigned, prefixed with "Status:")
-const MEMBERSHIP_STATUS_TO_ACCESS_GROUP: Partial<Record<MembershipStatus, string>> = {
-  REGULAR: "Status:Regular",
-  RESERVE: "Status:Reserve",
-  CIVIL_SERVICE: "Status:Civil Service",
-  INDUSTRY: "Status:Industry",
-  RETIRED: "Status:Retired",
-  // PENDING, RESIGNED, LOST, DECEASED do not have access groups
-};
-
-// Status prefix for status-based access groups (used in helper functions)
-export const STATUS_PREFIX = "Status:";
+// No longer using automatic status-based groups
+// Access groups now include membershipStatuses array that automatically includes users with those statuses
 
 /**
  * Updates membership status with server-side validation and enforcement.
@@ -154,9 +144,11 @@ async function updateEnabledClaim(
 
 /**
  * Updates access groups for a user when their membership status changes
- * - If new status is restricted: Remove user from ALL access groups
- * - If new status is non-restricted: Remove from previous status-based group, add to new status-based group, preserve manual groups
- * - If transitioning from restricted to non-restricted: Add user to appropriate status-based group
+ * - If new status is restricted: Remove user from ALL access groups (status-based and manual)
+ * - If new status is non-restricted:
+ *   - Remove user from groups that include oldStatus in their membershipStatuses
+ *   - Add user to groups that include newStatus in their membershipStatuses
+ *   - Preserve manually assigned groups (groups where user is assigned but status is not in membershipStatuses)
  */
 async function updateAccessGroupsForStatusChange(
   userId: string,
@@ -165,7 +157,6 @@ async function updateAccessGroupsForStatusChange(
 ): Promise<void> {
   try {
     // Import admin SDK mutations dynamically to avoid issues if SDK not regenerated yet
-    // Note: This will fail until SDK is regenerated after deploying DataConnect changes
     let adminSdk: any;
     try {
       adminSdk = await import("@dataconnect/admin-generated");
@@ -175,8 +166,8 @@ async function updateAccessGroupsForStatusChange(
     }
     
     // Check if required functions exist in SDK
-    if (!adminSdk.getUserAccessGroupsForAdmin || !adminSdk.getAccessGroupByName || 
-        !adminSdk.createAccessGroupAdmin || !adminSdk.addUserToAccessGroupAdmin || !adminSdk.removeUserFromAccessGroupAdmin) {
+    if (!adminSdk.getUserAccessGroupsForAdmin || !adminSdk.getAllAccessGroupsWithStatuses ||
+        !adminSdk.addUserToAccessGroupAdmin || !adminSdk.removeUserFromAccessGroupAdmin) {
       logger.warn("Access group mutations not available in SDK yet - access group management will be skipped. Deploy DataConnect and regenerate SDK.");
       return;
     }
@@ -190,104 +181,72 @@ async function updateAccessGroupsForStatusChange(
       return;
     }
     
+    // Get all access groups with their membership statuses
+    const allGroupsResult = await adminSdk.getAllAccessGroupsWithStatuses({});
+    const allGroups = allGroupsResult.data?.accessGroups || [];
+    
     // Get user's current access groups
     const userAccessGroupsResult = await adminSdk.getUserAccessGroupsForAdmin({ userId });
-    const currentAccessGroups = userAccessGroupsResult.data?.user?.accessGroups || [];
+    const currentUserGroups = userAccessGroupsResult.data?.user?.accessGroups || [];
+    const currentUserGroupIds = new Set(currentUserGroups.map((ug: any) => ug.accessGroup.id));
     
-    // Find the previous status-based access group (if any)
-    const previousStatusGroup = currentStatus 
-      ? MEMBERSHIP_STATUS_TO_ACCESS_GROUP[currentStatus]
-      : null;
-    
-    // Get the new status-based access group name
-    const newStatusGroupName = MEMBERSHIP_STATUS_TO_ACCESS_GROUP[newStatus];
-    
-    if (!newStatusGroupName) {
-      logger.warn(`No access group defined for status ${newStatus}`);
-      return;
-    }
-    
-    // Remove user from previous status-based access group if it exists and is different
-    if (previousStatusGroup && previousStatusGroup !== newStatusGroupName) {
-      const previousGroup = currentAccessGroups.find(
-        (ag: any) => ag.accessGroup.name === previousStatusGroup
-      );
-      if (previousGroup) {
-        await adminSdk.removeUserFromAccessGroup({
-          userId,
-          accessGroupId: previousGroup.accessGroup.id,
-        });
-        logger.info(`Removed user ${userId} from previous status-based group: ${previousStatusGroup}`);
+    // Find groups that include oldStatus in their membershipStatuses
+    const groupsToRemoveFrom: string[] = [];
+    if (currentStatus && isNonRestrictedStatus(currentStatus)) {
+      for (const group of allGroups) {
+        if (group.membershipStatuses && group.membershipStatuses.includes(currentStatus)) {
+          // Only remove if user is currently in this group
+          if (currentUserGroupIds.has(group.id)) {
+            groupsToRemoveFrom.push(group.id);
+          }
+        }
       }
     }
     
-    // Get or create the new status-based access group
-    const newStatusGroupId = await getOrCreateStatusBasedAccessGroup(
-      newStatusGroupName,
-      adminSdk,
-      now
-    );
-    
-    if (!newStatusGroupId) {
-      logger.error(`Failed to get or create access group for status ${newStatus}`);
-      return;
+    // Find groups that include newStatus in their membershipStatuses
+    const groupsToAddTo: string[] = [];
+    for (const group of allGroups) {
+      if (group.membershipStatuses && group.membershipStatuses.includes(newStatus)) {
+        // Only add if user is not already in this group
+        if (!currentUserGroupIds.has(group.id)) {
+          groupsToAddTo.push(group.id);
+        }
+      }
     }
     
-    // Check if user is already in the new status-based group
-    const alreadyInGroup = currentAccessGroups.some(
-      (ag: any) => ag.accessGroup.id === newStatusGroupId
-    );
-    
-    if (!alreadyInGroup) {
-      // Add user to new status-based access group
-      await adminSdk.addUserToAccessGroupAdmin({
-        userId,
-        accessGroupId: newStatusGroupId,
-        now: now.toISOString(),
-      });
-      logger.info(`Added user ${userId} to status-based group: ${newStatusGroupName}`);
+    // Remove user from groups that no longer match their status
+    for (const groupId of groupsToRemoveFrom) {
+      try {
+        await adminSdk.removeUserFromAccessGroupAdmin({
+          userId,
+          accessGroupId: groupId,
+        });
+        logger.info(`Removed user ${userId} from access group ${groupId} (status changed from ${currentStatus})`);
+      } catch (error: any) {
+        logger.error(`Failed to remove user ${userId} from group ${groupId}:`, error);
+      }
     }
+    
+    // Add user to groups that match their new status
+    for (const groupId of groupsToAddTo) {
+      try {
+        await adminSdk.addUserToAccessGroupAdmin({
+          userId,
+          accessGroupId: groupId,
+          now: now.toISOString(),
+        });
+        logger.info(`Added user ${userId} to access group ${groupId} (status changed to ${newStatus})`);
+      } catch (error: any) {
+        logger.error(`Failed to add user ${userId} to group ${groupId}:`, error);
+      }
+    }
+    
+    // Note: Manually assigned groups (where user is assigned but status is not in membershipStatuses)
+    // are preserved automatically - we only remove/add based on status inclusion
     
   } catch (error: any) {
     logger.error(`Could not update access groups for userId=${userId}:`, error);
     // Don't throw - this is a side effect, we don't want to fail the status update if access group update fails
-  }
-}
-
-/**
- * Gets or creates a status-based access group
- */
-async function getOrCreateStatusBasedAccessGroup(
-  groupName: string,
-  adminSdk: any,
-  now: Date
-): Promise<string | null> {
-  try {
-    // Try to find existing access group
-    const result = await adminSdk.getAccessGroupByName({ name: groupName });
-    const existingGroup = result.data?.accessGroups?.[0];
-    
-    if (existingGroup) {
-      return existingGroup.id;
-    }
-    
-    // Create new access group if it doesn't exist
-    const createResult = await adminSdk.createAccessGroupAdmin({
-      name: groupName,
-      description: `Auto-assigned access group for ${groupName.replace("Status:", "")} members`,
-      now: now.toISOString(),
-    });
-    
-    const newGroupId = createResult.data?.accessGroup_insert?.id;
-    if (newGroupId) {
-      logger.info(`Created new status-based access group: ${groupName}`);
-      return newGroupId;
-    }
-    
-    return null;
-  } catch (error: any) {
-    logger.error(`Could not get or create access group ${groupName}:`, error);
-    return null;
   }
 }
 

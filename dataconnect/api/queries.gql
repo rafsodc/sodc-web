@@ -112,6 +112,7 @@ query ListAccessGroups @auth(expr: "auth.token.admin == true && auth.token.enabl
     id
     name
     description
+    membershipStatuses
     createdAt
     updatedAt
   }
@@ -199,5 +200,43 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
         description
       }
     }
+  }
+}
+
+# Get access group by ID with users and sections (admin only)
+query GetAccessGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  accessGroup(id: $id) {
+    id
+    name
+    description
+    membershipStatuses
+    createdAt
+    updatedAt
+    users: userAccessGroups_on_accessGroup {
+      user {
+        id
+        firstName
+        lastName
+        email
+        membershipStatus
+      }
+    }
+    sections: sectionAccessGroups_on_accessGroup {
+      section {
+        id
+        name
+        type
+        description
+      }
+    }
+  }
+}
+
+# Get all access groups with membership statuses (SDK only - for membership status change logic)
+query GetAllAccessGroupsWithStatuses @auth(level: NO_ACCESS) {
+  accessGroups {
+    id
+    name
+    membershipStatuses
   }
 }

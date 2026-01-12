@@ -26,11 +26,13 @@ mutation CreateSection(
 mutation CreateAccessGroup(
   $name: String!
   $description: String
+  $membershipStatuses: [MembershipStatus!]
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   accessGroup_insert(
     data: {
       name: $name
       description: $description
+      membershipStatuses: $membershipStatuses
     }
   )
 }
@@ -85,4 +87,28 @@ mutation RevokeAccessGroupFromSection(
       accessGroupId: $accessGroupId
     }
   )
+}
+
+# Update an access group (admin only - admins must also be enabled)
+mutation UpdateAccessGroup(
+  $id: UUID!
+  $name: String!
+  $description: String
+  $membershipStatuses: [MembershipStatus!]
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  accessGroup_update(
+    id: $id
+    data: {
+      name: $name
+      description: $description
+      membershipStatuses: $membershipStatuses
+    }
+  )
+}
+
+# Delete an access group (admin only - admins must also be enabled)
+mutation DeleteAccessGroup(
+  $id: UUID!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  accessGroup_delete(id: $id)
 }

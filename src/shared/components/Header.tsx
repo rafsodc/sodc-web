@@ -18,6 +18,7 @@ interface HeaderProps {
   onPermissionsClick?: () => void;
   onManageUsersClick?: () => void;
   onApproveUsersClick?: () => void;
+  onAccessGroupsClick?: () => void;
 }
 
 function getInitials(userData: UserData | null): string {
@@ -27,7 +28,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -102,6 +103,15 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     handleAdminMenuClose();
     if (onApproveUsersClick) {
       onApproveUsersClick();
+    }
+  };
+
+  const handleAccessGroups = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleAdminMenuClose();
+    if (onAccessGroupsClick) {
+      onAccessGroupsClick();
     }
   };
 
@@ -195,6 +205,19 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 }}
               >
                 Approve Users
+              </MenuItem>
+              <MenuItem 
+                onClick={handleAccessGroups}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Access Groups
               </MenuItem>
             </Menu>
           </Box>
