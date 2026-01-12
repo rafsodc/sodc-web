@@ -7,6 +7,7 @@ import { queryRef, executeQuery } from "firebase/data-connect";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
+import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
 import { colors } from "./config/colors";
@@ -21,6 +22,7 @@ const Permissions = lazy(() => import("./features/admin/components/Permissions")
 const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
 const AccessGroups = lazy(() => import("./features/admin/components/AccessGroups"));
+const AuditLogs = lazy(() => import("./features/admin/components/AuditLogs"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
@@ -39,6 +41,7 @@ export default function App() {
   const [logoutSuccess, setLogoutSuccess] = useState(false);
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
+  const isAdmin = useAdminClaim(user);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -302,6 +305,7 @@ export default function App() {
         onManageUsersClick={() => setView("manageUsers")}
         onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
         onAccessGroupsClick={() => setView(ROUTES.ACCESS_GROUPS)}
+        onAuditLogsClick={() => setView(ROUTES.AUDIT_LOGS)}
       />
       <Box
         component="main"
@@ -356,7 +360,7 @@ export default function App() {
             )}
           </Box>
         ) : view === ROUTES.PERMISSIONS ? (
-          user ? (
+          user && isAdmin ? (
             <Suspense fallback={<LoadingFallback />}>
               <Permissions onBack={() => setView("home")} />
             </Suspense>
@@ -371,14 +375,20 @@ export default function App() {
               <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
                 Permissions
               </Typography>
-              <Typography>Please log in to access permissions.</Typography>
+              {!user ? (
+                <Typography>Please log in to access permissions.</Typography>
+              ) : !isAdmin ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>
             </Box>
           )
         ) : view === ROUTES.MANAGE_USERS ? (
-          user ? (
+          user && isAdmin ? (
             <Suspense fallback={<LoadingFallback />}>
               <ManageUsers onBack={() => setView("home")} />
             </Suspense>
@@ -393,14 +403,20 @@ export default function App() {
               <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
                 Manage Users
               </Typography>
-              <Typography>Please log in to access user management.</Typography>
+              {!user ? (
+                <Typography>Please log in to access user management.</Typography>
+              ) : !isAdmin ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>
             </Box>
           )
         ) : view === ROUTES.APPROVE_USERS ? (
-          user ? (
+          user && isAdmin ? (
             <Suspense fallback={<LoadingFallback />}>
               <ApproveUsers onBack={() => setView("home")} />
             </Suspense>
@@ -415,14 +431,20 @@ export default function App() {
               <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
                 Approve Users
               </Typography>
-              <Typography>Please log in to access user approval.</Typography>
+              {!user ? (
+                <Typography>Please log in to access user approval.</Typography>
+              ) : !isAdmin ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>
             </Box>
           )
         ) : view === ROUTES.ACCESS_GROUPS ? (
-          user ? (
+          user && isAdmin ? (
             <Suspense fallback={<LoadingFallback />}>
               <AccessGroups onBack={() => setView("home")} />
             </Suspense>
@@ -437,7 +459,41 @@ export default function App() {
               <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
                 Access Groups
               </Typography>
-              <Typography>Please log in to access group management.</Typography>
+              {!user ? (
+                <Typography>Please log in to access group management.</Typography>
+              ) : !isAdmin ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
+        ) : view === ROUTES.AUDIT_LOGS ? (
+          user && isAdmin ? (
+            <Suspense fallback={<LoadingFallback />}>
+              <AuditLogs onBack={() => setView("home")} />
+            </Suspense>
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Audit Logs
+              </Typography>
+              {!user ? (
+                <Typography>Please log in to view audit logs.</Typography>
+              ) : !isAdmin ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
                 Back
               </Button>

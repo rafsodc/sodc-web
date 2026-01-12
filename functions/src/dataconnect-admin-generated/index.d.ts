@@ -144,6 +144,8 @@ export interface GetAccessGroupByIdData {
     membershipStatuses?: MembershipStatus[] | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
     users: ({
       user: {
         id: string;
@@ -341,6 +343,7 @@ export interface GetUserWithAccessGroupsData {
         id: UUIDString;
         name: string;
         description?: string | null;
+        membershipStatuses?: MembershipStatus[] | null;
       } & AccessGroup_Key;
     })[];
   } & User_Key;
@@ -367,6 +370,8 @@ export interface ListAccessGroupsData {
     membershipStatuses?: MembershipStatus[] | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
   } & AccessGroup_Key)[];
 }
 
@@ -378,6 +383,8 @@ export interface ListSectionsData {
     description?: string | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
   } & Section_Key)[];
 }
 
@@ -396,6 +403,8 @@ export interface ListUsersData {
     isIndustry?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
   } & User_Key)[];
 }
 

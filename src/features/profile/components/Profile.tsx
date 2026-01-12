@@ -20,7 +20,7 @@ import { colors } from "../../../config/colors";
 import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
-import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
 
@@ -150,6 +150,8 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_NAME_LENGTH }}
+            helperText={`${firstName.length}/${MAX_NAME_LENGTH} characters`}
           />
 
           <TextField
@@ -159,6 +161,8 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_NAME_LENGTH }}
+            helperText={`${lastName.length}/${MAX_NAME_LENGTH} characters`}
           />
 
           <TextField
@@ -169,6 +173,8 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_EMAIL_LENGTH }}
+            helperText={`${email.length}/${MAX_EMAIL_LENGTH} characters`}
           />
 
           <TextField
@@ -178,6 +184,8 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
+            helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
           <FormControl fullWidth required>

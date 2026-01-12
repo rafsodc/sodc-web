@@ -19,6 +19,7 @@ interface HeaderProps {
   onManageUsersClick?: () => void;
   onApproveUsersClick?: () => void;
   onAccessGroupsClick?: () => void;
+  onAuditLogsClick?: () => void;
 }
 
 function getInitials(userData: UserData | null): string {
@@ -28,7 +29,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick, onAuditLogsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -112,6 +113,15 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     handleAdminMenuClose();
     if (onAccessGroupsClick) {
       onAccessGroupsClick();
+    }
+  };
+
+  const handleAuditLogs = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleAdminMenuClose();
+    if (onAuditLogsClick) {
+      onAuditLogsClick();
     }
   };
 
@@ -218,6 +228,19 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 }}
               >
                 Access Groups
+              </MenuItem>
+              <MenuItem 
+                onClick={handleAuditLogs}
+                sx={{
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Audit Logs
               </MenuItem>
             </Menu>
           </Box>

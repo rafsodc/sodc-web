@@ -1,7 +1,7 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { requireAuth, requireAdmin, requireString, mapUserRecord, handleFunctionError } from "./helpers";
+import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAME_LENGTH, mapUserRecord, handleFunctionError } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 
 /**
@@ -11,7 +11,11 @@ export const updateDisplayName = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAuth(request);
-  const displayName = requireString(request.data.displayName, "displayName");
+  const displayName = validateStringLength(
+    requireString(request.data.displayName, "displayName"),
+    "Display name",
+    MAX_NAME_LENGTH * 2 // Display name can be "FirstName LastName"
+  );
 
   try {
     await admin.auth().updateUser(request.auth!.uid, { displayName });
@@ -31,7 +35,11 @@ export const updateUserDisplayName = onCall(
   async (request) => {
   requireAdmin(request);
   const userId = requireString(request.data.userId, "userId");
-  const displayName = requireString(request.data.displayName, "displayName");
+  const displayName = validateStringLength(
+    requireString(request.data.displayName, "displayName"),
+    "Display name",
+    MAX_NAME_LENGTH * 2 // Display name can be "FirstName LastName"
+  );
 
   try {
     await admin.auth().updateUser(userId, { displayName });

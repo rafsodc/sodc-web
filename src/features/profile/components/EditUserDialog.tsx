@@ -22,7 +22,7 @@ import { dataConnect } from "../../../config/firebase";
 import type { SearchUser } from "../../../types";
 import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../dataconnect-generated";
 import { colors } from "../../../config/colors";
-import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { parseDisplayName, validateUserForm } from "../../users/utils/userHelpers";
 import { updateUserDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
@@ -246,6 +246,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                 required
                 fullWidth
                 disabled={submitting}
+                inputProps={{ maxLength: MAX_NAME_LENGTH }}
+                helperText={`${firstName.length}/${MAX_NAME_LENGTH} characters`}
               />
               <TextField
                 label="Last Name"
@@ -254,6 +256,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                 required
                 fullWidth
                 disabled={submitting}
+                inputProps={{ maxLength: MAX_NAME_LENGTH }}
+                helperText={`${lastName.length}/${MAX_NAME_LENGTH} characters`}
               />
               <TextField
                 label="Email"
@@ -263,6 +267,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                 required
                 fullWidth
                 disabled={submitting}
+                inputProps={{ maxLength: MAX_EMAIL_LENGTH }}
+                helperText={`${email.length}/${MAX_EMAIL_LENGTH} characters`}
               />
               <TextField
                 label="Service Number"
@@ -271,6 +277,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                 required
                 fullWidth
                 disabled={submitting}
+                inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
+                helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
               />
               <FormControl fullWidth required>
                 <InputLabel>Membership Status</InputLabel>

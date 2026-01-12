@@ -37,7 +37,6 @@ import {
   type ListAccessGroupsData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
-import { canUserHaveAccessGroups } from "../../users/utils/accessGroupHelpers";
 
 interface UserAccessGroupsProps {
   userId: string;
@@ -48,7 +47,6 @@ interface UserAccessGroupsProps {
 
 export default function UserAccessGroups({
   userId,
-  userEmail,
   userMembershipStatus,
   onUpdate,
 }: UserAccessGroupsProps) {
@@ -142,7 +140,6 @@ export default function UserAccessGroups({
   const availableGroups = allGroups.filter(group => !currentGroupIds.has(group.id));
   
   const membershipStatus = userMembershipStatus || userData?.membershipStatus;
-  const canHaveGroups = membershipStatus ? canUserHaveAccessGroups(membershipStatus) : true;
 
   if (loading) {
     return (
@@ -164,9 +161,9 @@ export default function UserAccessGroups({
         </Alert>
       )}
 
-      {!canHaveGroups && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Users with restricted membership statuses ({membershipStatus}) cannot be assigned to access groups.
+      {membershipStatus && ["PENDING", "RESIGNED", "LOST", "DECEASED"].includes(membershipStatus) && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          User has restricted membership status ({membershipStatus}) and cannot log in, but access group memberships are preserved.
         </Alert>
       )}
 
@@ -176,7 +173,6 @@ export default function UserAccessGroups({
           variant="outlined"
           startIcon={<PersonAddIcon />}
           onClick={handleAddGroup}
-          disabled={!canHaveGroups}
         >
           Add to Group
         </Button>
@@ -306,18 +302,6 @@ export default function UserAccessGroups({
                       </Typography>
                     )}
                   </Box>
-                  {option.membershipStatuses && option.membershipStatuses.length > 0 && (
-                    <Box sx={{ display: "flex", gap: 0.5, ml: 2 }}>
-                      {option.membershipStatuses.map((status) => (
-                        <Chip
-                          key={status}
-                          label={status}
-                          size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                    </Box>
-                  )}
                 </Box>
               )}
               disabled={addingGroupId !== null}

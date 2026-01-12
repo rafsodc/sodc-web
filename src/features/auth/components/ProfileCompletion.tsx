@@ -21,7 +21,7 @@ import { executeMutation, mutationRef } from "firebase/data-connect";
 import { MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
 import { NON_RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
-import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { auth } from "../../../config/firebase";
 import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 
@@ -166,6 +166,8 @@ export default function ProfileCompletion({
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_NAME_LENGTH }}
+            helperText={`${firstName.length}/${MAX_NAME_LENGTH} characters`}
           />
 
           <TextField
@@ -175,6 +177,8 @@ export default function ProfileCompletion({
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_NAME_LENGTH }}
+            helperText={`${lastName.length}/${MAX_NAME_LENGTH} characters`}
           />
 
           <TextField
@@ -195,6 +199,8 @@ export default function ProfileCompletion({
             required
             fullWidth
             disabled={submitting}
+            inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
+            helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
           <FormControl fullWidth required>

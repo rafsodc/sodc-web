@@ -65,6 +65,8 @@ query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == t
     isIndustry
     createdAt
     updatedAt
+    createdBy
+    updatedBy
   }
 }
 
@@ -79,6 +81,8 @@ query ListSections @auth(expr: "auth.token.admin == true && auth.token.enabled =
     description
     createdAt
     updatedAt
+    createdBy
+    updatedBy
   }
 }
 
@@ -115,6 +119,8 @@ query ListAccessGroups @auth(expr: "auth.token.admin == true && auth.token.enabl
     membershipStatuses
     createdAt
     updatedAt
+    createdBy
+    updatedBy
   }
 }
 
@@ -165,6 +171,7 @@ query GetUserWithAccessGroups($id: String!) @auth(expr: "auth.token.admin == tru
         id
         name
         description
+        membershipStatuses
       }
     }
   }
@@ -212,6 +219,8 @@ query GetAccessGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && au
     membershipStatuses
     createdAt
     updatedAt
+    createdBy
+    updatedBy
     users: userAccessGroups_on_accessGroup {
       user {
         id

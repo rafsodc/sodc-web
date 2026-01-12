@@ -18,6 +18,12 @@ export const SEARCH_DEBOUNCE_MS = 500;
 export const SUCCESS_MESSAGE_TIMEOUT = 1500;
 export const ERROR_MESSAGE_TIMEOUT = 5000;
 
+// Input length limits
+export const MAX_NAME_LENGTH = 100;
+export const MAX_DESCRIPTION_LENGTH = 500;
+export const MAX_SERVICE_NUMBER_LENGTH = 50;
+export const MAX_EMAIL_LENGTH = 255;
+
 // Membership status options for UI
 import { MembershipStatus } from "../dataconnect-generated";
 

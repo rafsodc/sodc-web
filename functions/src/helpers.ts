@@ -33,6 +33,58 @@ export function requireString(value: any, fieldName: string): string {
 }
 
 /**
+ * Validates that a string is within the specified length limits
+ */
+export function validateStringLength(
+  value: string,
+  fieldName: string,
+  maxLength: number,
+  minLength: number = 1
+): string {
+  const trimmed = value.trim();
+  if (trimmed.length < minLength) {
+    throw new HttpsError("invalid-argument", `${fieldName} must be at least ${minLength} character(s)`);
+  }
+  if (trimmed.length > maxLength) {
+    throw new HttpsError("invalid-argument", `${fieldName} must be no more than ${maxLength} character(s)`);
+  }
+  return trimmed;
+}
+
+/**
+ * Validates email format (basic validation)
+ */
+export function validateEmail(email: string): string {
+  const trimmed = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmed)) {
+    throw new HttpsError("invalid-argument", "Invalid email format");
+  }
+  if (trimmed.length > MAX_EMAIL_LENGTH) {
+    throw new HttpsError("invalid-argument", `Email must be no more than ${MAX_EMAIL_LENGTH} characters`);
+  }
+  return trimmed;
+}
+
+/**
+ * Validates UUID format (basic validation)
+ */
+export function validateUUID(uuid: string, fieldName: string = "UUID"): string {
+  const trimmed = uuid.trim();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(trimmed)) {
+    throw new HttpsError("invalid-argument", `Invalid ${fieldName} format`);
+  }
+  return trimmed;
+}
+
+// Input length limits (must match frontend constants)
+export const MAX_NAME_LENGTH = 100;
+export const MAX_DESCRIPTION_LENGTH = 500;
+export const MAX_SERVICE_NUMBER_LENGTH = 50;
+export const MAX_EMAIL_LENGTH = 255;
+
+/**
  * Maps a Firebase Auth user record to a simplified user object
  */
 export function mapUserRecord(userRecord: admin.auth.UserRecord) {

@@ -19,6 +19,8 @@ import UsersTable from "../../users/components/UsersTable";
 import AdminUsersTable from "../../users/components/AdminUsersTable";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import UserAccessGroups from "./UserAccessGroups";
+import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { auth } from "../../../config/firebase";
 import "./Permissions.css";
 
 interface PermissionsProps {
@@ -26,6 +28,7 @@ interface PermissionsProps {
 }
 
 export default function Permissions({ onBack }: PermissionsProps) {
+  const isAdmin = useAdminClaim(auth.currentUser);
   const [tabValue, setTabValue] = useState(0);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [filteredAdminUsers, setFilteredAdminUsers] = useState<AdminUser[]>([]);
@@ -179,6 +182,18 @@ export default function Permissions({ onBack }: PermissionsProps) {
     }
   };
 
+  // Check admin status - show access denied if not admin
+  if (!isAdmin) {
+    return (
+      <Box className="permissions-container">
+        <PageHeader title="Permissions" onBack={onBack} />
+        <Alert severity="error" sx={{ mt: 2 }}>
+          Access denied. Admin privileges required to manage permissions.
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box className="permissions-container">
       <PageHeader title="Permissions" onBack={onBack} />
@@ -284,20 +299,6 @@ export default function Permissions({ onBack }: PermissionsProps) {
                 updatingUserId={updatingUserId}
                 adminCount={adminCount}
               />
-              {selectedUserId && tabValue === 2 && (
-                <Box sx={{ mt: 4, p: 2, border: `1px solid ${colors.border}`, borderRadius: 1 }}>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
-                    Manage Access Groups for {searchResults.find(u => u.uid === selectedUserId)?.displayName || "User"}
-                  </Typography>
-                  <UserAccessGroups
-                    userId={selectedUserId}
-                    userEmail={searchResults.find(u => u.uid === selectedUserId)?.email}
-                    onUpdate={() => {
-                      // Optionally refresh user data
-                    }}
-                  />
-                </Box>
-              )}
               <PaginationDisplay
                 page={searchPage}
                 totalPages={searchTotalPages}
@@ -343,7 +344,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
                 adminCount={adminCount}
               />
               {selectedUserId && (
-                <Box sx={{ mt: 4, p: 2, border: `1px solid ${colors.border}`, borderRadius: 1 }}>
+                <Box sx={{ mt: 4, p: 2, border: "1px solid rgba(0, 0, 0, 0.12)", borderRadius: 1 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     Manage Access Groups for {searchResults.find(u => u.uid === selectedUserId)?.displayName || "User"}
                   </Typography>

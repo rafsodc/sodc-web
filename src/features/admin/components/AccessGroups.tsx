@@ -43,12 +43,10 @@ import {
   addUserToAccessGroupRef,
   removeUserFromAccessGroupRef,
   getUserWithAccessGroupsRef,
-  type ListAccessGroupsData,
   type GetAccessGroupByIdData,
-  type GetUserWithAccessGroupsData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
-import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import {
@@ -62,7 +60,8 @@ import {
   Autocomplete,
 } from "@mui/material";
 import { searchUsers } from "../../users/utils/searchUsers";
-import { canUserHaveAccessGroups } from "../../users/utils/accessGroupHelpers";
+import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { auth } from "../../../config/firebase";
 
 interface AccessGroupsProps {
   onBack: () => void;
@@ -80,6 +79,7 @@ interface AccessGroupWithDetails {
 }
 
 export default function AccessGroups({ onBack }: AccessGroupsProps) {
+  const isAdmin = useAdminClaim(auth.currentUser);
   const [accessGroups, setAccessGroups] = useState<AccessGroupWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -352,6 +352,18 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
+
+  // Check admin status - show access denied if not admin
+  if (!isAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <PageHeader title="Access Groups" onBack={onBack} />
+        <Alert severity="error" sx={{ mt: 2 }}>
+          Access denied. Admin privileges required to manage access groups.
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -645,6 +657,8 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
             variant="outlined"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
+            inputProps={{ maxLength: MAX_NAME_LENGTH }}
+            helperText={`${groupName.length}/${MAX_NAME_LENGTH} characters`}
             sx={{ mb: 2 }}
           />
           <TextField
@@ -656,6 +670,8 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
             rows={3}
             value={groupDescription}
             onChange={(e) => setGroupDescription(e.target.value)}
+            inputProps={{ maxLength: MAX_DESCRIPTION_LENGTH }}
+            helperText={`${groupDescription.length}/${MAX_DESCRIPTION_LENGTH} characters`}
             sx={{ mb: 2 }}
           />
           <FormControl fullWidth margin="dense">
@@ -727,7 +743,6 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
               />
             )}
             renderOption={(props, option) => {
-              const canHaveGroups = canUserHaveAccessGroups(option.membershipStatus);
               const groupDetailsForAdding = addingToGroupId ? groupDetails[addingToGroupId] : null;
               const isAlreadyInGroup = groupDetailsForAdding?.users?.some(u => u.user.id === option.id);
               return (
@@ -757,7 +772,6 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                       label={option.membershipStatus}
                       size="small"
                       variant="outlined"
-                      color={canHaveGroups ? "default" : "error"}
                     />
                   </Box>
                 </Box>
@@ -766,16 +780,15 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
             filterOptions={(x) => x} // We're handling filtering server-side
             sx={{ mt: 1 }}
             disabled={addingUserId !== null}
-            isOptionDisabled={(option) => {
-              // Disable if user can't have groups or is already in the group
-              const canHaveGroups = canUserHaveAccessGroups(option.membershipStatus);
+            getOptionDisabled={(option) => {
+              // Only disable if user is already in the group
               const groupDetailsForAdding = addingToGroupId ? groupDetails[addingToGroupId] : null;
               const isAlreadyInGroup = groupDetailsForAdding?.users?.some(u => u.user.id === option.id);
-              return !canHaveGroups || isAlreadyInGroup || false;
+              return isAlreadyInGroup || false;
             }}
           />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
-            Search for users by name or email. Users with restricted membership statuses (PENDING, RESIGNED, LOST, DECEASED) cannot be added to access groups.
+            Search for users by name or email. Note: Restricted users (PENDING, RESIGNED, LOST, DECEASED) cannot log in but can be added to access groups to preserve memberships.
           </Typography>
         </DialogContent>
         <DialogActions>
