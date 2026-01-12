@@ -102,6 +102,8 @@ mutation UpdateAccessGroup(
       name: $name
       description: $description
       membershipStatuses: $membershipStatuses
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
     }
   )
 }

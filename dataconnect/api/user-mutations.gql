@@ -69,7 +69,9 @@ mutation UpsertUser(
       isReserve: $isReserve
       isCivilServant: $isCivilServant
       isIndustry: $isIndustry
-      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+      # createdAt and createdBy are set automatically via defaults on insert only
     }
   )
 }
@@ -100,7 +102,9 @@ mutation UpdateUser(
       isReserve: $isReserve
       isCivilServant: $isCivilServant
       isIndustry: $isIndustry
-      # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+      # createdAt and createdBy are set automatically via defaults on insert only
     }
   )
 }

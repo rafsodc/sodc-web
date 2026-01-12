@@ -12,7 +12,11 @@
 mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: MembershipStatus!) @auth(level: NO_ACCESS) {
   user_update(
     id: $userId
-    data: { membershipStatus: $membershipStatus }
+    data: { 
+      membershipStatus: $membershipStatus
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "system"
+    }
   )
 }
 

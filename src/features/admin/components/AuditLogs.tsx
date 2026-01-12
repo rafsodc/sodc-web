@@ -13,7 +13,9 @@ import {
   TableRow,
   Paper,
   Chip,
+  IconButton,
 } from "@mui/material";
+import { Refresh as RefreshIcon } from "@mui/icons-material";
 import { executeQuery } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
@@ -77,7 +79,19 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
 
   return (
     <Box sx={{ p: 3 }}>
-      <PageHeader title="Audit Logs" onBack={onBack} />
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box sx={{ flex: 1 }}>
+          <PageHeader title="Audit Logs" onBack={onBack} />
+        </Box>
+        <IconButton
+          onClick={fetchData}
+          disabled={loading}
+          title="Refresh audit logs"
+          sx={{ ml: 2 }}
+        >
+          <RefreshIcon />
+        </IconButton>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
