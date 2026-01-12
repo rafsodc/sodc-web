@@ -20,6 +20,7 @@ interface HeaderProps {
   onApproveUsersClick?: () => void;
   onAccessGroupsClick?: () => void;
   onAuditLogsClick?: () => void;
+  onSectionsClick?: () => void;
 }
 
 function getInitials(userData: UserData | null): string {
@@ -29,7 +30,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick, onAuditLogsClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick, onAuditLogsClick, onSectionsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -139,10 +140,36 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
         <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
           SODC
         </Typography>
-        {user && isAdmin && isEnabled && (
-          <Box sx={{ flexGrow: 1, display: "flex", justifyContent: "center" }}>
-            <Button
-              onClick={handleAdminClick}
+        {user && isEnabled && (
+          <Box sx={{ flexGrow: 1, display: "flex", justifyContent: "center", gap: 2 }}>
+            {onSectionsClick && (
+              <Button
+                onClick={onSectionsClick}
+                sx={{
+                  textTransform: "none",
+                  backgroundColor: "white",
+                  color: colors.primary,
+                  borderRadius: "9999px",
+                  px: 3,
+                  fontWeight: 600,
+                  "&:hover": {
+                    backgroundColor: "white",
+                    opacity: 0.9,
+                  },
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:focus-visible": {
+                    outline: "none",
+                  },
+                }}
+              >
+                Sections
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                onClick={handleAdminClick}
               sx={{
                 textTransform: "none",
                 backgroundColor: "white",
@@ -243,10 +270,11 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 Audit Logs
               </MenuItem>
             </Menu>
+            )}
           </Box>
         )}
-        {!user || !isAdmin ? (
-          <Box sx={{ flexGrow: user && isAdmin ? 0 : 1 }} />
+        {!user || !isEnabled ? (
+          <Box sx={{ flexGrow: user && isEnabled ? 0 : 1 }} />
         ) : null}
         {user ? (
           <>

@@ -10,8 +10,6 @@ This README will guide you through the process of using the generated JavaScript
 - [**Accessing the connector**](#accessing-the-connector)
   - [*Connecting to the local Emulator*](#connecting-to-the-local-emulator)
 - [**Queries**](#queries)
-  - [*GetAccessGroupByName*](#getaccessgroupbyname)
-  - [*GetUserAccessGroupsForAdmin*](#getuseraccessgroupsforadmin)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -26,18 +24,17 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetSectionById*](#getsectionbyid)
   - [*GetAccessGroupById*](#getaccessgroupbyid)
   - [*GetAllAccessGroupsWithStatuses*](#getallaccessgroupswithstatuses)
+  - [*GetSectionMembers*](#getsectionmembers)
+  - [*GetAccessGroupByName*](#getaccessgroupbyname)
+  - [*GetUserAccessGroupsForAdmin*](#getuseraccessgroupsforadmin)
 - [**Mutations**](#mutations)
-  - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
-  - [*DeleteUser*](#deleteuser)
-  - [*CreateUser*](#createuser)
-  - [*CreateAccessGroupAdmin*](#createaccessgroupadmin)
-  - [*AddUserToAccessGroupAdmin*](#addusertoaccessgroupadmin)
-  - [*RemoveUserFromAccessGroupAdmin*](#removeuserfromaccessgroupadmin)
   - [*CreateUserProfile*](#createuserprofile)
   - [*UpsertUser*](#upsertuser)
   - [*UpdateUser*](#updateuser)
   - [*RegisterForSection*](#registerforsection)
   - [*UnregisterFromSection*](#unregisterfromsection)
+  - [*SubscribeToAccessGroup*](#subscribetoaccessgroup)
+  - [*UnsubscribeFromAccessGroup*](#unsubscribefromaccessgroup)
   - [*CreateSection*](#createsection)
   - [*CreateAccessGroup*](#createaccessgroup)
   - [*AddUserToAccessGroup*](#addusertoaccessgroup)
@@ -46,6 +43,12 @@ This README will guide you through the process of using the generated JavaScript
   - [*RevokeAccessGroupFromSection*](#revokeaccessgroupfromsection)
   - [*UpdateAccessGroup*](#updateaccessgroup)
   - [*DeleteAccessGroup*](#deleteaccessgroup)
+  - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
+  - [*DeleteUser*](#deleteuser)
+  - [*CreateUser*](#createuser)
+  - [*CreateAccessGroupAdmin*](#createaccessgroupadmin)
+  - [*AddUserToAccessGroupAdmin*](#addusertoaccessgroupadmin)
+  - [*RemoveUserFromAccessGroupAdmin*](#removeuserfromaccessgroupadmin)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `api`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -91,237 +94,6 @@ The following is true for both the action shortcut function and the `QueryRef` f
 - Both functions can be called with or without passing in a `DataConnect` instance as an argument. If no `DataConnect` argument is passed in, then the generated SDK will call `getDataConnect(connectorConfig)` behind the scenes for you.
 
 Below are examples of how to use the `api` connector's generated functions to execute each query. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#using-queries).
-
-## GetAccessGroupByName
-You can execute the `GetAccessGroupByName` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-getAccessGroupByName(vars: GetAccessGroupByNameVariables): QueryPromise<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
-
-interface GetAccessGroupByNameRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetAccessGroupByNameVariables): QueryRef<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
-}
-export const getAccessGroupByNameRef: GetAccessGroupByNameRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
-```typescript
-getAccessGroupByName(dc: DataConnect, vars: GetAccessGroupByNameVariables): QueryPromise<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
-
-interface GetAccessGroupByNameRef {
-  ...
-  (dc: DataConnect, vars: GetAccessGroupByNameVariables): QueryRef<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
-}
-export const getAccessGroupByNameRef: GetAccessGroupByNameRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAccessGroupByNameRef:
-```typescript
-const name = getAccessGroupByNameRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `GetAccessGroupByName` query requires an argument of type `GetAccessGroupByNameVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface GetAccessGroupByNameVariables {
-  name: string;
-}
-```
-### Return Type
-Recall that executing the `GetAccessGroupByName` query returns a `QueryPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `GetAccessGroupByNameData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface GetAccessGroupByNameData {
-  accessGroups: ({
-    id: UUIDString;
-    name: string;
-    description?: string | null;
-  } & AccessGroup_Key)[];
-}
-```
-### Using `GetAccessGroupByName`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, getAccessGroupByName, GetAccessGroupByNameVariables } from '@dataconnect/generated';
-
-// The `GetAccessGroupByName` query requires an argument of type `GetAccessGroupByNameVariables`:
-const getAccessGroupByNameVars: GetAccessGroupByNameVariables = {
-  name: ..., 
-};
-
-// Call the `getAccessGroupByName()` function to execute the query.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await getAccessGroupByName(getAccessGroupByNameVars);
-// Variables can be defined inline as well.
-const { data } = await getAccessGroupByName({ name: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await getAccessGroupByName(dataConnect, getAccessGroupByNameVars);
-
-console.log(data.accessGroups);
-
-// Or, you can use the `Promise` API.
-getAccessGroupByName(getAccessGroupByNameVars).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroups);
-});
-```
-
-### Using `GetAccessGroupByName`'s `QueryRef` function
-
-```typescript
-import { getDataConnect, executeQuery } from 'firebase/data-connect';
-import { connectorConfig, getAccessGroupByNameRef, GetAccessGroupByNameVariables } from '@dataconnect/generated';
-
-// The `GetAccessGroupByName` query requires an argument of type `GetAccessGroupByNameVariables`:
-const getAccessGroupByNameVars: GetAccessGroupByNameVariables = {
-  name: ..., 
-};
-
-// Call the `getAccessGroupByNameRef()` function to get a reference to the query.
-const ref = getAccessGroupByNameRef(getAccessGroupByNameVars);
-// Variables can be defined inline as well.
-const ref = getAccessGroupByNameRef({ name: ..., });
-
-// You can also pass in a `DataConnect` instance to the `QueryRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = getAccessGroupByNameRef(dataConnect, getAccessGroupByNameVars);
-
-// Call `executeQuery()` on the reference to execute the query.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeQuery(ref);
-
-console.log(data.accessGroups);
-
-// Or, you can use the `Promise` API.
-executeQuery(ref).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroups);
-});
-```
-
-## GetUserAccessGroupsForAdmin
-You can execute the `GetUserAccessGroupsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-getUserAccessGroupsForAdmin(vars: GetUserAccessGroupsForAdminVariables): QueryPromise<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
-
-interface GetUserAccessGroupsForAdminRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetUserAccessGroupsForAdminVariables): QueryRef<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
-}
-export const getUserAccessGroupsForAdminRef: GetUserAccessGroupsForAdminRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
-```typescript
-getUserAccessGroupsForAdmin(dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables): QueryPromise<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
-
-interface GetUserAccessGroupsForAdminRef {
-  ...
-  (dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables): QueryRef<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
-}
-export const getUserAccessGroupsForAdminRef: GetUserAccessGroupsForAdminRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getUserAccessGroupsForAdminRef:
-```typescript
-const name = getUserAccessGroupsForAdminRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `GetUserAccessGroupsForAdmin` query requires an argument of type `GetUserAccessGroupsForAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface GetUserAccessGroupsForAdminVariables {
-  userId: string;
-}
-```
-### Return Type
-Recall that executing the `GetUserAccessGroupsForAdmin` query returns a `QueryPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `GetUserAccessGroupsForAdminData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface GetUserAccessGroupsForAdminData {
-  user?: {
-    id: string;
-    accessGroups: ({
-      accessGroup: {
-        id: UUIDString;
-        name: string;
-        description?: string | null;
-      } & AccessGroup_Key;
-    })[];
-  } & User_Key;
-}
-```
-### Using `GetUserAccessGroupsForAdmin`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, getUserAccessGroupsForAdmin, GetUserAccessGroupsForAdminVariables } from '@dataconnect/generated';
-
-// The `GetUserAccessGroupsForAdmin` query requires an argument of type `GetUserAccessGroupsForAdminVariables`:
-const getUserAccessGroupsForAdminVars: GetUserAccessGroupsForAdminVariables = {
-  userId: ..., 
-};
-
-// Call the `getUserAccessGroupsForAdmin()` function to execute the query.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await getUserAccessGroupsForAdmin(getUserAccessGroupsForAdminVars);
-// Variables can be defined inline as well.
-const { data } = await getUserAccessGroupsForAdmin({ userId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await getUserAccessGroupsForAdmin(dataConnect, getUserAccessGroupsForAdminVars);
-
-console.log(data.user);
-
-// Or, you can use the `Promise` API.
-getUserAccessGroupsForAdmin(getUserAccessGroupsForAdminVars).then((response) => {
-  const data = response.data;
-  console.log(data.user);
-});
-```
-
-### Using `GetUserAccessGroupsForAdmin`'s `QueryRef` function
-
-```typescript
-import { getDataConnect, executeQuery } from 'firebase/data-connect';
-import { connectorConfig, getUserAccessGroupsForAdminRef, GetUserAccessGroupsForAdminVariables } from '@dataconnect/generated';
-
-// The `GetUserAccessGroupsForAdmin` query requires an argument of type `GetUserAccessGroupsForAdminVariables`:
-const getUserAccessGroupsForAdminVars: GetUserAccessGroupsForAdminVariables = {
-  userId: ..., 
-};
-
-// Call the `getUserAccessGroupsForAdminRef()` function to get a reference to the query.
-const ref = getUserAccessGroupsForAdminRef(getUserAccessGroupsForAdminVars);
-// Variables can be defined inline as well.
-const ref = getUserAccessGroupsForAdminRef({ userId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `QueryRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = getUserAccessGroupsForAdminRef(dataConnect, getUserAccessGroupsForAdminVars);
-
-// Call `executeQuery()` on the reference to execute the query.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeQuery(ref);
-
-console.log(data.user);
-
-// Or, you can use the `Promise` API.
-executeQuery(ref).then((response) => {
-  const data = response.data;
-  console.log(data.user);
-});
-```
 
 ## GetCurrentUser
 You can execute the `GetCurrentUser` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
@@ -909,6 +681,7 @@ export interface ListAccessGroupsData {
     name: string;
     description?: string | null;
     membershipStatuses?: MembershipStatus[] | null;
+    subscribable?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -1565,13 +1338,22 @@ export interface GetSectionByIdData {
     description?: string | null;
     isOpenForRegistration?: boolean | null;
     allowedAccessGroups?: UUIDString[] | null;
-    accessGroups: ({
+    viewingAccessGroups: ({
       accessGroup: {
         id: UUIDString;
         name: string;
         description?: string | null;
+        subscribable?: boolean | null;
       } & AccessGroup_Key;
     })[];
+      memberAccessGroups: ({
+        accessGroup: {
+          id: UUIDString;
+          name: string;
+          description?: string | null;
+          subscribable?: boolean | null;
+        } & AccessGroup_Key;
+      })[];
   } & Section_Key;
 }
 ```
@@ -1686,6 +1468,7 @@ export interface GetAccessGroupByIdData {
     name: string;
     description?: string | null;
     membershipStatuses?: MembershipStatus[] | null;
+    subscribable?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -1706,6 +1489,7 @@ export interface GetAccessGroupByIdData {
           type: SectionType;
           description?: string | null;
         } & Section_Key;
+          purpose: SectionAccessGroupPurpose;
       })[];
   } & AccessGroup_Key;
 }
@@ -1868,6 +1652,381 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetSectionMembers
+You can execute the `GetSectionMembers` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getSectionMembers(vars: GetSectionMembersVariables): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
+
+interface GetSectionMembersRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetSectionMembersVariables): QueryRef<GetSectionMembersData, GetSectionMembersVariables>;
+}
+export const getSectionMembersRef: GetSectionMembersRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
+
+interface GetSectionMembersRef {
+  ...
+  (dc: DataConnect, vars: GetSectionMembersVariables): QueryRef<GetSectionMembersData, GetSectionMembersVariables>;
+}
+export const getSectionMembersRef: GetSectionMembersRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getSectionMembersRef:
+```typescript
+const name = getSectionMembersRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetSectionMembers` query requires an argument of type `GetSectionMembersVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetSectionMembersVariables {
+  sectionId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetSectionMembers` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetSectionMembersData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetSectionMembersData {
+  section?: {
+    id: UUIDString;
+    name: string;
+    type: SectionType;
+    description?: string | null;
+    memberAccessGroups: ({
+      accessGroup: {
+        id: UUIDString;
+        name: string;
+        users: ({
+          user: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            membershipStatus: MembershipStatus;
+          } & User_Key;
+        })[];
+      } & AccessGroup_Key;
+    })[];
+      viewingAccessGroups: ({
+        accessGroup: {
+          id: UUIDString;
+          name: string;
+          users: ({
+            user: {
+              id: string;
+              firstName: string;
+              lastName: string;
+              email: string;
+              membershipStatus: MembershipStatus;
+            } & User_Key;
+          })[];
+        } & AccessGroup_Key;
+      })[];
+  } & Section_Key;
+}
+```
+### Using `GetSectionMembers`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getSectionMembers, GetSectionMembersVariables } from '@dataconnect/generated';
+
+// The `GetSectionMembers` query requires an argument of type `GetSectionMembersVariables`:
+const getSectionMembersVars: GetSectionMembersVariables = {
+  sectionId: ..., 
+};
+
+// Call the `getSectionMembers()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getSectionMembers(getSectionMembersVars);
+// Variables can be defined inline as well.
+const { data } = await getSectionMembers({ sectionId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getSectionMembers(dataConnect, getSectionMembersVars);
+
+console.log(data.section);
+
+// Or, you can use the `Promise` API.
+getSectionMembers(getSectionMembersVars).then((response) => {
+  const data = response.data;
+  console.log(data.section);
+});
+```
+
+### Using `GetSectionMembers`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getSectionMembersRef, GetSectionMembersVariables } from '@dataconnect/generated';
+
+// The `GetSectionMembers` query requires an argument of type `GetSectionMembersVariables`:
+const getSectionMembersVars: GetSectionMembersVariables = {
+  sectionId: ..., 
+};
+
+// Call the `getSectionMembersRef()` function to get a reference to the query.
+const ref = getSectionMembersRef(getSectionMembersVars);
+// Variables can be defined inline as well.
+const ref = getSectionMembersRef({ sectionId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getSectionMembersRef(dataConnect, getSectionMembersVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.section);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.section);
+});
+```
+
+## GetAccessGroupByName
+You can execute the `GetAccessGroupByName` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAccessGroupByName(vars: GetAccessGroupByNameVariables): QueryPromise<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
+
+interface GetAccessGroupByNameRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAccessGroupByNameVariables): QueryRef<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
+}
+export const getAccessGroupByNameRef: GetAccessGroupByNameRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAccessGroupByName(dc: DataConnect, vars: GetAccessGroupByNameVariables): QueryPromise<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
+
+interface GetAccessGroupByNameRef {
+  ...
+  (dc: DataConnect, vars: GetAccessGroupByNameVariables): QueryRef<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
+}
+export const getAccessGroupByNameRef: GetAccessGroupByNameRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAccessGroupByNameRef:
+```typescript
+const name = getAccessGroupByNameRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAccessGroupByName` query requires an argument of type `GetAccessGroupByNameVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAccessGroupByNameVariables {
+  name: string;
+}
+```
+### Return Type
+Recall that executing the `GetAccessGroupByName` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAccessGroupByNameData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAccessGroupByNameData {
+  accessGroups: ({
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+  } & AccessGroup_Key)[];
+}
+```
+### Using `GetAccessGroupByName`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAccessGroupByName, GetAccessGroupByNameVariables } from '@dataconnect/generated';
+
+// The `GetAccessGroupByName` query requires an argument of type `GetAccessGroupByNameVariables`:
+const getAccessGroupByNameVars: GetAccessGroupByNameVariables = {
+  name: ..., 
+};
+
+// Call the `getAccessGroupByName()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAccessGroupByName(getAccessGroupByNameVars);
+// Variables can be defined inline as well.
+const { data } = await getAccessGroupByName({ name: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAccessGroupByName(dataConnect, getAccessGroupByNameVars);
+
+console.log(data.accessGroups);
+
+// Or, you can use the `Promise` API.
+getAccessGroupByName(getAccessGroupByNameVars).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroups);
+});
+```
+
+### Using `GetAccessGroupByName`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAccessGroupByNameRef, GetAccessGroupByNameVariables } from '@dataconnect/generated';
+
+// The `GetAccessGroupByName` query requires an argument of type `GetAccessGroupByNameVariables`:
+const getAccessGroupByNameVars: GetAccessGroupByNameVariables = {
+  name: ..., 
+};
+
+// Call the `getAccessGroupByNameRef()` function to get a reference to the query.
+const ref = getAccessGroupByNameRef(getAccessGroupByNameVars);
+// Variables can be defined inline as well.
+const ref = getAccessGroupByNameRef({ name: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAccessGroupByNameRef(dataConnect, getAccessGroupByNameVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.accessGroups);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroups);
+});
+```
+
+## GetUserAccessGroupsForAdmin
+You can execute the `GetUserAccessGroupsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getUserAccessGroupsForAdmin(vars: GetUserAccessGroupsForAdminVariables): QueryPromise<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
+
+interface GetUserAccessGroupsForAdminRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetUserAccessGroupsForAdminVariables): QueryRef<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
+}
+export const getUserAccessGroupsForAdminRef: GetUserAccessGroupsForAdminRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getUserAccessGroupsForAdmin(dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables): QueryPromise<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
+
+interface GetUserAccessGroupsForAdminRef {
+  ...
+  (dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables): QueryRef<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
+}
+export const getUserAccessGroupsForAdminRef: GetUserAccessGroupsForAdminRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getUserAccessGroupsForAdminRef:
+```typescript
+const name = getUserAccessGroupsForAdminRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetUserAccessGroupsForAdmin` query requires an argument of type `GetUserAccessGroupsForAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetUserAccessGroupsForAdminVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that executing the `GetUserAccessGroupsForAdmin` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetUserAccessGroupsForAdminData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetUserAccessGroupsForAdminData {
+  user?: {
+    id: string;
+    accessGroups: ({
+      accessGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & AccessGroup_Key;
+    })[];
+  } & User_Key;
+}
+```
+### Using `GetUserAccessGroupsForAdmin`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getUserAccessGroupsForAdmin, GetUserAccessGroupsForAdminVariables } from '@dataconnect/generated';
+
+// The `GetUserAccessGroupsForAdmin` query requires an argument of type `GetUserAccessGroupsForAdminVariables`:
+const getUserAccessGroupsForAdminVars: GetUserAccessGroupsForAdminVariables = {
+  userId: ..., 
+};
+
+// Call the `getUserAccessGroupsForAdmin()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getUserAccessGroupsForAdmin(getUserAccessGroupsForAdminVars);
+// Variables can be defined inline as well.
+const { data } = await getUserAccessGroupsForAdmin({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getUserAccessGroupsForAdmin(dataConnect, getUserAccessGroupsForAdminVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getUserAccessGroupsForAdmin(getUserAccessGroupsForAdminVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetUserAccessGroupsForAdmin`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getUserAccessGroupsForAdminRef, GetUserAccessGroupsForAdminVariables } from '@dataconnect/generated';
+
+// The `GetUserAccessGroupsForAdmin` query requires an argument of type `GetUserAccessGroupsForAdminVariables`:
+const getUserAccessGroupsForAdminVars: GetUserAccessGroupsForAdminVariables = {
+  userId: ..., 
+};
+
+// Call the `getUserAccessGroupsForAdminRef()` function to get a reference to the query.
+const ref = getUserAccessGroupsForAdminRef(getUserAccessGroupsForAdminVars);
+// Variables can be defined inline as well.
+const ref = getUserAccessGroupsForAdminRef({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getUserAccessGroupsForAdminRef(dataConnect, getUserAccessGroupsForAdminVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
 # Mutations
 
 There are two ways to execute a Data Connect Mutation using the generated Web SDK:
@@ -1882,6 +2041,1752 @@ The following is true for both the action shortcut function and the `MutationRef
 - Both functions can be called with or without passing in a `DataConnect` instance as an argument. If no `DataConnect` argument is passed in, then the generated SDK will call `getDataConnect(connectorConfig)` behind the scenes for you.
 
 Below are examples of how to use the `api` connector's generated functions to execute each mutation. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#using-mutations).
+
+## CreateUserProfile
+You can execute the `CreateUserProfile` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createUserProfile(vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
+
+interface CreateUserProfileRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
+}
+export const createUserProfileRef: CreateUserProfileRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
+
+interface CreateUserProfileRef {
+  ...
+  (dc: DataConnect, vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
+}
+export const createUserProfileRef: CreateUserProfileRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createUserProfileRef:
+```typescript
+const name = createUserProfileRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateUserProfileVariables {
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  requestedMembershipStatus: MembershipStatus;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
+}
+```
+### Return Type
+Recall that executing the `CreateUserProfile` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateUserProfileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateUserProfileData {
+  user_upsert: User_Key;
+}
+```
+### Using `CreateUserProfile`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createUserProfile, CreateUserProfileVariables } from '@dataconnect/generated';
+
+// The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`:
+const createUserProfileVars: CreateUserProfileVariables = {
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  requestedMembershipStatus: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
+};
+
+// Call the `createUserProfile()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createUserProfile(createUserProfileVars);
+// Variables can be defined inline as well.
+const { data } = await createUserProfile({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createUserProfile(dataConnect, createUserProfileVars);
+
+console.log(data.user_upsert);
+
+// Or, you can use the `Promise` API.
+createUserProfile(createUserProfileVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_upsert);
+});
+```
+
+### Using `CreateUserProfile`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createUserProfileRef, CreateUserProfileVariables } from '@dataconnect/generated';
+
+// The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`:
+const createUserProfileVars: CreateUserProfileVariables = {
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  requestedMembershipStatus: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
+};
+
+// Call the `createUserProfileRef()` function to get a reference to the mutation.
+const ref = createUserProfileRef(createUserProfileVars);
+// Variables can be defined inline as well.
+const ref = createUserProfileRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createUserProfileRef(dataConnect, createUserProfileVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_upsert);
+});
+```
+
+## UpsertUser
+You can execute the `UpsertUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+upsertUser(vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
+
+interface UpsertUserRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
+}
+export const upsertUserRef: UpsertUserRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+upsertUser(dc: DataConnect, vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
+
+interface UpsertUserRef {
+  ...
+  (dc: DataConnect, vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
+}
+export const upsertUserRef: UpsertUserRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertUserRef:
+```typescript
+const name = upsertUserRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpsertUserVariables {
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
+}
+```
+### Return Type
+Recall that executing the `UpsertUser` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpsertUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpsertUserData {
+  user_upsert: User_Key;
+}
+```
+### Using `UpsertUser`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, upsertUser, UpsertUserVariables } from '@dataconnect/generated';
+
+// The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`:
+const upsertUserVars: UpsertUserVariables = {
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
+};
+
+// Call the `upsertUser()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await upsertUser(upsertUserVars);
+// Variables can be defined inline as well.
+const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await upsertUser(dataConnect, upsertUserVars);
+
+console.log(data.user_upsert);
+
+// Or, you can use the `Promise` API.
+upsertUser(upsertUserVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_upsert);
+});
+```
+
+### Using `UpsertUser`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, upsertUserRef, UpsertUserVariables } from '@dataconnect/generated';
+
+// The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`:
+const upsertUserVars: UpsertUserVariables = {
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
+};
+
+// Call the `upsertUserRef()` function to get a reference to the mutation.
+const ref = upsertUserRef(upsertUserVars);
+// Variables can be defined inline as well.
+const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = upsertUserRef(dataConnect, upsertUserVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_upsert);
+});
+```
+
+## UpdateUser
+You can execute the `UpdateUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateUser(vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
+
+interface UpdateUserRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
+}
+export const updateUserRef: UpdateUserRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateUser(dc: DataConnect, vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
+
+interface UpdateUserRef {
+  ...
+  (dc: DataConnect, vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
+}
+export const updateUserRef: UpdateUserRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateUserRef:
+```typescript
+const name = updateUserRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateUserVariables {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
+}
+```
+### Return Type
+Recall that executing the `UpdateUser` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateUserData {
+  user_upsert: User_Key;
+}
+```
+### Using `UpdateUser`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateUser, UpdateUserVariables } from '@dataconnect/generated';
+
+// The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`:
+const updateUserVars: UpdateUserVariables = {
+  userId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
+};
+
+// Call the `updateUser()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateUser(updateUserVars);
+// Variables can be defined inline as well.
+const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateUser(dataConnect, updateUserVars);
+
+console.log(data.user_upsert);
+
+// Or, you can use the `Promise` API.
+updateUser(updateUserVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_upsert);
+});
+```
+
+### Using `UpdateUser`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateUserRef, UpdateUserVariables } from '@dataconnect/generated';
+
+// The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`:
+const updateUserVars: UpdateUserVariables = {
+  userId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
+};
+
+// Call the `updateUserRef()` function to get a reference to the mutation.
+const ref = updateUserRef(updateUserVars);
+// Variables can be defined inline as well.
+const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateUserRef(dataConnect, updateUserVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_upsert);
+});
+```
+
+## RegisterForSection
+You can execute the `RegisterForSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+registerForSection(vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
+
+interface RegisterForSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
+}
+export const registerForSectionRef: RegisterForSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+registerForSection(dc: DataConnect, vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
+
+interface RegisterForSectionRef {
+  ...
+  (dc: DataConnect, vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
+}
+export const registerForSectionRef: RegisterForSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the registerForSectionRef:
+```typescript
+const name = registerForSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RegisterForSectionVariables {
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `RegisterForSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RegisterForSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RegisterForSectionData {
+  userAccessGroup_upsert: UserAccessGroup_Key;
+}
+```
+### Using `RegisterForSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, registerForSection, RegisterForSectionVariables } from '@dataconnect/generated';
+
+// The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
+const registerForSectionVars: RegisterForSectionVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `registerForSection()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await registerForSection(registerForSectionVars);
+// Variables can be defined inline as well.
+const { data } = await registerForSection({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await registerForSection(dataConnect, registerForSectionVars);
+
+console.log(data.userAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+registerForSection(registerForSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_upsert);
+});
+```
+
+### Using `RegisterForSection`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, registerForSectionRef, RegisterForSectionVariables } from '@dataconnect/generated';
+
+// The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
+const registerForSectionVars: RegisterForSectionVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `registerForSectionRef()` function to get a reference to the mutation.
+const ref = registerForSectionRef(registerForSectionVars);
+// Variables can be defined inline as well.
+const ref = registerForSectionRef({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = registerForSectionRef(dataConnect, registerForSectionVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.userAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_upsert);
+});
+```
+
+## UnregisterFromSection
+You can execute the `UnregisterFromSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+unregisterFromSection(vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+
+interface UnregisterFromSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+}
+export const unregisterFromSectionRef: UnregisterFromSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+
+interface UnregisterFromSectionRef {
+  ...
+  (dc: DataConnect, vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+}
+export const unregisterFromSectionRef: UnregisterFromSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the unregisterFromSectionRef:
+```typescript
+const name = unregisterFromSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UnregisterFromSectionVariables {
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `UnregisterFromSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UnregisterFromSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UnregisterFromSectionData {
+  userAccessGroup_delete?: UserAccessGroup_Key | null;
+}
+```
+### Using `UnregisterFromSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, unregisterFromSection, UnregisterFromSectionVariables } from '@dataconnect/generated';
+
+// The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`:
+const unregisterFromSectionVars: UnregisterFromSectionVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `unregisterFromSection()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await unregisterFromSection(unregisterFromSectionVars);
+// Variables can be defined inline as well.
+const { data } = await unregisterFromSection({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await unregisterFromSection(dataConnect, unregisterFromSectionVars);
+
+console.log(data.userAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+unregisterFromSection(unregisterFromSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_delete);
+});
+```
+
+### Using `UnregisterFromSection`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, unregisterFromSectionRef, UnregisterFromSectionVariables } from '@dataconnect/generated';
+
+// The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`:
+const unregisterFromSectionVars: UnregisterFromSectionVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `unregisterFromSectionRef()` function to get a reference to the mutation.
+const ref = unregisterFromSectionRef(unregisterFromSectionVars);
+// Variables can be defined inline as well.
+const ref = unregisterFromSectionRef({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = unregisterFromSectionRef(dataConnect, unregisterFromSectionVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.userAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_delete);
+});
+```
+
+## SubscribeToAccessGroup
+You can execute the `SubscribeToAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+subscribeToAccessGroup(vars: SubscribeToAccessGroupVariables): MutationPromise<SubscribeToAccessGroupData, SubscribeToAccessGroupVariables>;
+
+interface SubscribeToAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SubscribeToAccessGroupVariables): MutationRef<SubscribeToAccessGroupData, SubscribeToAccessGroupVariables>;
+}
+export const subscribeToAccessGroupRef: SubscribeToAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+subscribeToAccessGroup(dc: DataConnect, vars: SubscribeToAccessGroupVariables): MutationPromise<SubscribeToAccessGroupData, SubscribeToAccessGroupVariables>;
+
+interface SubscribeToAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: SubscribeToAccessGroupVariables): MutationRef<SubscribeToAccessGroupData, SubscribeToAccessGroupVariables>;
+}
+export const subscribeToAccessGroupRef: SubscribeToAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the subscribeToAccessGroupRef:
+```typescript
+const name = subscribeToAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SubscribeToAccessGroup` mutation requires an argument of type `SubscribeToAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SubscribeToAccessGroupVariables {
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `SubscribeToAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SubscribeToAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SubscribeToAccessGroupData {
+  userAccessGroup_upsert: UserAccessGroup_Key;
+}
+```
+### Using `SubscribeToAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, subscribeToAccessGroup, SubscribeToAccessGroupVariables } from '@dataconnect/generated';
+
+// The `SubscribeToAccessGroup` mutation requires an argument of type `SubscribeToAccessGroupVariables`:
+const subscribeToAccessGroupVars: SubscribeToAccessGroupVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `subscribeToAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await subscribeToAccessGroup(subscribeToAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await subscribeToAccessGroup({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await subscribeToAccessGroup(dataConnect, subscribeToAccessGroupVars);
+
+console.log(data.userAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+subscribeToAccessGroup(subscribeToAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_upsert);
+});
+```
+
+### Using `SubscribeToAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, subscribeToAccessGroupRef, SubscribeToAccessGroupVariables } from '@dataconnect/generated';
+
+// The `SubscribeToAccessGroup` mutation requires an argument of type `SubscribeToAccessGroupVariables`:
+const subscribeToAccessGroupVars: SubscribeToAccessGroupVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `subscribeToAccessGroupRef()` function to get a reference to the mutation.
+const ref = subscribeToAccessGroupRef(subscribeToAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = subscribeToAccessGroupRef({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = subscribeToAccessGroupRef(dataConnect, subscribeToAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.userAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_upsert);
+});
+```
+
+## UnsubscribeFromAccessGroup
+You can execute the `UnsubscribeFromAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+unsubscribeFromAccessGroup(vars: UnsubscribeFromAccessGroupVariables): MutationPromise<UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables>;
+
+interface UnsubscribeFromAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UnsubscribeFromAccessGroupVariables): MutationRef<UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables>;
+}
+export const unsubscribeFromAccessGroupRef: UnsubscribeFromAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+unsubscribeFromAccessGroup(dc: DataConnect, vars: UnsubscribeFromAccessGroupVariables): MutationPromise<UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables>;
+
+interface UnsubscribeFromAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: UnsubscribeFromAccessGroupVariables): MutationRef<UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables>;
+}
+export const unsubscribeFromAccessGroupRef: UnsubscribeFromAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the unsubscribeFromAccessGroupRef:
+```typescript
+const name = unsubscribeFromAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UnsubscribeFromAccessGroup` mutation requires an argument of type `UnsubscribeFromAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UnsubscribeFromAccessGroupVariables {
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `UnsubscribeFromAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UnsubscribeFromAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UnsubscribeFromAccessGroupData {
+  userAccessGroup_delete?: UserAccessGroup_Key | null;
+}
+```
+### Using `UnsubscribeFromAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, unsubscribeFromAccessGroup, UnsubscribeFromAccessGroupVariables } from '@dataconnect/generated';
+
+// The `UnsubscribeFromAccessGroup` mutation requires an argument of type `UnsubscribeFromAccessGroupVariables`:
+const unsubscribeFromAccessGroupVars: UnsubscribeFromAccessGroupVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `unsubscribeFromAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await unsubscribeFromAccessGroup(unsubscribeFromAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await unsubscribeFromAccessGroup({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await unsubscribeFromAccessGroup(dataConnect, unsubscribeFromAccessGroupVars);
+
+console.log(data.userAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+unsubscribeFromAccessGroup(unsubscribeFromAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_delete);
+});
+```
+
+### Using `UnsubscribeFromAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, unsubscribeFromAccessGroupRef, UnsubscribeFromAccessGroupVariables } from '@dataconnect/generated';
+
+// The `UnsubscribeFromAccessGroup` mutation requires an argument of type `UnsubscribeFromAccessGroupVariables`:
+const unsubscribeFromAccessGroupVars: UnsubscribeFromAccessGroupVariables = {
+  accessGroupId: ..., 
+};
+
+// Call the `unsubscribeFromAccessGroupRef()` function to get a reference to the mutation.
+const ref = unsubscribeFromAccessGroupRef(unsubscribeFromAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = unsubscribeFromAccessGroupRef({ accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = unsubscribeFromAccessGroupRef(dataConnect, unsubscribeFromAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.userAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_delete);
+});
+```
+
+## CreateSection
+You can execute the `CreateSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createSection(vars: CreateSectionVariables): MutationPromise<CreateSectionData, CreateSectionVariables>;
+
+interface CreateSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateSectionVariables): MutationRef<CreateSectionData, CreateSectionVariables>;
+}
+export const createSectionRef: CreateSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createSection(dc: DataConnect, vars: CreateSectionVariables): MutationPromise<CreateSectionData, CreateSectionVariables>;
+
+interface CreateSectionRef {
+  ...
+  (dc: DataConnect, vars: CreateSectionVariables): MutationRef<CreateSectionData, CreateSectionVariables>;
+}
+export const createSectionRef: CreateSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createSectionRef:
+```typescript
+const name = createSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateSection` mutation requires an argument of type `CreateSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateSectionVariables {
+  name: string;
+  type: SectionType;
+  description?: string | null;
+}
+```
+### Return Type
+Recall that executing the `CreateSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateSectionData {
+  section_insert: Section_Key;
+}
+```
+### Using `CreateSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createSection, CreateSectionVariables } from '@dataconnect/generated';
+
+// The `CreateSection` mutation requires an argument of type `CreateSectionVariables`:
+const createSectionVars: CreateSectionVariables = {
+  name: ..., 
+  type: ..., 
+  description: ..., // optional
+};
+
+// Call the `createSection()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createSection(createSectionVars);
+// Variables can be defined inline as well.
+const { data } = await createSection({ name: ..., type: ..., description: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createSection(dataConnect, createSectionVars);
+
+console.log(data.section_insert);
+
+// Or, you can use the `Promise` API.
+createSection(createSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.section_insert);
+});
+```
+
+### Using `CreateSection`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createSectionRef, CreateSectionVariables } from '@dataconnect/generated';
+
+// The `CreateSection` mutation requires an argument of type `CreateSectionVariables`:
+const createSectionVars: CreateSectionVariables = {
+  name: ..., 
+  type: ..., 
+  description: ..., // optional
+};
+
+// Call the `createSectionRef()` function to get a reference to the mutation.
+const ref = createSectionRef(createSectionVars);
+// Variables can be defined inline as well.
+const ref = createSectionRef({ name: ..., type: ..., description: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createSectionRef(dataConnect, createSectionVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.section_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.section_insert);
+});
+```
+
+## CreateAccessGroup
+You can execute the `CreateAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createAccessGroup(vars: CreateAccessGroupVariables): MutationPromise<CreateAccessGroupData, CreateAccessGroupVariables>;
+
+interface CreateAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAccessGroupVariables): MutationRef<CreateAccessGroupData, CreateAccessGroupVariables>;
+}
+export const createAccessGroupRef: CreateAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createAccessGroup(dc: DataConnect, vars: CreateAccessGroupVariables): MutationPromise<CreateAccessGroupData, CreateAccessGroupVariables>;
+
+interface CreateAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: CreateAccessGroupVariables): MutationRef<CreateAccessGroupData, CreateAccessGroupVariables>;
+}
+export const createAccessGroupRef: CreateAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createAccessGroupRef:
+```typescript
+const name = createAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateAccessGroup` mutation requires an argument of type `CreateAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateAccessGroupVariables {
+  name: string;
+  description?: string | null;
+  membershipStatuses?: MembershipStatus[] | null;
+  subscribable?: boolean | null;
+}
+```
+### Return Type
+Recall that executing the `CreateAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateAccessGroupData {
+  accessGroup_insert: AccessGroup_Key;
+}
+```
+### Using `CreateAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createAccessGroup, CreateAccessGroupVariables } from '@dataconnect/generated';
+
+// The `CreateAccessGroup` mutation requires an argument of type `CreateAccessGroupVariables`:
+const createAccessGroupVars: CreateAccessGroupVariables = {
+  name: ..., 
+  description: ..., // optional
+  membershipStatuses: ..., // optional
+  subscribable: ..., // optional
+};
+
+// Call the `createAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createAccessGroup(createAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await createAccessGroup({ name: ..., description: ..., membershipStatuses: ..., subscribable: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createAccessGroup(dataConnect, createAccessGroupVars);
+
+console.log(data.accessGroup_insert);
+
+// Or, you can use the `Promise` API.
+createAccessGroup(createAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroup_insert);
+});
+```
+
+### Using `CreateAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createAccessGroupRef, CreateAccessGroupVariables } from '@dataconnect/generated';
+
+// The `CreateAccessGroup` mutation requires an argument of type `CreateAccessGroupVariables`:
+const createAccessGroupVars: CreateAccessGroupVariables = {
+  name: ..., 
+  description: ..., // optional
+  membershipStatuses: ..., // optional
+  subscribable: ..., // optional
+};
+
+// Call the `createAccessGroupRef()` function to get a reference to the mutation.
+const ref = createAccessGroupRef(createAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = createAccessGroupRef({ name: ..., description: ..., membershipStatuses: ..., subscribable: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createAccessGroupRef(dataConnect, createAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.accessGroup_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroup_insert);
+});
+```
+
+## AddUserToAccessGroup
+You can execute the `AddUserToAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+addUserToAccessGroup(vars: AddUserToAccessGroupVariables): MutationPromise<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
+
+interface AddUserToAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AddUserToAccessGroupVariables): MutationRef<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
+}
+export const addUserToAccessGroupRef: AddUserToAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+addUserToAccessGroup(dc: DataConnect, vars: AddUserToAccessGroupVariables): MutationPromise<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
+
+interface AddUserToAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: AddUserToAccessGroupVariables): MutationRef<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
+}
+export const addUserToAccessGroupRef: AddUserToAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the addUserToAccessGroupRef:
+```typescript
+const name = addUserToAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AddUserToAccessGroup` mutation requires an argument of type `AddUserToAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AddUserToAccessGroupVariables {
+  userId: string;
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `AddUserToAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AddUserToAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AddUserToAccessGroupData {
+  userAccessGroup_upsert: UserAccessGroup_Key;
+}
+```
+### Using `AddUserToAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, addUserToAccessGroup, AddUserToAccessGroupVariables } from '@dataconnect/generated';
+
+// The `AddUserToAccessGroup` mutation requires an argument of type `AddUserToAccessGroupVariables`:
+const addUserToAccessGroupVars: AddUserToAccessGroupVariables = {
+  userId: ..., 
+  accessGroupId: ..., 
+};
+
+// Call the `addUserToAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await addUserToAccessGroup(addUserToAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await addUserToAccessGroup({ userId: ..., accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await addUserToAccessGroup(dataConnect, addUserToAccessGroupVars);
+
+console.log(data.userAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+addUserToAccessGroup(addUserToAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_upsert);
+});
+```
+
+### Using `AddUserToAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, addUserToAccessGroupRef, AddUserToAccessGroupVariables } from '@dataconnect/generated';
+
+// The `AddUserToAccessGroup` mutation requires an argument of type `AddUserToAccessGroupVariables`:
+const addUserToAccessGroupVars: AddUserToAccessGroupVariables = {
+  userId: ..., 
+  accessGroupId: ..., 
+};
+
+// Call the `addUserToAccessGroupRef()` function to get a reference to the mutation.
+const ref = addUserToAccessGroupRef(addUserToAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = addUserToAccessGroupRef({ userId: ..., accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = addUserToAccessGroupRef(dataConnect, addUserToAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.userAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_upsert);
+});
+```
+
+## RemoveUserFromAccessGroup
+You can execute the `RemoveUserFromAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+removeUserFromAccessGroup(vars: RemoveUserFromAccessGroupVariables): MutationPromise<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
+
+interface RemoveUserFromAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RemoveUserFromAccessGroupVariables): MutationRef<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
+}
+export const removeUserFromAccessGroupRef: RemoveUserFromAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+removeUserFromAccessGroup(dc: DataConnect, vars: RemoveUserFromAccessGroupVariables): MutationPromise<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
+
+interface RemoveUserFromAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: RemoveUserFromAccessGroupVariables): MutationRef<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
+}
+export const removeUserFromAccessGroupRef: RemoveUserFromAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the removeUserFromAccessGroupRef:
+```typescript
+const name = removeUserFromAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RemoveUserFromAccessGroup` mutation requires an argument of type `RemoveUserFromAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RemoveUserFromAccessGroupVariables {
+  userId: string;
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `RemoveUserFromAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RemoveUserFromAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RemoveUserFromAccessGroupData {
+  userAccessGroup_delete?: UserAccessGroup_Key | null;
+}
+```
+### Using `RemoveUserFromAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, removeUserFromAccessGroup, RemoveUserFromAccessGroupVariables } from '@dataconnect/generated';
+
+// The `RemoveUserFromAccessGroup` mutation requires an argument of type `RemoveUserFromAccessGroupVariables`:
+const removeUserFromAccessGroupVars: RemoveUserFromAccessGroupVariables = {
+  userId: ..., 
+  accessGroupId: ..., 
+};
+
+// Call the `removeUserFromAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await removeUserFromAccessGroup(removeUserFromAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await removeUserFromAccessGroup({ userId: ..., accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await removeUserFromAccessGroup(dataConnect, removeUserFromAccessGroupVars);
+
+console.log(data.userAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+removeUserFromAccessGroup(removeUserFromAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_delete);
+});
+```
+
+### Using `RemoveUserFromAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, removeUserFromAccessGroupRef, RemoveUserFromAccessGroupVariables } from '@dataconnect/generated';
+
+// The `RemoveUserFromAccessGroup` mutation requires an argument of type `RemoveUserFromAccessGroupVariables`:
+const removeUserFromAccessGroupVars: RemoveUserFromAccessGroupVariables = {
+  userId: ..., 
+  accessGroupId: ..., 
+};
+
+// Call the `removeUserFromAccessGroupRef()` function to get a reference to the mutation.
+const ref = removeUserFromAccessGroupRef(removeUserFromAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = removeUserFromAccessGroupRef({ userId: ..., accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = removeUserFromAccessGroupRef(dataConnect, removeUserFromAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.userAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userAccessGroup_delete);
+});
+```
+
+## GrantAccessGroupToSection
+You can execute the `GrantAccessGroupToSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+grantAccessGroupToSection(vars: GrantAccessGroupToSectionVariables): MutationPromise<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
+
+interface GrantAccessGroupToSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GrantAccessGroupToSectionVariables): MutationRef<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
+}
+export const grantAccessGroupToSectionRef: GrantAccessGroupToSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+grantAccessGroupToSection(dc: DataConnect, vars: GrantAccessGroupToSectionVariables): MutationPromise<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
+
+interface GrantAccessGroupToSectionRef {
+  ...
+  (dc: DataConnect, vars: GrantAccessGroupToSectionVariables): MutationRef<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
+}
+export const grantAccessGroupToSectionRef: GrantAccessGroupToSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the grantAccessGroupToSectionRef:
+```typescript
+const name = grantAccessGroupToSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GrantAccessGroupToSection` mutation requires an argument of type `GrantAccessGroupToSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GrantAccessGroupToSectionVariables {
+  sectionId: UUIDString;
+  accessGroupId: UUIDString;
+  purpose: SectionAccessGroupPurpose;
+}
+```
+### Return Type
+Recall that executing the `GrantAccessGroupToSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GrantAccessGroupToSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GrantAccessGroupToSectionData {
+  sectionAccessGroup_upsert: SectionAccessGroup_Key;
+}
+```
+### Using `GrantAccessGroupToSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, grantAccessGroupToSection, GrantAccessGroupToSectionVariables } from '@dataconnect/generated';
+
+// The `GrantAccessGroupToSection` mutation requires an argument of type `GrantAccessGroupToSectionVariables`:
+const grantAccessGroupToSectionVars: GrantAccessGroupToSectionVariables = {
+  sectionId: ..., 
+  accessGroupId: ..., 
+  purpose: ..., 
+};
+
+// Call the `grantAccessGroupToSection()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await grantAccessGroupToSection(grantAccessGroupToSectionVars);
+// Variables can be defined inline as well.
+const { data } = await grantAccessGroupToSection({ sectionId: ..., accessGroupId: ..., purpose: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await grantAccessGroupToSection(dataConnect, grantAccessGroupToSectionVars);
+
+console.log(data.sectionAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+grantAccessGroupToSection(grantAccessGroupToSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionAccessGroup_upsert);
+});
+```
+
+### Using `GrantAccessGroupToSection`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, grantAccessGroupToSectionRef, GrantAccessGroupToSectionVariables } from '@dataconnect/generated';
+
+// The `GrantAccessGroupToSection` mutation requires an argument of type `GrantAccessGroupToSectionVariables`:
+const grantAccessGroupToSectionVars: GrantAccessGroupToSectionVariables = {
+  sectionId: ..., 
+  accessGroupId: ..., 
+  purpose: ..., 
+};
+
+// Call the `grantAccessGroupToSectionRef()` function to get a reference to the mutation.
+const ref = grantAccessGroupToSectionRef(grantAccessGroupToSectionVars);
+// Variables can be defined inline as well.
+const ref = grantAccessGroupToSectionRef({ sectionId: ..., accessGroupId: ..., purpose: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = grantAccessGroupToSectionRef(dataConnect, grantAccessGroupToSectionVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionAccessGroup_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionAccessGroup_upsert);
+});
+```
+
+## RevokeAccessGroupFromSection
+You can execute the `RevokeAccessGroupFromSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+revokeAccessGroupFromSection(vars: RevokeAccessGroupFromSectionVariables): MutationPromise<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
+
+interface RevokeAccessGroupFromSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RevokeAccessGroupFromSectionVariables): MutationRef<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
+}
+export const revokeAccessGroupFromSectionRef: RevokeAccessGroupFromSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+revokeAccessGroupFromSection(dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables): MutationPromise<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
+
+interface RevokeAccessGroupFromSectionRef {
+  ...
+  (dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables): MutationRef<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
+}
+export const revokeAccessGroupFromSectionRef: RevokeAccessGroupFromSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the revokeAccessGroupFromSectionRef:
+```typescript
+const name = revokeAccessGroupFromSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RevokeAccessGroupFromSection` mutation requires an argument of type `RevokeAccessGroupFromSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RevokeAccessGroupFromSectionVariables {
+  sectionId: UUIDString;
+  accessGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `RevokeAccessGroupFromSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RevokeAccessGroupFromSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RevokeAccessGroupFromSectionData {
+  sectionAccessGroup_delete?: SectionAccessGroup_Key | null;
+}
+```
+### Using `RevokeAccessGroupFromSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, revokeAccessGroupFromSection, RevokeAccessGroupFromSectionVariables } from '@dataconnect/generated';
+
+// The `RevokeAccessGroupFromSection` mutation requires an argument of type `RevokeAccessGroupFromSectionVariables`:
+const revokeAccessGroupFromSectionVars: RevokeAccessGroupFromSectionVariables = {
+  sectionId: ..., 
+  accessGroupId: ..., 
+};
+
+// Call the `revokeAccessGroupFromSection()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await revokeAccessGroupFromSection(revokeAccessGroupFromSectionVars);
+// Variables can be defined inline as well.
+const { data } = await revokeAccessGroupFromSection({ sectionId: ..., accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await revokeAccessGroupFromSection(dataConnect, revokeAccessGroupFromSectionVars);
+
+console.log(data.sectionAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+revokeAccessGroupFromSection(revokeAccessGroupFromSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionAccessGroup_delete);
+});
+```
+
+### Using `RevokeAccessGroupFromSection`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, revokeAccessGroupFromSectionRef, RevokeAccessGroupFromSectionVariables } from '@dataconnect/generated';
+
+// The `RevokeAccessGroupFromSection` mutation requires an argument of type `RevokeAccessGroupFromSectionVariables`:
+const revokeAccessGroupFromSectionVars: RevokeAccessGroupFromSectionVariables = {
+  sectionId: ..., 
+  accessGroupId: ..., 
+};
+
+// Call the `revokeAccessGroupFromSectionRef()` function to get a reference to the mutation.
+const ref = revokeAccessGroupFromSectionRef(revokeAccessGroupFromSectionVars);
+// Variables can be defined inline as well.
+const ref = revokeAccessGroupFromSectionRef({ sectionId: ..., accessGroupId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = revokeAccessGroupFromSectionRef(dataConnect, revokeAccessGroupFromSectionVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionAccessGroup_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionAccessGroup_delete);
+});
+```
+
+## UpdateAccessGroup
+You can execute the `UpdateAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateAccessGroup(vars: UpdateAccessGroupVariables): MutationPromise<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+
+interface UpdateAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateAccessGroupVariables): MutationRef<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+}
+export const updateAccessGroupRef: UpdateAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateAccessGroup(dc: DataConnect, vars: UpdateAccessGroupVariables): MutationPromise<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+
+interface UpdateAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: UpdateAccessGroupVariables): MutationRef<UpdateAccessGroupData, UpdateAccessGroupVariables>;
+}
+export const updateAccessGroupRef: UpdateAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateAccessGroupRef:
+```typescript
+const name = updateAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateAccessGroup` mutation requires an argument of type `UpdateAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateAccessGroupVariables {
+  id: UUIDString;
+  name: string;
+  description?: string | null;
+  membershipStatuses?: MembershipStatus[] | null;
+  subscribable?: boolean | null;
+}
+```
+### Return Type
+Recall that executing the `UpdateAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateAccessGroupData {
+  accessGroup_update?: AccessGroup_Key | null;
+}
+```
+### Using `UpdateAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateAccessGroup, UpdateAccessGroupVariables } from '@dataconnect/generated';
+
+// The `UpdateAccessGroup` mutation requires an argument of type `UpdateAccessGroupVariables`:
+const updateAccessGroupVars: UpdateAccessGroupVariables = {
+  id: ..., 
+  name: ..., 
+  description: ..., // optional
+  membershipStatuses: ..., // optional
+  subscribable: ..., // optional
+};
+
+// Call the `updateAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateAccessGroup(updateAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await updateAccessGroup({ id: ..., name: ..., description: ..., membershipStatuses: ..., subscribable: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateAccessGroup(dataConnect, updateAccessGroupVars);
+
+console.log(data.accessGroup_update);
+
+// Or, you can use the `Promise` API.
+updateAccessGroup(updateAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroup_update);
+});
+```
+
+### Using `UpdateAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateAccessGroupRef, UpdateAccessGroupVariables } from '@dataconnect/generated';
+
+// The `UpdateAccessGroup` mutation requires an argument of type `UpdateAccessGroupVariables`:
+const updateAccessGroupVars: UpdateAccessGroupVariables = {
+  id: ..., 
+  name: ..., 
+  description: ..., // optional
+  membershipStatuses: ..., // optional
+  subscribable: ..., // optional
+};
+
+// Call the `updateAccessGroupRef()` function to get a reference to the mutation.
+const ref = updateAccessGroupRef(updateAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = updateAccessGroupRef({ id: ..., name: ..., description: ..., membershipStatuses: ..., subscribable: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateAccessGroupRef(dataConnect, updateAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.accessGroup_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroup_update);
+});
+```
+
+## DeleteAccessGroup
+You can execute the `DeleteAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+deleteAccessGroup(vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+
+interface DeleteAccessGroupRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteAccessGroupVariables): MutationRef<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+}
+export const deleteAccessGroupRef: DeleteAccessGroupRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+deleteAccessGroup(dc: DataConnect, vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+
+interface DeleteAccessGroupRef {
+  ...
+  (dc: DataConnect, vars: DeleteAccessGroupVariables): MutationRef<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+}
+export const deleteAccessGroupRef: DeleteAccessGroupRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the deleteAccessGroupRef:
+```typescript
+const name = deleteAccessGroupRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `DeleteAccessGroup` mutation requires an argument of type `DeleteAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface DeleteAccessGroupVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `DeleteAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `DeleteAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface DeleteAccessGroupData {
+  accessGroup_delete?: AccessGroup_Key | null;
+}
+```
+### Using `DeleteAccessGroup`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, deleteAccessGroup, DeleteAccessGroupVariables } from '@dataconnect/generated';
+
+// The `DeleteAccessGroup` mutation requires an argument of type `DeleteAccessGroupVariables`:
+const deleteAccessGroupVars: DeleteAccessGroupVariables = {
+  id: ..., 
+};
+
+// Call the `deleteAccessGroup()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await deleteAccessGroup(deleteAccessGroupVars);
+// Variables can be defined inline as well.
+const { data } = await deleteAccessGroup({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await deleteAccessGroup(dataConnect, deleteAccessGroupVars);
+
+console.log(data.accessGroup_delete);
+
+// Or, you can use the `Promise` API.
+deleteAccessGroup(deleteAccessGroupVars).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroup_delete);
+});
+```
+
+### Using `DeleteAccessGroup`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, deleteAccessGroupRef, DeleteAccessGroupVariables } from '@dataconnect/generated';
+
+// The `DeleteAccessGroup` mutation requires an argument of type `DeleteAccessGroupVariables`:
+const deleteAccessGroupVars: DeleteAccessGroupVariables = {
+  id: ..., 
+};
+
+// Call the `deleteAccessGroupRef()` function to get a reference to the mutation.
+const ref = deleteAccessGroupRef(deleteAccessGroupVars);
+// Variables can be defined inline as well.
+const ref = deleteAccessGroupRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = deleteAccessGroupRef(dataConnect, deleteAccessGroupVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.accessGroup_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.accessGroup_delete);
+});
+```
 
 ## UpdateUserMembershipStatus
 You can execute the `UpdateUserMembershipStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
@@ -2582,1525 +4487,6 @@ console.log(data.userAccessGroup_delete);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.userAccessGroup_delete);
-});
-```
-
-## CreateUserProfile
-You can execute the `CreateUserProfile` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-createUserProfile(vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
-
-interface CreateUserProfileRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
-}
-export const createUserProfileRef: CreateUserProfileRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables): MutationPromise<CreateUserProfileData, CreateUserProfileVariables>;
-
-interface CreateUserProfileRef {
-  ...
-  (dc: DataConnect, vars: CreateUserProfileVariables): MutationRef<CreateUserProfileData, CreateUserProfileVariables>;
-}
-export const createUserProfileRef: CreateUserProfileRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createUserProfileRef:
-```typescript
-const name = createUserProfileRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface CreateUserProfileVariables {
-  firstName: string;
-  lastName: string;
-  email: string;
-  serviceNumber: string;
-  requestedMembershipStatus: MembershipStatus;
-  isRegular?: boolean | null;
-  isReserve?: boolean | null;
-  isCivilServant?: boolean | null;
-  isIndustry?: boolean | null;
-}
-```
-### Return Type
-Recall that executing the `CreateUserProfile` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `CreateUserProfileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface CreateUserProfileData {
-  user_upsert: User_Key;
-}
-```
-### Using `CreateUserProfile`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, createUserProfile, CreateUserProfileVariables } from '@dataconnect/generated';
-
-// The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`:
-const createUserProfileVars: CreateUserProfileVariables = {
-  firstName: ..., 
-  lastName: ..., 
-  email: ..., 
-  serviceNumber: ..., 
-  requestedMembershipStatus: ..., 
-  isRegular: ..., // optional
-  isReserve: ..., // optional
-  isCivilServant: ..., // optional
-  isIndustry: ..., // optional
-};
-
-// Call the `createUserProfile()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await createUserProfile(createUserProfileVars);
-// Variables can be defined inline as well.
-const { data } = await createUserProfile({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await createUserProfile(dataConnect, createUserProfileVars);
-
-console.log(data.user_upsert);
-
-// Or, you can use the `Promise` API.
-createUserProfile(createUserProfileVars).then((response) => {
-  const data = response.data;
-  console.log(data.user_upsert);
-});
-```
-
-### Using `CreateUserProfile`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, createUserProfileRef, CreateUserProfileVariables } from '@dataconnect/generated';
-
-// The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`:
-const createUserProfileVars: CreateUserProfileVariables = {
-  firstName: ..., 
-  lastName: ..., 
-  email: ..., 
-  serviceNumber: ..., 
-  requestedMembershipStatus: ..., 
-  isRegular: ..., // optional
-  isReserve: ..., // optional
-  isCivilServant: ..., // optional
-  isIndustry: ..., // optional
-};
-
-// Call the `createUserProfileRef()` function to get a reference to the mutation.
-const ref = createUserProfileRef(createUserProfileVars);
-// Variables can be defined inline as well.
-const ref = createUserProfileRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = createUserProfileRef(dataConnect, createUserProfileVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.user_upsert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.user_upsert);
-});
-```
-
-## UpsertUser
-You can execute the `UpsertUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-upsertUser(vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
-
-interface UpsertUserRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
-}
-export const upsertUserRef: UpsertUserRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-upsertUser(dc: DataConnect, vars: UpsertUserVariables): MutationPromise<UpsertUserData, UpsertUserVariables>;
-
-interface UpsertUserRef {
-  ...
-  (dc: DataConnect, vars: UpsertUserVariables): MutationRef<UpsertUserData, UpsertUserVariables>;
-}
-export const upsertUserRef: UpsertUserRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertUserRef:
-```typescript
-const name = upsertUserRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UpsertUserVariables {
-  firstName: string;
-  lastName: string;
-  email: string;
-  serviceNumber: string;
-  isRegular?: boolean | null;
-  isReserve?: boolean | null;
-  isCivilServant?: boolean | null;
-  isIndustry?: boolean | null;
-}
-```
-### Return Type
-Recall that executing the `UpsertUser` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UpsertUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UpsertUserData {
-  user_upsert: User_Key;
-}
-```
-### Using `UpsertUser`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, upsertUser, UpsertUserVariables } from '@dataconnect/generated';
-
-// The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`:
-const upsertUserVars: UpsertUserVariables = {
-  firstName: ..., 
-  lastName: ..., 
-  email: ..., 
-  serviceNumber: ..., 
-  isRegular: ..., // optional
-  isReserve: ..., // optional
-  isCivilServant: ..., // optional
-  isIndustry: ..., // optional
-};
-
-// Call the `upsertUser()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await upsertUser(upsertUserVars);
-// Variables can be defined inline as well.
-const { data } = await upsertUser({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await upsertUser(dataConnect, upsertUserVars);
-
-console.log(data.user_upsert);
-
-// Or, you can use the `Promise` API.
-upsertUser(upsertUserVars).then((response) => {
-  const data = response.data;
-  console.log(data.user_upsert);
-});
-```
-
-### Using `UpsertUser`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, upsertUserRef, UpsertUserVariables } from '@dataconnect/generated';
-
-// The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`:
-const upsertUserVars: UpsertUserVariables = {
-  firstName: ..., 
-  lastName: ..., 
-  email: ..., 
-  serviceNumber: ..., 
-  isRegular: ..., // optional
-  isReserve: ..., // optional
-  isCivilServant: ..., // optional
-  isIndustry: ..., // optional
-};
-
-// Call the `upsertUserRef()` function to get a reference to the mutation.
-const ref = upsertUserRef(upsertUserVars);
-// Variables can be defined inline as well.
-const ref = upsertUserRef({ firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = upsertUserRef(dataConnect, upsertUserVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.user_upsert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.user_upsert);
-});
-```
-
-## UpdateUser
-You can execute the `UpdateUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-updateUser(vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
-
-interface UpdateUserRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
-}
-export const updateUserRef: UpdateUserRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-updateUser(dc: DataConnect, vars: UpdateUserVariables): MutationPromise<UpdateUserData, UpdateUserVariables>;
-
-interface UpdateUserRef {
-  ...
-  (dc: DataConnect, vars: UpdateUserVariables): MutationRef<UpdateUserData, UpdateUserVariables>;
-}
-export const updateUserRef: UpdateUserRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateUserRef:
-```typescript
-const name = updateUserRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UpdateUserVariables {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  serviceNumber: string;
-  isRegular?: boolean | null;
-  isReserve?: boolean | null;
-  isCivilServant?: boolean | null;
-  isIndustry?: boolean | null;
-}
-```
-### Return Type
-Recall that executing the `UpdateUser` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UpdateUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UpdateUserData {
-  user_upsert: User_Key;
-}
-```
-### Using `UpdateUser`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updateUser, UpdateUserVariables } from '@dataconnect/generated';
-
-// The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`:
-const updateUserVars: UpdateUserVariables = {
-  userId: ..., 
-  firstName: ..., 
-  lastName: ..., 
-  email: ..., 
-  serviceNumber: ..., 
-  isRegular: ..., // optional
-  isReserve: ..., // optional
-  isCivilServant: ..., // optional
-  isIndustry: ..., // optional
-};
-
-// Call the `updateUser()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updateUser(updateUserVars);
-// Variables can be defined inline as well.
-const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updateUser(dataConnect, updateUserVars);
-
-console.log(data.user_upsert);
-
-// Or, you can use the `Promise` API.
-updateUser(updateUserVars).then((response) => {
-  const data = response.data;
-  console.log(data.user_upsert);
-});
-```
-
-### Using `UpdateUser`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updateUserRef, UpdateUserVariables } from '@dataconnect/generated';
-
-// The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`:
-const updateUserVars: UpdateUserVariables = {
-  userId: ..., 
-  firstName: ..., 
-  lastName: ..., 
-  email: ..., 
-  serviceNumber: ..., 
-  isRegular: ..., // optional
-  isReserve: ..., // optional
-  isCivilServant: ..., // optional
-  isIndustry: ..., // optional
-};
-
-// Call the `updateUserRef()` function to get a reference to the mutation.
-const ref = updateUserRef(updateUserVars);
-// Variables can be defined inline as well.
-const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = updateUserRef(dataConnect, updateUserVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.user_upsert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.user_upsert);
-});
-```
-
-## RegisterForSection
-You can execute the `RegisterForSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-registerForSection(vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
-
-interface RegisterForSectionRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
-}
-export const registerForSectionRef: RegisterForSectionRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-registerForSection(dc: DataConnect, vars: RegisterForSectionVariables): MutationPromise<RegisterForSectionData, RegisterForSectionVariables>;
-
-interface RegisterForSectionRef {
-  ...
-  (dc: DataConnect, vars: RegisterForSectionVariables): MutationRef<RegisterForSectionData, RegisterForSectionVariables>;
-}
-export const registerForSectionRef: RegisterForSectionRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the registerForSectionRef:
-```typescript
-const name = registerForSectionRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface RegisterForSectionVariables {
-  accessGroupId: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `RegisterForSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `RegisterForSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface RegisterForSectionData {
-  userAccessGroup_upsert: UserAccessGroup_Key;
-}
-```
-### Using `RegisterForSection`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, registerForSection, RegisterForSectionVariables } from '@dataconnect/generated';
-
-// The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
-const registerForSectionVars: RegisterForSectionVariables = {
-  accessGroupId: ..., 
-};
-
-// Call the `registerForSection()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await registerForSection(registerForSectionVars);
-// Variables can be defined inline as well.
-const { data } = await registerForSection({ accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await registerForSection(dataConnect, registerForSectionVars);
-
-console.log(data.userAccessGroup_upsert);
-
-// Or, you can use the `Promise` API.
-registerForSection(registerForSectionVars).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_upsert);
-});
-```
-
-### Using `RegisterForSection`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, registerForSectionRef, RegisterForSectionVariables } from '@dataconnect/generated';
-
-// The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
-const registerForSectionVars: RegisterForSectionVariables = {
-  accessGroupId: ..., 
-};
-
-// Call the `registerForSectionRef()` function to get a reference to the mutation.
-const ref = registerForSectionRef(registerForSectionVars);
-// Variables can be defined inline as well.
-const ref = registerForSectionRef({ accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = registerForSectionRef(dataConnect, registerForSectionVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.userAccessGroup_upsert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_upsert);
-});
-```
-
-## UnregisterFromSection
-You can execute the `UnregisterFromSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-unregisterFromSection(vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-
-interface UnregisterFromSectionRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-}
-export const unregisterFromSectionRef: UnregisterFromSectionRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables): MutationPromise<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-
-interface UnregisterFromSectionRef {
-  ...
-  (dc: DataConnect, vars: UnregisterFromSectionVariables): MutationRef<UnregisterFromSectionData, UnregisterFromSectionVariables>;
-}
-export const unregisterFromSectionRef: UnregisterFromSectionRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the unregisterFromSectionRef:
-```typescript
-const name = unregisterFromSectionRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UnregisterFromSectionVariables {
-  accessGroupId: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `UnregisterFromSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UnregisterFromSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UnregisterFromSectionData {
-  userAccessGroup_delete?: UserAccessGroup_Key | null;
-}
-```
-### Using `UnregisterFromSection`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, unregisterFromSection, UnregisterFromSectionVariables } from '@dataconnect/generated';
-
-// The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`:
-const unregisterFromSectionVars: UnregisterFromSectionVariables = {
-  accessGroupId: ..., 
-};
-
-// Call the `unregisterFromSection()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await unregisterFromSection(unregisterFromSectionVars);
-// Variables can be defined inline as well.
-const { data } = await unregisterFromSection({ accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await unregisterFromSection(dataConnect, unregisterFromSectionVars);
-
-console.log(data.userAccessGroup_delete);
-
-// Or, you can use the `Promise` API.
-unregisterFromSection(unregisterFromSectionVars).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_delete);
-});
-```
-
-### Using `UnregisterFromSection`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, unregisterFromSectionRef, UnregisterFromSectionVariables } from '@dataconnect/generated';
-
-// The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`:
-const unregisterFromSectionVars: UnregisterFromSectionVariables = {
-  accessGroupId: ..., 
-};
-
-// Call the `unregisterFromSectionRef()` function to get a reference to the mutation.
-const ref = unregisterFromSectionRef(unregisterFromSectionVars);
-// Variables can be defined inline as well.
-const ref = unregisterFromSectionRef({ accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = unregisterFromSectionRef(dataConnect, unregisterFromSectionVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.userAccessGroup_delete);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_delete);
-});
-```
-
-## CreateSection
-You can execute the `CreateSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-createSection(vars: CreateSectionVariables): MutationPromise<CreateSectionData, CreateSectionVariables>;
-
-interface CreateSectionRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateSectionVariables): MutationRef<CreateSectionData, CreateSectionVariables>;
-}
-export const createSectionRef: CreateSectionRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-createSection(dc: DataConnect, vars: CreateSectionVariables): MutationPromise<CreateSectionData, CreateSectionVariables>;
-
-interface CreateSectionRef {
-  ...
-  (dc: DataConnect, vars: CreateSectionVariables): MutationRef<CreateSectionData, CreateSectionVariables>;
-}
-export const createSectionRef: CreateSectionRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createSectionRef:
-```typescript
-const name = createSectionRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `CreateSection` mutation requires an argument of type `CreateSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface CreateSectionVariables {
-  name: string;
-  type: SectionType;
-  description?: string | null;
-}
-```
-### Return Type
-Recall that executing the `CreateSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `CreateSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface CreateSectionData {
-  section_insert: Section_Key;
-}
-```
-### Using `CreateSection`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, createSection, CreateSectionVariables } from '@dataconnect/generated';
-
-// The `CreateSection` mutation requires an argument of type `CreateSectionVariables`:
-const createSectionVars: CreateSectionVariables = {
-  name: ..., 
-  type: ..., 
-  description: ..., // optional
-};
-
-// Call the `createSection()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await createSection(createSectionVars);
-// Variables can be defined inline as well.
-const { data } = await createSection({ name: ..., type: ..., description: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await createSection(dataConnect, createSectionVars);
-
-console.log(data.section_insert);
-
-// Or, you can use the `Promise` API.
-createSection(createSectionVars).then((response) => {
-  const data = response.data;
-  console.log(data.section_insert);
-});
-```
-
-### Using `CreateSection`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, createSectionRef, CreateSectionVariables } from '@dataconnect/generated';
-
-// The `CreateSection` mutation requires an argument of type `CreateSectionVariables`:
-const createSectionVars: CreateSectionVariables = {
-  name: ..., 
-  type: ..., 
-  description: ..., // optional
-};
-
-// Call the `createSectionRef()` function to get a reference to the mutation.
-const ref = createSectionRef(createSectionVars);
-// Variables can be defined inline as well.
-const ref = createSectionRef({ name: ..., type: ..., description: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = createSectionRef(dataConnect, createSectionVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.section_insert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.section_insert);
-});
-```
-
-## CreateAccessGroup
-You can execute the `CreateAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-createAccessGroup(vars: CreateAccessGroupVariables): MutationPromise<CreateAccessGroupData, CreateAccessGroupVariables>;
-
-interface CreateAccessGroupRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateAccessGroupVariables): MutationRef<CreateAccessGroupData, CreateAccessGroupVariables>;
-}
-export const createAccessGroupRef: CreateAccessGroupRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-createAccessGroup(dc: DataConnect, vars: CreateAccessGroupVariables): MutationPromise<CreateAccessGroupData, CreateAccessGroupVariables>;
-
-interface CreateAccessGroupRef {
-  ...
-  (dc: DataConnect, vars: CreateAccessGroupVariables): MutationRef<CreateAccessGroupData, CreateAccessGroupVariables>;
-}
-export const createAccessGroupRef: CreateAccessGroupRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createAccessGroupRef:
-```typescript
-const name = createAccessGroupRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `CreateAccessGroup` mutation requires an argument of type `CreateAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface CreateAccessGroupVariables {
-  name: string;
-  description?: string | null;
-  membershipStatuses?: MembershipStatus[] | null;
-}
-```
-### Return Type
-Recall that executing the `CreateAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `CreateAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface CreateAccessGroupData {
-  accessGroup_insert: AccessGroup_Key;
-}
-```
-### Using `CreateAccessGroup`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, createAccessGroup, CreateAccessGroupVariables } from '@dataconnect/generated';
-
-// The `CreateAccessGroup` mutation requires an argument of type `CreateAccessGroupVariables`:
-const createAccessGroupVars: CreateAccessGroupVariables = {
-  name: ..., 
-  description: ..., // optional
-  membershipStatuses: ..., // optional
-};
-
-// Call the `createAccessGroup()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await createAccessGroup(createAccessGroupVars);
-// Variables can be defined inline as well.
-const { data } = await createAccessGroup({ name: ..., description: ..., membershipStatuses: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await createAccessGroup(dataConnect, createAccessGroupVars);
-
-console.log(data.accessGroup_insert);
-
-// Or, you can use the `Promise` API.
-createAccessGroup(createAccessGroupVars).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroup_insert);
-});
-```
-
-### Using `CreateAccessGroup`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, createAccessGroupRef, CreateAccessGroupVariables } from '@dataconnect/generated';
-
-// The `CreateAccessGroup` mutation requires an argument of type `CreateAccessGroupVariables`:
-const createAccessGroupVars: CreateAccessGroupVariables = {
-  name: ..., 
-  description: ..., // optional
-  membershipStatuses: ..., // optional
-};
-
-// Call the `createAccessGroupRef()` function to get a reference to the mutation.
-const ref = createAccessGroupRef(createAccessGroupVars);
-// Variables can be defined inline as well.
-const ref = createAccessGroupRef({ name: ..., description: ..., membershipStatuses: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = createAccessGroupRef(dataConnect, createAccessGroupVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.accessGroup_insert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroup_insert);
-});
-```
-
-## AddUserToAccessGroup
-You can execute the `AddUserToAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-addUserToAccessGroup(vars: AddUserToAccessGroupVariables): MutationPromise<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
-
-interface AddUserToAccessGroupRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: AddUserToAccessGroupVariables): MutationRef<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
-}
-export const addUserToAccessGroupRef: AddUserToAccessGroupRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-addUserToAccessGroup(dc: DataConnect, vars: AddUserToAccessGroupVariables): MutationPromise<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
-
-interface AddUserToAccessGroupRef {
-  ...
-  (dc: DataConnect, vars: AddUserToAccessGroupVariables): MutationRef<AddUserToAccessGroupData, AddUserToAccessGroupVariables>;
-}
-export const addUserToAccessGroupRef: AddUserToAccessGroupRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the addUserToAccessGroupRef:
-```typescript
-const name = addUserToAccessGroupRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `AddUserToAccessGroup` mutation requires an argument of type `AddUserToAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface AddUserToAccessGroupVariables {
-  userId: string;
-  accessGroupId: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `AddUserToAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `AddUserToAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface AddUserToAccessGroupData {
-  userAccessGroup_upsert: UserAccessGroup_Key;
-}
-```
-### Using `AddUserToAccessGroup`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, addUserToAccessGroup, AddUserToAccessGroupVariables } from '@dataconnect/generated';
-
-// The `AddUserToAccessGroup` mutation requires an argument of type `AddUserToAccessGroupVariables`:
-const addUserToAccessGroupVars: AddUserToAccessGroupVariables = {
-  userId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `addUserToAccessGroup()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await addUserToAccessGroup(addUserToAccessGroupVars);
-// Variables can be defined inline as well.
-const { data } = await addUserToAccessGroup({ userId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await addUserToAccessGroup(dataConnect, addUserToAccessGroupVars);
-
-console.log(data.userAccessGroup_upsert);
-
-// Or, you can use the `Promise` API.
-addUserToAccessGroup(addUserToAccessGroupVars).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_upsert);
-});
-```
-
-### Using `AddUserToAccessGroup`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, addUserToAccessGroupRef, AddUserToAccessGroupVariables } from '@dataconnect/generated';
-
-// The `AddUserToAccessGroup` mutation requires an argument of type `AddUserToAccessGroupVariables`:
-const addUserToAccessGroupVars: AddUserToAccessGroupVariables = {
-  userId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `addUserToAccessGroupRef()` function to get a reference to the mutation.
-const ref = addUserToAccessGroupRef(addUserToAccessGroupVars);
-// Variables can be defined inline as well.
-const ref = addUserToAccessGroupRef({ userId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = addUserToAccessGroupRef(dataConnect, addUserToAccessGroupVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.userAccessGroup_upsert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_upsert);
-});
-```
-
-## RemoveUserFromAccessGroup
-You can execute the `RemoveUserFromAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-removeUserFromAccessGroup(vars: RemoveUserFromAccessGroupVariables): MutationPromise<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
-
-interface RemoveUserFromAccessGroupRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: RemoveUserFromAccessGroupVariables): MutationRef<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
-}
-export const removeUserFromAccessGroupRef: RemoveUserFromAccessGroupRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-removeUserFromAccessGroup(dc: DataConnect, vars: RemoveUserFromAccessGroupVariables): MutationPromise<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
-
-interface RemoveUserFromAccessGroupRef {
-  ...
-  (dc: DataConnect, vars: RemoveUserFromAccessGroupVariables): MutationRef<RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables>;
-}
-export const removeUserFromAccessGroupRef: RemoveUserFromAccessGroupRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the removeUserFromAccessGroupRef:
-```typescript
-const name = removeUserFromAccessGroupRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `RemoveUserFromAccessGroup` mutation requires an argument of type `RemoveUserFromAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface RemoveUserFromAccessGroupVariables {
-  userId: string;
-  accessGroupId: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `RemoveUserFromAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `RemoveUserFromAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface RemoveUserFromAccessGroupData {
-  userAccessGroup_delete?: UserAccessGroup_Key | null;
-}
-```
-### Using `RemoveUserFromAccessGroup`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, removeUserFromAccessGroup, RemoveUserFromAccessGroupVariables } from '@dataconnect/generated';
-
-// The `RemoveUserFromAccessGroup` mutation requires an argument of type `RemoveUserFromAccessGroupVariables`:
-const removeUserFromAccessGroupVars: RemoveUserFromAccessGroupVariables = {
-  userId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `removeUserFromAccessGroup()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await removeUserFromAccessGroup(removeUserFromAccessGroupVars);
-// Variables can be defined inline as well.
-const { data } = await removeUserFromAccessGroup({ userId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await removeUserFromAccessGroup(dataConnect, removeUserFromAccessGroupVars);
-
-console.log(data.userAccessGroup_delete);
-
-// Or, you can use the `Promise` API.
-removeUserFromAccessGroup(removeUserFromAccessGroupVars).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_delete);
-});
-```
-
-### Using `RemoveUserFromAccessGroup`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, removeUserFromAccessGroupRef, RemoveUserFromAccessGroupVariables } from '@dataconnect/generated';
-
-// The `RemoveUserFromAccessGroup` mutation requires an argument of type `RemoveUserFromAccessGroupVariables`:
-const removeUserFromAccessGroupVars: RemoveUserFromAccessGroupVariables = {
-  userId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `removeUserFromAccessGroupRef()` function to get a reference to the mutation.
-const ref = removeUserFromAccessGroupRef(removeUserFromAccessGroupVars);
-// Variables can be defined inline as well.
-const ref = removeUserFromAccessGroupRef({ userId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = removeUserFromAccessGroupRef(dataConnect, removeUserFromAccessGroupVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.userAccessGroup_delete);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.userAccessGroup_delete);
-});
-```
-
-## GrantAccessGroupToSection
-You can execute the `GrantAccessGroupToSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-grantAccessGroupToSection(vars: GrantAccessGroupToSectionVariables): MutationPromise<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
-
-interface GrantAccessGroupToSectionRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GrantAccessGroupToSectionVariables): MutationRef<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
-}
-export const grantAccessGroupToSectionRef: GrantAccessGroupToSectionRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-grantAccessGroupToSection(dc: DataConnect, vars: GrantAccessGroupToSectionVariables): MutationPromise<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
-
-interface GrantAccessGroupToSectionRef {
-  ...
-  (dc: DataConnect, vars: GrantAccessGroupToSectionVariables): MutationRef<GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables>;
-}
-export const grantAccessGroupToSectionRef: GrantAccessGroupToSectionRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the grantAccessGroupToSectionRef:
-```typescript
-const name = grantAccessGroupToSectionRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `GrantAccessGroupToSection` mutation requires an argument of type `GrantAccessGroupToSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface GrantAccessGroupToSectionVariables {
-  sectionId: UUIDString;
-  accessGroupId: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `GrantAccessGroupToSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `GrantAccessGroupToSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface GrantAccessGroupToSectionData {
-  sectionAccessGroup_upsert: SectionAccessGroup_Key;
-}
-```
-### Using `GrantAccessGroupToSection`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, grantAccessGroupToSection, GrantAccessGroupToSectionVariables } from '@dataconnect/generated';
-
-// The `GrantAccessGroupToSection` mutation requires an argument of type `GrantAccessGroupToSectionVariables`:
-const grantAccessGroupToSectionVars: GrantAccessGroupToSectionVariables = {
-  sectionId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `grantAccessGroupToSection()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await grantAccessGroupToSection(grantAccessGroupToSectionVars);
-// Variables can be defined inline as well.
-const { data } = await grantAccessGroupToSection({ sectionId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await grantAccessGroupToSection(dataConnect, grantAccessGroupToSectionVars);
-
-console.log(data.sectionAccessGroup_upsert);
-
-// Or, you can use the `Promise` API.
-grantAccessGroupToSection(grantAccessGroupToSectionVars).then((response) => {
-  const data = response.data;
-  console.log(data.sectionAccessGroup_upsert);
-});
-```
-
-### Using `GrantAccessGroupToSection`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, grantAccessGroupToSectionRef, GrantAccessGroupToSectionVariables } from '@dataconnect/generated';
-
-// The `GrantAccessGroupToSection` mutation requires an argument of type `GrantAccessGroupToSectionVariables`:
-const grantAccessGroupToSectionVars: GrantAccessGroupToSectionVariables = {
-  sectionId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `grantAccessGroupToSectionRef()` function to get a reference to the mutation.
-const ref = grantAccessGroupToSectionRef(grantAccessGroupToSectionVars);
-// Variables can be defined inline as well.
-const ref = grantAccessGroupToSectionRef({ sectionId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = grantAccessGroupToSectionRef(dataConnect, grantAccessGroupToSectionVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.sectionAccessGroup_upsert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.sectionAccessGroup_upsert);
-});
-```
-
-## RevokeAccessGroupFromSection
-You can execute the `RevokeAccessGroupFromSection` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-revokeAccessGroupFromSection(vars: RevokeAccessGroupFromSectionVariables): MutationPromise<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
-
-interface RevokeAccessGroupFromSectionRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: RevokeAccessGroupFromSectionVariables): MutationRef<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
-}
-export const revokeAccessGroupFromSectionRef: RevokeAccessGroupFromSectionRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-revokeAccessGroupFromSection(dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables): MutationPromise<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
-
-interface RevokeAccessGroupFromSectionRef {
-  ...
-  (dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables): MutationRef<RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables>;
-}
-export const revokeAccessGroupFromSectionRef: RevokeAccessGroupFromSectionRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the revokeAccessGroupFromSectionRef:
-```typescript
-const name = revokeAccessGroupFromSectionRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `RevokeAccessGroupFromSection` mutation requires an argument of type `RevokeAccessGroupFromSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface RevokeAccessGroupFromSectionVariables {
-  sectionId: UUIDString;
-  accessGroupId: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `RevokeAccessGroupFromSection` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `RevokeAccessGroupFromSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface RevokeAccessGroupFromSectionData {
-  sectionAccessGroup_delete?: SectionAccessGroup_Key | null;
-}
-```
-### Using `RevokeAccessGroupFromSection`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, revokeAccessGroupFromSection, RevokeAccessGroupFromSectionVariables } from '@dataconnect/generated';
-
-// The `RevokeAccessGroupFromSection` mutation requires an argument of type `RevokeAccessGroupFromSectionVariables`:
-const revokeAccessGroupFromSectionVars: RevokeAccessGroupFromSectionVariables = {
-  sectionId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `revokeAccessGroupFromSection()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await revokeAccessGroupFromSection(revokeAccessGroupFromSectionVars);
-// Variables can be defined inline as well.
-const { data } = await revokeAccessGroupFromSection({ sectionId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await revokeAccessGroupFromSection(dataConnect, revokeAccessGroupFromSectionVars);
-
-console.log(data.sectionAccessGroup_delete);
-
-// Or, you can use the `Promise` API.
-revokeAccessGroupFromSection(revokeAccessGroupFromSectionVars).then((response) => {
-  const data = response.data;
-  console.log(data.sectionAccessGroup_delete);
-});
-```
-
-### Using `RevokeAccessGroupFromSection`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, revokeAccessGroupFromSectionRef, RevokeAccessGroupFromSectionVariables } from '@dataconnect/generated';
-
-// The `RevokeAccessGroupFromSection` mutation requires an argument of type `RevokeAccessGroupFromSectionVariables`:
-const revokeAccessGroupFromSectionVars: RevokeAccessGroupFromSectionVariables = {
-  sectionId: ..., 
-  accessGroupId: ..., 
-};
-
-// Call the `revokeAccessGroupFromSectionRef()` function to get a reference to the mutation.
-const ref = revokeAccessGroupFromSectionRef(revokeAccessGroupFromSectionVars);
-// Variables can be defined inline as well.
-const ref = revokeAccessGroupFromSectionRef({ sectionId: ..., accessGroupId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = revokeAccessGroupFromSectionRef(dataConnect, revokeAccessGroupFromSectionVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.sectionAccessGroup_delete);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.sectionAccessGroup_delete);
-});
-```
-
-## UpdateAccessGroup
-You can execute the `UpdateAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-updateAccessGroup(vars: UpdateAccessGroupVariables): MutationPromise<UpdateAccessGroupData, UpdateAccessGroupVariables>;
-
-interface UpdateAccessGroupRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateAccessGroupVariables): MutationRef<UpdateAccessGroupData, UpdateAccessGroupVariables>;
-}
-export const updateAccessGroupRef: UpdateAccessGroupRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-updateAccessGroup(dc: DataConnect, vars: UpdateAccessGroupVariables): MutationPromise<UpdateAccessGroupData, UpdateAccessGroupVariables>;
-
-interface UpdateAccessGroupRef {
-  ...
-  (dc: DataConnect, vars: UpdateAccessGroupVariables): MutationRef<UpdateAccessGroupData, UpdateAccessGroupVariables>;
-}
-export const updateAccessGroupRef: UpdateAccessGroupRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateAccessGroupRef:
-```typescript
-const name = updateAccessGroupRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UpdateAccessGroup` mutation requires an argument of type `UpdateAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UpdateAccessGroupVariables {
-  id: UUIDString;
-  name: string;
-  description?: string | null;
-  membershipStatuses?: MembershipStatus[] | null;
-}
-```
-### Return Type
-Recall that executing the `UpdateAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UpdateAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UpdateAccessGroupData {
-  accessGroup_update?: AccessGroup_Key | null;
-}
-```
-### Using `UpdateAccessGroup`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updateAccessGroup, UpdateAccessGroupVariables } from '@dataconnect/generated';
-
-// The `UpdateAccessGroup` mutation requires an argument of type `UpdateAccessGroupVariables`:
-const updateAccessGroupVars: UpdateAccessGroupVariables = {
-  id: ..., 
-  name: ..., 
-  description: ..., // optional
-  membershipStatuses: ..., // optional
-};
-
-// Call the `updateAccessGroup()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updateAccessGroup(updateAccessGroupVars);
-// Variables can be defined inline as well.
-const { data } = await updateAccessGroup({ id: ..., name: ..., description: ..., membershipStatuses: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updateAccessGroup(dataConnect, updateAccessGroupVars);
-
-console.log(data.accessGroup_update);
-
-// Or, you can use the `Promise` API.
-updateAccessGroup(updateAccessGroupVars).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroup_update);
-});
-```
-
-### Using `UpdateAccessGroup`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updateAccessGroupRef, UpdateAccessGroupVariables } from '@dataconnect/generated';
-
-// The `UpdateAccessGroup` mutation requires an argument of type `UpdateAccessGroupVariables`:
-const updateAccessGroupVars: UpdateAccessGroupVariables = {
-  id: ..., 
-  name: ..., 
-  description: ..., // optional
-  membershipStatuses: ..., // optional
-};
-
-// Call the `updateAccessGroupRef()` function to get a reference to the mutation.
-const ref = updateAccessGroupRef(updateAccessGroupVars);
-// Variables can be defined inline as well.
-const ref = updateAccessGroupRef({ id: ..., name: ..., description: ..., membershipStatuses: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = updateAccessGroupRef(dataConnect, updateAccessGroupVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.accessGroup_update);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroup_update);
-});
-```
-
-## DeleteAccessGroup
-You can execute the `DeleteAccessGroup` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-deleteAccessGroup(vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
-
-interface DeleteAccessGroupRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: DeleteAccessGroupVariables): MutationRef<DeleteAccessGroupData, DeleteAccessGroupVariables>;
-}
-export const deleteAccessGroupRef: DeleteAccessGroupRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-deleteAccessGroup(dc: DataConnect, vars: DeleteAccessGroupVariables): MutationPromise<DeleteAccessGroupData, DeleteAccessGroupVariables>;
-
-interface DeleteAccessGroupRef {
-  ...
-  (dc: DataConnect, vars: DeleteAccessGroupVariables): MutationRef<DeleteAccessGroupData, DeleteAccessGroupVariables>;
-}
-export const deleteAccessGroupRef: DeleteAccessGroupRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the deleteAccessGroupRef:
-```typescript
-const name = deleteAccessGroupRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `DeleteAccessGroup` mutation requires an argument of type `DeleteAccessGroupVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface DeleteAccessGroupVariables {
-  id: UUIDString;
-}
-```
-### Return Type
-Recall that executing the `DeleteAccessGroup` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `DeleteAccessGroupData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface DeleteAccessGroupData {
-  accessGroup_delete?: AccessGroup_Key | null;
-}
-```
-### Using `DeleteAccessGroup`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, deleteAccessGroup, DeleteAccessGroupVariables } from '@dataconnect/generated';
-
-// The `DeleteAccessGroup` mutation requires an argument of type `DeleteAccessGroupVariables`:
-const deleteAccessGroupVars: DeleteAccessGroupVariables = {
-  id: ..., 
-};
-
-// Call the `deleteAccessGroup()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await deleteAccessGroup(deleteAccessGroupVars);
-// Variables can be defined inline as well.
-const { data } = await deleteAccessGroup({ id: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await deleteAccessGroup(dataConnect, deleteAccessGroupVars);
-
-console.log(data.accessGroup_delete);
-
-// Or, you can use the `Promise` API.
-deleteAccessGroup(deleteAccessGroupVars).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroup_delete);
-});
-```
-
-### Using `DeleteAccessGroup`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, deleteAccessGroupRef, DeleteAccessGroupVariables } from '@dataconnect/generated';
-
-// The `DeleteAccessGroup` mutation requires an argument of type `DeleteAccessGroupVariables`:
-const deleteAccessGroupVars: DeleteAccessGroupVariables = {
-  id: ..., 
-};
-
-// Call the `deleteAccessGroupRef()` function to get a reference to the mutation.
-const ref = deleteAccessGroupRef(deleteAccessGroupVars);
-// Variables can be defined inline as well.
-const ref = deleteAccessGroupRef({ id: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = deleteAccessGroupRef(dataConnect, deleteAccessGroupVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.accessGroup_delete);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.accessGroup_delete);
 });
 ```
 

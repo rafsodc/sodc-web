@@ -23,6 +23,8 @@ const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers")
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
 const AccessGroups = lazy(() => import("./features/admin/components/AccessGroups"));
 const AuditLogs = lazy(() => import("./features/admin/components/AuditLogs"));
+const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
+const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
@@ -36,6 +38,7 @@ const LoadingFallback = () => (
 
 export default function App() {
   const [view, setView] = useState<Route>("home");
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [emailCheckTrigger, setEmailCheckTrigger] = useState(0);
   const [logoutSuccess, setLogoutSuccess] = useState(false);
@@ -156,6 +159,10 @@ export default function App() {
           onProfileClick={() => setView(ROUTES.PROFILE)}
           onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
           onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
+          onSectionsClick={() => {
+            setView(ROUTES.SECTIONS);
+            setSelectedSectionId(null);
+          }}
         />
         <Box
           component="main"
@@ -201,6 +208,10 @@ export default function App() {
           onProfileClick={() => setView(ROUTES.PROFILE)}
           onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
           onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
+          onSectionsClick={() => {
+            setView(ROUTES.SECTIONS);
+            setSelectedSectionId(null);
+          }}
         />
         <Box
           component="main"
@@ -249,6 +260,10 @@ export default function App() {
           onProfileClick={() => setView(ROUTES.PROFILE)}
           onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
           onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
+          onSectionsClick={() => {
+            setView(ROUTES.SECTIONS);
+            setSelectedSectionId(null);
+          }}
         />
         <Box
           component="main"
@@ -306,6 +321,10 @@ export default function App() {
         onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
         onAccessGroupsClick={() => setView(ROUTES.ACCESS_GROUPS)}
         onAuditLogsClick={() => setView(ROUTES.AUDIT_LOGS)}
+        onSectionsClick={() => {
+          setView(ROUTES.SECTIONS);
+          setSelectedSectionId(null);
+        }}
       />
       <Box
         component="main"
@@ -492,6 +511,46 @@ export default function App() {
               ) : !isAdmin ? (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   Access denied. Admin privileges required.
+                </Alert>
+              ) : null}
+              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
+                Back
+              </Button>
+            </Box>
+          )
+        ) : view === ROUTES.SECTIONS ? (
+          user && isEnabled ? (
+            <Suspense fallback={<LoadingFallback />}>
+              {selectedSectionId ? (
+                <SectionDetail
+                  sectionId={selectedSectionId}
+                  onBack={() => setSelectedSectionId(null)}
+                />
+              ) : (
+                <SectionsList
+                  onBack={() => setView("home")}
+                  onSelectSection={(sectionId) => {
+                    setSelectedSectionId(sectionId);
+                  }}
+                />
+              )}
+            </Suspense>
+          ) : (
+            <Box 
+              sx={{ 
+                maxWidth: { sm: "600px" },
+                mx: "auto",
+                px: { xs: 3, sm: 4 },
+              }}
+            >
+              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+                Sections
+              </Typography>
+              {!user ? (
+                <Typography>Please log in to view sections.</Typography>
+              ) : !isEnabled ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  Access denied. Your account must be enabled to view sections.
                 </Alert>
               ) : null}
               <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>

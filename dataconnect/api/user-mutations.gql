@@ -135,3 +135,31 @@ mutation UnregisterFromSection(
     }
   )
 }
+
+# Subscribe to a subscribable access group (self-subscription)
+# Requires enabled claim (admins must also be enabled)
+# Note: The access group must be marked as subscribable. This should be validated
+# in the frontend before calling this mutation (by checking the access group's subscribable field).
+mutation SubscribeToAccessGroup(
+  $accessGroupId: UUID!
+) @auth(expr: "auth.token.enabled == true") {
+  userAccessGroup_upsert(
+    data: {
+      userId_expr: "auth.uid"
+      accessGroupId: $accessGroupId
+    }
+  )
+}
+
+# Unsubscribe from a subscribable access group (self-unsubscription)
+# Requires enabled claim (admins must also be enabled)
+mutation UnsubscribeFromAccessGroup(
+  $accessGroupId: UUID!
+) @auth(expr: "auth.token.enabled == true") {
+  userAccessGroup_delete(
+    key: {
+      userId_expr: "auth.uid"
+      accessGroupId: $accessGroupId
+    }
+  )
+}

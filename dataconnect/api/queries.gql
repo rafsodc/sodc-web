@@ -96,8 +96,10 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
       accessGroup {
         id
         name
-        # Get sections this access group can access
-        sections: sectionAccessGroups_on_accessGroup {
+        # Get sections this access group can access (VIEW purpose only)
+        sections: sectionAccessGroups_on_accessGroup(
+          where: { purpose: { eq: VIEW } }
+        ) {
           section {
             id
             name
@@ -117,6 +119,7 @@ query ListAccessGroups @auth(expr: "auth.token.admin == true && auth.token.enabl
     name
     description
     membershipStatuses
+    subscribable
     createdAt
     updatedAt
     createdBy
@@ -200,11 +203,24 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
     description
     isOpenForRegistration
     allowedAccessGroups
-    accessGroups: sectionAccessGroups_on_section {
+    viewingAccessGroups: sectionAccessGroups_on_section(
+      where: { purpose: { eq: VIEW } }
+    ) {
       accessGroup {
         id
         name
         description
+        subscribable
+      }
+    }
+    memberAccessGroups: sectionAccessGroups_on_section(
+      where: { purpose: { eq: MEMBER } }
+    ) {
+      accessGroup {
+        id
+        name
+        description
+        subscribable
       }
     }
   }
@@ -217,6 +233,7 @@ query GetAccessGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && au
     name
     description
     membershipStatuses
+    subscribable
     createdAt
     updatedAt
     createdBy
@@ -237,6 +254,7 @@ query GetAccessGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && au
         type
         description
       }
+      purpose
     }
   }
 }
@@ -247,5 +265,50 @@ query GetAllAccessGroupsWithStatuses @auth(level: NO_ACCESS) {
     id
     name
     membershipStatuses
+  }
+}
+
+# Get all users in a MEMBERS section (users from MEMBER purpose access groups, with fallback to VIEW)
+query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  section(id: $sectionId) {
+    id
+    name
+    type
+    description
+    memberAccessGroups: sectionAccessGroups_on_section(
+      where: { purpose: { eq: MEMBER } }
+    ) {
+      accessGroup {
+        id
+        name
+        users: userAccessGroups_on_accessGroup {
+          user {
+            id
+            firstName
+            lastName
+            email
+            membershipStatus
+          }
+        }
+      }
+    }
+    # Fallback: if no MEMBER groups, use VIEW groups
+    viewingAccessGroups: sectionAccessGroups_on_section(
+      where: { purpose: { eq: VIEW } }
+    ) {
+      accessGroup {
+        id
+        name
+        users: userAccessGroups_on_accessGroup {
+          user {
+            id
+            firstName
+            lastName
+            email
+            membershipStatus
+          }
+        }
+      }
+    }
   }
 }

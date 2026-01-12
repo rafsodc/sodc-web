@@ -12,28 +12,28 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpdateUserMembershipStatus, useDeleteUser, useCreateUser, useCreateAccessGroupAdmin, useAddUserToAccessGroupAdmin, useRemoveUserFromAccessGroupAdmin, useGetAccessGroupByName, useGetUserAccessGroupsForAdmin, useGetCurrentUser, useGetUserById } from '@dataconnect/generated/react';
+import { useGetCurrentUser, useGetUserById, useListUsers, useListSections, useGetSectionsForUser, useListAccessGroups, useGetUserAccessGroups, useCheckUserProfileExists, useGetUserMembershipStatus, useGetUserWithAccessGroups } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
-
-const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
-
-const { data, isPending, isSuccess, isError, error } = useDeleteUser(deleteUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useCreateUser(createUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useCreateAccessGroupAdmin(createAccessGroupAdminVars);
-
-const { data, isPending, isSuccess, isError, error } = useAddUserToAccessGroupAdmin(addUserToAccessGroupAdminVars);
-
-const { data, isPending, isSuccess, isError, error } = useRemoveUserFromAccessGroupAdmin(removeUserFromAccessGroupAdminVars);
-
-const { data, isPending, isSuccess, isError, error } = useGetAccessGroupByName(getAccessGroupByNameVars);
-
-const { data, isPending, isSuccess, isError, error } = useGetUserAccessGroupsForAdmin(getUserAccessGroupsForAdminVars);
 
 const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
 
 const { data, isPending, isSuccess, isError, error } = useGetUserById(getUserByIdVars);
+
+const { data, isPending, isSuccess, isError, error } = useListUsers();
+
+const { data, isPending, isSuccess, isError, error } = useListSections();
+
+const { data, isPending, isSuccess, isError, error } = useGetSectionsForUser();
+
+const { data, isPending, isSuccess, isError, error } = useListAccessGroups();
+
+const { data, isPending, isSuccess, isError, error } = useGetUserAccessGroups();
+
+const { data, isPending, isSuccess, isError, error } = useCheckUserProfileExists();
+
+const { data, isPending, isSuccess, isError, error } = useGetUserMembershipStatus(getUserMembershipStatusVars);
+
+const { data, isPending, isSuccess, isError, error } = useGetUserWithAccessGroups(getUserWithAccessGroupsVars);
 
 ```
 
@@ -72,38 +72,38 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { updateUserMembershipStatus, deleteUser, createUser, createAccessGroupAdmin, addUserToAccessGroupAdmin, removeUserFromAccessGroupAdmin, getAccessGroupByName, getUserAccessGroupsForAdmin, getCurrentUser, getUserById } from '@dataconnect/generated';
+import { getCurrentUser, getUserById, listUsers, listSections, getSectionsForUser, listAccessGroups, getUserAccessGroups, checkUserProfileExists, getUserMembershipStatus, getUserWithAccessGroups } from '@dataconnect/generated';
 
-
-// Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
-const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
-
-// Operation DeleteUser:  For variables, look at type DeleteUserVars in ../index.d.ts
-const { data } = await DeleteUser(dataConnect, deleteUserVars);
-
-// Operation CreateUser:  For variables, look at type CreateUserVars in ../index.d.ts
-const { data } = await CreateUser(dataConnect, createUserVars);
-
-// Operation CreateAccessGroupAdmin:  For variables, look at type CreateAccessGroupAdminVars in ../index.d.ts
-const { data } = await CreateAccessGroupAdmin(dataConnect, createAccessGroupAdminVars);
-
-// Operation AddUserToAccessGroupAdmin:  For variables, look at type AddUserToAccessGroupAdminVars in ../index.d.ts
-const { data } = await AddUserToAccessGroupAdmin(dataConnect, addUserToAccessGroupAdminVars);
-
-// Operation RemoveUserFromAccessGroupAdmin:  For variables, look at type RemoveUserFromAccessGroupAdminVars in ../index.d.ts
-const { data } = await RemoveUserFromAccessGroupAdmin(dataConnect, removeUserFromAccessGroupAdminVars);
-
-// Operation GetAccessGroupByName:  For variables, look at type GetAccessGroupByNameVars in ../index.d.ts
-const { data } = await GetAccessGroupByName(dataConnect, getAccessGroupByNameVars);
-
-// Operation GetUserAccessGroupsForAdmin:  For variables, look at type GetUserAccessGroupsForAdminVars in ../index.d.ts
-const { data } = await GetUserAccessGroupsForAdmin(dataConnect, getUserAccessGroupsForAdminVars);
 
 // Operation GetCurrentUser: 
 const { data } = await GetCurrentUser(dataConnect);
 
 // Operation GetUserById:  For variables, look at type GetUserByIdVars in ../index.d.ts
 const { data } = await GetUserById(dataConnect, getUserByIdVars);
+
+// Operation ListUsers: 
+const { data } = await ListUsers(dataConnect);
+
+// Operation ListSections: 
+const { data } = await ListSections(dataConnect);
+
+// Operation GetSectionsForUser: 
+const { data } = await GetSectionsForUser(dataConnect);
+
+// Operation ListAccessGroups: 
+const { data } = await ListAccessGroups(dataConnect);
+
+// Operation GetUserAccessGroups: 
+const { data } = await GetUserAccessGroups(dataConnect);
+
+// Operation CheckUserProfileExists: 
+const { data } = await CheckUserProfileExists(dataConnect);
+
+// Operation GetUserMembershipStatus:  For variables, look at type GetUserMembershipStatusVars in ../index.d.ts
+const { data } = await GetUserMembershipStatus(dataConnect, getUserMembershipStatusVars);
+
+// Operation GetUserWithAccessGroups:  For variables, look at type GetUserWithAccessGroupsVars in ../index.d.ts
+const { data } = await GetUserWithAccessGroups(dataConnect, getUserWithAccessGroupsVars);
 
 
 ```

@@ -1,33 +1,9 @@
-import { UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables, DeleteUserData, DeleteUserVariables, CreateUserData, CreateUserVariables, CreateAccessGroupAdminData, CreateAccessGroupAdminVariables, AddUserToAccessGroupAdminData, AddUserToAccessGroupAdminVariables, RemoveUserFromAccessGroupAdminData, RemoveUserFromAccessGroupAdminVariables, GetAccessGroupByNameData, GetAccessGroupByNameVariables, GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables, GetCurrentUserData, GetUserByIdData, GetUserByIdVariables, ListUsersData, ListSectionsData, GetSectionsForUserData, ListAccessGroupsData, GetUserAccessGroupsData, CheckUserProfileExistsData, GetUserMembershipStatusData, GetUserMembershipStatusVariables, GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables, GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables, GetSectionByIdData, GetSectionByIdVariables, GetAccessGroupByIdData, GetAccessGroupByIdVariables, GetAllAccessGroupsWithStatusesData, CreateUserProfileData, CreateUserProfileVariables, UpsertUserData, UpsertUserVariables, UpdateUserData, UpdateUserVariables, RegisterForSectionData, RegisterForSectionVariables, UnregisterFromSectionData, UnregisterFromSectionVariables, CreateSectionData, CreateSectionVariables, CreateAccessGroupData, CreateAccessGroupVariables, AddUserToAccessGroupData, AddUserToAccessGroupVariables, RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables, GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables, RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables, UpdateAccessGroupData, UpdateAccessGroupVariables, DeleteAccessGroupData, DeleteAccessGroupVariables } from '../';
+import { GetCurrentUserData, GetUserByIdData, GetUserByIdVariables, ListUsersData, ListSectionsData, GetSectionsForUserData, ListAccessGroupsData, GetUserAccessGroupsData, CheckUserProfileExistsData, GetUserMembershipStatusData, GetUserMembershipStatusVariables, GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables, GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables, GetSectionByIdData, GetSectionByIdVariables, GetAccessGroupByIdData, GetAccessGroupByIdVariables, GetAllAccessGroupsWithStatusesData, GetSectionMembersData, GetSectionMembersVariables, CreateUserProfileData, CreateUserProfileVariables, UpsertUserData, UpsertUserVariables, UpdateUserData, UpdateUserVariables, RegisterForSectionData, RegisterForSectionVariables, UnregisterFromSectionData, UnregisterFromSectionVariables, SubscribeToAccessGroupData, SubscribeToAccessGroupVariables, UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables, CreateSectionData, CreateSectionVariables, CreateAccessGroupData, CreateAccessGroupVariables, AddUserToAccessGroupData, AddUserToAccessGroupVariables, RemoveUserFromAccessGroupData, RemoveUserFromAccessGroupVariables, GrantAccessGroupToSectionData, GrantAccessGroupToSectionVariables, RevokeAccessGroupFromSectionData, RevokeAccessGroupFromSectionVariables, UpdateAccessGroupData, UpdateAccessGroupVariables, DeleteAccessGroupData, DeleteAccessGroupVariables, UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables, DeleteUserData, DeleteUserVariables, CreateUserData, CreateUserVariables, CreateAccessGroupAdminData, CreateAccessGroupAdminVariables, AddUserToAccessGroupAdminData, AddUserToAccessGroupAdminVariables, RemoveUserFromAccessGroupAdminData, RemoveUserFromAccessGroupAdminVariables, GetAccessGroupByNameData, GetAccessGroupByNameVariables, GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables } from '../';
 import { UseDataConnectQueryResult, useDataConnectQueryOptions, UseDataConnectMutationResult, useDataConnectMutationOptions} from '@tanstack-query-firebase/react/data-connect';
 import { UseQueryResult, UseMutationResult} from '@tanstack/react-query';
 import { DataConnect } from 'firebase/data-connect';
 import { FirebaseError } from 'firebase/app';
 
-
-export function useUpdateUserMembershipStatus(options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
-export function useUpdateUserMembershipStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
-
-export function useDeleteUser(options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
-export function useDeleteUser(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
-
-export function useCreateUser(options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
-export function useCreateUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
-
-export function useCreateAccessGroupAdmin(options?: useDataConnectMutationOptions<CreateAccessGroupAdminData, FirebaseError, CreateAccessGroupAdminVariables>): UseDataConnectMutationResult<CreateAccessGroupAdminData, CreateAccessGroupAdminVariables>;
-export function useCreateAccessGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<CreateAccessGroupAdminData, FirebaseError, CreateAccessGroupAdminVariables>): UseDataConnectMutationResult<CreateAccessGroupAdminData, CreateAccessGroupAdminVariables>;
-
-export function useAddUserToAccessGroupAdmin(options?: useDataConnectMutationOptions<AddUserToAccessGroupAdminData, FirebaseError, AddUserToAccessGroupAdminVariables>): UseDataConnectMutationResult<AddUserToAccessGroupAdminData, AddUserToAccessGroupAdminVariables>;
-export function useAddUserToAccessGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<AddUserToAccessGroupAdminData, FirebaseError, AddUserToAccessGroupAdminVariables>): UseDataConnectMutationResult<AddUserToAccessGroupAdminData, AddUserToAccessGroupAdminVariables>;
-
-export function useRemoveUserFromAccessGroupAdmin(options?: useDataConnectMutationOptions<RemoveUserFromAccessGroupAdminData, FirebaseError, RemoveUserFromAccessGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromAccessGroupAdminData, RemoveUserFromAccessGroupAdminVariables>;
-export function useRemoveUserFromAccessGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<RemoveUserFromAccessGroupAdminData, FirebaseError, RemoveUserFromAccessGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromAccessGroupAdminData, RemoveUserFromAccessGroupAdminVariables>;
-
-export function useGetAccessGroupByName(vars: GetAccessGroupByNameVariables, options?: useDataConnectQueryOptions<GetAccessGroupByNameData>): UseDataConnectQueryResult<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
-export function useGetAccessGroupByName(dc: DataConnect, vars: GetAccessGroupByNameVariables, options?: useDataConnectQueryOptions<GetAccessGroupByNameData>): UseDataConnectQueryResult<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
-
-export function useGetUserAccessGroupsForAdmin(vars: GetUserAccessGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsForAdminData>): UseDataConnectQueryResult<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
-export function useGetUserAccessGroupsForAdmin(dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsForAdminData>): UseDataConnectQueryResult<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
 
 export function useGetCurrentUser(options?: useDataConnectQueryOptions<GetCurrentUserData>): UseDataConnectQueryResult<GetCurrentUserData, undefined>;
 export function useGetCurrentUser(dc: DataConnect, options?: useDataConnectQueryOptions<GetCurrentUserData>): UseDataConnectQueryResult<GetCurrentUserData, undefined>;
@@ -71,6 +47,9 @@ export function useGetAccessGroupById(dc: DataConnect, vars: GetAccessGroupByIdV
 export function useGetAllAccessGroupsWithStatuses(options?: useDataConnectQueryOptions<GetAllAccessGroupsWithStatusesData>): UseDataConnectQueryResult<GetAllAccessGroupsWithStatusesData, undefined>;
 export function useGetAllAccessGroupsWithStatuses(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllAccessGroupsWithStatusesData>): UseDataConnectQueryResult<GetAllAccessGroupsWithStatusesData, undefined>;
 
+export function useGetSectionMembers(vars: GetSectionMembersVariables, options?: useDataConnectQueryOptions<GetSectionMembersData>): UseDataConnectQueryResult<GetSectionMembersData, GetSectionMembersVariables>;
+export function useGetSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables, options?: useDataConnectQueryOptions<GetSectionMembersData>): UseDataConnectQueryResult<GetSectionMembersData, GetSectionMembersVariables>;
+
 export function useCreateUserProfile(options?: useDataConnectMutationOptions<CreateUserProfileData, FirebaseError, CreateUserProfileVariables>): UseDataConnectMutationResult<CreateUserProfileData, CreateUserProfileVariables>;
 export function useCreateUserProfile(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserProfileData, FirebaseError, CreateUserProfileVariables>): UseDataConnectMutationResult<CreateUserProfileData, CreateUserProfileVariables>;
 
@@ -85,6 +64,12 @@ export function useRegisterForSection(dc: DataConnect, options?: useDataConnectM
 
 export function useUnregisterFromSection(options?: useDataConnectMutationOptions<UnregisterFromSectionData, FirebaseError, UnregisterFromSectionVariables>): UseDataConnectMutationResult<UnregisterFromSectionData, UnregisterFromSectionVariables>;
 export function useUnregisterFromSection(dc: DataConnect, options?: useDataConnectMutationOptions<UnregisterFromSectionData, FirebaseError, UnregisterFromSectionVariables>): UseDataConnectMutationResult<UnregisterFromSectionData, UnregisterFromSectionVariables>;
+
+export function useSubscribeToAccessGroup(options?: useDataConnectMutationOptions<SubscribeToAccessGroupData, FirebaseError, SubscribeToAccessGroupVariables>): UseDataConnectMutationResult<SubscribeToAccessGroupData, SubscribeToAccessGroupVariables>;
+export function useSubscribeToAccessGroup(dc: DataConnect, options?: useDataConnectMutationOptions<SubscribeToAccessGroupData, FirebaseError, SubscribeToAccessGroupVariables>): UseDataConnectMutationResult<SubscribeToAccessGroupData, SubscribeToAccessGroupVariables>;
+
+export function useUnsubscribeFromAccessGroup(options?: useDataConnectMutationOptions<UnsubscribeFromAccessGroupData, FirebaseError, UnsubscribeFromAccessGroupVariables>): UseDataConnectMutationResult<UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables>;
+export function useUnsubscribeFromAccessGroup(dc: DataConnect, options?: useDataConnectMutationOptions<UnsubscribeFromAccessGroupData, FirebaseError, UnsubscribeFromAccessGroupVariables>): UseDataConnectMutationResult<UnsubscribeFromAccessGroupData, UnsubscribeFromAccessGroupVariables>;
 
 export function useCreateSection(options?: useDataConnectMutationOptions<CreateSectionData, FirebaseError, CreateSectionVariables>): UseDataConnectMutationResult<CreateSectionData, CreateSectionVariables>;
 export function useCreateSection(dc: DataConnect, options?: useDataConnectMutationOptions<CreateSectionData, FirebaseError, CreateSectionVariables>): UseDataConnectMutationResult<CreateSectionData, CreateSectionVariables>;
@@ -109,3 +94,27 @@ export function useUpdateAccessGroup(dc: DataConnect, options?: useDataConnectMu
 
 export function useDeleteAccessGroup(options?: useDataConnectMutationOptions<DeleteAccessGroupData, FirebaseError, DeleteAccessGroupVariables>): UseDataConnectMutationResult<DeleteAccessGroupData, DeleteAccessGroupVariables>;
 export function useDeleteAccessGroup(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteAccessGroupData, FirebaseError, DeleteAccessGroupVariables>): UseDataConnectMutationResult<DeleteAccessGroupData, DeleteAccessGroupVariables>;
+
+export function useUpdateUserMembershipStatus(options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+export function useUpdateUserMembershipStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+export function useDeleteUser(options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+export function useDeleteUser(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+
+export function useCreateUser(options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+export function useCreateUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+
+export function useCreateAccessGroupAdmin(options?: useDataConnectMutationOptions<CreateAccessGroupAdminData, FirebaseError, CreateAccessGroupAdminVariables>): UseDataConnectMutationResult<CreateAccessGroupAdminData, CreateAccessGroupAdminVariables>;
+export function useCreateAccessGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<CreateAccessGroupAdminData, FirebaseError, CreateAccessGroupAdminVariables>): UseDataConnectMutationResult<CreateAccessGroupAdminData, CreateAccessGroupAdminVariables>;
+
+export function useAddUserToAccessGroupAdmin(options?: useDataConnectMutationOptions<AddUserToAccessGroupAdminData, FirebaseError, AddUserToAccessGroupAdminVariables>): UseDataConnectMutationResult<AddUserToAccessGroupAdminData, AddUserToAccessGroupAdminVariables>;
+export function useAddUserToAccessGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<AddUserToAccessGroupAdminData, FirebaseError, AddUserToAccessGroupAdminVariables>): UseDataConnectMutationResult<AddUserToAccessGroupAdminData, AddUserToAccessGroupAdminVariables>;
+
+export function useRemoveUserFromAccessGroupAdmin(options?: useDataConnectMutationOptions<RemoveUserFromAccessGroupAdminData, FirebaseError, RemoveUserFromAccessGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromAccessGroupAdminData, RemoveUserFromAccessGroupAdminVariables>;
+export function useRemoveUserFromAccessGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<RemoveUserFromAccessGroupAdminData, FirebaseError, RemoveUserFromAccessGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromAccessGroupAdminData, RemoveUserFromAccessGroupAdminVariables>;
+
+export function useGetAccessGroupByName(vars: GetAccessGroupByNameVariables, options?: useDataConnectQueryOptions<GetAccessGroupByNameData>): UseDataConnectQueryResult<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
+export function useGetAccessGroupByName(dc: DataConnect, vars: GetAccessGroupByNameVariables, options?: useDataConnectQueryOptions<GetAccessGroupByNameData>): UseDataConnectQueryResult<GetAccessGroupByNameData, GetAccessGroupByNameVariables>;
+
+export function useGetUserAccessGroupsForAdmin(vars: GetUserAccessGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsForAdminData>): UseDataConnectQueryResult<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;
+export function useGetUserAccessGroupsForAdmin(dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsForAdminData>): UseDataConnectQueryResult<GetUserAccessGroupsForAdminData, GetUserAccessGroupsForAdminVariables>;

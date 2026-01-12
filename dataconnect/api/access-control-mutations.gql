@@ -27,12 +27,14 @@ mutation CreateAccessGroup(
   $name: String!
   $description: String
   $membershipStatuses: [MembershipStatus!]
+  $subscribable: Boolean
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   accessGroup_insert(
     data: {
       name: $name
       description: $description
       membershipStatuses: $membershipStatuses
+      subscribable: $subscribable
     }
   )
 }
@@ -67,11 +69,13 @@ mutation RemoveUserFromAccessGroup(
 mutation GrantAccessGroupToSection(
   $sectionId: UUID!
   $accessGroupId: UUID!
+  $purpose: SectionAccessGroupPurpose!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sectionAccessGroup_upsert(
     data: {
       sectionId: $sectionId
       accessGroupId: $accessGroupId
+      purpose: $purpose
     }
   )
 }
@@ -95,6 +99,7 @@ mutation UpdateAccessGroup(
   $name: String!
   $description: String
   $membershipStatuses: [MembershipStatus!]
+  $subscribable: Boolean
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   accessGroup_update(
     id: $id
@@ -102,6 +107,7 @@ mutation UpdateAccessGroup(
       name: $name
       description: $description
       membershipStatuses: $membershipStatuses
+      subscribable: $subscribable
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"
     }

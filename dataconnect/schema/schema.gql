@@ -6,6 +6,12 @@ enum SectionType {
   EVENTS
 }
 
+# Section access group purpose enum
+enum SectionAccessGroupPurpose {
+  VIEW
+  MEMBER
+}
+
 # Membership status enum
 enum MembershipStatus {
   PENDING
@@ -63,6 +69,7 @@ type AccessGroup @table {
   name: String!
   description: String
   membershipStatuses: [MembershipStatus!]  # Membership statuses that are automatically included in this group
+  subscribable: Boolean @default(value: false)  # Whether users can self-subscribe to this access group
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -83,10 +90,11 @@ type UserAccessGroup @table(key: ["user", "accessGroup"]) {
 }
 
 # SectionAccessGroup - junction table linking sections to access groups
-# An access group can grant access to multiple sections
-type SectionAccessGroup @table(key: ["section", "accessGroup"]) {
+# An access group can grant access to multiple sections with different purposes
+type SectionAccessGroup @table(key: ["section", "accessGroup", "purpose"]) {
   section: Section!
   accessGroup: AccessGroup!
+  purpose: SectionAccessGroupPurpose!  # VIEW: who can see the section, MEMBER: who appears in member list
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
