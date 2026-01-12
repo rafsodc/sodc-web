@@ -37,12 +37,27 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   const [users, setUsers] = useState<ListUsersData["users"]>([]);
   const [accessGroups, setAccessGroups] = useState<ListAccessGroupsData["accessGroups"]>([]);
   const [sections, setSections] = useState<ListSectionsData["sections"]>([]);
+  const [allUsers, setAllUsers] = useState<ListUsersData["users"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    fetchAllUsers();
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, [tabValue]);
+
+  const fetchAllUsers = async () => {
+    try {
+      const ref = listUsersRef(dataConnect);
+      const result = await executeQuery(ref);
+      setAllUsers(result.data?.users || []);
+    } catch (err: any) {
+      console.error("Failed to fetch users for audit log lookup:", err);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -68,6 +83,18 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
     }
   };
 
+  // Create lookup map for user IDs to display names
+  const getUserDisplayName = (userId: string | null | undefined): string => {
+    if (!userId || userId === "system") {
+      return userId === "system" ? "System" : "-";
+    }
+    const user = allUsers.find(u => u.id === userId);
+    if (user) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return userId; // Fallback to ID if user not found
+  };
+
   const formatTimestamp = (timestamp: string | null | undefined): string => {
     if (!timestamp) return "-";
     try {
@@ -84,7 +111,10 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
           <PageHeader title="Audit Logs" onBack={onBack} />
         </Box>
         <IconButton
-          onClick={fetchData}
+          onClick={() => {
+            fetchAllUsers();
+            fetchData();
+          }}
           disabled={loading}
           title="Refresh audit logs"
           sx={{ ml: 2 }}
@@ -155,9 +185,9 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
                       <Chip label={user.membershipStatus} size="small" variant="outlined" />
                     </TableCell>
                     <TableCell>{formatTimestamp(user.createdAt)}</TableCell>
-                    <TableCell>{user.createdBy || "-"}</TableCell>
+                    <TableCell>{getUserDisplayName(user.createdBy)}</TableCell>
                     <TableCell>{formatTimestamp(user.updatedAt)}</TableCell>
-                    <TableCell>{user.updatedBy || "-"}</TableCell>
+                    <TableCell>{getUserDisplayName(user.updatedBy)}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -190,9 +220,9 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
                     <TableCell>{group.name}</TableCell>
                     <TableCell>{group.description || "-"}</TableCell>
                     <TableCell>{formatTimestamp(group.createdAt)}</TableCell>
-                    <TableCell>{group.createdBy || "-"}</TableCell>
+                    <TableCell>{getUserDisplayName(group.createdBy)}</TableCell>
                     <TableCell>{formatTimestamp(group.updatedAt)}</TableCell>
-                    <TableCell>{group.updatedBy || "-"}</TableCell>
+                    <TableCell>{getUserDisplayName(group.updatedBy)}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -229,9 +259,9 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
                     </TableCell>
                     <TableCell>{section.description || "-"}</TableCell>
                     <TableCell>{formatTimestamp(section.createdAt)}</TableCell>
-                    <TableCell>{section.createdBy || "-"}</TableCell>
+                    <TableCell>{getUserDisplayName(section.createdBy)}</TableCell>
                     <TableCell>{formatTimestamp(section.updatedAt)}</TableCell>
-                    <TableCell>{section.updatedBy || "-"}</TableCell>
+                    <TableCell>{getUserDisplayName(section.updatedBy)}</TableCell>
                   </TableRow>
                 ))
               )}
