@@ -524,46 +524,6 @@ export interface User_Key {
   __typename?: 'User_Key';
 }
 
-/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createSection(vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function createAccessGroup(dc: DataConnect, vars: CreateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAccessGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createAccessGroup(vars: CreateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAccessGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AddUserToAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function addUserToAccessGroup(dc: DataConnect, vars: AddUserToAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToAccessGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'AddUserToAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addUserToAccessGroup(vars: AddUserToAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToAccessGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'RemoveUserFromAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function removeUserFromAccessGroup(dc: DataConnect, vars: RemoveUserFromAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromAccessGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'RemoveUserFromAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function removeUserFromAccessGroup(vars: RemoveUserFromAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromAccessGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GrantAccessGroupToSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function grantAccessGroupToSection(dc: DataConnect, vars: GrantAccessGroupToSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantAccessGroupToSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'GrantAccessGroupToSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function grantAccessGroupToSection(vars: GrantAccessGroupToSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantAccessGroupToSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'RevokeAccessGroupFromSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function revokeAccessGroupFromSection(dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeAccessGroupFromSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'RevokeAccessGroupFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function revokeAccessGroupFromSection(vars: RevokeAccessGroupFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeAccessGroupFromSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateAccessGroup(dc: DataConnect, vars: UpdateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAccessGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateAccessGroup(vars: UpdateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAccessGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteAccessGroup(dc: DataConnect, vars: DeleteAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteAccessGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteAccessGroup(vars: DeleteAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteAccessGroupData>>;
-
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -698,4 +658,44 @@ export function registerForSection(vars: RegisterForSectionVariables, options?: 
 export function unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
 /** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
 export function unregisterFromSection(vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createSection(vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAccessGroup(dc: DataConnect, vars: CreateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAccessGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAccessGroup(vars: CreateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAccessGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AddUserToAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function addUserToAccessGroup(dc: DataConnect, vars: AddUserToAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToAccessGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'AddUserToAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function addUserToAccessGroup(vars: AddUserToAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToAccessGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RemoveUserFromAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function removeUserFromAccessGroup(dc: DataConnect, vars: RemoveUserFromAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromAccessGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'RemoveUserFromAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function removeUserFromAccessGroup(vars: RemoveUserFromAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromAccessGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GrantAccessGroupToSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function grantAccessGroupToSection(dc: DataConnect, vars: GrantAccessGroupToSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantAccessGroupToSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'GrantAccessGroupToSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function grantAccessGroupToSection(vars: GrantAccessGroupToSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantAccessGroupToSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RevokeAccessGroupFromSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function revokeAccessGroupFromSection(dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeAccessGroupFromSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'RevokeAccessGroupFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function revokeAccessGroupFromSection(vars: RevokeAccessGroupFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeAccessGroupFromSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateAccessGroup(dc: DataConnect, vars: UpdateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAccessGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateAccessGroup(vars: UpdateAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAccessGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteAccessGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteAccessGroup(dc: DataConnect, vars: DeleteAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteAccessGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteAccessGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteAccessGroup(vars: DeleteAccessGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteAccessGroupData>>;
 

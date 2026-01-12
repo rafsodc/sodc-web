@@ -15,7 +15,7 @@ mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: Members
     data: { 
       membershipStatus: $membershipStatus
       updatedAt_expr: "request.time"
-      updatedBy_expr: "system"
+      updatedBy: "system"
     }
   )
 }
