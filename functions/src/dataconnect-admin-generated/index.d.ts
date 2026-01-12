@@ -28,6 +28,16 @@ export interface AccessGroup_Key {
   __typename?: 'AccessGroup_Key';
 }
 
+export interface AddUserToAccessGroupAdminData {
+  userAccessGroup_upsert: UserAccessGroup_Key;
+}
+
+export interface AddUserToAccessGroupAdminVariables {
+  userId: string;
+  accessGroupId: UUIDString;
+  now: TimestampString;
+}
+
 export interface AddUserToAccessGroupData {
   userAccessGroup_upsert: UserAccessGroup_Key;
 }
@@ -44,6 +54,16 @@ export interface CheckUserProfileExistsData {
     lastName: string;
     membershipStatus: MembershipStatus;
   } & User_Key;
+}
+
+export interface CreateAccessGroupAdminData {
+  accessGroup_insert: AccessGroup_Key;
+}
+
+export interface CreateAccessGroupAdminVariables {
+  name: string;
+  description?: string | null;
+  now: TimestampString;
 }
 
 export interface CreateAccessGroupData {
@@ -107,6 +127,18 @@ export interface DeleteUserVariables {
   userId: string;
 }
 
+export interface GetAccessGroupByNameData {
+  accessGroups: ({
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+  } & AccessGroup_Key)[];
+}
+
+export interface GetAccessGroupByNameVariables {
+  name: string;
+}
+
 export interface GetCurrentUserData {
   user?: {
     id: string;
@@ -123,6 +155,28 @@ export interface GetCurrentUserData {
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
+}
+
+export interface GetSectionByIdData {
+  section?: {
+    id: UUIDString;
+    name: string;
+    type: SectionType;
+    description?: string | null;
+    isOpenForRegistration?: boolean | null;
+    allowedAccessGroups?: UUIDString[] | null;
+    accessGroups: ({
+      accessGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & AccessGroup_Key;
+    })[];
+  } & Section_Key;
+}
+
+export interface GetSectionByIdVariables {
+  id: UUIDString;
 }
 
 export interface GetSectionsForUserData {
@@ -145,6 +199,23 @@ export interface GetSectionsForUserData {
   } & User_Key;
 }
 
+export interface GetUserAccessGroupsByIdData {
+  user?: {
+    id: string;
+    accessGroups: ({
+      accessGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & AccessGroup_Key;
+    })[];
+  } & User_Key;
+}
+
+export interface GetUserAccessGroupsByIdVariables {
+  userId: string;
+}
+
 export interface GetUserAccessGroupsData {
   user?: {
     id: string;
@@ -156,6 +227,23 @@ export interface GetUserAccessGroupsData {
       } & AccessGroup_Key;
     })[];
   } & User_Key;
+}
+
+export interface GetUserAccessGroupsForAdminData {
+  user?: {
+    id: string;
+    accessGroups: ({
+      accessGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & AccessGroup_Key;
+    })[];
+  } & User_Key;
+}
+
+export interface GetUserAccessGroupsForAdminVariables {
+  userId: string;
 }
 
 export interface GetUserByIdData {
@@ -189,6 +277,27 @@ export interface GetUserMembershipStatusData {
 }
 
 export interface GetUserMembershipStatusVariables {
+  id: string;
+}
+
+export interface GetUserWithAccessGroupsData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    accessGroups: ({
+      accessGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & AccessGroup_Key;
+    })[];
+  } & User_Key;
+}
+
+export interface GetUserWithAccessGroupsVariables {
   id: string;
 }
 
@@ -240,6 +349,23 @@ export interface ListUsersData {
   } & User_Key)[];
 }
 
+export interface RegisterForSectionData {
+  userAccessGroup_upsert: UserAccessGroup_Key;
+}
+
+export interface RegisterForSectionVariables {
+  accessGroupId: UUIDString;
+}
+
+export interface RemoveUserFromAccessGroupAdminData {
+  userAccessGroup_delete?: UserAccessGroup_Key | null;
+}
+
+export interface RemoveUserFromAccessGroupAdminVariables {
+  userId: string;
+  accessGroupId: UUIDString;
+}
+
 export interface RemoveUserFromAccessGroupData {
   userAccessGroup_delete?: UserAccessGroup_Key | null;
 }
@@ -267,6 +393,14 @@ export interface SectionAccessGroup_Key {
 export interface Section_Key {
   id: UUIDString;
   __typename?: 'Section_Key';
+}
+
+export interface UnregisterFromSectionData {
+  userAccessGroup_delete?: UserAccessGroup_Key | null;
+}
+
+export interface UnregisterFromSectionVariables {
+  accessGroupId: UUIDString;
 }
 
 export interface UpdateUserData {
@@ -320,21 +454,6 @@ export interface User_Key {
   __typename?: 'User_Key';
 }
 
-/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteUser(dc: DataConnect, vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteUser(vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function createUser(dc: DataConnect, vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createUser(vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
-
 /** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to execute without passing in DataConnect. */
 export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserProfileData>>;
 /** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -349,6 +468,16 @@ export function upsertUser(vars: UpsertUserVariables, options?: OperationOptions
 export function updateUser(dc: DataConnect, vars: UpdateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateUser' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateUser(vars: UpdateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RegisterForSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function registerForSection(dc: DataConnect, vars: RegisterForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RegisterForSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'RegisterForSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function registerForSection(vars: RegisterForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RegisterForSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function unregisterFromSection(vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
 export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
@@ -379,6 +508,46 @@ export function grantAccessGroupToSection(vars: GrantAccessGroupToSectionVariabl
 export function revokeAccessGroupFromSection(dc: DataConnect, vars: RevokeAccessGroupFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeAccessGroupFromSectionData>>;
 /** Generated Node Admin SDK operation action function for the 'RevokeAccessGroupFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
 export function revokeAccessGroupFromSection(vars: RevokeAccessGroupFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeAccessGroupFromSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteUser(dc: DataConnect, vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteUser(vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to execute without passing in DataConnect. */
+export function createUser(dc: DataConnect, vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateUser' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createUser(vars: CreateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateAccessGroupAdmin' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAccessGroupAdmin(dc: DataConnect, vars: CreateAccessGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAccessGroupAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAccessGroupAdmin' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAccessGroupAdmin(vars: CreateAccessGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAccessGroupAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AddUserToAccessGroupAdmin' Mutation. Allow users to execute without passing in DataConnect. */
+export function addUserToAccessGroupAdmin(dc: DataConnect, vars: AddUserToAccessGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToAccessGroupAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'AddUserToAccessGroupAdmin' Mutation. Allow users to pass in custom DataConnect instances. */
+export function addUserToAccessGroupAdmin(vars: AddUserToAccessGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToAccessGroupAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RemoveUserFromAccessGroupAdmin' Mutation. Allow users to execute without passing in DataConnect. */
+export function removeUserFromAccessGroupAdmin(dc: DataConnect, vars: RemoveUserFromAccessGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromAccessGroupAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'RemoveUserFromAccessGroupAdmin' Mutation. Allow users to pass in custom DataConnect instances. */
+export function removeUserFromAccessGroupAdmin(vars: RemoveUserFromAccessGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromAccessGroupAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAccessGroupByName' Query. Allow users to execute without passing in DataConnect. */
+export function getAccessGroupByName(dc: DataConnect, vars: GetAccessGroupByNameVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAccessGroupByNameData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAccessGroupByName' Query. Allow users to pass in custom DataConnect instances. */
+export function getAccessGroupByName(vars: GetAccessGroupByNameVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAccessGroupByNameData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function getUserAccessGroupsForAdmin(dc: DataConnect, vars: GetUserAccessGroupsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserAccessGroupsForAdmin(vars: GetUserAccessGroupsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsForAdminData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
 export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
@@ -424,4 +593,19 @@ export function checkUserProfileExists(options?: OperationOptions): Promise<Exec
 export function getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
 /** Generated Node Admin SDK operation action function for the 'GetUserMembershipStatus' Query. Allow users to pass in custom DataConnect instances. */
 export function getUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserWithAccessGroups' Query. Allow users to execute without passing in DataConnect. */
+export function getUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserWithAccessGroupsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserWithAccessGroups' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserWithAccessGroupsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsById' Query. Allow users to execute without passing in DataConnect. */
+export function getUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsById' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionById' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionById(dc: DataConnect, vars: GetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionById' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionById(vars: GetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdData>>;
 

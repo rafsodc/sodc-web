@@ -61,4 +61,81 @@ mutation CreateUser(
   )
 }
 
+# Create an access group (SDK only)
+# Used by Firebase Functions to automatically create status-based access groups
+mutation CreateAccessGroupAdmin(
+  $name: String!
+  $description: String
+  $now: Timestamp!
+) @auth(level: NO_ACCESS) {
+  accessGroup_insert(
+    data: {
+      name: $name
+      description: $description
+      createdBy: "system"
+      updatedBy: "system"
+      createdAt: $now
+      updatedAt: $now
+    }
+  )
+}
+
+# Add a user to an access group (SDK only)
+# Used by Firebase Functions to automatically assign users to access groups
+mutation AddUserToAccessGroupAdmin(
+  $userId: String!
+  $accessGroupId: UUID!
+  $now: Timestamp!
+) @auth(level: NO_ACCESS) {
+  userAccessGroup_upsert(
+    data: {
+      userId: $userId
+      accessGroupId: $accessGroupId
+      createdBy: "system"
+      updatedBy: "system"
+      createdAt: $now
+      updatedAt: $now
+    }
+  )
+}
+
+# Remove a user from an access group (SDK only)
+# Used by Firebase Functions to automatically remove users from access groups
+mutation RemoveUserFromAccessGroupAdmin(
+  $userId: String!
+  $accessGroupId: UUID!
+) @auth(level: NO_ACCESS) {
+  userAccessGroup_delete(
+    key: {
+      userId: $userId
+      accessGroupId: $accessGroupId
+    }
+  )
+}
+
+# Get access group by name (SDK only)
+# Used by Firebase Functions to find existing access groups
+query GetAccessGroupByName($name: String!) @auth(level: NO_ACCESS) {
+  accessGroups(where: { name: { eq: $name } }) {
+    id
+    name
+    description
+  }
+}
+
+# Get all access groups for a user (SDK only)
+# Used by Firebase Functions to get user's current access groups
+query GetUserAccessGroupsForAdmin($userId: String!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    accessGroups: userAccessGroups_on_user {
+      accessGroup {
+        id
+        name
+        description
+      }
+    }
+  }
+}
+
 

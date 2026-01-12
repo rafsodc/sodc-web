@@ -12,20 +12,18 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpdateUserMembershipStatus, useDeleteUser, useCreateUser, useCreateUserProfile, useUpsertUser, useUpdateUser, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup } from '@dataconnect/generated/react';
+import { useCreateUserProfile, useUpsertUser, useUpdateUser, useRegisterForSection, useUnregisterFromSection, useCreateSection, useCreateAccessGroup, useAddUserToAccessGroup, useRemoveUserFromAccessGroup, useGrantAccessGroupToSection } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
-
-const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
-
-const { data, isPending, isSuccess, isError, error } = useDeleteUser(deleteUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useCreateUser(createUserVars);
 
 const { data, isPending, isSuccess, isError, error } = useCreateUserProfile(createUserProfileVars);
 
 const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
 
 const { data, isPending, isSuccess, isError, error } = useUpdateUser(updateUserVars);
+
+const { data, isPending, isSuccess, isError, error } = useRegisterForSection(registerForSectionVars);
+
+const { data, isPending, isSuccess, isError, error } = useUnregisterFromSection(unregisterFromSectionVars);
 
 const { data, isPending, isSuccess, isError, error } = useCreateSection(createSectionVars);
 
@@ -34,6 +32,8 @@ const { data, isPending, isSuccess, isError, error } = useCreateAccessGroup(crea
 const { data, isPending, isSuccess, isError, error } = useAddUserToAccessGroup(addUserToAccessGroupVars);
 
 const { data, isPending, isSuccess, isError, error } = useRemoveUserFromAccessGroup(removeUserFromAccessGroupVars);
+
+const { data, isPending, isSuccess, isError, error } = useGrantAccessGroupToSection(grantAccessGroupToSectionVars);
 
 ```
 
@@ -72,17 +72,8 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { updateUserMembershipStatus, deleteUser, createUser, createUserProfile, upsertUser, updateUser, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup } from '@dataconnect/generated';
+import { createUserProfile, upsertUser, updateUser, registerForSection, unregisterFromSection, createSection, createAccessGroup, addUserToAccessGroup, removeUserFromAccessGroup, grantAccessGroupToSection } from '@dataconnect/generated';
 
-
-// Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
-const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
-
-// Operation DeleteUser:  For variables, look at type DeleteUserVars in ../index.d.ts
-const { data } = await DeleteUser(dataConnect, deleteUserVars);
-
-// Operation CreateUser:  For variables, look at type CreateUserVars in ../index.d.ts
-const { data } = await CreateUser(dataConnect, createUserVars);
 
 // Operation CreateUserProfile:  For variables, look at type CreateUserProfileVars in ../index.d.ts
 const { data } = await CreateUserProfile(dataConnect, createUserProfileVars);
@@ -92,6 +83,12 @@ const { data } = await UpsertUser(dataConnect, upsertUserVars);
 
 // Operation UpdateUser:  For variables, look at type UpdateUserVars in ../index.d.ts
 const { data } = await UpdateUser(dataConnect, updateUserVars);
+
+// Operation RegisterForSection:  For variables, look at type RegisterForSectionVars in ../index.d.ts
+const { data } = await RegisterForSection(dataConnect, registerForSectionVars);
+
+// Operation UnregisterFromSection:  For variables, look at type UnregisterFromSectionVars in ../index.d.ts
+const { data } = await UnregisterFromSection(dataConnect, unregisterFromSectionVars);
 
 // Operation CreateSection:  For variables, look at type CreateSectionVars in ../index.d.ts
 const { data } = await CreateSection(dataConnect, createSectionVars);
@@ -104,6 +101,9 @@ const { data } = await AddUserToAccessGroup(dataConnect, addUserToAccessGroupVar
 
 // Operation RemoveUserFromAccessGroup:  For variables, look at type RemoveUserFromAccessGroupVars in ../index.d.ts
 const { data } = await RemoveUserFromAccessGroup(dataConnect, removeUserFromAccessGroupVars);
+
+// Operation GrantAccessGroupToSection:  For variables, look at type GrantAccessGroupToSectionVars in ../index.d.ts
+const { data } = await GrantAccessGroupToSection(dataConnect, grantAccessGroupToSectionVars);
 
 
 ```

@@ -104,3 +104,30 @@ mutation UpdateUser(
     }
   )
 }
+
+# Register for a section (adds user to event-specific access group)
+# User must be in one of the section's allowedAccessGroups
+# Requires enabled claim (admins must also be enabled)
+mutation RegisterForSection(
+  $accessGroupId: UUID!
+) @auth(expr: "auth.token.enabled == true") {
+  userAccessGroup_upsert(
+    data: {
+      userId_expr: "auth.uid"
+      accessGroupId: $accessGroupId
+    }
+  )
+}
+
+# Unregister from a section (removes user from event-specific access group)
+# Requires enabled claim (admins must also be enabled)
+mutation UnregisterFromSection(
+  $accessGroupId: UUID!
+) @auth(expr: "auth.token.enabled == true") {
+  userAccessGroup_delete(
+    key: {
+      userId_expr: "auth.uid"
+      accessGroupId: $accessGroupId
+    }
+  )
+}

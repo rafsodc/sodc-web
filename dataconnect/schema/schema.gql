@@ -47,6 +47,8 @@ type Section @table {
   name: String!
   type: SectionType!
   description: String
+  isOpenForRegistration: Boolean @default(value: false)
+  allowedAccessGroups: [UUID!]
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

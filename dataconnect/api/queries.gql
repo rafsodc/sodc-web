@@ -150,3 +150,54 @@ query GetUserMembershipStatus($id: String!) @auth(level: NO_ACCESS) {
     membershipStatus
   }
 }
+
+# Get user by ID with access groups (admin only)
+query GetUserWithAccessGroups($id: String!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  user(id: $id) {
+    id
+    firstName
+    lastName
+    email
+    membershipStatus
+    accessGroups: userAccessGroups_on_user {
+      accessGroup {
+        id
+        name
+        description
+      }
+    }
+  }
+}
+
+# Get access groups for a specific user (admin only)
+query GetUserAccessGroupsById($userId: String!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  user(id: $userId) {
+    id
+    accessGroups: userAccessGroups_on_user {
+      accessGroup {
+        id
+        name
+        description
+      }
+    }
+  }
+}
+
+# Get section by ID with access groups and registration info
+query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
+  section(id: $id) {
+    id
+    name
+    type
+    description
+    isOpenForRegistration
+    allowedAccessGroups
+    accessGroups: sectionAccessGroups_on_section {
+      accessGroup {
+        id
+        name
+        description
+      }
+    }
+  }
+}

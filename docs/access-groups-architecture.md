@@ -10,8 +10,9 @@
 ### Status-Based Access Groups (Auto-Assigned)
 
 - Automatically assigned based on membership status
-- Examples: "Regular Members", "Reserve Members", "Civil Service Members", "Industry Members", "Retired Members"
-- All non-restricted members are also automatically added to "All Members" access group
+- Prefixed with "Status:" to indicate they are linked to membership status
+- Examples: "Status:Regular", "Status:Reserve", "Status:Civil Service", "Status:Industry", "Status:Retired"
+- Each non-restricted member gets exactly one status-based access group
 - Restricted statuses (PENDING, RESIGNED, LOST, DECEASED) have NO access groups
 
 ### Manual Access Groups
@@ -29,27 +30,29 @@ Sections have:
 
 ## Default Sections
 
-- **Members space** (type: MEMBERS) - Accessible to "All Members" access group
-- **Committee space** (type: MEMBERS) - Accessible to "All Members" access group (or separate "Committee" group if needed)
-- **Events page** (type: EVENTS) - Accessible to "All Members" access group
+- **Members space** (type: MEMBERS) - Accessible to all status-based access groups (Status:Regular, Status:Reserve, etc.)
+- **Committee space** (type: MEMBERS) - Accessible to all status-based access groups (or separate "Committee" group if needed)
+- **Events page** (type: EVENTS) - Accessible to all status-based access groups
+
+Default sections are linked to all status-based access groups via `SectionAccessGroup` junction table.
 
 ## Event Registration Flow
 
 Example: "Annual Dinner 2024" event section
 
 1. Section has `isOpenForRegistration: true`
-2. Section has `allowedAccessGroups: ["Regular Members", "Reserve Members"]` (status-based groups)
+2. Section has `allowedAccessGroups: ["Status:Regular", "Status:Reserve"]` (status-based groups)
 3. Section is linked to "Event: Annual Dinner 2024" access group via `SectionAccessGroup`
-4. User with REGULAR status is in "Regular Members" group → eligible to register
+4. User with REGULAR status is in "Status:Regular" group → eligible to register
 5. User clicks "Register" → automatically added to "Event: Annual Dinner 2024" access group
 6. User can now access the section (via the event-specific access group)
 7. User can unregister themselves (removed from event access group)
 
 ## Status Transitions
 
-- **Restricted → Non-restricted**: Add to "All Members" access group (and optionally status-based group)
+- **Restricted → Non-restricted**: Add to appropriate status-based access group (e.g., REGULAR → "Status:Regular")
 - **Non-restricted → Restricted**: Remove from ALL access groups
-- **Non-restricted → Non-restricted**: Ensure in "All Members", preserve manual groups, update status-based group
+- **Non-restricted → Non-restricted**: Remove from previous status-based group, add to new status-based group, preserve manual groups
 
 ## Admin Capabilities
 
@@ -61,8 +64,9 @@ Example: "Annual Dinner 2024" event section
 
 ### Access Group Assignment
 
-- **"All Members"**: Automatically created and assigned to all non-restricted members
-- **Status-based groups**: Automatically assigned when membership status is set to non-restricted status
+- **Status-based groups**: Automatically created and assigned when membership status is set to non-restricted status
+  - Prefixed with "Status:" to indicate they are linked to membership status
+  - Each non-restricted member gets exactly one status-based access group
 - **Manual groups**: Assigned by admins via UI
 
 ### Registration Eligibility
