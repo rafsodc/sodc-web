@@ -27,6 +27,7 @@ import {
   type ListSectionsData,
 } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
+import "../../../shared/components/PageContainer.css";
 
 interface AuditLogsProps {
   onBack: () => void;
@@ -105,7 +106,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Box sx={{ flex: 1 }}>
           <PageHeader title="Audit Logs" onBack={onBack} />
@@ -150,7 +151,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
       </Tabs>
 
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+        <Box className="loading-container">
           <CircularProgress />
         </Box>
       ) : tabValue === 0 ? (

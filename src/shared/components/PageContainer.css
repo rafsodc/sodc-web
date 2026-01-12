@@ -1,4 +1,4 @@
-.permissions-container {
+.page-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 16px;
@@ -9,4 +9,3 @@
   justify-content: center;
   padding: 48px;
 }
-

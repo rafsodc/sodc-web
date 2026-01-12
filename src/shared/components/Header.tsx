@@ -170,43 +170,17 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
             {isAdmin && (
               <Button
                 onClick={handleAdminClick}
-              sx={{
-                textTransform: "none",
-                backgroundColor: "white",
-                color: colors.primary,
-                borderRadius: "9999px",
-                px: 3,
-                fontWeight: 600,
-                "&:hover": {
+                sx={{
+                  textTransform: "none",
                   backgroundColor: "white",
-                  opacity: 0.9,
-                },
-                "&:focus": {
-                  outline: "none",
-                },
-                "&:focus-visible": {
-                  outline: "none",
-                },
-              }}
-            >
-              Admin
-            </Button>
-            <Menu
-              anchorEl={adminAnchorEl}
-              open={adminMenuOpen}
-              onClose={handleAdminMenuClose}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "center",
-              }}
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "center",
-              }}
-            >
-              <MenuItem 
-                onClick={handlePermissions}
-                sx={{
+                  color: colors.primary,
+                  borderRadius: "9999px",
+                  px: 3,
+                  fontWeight: 600,
+                  "&:hover": {
+                    backgroundColor: "white",
+                    opacity: 0.9,
+                  },
                   "&:focus": {
                     outline: "none",
                   },
@@ -215,61 +189,89 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                   },
                 }}
               >
-                Permissions
-              </MenuItem>
-              <MenuItem 
-                onClick={handleManageUsers}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
+                Admin
+              </Button>
+            )}
+            {isAdmin && (
+              <Menu
+                anchorEl={adminAnchorEl}
+                open={adminMenuOpen}
+                onClose={handleAdminMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "center",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "center",
                 }}
               >
-                Manage Users
-              </MenuItem>
-              <MenuItem 
-                onClick={handleApproveUsers}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Approve Users
-              </MenuItem>
-              <MenuItem 
-                onClick={handleAccessGroups}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Access Groups
-              </MenuItem>
-              <MenuItem 
-                onClick={handleAuditLogs}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Audit Logs
-              </MenuItem>
-            </Menu>
+                <MenuItem 
+                  onClick={handlePermissions}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Permissions
+                </MenuItem>
+                <MenuItem 
+                  onClick={handleManageUsers}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Manage Users
+                </MenuItem>
+                <MenuItem 
+                  onClick={handleApproveUsers}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Approve Users
+                </MenuItem>
+                <MenuItem 
+                  onClick={handleAccessGroups}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Access Groups
+                </MenuItem>
+                <MenuItem 
+                  onClick={handleAuditLogs}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Audit Logs
+                </MenuItem>
+              </Menu>
             )}
           </Box>
         )}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import SearchBar from "../../../shared/components/SearchBar";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import type { SectionType } from "@dataconnect/generated";
+import "../../../shared/components/PageContainer.css";
 
 interface SectionsListProps {
   onBack: () => void;
@@ -35,15 +36,17 @@ interface Section {
   description?: string | null;
 }
 
-export default function SectionsList({ onBack, onSelectSection }: SectionsListProps) {
+function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
   const isAdmin = useAdminClaim(auth.currentUser);
   const [searchTerm, setSearchTerm] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Use different queries based on admin status
   const {
     data: userSectionsData,
     isLoading: loadingUserSections,
     isError: errorUserSections,
+    error: userSectionsError,
     refetch: refetchUserSections,
   } = useGetSectionsForUser(dataConnect, {});
 
@@ -51,36 +54,76 @@ export default function SectionsList({ onBack, onSelectSection }: SectionsListPr
     data: allSectionsData,
     isLoading: loadingAllSections,
     isError: errorAllSections,
+    error: allSectionsError,
     refetch: refetchAllSections,
   } = useListSections(dataConnect, {}, { enabled: isAdmin });
 
+  // Log errors and data for debugging
+  useEffect(() => {
+    console.log('SectionsList Debug:', {
+      isAdmin,
+      loadingUserSections,
+      loadingAllSections,
+      errorUserSections,
+      errorAllSections,
+      userSectionsData,
+      allSectionsData,
+      userSectionsError,
+      allSectionsError,
+    });
+    
+    if (userSectionsError) {
+      console.error('GetSectionsForUser error:', userSectionsError);
+      setErrorMessage(userSectionsError instanceof Error ? userSectionsError.message : 'Failed to load sections');
+    }
+    if (allSectionsError) {
+      console.error('ListSections error:', allSectionsError);
+      setErrorMessage(allSectionsError instanceof Error ? allSectionsError.message : 'Failed to load sections');
+    }
+  }, [isAdmin, loadingUserSections, loadingAllSections, errorUserSections, errorAllSections, userSectionsData, allSectionsData, userSectionsError, allSectionsError]);
+
   // Extract sections from query results
   const sections = useMemo(() => {
-    if (isAdmin && allSectionsData?.sections) {
-      return allSectionsData.sections.map((section) => ({
-        id: section.id,
-        name: section.name,
-        type: section.type,
-        description: section.description,
-      }));
-    } else if (userSectionsData?.user?.accessGroups) {
-      const sectionMap = new Map<string, Section>();
-      for (const groupRelation of userSectionsData.user.accessGroups) {
-        for (const sectionRelation of groupRelation.accessGroup.sections) {
-          const section = sectionRelation.section;
-          if (!sectionMap.has(section.id)) {
-            sectionMap.set(section.id, {
-              id: section.id,
-              name: section.name,
-              type: section.type,
-              description: section.description,
-            });
-          }
+    try {
+      if (isAdmin) {
+        if (allSectionsData?.sections && Array.isArray(allSectionsData.sections)) {
+          return allSectionsData.sections.map((section) => ({
+            id: section.id,
+            name: section.name,
+            type: section.type,
+            description: section.description,
+          }));
         }
+        return [];
+      } else {
+        if (userSectionsData?.user?.accessGroups && Array.isArray(userSectionsData.user.accessGroups)) {
+          const sectionMap = new Map<string, Section>();
+          for (const groupRelation of userSectionsData.user.accessGroups) {
+            if (groupRelation?.accessGroup?.sections && Array.isArray(groupRelation.accessGroup.sections)) {
+              for (const sectionRelation of groupRelation.accessGroup.sections) {
+                if (sectionRelation?.section) {
+                  const section = sectionRelation.section;
+                  if (section?.id && !sectionMap.has(section.id)) {
+                    sectionMap.set(section.id, {
+                      id: section.id,
+                      name: section.name || 'Unnamed Section',
+                      type: section.type,
+                      description: section.description,
+                    });
+                  }
+                }
+              }
+            }
+          }
+          return Array.from(sectionMap.values());
+        }
+        return [];
       }
-      return Array.from(sectionMap.values());
+    } catch (error) {
+      console.error('Error extracting sections:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred');
+      return [];
     }
-    return [];
   }, [isAdmin, allSectionsData, userSectionsData]);
 
   // Filter sections by search term
@@ -101,26 +144,29 @@ export default function SectionsList({ onBack, onSelectSection }: SectionsListPr
   const refetch = isAdmin ? refetchAllSections : refetchUserSections;
 
   const handleRefresh = () => {
+    setErrorMessage(null);
     refetch();
   };
 
+  // Early return for loading state
   if (loading) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
         <PageHeader title="Sections" onBack={onBack} />
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+        <Box className="loading-container">
           <CircularProgress />
         </Box>
       </Box>
     );
   }
 
-  if (error) {
+  // Early return for error state
+  if (error || errorMessage) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
         <PageHeader title="Sections" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
-          Failed to load sections. Please try again.
+          {errorMessage || "Failed to load sections. Please try again."}
         </Alert>
         <Button variant="outlined" onClick={handleRefresh} sx={{ mt: 2 }}>
           Retry
@@ -129,8 +175,9 @@ export default function SectionsList({ onBack, onSelectSection }: SectionsListPr
     );
   }
 
+  // Main render - always return valid JSX
   return (
-    <Box sx={{ p: 3 }}>
+    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <PageHeader title="Sections" onBack={onBack} />
       <SearchBar
         value={searchTerm}
@@ -200,4 +247,21 @@ export default function SectionsList({ onBack, onSelectSection }: SectionsListPr
       )}
     </Box>
   );
+}
+
+// Wrap in error boundary for safety
+export default function SectionsList(props: SectionsListProps) {
+  try {
+    return <SectionsListComponent {...props} />;
+  } catch (error) {
+    console.error('SectionsList render error:', error);
+    return (
+      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+        <PageHeader title="Sections" onBack={props.onBack} />
+        <Alert severity="error" sx={{ mt: 2 }}>
+          An error occurred while loading sections. Please refresh the page.
+        </Alert>
+      </Box>
+    );
+  }
 }

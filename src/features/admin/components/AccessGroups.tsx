@@ -62,6 +62,7 @@ import {
 import { searchUsers } from "../../users/utils/searchUsers";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
+import "../../../shared/components/PageContainer.css";
 
 interface AccessGroupsProps {
   onBack: () => void;
@@ -356,7 +357,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
         <PageHeader title="Access Groups" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Access denied. Admin privileges required to manage access groups.
@@ -366,7 +367,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <PageHeader title="Access Groups" onBack={onBack} />
       
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
@@ -390,7 +391,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
       )}
 
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+        <Box className="loading-container">
           <CircularProgress />
         </Box>
       ) : accessGroups.length === 0 ? (

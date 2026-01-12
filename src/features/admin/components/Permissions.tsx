@@ -21,7 +21,7 @@ import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import UserAccessGroups from "./UserAccessGroups";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
-import "./Permissions.css";
+import "../../../shared/components/PageContainer.css";
 
 interface PermissionsProps {
   onBack: () => void;
@@ -185,7 +185,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
-      <Box className="permissions-container">
+      <Box className="page-container">
         <PageHeader title="Permissions" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Access denied. Admin privileges required to manage permissions.
@@ -195,7 +195,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
   }
 
   return (
-    <Box className="permissions-container">
+    <Box className="page-container">
       <PageHeader title="Permissions" onBack={onBack} />
 
       {updateMessage && (

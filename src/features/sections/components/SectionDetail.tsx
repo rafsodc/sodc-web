@@ -30,6 +30,7 @@ import {
 } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import type { UUIDString } from "@dataconnect/generated";
+import "../../../shared/components/PageContainer.css";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -230,9 +231,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   if (loadingSection || loadingMembers || loadingUserGroups) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
         <PageHeader title="Section Details" onBack={onBack} />
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+        <Box className="loading-container">
           <CircularProgress />
         </Box>
       </Box>
@@ -241,7 +242,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   if (errorSection || errorMembers || !sectionData?.section) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
         <PageHeader title="Section Details" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Failed to load section details. Please try again.
@@ -257,7 +258,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const isMembers = isMembersSection(section as any);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <PageHeader title={section.name} onBack={onBack} />
       
       <Box sx={{ mt: 3, mb: 3 }}>

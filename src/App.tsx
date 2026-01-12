@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
+import { SectionsListErrorBoundary } from "./features/sections/components/SectionsListErrorBoundary";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, dataConnect } from "./config/firebase";
@@ -520,21 +521,23 @@ export default function App() {
           )
         ) : view === ROUTES.SECTIONS ? (
           user && isEnabled ? (
-            <Suspense fallback={<LoadingFallback />}>
-              {selectedSectionId ? (
-                <SectionDetail
-                  sectionId={selectedSectionId}
-                  onBack={() => setSelectedSectionId(null)}
-                />
-              ) : (
-                <SectionsList
-                  onBack={() => setView("home")}
-                  onSelectSection={(sectionId) => {
-                    setSelectedSectionId(sectionId);
-                  }}
-                />
-              )}
-            </Suspense>
+            <Box sx={{ width: "100%" }}>
+              <Suspense fallback={<LoadingFallback />}>
+                {selectedSectionId ? (
+                  <SectionDetail
+                    sectionId={selectedSectionId}
+                    onBack={() => setSelectedSectionId(null)}
+                  />
+                ) : (
+                  <SectionsList
+                    onBack={() => setView("home")}
+                    onSelectSection={(sectionId) => {
+                      setSelectedSectionId(sectionId);
+                    }}
+                  />
+                )}
+              </Suspense>
+            </Box>
           ) : (
             <Box 
               sx={{ 

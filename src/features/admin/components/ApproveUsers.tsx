@@ -25,7 +25,7 @@ import { MembershipStatus } from "@dataconnect/generated";
 import type { SearchUser, PendingUser } from "../../../types";
 import { updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import { Snackbar } from "@mui/material";
-import "./ApproveUsers.css";
+import "../../../shared/components/PageContainer.css";
 
 interface ApproveUsersProps {
   onBack: () => void;
@@ -138,7 +138,7 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
   };
 
   return (
-    <Box className="approve-users-container">
+    <Box className="page-container">
       <PageHeader title="Approve Users" onBack={onBack} />
 
       {loading ? (

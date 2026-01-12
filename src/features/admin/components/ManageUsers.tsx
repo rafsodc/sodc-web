@@ -9,7 +9,7 @@ import SearchBar from "../../../shared/components/SearchBar";
 import UsersTable from "../../users/components/UsersTable";
 import EditUserDialog from "../../profile/components/EditUserDialog";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
-import "./ManageUsers.css";
+import "../../../shared/components/PageContainer.css";
 
 interface ManageUsersProps {
   onBack: () => void;
@@ -60,7 +60,7 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
   };
 
   return (
-    <Box className="manage-users-container">
+    <Box className="page-container">
       <PageHeader title="Manage Users" onBack={onBack} />
 
       <SearchBar
