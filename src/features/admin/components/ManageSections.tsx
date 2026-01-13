@@ -297,7 +297,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     }
   };
 
-  const handleRemoveAccessGroup = async (accessGroupId: string) => {
+  const handleRemoveAccessGroup = async (accessGroupId: string, purpose: SectionAccessGroupPurpose) => {
     if (!editingSection) {
       return;
     }
@@ -312,6 +312,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       const ref = revokeAccessGroupFromSectionRef(dataConnect, {
         sectionId: editingSection.id,
         accessGroupId: accessGroupId,
+        purpose: purpose,
       });
       await executeMutation(ref);
       
