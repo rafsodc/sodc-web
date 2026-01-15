@@ -21,12 +21,22 @@ export function isMembersSection(section: { type: SectionType }): boolean {
 /**
  * Get all users from a section's member access groups (or viewing access groups as fallback)
  * Deduplicates users who appear in multiple access groups
+ * 
+ * Note: This function includes users who are directly added to access groups via UserAccessGroup.
+ * Users whose membership status matches an access group's membershipStatuses should also be
+ * included, but they need to be explicitly added to the UserAccessGroup table by the backend
+ * function that manages membership status changes (updateAccessGroupsForStatusChange in functions/src/membershipStatus.ts).
+ * 
+ * If users with matching statuses are not showing up, ensure the backend function is running
+ * and has properly added them to UserAccessGroup. The additionalUsersByStatus parameter can
+ * be used to include users fetched separately (e.g., via ListUsers for admins).
  */
 type SectionDataWithMembers = {
   memberAccessGroups?: Array<{
     accessGroup: {
       id: string;
       name: string;
+      membershipStatuses?: MembershipStatus[] | null;
       users: Array<{
         user: {
           id: string;
@@ -44,6 +54,7 @@ type ViewingAccessGroup = {
   accessGroup: {
     id: string;
     name: string;
+    membershipStatuses?: MembershipStatus[] | null;
     users: Array<{
       user: {
         id: string;
@@ -58,7 +69,8 @@ type ViewingAccessGroup = {
 
 export function getAllUsersFromSection(
   sectionData: SectionDataWithMembers | null | undefined,
-  viewingAccessGroups?: Array<ViewingAccessGroup> | null | undefined
+  viewingAccessGroups?: Array<ViewingAccessGroup> | null | undefined,
+  additionalUsersByStatus?: Array<SectionMember> | null | undefined
 ): SectionMember[] {
   if (!sectionData) {
     return [];
@@ -71,6 +83,7 @@ export function getAllUsersFromSection(
 
   const userMap = new Map<string, SectionMember>();
 
+  // Add users directly in access groups
   for (const groupRelation of accessGroups) {
     const group = groupRelation.accessGroup;
     for (const userRelation of group.users) {
@@ -84,6 +97,22 @@ export function getAllUsersFromSection(
           email: user.email,
           membershipStatus: user.membershipStatus,
         });
+      }
+    }
+  }
+
+  // Add users whose membership status matches access group membershipStatuses
+  // These should ideally be in UserAccessGroup already, but we include them here as a fallback
+  if (additionalUsersByStatus) {
+    for (const user of additionalUsersByStatus) {
+      // Check if user's status matches any access group's membershipStatuses
+      const matchesGroup = accessGroups.some((groupRelation) => {
+        const group = groupRelation.accessGroup;
+        return group.membershipStatuses && group.membershipStatuses.includes(user.membershipStatus);
+      });
+      
+      if (matchesGroup && !userMap.has(user.userId)) {
+        userMap.set(user.userId, user);
       }
     }
   }
