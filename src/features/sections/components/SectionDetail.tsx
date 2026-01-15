@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -21,6 +21,7 @@ import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";
+import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import {
   getAllUsersFromSection,
   getMemberAccessGroups,
@@ -30,6 +31,7 @@ import {
 } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import type { UUIDString } from "@dataconnect/generated";
+import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionDetailProps {
@@ -39,6 +41,7 @@ interface SectionDetailProps {
 
 export default function SectionDetail({ sectionId, onBack }: SectionDetailProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
     open: false,
     message: "",
@@ -140,6 +143,16 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         member.email.toLowerCase().includes(lowerSearch)
     );
   }, [allMembers, searchTerm]);
+
+  // Reset page to 1 when search term changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const paginatedMembers = filteredMembers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleSubscribe = async () => {
     if (!currentUser || memberAccessGroups.length === 0) {
@@ -325,36 +338,47 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
               {searchTerm ? "No members match your search." : "No members in this section."}
             </Alert>
           ) : (
-            <TableContainer component={Paper} sx={{ mt: 2 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Membership Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredMembers.map((member) => (
-                    <TableRow key={member.userId}>
-                      <TableCell>
-                        <Typography variant="body1">
-                          {member.firstName} {member.lastName}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {member.email}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={member.membershipStatus} size="small" />
-                      </TableCell>
+            <>
+              <Typography variant="body2" sx={{ mt: 2, mb: 2, color: colors.titleSecondary }}>
+                Showing {paginatedMembers.length} of {filteredMembers.length} {searchTerm ? "filtered " : ""}members
+                {totalPages > 1 && ` (page ${page} of ${totalPages})`}
+              </Typography>
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Membership Status</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedMembers.map((member) => (
+                      <TableRow key={member.userId}>
+                        <TableCell>
+                          <Typography variant="body1">
+                            {member.firstName} {member.lastName}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {member.email}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={member.membershipStatus} size="small" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <PaginationDisplay
+                page={page}
+                totalPages={totalPages}
+                onChange={(newPage) => setPage(newPage)}
+              />
+            </>
           )}
         </>
       ) : (
