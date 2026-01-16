@@ -1,0 +1,54 @@
+{
+    "workflow": [
+      {
+        "name": "needs-planning",
+        "description": "Issue is ready for planning phase",
+        "color": "FBCA04",
+        "category": "workflow",
+        "order": 1
+      },
+      {
+        "name": "planning-approved",
+        "description": "Approved for planning, ready for strategy development",
+        "color": "0E8A16",
+        "category": "workflow",
+        "order": 2
+      },
+      {
+        "name": "ready-for-dev",
+        "description": "Strategy approved, ready for development",
+        "color": "1D76DB",
+        "category": "workflow",
+        "order": 3
+      },
+      {
+        "name": "in-progress",
+        "description": "Actively being worked on",
+        "color": "EDEDED",
+        "category": "workflow",
+        "order": 4
+      }
+    ],
+    "test-categories": [
+      {
+        "name": "security-tests",
+        "description": "Security-related tests (must pass)",
+        "color": "B60205",
+        "category": "test",
+        "priority": "high"
+      },
+      {
+        "name": "functionality-tests",
+        "description": "Functionality tests",
+        "color": "0052CC",
+        "category": "test",
+        "priority": "normal"
+      }
+    ],
+    "metadata": {
+      "created": "2024",
+      "purpose": "Reference configuration for GitHub labels used in development automation workflow",
+      "workflow_issue": "#13",
+      "documentation": ".github/LABELS.md"
+    }
+  }
