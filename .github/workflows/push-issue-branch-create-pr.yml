@@ -1,0 +1,127 @@
+name: Push issue branch -> create PR
+
+on:
+  push:
+    branches:
+      - "issue-*"
+
+permissions:
+  pull-requests: write
+  issues: read
+  contents: read
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create PR if missing
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const branchName = context.ref.replace("refs/heads/", "");
+
+            // Expect: issue-123-some-title
+            const match = branchName.match(/^issue-(\d+)(?:-|$)/);
+            if (!match) {
+              core.info(`Branch '${branchName}' does not match issue-<num>-*. Skipping.`);
+              return;
+            }
+            const issueNumber = Number(match[1]);
+
+            // Avoid duplicate PRs
+            const existingPRs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: "open",
+              head: `${owner}:${branchName}`,
+            });
+
+            if (existingPRs.data.length > 0) {
+              core.info(`PR already exists: #${existingPRs.data[0].number}`);
+              return;
+            }
+
+            // Fetch issue details
+            const issueResp = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+
+            const issue = issueResp.data;
+
+            // Get default branch as PR base
+            const repoInfo = await github.rest.repos.get({ owner, repo });
+            const baseBranch = repoInfo.data.default_branch;
+
+            // Use the latest commit message from the push event
+            // head_commit exists for normal pushes; fallback to compare API if not present.
+            let latestCommitMsg = context.payload.head_commit?.message?.trim();
+
+            if (!latestCommitMsg) {
+              const compare = await github.rest.repos.compareCommits({
+                owner,
+                repo,
+                base: baseBranch,
+                head: branchName,
+              });
+              const commits = compare.data.commits || [];
+              latestCommitMsg = commits.length ? (commits[commits.length - 1].commit?.message || "").trim() : "";
+            }
+
+            // Keep it tidy (first line only) for a "summary"
+            const latestCommitSummary = (latestCommitMsg || "").split("\n")[0].trim();
+
+            // PR title/body
+            const prTitle = `#${issueNumber} — ${issue.title}`;
+
+            const issueBody = (issue.body || "").trim();
+            const issueSection = issueBody ? issueBody : "_(No issue description provided.)_";
+
+            const prBody = [
+              `Closes #${issueNumber}`,
+              ``,
+              `## Latest commit`,
+              latestCommitSummary ? `- ${latestCommitSummary}` : `- _(No commit message found)_`,
+              ``,
+              `## Issue`,
+              issueSection,
+            ].join("\n");
+
+            // Create PR (set draft:true if you want draft by default)
+            const pr = await github.rest.pulls.create({
+              owner,
+              repo,
+              title: prTitle,
+              head: branchName,
+              base: baseBranch,
+              body: prBody,
+              draft: true,
+            });
+
+            core.info(`Created PR: ${pr.data.html_url}`);
+
+            // Optional: carry issue labels onto PR (uncomment if you like)
+            // const labels = (issue.labels || []).map(l => (typeof l === "string" ? l : l.name)).filter(Boolean);
+            // if (labels.length) {
+            //   await github.rest.issues.addLabels({
+            //     owner, repo,
+            //     issue_number: pr.data.number,
+            //     labels,
+            //   });
+            // }
+
+            // Optional: assign PR to issue assignees (uncomment if you like)
+            // const assignees = (issue.assignees || []).map(a => a.login).filter(Boolean);
+            // if (assignees.length) {
+            //   await github.rest.issues.addAssignees({
+            //     owner, repo,
+            //     issue_number: pr.data.number,
+            //     assignees,
+            //   });
+            // }
