@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature Request
+    url: https://github.com/YOUR_ORG/YOUR_REPO/issues/new?template=feature.md
+    about: Request a new feature or enhancement
+  - name: Bug Report
+    url: https://github.com/YOUR_ORG/YOUR_REPO/issues/new?template=bug.md
+    about: Report a bug or issue
