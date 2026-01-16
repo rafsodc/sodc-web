@@ -1,4 +1,4 @@
-name: Ready for dev -> branch + draft PR + in-progress
+name: Ready for dev -> linked branch + in-progress
 
 on:
   issues:
@@ -6,17 +6,15 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
   issues: write
 
 jobs:
   prepare-dev:
-    # Only run when the label that was JUST added is 'ready-for-dev'
     if: ${{ github.event.label.name == 'ready-for-dev' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Create branch, adjust labels, open draft PR
+      - name: Create linked branch (GraphQL) and swap labels
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -27,6 +25,7 @@ jobs:
             const issue = context.payload.issue;
             const issueNumber = issue.number;
             const issueTitle = issue.title || `issue-${issueNumber}`;
+            const issueNodeId = issue.node_id; // GraphQL node ID
 
             // Slugify title for branch name
             const slug = issueTitle
@@ -35,9 +34,9 @@ jobs:
               .replace(/(^-|-$)/g, "")
               .slice(0, 50);
 
-            const branchName = `${issueNumber}-${slug || "work"}`;
+            const branchName = `issue-${issueNumber}-${slug || "work"}`;
 
-            // Get default branch + SHA
+            // Find default branch + its commit SHA (oid)
             const repoInfo = await github.rest.repos.get({ owner, repo });
             const baseBranch = repoInfo.data.default_branch;
 
@@ -55,71 +54,54 @@ jobs:
                 issue_number: issueNumber,
                 name: "needs-planning",
               });
-            } catch (e) {
-              // ignore if label isn't present
-            }
+            } catch (e) {}
 
-            // Create branch if it doesn't already exist
+            // If the branch already exists, we can't "link it" via GraphQL (only create+link).
+            // We'll skip creating and leave a note in the logs.
             let branchExists = true;
             try {
-              await github.rest.git.getRef({
-                owner, repo,
-                ref: `heads/${branchName}`,
-              });
+              await github.rest.git.getRef({ owner, repo, ref: `heads/${branchName}` });
             } catch (e) {
               branchExists = false;
             }
 
             if (!branchExists) {
-              await github.rest.git.createRef({
-                owner, repo,
-                ref: `refs/heads/${branchName}`,
-                sha: baseSha,
+              // Create AND link the branch to the issue using GraphQL
+              const mutation = `
+                mutation CreateLinkedBranch($input: CreateLinkedBranchInput!) {
+                  createLinkedBranch(input: $input) {
+                    linkedBranch {
+                      ref { name }
+                    }
+                    issue { number }
+                  }
+                }
+              `;
+
+              await github.graphql(mutation, {
+                input: {
+                  issueId: issueNodeId,
+                  oid: baseSha,
+                  name: branchName,
+                },
               });
+            } else {
+              core.warning(
+                `Branch '${branchName}' already exists. ` +
+                `GitHub does not currently expose an API to link an existing branch to an issue; ` +
+                `if the issue UI still shows "Create a branch", delete & recreate via this workflow or link it in the UI.`
+              );
             }
 
-            // Check if a PR already exists for this branch
-            const existingPRs = await github.rest.pulls.list({
-              owner, repo,
-              state: "open",
-              head: `${owner}:${branchName}`,
-            });
-
-            if (existingPRs.data.length === 0) {
-              // Create draft PR
-              const prTitle = `#${issueNumber} — ${issueTitle}`;
-              const prBody = [
-                `Closes #${issueNumber}`,
-                ``,
-                `## Summary`,
-                `- `,
-                ``,
-                `## Acceptance criteria`,
-                `- `,
-              ].join("\n");
-
-              await github.rest.pulls.create({
-                owner, repo,
-                title: prTitle,
-                head: branchName,
-                base: baseBranch,
-                body: prBody,
-                draft: true,
-              });
-            }
-
-            // Remove 'ready-for-dev' label
+            // Swap labels: ready-for-dev -> in-progress
             try {
               await github.rest.issues.removeLabel({
                 owner, repo,
                 issue_number: issueNumber,
                 name: "ready-for-dev",
               });
-            } catch (e) {
-              // ignore if label isn't present
-            }
+            } catch (e) {}
 
-            // Add 'in-progress' label
             await github.rest.issues.addLabels({
               owner, repo,
               issue_number: issueNumber,
