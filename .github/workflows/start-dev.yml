@@ -1,0 +1,208 @@
+name: Start dev -> linked branch + in-development
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  repository-projects: write
+
+jobs:
+  start-dev:
+    if: ${{ github.event.label.name == 'start-dev' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create linked branch and set in-development
+        uses: actions/github-script@v7
+        env:
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
+          STATUS_FIELD_ID: ${{ vars.STATUS_FIELD_ID }}
+          IN_DEV_OPTION_ID: ${{ vars.IN_DEV_OPTION_ID }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const issue = context.payload.issue;
+
+            // Safety: only handle Issues (not PRs)
+            if (!issue || issue.pull_request) {
+              core.info("Not an issue event; skipping.");
+              return;
+            }
+
+            const issueNumber = issue.number;
+            const issueTitle = issue.title || `issue-${issueNumber}`;
+            const issueNodeId = issue.node_id; // GraphQL node ID
+
+            // If already in-development, tidy trigger and exit
+            const existingLabels = (issue.labels || []).map(l => (typeof l === "string" ? l : l.name));
+            if (existingLabels.includes("in-development")) {
+              core.info("Issue already in-development; removing start-dev and skipping.");
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo,
+                  issue_number: issueNumber,
+                  name: "start-dev",
+                });
+              } catch (e) {}
+              return;
+            }
+
+            // HARD GATE: must have an assignee
+            const assignees = issue.assignees || [];
+            if (assignees.length === 0) {
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: issueNumber,
+                body: "Cannot start development: please assign this issue to someone, then re-apply the `start-dev` label."
+              });
+
+              // Remove trigger label so it doesn't keep re-firing
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo,
+                  issue_number: issueNumber,
+                  name: "start-dev",
+                });
+              } catch (e) {}
+
+              return;
+            }
+
+            // Slugify title for branch name
+            const slug = issueTitle
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "")
+              .slice(0, 50);
+
+            const branchName = `issue-${issueNumber}-${slug || "work"}`;
+
+            // Find default branch + commit SHA
+            const repoInfo = await github.rest.repos.get({ owner, repo });
+            const baseBranch = repoInfo.data.default_branch;
+
+            const baseRef = await github.rest.git.getRef({
+              owner, repo,
+              ref: `heads/${baseBranch}`,
+            });
+
+            const baseSha = baseRef.data.object.sha;
+
+            // Create linked branch if it doesn't exist
+            let branchExists = true;
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: `heads/${branchName}` });
+            } catch (e) {
+              branchExists = false;
+            }
+
+            if (!branchExists) {
+              // Create AND link the branch to the issue using GraphQL
+              const mutation = `
+                mutation CreateLinkedBranch($input: CreateLinkedBranchInput!) {
+                  createLinkedBranch(input: $input) {
+                    linkedBranch { ref { name } }
+                    issue { number }
+                  }
+                }
+              `;
+
+              await github.graphql(mutation, {
+                input: {
+                  issueId: issueNodeId,
+                  oid: baseSha,
+                  name: branchName,
+                },
+              });
+            } else {
+              // Strict behaviour: comment and exit without moving status/labels
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: issueNumber,
+                body:
+                  `I found an existing branch named \`${branchName}\`, but GitHub can't link an existing branch to an issue via API.\n\n` +
+                  `If you want it to show in the Development panel, delete the branch and re-apply \`start-dev\`, ` +
+                  `or create the branch from the issue UI.`
+              });
+
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo,
+                  issue_number: issueNumber,
+                  name: "start-dev",
+                });
+              } catch (e) {}
+
+              return;
+            }
+
+            // Swap labels: start-dev -> in-development
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo,
+                issue_number: issueNumber,
+                name: "start-dev",
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner, repo,
+              issue_number: issueNumber,
+              labels: ["in-development"],
+            });
+
+            // OPTIONAL: Move Project Status -> "In Development" (Projects v2)
+            // Requires repo vars: PROJECT_ID, STATUS_FIELD_ID, IN_DEV_OPTION_ID
+            const { PROJECT_ID, STATUS_FIELD_ID, IN_DEV_OPTION_ID } = process.env;
+
+            if (PROJECT_ID && STATUS_FIELD_ID && IN_DEV_OPTION_ID) {
+              const query = `
+                query($id: ID!) {
+                  node(id: $id) {
+                    ... on Issue {
+                      projectItems(first: 20) {
+                        nodes {
+                          id
+                          project { id }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+
+              const res = await github.graphql(query, { id: issueNodeId });
+              const items = res?.node?.projectItems?.nodes || [];
+              const item = items.find(n => n.project?.id === PROJECT_ID);
+
+              if (!item) {
+                core.warning("Issue is not in the configured Project (PROJECT_ID), so Status was not updated.");
+              } else {
+                const move = `
+                  mutation($input: UpdateProjectV2ItemFieldValueInput!) {
+                    updateProjectV2ItemFieldValue(input: $input) {
+                      projectV2Item { id }
+                    }
+                  }
+                `;
+
+                await github.graphql(move, {
+                  input: {
+                    projectId: PROJECT_ID,
+                    itemId: item.id,
+                    fieldId: STATUS_FIELD_ID,
+                    value: { singleSelectOptionId: IN_DEV_OPTION_ID },
+                  }
+                });
+
+                core.info("Project Status moved to In Development.");
+              }
+            } else {
+              core.warning("Project Status move skipped (set PROJECT_ID, STATUS_FIELD_ID, IN_DEV_OPTION_ID as repo variables to enable).");
+            }
