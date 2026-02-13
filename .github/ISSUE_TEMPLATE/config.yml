@@ -1,11 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Feature Request
-    url: https://github.com/rafsodc/sodc-web/issues/new?template=feature.md
-    about: Request a new feature or enhancement
-  - name: Bug Report
-    url: https://github.com/rafsodc/sodc-web/issues/new?template=bug.md
-    about: Report a bug or issue
   - name: Template Examples
     url: https://github.com/rafsodc/sodc-web/blob/main/.github/ISSUE_TEMPLATE_EXAMPLES.md
     about: See examples for filling out issue templates
