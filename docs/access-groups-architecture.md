@@ -62,6 +62,11 @@ Example: "Annual Dinner 2024" event section
 
 ## Implementation Notes
 
+### Explicit vs inherited membership
+
+- **Explicit membership**: Stored in `UserAccessGroup` (user is directly linked to an access group). Shown in section member lists and admin group details; can be removed by admins when not status-based.
+- **Inherited membership**: When an access group has `membershipStatuses` (e.g. LOST), every user with that status is considered a member for display purposes only—no row in `UserAccessGroup`. Section member list is computed by the **section-scoped callable** `getSectionMembersMerged(sectionId)`, which returns merged members (explicit + inherited) only if the caller has permission to view that section. Admin can see users by membership status in a separate clickable list (ListUsers grouped by status).
+
 ### Access Group Assignment
 
 - **Status-based groups**: Automatically created and assigned when membership status is set to non-restricted status

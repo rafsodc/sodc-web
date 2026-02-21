@@ -36,6 +36,7 @@ import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
   listAccessGroupsRef,
+  listUsersRef,
   getAccessGroupByIdRef,
   createAccessGroupRef,
   updateAccessGroupRef,
@@ -104,6 +105,11 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
+  // All users (for "by membership status" list)
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus }>>([]);
+  const [loadingAllUsers, setLoadingAllUsers] = useState(false);
+  const [selectedUserDetail, setSelectedUserDetail] = useState<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus } | null>(null);
+
   const fetchAccessGroups = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -158,6 +164,32 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   useEffect(() => {
     fetchAccessGroups();
   }, [fetchAccessGroups]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    setLoadingAllUsers(true);
+    (async () => {
+      try {
+        const ref = listUsersRef(dataConnect);
+        const result = await executeQuery(ref);
+        if (!cancelled && result.data?.users) {
+          setAllUsers(result.data.users.map((u) => ({
+            id: u.id,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            email: u.email,
+            membershipStatus: u.membershipStatus as MembershipStatus,
+          })));
+        }
+      } catch {
+        if (!cancelled) setAllUsers([]);
+      } finally {
+        if (!cancelled) setLoadingAllUsers(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const handleExpand = (group: AccessGroupWithDetails) => {
     if (expandedGroupId === group.id) {
@@ -589,6 +621,57 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                 )}
                               </AccordionDetails>
                             </Accordion>
+                            {group.membershipStatuses && group.membershipStatuses.length > 0 && (
+                              <Accordion defaultExpanded={false}>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Typography variant="subtitle2">
+                                    Users by membership status
+                                  </Typography>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  {loadingAllUsers ? (
+                                    <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                                      <CircularProgress size={24} />
+                                    </Box>
+                                  ) : (
+                                    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                      {MEMBERSHIP_STATUS_OPTIONS.map((option) => {
+                                        const usersWithStatus = allUsers.filter((u) => u.membershipStatus === option.value);
+                                        if (usersWithStatus.length === 0) return null;
+                                        return (
+                                          <Box key={option.value}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                                              {option.label} ({usersWithStatus.length})
+                                            </Typography>
+                                            <Table size="small">
+                                              <TableHead>
+                                                <TableRow>
+                                                  <TableCell>Name</TableCell>
+                                                  <TableCell>Email</TableCell>
+                                                </TableRow>
+                                              </TableHead>
+                                              <TableBody>
+                                                {usersWithStatus.map((u) => (
+                                                  <TableRow
+                                                    key={u.id}
+                                                    hover
+                                                    sx={{ cursor: "pointer" }}
+                                                    onClick={() => setSelectedUserDetail(u)}
+                                                  >
+                                                    <TableCell>{u.firstName} {u.lastName}</TableCell>
+                                                    <TableCell>{u.email}</TableCell>
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+                                  )}
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
                             <Accordion defaultExpanded>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="subtitle2">
@@ -801,6 +884,27 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
           }} disabled={addingUserId !== null}>
             Cancel
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* User detail (from "Users by membership status" click) */}
+      <Dialog open={!!selectedUserDetail} onClose={() => setSelectedUserDetail(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>User</DialogTitle>
+        <DialogContent>
+          {selectedUserDetail && (
+            <Box sx={{ pt: 0.5 }}>
+              <Typography variant="body2">
+                <strong>{selectedUserDetail.firstName} {selectedUserDetail.lastName}</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedUserDetail.email}
+              </Typography>
+              <Chip label={selectedUserDetail.membershipStatus} size="small" variant="outlined" sx={{ mt: 1 }} />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedUserDetail(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
