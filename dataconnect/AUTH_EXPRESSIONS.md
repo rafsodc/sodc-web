@@ -49,6 +49,12 @@ This file documents all auth expressions used in queries and mutations. Use thes
 - `RemoveUserFromAccessGroup` mutation
 - `GrantAccessGroupToSection` mutation
 - `RevokeAccessGroupFromSection` mutation
+- `CreateEvent` mutation
+- `UpdateEvent` mutation
+- `DeleteEvent` mutation
+- `CreateTicketType` mutation
+- `UpdateTicketType` mutation
+- `DeleteTicketType` mutation
 
 ### System Access (No Auth Required)
 **Expression:** `@auth(level: NO_ACCESS)`

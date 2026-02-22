@@ -169,3 +169,111 @@ mutation DeleteSection(
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   section_delete(id: $id)
 }
+
+# --- Event mutations (admin only) ---
+
+mutation CreateEvent(
+  $sectionId: UUID!
+  $title: String!
+  $location: String
+  $guestOfHonour: String
+  $startDateTime: Timestamp!
+  $endDateTime: Timestamp!
+  $bookingStartDateTime: Timestamp!
+  $bookingEndDateTime: Timestamp!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event_insert(
+    data: {
+      sectionId: $sectionId
+      title: $title
+      location: $location
+      guestOfHonour: $guestOfHonour
+      startDateTime: $startDateTime
+      endDateTime: $endDateTime
+      bookingStartDateTime: $bookingStartDateTime
+      bookingEndDateTime: $bookingEndDateTime
+    }
+  )
+}
+
+mutation UpdateEvent(
+  $id: UUID!
+  $title: String!
+  $location: String
+  $guestOfHonour: String
+  $startDateTime: Timestamp!
+  $endDateTime: Timestamp!
+  $bookingStartDateTime: Timestamp!
+  $bookingEndDateTime: Timestamp!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event_update(
+    id: $id
+    data: {
+      title: $title
+      location: $location
+      guestOfHonour: $guestOfHonour
+      startDateTime: $startDateTime
+      endDateTime: $endDateTime
+      bookingStartDateTime: $bookingStartDateTime
+      bookingEndDateTime: $bookingEndDateTime
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}
+
+mutation DeleteEvent(
+  $id: UUID!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event_delete(id: $id)
+}
+
+# --- TicketType mutations (admin only) ---
+
+mutation CreateTicketType(
+  $eventId: UUID!
+  $accessGroupId: UUID!
+  $title: String!
+  $description: String
+  $price: Float!
+  $sortOrder: Int
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  ticketType_insert(
+    data: {
+      eventId: $eventId
+      accessGroupId: $accessGroupId
+      title: $title
+      description: $description
+      price: $price
+      sortOrder: $sortOrder
+    }
+  )
+}
+
+mutation UpdateTicketType(
+  $id: UUID!
+  $accessGroupId: UUID!
+  $title: String!
+  $description: String
+  $price: Float!
+  $sortOrder: Int!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  ticketType_update(
+    id: $id
+    data: {
+      accessGroupId: $accessGroupId
+      title: $title
+      description: $description
+      price: $price
+      sortOrder: $sortOrder
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}
+
+mutation DeleteTicketType(
+  $id: UUID!
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  ticketType_delete(id: $id)
+}
