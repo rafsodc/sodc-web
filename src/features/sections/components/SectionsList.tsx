@@ -98,20 +98,26 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
       } else {
         if (userSectionsData?.user?.accessGroups && Array.isArray(userSectionsData.user.accessGroups)) {
           const sectionMap = new Map<string, Section>();
+          const addSection = (section: { id: string; name: string; type: SectionType; description?: string | null }) => {
+            if (section?.id && !sectionMap.has(section.id)) {
+              sectionMap.set(section.id, {
+                id: section.id,
+                name: section.name || 'Unnamed Section',
+                type: section.type,
+                description: section.description,
+              });
+            }
+          };
           for (const groupRelation of userSectionsData.user.accessGroups) {
-            if (groupRelation?.accessGroup?.sections && Array.isArray(groupRelation.accessGroup.sections)) {
-              for (const sectionRelation of groupRelation.accessGroup.sections) {
-                if (sectionRelation?.section) {
-                  const section = sectionRelation.section;
-                  if (section?.id && !sectionMap.has(section.id)) {
-                    sectionMap.set(section.id, {
-                      id: section.id,
-                      name: section.name || 'Unnamed Section',
-                      type: section.type,
-                      description: section.description,
-                    });
-                  }
-                }
+            const ag = groupRelation?.accessGroup;
+            if (ag?.sections && Array.isArray(ag.sections)) {
+              for (const sectionRelation of ag.sections) {
+                if (sectionRelation?.section) addSection(sectionRelation.section);
+              }
+            }
+            if (ag?.memberSections && Array.isArray(ag.memberSections)) {
+              for (const memberRelation of ag.memberSections) {
+                if (memberRelation?.section) addSection(memberRelation.section);
               }
             }
           }

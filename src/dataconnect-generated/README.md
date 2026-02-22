@@ -826,6 +826,14 @@ export interface GetSectionsForUserData {
             description?: string | null;
           } & Section_Key;
         })[];
+          memberSections: ({
+            section: {
+              id: UUIDString;
+              name: string;
+              type: SectionType;
+              description?: string | null;
+            } & Section_Key;
+          })[];
       } & AccessGroup_Key;
     })[];
   } & User_Key;
