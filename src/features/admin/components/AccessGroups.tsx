@@ -403,19 +403,13 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
-  // Combine viewingSections and memberSections, deduped by section.id
-  const sectionsForGroup = details
-    ? (() => {
-        const seen = new Set<string>();
-        const out: { section: { id: string; name: string; type: string; description?: string | null } }[] = [];
-        for (const item of [...(details.viewingSections ?? []), ...(details.memberSections ?? [])]) {
-          if (!seen.has(item.section.id)) {
-            seen.add(item.section.id);
-            out.push(item);
-          }
-        }
-        return out;
-      })()
+  // Sections with purpose: VIEW and MEMBER listed separately (same section can appear twice if both)
+  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "VIEW" | "MEMBER" };
+  const sectionsForGroup: SectionWithPurpose[] = details
+    ? [
+        ...(details.viewingSections ?? []).map((item) => ({ ...item, purpose: "VIEW" as const })),
+        ...(details.memberSections ?? []).map((item) => ({ ...item, purpose: "MEMBER" as const })),
+      ]
     : [];
 
   // Merged users: explicit (UserAccessGroup) + users whose membershipStatus is in group's membershipStatuses
@@ -699,23 +693,32 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                     <TableHead>
                                       <TableRow>
                                         <TableCell>Name</TableCell>
+                                        <TableCell>Purpose</TableCell>
                                         <TableCell>Type</TableCell>
                                         <TableCell>Description</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {sectionsForGroup.map((sectionAccessGroup) => (
-                                        <TableRow key={sectionAccessGroup.section.id}>
-                                          <TableCell>{sectionAccessGroup.section.name}</TableCell>
+                                      {sectionsForGroup.map((item, index) => (
+                                        <TableRow key={`${item.section.id}-${item.purpose}-${index}`}>
+                                          <TableCell>{item.section.name}</TableCell>
                                           <TableCell>
                                             <Chip
-                                              label={sectionAccessGroup.section.type}
+                                              label={item.purpose}
+                                              size="small"
+                                              variant="outlined"
+                                              color={item.purpose === "VIEW" ? "primary" : "secondary"}
+                                            />
+                                          </TableCell>
+                                          <TableCell>
+                                            <Chip
+                                              label={item.section.type}
                                               size="small"
                                               variant="outlined"
                                             />
                                           </TableCell>
                                           <TableCell>
-                                            {sectionAccessGroup.section.description || "-"}
+                                            {item.section.description || "-"}
                                           </TableCell>
                                         </TableRow>
                                       ))}
