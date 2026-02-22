@@ -26,6 +26,150 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
+const createSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateSection', inputVars);
+}
+createSectionRef.operationName = 'CreateSection';
+exports.createSectionRef = createSectionRef;
+
+exports.createSection = function createSection(dcOrVars, vars) {
+  return executeMutation(createSectionRef(dcOrVars, vars));
+};
+
+const createAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAccessGroup', inputVars);
+}
+createAccessGroupRef.operationName = 'CreateAccessGroup';
+exports.createAccessGroupRef = createAccessGroupRef;
+
+exports.createAccessGroup = function createAccessGroup(dcOrVars, vars) {
+  return executeMutation(createAccessGroupRef(dcOrVars, vars));
+};
+
+const addUserToAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AddUserToAccessGroup', inputVars);
+}
+addUserToAccessGroupRef.operationName = 'AddUserToAccessGroup';
+exports.addUserToAccessGroupRef = addUserToAccessGroupRef;
+
+exports.addUserToAccessGroup = function addUserToAccessGroup(dcOrVars, vars) {
+  return executeMutation(addUserToAccessGroupRef(dcOrVars, vars));
+};
+
+const removeUserFromAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RemoveUserFromAccessGroup', inputVars);
+}
+removeUserFromAccessGroupRef.operationName = 'RemoveUserFromAccessGroup';
+exports.removeUserFromAccessGroupRef = removeUserFromAccessGroupRef;
+
+exports.removeUserFromAccessGroup = function removeUserFromAccessGroup(dcOrVars, vars) {
+  return executeMutation(removeUserFromAccessGroupRef(dcOrVars, vars));
+};
+
+const grantViewAccessGroupToSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'GrantViewAccessGroupToSection', inputVars);
+}
+grantViewAccessGroupToSectionRef.operationName = 'GrantViewAccessGroupToSection';
+exports.grantViewAccessGroupToSectionRef = grantViewAccessGroupToSectionRef;
+
+exports.grantViewAccessGroupToSection = function grantViewAccessGroupToSection(dcOrVars, vars) {
+  return executeMutation(grantViewAccessGroupToSectionRef(dcOrVars, vars));
+};
+
+const revokeViewAccessGroupFromSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RevokeViewAccessGroupFromSection', inputVars);
+}
+revokeViewAccessGroupFromSectionRef.operationName = 'RevokeViewAccessGroupFromSection';
+exports.revokeViewAccessGroupFromSectionRef = revokeViewAccessGroupFromSectionRef;
+
+exports.revokeViewAccessGroupFromSection = function revokeViewAccessGroupFromSection(dcOrVars, vars) {
+  return executeMutation(revokeViewAccessGroupFromSectionRef(dcOrVars, vars));
+};
+
+const grantMemberAccessGroupToSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'GrantMemberAccessGroupToSection', inputVars);
+}
+grantMemberAccessGroupToSectionRef.operationName = 'GrantMemberAccessGroupToSection';
+exports.grantMemberAccessGroupToSectionRef = grantMemberAccessGroupToSectionRef;
+
+exports.grantMemberAccessGroupToSection = function grantMemberAccessGroupToSection(dcOrVars, vars) {
+  return executeMutation(grantMemberAccessGroupToSectionRef(dcOrVars, vars));
+};
+
+const revokeMemberAccessGroupFromSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RevokeMemberAccessGroupFromSection', inputVars);
+}
+revokeMemberAccessGroupFromSectionRef.operationName = 'RevokeMemberAccessGroupFromSection';
+exports.revokeMemberAccessGroupFromSectionRef = revokeMemberAccessGroupFromSectionRef;
+
+exports.revokeMemberAccessGroupFromSection = function revokeMemberAccessGroupFromSection(dcOrVars, vars) {
+  return executeMutation(revokeMemberAccessGroupFromSectionRef(dcOrVars, vars));
+};
+
+const updateAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAccessGroup', inputVars);
+}
+updateAccessGroupRef.operationName = 'UpdateAccessGroup';
+exports.updateAccessGroupRef = updateAccessGroupRef;
+
+exports.updateAccessGroup = function updateAccessGroup(dcOrVars, vars) {
+  return executeMutation(updateAccessGroupRef(dcOrVars, vars));
+};
+
+const deleteAccessGroupRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteAccessGroup', inputVars);
+}
+deleteAccessGroupRef.operationName = 'DeleteAccessGroup';
+exports.deleteAccessGroupRef = deleteAccessGroupRef;
+
+exports.deleteAccessGroup = function deleteAccessGroup(dcOrVars, vars) {
+  return executeMutation(deleteAccessGroupRef(dcOrVars, vars));
+};
+
+const updateSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateSection', inputVars);
+}
+updateSectionRef.operationName = 'UpdateSection';
+exports.updateSectionRef = updateSectionRef;
+
+exports.updateSection = function updateSection(dcOrVars, vars) {
+  return executeMutation(updateSectionRef(dcOrVars, vars));
+};
+
+const deleteSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteSection', inputVars);
+}
+deleteSectionRef.operationName = 'DeleteSection';
+exports.deleteSectionRef = deleteSectionRef;
+
+exports.deleteSection = function deleteSection(dcOrVars, vars) {
+  return executeMutation(deleteSectionRef(dcOrVars, vars));
+};
+
 const updateUserMembershipStatusRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -384,148 +528,4 @@ exports.unsubscribeFromAccessGroupRef = unsubscribeFromAccessGroupRef;
 
 exports.unsubscribeFromAccessGroup = function unsubscribeFromAccessGroup(dcOrVars, vars) {
   return executeMutation(unsubscribeFromAccessGroupRef(dcOrVars, vars));
-};
-
-const createSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateSection', inputVars);
-}
-createSectionRef.operationName = 'CreateSection';
-exports.createSectionRef = createSectionRef;
-
-exports.createSection = function createSection(dcOrVars, vars) {
-  return executeMutation(createSectionRef(dcOrVars, vars));
-};
-
-const createAccessGroupRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateAccessGroup', inputVars);
-}
-createAccessGroupRef.operationName = 'CreateAccessGroup';
-exports.createAccessGroupRef = createAccessGroupRef;
-
-exports.createAccessGroup = function createAccessGroup(dcOrVars, vars) {
-  return executeMutation(createAccessGroupRef(dcOrVars, vars));
-};
-
-const addUserToAccessGroupRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AddUserToAccessGroup', inputVars);
-}
-addUserToAccessGroupRef.operationName = 'AddUserToAccessGroup';
-exports.addUserToAccessGroupRef = addUserToAccessGroupRef;
-
-exports.addUserToAccessGroup = function addUserToAccessGroup(dcOrVars, vars) {
-  return executeMutation(addUserToAccessGroupRef(dcOrVars, vars));
-};
-
-const removeUserFromAccessGroupRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'RemoveUserFromAccessGroup', inputVars);
-}
-removeUserFromAccessGroupRef.operationName = 'RemoveUserFromAccessGroup';
-exports.removeUserFromAccessGroupRef = removeUserFromAccessGroupRef;
-
-exports.removeUserFromAccessGroup = function removeUserFromAccessGroup(dcOrVars, vars) {
-  return executeMutation(removeUserFromAccessGroupRef(dcOrVars, vars));
-};
-
-const grantViewAccessGroupToSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'GrantViewAccessGroupToSection', inputVars);
-}
-grantViewAccessGroupToSectionRef.operationName = 'GrantViewAccessGroupToSection';
-exports.grantViewAccessGroupToSectionRef = grantViewAccessGroupToSectionRef;
-
-exports.grantViewAccessGroupToSection = function grantViewAccessGroupToSection(dcOrVars, vars) {
-  return executeMutation(grantViewAccessGroupToSectionRef(dcOrVars, vars));
-};
-
-const revokeViewAccessGroupFromSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'RevokeViewAccessGroupFromSection', inputVars);
-}
-revokeViewAccessGroupFromSectionRef.operationName = 'RevokeViewAccessGroupFromSection';
-exports.revokeViewAccessGroupFromSectionRef = revokeViewAccessGroupFromSectionRef;
-
-exports.revokeViewAccessGroupFromSection = function revokeViewAccessGroupFromSection(dcOrVars, vars) {
-  return executeMutation(revokeViewAccessGroupFromSectionRef(dcOrVars, vars));
-};
-
-const grantMemberAccessGroupToSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'GrantMemberAccessGroupToSection', inputVars);
-}
-grantMemberAccessGroupToSectionRef.operationName = 'GrantMemberAccessGroupToSection';
-exports.grantMemberAccessGroupToSectionRef = grantMemberAccessGroupToSectionRef;
-
-exports.grantMemberAccessGroupToSection = function grantMemberAccessGroupToSection(dcOrVars, vars) {
-  return executeMutation(grantMemberAccessGroupToSectionRef(dcOrVars, vars));
-};
-
-const revokeMemberAccessGroupFromSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'RevokeMemberAccessGroupFromSection', inputVars);
-}
-revokeMemberAccessGroupFromSectionRef.operationName = 'RevokeMemberAccessGroupFromSection';
-exports.revokeMemberAccessGroupFromSectionRef = revokeMemberAccessGroupFromSectionRef;
-
-exports.revokeMemberAccessGroupFromSection = function revokeMemberAccessGroupFromSection(dcOrVars, vars) {
-  return executeMutation(revokeMemberAccessGroupFromSectionRef(dcOrVars, vars));
-};
-
-const updateAccessGroupRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateAccessGroup', inputVars);
-}
-updateAccessGroupRef.operationName = 'UpdateAccessGroup';
-exports.updateAccessGroupRef = updateAccessGroupRef;
-
-exports.updateAccessGroup = function updateAccessGroup(dcOrVars, vars) {
-  return executeMutation(updateAccessGroupRef(dcOrVars, vars));
-};
-
-const deleteAccessGroupRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'DeleteAccessGroup', inputVars);
-}
-deleteAccessGroupRef.operationName = 'DeleteAccessGroup';
-exports.deleteAccessGroupRef = deleteAccessGroupRef;
-
-exports.deleteAccessGroup = function deleteAccessGroup(dcOrVars, vars) {
-  return executeMutation(deleteAccessGroupRef(dcOrVars, vars));
-};
-
-const updateSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateSection', inputVars);
-}
-updateSectionRef.operationName = 'UpdateSection';
-exports.updateSectionRef = updateSectionRef;
-
-exports.updateSection = function updateSection(dcOrVars, vars) {
-  return executeMutation(updateSectionRef(dcOrVars, vars));
-};
-
-const deleteSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'DeleteSection', inputVars);
-}
-deleteSectionRef.operationName = 'DeleteSection';
-exports.deleteSectionRef = deleteSectionRef;
-
-exports.deleteSection = function deleteSection(dcOrVars, vars) {
-  return executeMutation(deleteSectionRef(dcOrVars, vars));
 };
