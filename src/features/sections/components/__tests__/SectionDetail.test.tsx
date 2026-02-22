@@ -10,6 +10,7 @@ vi.mock('@dataconnect/generated/react', () => ({
   useGetSectionById: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
   useGetEventsForSection: vi.fn(),
+  useGetEventById: vi.fn(),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
@@ -48,6 +49,12 @@ describe('SectionDetail', () => {
     vi.clearAllMocks();
     vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
       data: { section: { id: sectionId, events: [] } } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+      data: undefined,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -419,6 +426,181 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByText('Events')).toBeInTheDocument();
       expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should show event detail when an event is selected in EVENTS section', async () => {
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        description: 'Events description',
+        viewingAccessGroups: [],
+        memberAccessGroups: [],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [
+          {
+            id: eventId,
+            title: 'Annual Dinner',
+            startDateTime: '2025-03-01T18:00:00Z',
+            endDateTime: '2025-03-01T22:00:00Z',
+            bookingStartDateTime: '2025-02-01T00:00:00Z',
+            bookingEndDateTime: '2025-02-28T23:59:59Z',
+            location: 'Main Hall',
+            guestOfHonour: 'Jane Doe',
+          },
+        ],
+      },
+    };
+    const mockEventDetailData = {
+      event: {
+        id: eventId,
+        title: 'Annual Dinner',
+        startDateTime: '2025-03-01T18:00:00Z',
+        endDateTime: '2025-03-01T22:00:00Z',
+        bookingStartDateTime: '2025-02-01T00:00:00Z',
+        bookingEndDateTime: '2025-02-28T23:59:59Z',
+        location: 'Main Hall',
+        guestOfHonour: 'Jane Doe',
+        ticketTypes: [
+          { id: 'tt-1', title: 'Standard', description: 'Standard ticket', price: 25, sortOrder: 0, accessGroup: { id: 'ag-1', name: 'Standard Access' } },
+        ],
+      },
+    };
+
+    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
+      data: mockSectionData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+      data: { user: { id: 'user-1', accessGroups: [] } } as any,
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+      data: mockEventsData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+      data: mockEventDetailData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /view/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Back to events')).toBeInTheDocument();
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+      expect(screen.getByText('Main Hall')).toBeInTheDocument();
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+      expect(screen.getByText('Ticket types')).toBeInTheDocument();
+      expect(screen.getByText('Standard')).toBeInTheDocument();
+      expect(screen.getByText('Standard Access')).toBeInTheDocument();
+    });
+  });
+
+  it('should return to events list when Back to events is clicked', async () => {
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        viewingAccessGroups: [],
+        memberAccessGroups: [],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [{ id: eventId, title: 'Annual Dinner', startDateTime: '2025-03-01T18:00:00Z', endDateTime: '2025-03-01T22:00:00Z', bookingStartDateTime: '2025-02-01T00:00:00Z', bookingEndDateTime: '2025-02-28T23:59:59Z', location: null, guestOfHonour: null }],
+      },
+    };
+    const mockEventDetailData = {
+      event: {
+        id: eventId,
+        title: 'Annual Dinner',
+        startDateTime: '2025-03-01T18:00:00Z',
+        endDateTime: '2025-03-01T22:00:00Z',
+        bookingStartDateTime: '2025-02-01T00:00:00Z',
+        bookingEndDateTime: '2025-02-28T23:59:59Z',
+        location: null,
+        guestOfHonour: null,
+        ticketTypes: [],
+      },
+    };
+
+    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
+      data: mockSectionData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+      data: { user: { id: 'user-1', accessGroups: [] } } as any,
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+      data: mockEventsData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+      data: mockEventDetailData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /view/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Back to events')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /back to events/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /back to events/i })).not.toBeInTheDocument();
     });
   });
 });
