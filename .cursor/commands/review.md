@@ -15,15 +15,16 @@ This command should be used after the `/issue` command has been used to develop 
 ## Actions
 
 1. **Confirm the issue number** from context or ask the user if not clear
-2. **Format the approach** as a well-structured comment that includes:
+2. **Do not close the issue** — only post a comment and update project status. Do not run `gh issue close` or any action that would close the issue.
+3. **Format the approach** as a well-structured comment that includes:
    - Clear heading (e.g., "## Implementation Approach")
    - High-level strategy summary
    - Step-by-step implementation plan
    - Files/components to be modified
    - Technical considerations
    - Any dependencies or constraints
-3. **Post the comment** to the issue using `gh issue comment <number> --body "<formatted approach>"`
-4. **Update project status** to "Plan Review":
+4. **Post the comment** to the issue using `gh issue comment <number> --body "<formatted approach>"`
+5. **Update project status** to "Plan Review":
    - Get the issue's node ID using `gh issue view <number> --json id`
    - Query the issue's project items to find the project and item IDs
    - Query the project's fields to find the Status field and "Plan Review" option ID
@@ -100,6 +101,10 @@ The command should use GitHub GraphQL API with the following steps:
    ```
    
    Execute using: `gh api graphql --input -` with the full query and variables as JSON
+
+## Restrictions
+
+- **Do not close the issue.** This command only adds a comment and sets the project status to "Plan Review". The issue must remain open.
 
 ## Error Handling
 
