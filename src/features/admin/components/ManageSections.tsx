@@ -48,7 +48,6 @@ import {
   grantMemberAccessGroupToSectionRef,
   revokeViewAccessGroupFromSectionRef,
   revokeMemberAccessGroupFromSectionRef,
-  SectionAccessGroupPurpose,
   type ListSectionsData,
   type SectionType,
   type GetSectionByIdData,
@@ -60,6 +59,9 @@ import PageHeader from "../../../shared/components/PageHeader";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
+
+const SectionAccessGroupPurpose = { VIEW: "VIEW", MEMBER: "MEMBER" } as const;
+type SectionAccessGroupPurpose = (typeof SectionAccessGroupPurpose)[keyof typeof SectionAccessGroupPurpose];
 
 interface ManageSectionsProps {
   onBack: () => void;
