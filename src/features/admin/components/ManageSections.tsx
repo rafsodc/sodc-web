@@ -44,9 +44,10 @@ import {
   deleteSectionRef,
   getSectionByIdRef,
   listAccessGroupsRef,
-  grantAccessGroupToSectionRef,
-  revokeAccessGroupFromSectionRef,
-  SectionAccessGroupPurpose,
+  grantViewAccessGroupToSectionRef,
+  grantMemberAccessGroupToSectionRef,
+  revokeViewAccessGroupFromSectionRef,
+  revokeMemberAccessGroupFromSectionRef,
   type ListSectionsData,
   type SectionType,
   type GetSectionByIdData,
@@ -58,6 +59,9 @@ import PageHeader from "../../../shared/components/PageHeader";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
+
+const SectionAccessGroupPurpose = { VIEW: "VIEW", MEMBER: "MEMBER" } as const;
+type SectionAccessGroupPurpose = (typeof SectionAccessGroupPurpose)[keyof typeof SectionAccessGroupPurpose];
 
 interface ManageSectionsProps {
   onBack: () => void;
@@ -276,11 +280,16 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setAddingAccessGroup(true);
     setError(null);
     try {
-      const ref = grantAccessGroupToSectionRef(dataConnect, {
-        sectionId: editingSection.id,
-        accessGroupId: selectedAccessGroup.id,
-        purpose: selectedPurpose,
-      });
+      const ref =
+        selectedPurpose === SectionAccessGroupPurpose.VIEW
+          ? grantViewAccessGroupToSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: selectedAccessGroup.id,
+            })
+          : grantMemberAccessGroupToSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: selectedAccessGroup.id,
+            });
       await executeMutation(ref);
       
       // Refresh section access groups
@@ -309,11 +318,16 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setRemovingAccessGroupId(accessGroupId);
     setError(null);
     try {
-      const ref = revokeAccessGroupFromSectionRef(dataConnect, {
-        sectionId: editingSection.id,
-        accessGroupId: accessGroupId,
-        purpose: purpose,
-      });
+      const ref =
+        purpose === SectionAccessGroupPurpose.VIEW
+          ? revokeViewAccessGroupFromSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: accessGroupId,
+            })
+          : revokeMemberAccessGroupFromSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: accessGroupId,
+            });
       await executeMutation(ref);
       
       // Refresh section access groups

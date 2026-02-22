@@ -36,6 +36,7 @@ import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
   listAccessGroupsRef,
+  listUsersRef,
   getAccessGroupByIdRef,
   createAccessGroupRef,
   updateAccessGroupRef,
@@ -104,6 +105,12 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
+  // All users: for merged group membership (explicit + by membership status)
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus }>>([]);
+  const [loadingAllUsers, setLoadingAllUsers] = useState(false);
+
+  const [selectedUserDetail, setSelectedUserDetail] = useState<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus } | null>(null);
+
   const fetchAccessGroups = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -159,6 +166,36 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     fetchAccessGroups();
   }, [fetchAccessGroups]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    setLoadingAllUsers(true);
+    (async () => {
+      try {
+        const ref = listUsersRef(dataConnect);
+        const result = await executeQuery(ref);
+        if (!cancelled && result.data?.users) {
+          setAllUsers(
+            result.data.users.map((u) => ({
+              id: u.id,
+              firstName: u.firstName,
+              lastName: u.lastName,
+              email: u.email,
+              membershipStatus: u.membershipStatus as MembershipStatus,
+            }))
+          );
+        }
+      } catch {
+        if (!cancelled) setAllUsers([]);
+      } finally {
+        if (!cancelled) setLoadingAllUsers(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
   const handleExpand = (group: AccessGroupWithDetails) => {
     if (expandedGroupId === group.id) {
       setExpandedGroupId(null);
@@ -173,6 +210,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     setUserSearchTerm("");
     setSearchResults([]);
     setAddUserDialogOpen(true);
+    if (!groupDetails[groupId]) {
+      fetchGroupDetails(groupId);
+    }
   };
 
   const handleSearchUsers = useCallback(async (term: string) => {
@@ -227,10 +267,19 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const handleAddUserToGroup = async (userId: string) => {
     if (!addingToGroupId) return;
 
-    // Check if user is already in the group
-    const currentDetails = groupDetails[addingToGroupId];
-    if (currentDetails?.users?.some(u => u.user.id === userId)) {
-      setError("User is already in this access group");
+    // Check if user is already in the group (explicit or by membership status)
+    const alreadyInGroup =
+      groupDetails[addingToGroupId] &&
+      (() => {
+        const d = groupDetails[addingToGroupId]!;
+        const explicitIds = new Set((d.users ?? []).map((u) => u.user.id));
+        if (explicitIds.has(userId)) return true;
+        const statuses = d.membershipStatuses ?? [];
+        const u = allUsers.find((x) => x.id === userId);
+        return u ? statuses.includes(u.membershipStatus) : false;
+      })();
+    if (alreadyInGroup) {
+      setError("User is already in this access group (by membership status or explicitly added)");
       return;
     }
 
@@ -354,6 +403,50 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
+  // Sections with purpose: VIEW and MEMBER listed separately (same section can appear twice if both)
+  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "VIEW" | "MEMBER" };
+  const sectionsForGroup: SectionWithPurpose[] = details
+    ? [
+        ...(details.viewingSections ?? []).map((item) => ({ ...item, purpose: "VIEW" as const })),
+        ...(details.memberSections ?? []).map((item) => ({ ...item, purpose: "MEMBER" as const })),
+      ]
+    : [];
+
+  // Merged users: explicit (UserAccessGroup) + users whose membershipStatus is in group's membershipStatuses
+  type MergedUser = { id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus; isExplicit: boolean };
+  const mergedUsersForGroup: MergedUser[] = details
+    ? (() => {
+        const explicitIds = new Set((details.users ?? []).map((u) => u.user.id));
+        const statuses = details.membershipStatuses ?? [];
+        const explicit: MergedUser[] = (details.users ?? []).map((uag) => ({
+          id: uag.user.id,
+          firstName: uag.user.firstName,
+          lastName: uag.user.lastName,
+          email: uag.user.email,
+          membershipStatus: uag.user.membershipStatus as MembershipStatus,
+          isExplicit: true,
+        }));
+        const byStatus: MergedUser[] = allUsers
+          .filter((u) => statuses.includes(u.membershipStatus) && !explicitIds.has(u.id))
+          .map((u) => ({ ...u, isExplicit: false }));
+        return [...explicit, ...byStatus];
+      })()
+    : [];
+
+  // For Add User dialog: "already in group" = explicit + status-based for the group we're adding to
+  const mergedUserIdsForAddDialog =
+    addingToGroupId && groupDetails[addingToGroupId]
+      ? (() => {
+          const d = groupDetails[addingToGroupId];
+          const explicitIds = new Set((d.users ?? []).map((u) => u.user.id));
+          const statuses = d.membershipStatuses ?? [];
+          const byStatusIds = new Set(
+            allUsers.filter((u) => statuses.includes(u.membershipStatus)).map((u) => u.id)
+          );
+          return new Set([...explicitIds, ...byStatusIds]);
+        })()
+      : new Set<string>();
+
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
@@ -448,7 +541,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                     <TableCell>
                       {expandedGroupId === group.id && details ? (
                         <Typography variant="body2">
-                          {details.users?.length || 0}
+                          {mergedUsersForGroup.length}
                         </Typography>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
@@ -459,7 +552,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                     <TableCell>
                       {expandedGroupId === group.id && details ? (
                         <Typography variant="body2">
-                          {details.sections?.length || 0}
+                          {sectionsForGroup.length}
                         </Typography>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
@@ -509,7 +602,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", mr: 2 }}>
                                   <Typography variant="subtitle2">
-                                    Users ({details.users?.length || 0})
+                                    Users ({mergedUsersForGroup.length})
                                   </Typography>
                                   <Button
                                     size="small"
@@ -525,7 +618,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                 </Box>
                               </AccordionSummary>
                               <AccordionDetails>
-                                {details.users && details.users.length > 0 ? (
+                                {mergedUsersForGroup.length > 0 ? (
                                   <Table size="small">
                                     <TableHead>
                                       <TableRow>
@@ -536,18 +629,17 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {details.users.map((userAccessGroup) => {
-                                        const userStatus = userAccessGroup.user.membershipStatus;
-                                        const isStatusBased = group.membershipStatuses?.includes(userStatus);
+                                      {mergedUsersForGroup.map((user) => {
+                                        const isStatusBased = !user.isExplicit;
                                         return (
-                                          <TableRow key={userAccessGroup.user.id}>
+                                          <TableRow key={user.id}>
                                             <TableCell>
-                                              {userAccessGroup.user.firstName} {userAccessGroup.user.lastName}
+                                              {user.firstName} {user.lastName}
                                             </TableCell>
-                                            <TableCell>{userAccessGroup.user.email}</TableCell>
+                                            <TableCell>{user.email}</TableCell>
                                             <TableCell>
                                               <Chip
-                                                label={userStatus}
+                                                label={user.membershipStatus}
                                                 size="small"
                                                 variant="outlined"
                                               />
@@ -560,7 +652,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                               ) : (
                                                 <IconButton
                                                   size="small"
-                                                  onClick={() => handleRemoveUserFromGroup(userAccessGroup.user.id, group.id)}
+                                                  onClick={() => handleRemoveUserFromGroup(user.id, group.id)}
                                                   color="error"
                                                 >
                                                   <PersonRemoveIcon />
@@ -592,32 +684,41 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                             <Accordion defaultExpanded>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="subtitle2">
-                                  Sections ({details.sections?.length || 0})
+                                  Sections ({sectionsForGroup.length})
                                 </Typography>
                               </AccordionSummary>
                               <AccordionDetails>
-                                {details.sections && details.sections.length > 0 ? (
+                                {sectionsForGroup.length > 0 ? (
                                   <Table size="small">
                                     <TableHead>
                                       <TableRow>
                                         <TableCell>Name</TableCell>
+                                        <TableCell>Purpose</TableCell>
                                         <TableCell>Type</TableCell>
                                         <TableCell>Description</TableCell>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {details.sections.map((sectionAccessGroup) => (
-                                        <TableRow key={sectionAccessGroup.section.id}>
-                                          <TableCell>{sectionAccessGroup.section.name}</TableCell>
+                                      {sectionsForGroup.map((item, index) => (
+                                        <TableRow key={`${item.section.id}-${item.purpose}-${index}`}>
+                                          <TableCell>{item.section.name}</TableCell>
                                           <TableCell>
                                             <Chip
-                                              label={sectionAccessGroup.section.type}
+                                              label={item.purpose}
+                                              size="small"
+                                              variant="outlined"
+                                              color={item.purpose === "VIEW" ? "primary" : "secondary"}
+                                            />
+                                          </TableCell>
+                                          <TableCell>
+                                            <Chip
+                                              label={item.section.type}
                                               size="small"
                                               variant="outlined"
                                             />
                                           </TableCell>
                                           <TableCell>
-                                            {sectionAccessGroup.section.description || "-"}
+                                            {item.section.description || "-"}
                                           </TableCell>
                                         </TableRow>
                                       ))}
@@ -704,6 +805,35 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
             Select membership statuses to automatically include all users with those statuses in this group.
             You can also manually add individual users to groups.
           </Typography>
+          {selectedStatuses.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              {loadingAllUsers ? (
+                <Typography variant="caption" color="text.secondary">Loading users…</Typography>
+              ) : (
+                <>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                    Users with selected statuses:{" "}
+                    {allUsers.filter((u) => selectedStatuses.includes(u.membershipStatus)).length}
+                  </Typography>
+                  <Box sx={{ maxHeight: 120, overflow: "auto" }}>
+                    {allUsers
+                      .filter((u) => selectedStatuses.includes(u.membershipStatus))
+                      .slice(0, 20)
+                      .map((u) => (
+                        <Typography key={u.id} variant="caption" component="div" color="text.secondary">
+                          {u.firstName} {u.lastName} ({u.email})
+                        </Typography>
+                      ))}
+                    {allUsers.filter((u) => selectedStatuses.includes(u.membershipStatus)).length > 20 && (
+                      <Typography variant="caption" color="text.secondary">
+                        … and {allUsers.filter((u) => selectedStatuses.includes(u.membershipStatus)).length - 20} more
+                      </Typography>
+                    )}
+                  </Box>
+                </>
+              )}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)} disabled={submitting}>
@@ -744,15 +874,14 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
               />
             )}
             renderOption={(props, option) => {
-              const groupDetailsForAdding = addingToGroupId ? groupDetails[addingToGroupId] : null;
-              const isAlreadyInGroup = groupDetailsForAdding?.users?.some(u => u.user.id === option.id);
+              const isAlreadyInGroup = mergedUserIdsForAddDialog.has(option.id);
               return (
-                <Box 
-                  component="li" 
-                  {...props} 
-                  sx={{ 
-                    display: "flex", 
-                    justifyContent: "space-between", 
+                <Box
+                  component="li"
+                  {...props}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
                     alignItems: "center",
                     opacity: isAlreadyInGroup ? 0.5 : 1,
                   }}
@@ -781,12 +910,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
             filterOptions={(x) => x} // We're handling filtering server-side
             sx={{ mt: 1 }}
             disabled={addingUserId !== null}
-            getOptionDisabled={(option) => {
-              // Only disable if user is already in the group
-              const groupDetailsForAdding = addingToGroupId ? groupDetails[addingToGroupId] : null;
-              const isAlreadyInGroup = groupDetailsForAdding?.users?.some(u => u.user.id === option.id);
-              return isAlreadyInGroup || false;
-            }}
+            getOptionDisabled={(option) => mergedUserIdsForAddDialog.has(option.id)}
           />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
             Search for users by name or email. Note: Restricted users (PENDING, RESIGNED, LOST, DECEASED) cannot log in but can be added to access groups to preserve memberships.
@@ -801,6 +925,27 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
           }} disabled={addingUserId !== null}>
             Cancel
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* User detail (from "Users by membership status" click) */}
+      <Dialog open={!!selectedUserDetail} onClose={() => setSelectedUserDetail(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>User</DialogTitle>
+        <DialogContent>
+          {selectedUserDetail && (
+            <Box sx={{ pt: 0.5 }}>
+              <Typography variant="body2">
+                <strong>{selectedUserDetail.firstName} {selectedUserDetail.lastName}</strong>
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedUserDetail.email}
+              </Typography>
+              <Chip label={selectedUserDetail.membershipStatus} size="small" variant="outlined" sx={{ mt: 1 }} />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedUserDetail(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

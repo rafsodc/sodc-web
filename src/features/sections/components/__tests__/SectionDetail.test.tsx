@@ -3,13 +3,16 @@ import { render, screen, waitFor } from '../../../../test-utils';
 import SectionDetail from '../SectionDetail';
 import * as reactGenerated from '@dataconnect/generated/react';
 import { createMockUser } from '../../../../test-utils/mocks/firebase';
-import { executeMutation } from 'firebase/data-connect';
+import { getSectionMembersMerged } from '../../../../shared/utils/firebaseFunctions';
 
-// Mock the DataConnect hooks
+// Mock the DataConnect hooks (SectionDetail uses getSectionMembersMerged callable, not useGetSectionMembers)
 vi.mock('@dataconnect/generated/react', () => ({
   useGetSectionById: vi.fn(),
-  useGetSectionMembers: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
+}));
+
+vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
+  getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
 }));
 
 vi.mock('firebase/data-connect', () => ({
@@ -52,13 +55,6 @@ describe('SectionDetail', () => {
       refetch: vi.fn(),
     } as any);
 
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
     vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -71,18 +67,11 @@ describe('SectionDetail', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
-  it('should render error state', () => {
+  it('should render error state', async () => {
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: false,
       refetch: vi.fn(),
     } as any);
 
@@ -94,7 +83,9 @@ describe('SectionDetail', () => {
 
     render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
 
-    expect(screen.getByText(/failed to load section details/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load section details/i)).toBeInTheDocument();
+    });
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
@@ -119,26 +110,8 @@ describe('SectionDetail', () => {
       },
     };
 
-    const mockMembersData = {
-      section: {
-        id: sectionId,
-        name: 'Test Section',
-        type: 'MEMBERS',
-        description: 'Test description',
-        memberAccessGroups: [],
-        viewingAccessGroups: [],
-      },
-    };
-
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: mockSectionData as any,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: mockMembersData as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -185,52 +158,15 @@ describe('SectionDetail', () => {
       },
     };
 
-    const mockMembersData = {
-      section: {
-        id: sectionId,
-        name: 'Test Section',
-        type: 'MEMBERS',
-        memberAccessGroups: [
-          {
-            accessGroup: {
-              id: 'member-group-1',
-              name: 'Member Group',
-              users: [
-                {
-                  user: {
-                    id: 'user-1',
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    email: 'john@example.com',
-                    membershipStatus: 'REGULAR',
-                  },
-                },
-                {
-                  user: {
-                    id: 'user-2',
-                    firstName: 'Jane',
-                    lastName: 'Smith',
-                    email: 'jane@example.com',
-                    membershipStatus: 'RESERVE',
-                  },
-                },
-              ],
-            },
-          },
-        ],
-        viewingAccessGroups: [],
-      },
-    };
+    vi.mocked(getSectionMembersMerged).mockResolvedValue({
+      members: [
+        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR' },
+        { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', membershipStatus: 'RESERVE' },
+      ],
+    });
 
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: mockSectionData as any,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: mockMembersData as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -288,24 +224,8 @@ describe('SectionDetail', () => {
       },
     };
 
-    const mockMembersData = {
-      section: {
-        id: sectionId,
-        type: 'MEMBERS',
-        memberAccessGroups: [],
-        viewingAccessGroups: [],
-      },
-    };
-
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: mockSectionData as any,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: mockMembersData as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -362,24 +282,8 @@ describe('SectionDetail', () => {
       },
     };
 
-    const mockMembersData = {
-      section: {
-        id: sectionId,
-        type: 'MEMBERS',
-        memberAccessGroups: [],
-        viewingAccessGroups: [],
-      },
-    };
-
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: mockSectionData as any,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: mockMembersData as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -425,51 +329,15 @@ describe('SectionDetail', () => {
       },
     };
 
-    const mockMembersData = {
-      section: {
-        id: sectionId,
-        type: 'MEMBERS',
-        memberAccessGroups: [
-          {
-            accessGroup: {
-              id: 'member-group-1',
-              name: 'Member Group',
-              users: [
-                {
-                  user: {
-                    id: 'user-1',
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    email: 'john@example.com',
-                    membershipStatus: 'REGULAR',
-                  },
-                },
-                {
-                  user: {
-                    id: 'user-2',
-                    firstName: 'Jane',
-                    lastName: 'Smith',
-                    email: 'jane@example.com',
-                    membershipStatus: 'RESERVE',
-                  },
-                },
-              ],
-            },
-          },
-        ],
-        viewingAccessGroups: [],
-      },
-    };
+    vi.mocked(getSectionMembersMerged).mockResolvedValue({
+      members: [
+        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR' },
+        { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', membershipStatus: 'RESERVE' },
+      ],
+    });
 
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: mockSectionData as any,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: mockMembersData as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -516,13 +384,6 @@ describe('SectionDetail', () => {
 
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: mockSectionData as any,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(reactGenerated.useGetSectionMembers).mockReturnValue({
-      data: undefined,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),

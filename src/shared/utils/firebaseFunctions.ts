@@ -198,3 +198,38 @@ export async function updateMembershipStatus(
   }
 }
 
+// ============================================================================
+// Section members (merged: explicit + inherited by status)
+// ============================================================================
+
+export interface GetSectionMembersMergedRequest {
+  sectionId: string;
+}
+
+export interface GetSectionMembersMergedMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  membershipStatus: string;
+}
+
+export interface GetSectionMembersMergedResponse {
+  members: GetSectionMembersMergedMember[];
+}
+
+/**
+ * Returns merged section members (explicit + inherited by status). Requires view permission.
+ */
+export async function getSectionMembersMerged(
+  sectionId: string
+): Promise<GetSectionMembersMergedResponse> {
+  const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
+  const callable = httpsCallable<
+    GetSectionMembersMergedRequest,
+    GetSectionMembersMergedResponse
+  >(functions, "getSectionMembersMerged");
+  const result = await callable({ sectionId });
+  return result.data;
+}
+

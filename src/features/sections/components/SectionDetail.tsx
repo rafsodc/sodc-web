@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -15,7 +15,7 @@ import {
   Chip,
   Snackbar,
 } from "@mui/material";
-import { useGetSectionById, useGetSectionMembers, useGetUserAccessGroups } from "@dataconnect/generated/react";
+import { useGetSectionById, useGetUserAccessGroups } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
@@ -23,13 +23,14 @@ import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import {
-  getAllUsersFromSection,
   getMemberAccessGroups,
   canUserSubscribe,
   isUserMember,
   isMembersSection,
 } from "../utils/sectionHelpers";
+import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
+import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { UUIDString } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
@@ -48,6 +49,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     severity: "success",
   });
   const [subscribing, setSubscribing] = useState(false);
+  const [sectionMembers, setSectionMembers] = useState<SectionMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [errorMembers, setErrorMembers] = useState<string | null>(null);
 
   const currentUser = auth.currentUser;
 
@@ -59,13 +63,34 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     refetch: refetchSection,
   } = useGetSectionById(dataConnect, { id: sectionId as UUIDString });
 
-  // Get section members (includes users from access groups)
-  const {
-    data: sectionMembersData,
-    isLoading: loadingMembers,
-    isError: errorMembers,
-    refetch: refetchMembers,
-  } = useGetSectionMembers(dataConnect, { sectionId: sectionId as UUIDString });
+  const fetchMembers = useCallback(async () => {
+    setLoadingMembers(true);
+    setErrorMembers(null);
+    try {
+      const res = await getSectionMembersMerged(sectionId);
+      const members: SectionMember[] = (res.members || []).map((m) => ({
+        userId: m.id,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        email: m.email,
+        membershipStatus: m.membershipStatus as SectionMember["membershipStatus"],
+      }));
+      setSectionMembers(members);
+    } catch (err: unknown) {
+      const message = err && typeof (err as { message?: string }).message === "string"
+        ? (err as { message: string }).message
+        : "Failed to load section members";
+      setErrorMembers(message);
+      setSectionMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [sectionId]);
+
+  useEffect(() => {
+    if (!sectionId) return;
+    fetchMembers();
+  }, [sectionId, fetchMembers]);
 
   // Get current user's access groups to check subscription status
   const {
@@ -119,16 +144,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     );
   }, [sectionData, currentUser, userAccessGroupIds, viewingAccessGroupIds, memberAccessGroups]);
 
-  // Get all members from section using GetSectionMembers query
-  const allMembers = useMemo(() => {
-    if (!sectionMembersData?.section) {
-      return [];
-    }
-    return getAllUsersFromSection(
-      sectionMembersData.section,
-      sectionMembersData.section.viewingAccessGroups
-    );
-  }, [sectionMembersData]);
+  const allMembers = sectionMembers;
+  const refetchMembers = fetchMembers;
 
   // Filter members by search term
   const filteredMembers = useMemo(() => {
@@ -173,7 +190,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setSubscribing(true);
     try {
       const { subscribeToAccessGroupRef } = await import("@dataconnect/generated");
-      await executeMutation(dataConnect, subscribeToAccessGroupRef(dataConnect, {
+      await executeMutation(subscribeToAccessGroupRef(dataConnect, {
         accessGroupId: subscribableGroup.id as UUIDString,
       }));
 
@@ -214,7 +231,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setSubscribing(true);
     try {
       const { unsubscribeFromAccessGroupRef } = await import("@dataconnect/generated");
-      await executeMutation(dataConnect, unsubscribeFromAccessGroupRef(dataConnect, {
+      await executeMutation(unsubscribeFromAccessGroupRef(dataConnect, {
         accessGroupId: userMemberGroup.id as UUIDString,
       }));
 
@@ -258,9 +275,16 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
         <PageHeader title="Section Details" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
-          Failed to load section details. Please try again.
+          {errorMembers && !errorSection ? errorMembers : "Failed to load section details. Please try again."}
         </Alert>
-        <Button variant="outlined" onClick={() => refetchSection()} sx={{ mt: 2 }}>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            refetchSection();
+            refetchMembers();
+          }}
+          sx={{ mt: 2 }}
+        >
           Retry
         </Button>
       </Box>
