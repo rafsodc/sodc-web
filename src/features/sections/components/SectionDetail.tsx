@@ -15,7 +15,7 @@ import {
   Chip,
   Snackbar,
 } from "@mui/material";
-import { useGetSectionById, useGetUserAccessGroups } from "@dataconnect/generated/react";
+import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
@@ -97,6 +97,14 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     data: userAccessGroupsData,
     isLoading: loadingUserGroups,
   } = useGetUserAccessGroups(dataConnect, {});
+
+  // Get events for this section (used when section.type === EVENTS)
+  const {
+    data: eventsData,
+    isLoading: loadingEvents,
+    isError: errorEvents,
+    refetch: refetchEvents,
+  } = useGetEventsForSection(dataConnect, { sectionId: sectionId as UUIDString });
 
   // Extract user's access group IDs
   const userAccessGroupIds = useMemo(() => {
@@ -406,9 +414,65 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           )}
         </>
       ) : (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          Events list coming soon.
-        </Alert>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Events
+          </Typography>
+          {loadingEvents ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : errorEvents ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Failed to load events.{" "}
+              <Button size="small" onClick={() => refetchEvents()}>
+                Retry
+              </Button>
+            </Alert>
+          ) : !eventsData?.section?.events?.length ? (
+            <Alert severity="info">No events yet.</Alert>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Date / time</TableCell>
+                    <TableCell>Location</TableCell>
+                    <TableCell>Guest of honour</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {eventsData.section.events.map((ev) => (
+                    <TableRow key={ev.id}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={500}>
+                          {ev.title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(ev.startDateTime).toLocaleString()} –{" "}
+                          {new Date(ev.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {ev.location || "—"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {ev.guestOfHonour || "—"}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
       )}
 
       <Snackbar
