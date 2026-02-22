@@ -86,7 +86,7 @@ query ListSections @auth(expr: "auth.token.admin == true && auth.token.enabled =
   }
 }
 
-# Get sections accessible to the current user
+# Get sections accessible to the current user (viewing OR member access)
 # Requires enabled claim (admins must also be enabled)
 query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
@@ -96,8 +96,17 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
       accessGroup {
         id
         name
-        # Get sections this access group can VIEW
+        # Sections this access group can VIEW
         sections: sectionViewAccessGroups_on_accessGroup {
+          section {
+            id
+            name
+            type
+            description
+          }
+        }
+        # Sections this access group is MEMBER of (so members can see section + events; view-only cannot book)
+        memberSections: sectionMemberAccessGroups_on_accessGroup {
           section {
             id
             name

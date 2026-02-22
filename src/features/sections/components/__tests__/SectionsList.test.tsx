@@ -29,8 +29,10 @@ describe('SectionsList', () => {
   const mockOnBack = vi.fn();
   const mockOnSelectSection = vi.fn();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const useAdminClaimModule = await import('../../../users/hooks/useAdminClaim');
+    vi.mocked(useAdminClaimModule.useAdminClaim).mockReturnValue(false);
   });
 
   it('should render loading state', () => {
@@ -94,6 +96,7 @@ describe('SectionsList', () => {
                   },
                 },
               ],
+              memberSections: [],
             },
           },
         ],
@@ -122,6 +125,112 @@ describe('SectionsList', () => {
 
     expect(screen.getByText('MEMBERS')).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
+  });
+
+  it('should include sections from member access when user has only member access', async () => {
+    const mockSectionsData = {
+      user: {
+        id: 'user-1',
+        accessGroups: [
+          {
+            accessGroup: {
+              id: 'member-group-1',
+              name: 'Member Group',
+              sections: [],
+              memberSections: [
+                {
+                  section: {
+                    id: 'events-section-1',
+                    name: 'Events Section',
+                    type: 'EVENTS',
+                    description: 'Member-only section',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+      data: mockSectionsData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Events Section')).toBeInTheDocument();
+    });
+    expect(screen.getByText('EVENTS')).toBeInTheDocument();
+    expect(screen.getByText('Member-only section')).toBeInTheDocument();
+  });
+
+  it('should deduplicate section when user has both viewing and member access', async () => {
+    const mockSectionsData = {
+      user: {
+        id: 'user-1',
+        accessGroups: [
+          {
+            accessGroup: {
+              id: 'group-1',
+              name: 'Group 1',
+              sections: [
+                {
+                  section: {
+                    id: 'section-1',
+                    name: 'Same Section',
+                    type: 'EVENTS',
+                    description: 'View and member',
+                  },
+                },
+              ],
+              memberSections: [
+                {
+                  section: {
+                    id: 'section-1',
+                    name: 'Same Section',
+                    type: 'EVENTS',
+                    description: 'View and member',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+      data: mockSectionsData as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Same Section')).toBeInTheDocument();
+    });
+    expect(screen.getAllByText('Same Section')).toHaveLength(1);
   });
 
   it('should render sections list for admin users', async () => {
@@ -178,6 +287,7 @@ describe('SectionsList', () => {
                   },
                 },
               ],
+              memberSections: [],
             },
           },
         ],
@@ -233,6 +343,7 @@ describe('SectionsList', () => {
                   },
                 },
               ],
+              memberSections: [],
             },
           },
         ],
@@ -287,6 +398,7 @@ describe('SectionsList', () => {
                   },
                 },
               ],
+              memberSections: [],
             },
           },
         ],
