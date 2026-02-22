@@ -192,6 +192,51 @@ query GetUserAccessGroupsById($userId: String!) @auth(expr: "auth.token.admin ==
   }
 }
 
+# Get events for a section (user must have access to section via GetSectionsForUser). Order by startDateTime.
+query GetEventsForSection($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  section(id: $sectionId) {
+    id
+    events: events_on_section(orderBy: { startDateTime: ASC }) {
+      id
+      title
+      location
+      guestOfHonour
+      startDateTime
+      endDateTime
+      bookingStartDateTime
+      bookingEndDateTime
+    }
+  }
+}
+
+# Get event by ID with ticket types (user must have access to event's section). Ticket types ordered by sortOrder.
+query GetEventById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
+  event(id: $id) {
+    id
+    section {
+      id
+    }
+    title
+    location
+    guestOfHonour
+    startDateTime
+    endDateTime
+    bookingStartDateTime
+    bookingEndDateTime
+    ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+      id
+      title
+      description
+      price
+      sortOrder
+      accessGroup {
+        id
+        name
+      }
+    }
+  }
+}
+
 # Get section by ID with access groups and registration info
 query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
   section(id: $id) {

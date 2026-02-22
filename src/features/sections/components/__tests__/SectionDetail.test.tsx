@@ -9,6 +9,7 @@ import { getSectionMembersMerged } from '../../../../shared/utils/firebaseFuncti
 vi.mock('@dataconnect/generated/react', () => ({
   useGetSectionById: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
+  useGetEventsForSection: vi.fn(),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
@@ -45,6 +46,12 @@ describe('SectionDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+      data: { section: { id: sectionId, events: [] } } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
   });
 
   it('should render loading state', () => {
@@ -370,7 +377,7 @@ describe('SectionDetail', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
   });
 
-  it('should show placeholder for EVENTS sections', async () => {
+  it('should show events list for EVENTS sections', async () => {
     const mockSectionData = {
       section: {
         id: sectionId,
@@ -400,10 +407,18 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
+    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+      data: { section: { id: sectionId, events: [] } } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
     render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/events list coming soon/i)).toBeInTheDocument();
+      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
     });
   });
 });
