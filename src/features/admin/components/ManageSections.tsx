@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -48,11 +48,10 @@ import {
   grantMemberAccessGroupToSectionRef,
   revokeViewAccessGroupFromSectionRef,
   revokeMemberAccessGroupFromSectionRef,
-  type ListSectionsData,
   type SectionType,
-  type GetSectionByIdData,
   type ListAccessGroupsData,
 } from "@dataconnect/generated";
+import SectionEventsManager from "./SectionEventsManager";
 import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
@@ -104,6 +103,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const [selectedPurpose, setSelectedPurpose] = useState<SectionAccessGroupPurpose>(SectionAccessGroupPurpose.VIEW);
   const [addingAccessGroup, setAddingAccessGroup] = useState(false);
   const [removingAccessGroupId, setRemovingAccessGroupId] = useState<string | null>(null);
+  const [managedSectionId, setManagedSectionId] = useState<string | null>(null);
+  const [managedSectionName, setManagedSectionName] = useState("");
 
   const fetchSections = useCallback(async () => {
     setLoading(true);
@@ -344,6 +345,19 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     (group) => !sectionAccessGroups.some((ag) => ag.id === group.id)
   );
 
+  if (managedSectionId && managedSectionName) {
+    return (
+      <SectionEventsManager
+        sectionId={managedSectionId}
+        sectionName={managedSectionName}
+        onBack={() => {
+          setManagedSectionId(null);
+          setManagedSectionName("");
+        }}
+      />
+    );
+  }
+
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
@@ -419,6 +433,19 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
+                    {section.type === "EVENTS" && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setManagedSectionId(section.id);
+                          setManagedSectionName(section.name);
+                        }}
+                        sx={{ mr: 1 }}
+                      >
+                        Manage events
+                      </Button>
+                    )}
                     <IconButton
                       size="small"
                       onClick={() => handleEdit(section)}
