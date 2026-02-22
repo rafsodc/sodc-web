@@ -44,8 +44,10 @@ import {
   deleteSectionRef,
   getSectionByIdRef,
   listAccessGroupsRef,
-  grantAccessGroupToSectionRef,
-  revokeAccessGroupFromSectionRef,
+  grantViewAccessGroupToSectionRef,
+  grantMemberAccessGroupToSectionRef,
+  revokeViewAccessGroupFromSectionRef,
+  revokeMemberAccessGroupFromSectionRef,
   SectionAccessGroupPurpose,
   type ListSectionsData,
   type SectionType,
@@ -276,11 +278,16 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setAddingAccessGroup(true);
     setError(null);
     try {
-      const ref = grantAccessGroupToSectionRef(dataConnect, {
-        sectionId: editingSection.id,
-        accessGroupId: selectedAccessGroup.id,
-        purpose: selectedPurpose,
-      });
+      const ref =
+        selectedPurpose === SectionAccessGroupPurpose.VIEW
+          ? grantViewAccessGroupToSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: selectedAccessGroup.id,
+            })
+          : grantMemberAccessGroupToSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: selectedAccessGroup.id,
+            });
       await executeMutation(ref);
       
       // Refresh section access groups
@@ -309,11 +316,16 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setRemovingAccessGroupId(accessGroupId);
     setError(null);
     try {
-      const ref = revokeAccessGroupFromSectionRef(dataConnect, {
-        sectionId: editingSection.id,
-        accessGroupId: accessGroupId,
-        purpose: purpose,
-      });
+      const ref =
+        purpose === SectionAccessGroupPurpose.VIEW
+          ? revokeViewAccessGroupFromSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: accessGroupId,
+            })
+          : revokeMemberAccessGroupFromSectionRef(dataConnect, {
+              sectionId: editingSection.id,
+              accessGroupId: accessGroupId,
+            });
       await executeMutation(ref);
       
       // Refresh section access groups

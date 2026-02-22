@@ -386,6 +386,21 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
+  // Combine viewingSections and memberSections, deduped by section.id
+  const sectionsForGroup = details
+    ? (() => {
+        const seen = new Set<string>();
+        const out: { section: { id: string; name: string; type: string; description?: string | null } }[] = [];
+        for (const item of [...(details.viewingSections ?? []), ...(details.memberSections ?? [])]) {
+          if (!seen.has(item.section.id)) {
+            seen.add(item.section.id);
+            out.push(item);
+          }
+        }
+        return out;
+      })()
+    : [];
+
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
@@ -491,7 +506,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                     <TableCell>
                       {expandedGroupId === group.id && details ? (
                         <Typography variant="body2">
-                          {details.sections?.length || 0}
+                          {sectionsForGroup.length}
                         </Typography>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
@@ -675,11 +690,11 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                             <Accordion defaultExpanded>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Typography variant="subtitle2">
-                                  Sections ({details.sections?.length || 0})
+                                  Sections ({sectionsForGroup.length})
                                 </Typography>
                               </AccordionSummary>
                               <AccordionDetails>
-                                {details.sections && details.sections.length > 0 ? (
+                                {sectionsForGroup.length > 0 ? (
                                   <Table size="small">
                                     <TableHead>
                                       <TableRow>
@@ -689,7 +704,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {details.sections.map((sectionAccessGroup) => (
+                                      {sectionsForGroup.map((sectionAccessGroup) => (
                                         <TableRow key={sectionAccessGroup.section.id}>
                                           <TableCell>{sectionAccessGroup.section.name}</TableCell>
                                           <TableCell>

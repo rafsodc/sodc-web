@@ -96,10 +96,8 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
       accessGroup {
         id
         name
-        # Get sections this access group can access (VIEW purpose only)
-        sections: sectionAccessGroups_on_accessGroup(
-          where: { purpose: { eq: VIEW } }
-        ) {
+        # Get sections this access group can VIEW
+        sections: sectionViewAccessGroups_on_accessGroup {
           section {
             id
             name
@@ -203,9 +201,7 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
     description
     isOpenForRegistration
     allowedAccessGroups
-    viewingAccessGroups: sectionAccessGroups_on_section(
-      where: { purpose: { eq: VIEW } }
-    ) {
+    viewingAccessGroups: sectionViewAccessGroups_on_section {
       accessGroup {
         id
         name
@@ -213,9 +209,7 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
         subscribable
       }
     }
-    memberAccessGroups: sectionAccessGroups_on_section(
-      where: { purpose: { eq: MEMBER } }
-    ) {
+    memberAccessGroups: sectionMemberAccessGroups_on_section {
       accessGroup {
         id
         name
@@ -247,14 +241,21 @@ query GetAccessGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && au
         membershipStatus
       }
     }
-    sections: sectionAccessGroups_on_accessGroup {
+    viewingSections: sectionViewAccessGroups_on_accessGroup {
       section {
         id
         name
         type
         description
       }
-      purpose
+    }
+    memberSections: sectionMemberAccessGroups_on_accessGroup {
+      section {
+        id
+        name
+        type
+        description
+      }
     }
   }
 }
@@ -276,9 +277,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
     name
     type
     description
-    memberAccessGroups: sectionAccessGroups_on_section(
-      where: { purpose: { eq: MEMBER } }
-    ) {
+    memberAccessGroups: sectionMemberAccessGroups_on_section {
       accessGroup {
         id
         name
@@ -295,9 +294,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
       }
     }
     # Fallback: if no MEMBER groups, use VIEW groups
-    viewingAccessGroups: sectionAccessGroups_on_section(
-      where: { purpose: { eq: VIEW } }
-    ) {
+    viewingAccessGroups: sectionViewAccessGroups_on_section {
       accessGroup {
         id
         name

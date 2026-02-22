@@ -13,12 +13,6 @@ const MembershipStatus = {
 }
 exports.MembershipStatus = MembershipStatus;
 
-const SectionAccessGroupPurpose = {
-  VIEW: "VIEW",
-  MEMBER: "MEMBER",
-}
-exports.SectionAccessGroupPurpose = SectionAccessGroupPurpose;
-
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
@@ -31,6 +25,62 @@ const connectorConfig = {
   location: 'europe-west2'
 };
 exports.connectorConfig = connectorConfig;
+
+function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUserMembershipStatus', inputVars, inputOpts);
+}
+exports.updateUserMembershipStatus = updateUserMembershipStatus;
+
+function deleteUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteUser', inputVars, inputOpts);
+}
+exports.deleteUser = deleteUser;
+
+function createUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateUser', inputVars, inputOpts);
+}
+exports.createUser = createUser;
+
+function createAccessGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAccessGroupAdmin', inputVars, inputOpts);
+}
+exports.createAccessGroupAdmin = createAccessGroupAdmin;
+
+function addUserToAccessGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AddUserToAccessGroupAdmin', inputVars, inputOpts);
+}
+exports.addUserToAccessGroupAdmin = addUserToAccessGroupAdmin;
+
+function removeUserFromAccessGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RemoveUserFromAccessGroupAdmin', inputVars, inputOpts);
+}
+exports.removeUserFromAccessGroupAdmin = removeUserFromAccessGroupAdmin;
+
+function getAccessGroupByName(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAccessGroupByName', inputVars, inputOpts);
+}
+exports.getAccessGroupByName = getAccessGroupByName;
+
+function getUserAccessGroupsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserAccessGroupsForAdmin', inputVars, inputOpts);
+}
+exports.getUserAccessGroupsForAdmin = getUserAccessGroupsForAdmin;
 
 function getCurrentUser(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
@@ -214,19 +264,33 @@ function removeUserFromAccessGroup(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.removeUserFromAccessGroup = removeUserFromAccessGroup;
 
-function grantAccessGroupToSection(dcOrVarsOrOptions, varsOrOptions, options) {
+function grantViewAccessGroupToSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('GrantAccessGroupToSection', inputVars, inputOpts);
+  return dcInstance.executeMutation('GrantViewAccessGroupToSection', inputVars, inputOpts);
 }
-exports.grantAccessGroupToSection = grantAccessGroupToSection;
+exports.grantViewAccessGroupToSection = grantViewAccessGroupToSection;
 
-function revokeAccessGroupFromSection(dcOrVarsOrOptions, varsOrOptions, options) {
+function revokeViewAccessGroupFromSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('RevokeAccessGroupFromSection', inputVars, inputOpts);
+  return dcInstance.executeMutation('RevokeViewAccessGroupFromSection', inputVars, inputOpts);
 }
-exports.revokeAccessGroupFromSection = revokeAccessGroupFromSection;
+exports.revokeViewAccessGroupFromSection = revokeViewAccessGroupFromSection;
+
+function grantMemberAccessGroupToSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('GrantMemberAccessGroupToSection', inputVars, inputOpts);
+}
+exports.grantMemberAccessGroupToSection = grantMemberAccessGroupToSection;
+
+function revokeMemberAccessGroupFromSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RevokeMemberAccessGroupFromSection', inputVars, inputOpts);
+}
+exports.revokeMemberAccessGroupFromSection = revokeMemberAccessGroupFromSection;
 
 function updateAccessGroup(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -255,60 +319,4 @@ function deleteSection(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeMutation('DeleteSection', inputVars, inputOpts);
 }
 exports.deleteSection = deleteSection;
-
-function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateUserMembershipStatus', inputVars, inputOpts);
-}
-exports.updateUserMembershipStatus = updateUserMembershipStatus;
-
-function deleteUser(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('DeleteUser', inputVars, inputOpts);
-}
-exports.deleteUser = deleteUser;
-
-function createUser(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateUser', inputVars, inputOpts);
-}
-exports.createUser = createUser;
-
-function createAccessGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateAccessGroupAdmin', inputVars, inputOpts);
-}
-exports.createAccessGroupAdmin = createAccessGroupAdmin;
-
-function addUserToAccessGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('AddUserToAccessGroupAdmin', inputVars, inputOpts);
-}
-exports.addUserToAccessGroupAdmin = addUserToAccessGroupAdmin;
-
-function removeUserFromAccessGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('RemoveUserFromAccessGroupAdmin', inputVars, inputOpts);
-}
-exports.removeUserFromAccessGroupAdmin = removeUserFromAccessGroupAdmin;
-
-function getAccessGroupByName(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAccessGroupByName', inputVars, inputOpts);
-}
-exports.getAccessGroupByName = getAccessGroupByName;
-
-function getUserAccessGroupsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserAccessGroupsForAdmin', inputVars, inputOpts);
-}
-exports.getUserAccessGroupsForAdmin = getUserAccessGroupsForAdmin;
 
