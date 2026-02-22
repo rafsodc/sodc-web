@@ -110,3 +110,37 @@ type SectionMemberAccessGroup @table(key: ["section", "accessGroup"]) {
   createdBy: String @default(expr: "auth.uid")
   updatedBy: String @default(expr: "auth.uid")
 }
+
+# Event - a single calendar event (e.g. symposium) linked to an EVENTS section. Order by startDateTime.
+type Event @table {
+  id: UUID! @default(expr: "uuidV4()")
+  section: Section!
+  title: String!
+  location: String
+  guestOfHonour: String
+  startDateTime: Timestamp!
+  endDateTime: Timestamp!
+  bookingStartDateTime: Timestamp!
+  bookingEndDateTime: Timestamp!
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# TicketType - a bookable ticket type for an event. accessGroup defines who can book. Order by sortOrder.
+type TicketType @table {
+  id: UUID! @default(expr: "uuidV4()")
+  event: Event!
+  accessGroup: AccessGroup!
+  title: String!
+  description: String
+  price: Float!
+  sortOrder: Int! @default(value: 0)
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
