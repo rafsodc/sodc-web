@@ -15,7 +15,7 @@ import {
   Chip,
   Snackbar,
 } from "@mui/material";
-import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection } from "@dataconnect/generated/react";
+import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
@@ -52,6 +52,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [sectionMembers, setSectionMembers] = useState<SectionMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const currentUser = auth.currentUser;
 
@@ -105,6 +106,18 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     isError: errorEvents,
     refetch: refetchEvents,
   } = useGetEventsForSection(dataConnect, { sectionId: sectionId as UUIDString });
+
+  // Get single event for detail view (only runs when selectedEventId is set)
+  const {
+    data: eventDetailData,
+    isLoading: loadingEventDetail,
+    isError: errorEventDetail,
+    refetch: refetchEventDetail,
+  } = useGetEventById(
+    dataConnect,
+    { id: (selectedEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
+    { enabled: !!selectedEventId }
+  );
 
   // Extract user's access group IDs
   const userAccessGroupIds = useMemo(() => {
@@ -413,6 +426,79 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
             </>
           )}
         </>
+      ) : selectedEventId ? (
+        <Box sx={{ mt: 2 }}>
+          <Button size="small" onClick={() => setSelectedEventId(null)} sx={{ mb: 2 }}>
+            Back to events
+          </Button>
+          {loadingEventDetail ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : errorEventDetail ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Failed to load event.{" "}
+              <Button size="small" onClick={() => refetchEventDetail()}>
+                Retry
+              </Button>
+            </Alert>
+          ) : !eventDetailData?.event ? (
+            <Alert severity="info">Event not found.</Alert>
+          ) : (
+            <>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                {eventDetailData.event.title}
+              </Typography>
+              <Box component="dl" sx={{ "& dd": { m: 0 }, "& dt": { fontWeight: 500, mt: 1 } }}>
+                <Typography component="dt" variant="body2">Date / time</Typography>
+                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {new Date(eventDetailData.event.startDateTime).toLocaleString()} –{" "}
+                  {new Date(eventDetailData.event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Typography>
+                <Typography component="dt" variant="body2">Location</Typography>
+                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {eventDetailData.event.location || "—"}
+                </Typography>
+                <Typography component="dt" variant="body2">Guest of honour</Typography>
+                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {eventDetailData.event.guestOfHonour || "—"}
+                </Typography>
+                <Typography component="dt" variant="body2">Booking window</Typography>
+                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {new Date(eventDetailData.event.bookingStartDateTime).toLocaleString()} –{" "}
+                  {new Date(eventDetailData.event.bookingEndDateTime).toLocaleString()}
+                </Typography>
+              </Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Ticket types</Typography>
+              {!eventDetailData.event.ticketTypes?.length ? (
+                <Typography variant="body2" color="text.secondary">No ticket types.</Typography>
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Title</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Price</TableCell>
+                        <TableCell>Access group</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {eventDetailData.event.ticketTypes.map((tt) => (
+                        <TableRow key={tt.id}>
+                          <TableCell>{tt.title}</TableCell>
+                          <TableCell>{tt.description ?? "—"}</TableCell>
+                          <TableCell>{tt.price}</TableCell>
+                          <TableCell>{tt.accessGroup?.name ?? "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </>
+          )}
+        </Box>
       ) : (
         <Box sx={{ mt: 2 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
@@ -440,11 +526,17 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                     <TableCell>Date / time</TableCell>
                     <TableCell>Location</TableCell>
                     <TableCell>Guest of honour</TableCell>
+                    <TableCell />
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {eventsData.section.events.map((ev) => (
-                    <TableRow key={ev.id}>
+                    <TableRow
+                      key={ev.id}
+                      hover
+                      sx={{ cursor: "pointer" }}
+                      onClick={() => setSelectedEventId(ev.id)}
+                    >
                       <TableCell>
                         <Typography variant="body2" fontWeight={500}>
                           {ev.title}
@@ -465,6 +557,11 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                         <Typography variant="body2" color="text.secondary">
                           {ev.guestOfHonour || "—"}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Button size="small" onClick={(e) => { e.stopPropagation(); setSelectedEventId(ev.id); }}>
+                          View
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
