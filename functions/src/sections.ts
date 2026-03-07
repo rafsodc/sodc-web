@@ -5,6 +5,7 @@ import {
   getSectionById,
   getSectionMembers,
   getUserAccessGroupsById,
+  getUserMembershipStatus,
   listUsers,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
@@ -19,7 +20,7 @@ export interface SectionMemberResponse {
 
 /**
  * Returns merged section members (explicit UserAccessGroup + inherited by membership status).
- * Caller must have permission to view the section (their access groups must intersect section's VIEW groups).
+ * Caller must have VIEW or MEMBER access to the section (so both can open the section and load this data).
  */
 export const getSectionMembersMerged = onCall(
   { region: FUNCTIONS_REGION },
@@ -29,10 +30,11 @@ export const getSectionMembersMerged = onCall(
     const callerUid = request.auth!.uid;
 
     try {
-      const [sectionResult, membersResult, callerGroupsResult] = await Promise.all([
+      const [sectionResult, membersResult, callerGroupsResult, userStatusResult] = await Promise.all([
         getSectionById({ id: sectionId }),
         getSectionMembers({ sectionId }),
         getUserAccessGroupsById({ userId: callerUid }),
+        getUserMembershipStatus({ id: callerUid }),
       ]);
 
       const section = sectionResult.data?.section;
@@ -43,13 +45,30 @@ export const getSectionMembersMerged = onCall(
       const viewingGroupIds = new Set(
         (section.viewingAccessGroups || []).map((vg: { accessGroup: { id: string } }) => vg.accessGroup.id)
       );
+      const memberGroupIds = new Set(
+        (section.memberAccessGroups || []).map((mg: { accessGroup: { id: string } }) => mg.accessGroup.id)
+      );
       const callerGroupIds = new Set(
         (callerGroupsResult.data?.user?.accessGroups || []).map(
           (ag: { accessGroup: { id: string } }) => ag.accessGroup.id
         )
       );
       const canView = [...viewingGroupIds].some((id) => callerGroupIds.has(id));
-      if (!canView) {
+      const canMember = [...memberGroupIds].some((id) => callerGroupIds.has(id));
+
+      // Allow access by membership status when user has no explicit group but their status matches a member group
+      let canMemberByStatus = false;
+      if (!canView && !canMember) {
+        const sectionData = membersResult.data?.section;
+        const userStatus = userStatusResult.data?.user?.membershipStatus;
+        if (sectionData?.memberAccessGroups?.length && userStatus) {
+          canMemberByStatus = sectionData.memberAccessGroups.some(
+            (rel) => rel.accessGroup.membershipStatuses?.includes(userStatus) ?? false
+          );
+        }
+      }
+
+      if (!canView && !canMember && !canMemberByStatus) {
         throw new HttpsError("permission-denied", "You do not have permission to view this section");
       }
 
