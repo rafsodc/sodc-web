@@ -38,18 +38,18 @@ import {
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
 
-interface UserAccessGroupsProps {
+interface UserGroupMembershipsProps {
   userId: string;
   userEmail?: string;
   userMembershipStatus?: MembershipStatus;
   onUpdate?: () => void;
 }
 
-export default function UserAccessGroups({
+export default function UserGroupMemberships({
   userId,
   userMembershipStatus,
   onUpdate,
-}: UserAccessGroupsProps) {
+}: UserGroupMembershipsProps) {
   const [userData, setUserData] = useState<GetUserWithAccessGroupsData["user"] | null>(null);
   const [allGroups, setAllGroups] = useState<ListUserGroupsData["userGroups"]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +66,7 @@ export default function UserAccessGroups({
       const result = await executeQuery(ref);
       setUserData(result.data?.user || null);
     } catch (err: any) {
-      setError(err?.message || "Failed to fetch user access groups");
+      setError(err?.message || "Failed to fetch user user groups");
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export default function UserAccessGroups({
       const result = await executeQuery(ref);
       setAllGroups(result.data?.userGroups || []);
     } catch (err: any) {
-      console.error("Failed to fetch access groups:", err);
+      console.error("Failed to fetch user groups:", err);
     }
   }, []);
 
@@ -106,14 +106,14 @@ export default function UserAccessGroups({
       }
       setAddDialogOpen(false);
     } catch (err: any) {
-      setError(err?.message || "Failed to add user to access group");
+      setError(err?.message || "Failed to add user to user group");
     } finally {
       setAddingGroupId(null);
     }
   };
 
   const handleRemoveUserFromGroup = async (groupId: string) => {
-    if (!confirm("Are you sure you want to remove this user from the access group?")) {
+    if (!confirm("Are you sure you want to remove this user from the user group?")) {
       return;
     }
 
@@ -130,7 +130,7 @@ export default function UserAccessGroups({
         onUpdate();
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to remove user from access group");
+      setError(err?.message || "Failed to remove user from user group");
     } finally {
       setRemovingGroupId(null);
     }
@@ -163,12 +163,12 @@ export default function UserAccessGroups({
 
       {membershipStatus && ["PENDING", "RESIGNED", "LOST", "DECEASED"].includes(membershipStatus) && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          User has restricted membership status ({membershipStatus}) and cannot log in, but access group memberships are preserved.
+          User has restricted membership status ({membershipStatus}) and cannot log in, but user group memberships are preserved.
         </Alert>
       )}
 
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h6">Access Groups</Typography>
+        <Typography variant="h6">User Groups</Typography>
         <Button
           variant="outlined"
           startIcon={<PersonAddIcon />}
@@ -261,17 +261,17 @@ export default function UserAccessGroups({
         </TableContainer>
       ) : (
         <Alert severity="info">
-          This user is not assigned to any access groups.
+          This user is not assigned to any user groups.
         </Alert>
       )}
 
       {/* Add to Group Dialog */}
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add User to Access Group</DialogTitle>
+        <DialogTitle>Add User to User Group</DialogTitle>
         <DialogContent>
           {availableGroups.length === 0 ? (
             <Alert severity="info">
-              All available access groups have been assigned to this user.
+              All available user groups have been assigned to this user.
             </Alert>
           ) : (
             <Autocomplete
@@ -285,8 +285,8 @@ export default function UserAccessGroups({
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Select Access Group"
-                  placeholder="Choose an access group..."
+                  label="Select User Group"
+                  placeholder="Choose a user group..."
                   margin="dense"
                   fullWidth
                   variant="outlined"

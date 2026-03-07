@@ -147,7 +147,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
         }}
       >
         <Tab label="Users" />
-        <Tab label="Access Groups" />
+        <Tab label="User Groups" />
         <Tab label="Sections" />
       </Tabs>
 
@@ -213,7 +213,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
               {userGroups.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center">
-                    No access groups found
+                    No user groups found
                   </TableCell>
                 </TableRow>
               ) : (

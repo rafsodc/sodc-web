@@ -4,7 +4,7 @@
 # Mutations have been reorganized into feature-specific files:
 #
 # - user-mutations.gql          - User profile mutations
-# - access-control-mutations.gql - Section and access group mutations
+# - user-group-mutations.gql - Section and user group mutations
 # - admin-mutations.gql        - SDK-only mutations (NO_ACCESS)
 #
 # New mutations should be added to the appropriate feature file.

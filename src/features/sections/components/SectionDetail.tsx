@@ -23,7 +23,7 @@ import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import {
-  getMemberAccessGroups,
+  getMemberGroups,
   canUserSubscribe,
   isUserMember,
   isMembersSection,
@@ -56,7 +56,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   const currentUser = auth.currentUser;
 
-  // Get section details (for access group info and subscribability)
+  // Get section details (for user group info and subscribability)
   const {
     data: sectionData,
     isLoading: loadingSection,
@@ -93,7 +93,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     fetchMembers();
   }, [sectionId, fetchMembers]);
 
-  // Get current user's access groups to check subscription status
+  // Get current user's user groups to check subscription status
   const {
     data: userAccessGroupsData,
     isLoading: loadingUserGroups,
@@ -127,7 +127,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     return userAccessGroupsData.user.userGroups.map((group) => group.userGroup.id);
   }, [userAccessGroupsData]);
 
-  // Extract section access group IDs (who can access the section)
+  // Extract section user group IDs (who can access the section)
   const accessGroupIds = useMemo(() => {
     if (!sectionData?.section?.accessGroups) {
       return [];
@@ -140,7 +140,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     if (!sectionData?.section) {
       return [];
     }
-    return getMemberAccessGroups(
+    return getMemberGroups(
       sectionData.section as any,
       sectionData.section.accessGroups as any
     );
@@ -223,7 +223,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       // Refetch to update UI
       refetchSection();
       refetchMembers();
-      // The user access groups will be refetched automatically by the hook
+      // The user's user groups will be refetched automatically by the hook
     } catch (error) {
       console.error("Error subscribing:", error);
       setSnackbar({
@@ -480,7 +480,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                         <TableCell>Title</TableCell>
                         <TableCell>Description</TableCell>
                         <TableCell>Price</TableCell>
-                        <TableCell>Access group</TableCell>
+                        <TableCell>User group</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>

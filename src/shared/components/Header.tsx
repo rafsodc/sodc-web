@@ -18,7 +18,7 @@ interface HeaderProps {
   onPermissionsClick?: () => void;
   onManageUsersClick?: () => void;
   onApproveUsersClick?: () => void;
-  onAccessGroupsClick?: () => void;
+  onUserGroupsClick?: () => void;
   onAuditLogsClick?: () => void;
   onManageSectionsClick?: () => void;
   onSectionsClick?: () => void;
@@ -31,7 +31,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onAccessGroupsClick, onAuditLogsClick, onManageSectionsClick, onSectionsClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onUserGroupsClick, onAuditLogsClick, onManageSectionsClick, onSectionsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -109,12 +109,12 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     }
   };
 
-  const handleAccessGroups = (e: React.MouseEvent) => {
+  const handleUserGroups = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     handleAdminMenuClose();
-    if (onAccessGroupsClick) {
-      onAccessGroupsClick();
+    if (onUserGroupsClick) {
+      onUserGroupsClick();
     }
   };
 
@@ -256,7 +256,7 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                   Approve Users
                 </MenuItem>
                 <MenuItem 
-                  onClick={handleAccessGroups}
+                  onClick={handleUserGroups}
                   sx={{
                     "&:focus": {
                       outline: "none",
@@ -266,7 +266,7 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                     },
                   }}
                 >
-                  Access Groups
+                  User Groups
                 </MenuItem>
                 <MenuItem 
                   onClick={handleAuditLogs}

@@ -10,7 +10,7 @@ dataconnect/
 │   ├── connector.yaml            # DataConnect connector configuration
 │   ├── queries.gql               # User-facing and admin queries
 │   ├── user-mutations.gql         # User profile mutations
-│   ├── access-control-mutations.gql  # Section and access group mutations
+│   ├── user-group-mutations.gql       # Section and user group mutations
 │   ├── admin-mutations.gql        # SDK-only mutations (NO_ACCESS, used by Firebase Functions/CLI)
 │   └── mutations.gql             # Legacy file (deprecated)
 ├── schema/                 # GraphQL schema definitions
@@ -32,7 +32,7 @@ dataconnect/
 
 - **`schema/schema.gql`**: Defines all GraphQL types, enums, and table structures
   - Enums: `SectionType`, `MembershipStatus`
-  - Types: `User`, `Section`, `AccessGroup`, `UserAccessGroup`, `SectionAccessGroup`
+  - Types: `User`, `Section`, `UserGroup`, `UserUserGroup`, `SectionAccessGroup`
   - Includes audit fields (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`) on all tables
 
 ### Operations
@@ -48,9 +48,9 @@ dataconnect/
   - `UpsertUser` - Create or update own profile (requires enabled claim)
   - `UpdateUser` - Admin update any user profile
 
-- **`api/access-control-mutations.gql`**: Section and access group mutations (admin only)
+- **`api/user-group-mutations.gql`**: Section and user group mutations (admin only)
   - Section mutations: `CreateSection`
-  - Access group mutations: `CreateAccessGroup`, `AddUserToAccessGroup`, `RemoveUserFromAccessGroup`
+  - User group mutations: `CreateUserGroup`, `AddUserToUserGroup`, `RemoveUserFromUserGroup`
   - Section access mutations: `GrantAccessGroupToSection`, `RevokeAccessGroupFromSection`
 
 - **`api/admin-mutations.gql`**: SDK-only mutations (used by Firebase Functions/CLI)
@@ -82,7 +82,7 @@ dataconnect/
 
 1. Determine which feature file to use:
    - User-related: `api/user-mutations.gql`
-   - Access control: `api/access-control-mutations.gql`
+   - Access control: `api/user-group-mutations.gql`
    - New feature: Create `api/[feature-name]-mutations.gql`
 2. Add your mutation with appropriate `@auth()` directive
 3. Use `@auth(expr: "auth.token.enabled == true")` for user operations

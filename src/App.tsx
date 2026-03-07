@@ -22,7 +22,7 @@ const Profile = lazy(() => import("./features/profile/components/Profile"));
 const Permissions = lazy(() => import("./features/admin/components/Permissions"));
 const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
-const AccessGroups = lazy(() => import("./features/admin/components/AccessGroups"));
+const UserGroups = lazy(() => import("./features/admin/components/UserGroups"));
 const AuditLogs = lazy(() => import("./features/admin/components/AuditLogs"));
 const ManageSections = lazy(() => import("./features/admin/components/ManageSections"));
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
@@ -321,7 +321,7 @@ export default function App() {
         onPermissionsClick={() => setView("permissions")}
         onManageUsersClick={() => setView("manageUsers")}
         onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
-        onAccessGroupsClick={() => setView(ROUTES.USER_GROUPS)}
+        onUserGroupsClick={() => setView(ROUTES.USER_GROUPS)}
         onAuditLogsClick={() => setView(ROUTES.AUDIT_LOGS)}
         onManageSectionsClick={() => setView(ROUTES.MANAGE_SECTIONS)}
         onSectionsClick={() => {
@@ -468,7 +468,7 @@ export default function App() {
         ) : view === ROUTES.USER_GROUPS ? (
           user && isAdmin ? (
             <Suspense fallback={<LoadingFallback />}>
-              <AccessGroups onBack={() => setView("home")} />
+              <UserGroups onBack={() => setView("home")} />
             </Suspense>
           ) : (
             <Box 
@@ -479,10 +479,10 @@ export default function App() {
               }}
             >
               <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Access Groups
+                User Groups
               </Typography>
               {!user ? (
-                <Typography>Please log in to access group management.</Typography>
+                <Typography>Please log in to user group management.</Typography>
               ) : !isAdmin ? (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   Access denied. Admin privileges required.

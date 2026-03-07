@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isMembersSection,
   getAllUsersFromSection,
-  getMemberAccessGroups,
+  getMemberGroups,
   canUserAccessSection,
   canUserSubscribe,
   isUserMember,
@@ -94,7 +94,7 @@ describe('sectionHelpers', () => {
       expect(result.map((u) => u.userId)).toEqual(['user-1', 'user-2', 'user-3']);
     });
 
-    it('should fallback to access groups when no member groups exist', () => {
+    it('should fallback to section access groups when no member groups exist', () => {
       const sectionData = {
         memberGroups: [],
       };
@@ -124,7 +124,7 @@ describe('sectionHelpers', () => {
       expect(result[0].userId).toBe('user-1');
     });
 
-    it('should prefer member groups over access groups', () => {
+    it('should prefer member groups over section access groups', () => {
       const sectionData = {
         memberGroups: [
           {
@@ -173,9 +173,9 @@ describe('sectionHelpers', () => {
     });
   });
 
-  describe('getMemberAccessGroups', () => {
+  describe('getMemberGroups', () => {
     it('should return empty array when sectionData is null', () => {
-      const result = getMemberAccessGroups(null);
+      const result = getMemberGroups(null);
       expect(result).toEqual([]);
     });
 
@@ -201,7 +201,7 @@ describe('sectionHelpers', () => {
         ],
       };
 
-      const result = getMemberAccessGroups(sectionData as any);
+      const result = getMemberGroups(sectionData as any);
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         id: 'group-1',
@@ -211,7 +211,7 @@ describe('sectionHelpers', () => {
       });
     });
 
-    it('should fallback to access groups when no member groups exist', () => {
+    it('should fallback to section access groups when no member groups exist', () => {
       const sectionData = {
         memberGroups: [],
       };
@@ -227,7 +227,7 @@ describe('sectionHelpers', () => {
         },
       ];
 
-      const result = getMemberAccessGroups(sectionData as any, accessGroups as any);
+      const result = getMemberGroups(sectionData as any, accessGroups as any);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('view-group-1');
     });
@@ -246,10 +246,10 @@ describe('sectionHelpers', () => {
       expect(canUserAccessSection(userAccessGroupIds, sectionViewingAccessGroupIds)).toBe(false);
     });
 
-    it('should return false when user has no access groups', () => {
-      const userAccessGroupIds: string[] = [];
-      const sectionViewingAccessGroupIds = ['group-1'];
-      expect(canUserAccessSection(userAccessGroupIds, sectionViewingAccessGroupIds)).toBe(false);
+    it('should return false when user has no user groups', () => {
+      const userUserGroupIds: string[] = [];
+      const sectionAccessGroupIds = ['group-1'];
+      expect(canUserAccessSection(userUserGroupIds, sectionAccessGroupIds)).toBe(false);
     });
 
     it('should return false when section has no viewing groups', () => {
@@ -278,10 +278,10 @@ describe('sectionHelpers', () => {
       expect(isUserMember(userAccessGroupIds, memberAccessGroups)).toBe(false);
     });
 
-    it('should return false when user has no access groups', () => {
-      const userAccessGroupIds: string[] = [];
-      const memberAccessGroups = [{ id: 'member-group-1' }];
-      expect(isUserMember(userAccessGroupIds, memberAccessGroups)).toBe(false);
+    it('should return false when user has no user groups', () => {
+      const userUserGroupIds: string[] = [];
+      const memberGroups = [{ id: 'member-group-1' }];
+      expect(isUserMember(userUserGroupIds, memberGroups)).toBe(false);
     });
 
     it('should return false when there are no member groups', () => {

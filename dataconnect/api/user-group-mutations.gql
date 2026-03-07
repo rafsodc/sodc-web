@@ -1,6 +1,6 @@
-# SODC Access Control Mutations
+# SODC User Group and Section Mutations
 #
-# Mutations related to sections, access groups, and access control.
+# Mutations related to sections, user groups, and access control.
 # These mutations are accessible from the frontend/client SDK and require admin authentication.
 #
 # Auth Expression Constants:

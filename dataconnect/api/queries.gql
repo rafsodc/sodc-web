@@ -323,7 +323,7 @@ query GetAllUserGroupsWithStatuses @auth(level: NO_ACCESS) {
   }
 }
 
-# Get all users in a MEMBERS section (users from section member groups, with fallback to access groups)
+# Get all users in a MEMBERS section (users from section member groups, with fallback to section access groups)
 # Includes both directly added users and users whose membership status matches the group's membershipStatuses
 query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
   section(id: $sectionId) {
@@ -347,7 +347,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
         }
       }
     }
-    # Fallback: if no member groups, use access groups
+    # Fallback: if no member groups, use section access groups
     accessGroups: sectionAccessGroups_on_section {
       userGroup {
         id

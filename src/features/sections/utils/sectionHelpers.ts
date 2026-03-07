@@ -19,7 +19,7 @@ export function isMembersSection(section: { type: SectionType }): boolean {
 }
 
 /**
- * Get all users from a section's member groups (or access groups as fallback)
+ * Get all users from a section's member groups (or section access groups as fallback)
  * Deduplicates users who appear in multiple user groups.
  */
 type SectionDataWithMembers = {
@@ -41,7 +41,7 @@ type SectionDataWithMembers = {
   }>;
 };
 
-type SectionAccessGroupRelation = {
+type SectionUserGroupRelation = {
   userGroup: {
     id: string;
     name: string;
@@ -60,14 +60,14 @@ type SectionAccessGroupRelation = {
 
 export function getAllUsersFromSection(
   sectionData: SectionDataWithMembers | null | undefined,
-  accessGroups?: Array<SectionAccessGroupRelation> | null | undefined,
+  accessGroups?: Array<SectionUserGroupRelation> | null | undefined,
   additionalUsersByStatus?: Array<SectionMember> | null | undefined
 ): SectionMember[] {
   if (!sectionData) {
     return [];
   }
 
-  // Prefer member groups, fallback to access groups if no member groups
+  // Prefer member groups, fallback to section access groups if no member groups
   const groups = sectionData.memberGroups && sectionData.memberGroups.length > 0
     ? sectionData.memberGroups
     : accessGroups || [];
@@ -106,7 +106,7 @@ export function getAllUsersFromSection(
 }
 
 /**
- * Get member groups from section data (or access groups as fallback)
+ * Get member groups from section data (or section access groups as fallback)
  */
 type SectionMemberGroupData = {
   memberGroups?: Array<{
@@ -119,7 +119,7 @@ type SectionMemberGroupData = {
   }>;
 };
 
-type SectionAccessGroupForMembers = {
+type SectionUserGroupForMembers = {
   userGroup: {
     id: string;
     name: string;
@@ -128,9 +128,9 @@ type SectionAccessGroupForMembers = {
   };
 };
 
-export function getMemberAccessGroups(
+export function getMemberGroups(
   sectionData: SectionMemberGroupData | null | undefined,
-  accessGroups?: Array<SectionAccessGroupForMembers> | null | undefined
+  accessGroups?: Array<SectionUserGroupForMembers> | null | undefined
 ): Array<{
   id: string;
   name: string;
@@ -149,7 +149,7 @@ export function getMemberAccessGroups(
 }
 
 /**
- * Check if a user can access a section (in an access group for the section)
+ * Check if a user can access a section (in a user group linked to the section)
  */
 export function canUserAccessSection(
   userUserGroupIds: string[],
