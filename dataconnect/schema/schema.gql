@@ -6,12 +6,6 @@ enum SectionType {
   EVENTS
 }
 
-# Section access group purpose enum
-enum SectionAccessGroupPurpose {
-  VIEW
-  MEMBER
-}
-
 # Membership status enum
 enum MembershipStatus {
   PENDING
@@ -54,7 +48,7 @@ type Section @table {
   type: SectionType!
   description: String
   isOpenForRegistration: Boolean @default(value: false)
-  allowedAccessGroups: [UUID!]
+  allowedUserGroups: [UUID!]
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -62,14 +56,14 @@ type Section @table {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# AccessGroup table - groups that control access to sections
-# Can include both individual users and membership statuses (automatically includes all users with those statuses)
-type AccessGroup @table {
+# UserGroup - groups of users that can be linked to sections, ticket types, etc.
+# Can include both individual users (via UserUserGroup) and membership statuses (automatically includes all users with those statuses)
+type UserGroup @table {
   id: UUID! @default(expr: "uuidV4()")
   name: String!
   description: String
   membershipStatuses: [MembershipStatus!]  # Membership statuses that are automatically included in this group
-  subscribable: Boolean @default(value: false)  # Whether users can self-subscribe to this access group
+  subscribable: Boolean @default(value: false)  # Whether users can self-subscribe to this user group
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -77,11 +71,11 @@ type AccessGroup @table {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# UserAccessGroup - junction table linking users to access groups
-# A user can be a member of multiple access groups
-type UserAccessGroup @table(key: ["user", "accessGroup"]) {
+# UserUserGroup - junction table linking users to user groups
+# A user can be in multiple user groups
+type UserUserGroup @table(key: ["user", "userGroup"]) {
   user: User!
-  accessGroup: AccessGroup!
+  userGroup: UserGroup!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -89,10 +83,10 @@ type UserAccessGroup @table(key: ["user", "accessGroup"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# SectionViewAccessGroup - junction table: which access groups can VIEW a section
-type SectionViewAccessGroup @table(key: ["section", "accessGroup"]) {
+# SectionAccessGroup - junction: which user groups can ACCESS a section (open/see it)
+type SectionAccessGroup @table(key: ["section", "userGroup"]) {
   section: Section!
-  accessGroup: AccessGroup!
+  userGroup: UserGroup!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -100,10 +94,10 @@ type SectionViewAccessGroup @table(key: ["section", "accessGroup"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# SectionMemberAccessGroup - junction table: which access groups define MEMBER list for a section
-type SectionMemberAccessGroup @table(key: ["section", "accessGroup"]) {
+# SectionMemberGroup - junction: which user groups define the MEMBER list for a section
+type SectionMemberGroup @table(key: ["section", "userGroup"]) {
   section: Section!
-  accessGroup: AccessGroup!
+  userGroup: UserGroup!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -129,11 +123,11 @@ type Event @table {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# TicketType - a bookable ticket type for an event. accessGroup defines who can book. Order by sortOrder.
+# TicketType - a bookable ticket type for an event. userGroup defines who can book. Order by sortOrder.
 type TicketType @table {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
-  accessGroup: AccessGroup!
+  userGroup: UserGroup!
   title: String!
   description: String
   price: Float!

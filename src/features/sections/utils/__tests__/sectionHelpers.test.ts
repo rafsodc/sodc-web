@@ -31,11 +31,11 @@ describe('sectionHelpers', () => {
       expect(result).toEqual([]);
     });
 
-    it('should extract and deduplicate users from member access groups', () => {
+    it('should extract and deduplicate users from member groups', () => {
       const sectionData = {
-        memberAccessGroups: [
+        memberGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
               users: [
@@ -61,7 +61,7 @@ describe('sectionHelpers', () => {
             },
           },
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-2',
               name: 'Group 2',
               users: [
@@ -94,14 +94,14 @@ describe('sectionHelpers', () => {
       expect(result.map((u) => u.userId)).toEqual(['user-1', 'user-2', 'user-3']);
     });
 
-    it('should fallback to viewing access groups when no member groups exist', () => {
+    it('should fallback to access groups when no member groups exist', () => {
       const sectionData = {
-        memberAccessGroups: [],
+        memberGroups: [],
       };
 
-      const viewingAccessGroups = [
+      const accessGroups = [
         {
-          accessGroup: {
+          userGroup: {
             id: 'view-group-1',
             name: 'View Group 1',
             users: [
@@ -119,16 +119,16 @@ describe('sectionHelpers', () => {
         },
       ];
 
-      const result = getAllUsersFromSection(sectionData as any, viewingAccessGroups as any);
+      const result = getAllUsersFromSection(sectionData as any, accessGroups as any);
       expect(result).toHaveLength(1);
       expect(result[0].userId).toBe('user-1');
     });
 
-    it('should prefer member access groups over viewing groups', () => {
+    it('should prefer member groups over access groups', () => {
       const sectionData = {
-        memberAccessGroups: [
+        memberGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
               users: [
@@ -147,9 +147,9 @@ describe('sectionHelpers', () => {
         ],
       };
 
-      const viewingAccessGroups = [
+      const accessGroups = [
         {
-          accessGroup: {
+          userGroup: {
             id: 'view-group-1',
             name: 'View Group',
             users: [
@@ -167,7 +167,7 @@ describe('sectionHelpers', () => {
         },
       ];
 
-      const result = getAllUsersFromSection(sectionData as any, viewingAccessGroups as any);
+      const result = getAllUsersFromSection(sectionData as any, accessGroups as any);
       expect(result).toHaveLength(1);
       expect(result[0].userId).toBe('user-1');
     });
@@ -179,11 +179,11 @@ describe('sectionHelpers', () => {
       expect(result).toEqual([]);
     });
 
-    it('should extract member access groups', () => {
+    it('should extract member groups', () => {
       const sectionData = {
-        memberAccessGroups: [
+        memberGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
               description: 'Description 1',
@@ -191,7 +191,7 @@ describe('sectionHelpers', () => {
             },
           },
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-2',
               name: 'Group 2',
               description: null,
@@ -211,14 +211,14 @@ describe('sectionHelpers', () => {
       });
     });
 
-    it('should fallback to viewing access groups when no member groups exist', () => {
+    it('should fallback to access groups when no member groups exist', () => {
       const sectionData = {
-        memberAccessGroups: [],
+        memberGroups: [],
       };
 
-      const viewingAccessGroups = [
+      const accessGroups = [
         {
-          accessGroup: {
+          userGroup: {
             id: 'view-group-1',
             name: 'View Group',
             description: 'View description',
@@ -227,7 +227,7 @@ describe('sectionHelpers', () => {
         },
       ];
 
-      const result = getMemberAccessGroups(sectionData as any, viewingAccessGroups as any);
+      const result = getMemberAccessGroups(sectionData as any, accessGroups as any);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('view-group-1');
     });

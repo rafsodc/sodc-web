@@ -81,12 +81,12 @@ describe('SectionsList', () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
-        accessGroups: [
+        userGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              sections: [
+              accessSections: [
                 {
                   section: {
                     id: 'section-1',
@@ -131,12 +131,12 @@ describe('SectionsList', () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
-        accessGroups: [
+        userGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
-              sections: [],
+              accessSections: [],
               memberSections: [
                 {
                   section: {
@@ -180,12 +180,12 @@ describe('SectionsList', () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
-        accessGroups: [
+        userGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              sections: [
+              accessSections: [
                 {
                   section: {
                     id: 'section-1',
@@ -264,12 +264,12 @@ describe('SectionsList', () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
-        accessGroups: [
+        userGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              sections: [
+              accessSections: [
                 {
                   section: {
                     id: 'section-1',
@@ -328,12 +328,12 @@ describe('SectionsList', () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
-        accessGroups: [
+        userGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              sections: [
+              accessSections: [
                 {
                   section: {
                     id: 'section-1',
@@ -383,12 +383,12 @@ describe('SectionsList', () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
-        accessGroups: [
+        userGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              sections: [
+              accessSections: [
                 {
                   section: {
                     id: 'section-1',
@@ -439,7 +439,7 @@ describe('SectionsList', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [],
+          userGroups: [],
         },
       } as any,
       isLoading: false,

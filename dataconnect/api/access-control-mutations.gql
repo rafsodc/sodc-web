@@ -22,14 +22,14 @@ mutation CreateSection(
   )
 }
 
-# Create a new access group (admin only - admins must also be enabled)
-mutation CreateAccessGroup(
+# Create a new user group (admin only - admins must also be enabled)
+mutation CreateUserGroup(
   $name: String!
   $description: String
   $membershipStatuses: [MembershipStatus!]
   $subscribable: Boolean
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  accessGroup_insert(
+  userGroup_insert(
     data: {
       name: $name
       description: $description
@@ -39,93 +39,93 @@ mutation CreateAccessGroup(
   )
 }
 
-# Add a user to an access group (admin only - admins must also be enabled)
-mutation AddUserToAccessGroup(
+# Add a user to a user group (admin only - admins must also be enabled)
+mutation AddUserToUserGroup(
   $userId: String!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  userAccessGroup_upsert(
+  userUserGroup_upsert(
     data: {
       userId: $userId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
     }
   )
 }
 
-# Remove a user from an access group (admin only - admins must also be enabled)
-mutation RemoveUserFromAccessGroup(
+# Remove a user from a user group (admin only - admins must also be enabled)
+mutation RemoveUserFromUserGroup(
   $userId: String!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  userAccessGroup_delete(
+  userUserGroup_delete(
     key: {
       userId: $userId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
     }
   )
 }
 
-# Grant an access group VIEW access to a section (admin only)
-mutation GrantViewAccessGroupToSection(
+# Grant a user group ACCESS to a section (admin only)
+mutation GrantAccessGroupToSection(
   $sectionId: UUID!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  sectionViewAccessGroup_upsert(
+  sectionAccessGroup_upsert(
     data: {
       sectionId: $sectionId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
     }
   )
 }
 
-# Revoke an access group's VIEW access to a section (admin only)
-mutation RevokeViewAccessGroupFromSection(
+# Revoke a user group's ACCESS to a section (admin only)
+mutation RevokeAccessGroupFromSection(
   $sectionId: UUID!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  sectionViewAccessGroup_delete(
+  sectionAccessGroup_delete(
     key: {
       sectionId: $sectionId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
     }
   )
 }
 
-# Grant an access group MEMBER access to a section (admin only)
-mutation GrantMemberAccessGroupToSection(
+# Grant a user group MEMBER to a section (admin only)
+mutation GrantMemberGroupToSection(
   $sectionId: UUID!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  sectionMemberAccessGroup_upsert(
+  sectionMemberGroup_upsert(
     data: {
       sectionId: $sectionId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
     }
   )
 }
 
-# Revoke an access group's MEMBER access to a section (admin only)
-mutation RevokeMemberAccessGroupFromSection(
+# Revoke a user group's MEMBER from a section (admin only)
+mutation RevokeMemberGroupFromSection(
   $sectionId: UUID!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  sectionMemberAccessGroup_delete(
+  sectionMemberGroup_delete(
     key: {
       sectionId: $sectionId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
     }
   )
 }
 
-# Update an access group (admin only - admins must also be enabled)
-mutation UpdateAccessGroup(
+# Update a user group (admin only - admins must also be enabled)
+mutation UpdateUserGroup(
   $id: UUID!
   $name: String!
   $description: String
   $membershipStatuses: [MembershipStatus!]
   $subscribable: Boolean
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  accessGroup_update(
+  userGroup_update(
     id: $id
     data: {
       name: $name
@@ -138,11 +138,11 @@ mutation UpdateAccessGroup(
   )
 }
 
-# Delete an access group (admin only - admins must also be enabled)
-mutation DeleteAccessGroup(
+# Delete a user group (admin only - admins must also be enabled)
+mutation DeleteUserGroup(
   $id: UUID!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  accessGroup_delete(id: $id)
+  userGroup_delete(id: $id)
 }
 
 # Update a section (admin only - admins must also be enabled)
@@ -232,7 +232,7 @@ mutation DeleteEvent(
 
 mutation CreateTicketType(
   $eventId: UUID!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
   $title: String!
   $description: String
   $price: Float!
@@ -241,7 +241,7 @@ mutation CreateTicketType(
   ticketType_insert(
     data: {
       eventId: $eventId
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
       title: $title
       description: $description
       price: $price
@@ -252,7 +252,7 @@ mutation CreateTicketType(
 
 mutation UpdateTicketType(
   $id: UUID!
-  $accessGroupId: UUID!
+  $userGroupId: UUID!
   $title: String!
   $description: String
   $price: Float!
@@ -261,7 +261,7 @@ mutation UpdateTicketType(
   ticketType_update(
     id: $id
     data: {
-      accessGroupId: $accessGroupId
+      userGroupId: $userGroupId
       title: $title
       description: $description
       price: $price

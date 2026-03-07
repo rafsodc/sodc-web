@@ -35,16 +35,16 @@ import {
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
-  listAccessGroupsRef,
+  listUserGroupsRef,
   listUsersRef,
-  getAccessGroupByIdRef,
-  createAccessGroupRef,
-  updateAccessGroupRef,
-  deleteAccessGroupRef,
-  addUserToAccessGroupRef,
-  removeUserFromAccessGroupRef,
+  getUserGroupByIdRef,
+  createUserGroupRef,
+  updateUserGroupRef,
+  deleteUserGroupRef,
+  addUserToUserGroupRef,
+  removeUserFromUserGroupRef,
   getUserWithAccessGroupsRef,
-  type GetAccessGroupByIdData,
+  type GetUserGroupByIdData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
 import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
@@ -86,7 +86,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-  const [groupDetails, setGroupDetails] = useState<Record<string, GetAccessGroupByIdData["accessGroup"]>>({});
+  const [groupDetails, setGroupDetails] = useState<Record<string, NonNullable<GetUserGroupByIdData["userGroup"]>>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
   
   // Create/Edit dialog state
@@ -111,15 +111,14 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
   const [selectedUserDetail, setSelectedUserDetail] = useState<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus } | null>(null);
 
-  const fetchAccessGroups = useCallback(async () => {
+  const fetchUserGroups = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const ref = listAccessGroupsRef(dataConnect);
+      const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
       
-      // Get existing groups from database
-      const existingGroups: AccessGroupWithDetails[] = result.data?.accessGroups?.map((group) => ({
+      const existingGroups: AccessGroupWithDetails[] = result.data?.userGroups?.map((group) => ({
         id: group.id,
         name: group.name,
         description: group.description,
@@ -141,18 +140,18 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
   const fetchGroupDetails = useCallback(async (groupId: string) => {
     if (groupDetails[groupId]) {
-      return; // Already loaded
+      return;
     }
 
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
-      const ref = getAccessGroupByIdRef(dataConnect, { id: groupId });
+      const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
       const result = await executeQuery(ref);
       
-      if (result.data?.accessGroup) {
+      if (result.data?.userGroup) {
         setGroupDetails((prev) => ({
           ...prev,
-          [groupId]: result.data.accessGroup,
+          [groupId]: result.data.userGroup!,
         }));
       }
     } catch (err: any) {
@@ -163,8 +162,8 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   }, [groupDetails]);
 
   useEffect(() => {
-    fetchAccessGroups();
-  }, [fetchAccessGroups]);
+    fetchUserGroups();
+  }, [fetchUserGroups]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -286,9 +285,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     setAddingUserId(userId);
     setError(null);
     try {
-      const ref = addUserToAccessGroupRef(dataConnect, {
+      const ref = addUserToUserGroupRef(dataConnect, {
         userId,
-        accessGroupId: addingToGroupId,
+        userGroupId: addingToGroupId,
       });
       await executeMutation(ref);
       
@@ -314,9 +313,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     }
 
     try {
-      const ref = removeUserFromAccessGroupRef(dataConnect, {
+      const ref = removeUserFromUserGroupRef(dataConnect, {
         userId,
-        accessGroupId: groupId,
+        userGroupId: groupId,
       });
       await executeMutation(ref);
       
@@ -351,9 +350,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     }
 
     try {
-      const ref = deleteAccessGroupRef(dataConnect, { id: group.id });
+      const ref = deleteUserGroupRef(dataConnect, { id: group.id });
       await executeMutation(ref);
-      await fetchAccessGroups();
+      await fetchUserGroups();
       if (expandedGroupId === group.id) {
         setExpandedGroupId(null);
       }
@@ -375,7 +374,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     try {
       if (editingGroup) {
         // Update existing group
-        const ref = updateAccessGroupRef(dataConnect, {
+        const ref = updateUserGroupRef(dataConnect, {
           id: editingGroup.id,
           name: groupName.trim(),
           description: groupDescription.trim() || null,
@@ -384,7 +383,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
         await executeMutation(ref);
       } else {
         // Create new group
-        const ref = createAccessGroupRef(dataConnect, {
+        const ref = createUserGroupRef(dataConnect, {
           name: groupName.trim(),
           description: groupDescription.trim() || null,
           membershipStatuses: selectedStatuses.length > 0 ? selectedStatuses : null,
@@ -392,7 +391,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
         await executeMutation(ref);
       }
       setDialogOpen(false);
-      await fetchAccessGroups();
+      await fetchUserGroups();
     } catch (err: any) {
       setError(err?.message || `Failed to ${editingGroup ? "update" : "create"} access group`);
     } finally {
@@ -403,11 +402,10 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
-  // Sections with purpose: VIEW and MEMBER listed separately (same section can appear twice if both)
-  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "VIEW" | "MEMBER" };
+  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "ACCESS" | "MEMBER" };
   const sectionsForGroup: SectionWithPurpose[] = details
     ? [
-        ...(details.viewingSections ?? []).map((item) => ({ ...item, purpose: "VIEW" as const })),
+        ...(details.accessSections ?? []).map((item) => ({ ...item, purpose: "ACCESS" as const })),
         ...(details.memberSections ?? []).map((item) => ({ ...item, purpose: "MEMBER" as const })),
       ]
     : [];
@@ -418,12 +416,12 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     ? (() => {
         const explicitIds = new Set((details.users ?? []).map((u) => u.user.id));
         const statuses = details.membershipStatuses ?? [];
-        const explicit: MergedUser[] = (details.users ?? []).map((uag) => ({
-          id: uag.user.id,
-          firstName: uag.user.firstName,
-          lastName: uag.user.lastName,
-          email: uag.user.email,
-          membershipStatus: uag.user.membershipStatus as MembershipStatus,
+        const explicit: MergedUser[] = (details.users ?? []).map((uug) => ({
+          id: uug.user.id,
+          firstName: uug.user.firstName,
+          lastName: uug.user.lastName,
+          email: uug.user.email,
+          membershipStatus: uug.user.membershipStatus as MembershipStatus,
           isExplicit: true,
         }));
         const byStatus: MergedUser[] = allUsers
@@ -707,7 +705,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                               label={item.purpose}
                                               size="small"
                                               variant="outlined"
-                                              color={item.purpose === "VIEW" ? "primary" : "secondary"}
+                                              color={item.purpose === "ACCESS" ? "primary" : "secondary"}
                                             />
                                           </TableCell>
                                           <TableCell>

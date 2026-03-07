@@ -20,10 +20,10 @@ import { executeQuery } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
   listUsersRef,
-  listAccessGroupsRef,
+  listUserGroupsRef,
   listSectionsRef,
   type ListUsersData,
-  type ListAccessGroupsData,
+  type ListUserGroupsData,
   type ListSectionsData,
 } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
@@ -37,7 +37,7 @@ interface AuditLogsProps {
 export default function AuditLogs({ onBack }: AuditLogsProps) {
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState<ListUsersData["users"]>([]);
-  const [accessGroups, setAccessGroups] = useState<ListAccessGroupsData["accessGroups"]>([]);
+  const [userGroups, setUserGroups] = useState<ListUserGroupsData["userGroups"]>([]);
   const [sections, setSections] = useState<ListSectionsData["sections"]>([]);
   const [allUsers, setAllUsers] = useState<ListUsersData["users"]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,9 +70,9 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
         const result = await executeQuery(ref);
         setUsers(result.data?.users || []);
       } else if (tabValue === 1) {
-        const ref = listAccessGroupsRef(dataConnect);
+        const ref = listUserGroupsRef(dataConnect);
         const result = await executeQuery(ref);
-        setAccessGroups(result.data?.accessGroups || []);
+        setUserGroups(result.data?.userGroups || []);
       } else if (tabValue === 2) {
         const ref = listSectionsRef(dataConnect);
         const result = await executeQuery(ref);
@@ -210,14 +210,14 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {accessGroups.length === 0 ? (
+              {userGroups.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center">
                     No access groups found
                   </TableCell>
                 </TableRow>
               ) : (
-                accessGroups.map((group) => (
+                userGroups.map((group) => (
                   <TableRow key={group.id}>
                     <TableCell>{group.name}</TableCell>
                     <TableCell>{group.description || "-"}</TableCell>

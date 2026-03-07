@@ -30,11 +30,11 @@ import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
   getUserWithAccessGroupsRef,
-  listAccessGroupsRef,
-  addUserToAccessGroupRef,
-  removeUserFromAccessGroupRef,
+  listUserGroupsRef,
+  addUserToUserGroupRef,
+  removeUserFromUserGroupRef,
   type GetUserWithAccessGroupsData,
-  type ListAccessGroupsData,
+  type ListUserGroupsData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
 
@@ -51,7 +51,7 @@ export default function UserAccessGroups({
   onUpdate,
 }: UserAccessGroupsProps) {
   const [userData, setUserData] = useState<GetUserWithAccessGroupsData["user"] | null>(null);
-  const [allGroups, setAllGroups] = useState<ListAccessGroupsData["accessGroups"]>([]);
+  const [allGroups, setAllGroups] = useState<ListUserGroupsData["userGroups"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -74,9 +74,9 @@ export default function UserAccessGroups({
 
   const fetchAllGroups = useCallback(async () => {
     try {
-      const ref = listAccessGroupsRef(dataConnect);
+      const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
-      setAllGroups(result.data?.accessGroups || []);
+      setAllGroups(result.data?.userGroups || []);
     } catch (err: any) {
       console.error("Failed to fetch access groups:", err);
     }
@@ -95,9 +95,9 @@ export default function UserAccessGroups({
     setAddingGroupId(groupId);
     setError(null);
     try {
-      const ref = addUserToAccessGroupRef(dataConnect, {
+      const ref = addUserToUserGroupRef(dataConnect, {
         userId,
-        accessGroupId: groupId,
+        userGroupId: groupId,
       });
       await executeMutation(ref);
       await fetchUserData();
@@ -120,9 +120,9 @@ export default function UserAccessGroups({
     setRemovingGroupId(groupId);
     setError(null);
     try {
-      const ref = removeUserFromAccessGroupRef(dataConnect, {
+      const ref = removeUserFromUserGroupRef(dataConnect, {
         userId,
-        accessGroupId: groupId,
+        userGroupId: groupId,
       });
       await executeMutation(ref);
       await fetchUserData();
@@ -136,7 +136,7 @@ export default function UserAccessGroups({
     }
   };
 
-  const currentGroupIds = new Set(userData?.accessGroups?.map(ag => ag.accessGroup.id) || []);
+  const currentGroupIds = new Set(userData?.userGroups?.map(ug => ug.userGroup.id) || []);
   const availableGroups = allGroups.filter(group => !currentGroupIds.has(group.id));
   
   const membershipStatus = userMembershipStatus || userData?.membershipStatus;
@@ -178,7 +178,7 @@ export default function UserAccessGroups({
         </Button>
       </Box>
 
-      {userData?.accessGroups && userData.accessGroups.length > 0 ? (
+      {userData?.userGroups && userData.userGroups.length > 0 ? (
         <TableContainer component={Paper}>
           <Table size="small">
             <TableHead>
@@ -191,8 +191,8 @@ export default function UserAccessGroups({
               </TableRow>
             </TableHead>
             <TableBody>
-              {userData.accessGroups.map((userAccessGroup) => {
-                const group = userAccessGroup.accessGroup;
+              {userData.userGroups.map((userUserGroup) => {
+                const group = userUserGroup.userGroup;
                 const isStatusBased = group.membershipStatuses?.includes(membershipStatus || MembershipStatus.PENDING);
                 return (
                   <TableRow key={group.id}>

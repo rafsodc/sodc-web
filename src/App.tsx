@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
-import { SectionsListErrorBoundary } from "./features/sections/components/SectionsListErrorBoundary";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -322,7 +321,7 @@ export default function App() {
         onPermissionsClick={() => setView("permissions")}
         onManageUsersClick={() => setView("manageUsers")}
         onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
-        onAccessGroupsClick={() => setView(ROUTES.ACCESS_GROUPS)}
+        onAccessGroupsClick={() => setView(ROUTES.USER_GROUPS)}
         onAuditLogsClick={() => setView(ROUTES.AUDIT_LOGS)}
         onManageSectionsClick={() => setView(ROUTES.MANAGE_SECTIONS)}
         onSectionsClick={() => {
@@ -466,7 +465,7 @@ export default function App() {
               </Button>
             </Box>
           )
-        ) : view === ROUTES.ACCESS_GROUPS ? (
+        ) : view === ROUTES.USER_GROUPS ? (
           user && isAdmin ? (
             <Suspense fallback={<LoadingFallback />}>
               <AccessGroups onBack={() => setView("home")} />

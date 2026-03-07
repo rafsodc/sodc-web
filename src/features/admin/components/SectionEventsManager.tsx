@@ -30,7 +30,7 @@ import {
   createTicketTypeRef,
   updateTicketTypeRef,
   deleteTicketTypeRef,
-  listAccessGroupsRef,
+  listUserGroupsRef,
   getEventByIdRef,
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
@@ -104,12 +104,12 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   const [submittingTicketType, setSubmittingTicketType] = useState(false);
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState<string | null>(null);
 
-  const fetchAccessGroups = useCallback(async () => {
+  const fetchUserGroups = useCallback(async () => {
     setLoadingAccessGroups(true);
     try {
-      const ref = listAccessGroupsRef(dataConnect);
+      const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
-      setAllAccessGroups((result.data?.accessGroups ?? []).map((ag) => ({ id: ag.id, name: ag.name })));
+      setAllAccessGroups((result.data?.userGroups ?? []).map((ug) => ({ id: ug.id, name: ug.name })));
     } catch {
       setAllAccessGroups([]);
     } finally {
@@ -213,7 +213,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
       setTtDescription(ticketType.description ?? "");
       setTtPrice(String(ticketType.price));
       setTtSortOrder(String(ticketType.sortOrder));
-      setTtAccessGroup(ticketType.accessGroup ? { id: ticketType.accessGroup.id, name: ticketType.accessGroup.name } : null);
+      setTtAccessGroup(ticketType.userGroup ? { id: ticketType.userGroup.id, name: ticketType.userGroup.name } : null);
     } else {
       setEditingTicketType(null);
       setTtTitle("");
@@ -223,7 +223,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
       setTtAccessGroup(null);
     }
     setTicketTypeDialogOpen(true);
-    fetchAccessGroups();
+    fetchUserGroups();
   };
 
   const handleTicketTypeSubmit = async () => {
@@ -244,7 +244,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
         await executeMutation(
           updateTicketTypeRef(dataConnect, {
             id: editingTicketType.id,
-            accessGroupId: ttAccessGroup.id as UUIDString,
+            userGroupId: ttAccessGroup.id as UUIDString,
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
             price: priceNum,
@@ -255,7 +255,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
         await executeMutation(
           createTicketTypeRef(dataConnect, {
             eventId: ticketTypesEventId as UUIDString,
-            accessGroupId: ttAccessGroup.id as UUIDString,
+            userGroupId: ttAccessGroup.id as UUIDString,
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
             price: priceNum,
@@ -324,7 +324,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
                     <TableCell>{tt.title}</TableCell>
                     <TableCell>{tt.description ?? "—"}</TableCell>
                     <TableCell>{tt.price}</TableCell>
-                    <TableCell>{tt.accessGroup?.name ?? "—"}</TableCell>
+                    <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openTicketTypeDialog(tt)}>
                         <EditIcon />
