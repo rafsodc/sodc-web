@@ -19,21 +19,12 @@ export function isMembersSection(section: { type: SectionType }): boolean {
 }
 
 /**
- * Get all users from a section's member access groups (or viewing access groups as fallback)
- * Deduplicates users who appear in multiple access groups
- * 
- * Note: This function includes users who are directly added to access groups via UserAccessGroup.
- * Users whose membership status matches an access group's membershipStatuses should also be
- * included, but they need to be explicitly added to the UserAccessGroup table by the backend
- * function that manages membership status changes (updateAccessGroupsForStatusChange in functions/src/membershipStatus.ts).
- * 
- * If users with matching statuses are not showing up, ensure the backend function is running
- * and has properly added them to UserAccessGroup. The additionalUsersByStatus parameter can
- * be used to include users fetched separately (e.g., via ListUsers for admins).
+ * Get all users from a section's member groups.
+ * Deduplicates users who appear in multiple user groups.
  */
 type SectionDataWithMembers = {
-  memberAccessGroups?: Array<{
-    accessGroup: {
+  memberGroups?: Array<{
+    userGroup: {
       id: string;
       name: string;
       membershipStatuses?: MembershipStatus[] | null;
@@ -50,8 +41,8 @@ type SectionDataWithMembers = {
   }>;
 };
 
-type ViewingAccessGroup = {
-  accessGroup: {
+type SectionUserGroupRelation = {
+  userGroup: {
     id: string;
     name: string;
     membershipStatuses?: MembershipStatus[] | null;
@@ -69,26 +60,21 @@ type ViewingAccessGroup = {
 
 export function getAllUsersFromSection(
   sectionData: SectionDataWithMembers | null | undefined,
-  viewingAccessGroups?: Array<ViewingAccessGroup> | null | undefined,
+  _accessGroups?: Array<SectionUserGroupRelation> | null | undefined,
   additionalUsersByStatus?: Array<SectionMember> | null | undefined
 ): SectionMember[] {
   if (!sectionData) {
     return [];
   }
 
-  // Prefer MEMBER purpose groups, fallback to VIEW groups if no MEMBER groups
-  const accessGroups = sectionData.memberAccessGroups && sectionData.memberAccessGroups.length > 0
-    ? sectionData.memberAccessGroups
-    : viewingAccessGroups || [];
+  const groups = sectionData.memberGroups || [];
 
   const userMap = new Map<string, SectionMember>();
 
-  // Add users directly in access groups
-  for (const groupRelation of accessGroups) {
-    const group = groupRelation.accessGroup;
+  for (const groupRelation of groups) {
+    const group = groupRelation.userGroup;
     for (const userRelation of group.users) {
       const user = userRelation.user;
-      // Deduplicate by user ID
       if (!userMap.has(user.id)) {
         userMap.set(user.id, {
           userId: user.id,
@@ -101,16 +87,12 @@ export function getAllUsersFromSection(
     }
   }
 
-  // Add users whose membership status matches access group membershipStatuses
-  // These should ideally be in UserAccessGroup already, but we include them here as a fallback
   if (additionalUsersByStatus) {
     for (const user of additionalUsersByStatus) {
-      // Check if user's status matches any access group's membershipStatuses
-      const matchesGroup = accessGroups.some((groupRelation) => {
-        const group = groupRelation.accessGroup;
+      const matchesGroup = groups.some((groupRelation) => {
+        const group = groupRelation.userGroup;
         return group.membershipStatuses && group.membershipStatuses.includes(user.membershipStatus);
       });
-      
       if (matchesGroup && !userMap.has(user.userId)) {
         userMap.set(user.userId, user);
       }
@@ -121,11 +103,11 @@ export function getAllUsersFromSection(
 }
 
 /**
- * Get member access groups from section data (or viewing groups as fallback)
+ * Get member groups from section data.
  */
-type MemberAccessGroupData = {
-  memberAccessGroups?: Array<{
-    accessGroup: {
+type SectionMemberGroupData = {
+  memberGroups?: Array<{
+    userGroup: {
       id: string;
       name: string;
       description?: string | null;
@@ -134,8 +116,8 @@ type MemberAccessGroupData = {
   }>;
 };
 
-type ViewingAccessGroupForMembers = {
-  accessGroup: {
+type SectionUserGroupForMembers = {
+  userGroup: {
     id: string;
     name: string;
     description?: string | null;
@@ -143,9 +125,9 @@ type ViewingAccessGroupForMembers = {
   };
 };
 
-export function getMemberAccessGroups(
-  sectionData: MemberAccessGroupData | null | undefined,
-  viewingAccessGroups?: Array<ViewingAccessGroupForMembers> | null | undefined
+export function getMemberGroups(
+  sectionData: SectionMemberGroupData | null | undefined,
+  _accessGroups?: Array<SectionUserGroupForMembers> | null | undefined
 ): Array<{
   id: string;
   name: string;
@@ -156,60 +138,54 @@ export function getMemberAccessGroups(
     return [];
   }
 
-  // Prefer MEMBER purpose groups, fallback to VIEW groups if no MEMBER groups
-  const accessGroups = sectionData.memberAccessGroups && sectionData.memberAccessGroups.length > 0
-    ? sectionData.memberAccessGroups
-    : viewingAccessGroups || [];
+  const groups = sectionData.memberGroups || [];
 
-  return accessGroups.map((groupRelation) => groupRelation.accessGroup);
+  return groups.map((groupRelation) => groupRelation.userGroup);
 }
 
 /**
- * Check if a user can access a section (has VIEW access)
+ * Check if a user can access a section (in a user group linked to the section)
  */
 export function canUserAccessSection(
-  userAccessGroupIds: string[],
-  sectionViewingAccessGroupIds: string[]
+  userUserGroupIds: string[],
+  sectionAccessGroupIds: string[]
 ): boolean {
-  return sectionViewingAccessGroupIds.some((id) => userAccessGroupIds.includes(id));
+  return sectionAccessGroupIds.some((id) => userUserGroupIds.includes(id));
 }
 
 /**
- * Check if a user can subscribe to a section's member access groups
- * User must have VIEW access, not already be a member, and group must be subscribable
+ * Check if a user can subscribe to a section's member groups
+ * User must have section access, not already be a member, and group must be subscribable
  */
 export function canUserSubscribe(
-  userId: string,
-  userAccessGroupIds: string[],
-  sectionViewingAccessGroupIds: string[],
-  memberAccessGroups: Array<{
+  _userId: string,
+  userUserGroupIds: string[],
+  sectionAccessGroupIds: string[],
+  memberGroups: Array<{
     id: string;
     subscribable?: boolean | null;
   }>,
-  userMemberAccessGroupIds: string[]
+  userMemberGroupIds: string[]
 ): boolean {
-  // User must have VIEW access
-  if (!canUserAccessSection(userAccessGroupIds, sectionViewingAccessGroupIds)) {
+  if (!canUserAccessSection(userUserGroupIds, sectionAccessGroupIds)) {
     return false;
   }
-
-  // Check if any member access group is subscribable and user is not already a member
-  return memberAccessGroups.some(
+  return memberGroups.some(
     (group) =>
       group.subscribable === true &&
-      !userMemberAccessGroupIds.includes(group.id)
+      !userMemberGroupIds.includes(group.id)
   );
 }
 
 /**
- * Check if a user is already a member of a section's member access groups
+ * Check if a user is already in one of a section's member groups
  */
 export function isUserMember(
-  userAccessGroupIds: string[],
-  memberAccessGroups: Array<{
+  userUserGroupIds: string[],
+  memberGroups: Array<{
     id: string;
   }>
 ): boolean {
-  const memberGroupIds = memberAccessGroups.map((group) => group.id);
-  return memberGroupIds.some((id) => userAccessGroupIds.includes(id));
+  const memberGroupIds = memberGroups.map((group) => group.id);
+  return memberGroupIds.some((id) => userUserGroupIds.includes(id));
 }

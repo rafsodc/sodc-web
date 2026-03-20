@@ -3,7 +3,7 @@
 # This file is reserved for seed data used in development and testing environments.
 #
 # Usage Guidelines:
-# - Seed data is typically used for non-user entities (sections, access groups, etc.)
+# - Seed data is typically used for non-user entities (sections, user groups, etc.)
 # - User data should be created through mutations (UpsertUser, CreateUserProfile) rather than seed data,
 #   as users are keyed by Firebase Auth UID which cannot be set in seed data
 # - Seed data is executed when deploying DataConnect schema

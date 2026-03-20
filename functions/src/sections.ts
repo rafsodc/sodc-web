@@ -19,8 +19,8 @@ export interface SectionMemberResponse {
 }
 
 /**
- * Returns merged section members (explicit UserAccessGroup + inherited by membership status).
- * Caller must have VIEW or MEMBER access to the section (so both can open the section and load this data).
+ * Returns merged section members (explicit UserUserGroup + inherited by membership status).
+ * Caller must have ACCESS to the section.
  */
 export const getSectionMembersMerged = onCall(
   { region: FUNCTIONS_REGION },
@@ -42,33 +42,31 @@ export const getSectionMembersMerged = onCall(
         throw new HttpsError("not-found", "Section not found");
       }
 
-      const viewingGroupIds = new Set(
-        (section.viewingAccessGroups || []).map((vg: { accessGroup: { id: string } }) => vg.accessGroup.id)
-      );
-      const memberGroupIds = new Set(
-        (section.memberAccessGroups || []).map((mg: { accessGroup: { id: string } }) => mg.accessGroup.id)
+      const accessGroupIds = new Set(
+        (section.accessGroups || []).map((ag: { userGroup: { id: string } }) => ag.userGroup.id)
       );
       const callerGroupIds = new Set(
-        (callerGroupsResult.data?.user?.accessGroups || []).map(
-          (ag: { accessGroup: { id: string } }) => ag.accessGroup.id
+        (callerGroupsResult.data?.user?.userGroups || []).map(
+          (ug: { userGroup: { id: string } }) => ug.userGroup.id
         )
       );
-      const canView = [...viewingGroupIds].some((id) => callerGroupIds.has(id));
-      const canMember = [...memberGroupIds].some((id) => callerGroupIds.has(id));
-
-      // Allow access by membership status when user has no explicit group but their status matches a member group
-      let canMemberByStatus = false;
-      if (!canView && !canMember) {
+      const canAccess = [...accessGroupIds].some((id) => callerGroupIds.has(id));
+      // Allow access by membership status when user has no explicit access-group row but their
+      // status matches an ACCESS group on the section.
+      let canAccessByStatus = false;
+      if (!canAccess) {
         const sectionData = membersResult.data?.section;
         const userStatus = userStatusResult.data?.user?.membershipStatus;
-        if (sectionData?.memberAccessGroups?.length && userStatus) {
-          canMemberByStatus = sectionData.memberAccessGroups.some(
-            (rel) => rel.accessGroup.membershipStatuses?.includes(userStatus) ?? false
-          );
+        if (userStatus) {
+          if (sectionData?.accessGroups?.length) {
+            canAccessByStatus = sectionData.accessGroups.some(
+              (rel) => rel.userGroup.membershipStatuses?.includes(userStatus) ?? false
+            );
+          }
         }
       }
 
-      if (!canView && !canMember && !canMemberByStatus) {
+      if (!canAccess && !canAccessByStatus) {
         throw new HttpsError("permission-denied", "You do not have permission to view this section");
       }
 
@@ -77,15 +75,12 @@ export const getSectionMembersMerged = onCall(
         return { members: [] };
       }
 
-      const memberGroups =
-        sectionData.memberAccessGroups?.length > 0
-          ? sectionData.memberAccessGroups
-          : sectionData.viewingAccessGroups || [];
+      const memberGroups = sectionData.memberGroups || [];
       const statuses = new Set<string>();
       const explicitMap = new Map<string, SectionMemberResponse>();
 
       for (const rel of memberGroups) {
-        const group = (rel as { accessGroup: { membershipStatuses?: string[]; users: Array<{ user: SectionMemberResponse }> } }).accessGroup;
+        const group = (rel as { userGroup: { membershipStatuses?: string[]; users: Array<{ user: SectionMemberResponse }> } }).userGroup;
         if (group.membershipStatuses) {
           group.membershipStatuses.forEach((s: string) => statuses.add(s));
         }

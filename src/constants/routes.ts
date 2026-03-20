@@ -9,7 +9,7 @@ export const ROUTES = {
   PERMISSIONS: "permissions",
   MANAGE_USERS: "manageUsers",
   APPROVE_USERS: "approveUsers",
-  ACCESS_GROUPS: "accessGroups",
+  USER_GROUPS: "userGroups",
   AUDIT_LOGS: "auditLogs",
   SECTIONS: "sections",
   MANAGE_SECTIONS: "manageSections",

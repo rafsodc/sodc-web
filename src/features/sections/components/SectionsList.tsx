@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -48,7 +48,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
     isError: errorUserSections,
     error: userSectionsError,
     refetch: refetchUserSections,
-  } = useGetSectionsForUser(dataConnect, {});
+  } = useGetSectionsForUser(dataConnect);
 
   const {
     data: allSectionsData,
@@ -56,7 +56,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
     isError: errorAllSections,
     error: allSectionsError,
     refetch: refetchAllSections,
-  } = useListSections(dataConnect, {}, { enabled: isAdmin });
+  } = useListSections(dataConnect, { enabled: isAdmin });
 
   // Log errors and data for debugging
   useEffect(() => {
@@ -96,7 +96,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
         }
         return [];
       } else {
-        if (userSectionsData?.user?.accessGroups && Array.isArray(userSectionsData.user.accessGroups)) {
+        if (userSectionsData?.user?.userGroups && Array.isArray(userSectionsData.user.userGroups)) {
           const sectionMap = new Map<string, Section>();
           const addSection = (section: { id: string; name: string; type: SectionType; description?: string | null }) => {
             if (section?.id && !sectionMap.has(section.id)) {
@@ -108,16 +108,25 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
               });
             }
           };
-          for (const groupRelation of userSectionsData.user.accessGroups) {
-            const ag = groupRelation?.accessGroup;
-            if (ag?.sections && Array.isArray(ag.sections)) {
-              for (const sectionRelation of ag.sections) {
+          for (const groupRelation of userSectionsData.user.userGroups) {
+            const ug = groupRelation?.userGroup;
+            if (ug?.accessSections && Array.isArray(ug.accessSections)) {
+              for (const sectionRelation of ug.accessSections) {
                 if (sectionRelation?.section) addSection(sectionRelation.section);
               }
             }
-            if (ag?.memberSections && Array.isArray(ag.memberSections)) {
-              for (const memberRelation of ag.memberSections) {
-                if (memberRelation?.section) addSection(memberRelation.section);
+          }
+          // Include status-inherited groups (membershipStatuses-based) so users can see sections
+          const userStatus = userSectionsData.user.membershipStatus;
+          if (userStatus && Array.isArray(userSectionsData.allUserGroups)) {
+            for (const ug of userSectionsData.allUserGroups) {
+              if (!ug?.membershipStatuses?.includes(userStatus)) {
+                continue;
+              }
+              if (ug.accessSections && Array.isArray(ug.accessSections)) {
+                for (const sectionRelation of ug.accessSections) {
+                  if (sectionRelation?.section) addSection(sectionRelation.section);
+                }
               }
             }
           }

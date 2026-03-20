@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Box, Alert, Button, Typography } from "@mui/material";
 import PageHeader from "../../../shared/components/PageHeader";
 

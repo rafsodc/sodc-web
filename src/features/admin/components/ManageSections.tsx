@@ -43,13 +43,13 @@ import {
   updateSectionRef,
   deleteSectionRef,
   getSectionByIdRef,
-  listAccessGroupsRef,
-  grantViewAccessGroupToSectionRef,
-  grantMemberAccessGroupToSectionRef,
-  revokeViewAccessGroupFromSectionRef,
-  revokeMemberAccessGroupFromSectionRef,
+  listUserGroupsRef,
+  grantAccessGroupToSectionRef,
+  grantMemberGroupToSectionRef,
+  revokeAccessGroupFromSectionRef,
+  revokeMemberGroupFromSectionRef,
   type SectionType,
-  type ListAccessGroupsData,
+  type ListUserGroupsData,
 } from "@dataconnect/generated";
 import SectionEventsManager from "./SectionEventsManager";
 import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
@@ -59,8 +59,8 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
 
-const SectionAccessGroupPurpose = { VIEW: "VIEW", MEMBER: "MEMBER" } as const;
-type SectionAccessGroupPurpose = (typeof SectionAccessGroupPurpose)[keyof typeof SectionAccessGroupPurpose];
+const SectionGroupPurpose = { ACCESS: "ACCESS", MEMBER: "MEMBER" } as const;
+type SectionGroupPurposeType = (typeof SectionGroupPurpose)[keyof typeof SectionGroupPurpose];
 
 interface ManageSectionsProps {
   onBack: () => void;
@@ -85,24 +85,24 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<SectionWithDetails | null>(null);
   const [sectionName, setSectionName] = useState("");
-  const [sectionType, setSectionType] = useState<SectionType>("MEMBERS");
+  const [sectionType, setSectionType] = useState<SectionType>("MEMBERS" as SectionType);
   const [sectionDescription, setSectionDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   
-  // Access groups state
-  const [sectionAccessGroups, setSectionAccessGroups] = useState<Array<{
+  // User groups state
+  const [sectionUserGroups, setSectionUserGroups] = useState<Array<{
     id: string;
     name: string;
     description?: string | null;
-    purpose: SectionAccessGroupPurpose;
+    purpose: SectionGroupPurposeType;
   }>>([]);
-  const [allAccessGroups, setAllAccessGroups] = useState<ListAccessGroupsData["accessGroups"]>([]);
-  const [loadingAccessGroups, setLoadingAccessGroups] = useState(false);
-  const [addAccessGroupDialogOpen, setAddAccessGroupDialogOpen] = useState(false);
-  const [selectedAccessGroup, setSelectedAccessGroup] = useState<{ id: string; name: string } | null>(null);
-  const [selectedPurpose, setSelectedPurpose] = useState<SectionAccessGroupPurpose>(SectionAccessGroupPurpose.VIEW);
-  const [addingAccessGroup, setAddingAccessGroup] = useState(false);
-  const [removingAccessGroupId, setRemovingAccessGroupId] = useState<string | null>(null);
+  const [allUserGroups, setAllUserGroups] = useState<ListUserGroupsData["userGroups"]>([]);
+  const [loadingUserGroups, setLoadingUserGroups] = useState(false);
+  const [addUserGroupDialogOpen, setAddUserGroupDialogOpen] = useState(false);
+  const [selectedUserGroup, setSelectedUserGroup] = useState<{ id: string; name: string } | null>(null);
+  const [selectedPurpose, setSelectedPurpose] = useState<SectionGroupPurposeType>(SectionGroupPurpose.ACCESS);
+  const [addingUserGroup, setAddingUserGroup] = useState(false);
+  const [removingUserGroupId, setRemovingUserGroupId] = useState<string | null>(null);
   const [managedSectionId, setManagedSectionId] = useState<string | null>(null);
   const [managedSectionName, setManagedSectionName] = useState("");
 
@@ -138,18 +138,18 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     fetchSections();
   }, [fetchSections]);
 
-  const fetchAllAccessGroups = useCallback(async () => {
+  const fetchAllUserGroups = useCallback(async () => {
     try {
-      const ref = listAccessGroupsRef(dataConnect);
+      const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
-      setAllAccessGroups(result.data?.accessGroups || []);
+      setAllUserGroups(result.data?.userGroups || []);
     } catch (err: any) {
-      console.error("Failed to fetch access groups:", err);
+      console.error("Failed to fetch user groups:", err);
     }
   }, []);
 
-  const fetchSectionAccessGroups = useCallback(async (sectionId: string) => {
-    setLoadingAccessGroups(true);
+  const fetchSectionUserGroups = useCallback(async (sectionId: string) => {
+    setLoadingUserGroups(true);
     try {
       const ref = getSectionByIdRef(dataConnect, { id: sectionId });
       const result = await executeQuery(ref);
@@ -160,57 +160,54 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
           id: string;
           name: string;
           description?: string | null;
-          purpose: SectionAccessGroupPurpose;
+          purpose: SectionGroupPurposeType;
         }> = [];
         
-        // Add viewing access groups
-        if (section.viewingAccessGroups) {
-          section.viewingAccessGroups.forEach((group) => {
-            if (group.accessGroup) {
+        if (section.accessGroups) {
+          section.accessGroups.forEach((group) => {
+            if (group.userGroup) {
               accessGroups.push({
-                id: group.accessGroup.id,
-                name: group.accessGroup.name,
-                description: group.accessGroup.description,
-                purpose: SectionAccessGroupPurpose.VIEW,
+                id: group.userGroup.id,
+                name: group.userGroup.name,
+                description: group.userGroup.description,
+                purpose: SectionGroupPurpose.ACCESS,
+              });
+            }
+          });
+        }
+        if (section.memberGroups) {
+          section.memberGroups.forEach((group) => {
+            if (group.userGroup) {
+              accessGroups.push({
+                id: group.userGroup.id,
+                name: group.userGroup.name,
+                description: group.userGroup.description,
+                purpose: SectionGroupPurpose.MEMBER,
               });
             }
           });
         }
         
-        // Add member access groups
-        if (section.memberAccessGroups) {
-          section.memberAccessGroups.forEach((group) => {
-            if (group.accessGroup) {
-              accessGroups.push({
-                id: group.accessGroup.id,
-                name: group.accessGroup.name,
-                description: group.accessGroup.description,
-                purpose: SectionAccessGroupPurpose.MEMBER,
-              });
-            }
-          });
-        }
-        
-        setSectionAccessGroups(accessGroups);
+        setSectionUserGroups(accessGroups);
       }
     } catch (err: any) {
-      console.error("Failed to fetch section access groups:", err);
-      setSectionAccessGroups([]);
+      console.error("Failed to fetch section user groups:", err);
+      setSectionUserGroups([]);
     } finally {
-      setLoadingAccessGroups(false);
+      setLoadingUserGroups(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAllAccessGroups();
-  }, [fetchAllAccessGroups]);
+    fetchAllUserGroups();
+  }, [fetchAllUserGroups]);
 
   const handleCreate = () => {
     setEditingSection(null);
     setSectionName("");
-    setSectionType("MEMBERS");
+    setSectionType("MEMBERS" as SectionType);
     setSectionDescription("");
-    setSectionAccessGroups([]);
+    setSectionUserGroups([]);
     setDialogOpen(true);
   };
 
@@ -220,12 +217,12 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setSectionType(section.type);
     setSectionDescription(section.description || "");
     setDialogOpen(true);
-    // Fetch access groups when editing
-    await fetchSectionAccessGroups(section.id);
+    // Fetch user groups when editing
+    await fetchSectionUserGroups(section.id);
   };
 
   const handleDelete = async (section: SectionWithDetails) => {
-    if (!confirm(`Are you sure you want to delete the section "${section.name}"? This will remove all access group associations.`)) {
+    if (!confirm(`Are you sure you want to delete the section "${section.name}"? This will remove all user group associations.`)) {
       return;
     }
 
@@ -273,76 +270,78 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     }
   };
 
-  const handleAddAccessGroup = async () => {
-    if (!selectedAccessGroup || !editingSection) {
+  const handleAddUserGroup = async () => {
+    if (!selectedUserGroup || !editingSection) {
       return;
     }
 
-    setAddingAccessGroup(true);
+    setAddingUserGroup(true);
     setError(null);
     try {
       const ref =
-        selectedPurpose === SectionAccessGroupPurpose.VIEW
-          ? grantViewAccessGroupToSectionRef(dataConnect, {
+        selectedPurpose === SectionGroupPurpose.ACCESS
+          ? grantAccessGroupToSectionRef(dataConnect, {
               sectionId: editingSection.id,
-              accessGroupId: selectedAccessGroup.id,
+              userGroupId: selectedUserGroup.id,
             })
-          : grantMemberAccessGroupToSectionRef(dataConnect, {
+          : grantMemberGroupToSectionRef(dataConnect, {
               sectionId: editingSection.id,
-              accessGroupId: selectedAccessGroup.id,
+              userGroupId: selectedUserGroup.id,
             });
       await executeMutation(ref);
       
-      // Refresh section access groups
-      await fetchSectionAccessGroups(editingSection.id);
+      await fetchSectionUserGroups(editingSection.id);
       
-      // Reset add dialog
-      setSelectedAccessGroup(null);
-      setSelectedPurpose(SectionAccessGroupPurpose.VIEW);
-      setAddAccessGroupDialogOpen(false);
+      setSelectedUserGroup(null);
+      setSelectedPurpose(SectionGroupPurpose.ACCESS);
+      setAddUserGroupDialogOpen(false);
     } catch (err: any) {
-      setError(err?.message || "Failed to add access group");
+      setError(err?.message || "Failed to add user group");
     } finally {
-      setAddingAccessGroup(false);
+      setAddingUserGroup(false);
     }
   };
 
-  const handleRemoveAccessGroup = async (accessGroupId: string, purpose: SectionAccessGroupPurpose) => {
+  const handleRemoveUserGroup = async (userGroupId: string, purpose: SectionGroupPurposeType) => {
     if (!editingSection) {
       return;
     }
 
-    if (!confirm("Are you sure you want to remove this access group from the section?")) {
+    if (!confirm("Are you sure you want to remove this user group from the section?")) {
       return;
     }
 
-    setRemovingAccessGroupId(accessGroupId);
+    const removingKey = `${userGroupId}-${purpose}`;
+    setRemovingUserGroupId(removingKey);
     setError(null);
     try {
       const ref =
-        purpose === SectionAccessGroupPurpose.VIEW
-          ? revokeViewAccessGroupFromSectionRef(dataConnect, {
+        purpose === SectionGroupPurpose.ACCESS
+          ? revokeAccessGroupFromSectionRef(dataConnect, {
               sectionId: editingSection.id,
-              accessGroupId: accessGroupId,
+              userGroupId,
             })
-          : revokeMemberAccessGroupFromSectionRef(dataConnect, {
+          : revokeMemberGroupFromSectionRef(dataConnect, {
               sectionId: editingSection.id,
-              accessGroupId: accessGroupId,
+              userGroupId,
             });
       await executeMutation(ref);
       
-      // Refresh section access groups
-      await fetchSectionAccessGroups(editingSection.id);
+      // Refresh section user groups
+      await fetchSectionUserGroups(editingSection.id);
     } catch (err: any) {
-      setError(err?.message || "Failed to remove access group");
+      setError(err?.message || "Failed to remove user group");
     } finally {
-      setRemovingAccessGroupId(null);
+      setRemovingUserGroupId(null);
     }
   };
 
-  // Get available access groups (not already associated with section)
-  const availableAccessGroups = allAccessGroups.filter(
-    (group) => !sectionAccessGroups.some((ag) => ag.id === group.id)
+  // Get available user groups for the selected purpose (allow same group for both ACCESS and MEMBER)
+  const availableUserGroups = allUserGroups.filter(
+    (group) =>
+      !sectionUserGroups.some(
+        (existing) => existing.id === group.id && existing.purpose === selectedPurpose
+      )
   );
 
   if (managedSectionId && managedSectionName) {
@@ -473,8 +472,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         open={dialogOpen} 
         onClose={() => {
           setDialogOpen(false);
-          setAddAccessGroupDialogOpen(false);
-          setSectionAccessGroups([]);
+          setAddUserGroupDialogOpen(false);
+          setSectionUserGroups([]);
         }} 
         maxWidth="md" 
         fullWidth
@@ -526,21 +525,21 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
             sx={{ mb: 2 }}
           />
           
-          {/* Access Groups Section - Only show when editing */}
+          {/* User Groups Section - Only show when editing */}
           {editingSection && (
             <>
               <Divider sx={{ my: 3 }} />
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Access Groups
+                User Groups
               </Typography>
               
-              {loadingAccessGroups ? (
+              {loadingUserGroups ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
                   <CircularProgress size={24} />
                 </Box>
-              ) : sectionAccessGroups.length === 0 ? (
+              ) : sectionUserGroups.length === 0 ? (
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  No access groups assigned to this section.
+                  No user groups assigned to this section.
                 </Alert>
               ) : (
                 <TableContainer component={Paper} sx={{ mb: 2 }}>
@@ -553,8 +552,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {sectionAccessGroups.map((group) => (
-                        <TableRow key={group.id}>
+                      {sectionUserGroups.map((group) => (
+                        <TableRow key={`${group.id}-${group.purpose}`}>
                           <TableCell>
                             <Typography variant="body2">{group.name}</Typography>
                             {group.description && (
@@ -567,17 +566,17 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                             <Chip
                               label={group.purpose}
                               size="small"
-                              color={group.purpose === SectionAccessGroupPurpose.VIEW ? "primary" : "secondary"}
+                              color={group.purpose === SectionGroupPurpose.ACCESS ? "primary" : "secondary"}
                             />
                           </TableCell>
                           <TableCell align="right">
                             <IconButton
                               size="small"
-                              onClick={() => handleRemoveAccessGroup(group.id, group.purpose)}
+                              onClick={() => handleRemoveUserGroup(group.id, group.purpose)}
                               color="error"
-                              disabled={removingAccessGroupId === group.id}
+                              disabled={removingUserGroupId === `${group.id}-${group.purpose}`}
                             >
-                              {removingAccessGroupId === group.id ? (
+                              {removingUserGroupId === `${group.id}-${group.purpose}` ? (
                                 <CircularProgress size={16} />
                               ) : (
                                 <DeleteIcon />
@@ -595,14 +594,14 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={() => {
-                  setSelectedAccessGroup(null);
-                  setSelectedPurpose(SectionAccessGroupPurpose.VIEW);
-                  setAddAccessGroupDialogOpen(true);
+                  setSelectedUserGroup(null);
+                  setSelectedPurpose(SectionGroupPurpose.ACCESS);
+                  setAddUserGroupDialogOpen(true);
                 }}
-                disabled={loadingAccessGroups}
+                disabled={loadingUserGroups}
                 sx={{ mb: 2 }}
               >
-                Add Access Group
+                Add User Group
               </Button>
             </>
           )}
@@ -617,70 +616,74 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         </DialogActions>
       </Dialog>
 
-      {/* Add Access Group Dialog */}
-      <Dialog open={addAccessGroupDialogOpen} onClose={() => setAddAccessGroupDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Access Group to Section</DialogTitle>
+      {/* Add User Group Dialog */}
+      <Dialog open={addUserGroupDialogOpen} onClose={() => setAddUserGroupDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add User Group to Section</DialogTitle>
         <DialogContent>
-          {availableAccessGroups.length === 0 ? (
+          <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
+            <FormLabel component="legend">Purpose</FormLabel>
+            <RadioGroup
+              value={selectedPurpose}
+              onChange={(e) => {
+                setSelectedPurpose(e.target.value as SectionGroupPurposeType);
+                setSelectedUserGroup(null);
+              }}
+            >
+              <FormControlLabel value={SectionGroupPurpose.ACCESS} control={<Radio />} label="ACCESS - Users can see the section" />
+              <FormControlLabel value={SectionGroupPurpose.MEMBER} control={<Radio />} label="MEMBER - Users appear in member list" />
+            </RadioGroup>
+          </FormControl>
+
+          {availableUserGroups.length === 0 ? (
             <Alert severity="info" sx={{ mt: 1 }}>
-              All available access groups have been assigned to this section.
+              All available user groups have been assigned for the selected purpose.
             </Alert>
           ) : (
-            <>
-              <Autocomplete
-                options={availableAccessGroups}
-                getOptionLabel={(option) => option.name}
-                value={selectedAccessGroup}
-                onChange={(_, newValue) => setSelectedAccessGroup(newValue ? { id: newValue.id, name: newValue.name } : null)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Access Group"
-                    placeholder="Choose an access group..."
-                    margin="dense"
-                    fullWidth
-                    variant="outlined"
-                  />
-                )}
-                renderOption={(props, option) => (
+            <Autocomplete
+              options={availableUserGroups}
+              getOptionLabel={(option) => option.name}
+              value={selectedUserGroup}
+              onChange={(_, newValue) => setSelectedUserGroup(newValue ? { id: newValue.id, name: newValue.name } : null)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select User Group"
+                  placeholder="Choose a user group..."
+                  margin="dense"
+                  fullWidth
+                  variant="outlined"
+                />
+              )}
+              renderOption={(props, option) => {
+                const group = option as { id: string; name: string; description?: string | null };
+                return (
                   <Box component="li" {...props}>
                     <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="body2">{option.name}</Typography>
-                      {option.description && (
+                      <Typography variant="body2">{group.name}</Typography>
+                      {group.description && (
                         <Typography variant="caption" color="text.secondary" display="block">
-                          {option.description}
+                          {group.description}
                         </Typography>
                       )}
                     </Box>
                   </Box>
-                )}
-                disabled={addingAccessGroup}
-                sx={{ mt: 1, mb: 2 }}
-              />
-              
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">Purpose</FormLabel>
-                <RadioGroup
-                  value={selectedPurpose}
-                  onChange={(e) => setSelectedPurpose(e.target.value as SectionAccessGroupPurpose)}
-                >
-                  <FormControlLabel value={SectionAccessGroupPurpose.VIEW} control={<Radio />} label="VIEW - Users can see the section" />
-                  <FormControlLabel value={SectionAccessGroupPurpose.MEMBER} control={<Radio />} label="MEMBER - Users appear in member list" />
-                </RadioGroup>
-              </FormControl>
-            </>
+                );
+              }}
+              disabled={addingUserGroup}
+              sx={{ mt: 1 }}
+            />
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddAccessGroupDialogOpen(false)} disabled={addingAccessGroup}>
+          <Button onClick={() => setAddUserGroupDialogOpen(false)} disabled={addingUserGroup}>
             Cancel
           </Button>
           <Button
-            onClick={handleAddAccessGroup}
+            onClick={handleAddUserGroup}
             variant="contained"
-            disabled={addingAccessGroup || !selectedAccessGroup}
+            disabled={addingUserGroup || !selectedUserGroup}
           >
-            {addingAccessGroup ? <CircularProgress size={20} /> : "Add"}
+            {addingUserGroup ? <CircularProgress size={20} /> : "Add"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -6,7 +6,7 @@ This file documents all auth expressions used in queries and mutations. Use thes
 
 - **`queries.gql`** - All queries (user-facing and admin)
 - **`user-mutations.gql`** - User profile mutations (require user authentication)
-- **`access-control-mutations.gql`** - Section and access group mutations (admin only)
+- **`user-group-mutations.gql`** - Section and user group mutations (admin only)
 - **`admin-mutations.gql`** - SDK-only mutations (NO_ACCESS, used by Firebase Functions/CLI)
 - **`mutations.gql`** - Legacy file (deprecated, kept for backward compatibility)
 

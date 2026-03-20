@@ -18,7 +18,7 @@ import SearchBar from "../../../shared/components/SearchBar";
 import UsersTable from "../../users/components/UsersTable";
 import AdminUsersTable from "../../users/components/AdminUsersTable";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
-import UserAccessGroups from "./UserAccessGroups";
+import UserGroupMemberships from "./UserGroupMemberships";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
@@ -228,7 +228,7 @@ export default function Permissions({ onBack }: PermissionsProps) {
       >
         <Tab label="Admin Users" />
         <Tab label="Search Users" />
-        <Tab label="Access Groups" />
+        <Tab label="User Groups" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -325,13 +325,13 @@ export default function Permissions({ onBack }: PermissionsProps) {
           ) : searchError ? (
             <Alert severity="error">{searchError}</Alert>
           ) : searchTerm.trim() === "" ? (
-            <Alert severity="info">Enter a search term to find users and manage their access groups</Alert>
+            <Alert severity="info">Enter a search term to find users and manage their user groups</Alert>
           ) : searchResults.length === 0 ? (
             <Alert severity="info">No users found. Try a different search term.</Alert>
           ) : (
             <>
               <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
-                Select a user to manage their access groups
+                Select a user to manage their user groups
               </Typography>
               <UsersTable
                 users={searchResults}
@@ -346,9 +346,9 @@ export default function Permissions({ onBack }: PermissionsProps) {
               {selectedUserId && (
                 <Box sx={{ mt: 4, p: 2, border: "1px solid rgba(0, 0, 0, 0.12)", borderRadius: 1 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>
-                    Manage Access Groups for {searchResults.find(u => u.uid === selectedUserId)?.displayName || "User"}
+                    Manage User Groups for {searchResults.find(u => u.uid === selectedUserId)?.displayName || "User"}
                   </Typography>
-                  <UserAccessGroups
+                  <UserGroupMemberships
                     userId={selectedUserId}
                     userEmail={searchResults.find(u => u.uid === selectedUserId)?.email}
                     onUpdate={() => {

@@ -23,7 +23,7 @@ import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import {
-  getMemberAccessGroups,
+  getMemberGroups,
   canUserSubscribe,
   isUserMember,
   isMembersSection,
@@ -56,7 +56,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   const currentUser = auth.currentUser;
 
-  // Get section details (for access group info and subscribability)
+  // Get section details (for user group info and subscribability)
   const {
     data: sectionData,
     isLoading: loadingSection,
@@ -93,7 +93,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     fetchMembers();
   }, [sectionId, fetchMembers]);
 
-  // Get current user's access groups to check subscription status
+  // Get current user's user groups to check subscription status
   const {
     data: userAccessGroupsData,
     isLoading: loadingUserGroups,
@@ -119,37 +119,34 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     { enabled: !!selectedEventId }
   );
 
-  // Extract user's access group IDs
-  const userAccessGroupIds = useMemo(() => {
-    if (!userAccessGroupsData?.user?.accessGroups) {
+  // Extract user's user group IDs
+  const userUserGroupIds = useMemo(() => {
+    if (!userAccessGroupsData?.user?.userGroups) {
       return [];
     }
-    return userAccessGroupsData.user.accessGroups.map((group) => group.accessGroup.id);
+    return userAccessGroupsData.user.userGroups.map((group) => group.userGroup.id);
   }, [userAccessGroupsData]);
 
-  // Extract viewing access group IDs
-  const viewingAccessGroupIds = useMemo(() => {
-    if (!sectionData?.section?.viewingAccessGroups) {
+  // Extract section user group IDs (who can access the section)
+  const accessGroupIds = useMemo(() => {
+    if (!sectionData?.section?.accessGroups) {
       return [];
     }
-    return sectionData.section.viewingAccessGroups.map((group) => group.accessGroup.id);
+    return sectionData.section.accessGroups.map((group) => group.userGroup.id);
   }, [sectionData]);
 
-  // Get member access groups
-  const memberAccessGroups = useMemo(() => {
+  // Get member groups for this section
+  const memberGroups = useMemo(() => {
     if (!sectionData?.section) {
       return [];
     }
-    return getMemberAccessGroups(
-      sectionData.section as any,
-      sectionData.section.viewingAccessGroups as any
-    );
+    return getMemberGroups(sectionData.section as any);
   }, [sectionData]);
 
   // Check if user is a member
   const userIsMember = useMemo(() => {
-    return isUserMember(userAccessGroupIds, memberAccessGroups);
-  }, [userAccessGroupIds, memberAccessGroups]);
+    return isUserMember(userUserGroupIds, memberGroups);
+  }, [userUserGroupIds, memberGroups]);
 
   // Check if user can subscribe
   const canSubscribe = useMemo(() => {
@@ -158,12 +155,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     }
     return canUserSubscribe(
       currentUser.uid,
-      userAccessGroupIds,
-      viewingAccessGroupIds,
-      memberAccessGroups,
-      userAccessGroupIds.filter((id) => memberAccessGroups.some((g) => g.id === id))
+      userUserGroupIds,
+      accessGroupIds,
+      memberGroups,
+      userUserGroupIds.filter((id) => memberGroups.some((g) => g.id === id))
     );
-  }, [sectionData, currentUser, userAccessGroupIds, viewingAccessGroupIds, memberAccessGroups]);
+  }, [sectionData, currentUser, userUserGroupIds, accessGroupIds, memberGroups]);
 
   const allMembers = sectionMembers;
   const refetchMembers = fetchMembers;
@@ -193,12 +190,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const paginatedMembers = filteredMembers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleSubscribe = async () => {
-    if (!currentUser || memberAccessGroups.length === 0) {
+    if (!currentUser || memberGroups.length === 0) {
       return;
     }
 
-    // Find the first subscribable member access group
-    const subscribableGroup = memberAccessGroups.find((group) => group.subscribable === true);
+    // Find the first subscribable member group
+    const subscribableGroup = memberGroups.find((group) => group.subscribable === true);
     if (!subscribableGroup) {
       setSnackbar({
         open: true,
@@ -210,9 +207,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
     setSubscribing(true);
     try {
-      const { subscribeToAccessGroupRef } = await import("@dataconnect/generated");
-      await executeMutation(subscribeToAccessGroupRef(dataConnect, {
-        accessGroupId: subscribableGroup.id as UUIDString,
+      const { subscribeToUserGroupRef } = await import("@dataconnect/generated");
+      await executeMutation(subscribeToUserGroupRef(dataConnect, {
+        userGroupId: subscribableGroup.id as UUIDString,
       }));
 
       setSnackbar({
@@ -223,7 +220,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       // Refetch to update UI
       refetchSection();
       refetchMembers();
-      // The user access groups will be refetched automatically by the hook
+      // The user's user groups will be refetched automatically by the hook
     } catch (error) {
       console.error("Error subscribing:", error);
       setSnackbar({
@@ -237,13 +234,13 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   };
 
   const handleUnsubscribe = async () => {
-    if (!currentUser || memberAccessGroups.length === 0) {
+    if (!currentUser || memberGroups.length === 0) {
       return;
     }
 
-    // Find the subscribable member access group the user is in
-    const userMemberGroup = memberAccessGroups.find(
-      (group) => group.subscribable === true && userAccessGroupIds.includes(group.id)
+    // Find the subscribable member group the user is in
+    const userMemberGroup = memberGroups.find(
+      (group) => group.subscribable === true && userUserGroupIds.includes(group.id)
     );
     if (!userMemberGroup) {
       return;
@@ -251,9 +248,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
     setSubscribing(true);
     try {
-      const { unsubscribeFromAccessGroupRef } = await import("@dataconnect/generated");
-      await executeMutation(unsubscribeFromAccessGroupRef(dataConnect, {
-        accessGroupId: userMemberGroup.id as UUIDString,
+      const { unsubscribeFromUserGroupRef } = await import("@dataconnect/generated");
+      await executeMutation(unsubscribeFromUserGroupRef(dataConnect, {
+        userGroupId: userMemberGroup.id as UUIDString,
       }));
 
       setSnackbar({
@@ -350,7 +347,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                 {subscribing ? "Subscribing..." : "Subscribe"}
               </Button>
             )}
-            {userIsMember && memberAccessGroups.some((g) => g.subscribable === true) && (
+            {userIsMember && memberGroups.some((g) => g.subscribable === true) && (
               <Button
                 variant="outlined"
                 color="error"
@@ -480,7 +477,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                         <TableCell>Title</TableCell>
                         <TableCell>Description</TableCell>
                         <TableCell>Price</TableCell>
-                        <TableCell>Access group</TableCell>
+                        <TableCell>User group</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -489,7 +486,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                           <TableCell>{tt.title}</TableCell>
                           <TableCell>{tt.description ?? "—"}</TableCell>
                           <TableCell>{tt.price}</TableCell>
-                          <TableCell>{tt.accessGroup?.name ?? "—"}</TableCell>
+                          <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

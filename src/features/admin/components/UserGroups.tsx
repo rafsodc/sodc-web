@@ -35,16 +35,16 @@ import {
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
-  listAccessGroupsRef,
+  listUserGroupsRef,
   listUsersRef,
-  getAccessGroupByIdRef,
-  createAccessGroupRef,
-  updateAccessGroupRef,
-  deleteAccessGroupRef,
-  addUserToAccessGroupRef,
-  removeUserFromAccessGroupRef,
+  getUserGroupByIdRef,
+  createUserGroupRef,
+  updateUserGroupRef,
+  deleteUserGroupRef,
+  addUserToUserGroupRef,
+  removeUserFromUserGroupRef,
   getUserWithAccessGroupsRef,
-  type GetAccessGroupByIdData,
+  type GetUserGroupByIdData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
 import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
@@ -65,11 +65,11 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
 
-interface AccessGroupsProps {
+interface UserGroupsProps {
   onBack: () => void;
 }
 
-interface AccessGroupWithDetails {
+interface UserGroupWithDetails {
   id: string;
   name: string;
   description?: string | null;
@@ -80,18 +80,18 @@ interface AccessGroupWithDetails {
   sectionCount?: number;
 }
 
-export default function AccessGroups({ onBack }: AccessGroupsProps) {
+export default function UserGroups({ onBack }: UserGroupsProps) {
   const isAdmin = useAdminClaim(auth.currentUser);
-  const [accessGroups, setAccessGroups] = useState<AccessGroupWithDetails[]>([]);
+  const [userGroups, setUserGroups] = useState<UserGroupWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-  const [groupDetails, setGroupDetails] = useState<Record<string, GetAccessGroupByIdData["accessGroup"]>>({});
+  const [groupDetails, setGroupDetails] = useState<Record<string, NonNullable<GetUserGroupByIdData["userGroup"]>>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
   
   // Create/Edit dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<AccessGroupWithDetails | null>(null);
+  const [editingGroup, setEditingGroup] = useState<UserGroupWithDetails | null>(null);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<MembershipStatus[]>([]);
@@ -111,15 +111,14 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
   const [selectedUserDetail, setSelectedUserDetail] = useState<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus } | null>(null);
 
-  const fetchAccessGroups = useCallback(async () => {
+  const fetchUserGroupsList = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const ref = listAccessGroupsRef(dataConnect);
+      const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
       
-      // Get existing groups from database
-      const existingGroups: AccessGroupWithDetails[] = result.data?.accessGroups?.map((group) => ({
+      const existingGroups: UserGroupWithDetails[] = result.data?.userGroups?.map((group) => ({
         id: group.id,
         name: group.name,
         description: group.description,
@@ -131,9 +130,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
       // Sort alphabetically
       existingGroups.sort((a, b) => a.name.localeCompare(b.name));
       
-      setAccessGroups(existingGroups);
+      setUserGroups(existingGroups);
     } catch (err: any) {
-      setError(err?.message || "Failed to fetch access groups");
+      setError(err?.message || "Failed to fetch user groups");
     } finally {
       setLoading(false);
     }
@@ -141,18 +140,18 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
   const fetchGroupDetails = useCallback(async (groupId: string) => {
     if (groupDetails[groupId]) {
-      return; // Already loaded
+      return;
     }
 
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
-      const ref = getAccessGroupByIdRef(dataConnect, { id: groupId });
+      const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
       const result = await executeQuery(ref);
       
-      if (result.data?.accessGroup) {
+      if (result.data?.userGroup) {
         setGroupDetails((prev) => ({
           ...prev,
-          [groupId]: result.data.accessGroup,
+          [groupId]: result.data.userGroup!,
         }));
       }
     } catch (err: any) {
@@ -163,8 +162,8 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   }, [groupDetails]);
 
   useEffect(() => {
-    fetchAccessGroups();
-  }, [fetchAccessGroups]);
+    fetchUserGroupsList();
+  }, [fetchUserGroupsList]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -196,7 +195,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     };
   }, [isAdmin]);
 
-  const handleExpand = (group: AccessGroupWithDetails) => {
+  const handleExpand = (group: UserGroupWithDetails) => {
     if (expandedGroupId === group.id) {
       setExpandedGroupId(null);
     } else {
@@ -279,16 +278,16 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
         return u ? statuses.includes(u.membershipStatus) : false;
       })();
     if (alreadyInGroup) {
-      setError("User is already in this access group (by membership status or explicitly added)");
+      setError("User is already in this user group (by membership status or explicitly added)");
       return;
     }
 
     setAddingUserId(userId);
     setError(null);
     try {
-      const ref = addUserToAccessGroupRef(dataConnect, {
+      const ref = addUserToUserGroupRef(dataConnect, {
         userId,
-        accessGroupId: addingToGroupId,
+        userGroupId: addingToGroupId,
       });
       await executeMutation(ref);
       
@@ -309,14 +308,14 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   };
 
   const handleRemoveUserFromGroup = async (userId: string, groupId: string) => {
-    if (!confirm("Are you sure you want to remove this user from the access group?")) {
+    if (!confirm("Are you sure you want to remove this user from the user group?")) {
       return;
     }
 
     try {
-      const ref = removeUserFromAccessGroupRef(dataConnect, {
+      const ref = removeUserFromUserGroupRef(dataConnect, {
         userId,
-        accessGroupId: groupId,
+        userGroupId: groupId,
       });
       await executeMutation(ref);
       
@@ -337,7 +336,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     setDialogOpen(true);
   };
 
-  const handleEdit = (group: AccessGroupWithDetails) => {
+  const handleEdit = (group: UserGroupWithDetails) => {
     setEditingGroup(group);
     setGroupName(group.name);
     setGroupDescription(group.description || "");
@@ -345,22 +344,22 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (group: AccessGroupWithDetails) => {
-    if (!confirm(`Are you sure you want to delete the access group "${group.name}"? This will remove all user and section associations.`)) {
+  const handleDelete = async (group: UserGroupWithDetails) => {
+    if (!confirm(`Are you sure you want to delete the user group "${group.name}"? This will remove all user and section associations.`)) {
       return;
     }
 
     try {
-      const ref = deleteAccessGroupRef(dataConnect, { id: group.id });
+      const ref = deleteUserGroupRef(dataConnect, { id: group.id });
       await executeMutation(ref);
-      await fetchAccessGroups();
+      await fetchUserGroupsList();
       if (expandedGroupId === group.id) {
         setExpandedGroupId(null);
       }
       delete groupDetails[group.id];
       setGroupDetails({ ...groupDetails });
     } catch (err: any) {
-      setError(err?.message || "Failed to delete access group");
+      setError(err?.message || "Failed to delete user group");
     }
   };
 
@@ -375,7 +374,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
     try {
       if (editingGroup) {
         // Update existing group
-        const ref = updateAccessGroupRef(dataConnect, {
+        const ref = updateUserGroupRef(dataConnect, {
           id: editingGroup.id,
           name: groupName.trim(),
           description: groupDescription.trim() || null,
@@ -384,7 +383,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
         await executeMutation(ref);
       } else {
         // Create new group
-        const ref = createAccessGroupRef(dataConnect, {
+        const ref = createUserGroupRef(dataConnect, {
           name: groupName.trim(),
           description: groupDescription.trim() || null,
           membershipStatuses: selectedStatuses.length > 0 ? selectedStatuses : null,
@@ -392,9 +391,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
         await executeMutation(ref);
       }
       setDialogOpen(false);
-      await fetchAccessGroups();
+      await fetchUserGroupsList();
     } catch (err: any) {
-      setError(err?.message || `Failed to ${editingGroup ? "update" : "create"} access group`);
+      setError(err?.message || `Failed to ${editingGroup ? "update" : "create"} user group`);
     } finally {
       setSubmitting(false);
     }
@@ -403,27 +402,26 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
-  // Sections with purpose: VIEW and MEMBER listed separately (same section can appear twice if both)
-  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "VIEW" | "MEMBER" };
+  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "ACCESS" | "MEMBER" };
   const sectionsForGroup: SectionWithPurpose[] = details
     ? [
-        ...(details.viewingSections ?? []).map((item) => ({ ...item, purpose: "VIEW" as const })),
+        ...(details.accessSections ?? []).map((item) => ({ ...item, purpose: "ACCESS" as const })),
         ...(details.memberSections ?? []).map((item) => ({ ...item, purpose: "MEMBER" as const })),
       ]
     : [];
 
-  // Merged users: explicit (UserAccessGroup) + users whose membershipStatus is in group's membershipStatuses
+  // Merged users: explicit (UserUserGroup) + users whose membershipStatus is in group's membershipStatuses
   type MergedUser = { id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus; isExplicit: boolean };
   const mergedUsersForGroup: MergedUser[] = details
     ? (() => {
         const explicitIds = new Set((details.users ?? []).map((u) => u.user.id));
         const statuses = details.membershipStatuses ?? [];
-        const explicit: MergedUser[] = (details.users ?? []).map((uag) => ({
-          id: uag.user.id,
-          firstName: uag.user.firstName,
-          lastName: uag.user.lastName,
-          email: uag.user.email,
-          membershipStatus: uag.user.membershipStatus as MembershipStatus,
+        const explicit: MergedUser[] = (details.users ?? []).map((uug) => ({
+          id: uug.user.id,
+          firstName: uug.user.firstName,
+          lastName: uug.user.lastName,
+          email: uug.user.email,
+          membershipStatus: uug.user.membershipStatus as MembershipStatus,
           isExplicit: true,
         }));
         const byStatus: MergedUser[] = allUsers
@@ -451,9 +449,9 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
   if (!isAdmin) {
     return (
       <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-        <PageHeader title="Access Groups" onBack={onBack} />
+        <PageHeader title="User Groups" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
-          Access denied. Admin privileges required to manage access groups.
+          Access denied. Admin privileges required to manage user groups.
         </Alert>
       </Box>
     );
@@ -461,11 +459,11 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <PageHeader title="Access Groups" onBack={onBack} />
+      <PageHeader title="User Groups" onBack={onBack} />
       
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-          Manage access groups that control section visibility. Groups can include individual users and/or membership statuses (automatically includes all users with those statuses).
+          Manage user groups that control section visibility. Groups can include individual users and/or membership statuses (automatically includes all users with those statuses).
         </Typography>
         <Button
           variant="contained"
@@ -473,7 +471,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
           onClick={handleCreate}
           sx={{ ml: 2 }}
         >
-          Create Access Group
+          Create User Group
         </Button>
       </Box>
 
@@ -487,8 +485,8 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
         <Box className="loading-container">
           <CircularProgress />
         </Box>
-      ) : accessGroups.length === 0 ? (
-        <Alert severity="info">No access groups found.</Alert>
+      ) : userGroups.length === 0 ? (
+        <Alert severity="info">No user groups found.</Alert>
       ) : (
         <TableContainer component={Paper}>
           <Table>
@@ -503,7 +501,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {accessGroups.map((group) => (
+              {userGroups.map((group) => (
                 <React.Fragment key={group.id}>
                   <TableRow>
                     <TableCell>
@@ -707,7 +705,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
                                               label={item.purpose}
                                               size="small"
                                               variant="outlined"
-                                              color={item.purpose === "VIEW" ? "primary" : "secondary"}
+                                              color={item.purpose === "ACCESS" ? "primary" : "secondary"}
                                             />
                                           </TableCell>
                                           <TableCell>
@@ -748,7 +746,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingGroup ? "Edit Access Group" : "Create Access Group"}
+          {editingGroup ? "Edit User Group" : "Create User Group"}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -847,7 +845,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
 
       {/* Add User Dialog */}
       <Dialog open={addUserDialogOpen} onClose={() => setAddUserDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add User to Access Group</DialogTitle>
+        <DialogTitle>Add User to User Group</DialogTitle>
         <DialogContent>
           <Autocomplete
             options={searchResults}
@@ -913,7 +911,7 @@ export default function AccessGroups({ onBack }: AccessGroupsProps) {
             getOptionDisabled={(option) => mergedUserIdsForAddDialog.has(option.id)}
           />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
-            Search for users by name or email. Note: Restricted users (PENDING, RESIGNED, LOST, DECEASED) cannot log in but can be added to access groups to preserve memberships.
+            Search for users by name or email. Note: Restricted users (PENDING, RESIGNED, LOST, DECEASED) cannot log in but can be added to user groups to preserve memberships.
           </Typography>
         </DialogContent>
         <DialogActions>

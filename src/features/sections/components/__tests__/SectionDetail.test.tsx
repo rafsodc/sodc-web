@@ -36,8 +36,8 @@ vi.mock('@dataconnect/generated', async () => {
   const actual = await vi.importActual('@dataconnect/generated');
   return {
     ...actual,
-    subscribeToAccessGroupRef: vi.fn((dc: any, vars: any) => ({ type: 'mutation', dc, vars })),
-    unsubscribeFromAccessGroupRef: vi.fn((dc: any, vars: any) => ({ type: 'mutation', dc, vars })),
+    subscribeToUserGroupRef: vi.fn((dc: any, vars: any) => ({ type: 'mutation', dc, vars })),
+    unsubscribeFromUserGroupRef: vi.fn((dc: any, vars: any) => ({ type: 'mutation', dc, vars })),
   };
 });
 
@@ -110,9 +110,9 @@ describe('SectionDetail', () => {
         name: 'Test Section',
         type: 'MEMBERS',
         description: 'Test description',
-        viewingAccessGroups: [
+        accessGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'view-group-1',
               name: 'View Group',
               description: 'View description',
@@ -120,7 +120,7 @@ describe('SectionDetail', () => {
             },
           },
         ],
-        memberAccessGroups: [],
+        memberGroups: [],
       },
     };
 
@@ -135,7 +135,7 @@ describe('SectionDetail', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [],
+          userGroups: [],
         },
       } as any,
       isLoading: false,
@@ -159,16 +159,16 @@ describe('SectionDetail', () => {
         name: 'Test Section',
         type: 'MEMBERS',
         description: 'Test description',
-        viewingAccessGroups: [
+        accessGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'view-group-1',
               name: 'View Group',
               subscribable: false,
             },
           },
         ],
-        memberAccessGroups: [],
+        memberGroups: [],
       },
     };
 
@@ -190,7 +190,7 @@ describe('SectionDetail', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [],
+          userGroups: [],
         },
       } as any,
       isLoading: false,
@@ -217,18 +217,18 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Test Section',
         type: 'MEMBERS',
-        viewingAccessGroups: [
+        accessGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'view-group-1',
               name: 'View Group',
               subscribable: false,
             },
           },
         ],
-        memberAccessGroups: [
+        memberGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
               subscribable: true,
@@ -249,12 +249,8 @@ describe('SectionDetail', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [
-            {
-              accessGroup: {
-                id: 'view-group-1',
-              },
-            },
+          userGroups: [
+            { userGroup: { id: 'view-group-1' } },
           ],
         },
       } as any,
@@ -275,18 +271,18 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Test Section',
         type: 'MEMBERS',
-        viewingAccessGroups: [
+        accessGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'view-group-1',
               name: 'View Group',
               subscribable: false,
             },
           },
         ],
-        memberAccessGroups: [
+        memberGroups: [
           {
-            accessGroup: {
+            userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
               subscribable: true,
@@ -307,17 +303,9 @@ describe('SectionDetail', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [
-            {
-              accessGroup: {
-                id: 'view-group-1',
-              },
-            },
-            {
-              accessGroup: {
-                id: 'member-group-1',
-              },
-            },
+          userGroups: [
+            { userGroup: { id: 'view-group-1' } },
+            { userGroup: { id: 'member-group-1' } },
           ],
         },
       } as any,
@@ -338,8 +326,8 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Test Section',
         type: 'MEMBERS',
-        viewingAccessGroups: [],
-        memberAccessGroups: [],
+        accessGroups: [],
+        memberGroups: [],
       },
     };
 
@@ -361,7 +349,7 @@ describe('SectionDetail', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [],
+          userGroups: [],
         },
       } as any,
       isLoading: false,
@@ -391,8 +379,8 @@ describe('SectionDetail', () => {
         name: 'Events Section',
         type: 'EVENTS',
         description: 'Events description',
-        viewingAccessGroups: [],
-        memberAccessGroups: [],
+        accessGroups: [],
+        memberGroups: [],
       },
     };
 
@@ -407,7 +395,7 @@ describe('SectionDetail', () => {
       data: {
         user: {
           id: 'user-1',
-          accessGroups: [],
+          userGroups: [],
         },
       } as any,
       isLoading: false,
@@ -437,8 +425,8 @@ describe('SectionDetail', () => {
         name: 'Events Section',
         type: 'EVENTS',
         description: 'Events description',
-        viewingAccessGroups: [],
-        memberAccessGroups: [],
+        accessGroups: [],
+        memberGroups: [],
       },
     };
     const mockEventsData = {
@@ -469,7 +457,7 @@ describe('SectionDetail', () => {
         location: 'Main Hall',
         guestOfHonour: 'Jane Doe',
         ticketTypes: [
-          { id: 'tt-1', title: 'Standard', description: 'Standard ticket', price: 25, sortOrder: 0, accessGroup: { id: 'ag-1', name: 'Standard Access' } },
+          { id: 'tt-1', title: 'Standard', description: 'Standard ticket', price: 25, sortOrder: 0, userGroup: { id: 'ag-1', name: 'Standard Access' } },
         ],
       },
     };
@@ -482,7 +470,7 @@ describe('SectionDetail', () => {
     } as any);
 
     vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
-      data: { user: { id: 'user-1', accessGroups: [] } } as any,
+      data: { user: { id: 'user-1', userGroups: [] } } as any,
       isLoading: false,
       isError: false,
     } as any);
@@ -530,8 +518,8 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Events Section',
         type: 'EVENTS',
-        viewingAccessGroups: [],
-        memberAccessGroups: [],
+        accessGroups: [],
+        memberGroups: [],
       },
     };
     const mockEventsData = {
@@ -562,7 +550,7 @@ describe('SectionDetail', () => {
     } as any);
 
     vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
-      data: { user: { id: 'user-1', accessGroups: [] } } as any,
+      data: { user: { id: 'user-1', userGroups: [] } } as any,
       isLoading: false,
       isError: false,
     } as any);
