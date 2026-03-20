@@ -127,7 +127,7 @@ describe('SectionsList', () => {
     expect(screen.getByText('Test description')).toBeInTheDocument();
   });
 
-  it('should include sections from member access when user has only member access', async () => {
+  it('should not include sections from member-only purpose when user has no access purpose', async () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
@@ -170,10 +170,8 @@ describe('SectionsList', () => {
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Events Section')).toBeInTheDocument();
+      expect(screen.getByText('No sections available.')).toBeInTheDocument();
     });
-    expect(screen.getByText('EVENTS')).toBeInTheDocument();
-    expect(screen.getByText('Member-only section')).toBeInTheDocument();
   });
 
   it('should deduplicate section when user has both viewing and member access', async () => {

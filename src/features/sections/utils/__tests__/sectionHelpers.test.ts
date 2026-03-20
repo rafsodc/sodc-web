@@ -94,7 +94,7 @@ describe('sectionHelpers', () => {
       expect(result.map((u) => u.userId)).toEqual(['user-1', 'user-2', 'user-3']);
     });
 
-    it('should fallback to section access groups when no member groups exist', () => {
+    it('should return empty when no member groups exist', () => {
       const sectionData = {
         memberGroups: [],
       };
@@ -120,8 +120,7 @@ describe('sectionHelpers', () => {
       ];
 
       const result = getAllUsersFromSection(sectionData as any, accessGroups as any);
-      expect(result).toHaveLength(1);
-      expect(result[0].userId).toBe('user-1');
+      expect(result).toHaveLength(0);
     });
 
     it('should prefer member groups over section access groups', () => {
@@ -211,7 +210,7 @@ describe('sectionHelpers', () => {
       });
     });
 
-    it('should fallback to section access groups when no member groups exist', () => {
+    it('should return empty when no member groups exist', () => {
       const sectionData = {
         memberGroups: [],
       };
@@ -228,8 +227,7 @@ describe('sectionHelpers', () => {
       ];
 
       const result = getMemberGroups(sectionData as any, accessGroups as any);
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('view-group-1');
+      expect(result).toHaveLength(0);
     });
   });
 

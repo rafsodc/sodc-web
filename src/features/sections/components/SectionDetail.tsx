@@ -140,10 +140,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     if (!sectionData?.section) {
       return [];
     }
-    return getMemberGroups(
-      sectionData.section as any,
-      sectionData.section.accessGroups as any
-    );
+    return getMemberGroups(sectionData.section as any);
   }, [sectionData]);
 
   // Check if user is a member

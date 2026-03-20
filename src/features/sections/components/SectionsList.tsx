@@ -115,9 +115,18 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
                 if (sectionRelation?.section) addSection(sectionRelation.section);
               }
             }
-            if (ug?.memberSections && Array.isArray(ug.memberSections)) {
-              for (const memberRelation of ug.memberSections) {
-                if (memberRelation?.section) addSection(memberRelation.section);
+          }
+          // Include status-inherited groups (membershipStatuses-based) so users can see sections
+          const userStatus = userSectionsData.user.membershipStatus;
+          if (userStatus && Array.isArray(userSectionsData.allUserGroups)) {
+            for (const ug of userSectionsData.allUserGroups) {
+              if (!ug?.membershipStatuses?.includes(userStatus)) {
+                continue;
+              }
+              if (ug.accessSections && Array.isArray(ug.accessSections)) {
+                for (const sectionRelation of ug.accessSections) {
+                  if (sectionRelation?.section) addSection(sectionRelation.section);
+                }
               }
             }
           }

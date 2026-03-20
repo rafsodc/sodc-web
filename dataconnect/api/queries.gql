@@ -86,16 +86,18 @@ query ListSections @auth(expr: "auth.token.admin == true && auth.token.enabled =
   }
 }
 
-# Get sections accessible to the current user (access OR member)
+# Get sections accessible to the current user (ACCESS purpose only)
 # Requires enabled claim (admins must also be enabled)
 query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
     id
+    membershipStatus
     # Get user groups this user belongs to
     userGroups: userUserGroups_on_user {
       userGroup {
         id
         name
+        membershipStatuses
         # Sections this user group can ACCESS
         accessSections: sectionAccessGroups_on_userGroup {
           section {
@@ -114,6 +116,28 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
             description
           }
         }
+      }
+    }
+  }
+  # Include all groups so users also inherit access from membershipStatuses-based groups
+  allUserGroups: userGroups {
+    id
+    name
+    membershipStatuses
+    accessSections: sectionAccessGroups_on_userGroup {
+      section {
+        id
+        name
+        type
+        description
+      }
+    }
+    memberSections: sectionMemberGroups_on_userGroup {
+      section {
+        id
+        name
+        type
+        description
       }
     }
   }

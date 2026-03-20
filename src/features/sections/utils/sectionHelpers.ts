@@ -19,7 +19,7 @@ export function isMembersSection(section: { type: SectionType }): boolean {
 }
 
 /**
- * Get all users from a section's member groups (or section access groups as fallback)
+ * Get all users from a section's member groups.
  * Deduplicates users who appear in multiple user groups.
  */
 type SectionDataWithMembers = {
@@ -60,17 +60,14 @@ type SectionUserGroupRelation = {
 
 export function getAllUsersFromSection(
   sectionData: SectionDataWithMembers | null | undefined,
-  accessGroups?: Array<SectionUserGroupRelation> | null | undefined,
+  _accessGroups?: Array<SectionUserGroupRelation> | null | undefined,
   additionalUsersByStatus?: Array<SectionMember> | null | undefined
 ): SectionMember[] {
   if (!sectionData) {
     return [];
   }
 
-  // Prefer member groups, fallback to section access groups if no member groups
-  const groups = sectionData.memberGroups && sectionData.memberGroups.length > 0
-    ? sectionData.memberGroups
-    : accessGroups || [];
+  const groups = sectionData.memberGroups || [];
 
   const userMap = new Map<string, SectionMember>();
 
@@ -106,7 +103,7 @@ export function getAllUsersFromSection(
 }
 
 /**
- * Get member groups from section data (or section access groups as fallback)
+ * Get member groups from section data.
  */
 type SectionMemberGroupData = {
   memberGroups?: Array<{
@@ -130,7 +127,7 @@ type SectionUserGroupForMembers = {
 
 export function getMemberGroups(
   sectionData: SectionMemberGroupData | null | undefined,
-  accessGroups?: Array<SectionUserGroupForMembers> | null | undefined
+  _accessGroups?: Array<SectionUserGroupForMembers> | null | undefined
 ): Array<{
   id: string;
   name: string;
@@ -141,9 +138,7 @@ export function getMemberGroups(
     return [];
   }
 
-  const groups = sectionData.memberGroups && sectionData.memberGroups.length > 0
-    ? sectionData.memberGroups
-    : accessGroups || [];
+  const groups = sectionData.memberGroups || [];
 
   return groups.map((groupRelation) => groupRelation.userGroup);
 }

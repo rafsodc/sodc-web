@@ -311,7 +311,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       return;
     }
 
-    setRemovingUserGroupId(userGroupId);
+    const removingKey = `${userGroupId}-${purpose}`;
+    setRemovingUserGroupId(removingKey);
     setError(null);
     try {
       const ref =
@@ -335,9 +336,12 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     }
   };
 
-  // Get available user groups (not already associated with section)
+  // Get available user groups for the selected purpose (allow same group for both ACCESS and MEMBER)
   const availableUserGroups = allUserGroups.filter(
-    (group) => !sectionUserGroups.some((ag) => ag.id === group.id)
+    (group) =>
+      !sectionUserGroups.some(
+        (existing) => existing.id === group.id && existing.purpose === selectedPurpose
+      )
   );
 
   if (managedSectionId && managedSectionName) {
@@ -549,7 +553,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                     </TableHead>
                     <TableBody>
                       {sectionUserGroups.map((group) => (
-                        <TableRow key={group.id}>
+                        <TableRow key={`${group.id}-${group.purpose}`}>
                           <TableCell>
                             <Typography variant="body2">{group.name}</Typography>
                             {group.description && (
@@ -570,9 +574,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                               size="small"
                               onClick={() => handleRemoveUserGroup(group.id, group.purpose)}
                               color="error"
-                              disabled={removingUserGroupId === group.id}
+                              disabled={removingUserGroupId === `${group.id}-${group.purpose}`}
                             >
-                              {removingUserGroupId === group.id ? (
+                              {removingUserGroupId === `${group.id}-${group.purpose}` ? (
                                 <CircularProgress size={16} />
                               ) : (
                                 <DeleteIcon />
