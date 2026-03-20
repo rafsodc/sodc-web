@@ -620,57 +620,58 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       <Dialog open={addUserGroupDialogOpen} onClose={() => setAddUserGroupDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add User Group to Section</DialogTitle>
         <DialogContent>
+          <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
+            <FormLabel component="legend">Purpose</FormLabel>
+            <RadioGroup
+              value={selectedPurpose}
+              onChange={(e) => {
+                setSelectedPurpose(e.target.value as SectionGroupPurposeType);
+                setSelectedUserGroup(null);
+              }}
+            >
+              <FormControlLabel value={SectionGroupPurpose.ACCESS} control={<Radio />} label="ACCESS - Users can see the section" />
+              <FormControlLabel value={SectionGroupPurpose.MEMBER} control={<Radio />} label="MEMBER - Users appear in member list" />
+            </RadioGroup>
+          </FormControl>
+
           {availableUserGroups.length === 0 ? (
             <Alert severity="info" sx={{ mt: 1 }}>
-              All available user groups have been assigned to this section.
+              All available user groups have been assigned for the selected purpose.
             </Alert>
           ) : (
-            <>
-              <Autocomplete
-                options={availableUserGroups}
-                getOptionLabel={(option) => option.name}
-                value={selectedUserGroup}
-                onChange={(_, newValue) => setSelectedUserGroup(newValue ? { id: newValue.id, name: newValue.name } : null)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select User Group"
-                    placeholder="Choose a user group..."
-                    margin="dense"
-                    fullWidth
-                    variant="outlined"
-                  />
-                )}
-                renderOption={(props, option) => {
-                  const group = option as { id: string; name: string; description?: string | null };
-                  return (
-                    <Box component="li" {...props}>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2">{group.name}</Typography>
-                        {group.description && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {group.description}
-                          </Typography>
-                        )}
-                      </Box>
+            <Autocomplete
+              options={availableUserGroups}
+              getOptionLabel={(option) => option.name}
+              value={selectedUserGroup}
+              onChange={(_, newValue) => setSelectedUserGroup(newValue ? { id: newValue.id, name: newValue.name } : null)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select User Group"
+                  placeholder="Choose a user group..."
+                  margin="dense"
+                  fullWidth
+                  variant="outlined"
+                />
+              )}
+              renderOption={(props, option) => {
+                const group = option as { id: string; name: string; description?: string | null };
+                return (
+                  <Box component="li" {...props}>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="body2">{group.name}</Typography>
+                      {group.description && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {group.description}
+                        </Typography>
+                      )}
                     </Box>
-                  );
-                }}
-                disabled={addingUserGroup}
-                sx={{ mt: 1, mb: 2 }}
-              />
-              
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">Purpose</FormLabel>
-                <RadioGroup
-                  value={selectedPurpose}
-                  onChange={(e) => setSelectedPurpose(e.target.value as SectionGroupPurposeType)}
-                >
-                  <FormControlLabel value={SectionGroupPurpose.ACCESS} control={<Radio />} label="ACCESS - Users can see the section" />
-                  <FormControlLabel value={SectionGroupPurpose.MEMBER} control={<Radio />} label="MEMBER - Users appear in member list" />
-                </RadioGroup>
-              </FormControl>
-            </>
+                  </Box>
+                );
+              }}
+              disabled={addingUserGroup}
+              sx={{ mt: 1 }}
+            />
           )}
         </DialogContent>
         <DialogActions>
