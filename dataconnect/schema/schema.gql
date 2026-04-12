@@ -19,6 +19,25 @@ enum MembershipStatus {
   DECEASED
 }
 
+# Ticket type audience: member-priced line vs guest-priced line (booking rules enforce line placement).
+enum TicketAudience {
+  MEMBER
+  GUEST
+}
+
+enum BookingStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  CANCELLED
+}
+
+enum GuestTicketRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -115,6 +134,8 @@ type Event @table {
   endDateTime: Timestamp!
   bookingStartDateTime: Timestamp!
   bookingEndDateTime: Timestamp!
+  # Max guest headcount allowed without extra moderator approval (null = unset; semantics in booking rules).
+  maxGuestsWithoutModeratorApproval: Int
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -127,10 +148,58 @@ type TicketType @table {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   userGroup: UserGroup!
+  audience: TicketAudience! @default(value: MEMBER)
   title: String!
   description: String
   price: Float!
   sortOrder: Int! @default(value: 0)
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Booking - one booker per event per purchase flow. Idempotent submits use clientSubmissionKey (unique per event+booker+key).
+type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  event: Event!
+  booker: User!
+  # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
+  clientSubmissionKey: String
+  status: BookingStatus! @default(value: DRAFT)
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# One line per ticket; ticket type audience must match use (member vs guest). Guest identity optional.
+type BookingLine @table {
+  id: UUID! @default(expr: "uuidV4()")
+  booking: Booking!
+  ticketType: TicketType!
+  guestUser: User
+  guestDisplayName: String
+  dietaryNote: String
+  sortOrder: Int! @default(value: 0)
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Extra guest headcount that needs moderator approval beyond the standard cap (see issue #48).
+type GuestTicketRequest @table {
+  id: UUID! @default(expr: "uuidV4()")
+  booking: Booking!
+  status: GuestTicketRequestStatus! @default(value: PENDING)
+  requestedGuestCount: Int!
+  reviewedBy: User
+  reviewedAt: Timestamp
+  moderatorNote: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

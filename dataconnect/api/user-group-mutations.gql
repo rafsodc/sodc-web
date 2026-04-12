@@ -159,6 +159,7 @@ mutation CreateEvent(
   $endDateTime: Timestamp!
   $bookingStartDateTime: Timestamp!
   $bookingEndDateTime: Timestamp!
+  $maxGuestsWithoutModeratorApproval: Int
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event_insert(
     data: {
@@ -170,6 +171,7 @@ mutation CreateEvent(
       endDateTime: $endDateTime
       bookingStartDateTime: $bookingStartDateTime
       bookingEndDateTime: $bookingEndDateTime
+      maxGuestsWithoutModeratorApproval: $maxGuestsWithoutModeratorApproval
     }
   )
 }
@@ -183,6 +185,7 @@ mutation UpdateEvent(
   $endDateTime: Timestamp!
   $bookingStartDateTime: Timestamp!
   $bookingEndDateTime: Timestamp!
+  $maxGuestsWithoutModeratorApproval: Int
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event_update(
     id: $id
@@ -194,6 +197,7 @@ mutation UpdateEvent(
       endDateTime: $endDateTime
       bookingStartDateTime: $bookingStartDateTime
       bookingEndDateTime: $bookingEndDateTime
+      maxGuestsWithoutModeratorApproval: $maxGuestsWithoutModeratorApproval
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"
     }
@@ -211,6 +215,7 @@ mutation DeleteEvent(
 mutation CreateTicketType(
   $eventId: UUID!
   $userGroupId: UUID!
+  $audience: TicketAudience!
   $title: String!
   $description: String
   $price: Float!
@@ -220,6 +225,7 @@ mutation CreateTicketType(
     data: {
       eventId: $eventId
       userGroupId: $userGroupId
+      audience: $audience
       title: $title
       description: $description
       price: $price
@@ -231,6 +237,7 @@ mutation CreateTicketType(
 mutation UpdateTicketType(
   $id: UUID!
   $userGroupId: UUID!
+  $audience: TicketAudience!
   $title: String!
   $description: String
   $price: Float!
@@ -240,6 +247,7 @@ mutation UpdateTicketType(
     id: $id
     data: {
       userGroupId: $userGroupId
+      audience: $audience
       title: $title
       description: $description
       price: $price

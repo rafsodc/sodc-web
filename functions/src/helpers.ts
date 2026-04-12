@@ -13,6 +13,16 @@ export function requireAuth(request: CallableRequest): void {
 }
 
 /**
+ * Requires the Firebase Auth user to have the `enabled` custom claim (matches Data Connect USER_ACCESS).
+ */
+export function requireEnabled(request: CallableRequest): void {
+  requireAuth(request);
+  if (request.auth!.token.enabled !== true) {
+    throw new HttpsError("permission-denied", "Account must be enabled");
+  }
+}
+
+/**
  * Ensures the request is authenticated and the user is an admin
  */
 export function requireAdmin(request: CallableRequest): void {

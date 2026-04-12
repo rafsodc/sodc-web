@@ -222,6 +222,7 @@ query GetEventsForSection($sectionId: UUID!) @auth(expr: "auth.token.enabled == 
       endDateTime
       bookingStartDateTime
       bookingEndDateTime
+      maxGuestsWithoutModeratorApproval
     }
   }
 }
@@ -240,15 +241,18 @@ query GetEventById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
     endDateTime
     bookingStartDateTime
     bookingEndDateTime
+    maxGuestsWithoutModeratorApproval
     ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
       id
       title
       description
+      audience
       price
       sortOrder
       userGroup {
         id
         name
+        membershipStatuses
       }
     }
   }
@@ -270,6 +274,7 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
         name
         description
         subscribable
+        membershipStatuses
       }
     }
   }
@@ -340,6 +345,59 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
             membershipStatus
           }
         }
+      }
+    }
+  }
+}
+
+# Bookings for an event (current user as booker). Used for member booking UI.
+query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
+      id
+      status
+      createdAt
+      updatedAt
+      lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+        id
+        sortOrder
+        guestDisplayName
+        dietaryNote
+        ticketType {
+          id
+          title
+          audience
+          price
+        }
+        guestUser {
+          id
+          firstName
+          lastName
+        }
+      }
+      guestTicketRequests: guestTicketRequests_on_booking {
+        id
+        status
+        requestedGuestCount
+        reviewedAt
+        moderatorNote
+      }
+    }
+  }
+}
+
+# Admin: list booking graph for cascade delete before removing an event.
+query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event(id: $eventId) {
+    id
+    bookings: bookings_on_event {
+      id
+      guestTicketRequests: guestTicketRequests_on_booking {
+        id
+      }
+      lines: bookingLines_on_booking {
+        id
       }
     }
   }
