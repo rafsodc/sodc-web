@@ -12,28 +12,28 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useCreateUserProfile, useUpsertUser, useUpdateUser, useRegisterForSection, useUnregisterFromSection, useSubscribeToUserGroup, useUnsubscribeFromUserGroup, useUpdateUserMembershipStatus, useDeleteUser, useCreateUser } from '@dataconnect/generated/react';
+import { useUpdateUserMembershipStatus, useDeleteUser, useCreateUser, useCreateUserGroupAdmin, useAddUserToUserGroupAdmin, useRemoveUserFromUserGroupAdmin, useGetUserGroupByName, useGetUserUserGroupsForAdmin, useGetCurrentUser, useGetUserById } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
-
-const { data, isPending, isSuccess, isError, error } = useCreateUserProfile(createUserProfileVars);
-
-const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useUpdateUser(updateUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useRegisterForSection(registerForSectionVars);
-
-const { data, isPending, isSuccess, isError, error } = useUnregisterFromSection(unregisterFromSectionVars);
-
-const { data, isPending, isSuccess, isError, error } = useSubscribeToUserGroup(subscribeToUserGroupVars);
-
-const { data, isPending, isSuccess, isError, error } = useUnsubscribeFromUserGroup(unsubscribeFromUserGroupVars);
 
 const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
 
 const { data, isPending, isSuccess, isError, error } = useDeleteUser(deleteUserVars);
 
 const { data, isPending, isSuccess, isError, error } = useCreateUser(createUserVars);
+
+const { data, isPending, isSuccess, isError, error } = useCreateUserGroupAdmin(createUserGroupAdminVars);
+
+const { data, isPending, isSuccess, isError, error } = useAddUserToUserGroupAdmin(addUserToUserGroupAdminVars);
+
+const { data, isPending, isSuccess, isError, error } = useRemoveUserFromUserGroupAdmin(removeUserFromUserGroupAdminVars);
+
+const { data, isPending, isSuccess, isError, error } = useGetUserGroupByName(getUserGroupByNameVars);
+
+const { data, isPending, isSuccess, isError, error } = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars);
+
+const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
+
+const { data, isPending, isSuccess, isError, error } = useGetUserById(getUserByIdVars);
 
 ```
 
@@ -72,29 +72,8 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { createUserProfile, upsertUser, updateUser, registerForSection, unregisterFromSection, subscribeToUserGroup, unsubscribeFromUserGroup, updateUserMembershipStatus, deleteUser, createUser } from '@dataconnect/generated';
+import { updateUserMembershipStatus, deleteUser, createUser, createUserGroupAdmin, addUserToUserGroupAdmin, removeUserFromUserGroupAdmin, getUserGroupByName, getUserUserGroupsForAdmin, getCurrentUser, getUserById } from '@dataconnect/generated';
 
-
-// Operation CreateUserProfile:  For variables, look at type CreateUserProfileVars in ../index.d.ts
-const { data } = await CreateUserProfile(dataConnect, createUserProfileVars);
-
-// Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
-const { data } = await UpsertUser(dataConnect, upsertUserVars);
-
-// Operation UpdateUser:  For variables, look at type UpdateUserVars in ../index.d.ts
-const { data } = await UpdateUser(dataConnect, updateUserVars);
-
-// Operation RegisterForSection:  For variables, look at type RegisterForSectionVars in ../index.d.ts
-const { data } = await RegisterForSection(dataConnect, registerForSectionVars);
-
-// Operation UnregisterFromSection:  For variables, look at type UnregisterFromSectionVars in ../index.d.ts
-const { data } = await UnregisterFromSection(dataConnect, unregisterFromSectionVars);
-
-// Operation SubscribeToUserGroup:  For variables, look at type SubscribeToUserGroupVars in ../index.d.ts
-const { data } = await SubscribeToUserGroup(dataConnect, subscribeToUserGroupVars);
-
-// Operation UnsubscribeFromUserGroup:  For variables, look at type UnsubscribeFromUserGroupVars in ../index.d.ts
-const { data } = await UnsubscribeFromUserGroup(dataConnect, unsubscribeFromUserGroupVars);
 
 // Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
 const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
@@ -104,6 +83,27 @@ const { data } = await DeleteUser(dataConnect, deleteUserVars);
 
 // Operation CreateUser:  For variables, look at type CreateUserVars in ../index.d.ts
 const { data } = await CreateUser(dataConnect, createUserVars);
+
+// Operation CreateUserGroupAdmin:  For variables, look at type CreateUserGroupAdminVars in ../index.d.ts
+const { data } = await CreateUserGroupAdmin(dataConnect, createUserGroupAdminVars);
+
+// Operation AddUserToUserGroupAdmin:  For variables, look at type AddUserToUserGroupAdminVars in ../index.d.ts
+const { data } = await AddUserToUserGroupAdmin(dataConnect, addUserToUserGroupAdminVars);
+
+// Operation RemoveUserFromUserGroupAdmin:  For variables, look at type RemoveUserFromUserGroupAdminVars in ../index.d.ts
+const { data } = await RemoveUserFromUserGroupAdmin(dataConnect, removeUserFromUserGroupAdminVars);
+
+// Operation GetUserGroupByName:  For variables, look at type GetUserGroupByNameVars in ../index.d.ts
+const { data } = await GetUserGroupByName(dataConnect, getUserGroupByNameVars);
+
+// Operation GetUserUserGroupsForAdmin:  For variables, look at type GetUserUserGroupsForAdminVars in ../index.d.ts
+const { data } = await GetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars);
+
+// Operation GetCurrentUser: 
+const { data } = await GetCurrentUser(dataConnect);
+
+// Operation GetUserById:  For variables, look at type GetUserByIdVars in ../index.d.ts
+const { data } = await GetUserById(dataConnect, getUserByIdVars);
 
 
 ```

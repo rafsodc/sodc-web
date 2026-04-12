@@ -110,8 +110,9 @@ describe('SectionDetail', () => {
         name: 'Test Section',
         type: 'MEMBERS',
         description: 'Test description',
-        accessGroups: [
+        purposeLinks: [
           {
+            purpose: 'ACCESS',
             userGroup: {
               id: 'view-group-1',
               name: 'View Group',
@@ -120,7 +121,6 @@ describe('SectionDetail', () => {
             },
           },
         ],
-        memberGroups: [],
       },
     };
 
@@ -159,8 +159,9 @@ describe('SectionDetail', () => {
         name: 'Test Section',
         type: 'MEMBERS',
         description: 'Test description',
-        accessGroups: [
+        purposeLinks: [
           {
+            purpose: 'ACCESS',
             userGroup: {
               id: 'view-group-1',
               name: 'View Group',
@@ -168,7 +169,6 @@ describe('SectionDetail', () => {
             },
           },
         ],
-        memberGroups: [],
       },
     };
 
@@ -217,17 +217,17 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Test Section',
         type: 'MEMBERS',
-        accessGroups: [
+        purposeLinks: [
           {
+            purpose: 'ACCESS',
             userGroup: {
               id: 'view-group-1',
               name: 'View Group',
               subscribable: false,
             },
           },
-        ],
-        memberGroups: [
           {
+            purpose: 'MEMBER',
             userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
@@ -271,17 +271,17 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Test Section',
         type: 'MEMBERS',
-        accessGroups: [
+        purposeLinks: [
           {
+            purpose: 'ACCESS',
             userGroup: {
               id: 'view-group-1',
               name: 'View Group',
               subscribable: false,
             },
           },
-        ],
-        memberGroups: [
           {
+            purpose: 'MEMBER',
             userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
@@ -326,8 +326,7 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Test Section',
         type: 'MEMBERS',
-        accessGroups: [],
-        memberGroups: [],
+        purposeLinks: [],
       },
     };
 
@@ -379,8 +378,7 @@ describe('SectionDetail', () => {
         name: 'Events Section',
         type: 'EVENTS',
         description: 'Events description',
-        accessGroups: [],
-        memberGroups: [],
+        purposeLinks: [],
       },
     };
 
@@ -425,8 +423,7 @@ describe('SectionDetail', () => {
         name: 'Events Section',
         type: 'EVENTS',
         description: 'Events description',
-        accessGroups: [],
-        memberGroups: [],
+        purposeLinks: [],
       },
     };
     const mockEventsData = {
@@ -518,8 +515,7 @@ describe('SectionDetail', () => {
         id: sectionId,
         name: 'Events Section',
         type: 'EVENTS',
-        accessGroups: [],
-        memberGroups: [],
+        purposeLinks: [],
       },
     };
     const mockEventsData = {

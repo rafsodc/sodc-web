@@ -31,10 +31,11 @@ describe('sectionHelpers', () => {
       expect(result).toEqual([]);
     });
 
-    it('should extract and deduplicate users from member groups', () => {
+    it('should extract and deduplicate users from MEMBER purpose links', () => {
       const sectionData = {
-        memberGroups: [
+        purposeLinks: [
           {
+            purpose: 'MEMBER',
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
@@ -61,13 +62,14 @@ describe('sectionHelpers', () => {
             },
           },
           {
+            purpose: 'MEMBER',
             userGroup: {
               id: 'group-2',
               name: 'Group 2',
               users: [
                 {
                   user: {
-                    id: 'user-1', // Duplicate user
+                    id: 'user-1',
                     firstName: 'John',
                     lastName: 'Doe',
                     email: 'john@example.com',
@@ -94,42 +96,14 @@ describe('sectionHelpers', () => {
       expect(result.map((u) => u.userId)).toEqual(['user-1', 'user-2', 'user-3']);
     });
 
-    it('should return empty when no member groups exist', () => {
+    it('should use ACCESS purpose when no MEMBER links exist', () => {
       const sectionData = {
-        memberGroups: [],
-      };
-
-      const accessGroups = [
-        {
-          userGroup: {
-            id: 'view-group-1',
-            name: 'View Group 1',
-            users: [
-              {
-                user: {
-                  id: 'user-1',
-                  firstName: 'John',
-                  lastName: 'Doe',
-                  email: 'john@example.com',
-                  membershipStatus: 'REGULAR' as MembershipStatus,
-                },
-              },
-            ],
-          },
-        },
-      ];
-
-      const result = getAllUsersFromSection(sectionData as any, accessGroups as any);
-      expect(result).toHaveLength(0);
-    });
-
-    it('should prefer member groups over section access groups', () => {
-      const sectionData = {
-        memberGroups: [
+        purposeLinks: [
           {
+            purpose: 'ACCESS',
             userGroup: {
-              id: 'member-group-1',
-              name: 'Member Group',
+              id: 'view-group-1',
+              name: 'View Group 1',
               users: [
                 {
                   user: {
@@ -146,27 +120,53 @@ describe('sectionHelpers', () => {
         ],
       };
 
-      const accessGroups = [
-        {
-          userGroup: {
-            id: 'view-group-1',
-            name: 'View Group',
-            users: [
-              {
-                user: {
-                  id: 'user-2',
-                  firstName: 'Jane',
-                  lastName: 'Smith',
-                  email: 'jane@example.com',
-                  membershipStatus: 'RESERVE' as MembershipStatus,
-                },
-              },
-            ],
-          },
-        },
-      ];
+      const result = getAllUsersFromSection(sectionData as any);
+      expect(result).toHaveLength(1);
+    });
 
-      const result = getAllUsersFromSection(sectionData as any, accessGroups as any);
+    it('should prefer MEMBER links over ACCESS for rollup', () => {
+      const sectionData = {
+        purposeLinks: [
+          {
+            purpose: 'MEMBER',
+            userGroup: {
+              id: 'member-group-1',
+              name: 'Member Group',
+              users: [
+                {
+                  user: {
+                    id: 'user-1',
+                    firstName: 'John',
+                    lastName: 'Doe',
+                    email: 'john@example.com',
+                    membershipStatus: 'REGULAR' as MembershipStatus,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            purpose: 'ACCESS',
+            userGroup: {
+              id: 'view-group-1',
+              name: 'View Group',
+              users: [
+                {
+                  user: {
+                    id: 'user-2',
+                    firstName: 'Jane',
+                    lastName: 'Smith',
+                    email: 'jane@example.com',
+                    membershipStatus: 'RESERVE' as MembershipStatus,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      const result = getAllUsersFromSection(sectionData as any);
       expect(result).toHaveLength(1);
       expect(result[0].userId).toBe('user-1');
     });
@@ -178,10 +178,11 @@ describe('sectionHelpers', () => {
       expect(result).toEqual([]);
     });
 
-    it('should extract member groups', () => {
+    it('should extract MEMBER purpose groups', () => {
       const sectionData = {
-        memberGroups: [
+        purposeLinks: [
           {
+            purpose: 'MEMBER',
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
@@ -190,6 +191,7 @@ describe('sectionHelpers', () => {
             },
           },
           {
+            purpose: 'MEMBER',
             userGroup: {
               id: 'group-2',
               name: 'Group 2',
@@ -210,50 +212,61 @@ describe('sectionHelpers', () => {
       });
     });
 
-    it('should return empty when no member groups exist', () => {
+    it('should fall back to ACCESS groups when no MEMBER links', () => {
       const sectionData = {
-        memberGroups: [],
+        purposeLinks: [
+          {
+            purpose: 'ACCESS',
+            userGroup: {
+              id: 'view-group-1',
+              name: 'View Group',
+              description: 'View description',
+              subscribable: false,
+            },
+          },
+        ],
       };
 
-      const accessGroups = [
-        {
-          userGroup: {
-            id: 'view-group-1',
-            name: 'View Group',
-            description: 'View description',
-            subscribable: false,
-          },
-        },
-      ];
-
-      const result = getMemberGroups(sectionData as any, accessGroups as any);
-      expect(result).toHaveLength(0);
+      const result = getMemberGroups(sectionData as any);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('view-group-1');
     });
   });
 
   describe('canUserAccessSection', () => {
-    it('should return true when user has access to at least one viewing group', () => {
-      const userAccessGroupIds = ['group-1', 'group-2'];
-      const sectionViewingAccessGroupIds = ['group-2', 'group-3'];
-      expect(canUserAccessSection(userAccessGroupIds, sectionViewingAccessGroupIds)).toBe(true);
+    it('should return true when user matches ACCESS purpose', () => {
+      const userUserGroupIds = ['group-1', 'group-2'];
+      const links = [
+        { purpose: 'ACCESS', userGroup: { id: 'group-2' } },
+        { purpose: 'MEMBER', userGroup: { id: 'other' } },
+      ];
+      expect(canUserAccessSection(userUserGroupIds, links)).toBe(true);
     });
 
-    it('should return false when user has no access to viewing groups', () => {
-      const userAccessGroupIds = ['group-1', 'group-2'];
-      const sectionViewingAccessGroupIds = ['group-3', 'group-4'];
-      expect(canUserAccessSection(userAccessGroupIds, sectionViewingAccessGroupIds)).toBe(false);
+    it('should return true when user matches MODERATOR purpose', () => {
+      const userUserGroupIds = ['mod-1'];
+      const links = [{ purpose: 'MODERATOR', userGroup: { id: 'mod-1' } }];
+      expect(canUserAccessSection(userUserGroupIds, links)).toBe(true);
+    });
+
+    it('should return false when user has no ACCESS or MODERATOR match', () => {
+      const userUserGroupIds = ['group-1', 'group-2'];
+      const links = [
+        { purpose: 'ACCESS', userGroup: { id: 'group-3' } },
+        { purpose: 'MEMBER', userGroup: { id: 'group-1' } },
+      ];
+      expect(canUserAccessSection(userUserGroupIds, links)).toBe(false);
     });
 
     it('should return false when user has no user groups', () => {
       const userUserGroupIds: string[] = [];
-      const sectionAccessGroupIds = ['group-1'];
-      expect(canUserAccessSection(userUserGroupIds, sectionAccessGroupIds)).toBe(false);
+      const links = [{ purpose: 'ACCESS', userGroup: { id: 'group-1' } }];
+      expect(canUserAccessSection(userUserGroupIds, links)).toBe(false);
     });
 
-    it('should return false when section has no viewing groups', () => {
-      const userAccessGroupIds = ['group-1'];
-      const sectionViewingAccessGroupIds: string[] = [];
-      expect(canUserAccessSection(userAccessGroupIds, sectionViewingAccessGroupIds)).toBe(false);
+    it('should return false when section has no purpose links', () => {
+      const userUserGroupIds = ['group-1'];
+      expect(canUserAccessSection(userUserGroupIds, [])).toBe(false);
     });
   });
 
@@ -290,10 +303,10 @@ describe('sectionHelpers', () => {
   });
 
   describe('canUserSubscribe', () => {
-    it('should return true when user has VIEW access, not a member, and group is subscribable', () => {
+    it('should return true when user has ACCESS, not a member, and group is subscribable', () => {
       const userId = 'user-1';
       const userAccessGroupIds = ['view-group-1'];
-      const sectionViewingAccessGroupIds = ['view-group-1'];
+      const purposeLinks = [{ purpose: 'ACCESS', userGroup: { id: 'view-group-1' } }];
       const memberAccessGroups = [
         { id: 'member-group-1', subscribable: true },
       ];
@@ -303,17 +316,17 @@ describe('sectionHelpers', () => {
         canUserSubscribe(
           userId,
           userAccessGroupIds,
-          sectionViewingAccessGroupIds,
+          purposeLinks,
           memberAccessGroups,
           userMemberAccessGroupIds
         )
       ).toBe(true);
     });
 
-    it('should return false when user does not have VIEW access', () => {
+    it('should return false when user does not have section access', () => {
       const userId = 'user-1';
       const userAccessGroupIds = ['other-group'];
-      const sectionViewingAccessGroupIds = ['view-group-1'];
+      const purposeLinks = [{ purpose: 'ACCESS', userGroup: { id: 'view-group-1' } }];
       const memberAccessGroups = [
         { id: 'member-group-1', subscribable: true },
       ];
@@ -323,7 +336,7 @@ describe('sectionHelpers', () => {
         canUserSubscribe(
           userId,
           userAccessGroupIds,
-          sectionViewingAccessGroupIds,
+          purposeLinks,
           memberAccessGroups,
           userMemberAccessGroupIds
         )
@@ -333,7 +346,7 @@ describe('sectionHelpers', () => {
     it('should return false when user is already a member', () => {
       const userId = 'user-1';
       const userAccessGroupIds = ['view-group-1', 'member-group-1'];
-      const sectionViewingAccessGroupIds = ['view-group-1'];
+      const purposeLinks = [{ purpose: 'ACCESS', userGroup: { id: 'view-group-1' } }];
       const memberAccessGroups = [
         { id: 'member-group-1', subscribable: true },
       ];
@@ -343,7 +356,7 @@ describe('sectionHelpers', () => {
         canUserSubscribe(
           userId,
           userAccessGroupIds,
-          sectionViewingAccessGroupIds,
+          purposeLinks,
           memberAccessGroups,
           userMemberAccessGroupIds
         )
@@ -353,7 +366,7 @@ describe('sectionHelpers', () => {
     it('should return false when no member group is subscribable', () => {
       const userId = 'user-1';
       const userAccessGroupIds = ['view-group-1'];
-      const sectionViewingAccessGroupIds = ['view-group-1'];
+      const purposeLinks = [{ purpose: 'ACCESS', userGroup: { id: 'view-group-1' } }];
       const memberAccessGroups = [
         { id: 'member-group-1', subscribable: false },
       ];
@@ -363,7 +376,7 @@ describe('sectionHelpers', () => {
         canUserSubscribe(
           userId,
           userAccessGroupIds,
-          sectionViewingAccessGroupIds,
+          purposeLinks,
           memberAccessGroups,
           userMemberAccessGroupIds
         )
@@ -373,7 +386,7 @@ describe('sectionHelpers', () => {
     it('should return true when at least one subscribable group exists and user is not a member', () => {
       const userId = 'user-1';
       const userAccessGroupIds = ['view-group-1'];
-      const sectionViewingAccessGroupIds = ['view-group-1'];
+      const purposeLinks = [{ purpose: 'ACCESS', userGroup: { id: 'view-group-1' } }];
       const memberAccessGroups = [
         { id: 'member-group-1', subscribable: false },
         { id: 'member-group-2', subscribable: true },
@@ -384,7 +397,7 @@ describe('sectionHelpers', () => {
         canUserSubscribe(
           userId,
           userAccessGroupIds,
-          sectionViewingAccessGroupIds,
+          purposeLinks,
           memberAccessGroups,
           userMemberAccessGroupIds
         )

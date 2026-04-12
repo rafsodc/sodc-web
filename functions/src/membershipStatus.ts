@@ -10,9 +10,8 @@ import {
   type MembershipStatus as AdminMembershipStatus
 } from "@dataconnect/admin-generated";
 
-// No longer using automatic status-based groups
-// Access groups now include membershipStatuses array. Status-based membership is inherited (computed in
-// getSectionMembersMerged and in admin UI); users are not written to UserAccessGroup for status-only membership.
+// User groups may include membershipStatuses. Status-based membership is inherited (computed in
+// getSectionMembersMerged and in admin UI); users are not written to UserUserGroup for status-only membership.
 
 /**
  * Updates membership status with server-side validation and enforcement.

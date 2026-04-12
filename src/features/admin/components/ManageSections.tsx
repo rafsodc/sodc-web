@@ -44,10 +44,9 @@ import {
   deleteSectionRef,
   getSectionByIdRef,
   listUserGroupsRef,
-  grantAccessGroupToSectionRef,
-  grantMemberGroupToSectionRef,
-  revokeAccessGroupFromSectionRef,
-  revokeMemberGroupFromSectionRef,
+  grantUserGroupToSectionForPurposeRef,
+  revokeUserGroupFromSectionForPurposeRef,
+  SectionUserGroupPurpose,
   type SectionType,
   type ListUserGroupsData,
 } from "@dataconnect/generated";
@@ -59,8 +58,36 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
 
-const SectionGroupPurpose = { ACCESS: "ACCESS", MEMBER: "MEMBER" } as const;
-type SectionGroupPurposeType = (typeof SectionGroupPurpose)[keyof typeof SectionGroupPurpose];
+const SECTION_PURPOSE_ORDER: SectionUserGroupPurpose[] = [
+  SectionUserGroupPurpose.ACCESS,
+  SectionUserGroupPurpose.MEMBER,
+  SectionUserGroupPurpose.BOOKER,
+  SectionUserGroupPurpose.MESSAGE,
+  SectionUserGroupPurpose.MODERATOR,
+];
+
+const SECTION_PURPOSE_HELP: Record<SectionUserGroupPurpose, { title: string; body: string }> = {
+  [SectionUserGroupPurpose.ACCESS]: {
+    title: "ACCESS",
+    body: "Users who match these groups can open and see this section in the app.",
+  },
+  [SectionUserGroupPurpose.MEMBER]: {
+    title: "MEMBER",
+    body: "Defines who appears in the section member list and self-service subscription targets.",
+  },
+  [SectionUserGroupPurpose.BOOKER]: {
+    title: "BOOKER",
+    body: "Allows booking events in this section when combined with ACCESS (or MODERATOR) and ticket eligibility. If no group has BOOKER for the section, nobody can book.",
+  },
+  [SectionUserGroupPurpose.MESSAGE]: {
+    title: "MESSAGE",
+    body: "Reserved for future messaging / announcements scope for this section.",
+  },
+  [SectionUserGroupPurpose.MODERATOR]: {
+    title: "MODERATOR",
+    body: "Elevated access for this section (implies ACCESS for authorization).",
+  },
+};
 
 interface ManageSectionsProps {
   onBack: () => void;
@@ -94,13 +121,13 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     id: string;
     name: string;
     description?: string | null;
-    purpose: SectionGroupPurposeType;
+    purpose: SectionUserGroupPurpose;
   }>>([]);
   const [allUserGroups, setAllUserGroups] = useState<ListUserGroupsData["userGroups"]>([]);
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [addUserGroupDialogOpen, setAddUserGroupDialogOpen] = useState(false);
   const [selectedUserGroup, setSelectedUserGroup] = useState<{ id: string; name: string } | null>(null);
-  const [selectedPurpose, setSelectedPurpose] = useState<SectionGroupPurposeType>(SectionGroupPurpose.ACCESS);
+  const [selectedPurpose, setSelectedPurpose] = useState<SectionUserGroupPurpose>(SectionUserGroupPurpose.ACCESS);
   const [addingUserGroup, setAddingUserGroup] = useState(false);
   const [removingUserGroupId, setRemovingUserGroupId] = useState<string | null>(null);
   const [managedSectionId, setManagedSectionId] = useState<string | null>(null);
@@ -155,40 +182,26 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       const result = await executeQuery(ref);
       const section = result.data?.section;
       
-      if (section) {
-        const accessGroups: Array<{
+      if (section?.purposeLinks?.length) {
+        const rows: Array<{
           id: string;
           name: string;
           description?: string | null;
-          purpose: SectionGroupPurposeType;
+          purpose: SectionUserGroupPurpose;
         }> = [];
-        
-        if (section.accessGroups) {
-          section.accessGroups.forEach((group) => {
-            if (group.userGroup) {
-              accessGroups.push({
-                id: group.userGroup.id,
-                name: group.userGroup.name,
-                description: group.userGroup.description,
-                purpose: SectionGroupPurpose.ACCESS,
-              });
-            }
-          });
-        }
-        if (section.memberGroups) {
-          section.memberGroups.forEach((group) => {
-            if (group.userGroup) {
-              accessGroups.push({
-                id: group.userGroup.id,
-                name: group.userGroup.name,
-                description: group.userGroup.description,
-                purpose: SectionGroupPurpose.MEMBER,
-              });
-            }
-          });
-        }
-        
-        setSectionUserGroups(accessGroups);
+        section.purposeLinks.forEach((link) => {
+          if (link.userGroup) {
+            rows.push({
+              id: link.userGroup.id,
+              name: link.userGroup.name,
+              description: link.userGroup.description,
+              purpose: link.purpose,
+            });
+          }
+        });
+        setSectionUserGroups(rows);
+      } else {
+        setSectionUserGroups([]);
       }
     } catch (err: any) {
       console.error("Failed to fetch section user groups:", err);
@@ -278,22 +291,17 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setAddingUserGroup(true);
     setError(null);
     try {
-      const ref =
-        selectedPurpose === SectionGroupPurpose.ACCESS
-          ? grantAccessGroupToSectionRef(dataConnect, {
-              sectionId: editingSection.id,
-              userGroupId: selectedUserGroup.id,
-            })
-          : grantMemberGroupToSectionRef(dataConnect, {
-              sectionId: editingSection.id,
-              userGroupId: selectedUserGroup.id,
-            });
+      const ref = grantUserGroupToSectionForPurposeRef(dataConnect, {
+        sectionId: editingSection.id,
+        userGroupId: selectedUserGroup.id,
+        purpose: selectedPurpose,
+      });
       await executeMutation(ref);
       
       await fetchSectionUserGroups(editingSection.id);
       
       setSelectedUserGroup(null);
-      setSelectedPurpose(SectionGroupPurpose.ACCESS);
+      setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
       setAddUserGroupDialogOpen(false);
     } catch (err: any) {
       setError(err?.message || "Failed to add user group");
@@ -302,7 +310,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     }
   };
 
-  const handleRemoveUserGroup = async (userGroupId: string, purpose: SectionGroupPurposeType) => {
+  const handleRemoveUserGroup = async (userGroupId: string, purpose: SectionUserGroupPurpose) => {
     if (!editingSection) {
       return;
     }
@@ -315,16 +323,11 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setRemovingUserGroupId(removingKey);
     setError(null);
     try {
-      const ref =
-        purpose === SectionGroupPurpose.ACCESS
-          ? revokeAccessGroupFromSectionRef(dataConnect, {
-              sectionId: editingSection.id,
-              userGroupId,
-            })
-          : revokeMemberGroupFromSectionRef(dataConnect, {
-              sectionId: editingSection.id,
-              userGroupId,
-            });
+      const ref = revokeUserGroupFromSectionForPurposeRef(dataConnect, {
+        sectionId: editingSection.id,
+        userGroupId,
+        purpose,
+      });
       await executeMutation(ref);
       
       // Refresh section user groups
@@ -566,7 +569,13 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                             <Chip
                               label={group.purpose}
                               size="small"
-                              color={group.purpose === SectionGroupPurpose.ACCESS ? "primary" : "secondary"}
+                              color={
+                                group.purpose === SectionUserGroupPurpose.ACCESS
+                                  ? "primary"
+                                  : group.purpose === SectionUserGroupPurpose.MEMBER
+                                    ? "secondary"
+                                    : "default"
+                              }
                             />
                           </TableCell>
                           <TableCell align="right">
@@ -595,7 +604,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
                 startIcon={<AddIcon />}
                 onClick={() => {
                   setSelectedUserGroup(null);
-                  setSelectedPurpose(SectionGroupPurpose.ACCESS);
+                  setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
                   setAddUserGroupDialogOpen(true);
                 }}
                 disabled={loadingUserGroups}
@@ -625,12 +634,27 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
             <RadioGroup
               value={selectedPurpose}
               onChange={(e) => {
-                setSelectedPurpose(e.target.value as SectionGroupPurposeType);
+                setSelectedPurpose(e.target.value as SectionUserGroupPurpose);
                 setSelectedUserGroup(null);
               }}
             >
-              <FormControlLabel value={SectionGroupPurpose.ACCESS} control={<Radio />} label="ACCESS - Users can see the section" />
-              <FormControlLabel value={SectionGroupPurpose.MEMBER} control={<Radio />} label="MEMBER - Users appear in member list" />
+              {SECTION_PURPOSE_ORDER.map((p) => (
+                <FormControlLabel
+                  key={p}
+                  value={p}
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body2" component="span" fontWeight={600}>
+                        {SECTION_PURPOSE_HELP[p].title}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {SECTION_PURPOSE_HELP[p].body}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              ))}
             </RadioGroup>
           </FormControl>
 

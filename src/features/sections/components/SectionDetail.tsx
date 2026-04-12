@@ -127,12 +127,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     return userAccessGroupsData.user.userGroups.map((group) => group.userGroup.id);
   }, [userAccessGroupsData]);
 
-  // Extract section user group IDs (who can access the section)
-  const accessGroupIds = useMemo(() => {
-    if (!sectionData?.section?.accessGroups) {
-      return [];
-    }
-    return sectionData.section.accessGroups.map((group) => group.userGroup.id);
+  // Section user groups that grant seeing the section (ACCESS or MODERATOR purpose)
+  const sectionPurposeLinks = useMemo(() => {
+    return sectionData?.section?.purposeLinks ?? [];
   }, [sectionData]);
 
   // Get member groups for this section
@@ -156,11 +153,11 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     return canUserSubscribe(
       currentUser.uid,
       userUserGroupIds,
-      accessGroupIds,
+      sectionPurposeLinks,
       memberGroups,
       userUserGroupIds.filter((id) => memberGroups.some((g) => g.id === id))
     );
-  }, [sectionData, currentUser, userUserGroupIds, accessGroupIds, memberGroups]);
+  }, [sectionData, currentUser, userUserGroupIds, sectionPurposeLinks, memberGroups]);
 
   const allMembers = sectionMembers;
   const refetchMembers = fetchMembers;

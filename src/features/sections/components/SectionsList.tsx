@@ -110,9 +110,11 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
           };
           for (const groupRelation of userSectionsData.user.userGroups) {
             const ug = groupRelation?.userGroup;
-            if (ug?.accessSections && Array.isArray(ug.accessSections)) {
-              for (const sectionRelation of ug.accessSections) {
-                if (sectionRelation?.section) addSection(sectionRelation.section);
+            if (ug?.purposeLinks && Array.isArray(ug.purposeLinks)) {
+              for (const pl of ug.purposeLinks) {
+                if ((pl.purpose === "ACCESS" || pl.purpose === "MODERATOR") && pl.section) {
+                  addSection(pl.section);
+                }
               }
             }
           }
@@ -123,9 +125,11 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
               if (!ug?.membershipStatuses?.includes(userStatus)) {
                 continue;
               }
-              if (ug.accessSections && Array.isArray(ug.accessSections)) {
-                for (const sectionRelation of ug.accessSections) {
-                  if (sectionRelation?.section) addSection(sectionRelation.section);
+              if (ug.purposeLinks && Array.isArray(ug.purposeLinks)) {
+                for (const pl of ug.purposeLinks) {
+                  if ((pl.purpose === "ACCESS" || pl.purpose === "MODERATOR") && pl.section) {
+                    addSection(pl.section);
+                  }
                 }
               }
             }

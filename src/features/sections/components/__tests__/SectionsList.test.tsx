@@ -86,8 +86,9 @@ describe('SectionsList', () => {
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              accessSections: [
+              purposeLinks: [
                 {
+                  purpose: 'ACCESS',
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -96,7 +97,6 @@ describe('SectionsList', () => {
                   },
                 },
               ],
-              memberSections: [],
             },
           },
         ],
@@ -136,9 +136,9 @@ describe('SectionsList', () => {
             userGroup: {
               id: 'member-group-1',
               name: 'Member Group',
-              accessSections: [],
-              memberSections: [
+              purposeLinks: [
                 {
+                  purpose: 'MEMBER',
                   section: {
                     id: 'events-section-1',
                     name: 'Events Section',
@@ -183,8 +183,9 @@ describe('SectionsList', () => {
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              accessSections: [
+              purposeLinks: [
                 {
+                  purpose: 'ACCESS',
                   section: {
                     id: 'section-1',
                     name: 'Same Section',
@@ -192,9 +193,8 @@ describe('SectionsList', () => {
                     description: 'View and member',
                   },
                 },
-              ],
-              memberSections: [
                 {
+                  purpose: 'MEMBER',
                   section: {
                     id: 'section-1',
                     name: 'Same Section',
@@ -267,8 +267,9 @@ describe('SectionsList', () => {
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              accessSections: [
+              purposeLinks: [
                 {
+                  purpose: 'ACCESS',
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -277,6 +278,7 @@ describe('SectionsList', () => {
                   },
                 },
                 {
+                  purpose: 'ACCESS',
                   section: {
                     id: 'section-2',
                     name: 'Another Section',
@@ -285,7 +287,6 @@ describe('SectionsList', () => {
                   },
                 },
               ],
-              memberSections: [],
             },
           },
         ],
@@ -331,8 +332,9 @@ describe('SectionsList', () => {
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              accessSections: [
+              purposeLinks: [
                 {
+                  purpose: 'ACCESS',
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -341,7 +343,6 @@ describe('SectionsList', () => {
                   },
                 },
               ],
-              memberSections: [],
             },
           },
         ],
@@ -386,8 +387,9 @@ describe('SectionsList', () => {
             userGroup: {
               id: 'group-1',
               name: 'Group 1',
-              accessSections: [
+              purposeLinks: [
                 {
+                  purpose: 'ACCESS',
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -396,7 +398,6 @@ describe('SectionsList', () => {
                   },
                 },
               ],
-              memberSections: [],
             },
           },
         ],
