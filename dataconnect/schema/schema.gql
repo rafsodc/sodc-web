@@ -83,21 +83,20 @@ type UserUserGroup @table(key: ["user", "userGroup"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# SectionAccessGroup - junction: which user groups can ACCESS a section (open/see it)
-type SectionAccessGroup @table(key: ["section", "userGroup"]) {
-  section: Section!
-  userGroup: UserGroup!
-  # HasAudit fields
-  createdAt: Timestamp! @default(expr: "request.time")
-  updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+# Why a user group is linked to a section (developer-defined enum; see admin UI for descriptions).
+enum SectionUserGroupPurpose {
+  ACCESS
+  MEMBER
+  BOOKER
+  MESSAGE
+  MODERATOR
 }
 
-# SectionMemberGroup - junction: which user groups define the MEMBER list for a section
-type SectionMemberGroup @table(key: ["section", "userGroup"]) {
+# One row per (section, userGroup, purpose). Same group may appear multiple times with different purposes.
+type SectionUserGroupPurposeLink @table(key: ["section", "userGroup", "purpose"]) {
   section: Section!
   userGroup: UserGroup!
+  purpose: SectionUserGroupPurpose!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

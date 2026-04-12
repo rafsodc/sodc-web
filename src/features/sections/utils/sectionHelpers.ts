@@ -1,4 +1,4 @@
-import type { SectionType, MembershipStatus } from "@dataconnect/generated";
+import type { SectionType, MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/generated";
 
 /**
  * Flattened user data from section member list
@@ -11,6 +11,11 @@ export interface SectionMember {
   membershipStatus: MembershipStatus;
 }
 
+/** Purposes that allow opening / seeing a section. MODERATOR implies this for authorization. */
+export function purposeGrantsSectionAccess(purpose: SectionUserGroupPurpose | string): boolean {
+  return purpose === "ACCESS" || purpose === "MODERATOR";
+}
+
 /**
  * Type guard to check if a section is a MEMBERS section
  */
@@ -18,30 +23,8 @@ export function isMembersSection(section: { type: SectionType }): boolean {
   return section.type === "MEMBERS";
 }
 
-/**
- * Get all users from a section's member groups.
- * Deduplicates users who appear in multiple user groups.
- */
-type SectionDataWithMembers = {
-  memberGroups?: Array<{
-    userGroup: {
-      id: string;
-      name: string;
-      membershipStatuses?: MembershipStatus[] | null;
-      users: Array<{
-        user: {
-          id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
-          membershipStatus: MembershipStatus;
-        };
-      }>;
-    };
-  }>;
-};
-
-type SectionUserGroupRelation = {
+type PurposeLinkWithUsers = {
+  purpose: string;
   userGroup: {
     id: string;
     name: string;
@@ -58,16 +41,33 @@ type SectionUserGroupRelation = {
   };
 };
 
+type SectionDataWithPurposeLinks = {
+  purposeLinks?: PurposeLinkWithUsers[];
+};
+
+/** MEMBER-purpose groups for rollup; if none, ACCESS-purpose groups (legacy fallback). */
+function getRollupPurposeLinks(
+  sectionData: SectionDataWithPurposeLinks | null | undefined
+): PurposeLinkWithUsers[] {
+  const links = sectionData?.purposeLinks ?? [];
+  const memberLinks = links.filter((l) => l.purpose === "MEMBER");
+  return memberLinks.length > 0 ? memberLinks : links.filter((l) => l.purpose === "ACCESS");
+}
+
+/**
+ * Get all users from a section's member rollup groups.
+ * Deduplicates users who appear in multiple user groups.
+ */
 export function getAllUsersFromSection(
-  sectionData: SectionDataWithMembers | null | undefined,
-  _accessGroups?: Array<SectionUserGroupRelation> | null | undefined,
+  sectionData: SectionDataWithPurposeLinks | null | undefined,
+  _unusedLegacy?: unknown,
   additionalUsersByStatus?: Array<SectionMember> | null | undefined
 ): SectionMember[] {
   if (!sectionData) {
     return [];
   }
 
-  const groups = sectionData.memberGroups || [];
+  const groups = getRollupPurposeLinks(sectionData);
 
   const userMap = new Map<string, SectionMember>();
 
@@ -102,11 +102,9 @@ export function getAllUsersFromSection(
   return Array.from(userMap.values());
 }
 
-/**
- * Get member groups from section data.
- */
 type SectionMemberGroupData = {
-  memberGroups?: Array<{
+  purposeLinks?: Array<{
+    purpose: string;
     userGroup: {
       id: string;
       name: string;
@@ -116,41 +114,37 @@ type SectionMemberGroupData = {
   }>;
 };
 
-type SectionUserGroupForMembers = {
-  userGroup: {
-    id: string;
-    name: string;
-    description?: string | null;
-    subscribable?: boolean | null;
-  };
-};
-
+/**
+ * Member-list / subscription groups: MEMBER purpose, or ACCESS if no MEMBER rows (legacy fallback).
+ */
 export function getMemberGroups(
   sectionData: SectionMemberGroupData | null | undefined,
-  _accessGroups?: Array<SectionUserGroupForMembers> | null | undefined
+  _unusedLegacy?: unknown
 ): Array<{
   id: string;
   name: string;
   description?: string | null;
   subscribable?: boolean | null;
 }> {
-  if (!sectionData) {
+  if (!sectionData?.purposeLinks?.length) {
     return [];
   }
-
-  const groups = sectionData.memberGroups || [];
-
-  return groups.map((groupRelation) => groupRelation.userGroup);
+  const member = sectionData.purposeLinks.filter((l) => l.purpose === "MEMBER");
+  const source = member.length > 0 ? member : sectionData.purposeLinks.filter((l) => l.purpose === "ACCESS");
+  return source.map((groupRelation) => groupRelation.userGroup);
 }
 
 /**
- * Check if a user can access a section (in a user group linked to the section)
+ * Check if a user can access a section (via ACCESS or MODERATOR purpose on a group they belong to).
  */
 export function canUserAccessSection(
   userUserGroupIds: string[],
-  sectionAccessGroupIds: string[]
+  sectionPurposeLinks: Array<{ purpose: string; userGroup: { id: string } }>
 ): boolean {
-  return sectionAccessGroupIds.some((id) => userUserGroupIds.includes(id));
+  return sectionPurposeLinks.some(
+    (link) =>
+      purposeGrantsSectionAccess(link.purpose) && userUserGroupIds.includes(link.userGroup.id)
+  );
 }
 
 /**
@@ -160,14 +154,14 @@ export function canUserAccessSection(
 export function canUserSubscribe(
   _userId: string,
   userUserGroupIds: string[],
-  sectionAccessGroupIds: string[],
+  sectionPurposeLinks: Array<{ purpose: string; userGroup: { id: string } }>,
   memberGroups: Array<{
     id: string;
     subscribable?: boolean | null;
   }>,
   userMemberGroupIds: string[]
 ): boolean {
-  if (!canUserAccessSection(userUserGroupIds, sectionAccessGroupIds)) {
+  if (!canUserAccessSection(userUserGroupIds, sectionPurposeLinks)) {
     return false;
   }
   return memberGroups.some(

@@ -402,12 +402,15 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
-  type SectionWithPurpose = { section: { id: string; name: string; type: string; description?: string | null }; purpose: "ACCESS" | "MEMBER" };
+  type SectionWithPurpose = {
+    section: { id: string; name: string; type: string; description?: string | null };
+    purpose: string;
+  };
   const sectionsForGroup: SectionWithPurpose[] = details
-    ? [
-        ...(details.accessSections ?? []).map((item) => ({ ...item, purpose: "ACCESS" as const })),
-        ...(details.memberSections ?? []).map((item) => ({ ...item, purpose: "MEMBER" as const })),
-      ]
+    ? (details.purposeLinks ?? []).map((item) => ({
+        section: item.section,
+        purpose: item.purpose,
+      }))
     : [];
 
   // Merged users: explicit (UserUserGroup) + users whose membershipStatus is in group's membershipStatuses
@@ -705,7 +708,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
                                               label={item.purpose}
                                               size="small"
                                               variant="outlined"
-                                              color={item.purpose === "ACCESS" ? "primary" : "secondary"}
+                                              color={
+                                                item.purpose === "ACCESS"
+                                                  ? "primary"
+                                                  : item.purpose === "MEMBER"
+                                                    ? "secondary"
+                                                    : "default"
+                                              }
                                             />
                                           </TableCell>
                                           <TableCell>

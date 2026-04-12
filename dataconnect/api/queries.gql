@@ -86,7 +86,7 @@ query ListSections @auth(expr: "auth.token.admin == true && auth.token.enabled =
   }
 }
 
-# Get sections accessible to the current user (ACCESS purpose only)
+# Get sections accessible to the current user (ACCESS or MODERATOR purpose on a group the user matches)
 # Requires enabled claim (admins must also be enabled)
 query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
@@ -98,17 +98,8 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
         id
         name
         membershipStatuses
-        # Sections this user group can ACCESS
-        accessSections: sectionAccessGroups_on_userGroup {
-          section {
-            id
-            name
-            type
-            description
-          }
-        }
-        # Sections this user group is MEMBER of (member list, booking)
-        memberSections: sectionMemberGroups_on_userGroup {
+        purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+          purpose
           section {
             id
             name
@@ -124,15 +115,8 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
     id
     name
     membershipStatuses
-    accessSections: sectionAccessGroups_on_userGroup {
-      section {
-        id
-        name
-        type
-        description
-      }
-    }
-    memberSections: sectionMemberGroups_on_userGroup {
+    purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+      purpose
       section {
         id
         name
@@ -279,15 +263,8 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
     description
     isOpenForRegistration
     allowedUserGroups
-    accessGroups: sectionAccessGroups_on_section {
-      userGroup {
-        id
-        name
-        description
-        subscribable
-      }
-    }
-    memberGroups: sectionMemberGroups_on_section {
+    purposeLinks: sectionUserGroupPurposeLinks_on_section {
+      purpose
       userGroup {
         id
         name
@@ -319,15 +296,8 @@ query GetUserGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && auth
         membershipStatus
       }
     }
-    accessSections: sectionAccessGroups_on_userGroup {
-      section {
-        id
-        name
-        type
-        description
-      }
-    }
-    memberSections: sectionMemberGroups_on_userGroup {
+    purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+      purpose
       section {
         id
         name
@@ -347,7 +317,7 @@ query GetAllUserGroupsWithStatuses @auth(level: NO_ACCESS) {
   }
 }
 
-# Get all users in a MEMBERS section (users from section member groups, with fallback to section access groups)
+# Section member rollup uses MEMBER-purpose links; if none, ACCESS-purpose links (same as legacy fallback).
 # Includes both directly added users and users whose membership status matches the group's membershipStatuses
 query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
   section(id: $sectionId) {
@@ -355,24 +325,8 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
     name
     type
     description
-    memberGroups: sectionMemberGroups_on_section {
-      userGroup {
-        id
-        name
-        membershipStatuses
-        users: userUserGroups_on_userGroup {
-          user {
-            id
-            firstName
-            lastName
-            email
-            membershipStatus
-          }
-        }
-      }
-    }
-    # Fallback: if no member groups, use section access groups
-    accessGroups: sectionAccessGroups_on_section {
+    purposeLinks: sectionUserGroupPurposeLinks_on_section {
+      purpose
       userGroup {
         id
         name

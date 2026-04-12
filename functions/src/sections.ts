@@ -18,9 +18,13 @@ export interface SectionMemberResponse {
   membershipStatus: string;
 }
 
+function purposeGrantsSectionAccess(purpose: string): boolean {
+  return purpose === "ACCESS" || purpose === "MODERATOR";
+}
+
 /**
  * Returns merged section members (explicit UserUserGroup + inherited by membership status).
- * Caller must have ACCESS to the section.
+ * Caller must have ACCESS to the section (or MODERATOR on a matching group).
  */
 export const getSectionMembersMerged = onCall(
   { region: FUNCTIONS_REGION },
@@ -42,8 +46,11 @@ export const getSectionMembersMerged = onCall(
         throw new HttpsError("not-found", "Section not found");
       }
 
+      const purposeLinks = section.purposeLinks ?? [];
       const accessGroupIds = new Set(
-        (section.accessGroups || []).map((ag: { userGroup: { id: string } }) => ag.userGroup.id)
+        purposeLinks
+          .filter((pl) => purposeGrantsSectionAccess(pl.purpose))
+          .map((pl) => pl.userGroup.id)
       );
       const callerGroupIds = new Set(
         (callerGroupsResult.data?.user?.userGroups || []).map(
@@ -51,18 +58,16 @@ export const getSectionMembersMerged = onCall(
         )
       );
       const canAccess = [...accessGroupIds].some((id) => callerGroupIds.has(id));
-      // Allow access by membership status when user has no explicit access-group row but their
-      // status matches an ACCESS group on the section.
       let canAccessByStatus = false;
       if (!canAccess) {
         const sectionData = membersResult.data?.section;
         const userStatus = userStatusResult.data?.user?.membershipStatus;
-        if (userStatus) {
-          if (sectionData?.accessGroups?.length) {
-            canAccessByStatus = sectionData.accessGroups.some(
-              (rel) => rel.userGroup.membershipStatuses?.includes(userStatus) ?? false
-            );
-          }
+        if (userStatus && sectionData?.purposeLinks?.length) {
+          canAccessByStatus = sectionData.purposeLinks.some(
+            (rel) =>
+              purposeGrantsSectionAccess(rel.purpose) &&
+              (rel.userGroup.membershipStatuses?.includes(userStatus) ?? false)
+          );
         }
       }
 
@@ -75,12 +80,16 @@ export const getSectionMembersMerged = onCall(
         return { members: [] };
       }
 
-      const memberGroups = sectionData.memberGroups || [];
+      const links = sectionData.purposeLinks ?? [];
+      const memberLinks = links.filter((p) => p.purpose === "MEMBER");
+      const sourceLinks = memberLinks.length > 0 ? memberLinks : links.filter((p) => p.purpose === "ACCESS");
+
       const statuses = new Set<string>();
       const explicitMap = new Map<string, SectionMemberResponse>();
 
-      for (const rel of memberGroups) {
-        const group = (rel as { userGroup: { membershipStatuses?: string[]; users: Array<{ user: SectionMemberResponse }> } }).userGroup;
+      for (const rel of sourceLinks) {
+        const group = (rel as { userGroup: { membershipStatuses?: string[]; users: Array<{ user: SectionMemberResponse }> } })
+          .userGroup;
         if (group.membershipStatuses) {
           group.membershipStatuses.forEach((s: string) => statuses.add(s));
         }

@@ -47,8 +47,8 @@ This file documents all auth expressions used in queries and mutations. Use thes
 - `CreateAccessGroup` mutation
 - `AddUserToAccessGroup` mutation
 - `RemoveUserFromAccessGroup` mutation
-- `GrantAccessGroupToSection` mutation
-- `RevokeAccessGroupFromSection` mutation
+- `GrantUserGroupToSectionForPurpose` mutation
+- `RevokeUserGroupFromSectionForPurpose` mutation
 - `CreateEvent` mutation
 - `UpdateEvent` mutation
 - `DeleteEvent` mutation
