@@ -17,8 +17,6 @@ You can also follow the instructions from the [Data Connect documentation](https
 - [**Accessing the connector**](#accessing-the-connector)
   - [*Connecting to the local Emulator*](#connecting-to-the-local-emulator)
 - [**Queries**](#queries)
-  - [*GetUserGroupByName*](#getusergroupbyname)
-  - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -36,13 +34,18 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetUserGroupById*](#getusergroupbyid)
   - [*GetAllUserGroupsWithStatuses*](#getallusergroupswithstatuses)
   - [*GetSectionMembers*](#getsectionmembers)
+  - [*GetMyBookingsForEvent*](#getmybookingsforevent)
+  - [*ListEventBookingsForAdmin*](#listeventbookingsforadmin)
+  - [*GetUserGroupByName*](#getusergroupbyname)
+  - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
 - [**Mutations**](#mutations)
-  - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
-  - [*DeleteUser*](#deleteuser)
-  - [*CreateUser*](#createuser)
-  - [*CreateUserGroupAdmin*](#createusergroupadmin)
-  - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
-  - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
+  - [*CreateBookingDraft*](#createbookingdraft)
+  - [*AddBookingLine*](#addbookingline)
+  - [*UpdateBookingStatus*](#updatebookingstatus)
+  - [*CreateGuestTicketRequest*](#createguestticketrequest)
+  - [*AdminDeleteGuestTicketRequest*](#admindeleteguestticketrequest)
+  - [*AdminDeleteBookingLine*](#admindeletebookingline)
+  - [*AdminDeleteBooking*](#admindeletebooking)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -66,6 +69,12 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UnregisterFromSection*](#unregisterfromsection)
   - [*SubscribeToUserGroup*](#subscribetousergroup)
   - [*UnsubscribeFromUserGroup*](#unsubscribefromusergroup)
+  - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
+  - [*DeleteUser*](#deleteuser)
+  - [*CreateUser*](#createuser)
+  - [*CreateUserGroupAdmin*](#createusergroupadmin)
+  - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
+  - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
 
 # TanStack Query Firebase & TanStack React Query
 This SDK provides [React](https://react.dev/) hooks generated specific to your application, for the operations found in the connector `api`. These hooks are generated using [TanStack Query Firebase](https://react-query-firebase.invertase.dev/) by our partners at Invertase, a library built on top of [TanStack React Query v5](https://tanstack.com/query/v5/docs/framework/react/overview).
@@ -156,183 +165,6 @@ Here's a general overview of how to use the generated Query hooks in your code:
   - ***Special case:***  If the Query has all optional variables and you would like to provide an `options` argument to the Query hook function without providing any variables, you must pass `undefined` where you would normally pass the Query's variables, and then may provide the `options` argument.
 
 Below are examples of how to use the `api` connector's generated Query hook functions to execute each Query. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#operations-react-angular).
-
-## GetUserGroupByName
-You can execute the `GetUserGroupByName` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
-
-```javascript
-useGetUserGroupByName(dc: DataConnect, vars: GetUserGroupByNameVariables, options?: useDataConnectQueryOptions<GetUserGroupByNameData>): UseDataConnectQueryResult<GetUserGroupByNameData, GetUserGroupByNameVariables>;
-```
-You can also pass in a `DataConnect` instance to the Query hook function.
-```javascript
-useGetUserGroupByName(vars: GetUserGroupByNameVariables, options?: useDataConnectQueryOptions<GetUserGroupByNameData>): UseDataConnectQueryResult<GetUserGroupByNameData, GetUserGroupByNameVariables>;
-```
-
-### Variables
-The `GetUserGroupByName` Query requires an argument of type `GetUserGroupByNameVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface GetUserGroupByNameVariables {
-  name: string;
-}
-```
-### Return Type
-Recall that calling the `GetUserGroupByName` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
-
-To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
-
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetUserGroupByName` Query is of type `GetUserGroupByNameData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface GetUserGroupByNameData {
-  userGroups: ({
-    id: UUIDString;
-    name: string;
-    description?: string | null;
-  } & UserGroup_Key)[];
-}
-```
-
-To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
-
-### Using `GetUserGroupByName`'s Query hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, GetUserGroupByNameVariables } from '@dataconnect/generated';
-import { useGetUserGroupByName } from '@dataconnect/generated/react'
-
-export default function GetUserGroupByNameComponent() {
-  // The `useGetUserGroupByName` Query hook requires an argument of type `GetUserGroupByNameVariables`:
-  const getUserGroupByNameVars: GetUserGroupByNameVariables = {
-    name: ..., 
-  };
-
-  // You don't have to do anything to "execute" the Query.
-  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useGetUserGroupByName(getUserGroupByNameVars);
-  // Variables can be defined inline as well.
-  const query = useGetUserGroupByName({ name: ..., });
-
-  // You can also pass in a `DataConnect` instance to the Query hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const query = useGetUserGroupByName(dataConnect, getUserGroupByNameVars);
-
-  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetUserGroupByName(getUserGroupByNameVars, options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetUserGroupByName(dataConnect, getUserGroupByNameVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Query.
-  if (query.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (query.isError) {
-    return <div>Error: {query.error.message}</div>;
-  }
-
-  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
-  if (query.isSuccess) {
-    console.log(query.data.userGroups);
-  }
-  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## GetUserUserGroupsForAdmin
-You can execute the `GetUserUserGroupsForAdmin` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
-
-```javascript
-useGetUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserUserGroupsForAdminData>): UseDataConnectQueryResult<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
-```
-You can also pass in a `DataConnect` instance to the Query hook function.
-```javascript
-useGetUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserUserGroupsForAdminData>): UseDataConnectQueryResult<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
-```
-
-### Variables
-The `GetUserUserGroupsForAdmin` Query requires an argument of type `GetUserUserGroupsForAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface GetUserUserGroupsForAdminVariables {
-  userId: string;
-}
-```
-### Return Type
-Recall that calling the `GetUserUserGroupsForAdmin` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
-
-To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
-
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetUserUserGroupsForAdmin` Query is of type `GetUserUserGroupsForAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface GetUserUserGroupsForAdminData {
-  user?: {
-    id: string;
-    userGroups: ({
-      userGroup: {
-        id: UUIDString;
-        name: string;
-        description?: string | null;
-      } & UserGroup_Key;
-    })[];
-  } & User_Key;
-}
-```
-
-To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
-
-### Using `GetUserUserGroupsForAdmin`'s Query hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, GetUserUserGroupsForAdminVariables } from '@dataconnect/generated';
-import { useGetUserUserGroupsForAdmin } from '@dataconnect/generated/react'
-
-export default function GetUserUserGroupsForAdminComponent() {
-  // The `useGetUserUserGroupsForAdmin` Query hook requires an argument of type `GetUserUserGroupsForAdminVariables`:
-  const getUserUserGroupsForAdminVars: GetUserUserGroupsForAdminVariables = {
-    userId: ..., 
-  };
-
-  // You don't have to do anything to "execute" the Query.
-  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars);
-  // Variables can be defined inline as well.
-  const query = useGetUserUserGroupsForAdmin({ userId: ..., });
-
-  // You can also pass in a `DataConnect` instance to the Query hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const query = useGetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars);
-
-  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars, options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Query.
-  if (query.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (query.isError) {
-    return <div>Error: {query.error.message}</div>;
-  }
-
-  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
-  if (query.isSuccess) {
-    console.log(query.data.user);
-  }
-  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
 
 ## GetCurrentUser
 You can execute the `GetCurrentUser` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
@@ -1321,6 +1153,7 @@ export interface GetEventsForSectionData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval?: number | null;
     } & Event_Key)[];
   } & Section_Key;
 }
@@ -1416,10 +1249,12 @@ export interface GetEventByIdData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval?: number | null;
       ticketTypes: ({
         id: UUIDString;
         title: string;
         description?: string | null;
+        audience: TicketAudience;
         price: number;
         sortOrder: number;
         userGroup: {
@@ -1867,6 +1702,390 @@ export default function GetSectionMembersComponent() {
 }
 ```
 
+## GetMyBookingsForEvent
+You can execute the `GetMyBookingsForEvent` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables, options?: useDataConnectQueryOptions<GetMyBookingsForEventData>): UseDataConnectQueryResult<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetMyBookingsForEvent(vars: GetMyBookingsForEventVariables, options?: useDataConnectQueryOptions<GetMyBookingsForEventData>): UseDataConnectQueryResult<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+```
+
+### Variables
+The `GetMyBookingsForEvent` Query requires an argument of type `GetMyBookingsForEventVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetMyBookingsForEventVariables {
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetMyBookingsForEvent` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetMyBookingsForEvent` Query is of type `GetMyBookingsForEventData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetMyBookingsForEventData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+        } & TicketType_Key;
+          guestUser?: {
+            id: string;
+            firstName: string;
+            lastName: string;
+          } & User_Key;
+      } & BookingLine_Key)[];
+        guestTicketRequests: ({
+          id: UUIDString;
+          status: GuestTicketRequestStatus;
+          requestedGuestCount: number;
+          reviewedAt?: TimestampString | null;
+          moderatorNote?: string | null;
+        } & GuestTicketRequest_Key)[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetMyBookingsForEvent`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetMyBookingsForEventVariables } from '@dataconnect/generated';
+import { useGetMyBookingsForEvent } from '@dataconnect/generated/react'
+
+export default function GetMyBookingsForEventComponent() {
+  // The `useGetMyBookingsForEvent` Query hook requires an argument of type `GetMyBookingsForEventVariables`:
+  const getMyBookingsForEventVars: GetMyBookingsForEventVariables = {
+    eventId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetMyBookingsForEvent(getMyBookingsForEventVars);
+  // Variables can be defined inline as well.
+  const query = useGetMyBookingsForEvent({ eventId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetMyBookingsForEvent(dataConnect, getMyBookingsForEventVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetMyBookingsForEvent(getMyBookingsForEventVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetMyBookingsForEvent(dataConnect, getMyBookingsForEventVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListEventBookingsForAdmin
+You can execute the `ListEventBookingsForAdmin` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: useDataConnectQueryOptions<ListEventBookingsForAdminData>): UseDataConnectQueryResult<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: useDataConnectQueryOptions<ListEventBookingsForAdminData>): UseDataConnectQueryResult<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+```
+
+### Variables
+The `ListEventBookingsForAdmin` Query requires an argument of type `ListEventBookingsForAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListEventBookingsForAdminVariables {
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `ListEventBookingsForAdmin` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListEventBookingsForAdmin` Query is of type `ListEventBookingsForAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListEventBookingsForAdminData {
+  event?: {
+    id: UUIDString;
+    bookings: ({
+      id: UUIDString;
+      guestTicketRequests: ({
+        id: UUIDString;
+      } & GuestTicketRequest_Key)[];
+        lines: ({
+          id: UUIDString;
+        } & BookingLine_Key)[];
+    } & Booking_Key)[];
+  } & Event_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListEventBookingsForAdmin`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListEventBookingsForAdminVariables } from '@dataconnect/generated';
+import { useListEventBookingsForAdmin } from '@dataconnect/generated/react'
+
+export default function ListEventBookingsForAdminComponent() {
+  // The `useListEventBookingsForAdmin` Query hook requires an argument of type `ListEventBookingsForAdminVariables`:
+  const listEventBookingsForAdminVars: ListEventBookingsForAdminVariables = {
+    eventId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListEventBookingsForAdmin(listEventBookingsForAdminVars);
+  // Variables can be defined inline as well.
+  const query = useListEventBookingsForAdmin({ eventId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListEventBookingsForAdmin(dataConnect, listEventBookingsForAdminVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListEventBookingsForAdmin(listEventBookingsForAdminVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListEventBookingsForAdmin(dataConnect, listEventBookingsForAdminVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.event);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetUserGroupByName
+You can execute the `GetUserGroupByName` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetUserGroupByName(dc: DataConnect, vars: GetUserGroupByNameVariables, options?: useDataConnectQueryOptions<GetUserGroupByNameData>): UseDataConnectQueryResult<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetUserGroupByName(vars: GetUserGroupByNameVariables, options?: useDataConnectQueryOptions<GetUserGroupByNameData>): UseDataConnectQueryResult<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+```
+
+### Variables
+The `GetUserGroupByName` Query requires an argument of type `GetUserGroupByNameVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetUserGroupByNameVariables {
+  name: string;
+}
+```
+### Return Type
+Recall that calling the `GetUserGroupByName` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetUserGroupByName` Query is of type `GetUserGroupByNameData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetUserGroupByNameData {
+  userGroups: ({
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+  } & UserGroup_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetUserGroupByName`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetUserGroupByNameVariables } from '@dataconnect/generated';
+import { useGetUserGroupByName } from '@dataconnect/generated/react'
+
+export default function GetUserGroupByNameComponent() {
+  // The `useGetUserGroupByName` Query hook requires an argument of type `GetUserGroupByNameVariables`:
+  const getUserGroupByNameVars: GetUserGroupByNameVariables = {
+    name: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetUserGroupByName(getUserGroupByNameVars);
+  // Variables can be defined inline as well.
+  const query = useGetUserGroupByName({ name: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetUserGroupByName(dataConnect, getUserGroupByNameVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetUserGroupByName(getUserGroupByNameVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetUserGroupByName(dataConnect, getUserGroupByNameVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.userGroups);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetUserUserGroupsForAdmin
+You can execute the `GetUserUserGroupsForAdmin` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserUserGroupsForAdminData>): UseDataConnectQueryResult<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables, options?: useDataConnectQueryOptions<GetUserUserGroupsForAdminData>): UseDataConnectQueryResult<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+```
+
+### Variables
+The `GetUserUserGroupsForAdmin` Query requires an argument of type `GetUserUserGroupsForAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetUserUserGroupsForAdminVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that calling the `GetUserUserGroupsForAdmin` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetUserUserGroupsForAdmin` Query is of type `GetUserUserGroupsForAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetUserUserGroupsForAdminData {
+  user?: {
+    id: string;
+    userGroups: ({
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & UserGroup_Key;
+    })[];
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetUserUserGroupsForAdmin`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetUserUserGroupsForAdminVariables } from '@dataconnect/generated';
+import { useGetUserUserGroupsForAdmin } from '@dataconnect/generated/react'
+
+export default function GetUserUserGroupsForAdminComponent() {
+  // The `useGetUserUserGroupsForAdmin` Query hook requires an argument of type `GetUserUserGroupsForAdminVariables`:
+  const getUserUserGroupsForAdminVars: GetUserUserGroupsForAdminVariables = {
+    userId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars);
+  // Variables can be defined inline as well.
+  const query = useGetUserUserGroupsForAdmin({ userId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 # Mutations
 
 The React generated SDK provides Mutations hook functions that call and return [`useDataConnectMutation`](https://react-query-firebase.invertase.dev/react/data-connect/mutations) hooks from TanStack Query Firebase.
@@ -1892,84 +2111,82 @@ Here's a general overview of how to use the generated Mutation hooks in your cod
 
 Below are examples of how to use the `api` connector's generated Mutation hook functions to execute each Mutation. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#operations-react-angular).
 
-## UpdateUserMembershipStatus
-You can execute the `UpdateUserMembershipStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## CreateBookingDraft
+You can execute the `CreateBookingDraft` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useUpdateUserMembershipStatus(options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+useCreateBookingDraft(options?: useDataConnectMutationOptions<CreateBookingDraftData, FirebaseError, CreateBookingDraftVariables>): UseDataConnectMutationResult<CreateBookingDraftData, CreateBookingDraftVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useUpdateUserMembershipStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+useCreateBookingDraft(dc: DataConnect, options?: useDataConnectMutationOptions<CreateBookingDraftData, FirebaseError, CreateBookingDraftVariables>): UseDataConnectMutationResult<CreateBookingDraftData, CreateBookingDraftVariables>;
 ```
 
 ### Variables
-The `UpdateUserMembershipStatus` Mutation requires an argument of type `UpdateUserMembershipStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `CreateBookingDraft` Mutation requires an argument of type `CreateBookingDraftVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface UpdateUserMembershipStatusVariables {
-  userId: string;
-  membershipStatus: MembershipStatus;
+export interface CreateBookingDraftVariables {
+  eventId: UUIDString;
 }
 ```
 ### Return Type
-Recall that calling the `UpdateUserMembershipStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `CreateBookingDraft` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateUserMembershipStatus` Mutation is of type `UpdateUserMembershipStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateBookingDraft` Mutation is of type `CreateBookingDraftData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface UpdateUserMembershipStatusData {
-  user_update?: User_Key | null;
+export interface CreateBookingDraftData {
+  booking_insert: Booking_Key;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `UpdateUserMembershipStatus`'s Mutation hook function
+### Using `CreateBookingDraft`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateUserMembershipStatusVariables } from '@dataconnect/generated';
-import { useUpdateUserMembershipStatus } from '@dataconnect/generated/react'
+import { connectorConfig, CreateBookingDraftVariables } from '@dataconnect/generated';
+import { useCreateBookingDraft } from '@dataconnect/generated/react'
 
-export default function UpdateUserMembershipStatusComponent() {
+export default function CreateBookingDraftComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateUserMembershipStatus();
+  const mutation = useCreateBookingDraft();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateUserMembershipStatus(dataConnect);
+  const mutation = useCreateBookingDraft(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useUpdateUserMembershipStatus(options);
+  const mutation = useCreateBookingDraft(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useUpdateUserMembershipStatus(dataConnect, options);
+  const mutation = useCreateBookingDraft(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateUserMembershipStatus` Mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
-  const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
-    userId: ..., 
-    membershipStatus: ..., 
+  // The `useCreateBookingDraft` Mutation requires an argument of type `CreateBookingDraftVariables`:
+  const createBookingDraftVars: CreateBookingDraftVariables = {
+    eventId: ..., 
   };
-  mutation.mutate(updateUserMembershipStatusVars);
+  mutation.mutate(createBookingDraftVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., membershipStatus: ..., });
+  mutation.mutate({ eventId: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(updateUserMembershipStatusVars, options);
+  mutation.mutate(createBookingDraftVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -1982,88 +2199,98 @@ export default function UpdateUserMembershipStatusComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_update);
+    console.log(mutation.data.booking_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## DeleteUser
-You can execute the `DeleteUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## AddBookingLine
+You can execute the `AddBookingLine` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useDeleteUser(options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+useAddBookingLine(options?: useDataConnectMutationOptions<AddBookingLineData, FirebaseError, AddBookingLineVariables>): UseDataConnectMutationResult<AddBookingLineData, AddBookingLineVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useDeleteUser(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+useAddBookingLine(dc: DataConnect, options?: useDataConnectMutationOptions<AddBookingLineData, FirebaseError, AddBookingLineVariables>): UseDataConnectMutationResult<AddBookingLineData, AddBookingLineVariables>;
 ```
 
 ### Variables
-The `DeleteUser` Mutation requires an argument of type `DeleteUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `AddBookingLine` Mutation requires an argument of type `AddBookingLineVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface DeleteUserVariables {
-  userId: string;
+export interface AddBookingLineVariables {
+  bookingId: UUIDString;
+  ticketTypeId: UUIDString;
+  guestUserId?: string | null;
+  guestDisplayName?: string | null;
+  dietaryNote?: string | null;
+  sortOrder: number;
 }
 ```
 ### Return Type
-Recall that calling the `DeleteUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `AddBookingLine` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `DeleteUser` Mutation is of type `DeleteUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AddBookingLine` Mutation is of type `AddBookingLineData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface DeleteUserData {
-  user_delete?: User_Key | null;
+export interface AddBookingLineData {
+  bookingLine_insert: BookingLine_Key;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `DeleteUser`'s Mutation hook function
+### Using `AddBookingLine`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, DeleteUserVariables } from '@dataconnect/generated';
-import { useDeleteUser } from '@dataconnect/generated/react'
+import { connectorConfig, AddBookingLineVariables } from '@dataconnect/generated';
+import { useAddBookingLine } from '@dataconnect/generated/react'
 
-export default function DeleteUserComponent() {
+export default function AddBookingLineComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useDeleteUser();
+  const mutation = useAddBookingLine();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useDeleteUser(dataConnect);
+  const mutation = useAddBookingLine(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useDeleteUser(options);
+  const mutation = useAddBookingLine(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useDeleteUser(dataConnect, options);
+  const mutation = useAddBookingLine(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useDeleteUser` Mutation requires an argument of type `DeleteUserVariables`:
-  const deleteUserVars: DeleteUserVariables = {
-    userId: ..., 
+  // The `useAddBookingLine` Mutation requires an argument of type `AddBookingLineVariables`:
+  const addBookingLineVars: AddBookingLineVariables = {
+    bookingId: ..., 
+    ticketTypeId: ..., 
+    guestUserId: ..., // optional
+    guestDisplayName: ..., // optional
+    dietaryNote: ..., // optional
+    sortOrder: ..., 
   };
-  mutation.mutate(deleteUserVars);
+  mutation.mutate(addBookingLineVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., });
+  mutation.mutate({ bookingId: ..., ticketTypeId: ..., guestUserId: ..., guestDisplayName: ..., dietaryNote: ..., sortOrder: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(deleteUserVars, options);
+  mutation.mutate(addBookingLineVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -2076,108 +2303,90 @@ export default function DeleteUserComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_delete);
+    console.log(mutation.data.bookingLine_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## CreateUser
-You can execute the `CreateUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## UpdateBookingStatus
+You can execute the `UpdateBookingStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useCreateUser(options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+useUpdateBookingStatus(options?: useDataConnectMutationOptions<UpdateBookingStatusData, FirebaseError, UpdateBookingStatusVariables>): UseDataConnectMutationResult<UpdateBookingStatusData, UpdateBookingStatusVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useCreateUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+useUpdateBookingStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateBookingStatusData, FirebaseError, UpdateBookingStatusVariables>): UseDataConnectMutationResult<UpdateBookingStatusData, UpdateBookingStatusVariables>;
 ```
 
 ### Variables
-The `CreateUser` Mutation requires an argument of type `CreateUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `UpdateBookingStatus` Mutation requires an argument of type `UpdateBookingStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface CreateUserVariables {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  serviceNumber: string;
-  membershipStatus: MembershipStatus;
-  isRegular?: boolean | null;
-  isReserve?: boolean | null;
-  isCivilServant?: boolean | null;
-  isIndustry?: boolean | null;
-  now: TimestampString;
+export interface UpdateBookingStatusVariables {
+  id: UUIDString;
+  status: BookingStatus;
 }
 ```
 ### Return Type
-Recall that calling the `CreateUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `UpdateBookingStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateUser` Mutation is of type `CreateUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingStatus` Mutation is of type `UpdateBookingStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface CreateUserData {
-  user_upsert: User_Key;
+export interface UpdateBookingStatusData {
+  booking_update?: Booking_Key | null;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `CreateUser`'s Mutation hook function
+### Using `UpdateBookingStatus`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateUserVariables } from '@dataconnect/generated';
-import { useCreateUser } from '@dataconnect/generated/react'
+import { connectorConfig, UpdateBookingStatusVariables } from '@dataconnect/generated';
+import { useUpdateBookingStatus } from '@dataconnect/generated/react'
 
-export default function CreateUserComponent() {
+export default function UpdateBookingStatusComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateUser();
+  const mutation = useUpdateBookingStatus();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateUser(dataConnect);
+  const mutation = useUpdateBookingStatus(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useCreateUser(options);
+  const mutation = useUpdateBookingStatus(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useCreateUser(dataConnect, options);
+  const mutation = useUpdateBookingStatus(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateUser` Mutation requires an argument of type `CreateUserVariables`:
-  const createUserVars: CreateUserVariables = {
-    userId: ..., 
-    firstName: ..., 
-    lastName: ..., 
-    email: ..., 
-    serviceNumber: ..., 
-    membershipStatus: ..., 
-    isRegular: ..., // optional
-    isReserve: ..., // optional
-    isCivilServant: ..., // optional
-    isIndustry: ..., // optional
-    now: ..., 
+  // The `useUpdateBookingStatus` Mutation requires an argument of type `UpdateBookingStatusVariables`:
+  const updateBookingStatusVars: UpdateBookingStatusVariables = {
+    id: ..., 
+    status: ..., 
   };
-  mutation.mutate(createUserVars);
+  mutation.mutate(updateBookingStatusVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., now: ..., });
+  mutation.mutate({ id: ..., status: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(createUserVars, options);
+  mutation.mutate(updateBookingStatusVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -2190,92 +2399,90 @@ export default function CreateUserComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_upsert);
+    console.log(mutation.data.booking_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## CreateUserGroupAdmin
-You can execute the `CreateUserGroupAdmin` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## CreateGuestTicketRequest
+You can execute the `CreateGuestTicketRequest` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useCreateUserGroupAdmin(options?: useDataConnectMutationOptions<CreateUserGroupAdminData, FirebaseError, CreateUserGroupAdminVariables>): UseDataConnectMutationResult<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+useCreateGuestTicketRequest(options?: useDataConnectMutationOptions<CreateGuestTicketRequestData, FirebaseError, CreateGuestTicketRequestVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useCreateUserGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserGroupAdminData, FirebaseError, CreateUserGroupAdminVariables>): UseDataConnectMutationResult<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+useCreateGuestTicketRequest(dc: DataConnect, options?: useDataConnectMutationOptions<CreateGuestTicketRequestData, FirebaseError, CreateGuestTicketRequestVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
 ```
 
 ### Variables
-The `CreateUserGroupAdmin` Mutation requires an argument of type `CreateUserGroupAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `CreateGuestTicketRequest` Mutation requires an argument of type `CreateGuestTicketRequestVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface CreateUserGroupAdminVariables {
-  name: string;
-  description?: string | null;
-  now: TimestampString;
+export interface CreateGuestTicketRequestVariables {
+  bookingId: UUIDString;
+  requestedGuestCount: number;
 }
 ```
 ### Return Type
-Recall that calling the `CreateUserGroupAdmin` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `CreateGuestTicketRequest` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateUserGroupAdmin` Mutation is of type `CreateUserGroupAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateGuestTicketRequest` Mutation is of type `CreateGuestTicketRequestData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface CreateUserGroupAdminData {
-  userGroup_insert: UserGroup_Key;
+export interface CreateGuestTicketRequestData {
+  guestTicketRequest_insert: GuestTicketRequest_Key;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `CreateUserGroupAdmin`'s Mutation hook function
+### Using `CreateGuestTicketRequest`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateUserGroupAdminVariables } from '@dataconnect/generated';
-import { useCreateUserGroupAdmin } from '@dataconnect/generated/react'
+import { connectorConfig, CreateGuestTicketRequestVariables } from '@dataconnect/generated';
+import { useCreateGuestTicketRequest } from '@dataconnect/generated/react'
 
-export default function CreateUserGroupAdminComponent() {
+export default function CreateGuestTicketRequestComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateUserGroupAdmin();
+  const mutation = useCreateGuestTicketRequest();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateUserGroupAdmin(dataConnect);
+  const mutation = useCreateGuestTicketRequest(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useCreateUserGroupAdmin(options);
+  const mutation = useCreateGuestTicketRequest(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useCreateUserGroupAdmin(dataConnect, options);
+  const mutation = useCreateGuestTicketRequest(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateUserGroupAdmin` Mutation requires an argument of type `CreateUserGroupAdminVariables`:
-  const createUserGroupAdminVars: CreateUserGroupAdminVariables = {
-    name: ..., 
-    description: ..., // optional
-    now: ..., 
+  // The `useCreateGuestTicketRequest` Mutation requires an argument of type `CreateGuestTicketRequestVariables`:
+  const createGuestTicketRequestVars: CreateGuestTicketRequestVariables = {
+    bookingId: ..., 
+    requestedGuestCount: ..., 
   };
-  mutation.mutate(createUserGroupAdminVars);
+  mutation.mutate(createGuestTicketRequestVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ name: ..., description: ..., now: ..., });
+  mutation.mutate({ bookingId: ..., requestedGuestCount: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(createUserGroupAdminVars, options);
+  mutation.mutate(createGuestTicketRequestVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -2288,92 +2495,88 @@ export default function CreateUserGroupAdminComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.userGroup_insert);
+    console.log(mutation.data.guestTicketRequest_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## AddUserToUserGroupAdmin
-You can execute the `AddUserToUserGroupAdmin` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## AdminDeleteGuestTicketRequest
+You can execute the `AdminDeleteGuestTicketRequest` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useAddUserToUserGroupAdmin(options?: useDataConnectMutationOptions<AddUserToUserGroupAdminData, FirebaseError, AddUserToUserGroupAdminVariables>): UseDataConnectMutationResult<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+useAdminDeleteGuestTicketRequest(options?: useDataConnectMutationOptions<AdminDeleteGuestTicketRequestData, FirebaseError, AdminDeleteGuestTicketRequestVariables>): UseDataConnectMutationResult<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useAddUserToUserGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<AddUserToUserGroupAdminData, FirebaseError, AddUserToUserGroupAdminVariables>): UseDataConnectMutationResult<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+useAdminDeleteGuestTicketRequest(dc: DataConnect, options?: useDataConnectMutationOptions<AdminDeleteGuestTicketRequestData, FirebaseError, AdminDeleteGuestTicketRequestVariables>): UseDataConnectMutationResult<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
 ```
 
 ### Variables
-The `AddUserToUserGroupAdmin` Mutation requires an argument of type `AddUserToUserGroupAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `AdminDeleteGuestTicketRequest` Mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface AddUserToUserGroupAdminVariables {
-  userId: string;
-  userGroupId: UUIDString;
-  now: TimestampString;
+export interface AdminDeleteGuestTicketRequestVariables {
+  id: UUIDString;
 }
 ```
 ### Return Type
-Recall that calling the `AddUserToUserGroupAdmin` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `AdminDeleteGuestTicketRequest` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AddUserToUserGroupAdmin` Mutation is of type `AddUserToUserGroupAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminDeleteGuestTicketRequest` Mutation is of type `AdminDeleteGuestTicketRequestData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface AddUserToUserGroupAdminData {
-  userUserGroup_upsert: UserUserGroup_Key;
+export interface AdminDeleteGuestTicketRequestData {
+  guestTicketRequest_delete?: GuestTicketRequest_Key | null;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `AddUserToUserGroupAdmin`'s Mutation hook function
+### Using `AdminDeleteGuestTicketRequest`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, AddUserToUserGroupAdminVariables } from '@dataconnect/generated';
-import { useAddUserToUserGroupAdmin } from '@dataconnect/generated/react'
+import { connectorConfig, AdminDeleteGuestTicketRequestVariables } from '@dataconnect/generated';
+import { useAdminDeleteGuestTicketRequest } from '@dataconnect/generated/react'
 
-export default function AddUserToUserGroupAdminComponent() {
+export default function AdminDeleteGuestTicketRequestComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useAddUserToUserGroupAdmin();
+  const mutation = useAdminDeleteGuestTicketRequest();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useAddUserToUserGroupAdmin(dataConnect);
+  const mutation = useAdminDeleteGuestTicketRequest(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useAddUserToUserGroupAdmin(options);
+  const mutation = useAdminDeleteGuestTicketRequest(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useAddUserToUserGroupAdmin(dataConnect, options);
+  const mutation = useAdminDeleteGuestTicketRequest(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useAddUserToUserGroupAdmin` Mutation requires an argument of type `AddUserToUserGroupAdminVariables`:
-  const addUserToUserGroupAdminVars: AddUserToUserGroupAdminVariables = {
-    userId: ..., 
-    userGroupId: ..., 
-    now: ..., 
+  // The `useAdminDeleteGuestTicketRequest` Mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`:
+  const adminDeleteGuestTicketRequestVars: AdminDeleteGuestTicketRequestVariables = {
+    id: ..., 
   };
-  mutation.mutate(addUserToUserGroupAdminVars);
+  mutation.mutate(adminDeleteGuestTicketRequestVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., userGroupId: ..., now: ..., });
+  mutation.mutate({ id: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(addUserToUserGroupAdminVars, options);
+  mutation.mutate(adminDeleteGuestTicketRequestVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -2386,90 +2589,88 @@ export default function AddUserToUserGroupAdminComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.userUserGroup_upsert);
+    console.log(mutation.data.guestTicketRequest_delete);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## RemoveUserFromUserGroupAdmin
-You can execute the `RemoveUserFromUserGroupAdmin` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## AdminDeleteBookingLine
+You can execute the `AdminDeleteBookingLine` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useRemoveUserFromUserGroupAdmin(options?: useDataConnectMutationOptions<RemoveUserFromUserGroupAdminData, FirebaseError, RemoveUserFromUserGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+useAdminDeleteBookingLine(options?: useDataConnectMutationOptions<AdminDeleteBookingLineData, FirebaseError, AdminDeleteBookingLineVariables>): UseDataConnectMutationResult<AdminDeleteBookingLineData, AdminDeleteBookingLineVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useRemoveUserFromUserGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<RemoveUserFromUserGroupAdminData, FirebaseError, RemoveUserFromUserGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+useAdminDeleteBookingLine(dc: DataConnect, options?: useDataConnectMutationOptions<AdminDeleteBookingLineData, FirebaseError, AdminDeleteBookingLineVariables>): UseDataConnectMutationResult<AdminDeleteBookingLineData, AdminDeleteBookingLineVariables>;
 ```
 
 ### Variables
-The `RemoveUserFromUserGroupAdmin` Mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `AdminDeleteBookingLine` Mutation requires an argument of type `AdminDeleteBookingLineVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface RemoveUserFromUserGroupAdminVariables {
-  userId: string;
-  userGroupId: UUIDString;
+export interface AdminDeleteBookingLineVariables {
+  id: UUIDString;
 }
 ```
 ### Return Type
-Recall that calling the `RemoveUserFromUserGroupAdmin` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `AdminDeleteBookingLine` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RemoveUserFromUserGroupAdmin` Mutation is of type `RemoveUserFromUserGroupAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminDeleteBookingLine` Mutation is of type `AdminDeleteBookingLineData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface RemoveUserFromUserGroupAdminData {
-  userUserGroup_delete?: UserUserGroup_Key | null;
+export interface AdminDeleteBookingLineData {
+  bookingLine_delete?: BookingLine_Key | null;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `RemoveUserFromUserGroupAdmin`'s Mutation hook function
+### Using `AdminDeleteBookingLine`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, RemoveUserFromUserGroupAdminVariables } from '@dataconnect/generated';
-import { useRemoveUserFromUserGroupAdmin } from '@dataconnect/generated/react'
+import { connectorConfig, AdminDeleteBookingLineVariables } from '@dataconnect/generated';
+import { useAdminDeleteBookingLine } from '@dataconnect/generated/react'
 
-export default function RemoveUserFromUserGroupAdminComponent() {
+export default function AdminDeleteBookingLineComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useRemoveUserFromUserGroupAdmin();
+  const mutation = useAdminDeleteBookingLine();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useRemoveUserFromUserGroupAdmin(dataConnect);
+  const mutation = useAdminDeleteBookingLine(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useRemoveUserFromUserGroupAdmin(options);
+  const mutation = useAdminDeleteBookingLine(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useRemoveUserFromUserGroupAdmin(dataConnect, options);
+  const mutation = useAdminDeleteBookingLine(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useRemoveUserFromUserGroupAdmin` Mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`:
-  const removeUserFromUserGroupAdminVars: RemoveUserFromUserGroupAdminVariables = {
-    userId: ..., 
-    userGroupId: ..., 
+  // The `useAdminDeleteBookingLine` Mutation requires an argument of type `AdminDeleteBookingLineVariables`:
+  const adminDeleteBookingLineVars: AdminDeleteBookingLineVariables = {
+    id: ..., 
   };
-  mutation.mutate(removeUserFromUserGroupAdminVars);
+  mutation.mutate(adminDeleteBookingLineVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., userGroupId: ..., });
+  mutation.mutate({ id: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(removeUserFromUserGroupAdminVars, options);
+  mutation.mutate(adminDeleteBookingLineVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -2482,7 +2683,101 @@ export default function RemoveUserFromUserGroupAdminComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.userUserGroup_delete);
+    console.log(mutation.data.bookingLine_delete);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## AdminDeleteBooking
+You can execute the `AdminDeleteBooking` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAdminDeleteBooking(options?: useDataConnectMutationOptions<AdminDeleteBookingData, FirebaseError, AdminDeleteBookingVariables>): UseDataConnectMutationResult<AdminDeleteBookingData, AdminDeleteBookingVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAdminDeleteBooking(dc: DataConnect, options?: useDataConnectMutationOptions<AdminDeleteBookingData, FirebaseError, AdminDeleteBookingVariables>): UseDataConnectMutationResult<AdminDeleteBookingData, AdminDeleteBookingVariables>;
+```
+
+### Variables
+The `AdminDeleteBooking` Mutation requires an argument of type `AdminDeleteBookingVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AdminDeleteBookingVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `AdminDeleteBooking` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminDeleteBooking` Mutation is of type `AdminDeleteBookingData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AdminDeleteBookingData {
+  booking_delete?: Booking_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AdminDeleteBooking`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AdminDeleteBookingVariables } from '@dataconnect/generated';
+import { useAdminDeleteBooking } from '@dataconnect/generated/react'
+
+export default function AdminDeleteBookingComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAdminDeleteBooking();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAdminDeleteBooking(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAdminDeleteBooking(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAdminDeleteBooking(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAdminDeleteBooking` Mutation requires an argument of type `AdminDeleteBookingVariables`:
+  const adminDeleteBookingVars: AdminDeleteBookingVariables = {
+    id: ..., 
+  };
+  mutation.mutate(adminDeleteBookingVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(adminDeleteBookingVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.booking_delete);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -3485,6 +3780,7 @@ export interface CreateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
+  maxGuestsWithoutModeratorApproval?: number | null;
 }
 ```
 ### Return Type
@@ -3542,10 +3838,11 @@ export default function CreateEventComponent() {
     endDateTime: ..., 
     bookingStartDateTime: ..., 
     bookingEndDateTime: ..., 
+    maxGuestsWithoutModeratorApproval: ..., // optional
   };
   mutation.mutate(createEventVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., });
+  mutation.mutate({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -3593,6 +3890,7 @@ export interface UpdateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
+  maxGuestsWithoutModeratorApproval?: number | null;
 }
 ```
 ### Return Type
@@ -3650,10 +3948,11 @@ export default function UpdateEventComponent() {
     endDateTime: ..., 
     bookingStartDateTime: ..., 
     bookingEndDateTime: ..., 
+    maxGuestsWithoutModeratorApproval: ..., // optional
   };
   mutation.mutate(updateEventVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., });
+  mutation.mutate({ id: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -3789,6 +4088,7 @@ The `CreateTicketType` Mutation requires an argument of type `CreateTicketTypeVa
 export interface CreateTicketTypeVariables {
   eventId: UUIDString;
   userGroupId: UUIDString;
+  audience: TicketAudience;
   title: string;
   description?: string | null;
   price: number;
@@ -3844,6 +4144,7 @@ export default function CreateTicketTypeComponent() {
   const createTicketTypeVars: CreateTicketTypeVariables = {
     eventId: ..., 
     userGroupId: ..., 
+    audience: ..., 
     title: ..., 
     description: ..., // optional
     price: ..., 
@@ -3851,7 +4152,7 @@ export default function CreateTicketTypeComponent() {
   };
   mutation.mutate(createTicketTypeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ eventId: ..., userGroupId: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+  mutation.mutate({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -3893,6 +4194,7 @@ The `UpdateTicketType` Mutation requires an argument of type `UpdateTicketTypeVa
 export interface UpdateTicketTypeVariables {
   id: UUIDString;
   userGroupId: UUIDString;
+  audience: TicketAudience;
   title: string;
   description?: string | null;
   price: number;
@@ -3948,6 +4250,7 @@ export default function UpdateTicketTypeComponent() {
   const updateTicketTypeVars: UpdateTicketTypeVariables = {
     id: ..., 
     userGroupId: ..., 
+    audience: ..., 
     title: ..., 
     description: ..., // optional
     price: ..., 
@@ -3955,7 +4258,7 @@ export default function UpdateTicketTypeComponent() {
   };
   mutation.mutate(updateTicketTypeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., userGroupId: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+  mutation.mutate({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -4760,6 +5063,602 @@ export default function UnsubscribeFromUserGroupComponent() {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
   mutation.mutate(unsubscribeFromUserGroupVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.userUserGroup_delete);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateUserMembershipStatus
+You can execute the `UpdateUserMembershipStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateUserMembershipStatus(options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateUserMembershipStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserMembershipStatusData, FirebaseError, UpdateUserMembershipStatusVariables>): UseDataConnectMutationResult<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+```
+
+### Variables
+The `UpdateUserMembershipStatus` Mutation requires an argument of type `UpdateUserMembershipStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateUserMembershipStatusVariables {
+  userId: string;
+  membershipStatus: MembershipStatus;
+}
+```
+### Return Type
+Recall that calling the `UpdateUserMembershipStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateUserMembershipStatus` Mutation is of type `UpdateUserMembershipStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateUserMembershipStatusData {
+  user_update?: User_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateUserMembershipStatus`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateUserMembershipStatusVariables } from '@dataconnect/generated';
+import { useUpdateUserMembershipStatus } from '@dataconnect/generated/react'
+
+export default function UpdateUserMembershipStatusComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateUserMembershipStatus();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateUserMembershipStatus(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateUserMembershipStatus(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateUserMembershipStatus(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateUserMembershipStatus` Mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
+  const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
+    userId: ..., 
+    membershipStatus: ..., 
+  };
+  mutation.mutate(updateUserMembershipStatusVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., membershipStatus: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateUserMembershipStatusVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## DeleteUser
+You can execute the `DeleteUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useDeleteUser(options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useDeleteUser(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteUserData, FirebaseError, DeleteUserVariables>): UseDataConnectMutationResult<DeleteUserData, DeleteUserVariables>;
+```
+
+### Variables
+The `DeleteUser` Mutation requires an argument of type `DeleteUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface DeleteUserVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that calling the `DeleteUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `DeleteUser` Mutation is of type `DeleteUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface DeleteUserData {
+  user_delete?: User_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `DeleteUser`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, DeleteUserVariables } from '@dataconnect/generated';
+import { useDeleteUser } from '@dataconnect/generated/react'
+
+export default function DeleteUserComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useDeleteUser();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useDeleteUser(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useDeleteUser(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useDeleteUser(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useDeleteUser` Mutation requires an argument of type `DeleteUserVariables`:
+  const deleteUserVars: DeleteUserVariables = {
+    userId: ..., 
+  };
+  mutation.mutate(deleteUserVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(deleteUserVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_delete);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateUser
+You can execute the `CreateUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateUser(options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserData, FirebaseError, CreateUserVariables>): UseDataConnectMutationResult<CreateUserData, CreateUserVariables>;
+```
+
+### Variables
+The `CreateUser` Mutation requires an argument of type `CreateUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateUserVariables {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  membershipStatus: MembershipStatus;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `CreateUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateUser` Mutation is of type `CreateUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateUserData {
+  user_upsert: User_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateUser`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateUserVariables } from '@dataconnect/generated';
+import { useCreateUser } from '@dataconnect/generated/react'
+
+export default function CreateUserComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateUser();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateUser(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateUser(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateUser(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateUser` Mutation requires an argument of type `CreateUserVariables`:
+  const createUserVars: CreateUserVariables = {
+    userId: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    email: ..., 
+    serviceNumber: ..., 
+    membershipStatus: ..., 
+    isRegular: ..., // optional
+    isReserve: ..., // optional
+    isCivilServant: ..., // optional
+    isIndustry: ..., // optional
+    now: ..., 
+  };
+  mutation.mutate(createUserVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., now: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createUserVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_upsert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateUserGroupAdmin
+You can execute the `CreateUserGroupAdmin` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateUserGroupAdmin(options?: useDataConnectMutationOptions<CreateUserGroupAdminData, FirebaseError, CreateUserGroupAdminVariables>): UseDataConnectMutationResult<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateUserGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<CreateUserGroupAdminData, FirebaseError, CreateUserGroupAdminVariables>): UseDataConnectMutationResult<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+```
+
+### Variables
+The `CreateUserGroupAdmin` Mutation requires an argument of type `CreateUserGroupAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateUserGroupAdminVariables {
+  name: string;
+  description?: string | null;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `CreateUserGroupAdmin` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateUserGroupAdmin` Mutation is of type `CreateUserGroupAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateUserGroupAdminData {
+  userGroup_insert: UserGroup_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateUserGroupAdmin`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateUserGroupAdminVariables } from '@dataconnect/generated';
+import { useCreateUserGroupAdmin } from '@dataconnect/generated/react'
+
+export default function CreateUserGroupAdminComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateUserGroupAdmin();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateUserGroupAdmin(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateUserGroupAdmin(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateUserGroupAdmin(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateUserGroupAdmin` Mutation requires an argument of type `CreateUserGroupAdminVariables`:
+  const createUserGroupAdminVars: CreateUserGroupAdminVariables = {
+    name: ..., 
+    description: ..., // optional
+    now: ..., 
+  };
+  mutation.mutate(createUserGroupAdminVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ name: ..., description: ..., now: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createUserGroupAdminVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.userGroup_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## AddUserToUserGroupAdmin
+You can execute the `AddUserToUserGroupAdmin` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAddUserToUserGroupAdmin(options?: useDataConnectMutationOptions<AddUserToUserGroupAdminData, FirebaseError, AddUserToUserGroupAdminVariables>): UseDataConnectMutationResult<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAddUserToUserGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<AddUserToUserGroupAdminData, FirebaseError, AddUserToUserGroupAdminVariables>): UseDataConnectMutationResult<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+```
+
+### Variables
+The `AddUserToUserGroupAdmin` Mutation requires an argument of type `AddUserToUserGroupAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AddUserToUserGroupAdminVariables {
+  userId: string;
+  userGroupId: UUIDString;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `AddUserToUserGroupAdmin` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AddUserToUserGroupAdmin` Mutation is of type `AddUserToUserGroupAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AddUserToUserGroupAdminData {
+  userUserGroup_upsert: UserUserGroup_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AddUserToUserGroupAdmin`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AddUserToUserGroupAdminVariables } from '@dataconnect/generated';
+import { useAddUserToUserGroupAdmin } from '@dataconnect/generated/react'
+
+export default function AddUserToUserGroupAdminComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAddUserToUserGroupAdmin();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAddUserToUserGroupAdmin(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAddUserToUserGroupAdmin(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAddUserToUserGroupAdmin(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAddUserToUserGroupAdmin` Mutation requires an argument of type `AddUserToUserGroupAdminVariables`:
+  const addUserToUserGroupAdminVars: AddUserToUserGroupAdminVariables = {
+    userId: ..., 
+    userGroupId: ..., 
+    now: ..., 
+  };
+  mutation.mutate(addUserToUserGroupAdminVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., userGroupId: ..., now: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(addUserToUserGroupAdminVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.userUserGroup_upsert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## RemoveUserFromUserGroupAdmin
+You can execute the `RemoveUserFromUserGroupAdmin` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useRemoveUserFromUserGroupAdmin(options?: useDataConnectMutationOptions<RemoveUserFromUserGroupAdminData, FirebaseError, RemoveUserFromUserGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useRemoveUserFromUserGroupAdmin(dc: DataConnect, options?: useDataConnectMutationOptions<RemoveUserFromUserGroupAdminData, FirebaseError, RemoveUserFromUserGroupAdminVariables>): UseDataConnectMutationResult<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+```
+
+### Variables
+The `RemoveUserFromUserGroupAdmin` Mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface RemoveUserFromUserGroupAdminVariables {
+  userId: string;
+  userGroupId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `RemoveUserFromUserGroupAdmin` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RemoveUserFromUserGroupAdmin` Mutation is of type `RemoveUserFromUserGroupAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface RemoveUserFromUserGroupAdminData {
+  userUserGroup_delete?: UserUserGroup_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `RemoveUserFromUserGroupAdmin`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, RemoveUserFromUserGroupAdminVariables } from '@dataconnect/generated';
+import { useRemoveUserFromUserGroupAdmin } from '@dataconnect/generated/react'
+
+export default function RemoveUserFromUserGroupAdminComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useRemoveUserFromUserGroupAdmin();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useRemoveUserFromUserGroupAdmin(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRemoveUserFromUserGroupAdmin(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRemoveUserFromUserGroupAdmin(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useRemoveUserFromUserGroupAdmin` Mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`:
+  const removeUserFromUserGroupAdminVars: RemoveUserFromUserGroupAdminVariables = {
+    userId: ..., 
+    userGroupId: ..., 
+  };
+  mutation.mutate(removeUserFromUserGroupAdminVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., userGroupId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(removeUserFromUserGroupAdminVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {

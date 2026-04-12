@@ -32,6 +32,7 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { UUIDString } from "@dataconnect/generated";
+import { TicketAudience } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 
@@ -458,9 +459,15 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                   {eventDetailData.event.guestOfHonour || "—"}
                 </Typography>
                 <Typography component="dt" variant="body2">Booking window</Typography>
-                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   {new Date(eventDetailData.event.bookingStartDateTime).toLocaleString()} –{" "}
                   {new Date(eventDetailData.event.bookingEndDateTime).toLocaleString()}
+                </Typography>
+                <Typography component="dt" variant="body2">Max guests without moderator approval</Typography>
+                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {eventDetailData.event.maxGuestsWithoutModeratorApproval != null
+                    ? String(eventDetailData.event.maxGuestsWithoutModeratorApproval)
+                    : "—"}
                 </Typography>
               </Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Ticket types</Typography>
@@ -474,6 +481,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                         <TableCell>Title</TableCell>
                         <TableCell>Description</TableCell>
                         <TableCell>Price</TableCell>
+                        <TableCell>Audience</TableCell>
                         <TableCell>User group</TableCell>
                       </TableRow>
                     </TableHead>
@@ -483,6 +491,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                           <TableCell>{tt.title}</TableCell>
                           <TableCell>{tt.description ?? "—"}</TableCell>
                           <TableCell>{tt.price}</TableCell>
+                          <TableCell>{tt.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
                           <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
                         </TableRow>
                       ))}

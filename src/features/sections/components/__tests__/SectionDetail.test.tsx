@@ -453,8 +453,17 @@ describe('SectionDetail', () => {
         bookingEndDateTime: '2025-02-28T23:59:59Z',
         location: 'Main Hall',
         guestOfHonour: 'Jane Doe',
+        maxGuestsWithoutModeratorApproval: null,
         ticketTypes: [
-          { id: 'tt-1', title: 'Standard', description: 'Standard ticket', price: 25, sortOrder: 0, userGroup: { id: 'ag-1', name: 'Standard Access' } },
+          {
+            id: 'tt-1',
+            title: 'Standard',
+            description: 'Standard ticket',
+            price: 25,
+            sortOrder: 0,
+            audience: 'MEMBER',
+            userGroup: { id: 'ag-1', name: 'Standard Access' },
+          },
         ],
       },
     };
@@ -504,6 +513,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();
       expect(screen.getByText('Ticket types')).toBeInTheDocument();
       expect(screen.getByText('Standard')).toBeInTheDocument();
+      expect(screen.getByText('Member')).toBeInTheDocument();
       expect(screen.getByText('Standard Access')).toBeInTheDocument();
     });
   });

@@ -18,6 +18,10 @@ import {
   Paper,
   IconButton,
   Autocomplete,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, ConfirmationNumber as TicketIcon } from "@mui/icons-material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
@@ -32,6 +36,11 @@ import {
   deleteTicketTypeRef,
   listUserGroupsRef,
   getEventByIdRef,
+  listEventBookingsForAdminRef,
+  adminDeleteGuestTicketRequestRef,
+  adminDeleteBookingLineRef,
+  adminDeleteBookingRef,
+  TicketAudience,
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
 import type { GetEventByIdData } from "@dataconnect/generated";
@@ -47,6 +56,7 @@ interface EventRow {
   endDateTime: string;
   bookingStartDateTime: string;
   bookingEndDateTime: string;
+  maxGuestsWithoutModeratorApproval?: number | null;
 }
 
 type TicketTypeRow = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];
@@ -81,6 +91,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   const [endDateTime, setEndDateTime] = useState("");
   const [bookingStartDateTime, setBookingStartDateTime] = useState("");
   const [bookingEndDateTime, setBookingEndDateTime] = useState("");
+  const [maxGuestsStr, setMaxGuestsStr] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
@@ -99,6 +110,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   const [ttPrice, setTtPrice] = useState<string>("0");
   const [ttSortOrder, setTtSortOrder] = useState<string>("0");
   const [ttAccessGroup, setTtAccessGroup] = useState<{ id: string; name: string } | null>(null);
+  const [ttAudience, setTtAudience] = useState<TicketAudience>(TicketAudience.MEMBER);
   const [allUserGroups, setAllUserGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [submittingTicketType, setSubmittingTicketType] = useState(false);
@@ -127,6 +139,9 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
       setEndDateTime(toDatetimeLocal(event.endDateTime));
       setBookingStartDateTime(toDatetimeLocal(event.bookingStartDateTime));
       setBookingEndDateTime(toDatetimeLocal(event.bookingEndDateTime));
+      setMaxGuestsStr(
+        event.maxGuestsWithoutModeratorApproval != null ? String(event.maxGuestsWithoutModeratorApproval) : ""
+      );
     } else {
       setEditingEvent(null);
       setTitle("");
@@ -137,6 +152,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
       setEndDateTime(toDatetimeLocal(now.toISOString()));
       setBookingStartDateTime(toDatetimeLocal(now.toISOString()));
       setBookingEndDateTime(toDatetimeLocal(now.toISOString()));
+      setMaxGuestsStr("");
     }
     setError(null);
     setEventDialogOpen(true);
@@ -149,6 +165,17 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
     }
     setSubmitting(true);
     setError(null);
+    let maxGuestsWithoutModeratorApproval: number | null = null;
+    const mg = maxGuestsStr.trim();
+    if (mg !== "") {
+      const n = parseInt(mg, 10);
+      if (Number.isNaN(n) || n < 0) {
+        setError("Max guests without moderator approval must be a non-negative integer, or leave blank");
+        setSubmitting(false);
+        return;
+      }
+      maxGuestsWithoutModeratorApproval = n;
+    }
     try {
       if (editingEvent) {
         await executeMutation(
@@ -161,6 +188,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
             endDateTime: fromDatetimeLocal(endDateTime),
             bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
             bookingEndDateTime: fromDatetimeLocal(bookingEndDateTime),
+            maxGuestsWithoutModeratorApproval,
           })
         );
       } else {
@@ -174,6 +202,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
             endDateTime: fromDatetimeLocal(endDateTime),
             bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
             bookingEndDateTime: fromDatetimeLocal(bookingEndDateTime),
+            maxGuestsWithoutModeratorApproval,
           })
         );
       }
@@ -191,6 +220,17 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
     setDeletingEventId(event.id);
     setError(null);
     try {
+      const bookingsResult = await executeQuery(listEventBookingsForAdminRef(dataConnect, { eventId: event.id as UUIDString }));
+      const bookingsList = bookingsResult.data?.event?.bookings ?? [];
+      for (const b of bookingsList) {
+        for (const gtr of b.guestTicketRequests) {
+          await executeMutation(adminDeleteGuestTicketRequestRef(dataConnect, { id: gtr.id }));
+        }
+        for (const line of b.lines) {
+          await executeMutation(adminDeleteBookingLineRef(dataConnect, { id: line.id }));
+        }
+        await executeMutation(adminDeleteBookingRef(dataConnect, { id: b.id }));
+      }
       const detailResult = await executeQuery(getEventByIdRef(dataConnect, { id: event.id as UUIDString }));
       const ticketTypes = detailResult.data?.event?.ticketTypes ?? [];
       for (const tt of ticketTypes) {
@@ -213,6 +253,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
       setTtDescription(ticketType.description ?? "");
       setTtPrice(String(ticketType.price));
       setTtSortOrder(String(ticketType.sortOrder));
+      setTtAudience(ticketType.audience);
       setTtAccessGroup(ticketType.userGroup ? { id: ticketType.userGroup.id, name: ticketType.userGroup.name } : null);
     } else {
       setEditingTicketType(null);
@@ -220,6 +261,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
       setTtDescription("");
       setTtPrice("0");
       setTtSortOrder(String((eventDetailData?.event?.ticketTypes?.length ?? 0)));
+      setTtAudience(TicketAudience.MEMBER);
       setTtAccessGroup(null);
     }
     setTicketTypeDialogOpen(true);
@@ -245,6 +287,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
           updateTicketTypeRef(dataConnect, {
             id: editingTicketType.id,
             userGroupId: ttAccessGroup.id as UUIDString,
+            audience: ttAudience,
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
             price: priceNum,
@@ -256,6 +299,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
           createTicketTypeRef(dataConnect, {
             eventId: ticketTypesEventId as UUIDString,
             userGroupId: ttAccessGroup.id as UUIDString,
+            audience: ttAudience,
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
             price: priceNum,
@@ -314,6 +358,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
                   <TableCell>Title</TableCell>
                   <TableCell>Description</TableCell>
                   <TableCell>Price</TableCell>
+                  <TableCell>Audience</TableCell>
                   <TableCell>Access group</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
@@ -324,6 +369,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
                     <TableCell>{tt.title}</TableCell>
                     <TableCell>{tt.description ?? "—"}</TableCell>
                     <TableCell>{tt.price}</TableCell>
+                    <TableCell>{tt.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
                     <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openTicketTypeDialog(tt)}>
@@ -352,6 +398,18 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
             <TextField label="Description" fullWidth value={ttDescription} onChange={(e) => setTtDescription(e.target.value)} margin="dense" multiline />
             <TextField label="Price" type="number" fullWidth value={ttPrice} onChange={(e) => setTtPrice(e.target.value)} margin="dense" inputProps={{ min: 0, step: 0.01 }} />
             <TextField label="Sort order" type="number" fullWidth value={ttSortOrder} onChange={(e) => setTtSortOrder(e.target.value)} margin="dense" />
+            <FormControl fullWidth margin="dense" sx={{ mt: 1 }}>
+              <InputLabel id="ticket-audience-label">Audience</InputLabel>
+              <Select
+                labelId="ticket-audience-label"
+                label="Audience"
+                value={ttAudience}
+                onChange={(e) => setTtAudience(e.target.value as TicketAudience)}
+              >
+                <MenuItem value={TicketAudience.MEMBER}>Member</MenuItem>
+                <MenuItem value={TicketAudience.GUEST}>Guest</MenuItem>
+              </Select>
+            </FormControl>
             <Autocomplete
               options={allUserGroups}
               getOptionLabel={(o) => o.name}
@@ -444,6 +502,16 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
           <TextField label="End date/time" type="datetime-local" fullWidth value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
           <TextField label="Booking window start" type="datetime-local" fullWidth value={bookingStartDateTime} onChange={(e) => setBookingStartDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
           <TextField label="Booking window end" type="datetime-local" fullWidth value={bookingEndDateTime} onChange={(e) => setBookingEndDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
+          <TextField
+            label="Max guests without moderator approval"
+            type="number"
+            fullWidth
+            value={maxGuestsStr}
+            onChange={(e) => setMaxGuestsStr(e.target.value)}
+            margin="dense"
+            inputProps={{ min: 0 }}
+            helperText="Leave blank if unset. Total guest headcount allowed before extra approval."
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEventDialogOpen(false)}>Cancel</Button>

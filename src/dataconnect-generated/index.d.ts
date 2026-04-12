@@ -8,6 +8,13 @@ export type Int64String = string;
 export type DateString = string;
 
 
+export enum BookingStatus {
+  DRAFT = "DRAFT",
+  SUBMITTED = "SUBMITTED",
+  CONFIRMED = "CONFIRMED",
+  CANCELLED = "CANCELLED",
+};
+
 export enum MembershipStatus {
   PENDING = "PENDING",
   REGULAR = "REGULAR",
@@ -33,7 +40,30 @@ export enum SectionUserGroupPurpose {
   MODERATOR = "MODERATOR",
 };
 
+export enum TicketAudience {
+  MEMBER = "MEMBER",
+  GUEST = "GUEST",
+};
 
+export enum GuestTicketRequestStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+};
+
+
+export interface AddBookingLineData {
+  bookingLine_insert: BookingLine_Key;
+}
+
+export interface AddBookingLineVariables {
+  bookingId: UUIDString;
+  ticketTypeId: UUIDString;
+  guestUserId?: string | null;
+  guestDisplayName?: string | null;
+  dietaryNote?: string | null;
+  sortOrder: number;
+}
 
 export interface AddUserToUserGroupAdminData {
   userUserGroup_upsert: UserUserGroup_Key;
@@ -54,6 +84,40 @@ export interface AddUserToUserGroupVariables {
   userGroupId: UUIDString;
 }
 
+export interface AdminDeleteBookingData {
+  booking_delete?: Booking_Key | null;
+}
+
+export interface AdminDeleteBookingLineData {
+  bookingLine_delete?: BookingLine_Key | null;
+}
+
+export interface AdminDeleteBookingLineVariables {
+  id: UUIDString;
+}
+
+export interface AdminDeleteBookingVariables {
+  id: UUIDString;
+}
+
+export interface AdminDeleteGuestTicketRequestData {
+  guestTicketRequest_delete?: GuestTicketRequest_Key | null;
+}
+
+export interface AdminDeleteGuestTicketRequestVariables {
+  id: UUIDString;
+}
+
+export interface BookingLine_Key {
+  id: UUIDString;
+  __typename?: 'BookingLine_Key';
+}
+
+export interface Booking_Key {
+  id: UUIDString;
+  __typename?: 'Booking_Key';
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -61,6 +125,14 @@ export interface CheckUserProfileExistsData {
     lastName: string;
     membershipStatus: MembershipStatus;
   } & User_Key;
+}
+
+export interface CreateBookingDraftData {
+  booking_insert: Booking_Key;
+}
+
+export interface CreateBookingDraftVariables {
+  eventId: UUIDString;
 }
 
 export interface CreateEventData {
@@ -76,6 +148,16 @@ export interface CreateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
+  maxGuestsWithoutModeratorApproval?: number | null;
+}
+
+export interface CreateGuestTicketRequestData {
+  guestTicketRequest_insert: GuestTicketRequest_Key;
+}
+
+export interface CreateGuestTicketRequestVariables {
+  bookingId: UUIDString;
+  requestedGuestCount: number;
 }
 
 export interface CreateSectionData {
@@ -95,6 +177,7 @@ export interface CreateTicketTypeData {
 export interface CreateTicketTypeVariables {
   eventId: UUIDString;
   userGroupId: UUIDString;
+  audience: TicketAudience;
   title: string;
   description?: string | null;
   price: number;
@@ -240,10 +323,12 @@ export interface GetEventByIdData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval?: number | null;
       ticketTypes: ({
         id: UUIDString;
         title: string;
         description?: string | null;
+        audience: TicketAudience;
         price: number;
         sortOrder: number;
         userGroup: {
@@ -270,12 +355,53 @@ export interface GetEventsForSectionData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval?: number | null;
     } & Event_Key)[];
   } & Section_Key;
 }
 
 export interface GetEventsForSectionVariables {
   sectionId: UUIDString;
+}
+
+export interface GetMyBookingsForEventData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+        } & TicketType_Key;
+          guestUser?: {
+            id: string;
+            firstName: string;
+            lastName: string;
+          } & User_Key;
+      } & BookingLine_Key)[];
+        guestTicketRequests: ({
+          id: UUIDString;
+          status: GuestTicketRequestStatus;
+          requestedGuestCount: number;
+          reviewedAt?: TimestampString | null;
+          moderatorNote?: string | null;
+        } & GuestTicketRequest_Key)[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+
+export interface GetMyBookingsForEventVariables {
+  eventId: UUIDString;
 }
 
 export interface GetSectionByIdData {
@@ -530,6 +656,30 @@ export interface GrantUserGroupToSectionForPurposeVariables {
   purpose: SectionUserGroupPurpose;
 }
 
+export interface GuestTicketRequest_Key {
+  id: UUIDString;
+  __typename?: 'GuestTicketRequest_Key';
+}
+
+export interface ListEventBookingsForAdminData {
+  event?: {
+    id: UUIDString;
+    bookings: ({
+      id: UUIDString;
+      guestTicketRequests: ({
+        id: UUIDString;
+      } & GuestTicketRequest_Key)[];
+        lines: ({
+          id: UUIDString;
+        } & BookingLine_Key)[];
+    } & Booking_Key)[];
+  } & Event_Key;
+}
+
+export interface ListEventBookingsForAdminVariables {
+  eventId: UUIDString;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -654,6 +804,15 @@ export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
 }
 
+export interface UpdateBookingStatusData {
+  booking_update?: Booking_Key | null;
+}
+
+export interface UpdateBookingStatusVariables {
+  id: UUIDString;
+  status: BookingStatus;
+}
+
 export interface UpdateEventData {
   event_update?: Event_Key | null;
 }
@@ -667,6 +826,7 @@ export interface UpdateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
+  maxGuestsWithoutModeratorApproval?: number | null;
 }
 
 export interface UpdateSectionData {
@@ -686,6 +846,7 @@ export interface UpdateTicketTypeData {
 export interface UpdateTicketTypeVariables {
   id: UUIDString;
   userGroupId: UUIDString;
+  audience: TicketAudience;
   title: string;
   description?: string | null;
   price: number;
@@ -760,101 +921,89 @@ export interface User_Key {
   __typename?: 'User_Key';
 }
 
-interface UpdateUserMembershipStatusRef {
+interface CreateBookingDraftRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateUserMembershipStatusVariables): MutationRef<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+  (vars: CreateBookingDraftVariables): MutationRef<CreateBookingDraftData, CreateBookingDraftVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationRef<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+  (dc: DataConnect, vars: CreateBookingDraftVariables): MutationRef<CreateBookingDraftData, CreateBookingDraftVariables>;
   operationName: string;
 }
-export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
+export const createBookingDraftRef: CreateBookingDraftRef;
 
-export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
-export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+export function createBookingDraft(vars: CreateBookingDraftVariables): MutationPromise<CreateBookingDraftData, CreateBookingDraftVariables>;
+export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables): MutationPromise<CreateBookingDraftData, CreateBookingDraftVariables>;
 
-interface DeleteUserRef {
+interface AddBookingLineRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: DeleteUserVariables): MutationRef<DeleteUserData, DeleteUserVariables>;
+  (vars: AddBookingLineVariables): MutationRef<AddBookingLineData, AddBookingLineVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: DeleteUserVariables): MutationRef<DeleteUserData, DeleteUserVariables>;
+  (dc: DataConnect, vars: AddBookingLineVariables): MutationRef<AddBookingLineData, AddBookingLineVariables>;
   operationName: string;
 }
-export const deleteUserRef: DeleteUserRef;
+export const addBookingLineRef: AddBookingLineRef;
 
-export function deleteUser(vars: DeleteUserVariables): MutationPromise<DeleteUserData, DeleteUserVariables>;
-export function deleteUser(dc: DataConnect, vars: DeleteUserVariables): MutationPromise<DeleteUserData, DeleteUserVariables>;
+export function addBookingLine(vars: AddBookingLineVariables): MutationPromise<AddBookingLineData, AddBookingLineVariables>;
+export function addBookingLine(dc: DataConnect, vars: AddBookingLineVariables): MutationPromise<AddBookingLineData, AddBookingLineVariables>;
 
-interface CreateUserRef {
+interface UpdateBookingStatusRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateUserVariables): MutationRef<CreateUserData, CreateUserVariables>;
+  (vars: UpdateBookingStatusVariables): MutationRef<UpdateBookingStatusData, UpdateBookingStatusVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateUserVariables): MutationRef<CreateUserData, CreateUserVariables>;
+  (dc: DataConnect, vars: UpdateBookingStatusVariables): MutationRef<UpdateBookingStatusData, UpdateBookingStatusVariables>;
   operationName: string;
 }
-export const createUserRef: CreateUserRef;
+export const updateBookingStatusRef: UpdateBookingStatusRef;
 
-export function createUser(vars: CreateUserVariables): MutationPromise<CreateUserData, CreateUserVariables>;
-export function createUser(dc: DataConnect, vars: CreateUserVariables): MutationPromise<CreateUserData, CreateUserVariables>;
+export function updateBookingStatus(vars: UpdateBookingStatusVariables): MutationPromise<UpdateBookingStatusData, UpdateBookingStatusVariables>;
+export function updateBookingStatus(dc: DataConnect, vars: UpdateBookingStatusVariables): MutationPromise<UpdateBookingStatusData, UpdateBookingStatusVariables>;
 
-interface CreateUserGroupAdminRef {
+interface CreateGuestTicketRequestRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateUserGroupAdminVariables): MutationRef<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+  (vars: CreateGuestTicketRequestVariables): MutationRef<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateUserGroupAdminVariables): MutationRef<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+  (dc: DataConnect, vars: CreateGuestTicketRequestVariables): MutationRef<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
   operationName: string;
 }
-export const createUserGroupAdminRef: CreateUserGroupAdminRef;
+export const createGuestTicketRequestRef: CreateGuestTicketRequestRef;
 
-export function createUserGroupAdmin(vars: CreateUserGroupAdminVariables): MutationPromise<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
-export function createUserGroupAdmin(dc: DataConnect, vars: CreateUserGroupAdminVariables): MutationPromise<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+export function createGuestTicketRequest(vars: CreateGuestTicketRequestVariables): MutationPromise<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
+export function createGuestTicketRequest(dc: DataConnect, vars: CreateGuestTicketRequestVariables): MutationPromise<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
 
-interface AddUserToUserGroupAdminRef {
+interface AdminDeleteGuestTicketRequestRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: AddUserToUserGroupAdminVariables): MutationRef<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+  (vars: AdminDeleteGuestTicketRequestVariables): MutationRef<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: AddUserToUserGroupAdminVariables): MutationRef<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+  (dc: DataConnect, vars: AdminDeleteGuestTicketRequestVariables): MutationRef<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
   operationName: string;
 }
-export const addUserToUserGroupAdminRef: AddUserToUserGroupAdminRef;
+export const adminDeleteGuestTicketRequestRef: AdminDeleteGuestTicketRequestRef;
 
-export function addUserToUserGroupAdmin(vars: AddUserToUserGroupAdminVariables): MutationPromise<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
-export function addUserToUserGroupAdmin(dc: DataConnect, vars: AddUserToUserGroupAdminVariables): MutationPromise<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+export function adminDeleteGuestTicketRequest(vars: AdminDeleteGuestTicketRequestVariables): MutationPromise<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
+export function adminDeleteGuestTicketRequest(dc: DataConnect, vars: AdminDeleteGuestTicketRequestVariables): MutationPromise<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
 
-interface RemoveUserFromUserGroupAdminRef {
+interface AdminDeleteBookingLineRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: RemoveUserFromUserGroupAdminVariables): MutationRef<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+  (vars: AdminDeleteBookingLineVariables): MutationRef<AdminDeleteBookingLineData, AdminDeleteBookingLineVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: RemoveUserFromUserGroupAdminVariables): MutationRef<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+  (dc: DataConnect, vars: AdminDeleteBookingLineVariables): MutationRef<AdminDeleteBookingLineData, AdminDeleteBookingLineVariables>;
   operationName: string;
 }
-export const removeUserFromUserGroupAdminRef: RemoveUserFromUserGroupAdminRef;
+export const adminDeleteBookingLineRef: AdminDeleteBookingLineRef;
 
-export function removeUserFromUserGroupAdmin(vars: RemoveUserFromUserGroupAdminVariables): MutationPromise<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
-export function removeUserFromUserGroupAdmin(dc: DataConnect, vars: RemoveUserFromUserGroupAdminVariables): MutationPromise<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+export function adminDeleteBookingLine(vars: AdminDeleteBookingLineVariables): MutationPromise<AdminDeleteBookingLineData, AdminDeleteBookingLineVariables>;
+export function adminDeleteBookingLine(dc: DataConnect, vars: AdminDeleteBookingLineVariables): MutationPromise<AdminDeleteBookingLineData, AdminDeleteBookingLineVariables>;
 
-interface GetUserGroupByNameRef {
+interface AdminDeleteBookingRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: GetUserGroupByNameVariables): QueryRef<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+  (vars: AdminDeleteBookingVariables): MutationRef<AdminDeleteBookingData, AdminDeleteBookingVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetUserGroupByNameVariables): QueryRef<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+  (dc: DataConnect, vars: AdminDeleteBookingVariables): MutationRef<AdminDeleteBookingData, AdminDeleteBookingVariables>;
   operationName: string;
 }
-export const getUserGroupByNameRef: GetUserGroupByNameRef;
+export const adminDeleteBookingRef: AdminDeleteBookingRef;
 
-export function getUserGroupByName(vars: GetUserGroupByNameVariables): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
-export function getUserGroupByName(dc: DataConnect, vars: GetUserGroupByNameVariables): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
-
-interface GetUserUserGroupsForAdminRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetUserUserGroupsForAdminVariables): QueryRef<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetUserUserGroupsForAdminVariables): QueryRef<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
-  operationName: string;
-}
-export const getUserUserGroupsForAdminRef: GetUserUserGroupsForAdminRef;
-
-export function getUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
-export function getUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGroupsForAdminVariables): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+export function adminDeleteBooking(vars: AdminDeleteBookingVariables): MutationPromise<AdminDeleteBookingData, AdminDeleteBookingVariables>;
+export function adminDeleteBooking(dc: DataConnect, vars: AdminDeleteBookingVariables): MutationPromise<AdminDeleteBookingData, AdminDeleteBookingVariables>;
 
 interface GetCurrentUserRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -1059,6 +1208,30 @@ export const getSectionMembersRef: GetSectionMembersRef;
 
 export function getSectionMembers(vars: GetSectionMembersVariables): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
 export function getSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
+
+interface GetMyBookingsForEventRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetMyBookingsForEventVariables): QueryRef<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetMyBookingsForEventVariables): QueryRef<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+  operationName: string;
+}
+export const getMyBookingsForEventRef: GetMyBookingsForEventRef;
+
+export function getMyBookingsForEvent(vars: GetMyBookingsForEventVariables): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+export function getMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+
+interface ListEventBookingsForAdminRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListEventBookingsForAdminVariables): QueryRef<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListEventBookingsForAdminVariables): QueryRef<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+  operationName: string;
+}
+export const listEventBookingsForAdminRef: ListEventBookingsForAdminRef;
+
+export function listEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables): QueryPromise<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+export function listEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables): QueryPromise<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
 
 interface CreateSectionRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -1335,4 +1508,100 @@ export const unsubscribeFromUserGroupRef: UnsubscribeFromUserGroupRef;
 
 export function unsubscribeFromUserGroup(vars: UnsubscribeFromUserGroupVariables): MutationPromise<UnsubscribeFromUserGroupData, UnsubscribeFromUserGroupVariables>;
 export function unsubscribeFromUserGroup(dc: DataConnect, vars: UnsubscribeFromUserGroupVariables): MutationPromise<UnsubscribeFromUserGroupData, UnsubscribeFromUserGroupVariables>;
+
+interface UpdateUserMembershipStatusRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserMembershipStatusVariables): MutationRef<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationRef<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+  operationName: string;
+}
+export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
+
+export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+interface DeleteUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteUserVariables): MutationRef<DeleteUserData, DeleteUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DeleteUserVariables): MutationRef<DeleteUserData, DeleteUserVariables>;
+  operationName: string;
+}
+export const deleteUserRef: DeleteUserRef;
+
+export function deleteUser(vars: DeleteUserVariables): MutationPromise<DeleteUserData, DeleteUserVariables>;
+export function deleteUser(dc: DataConnect, vars: DeleteUserVariables): MutationPromise<DeleteUserData, DeleteUserVariables>;
+
+interface CreateUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateUserVariables): MutationRef<CreateUserData, CreateUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateUserVariables): MutationRef<CreateUserData, CreateUserVariables>;
+  operationName: string;
+}
+export const createUserRef: CreateUserRef;
+
+export function createUser(vars: CreateUserVariables): MutationPromise<CreateUserData, CreateUserVariables>;
+export function createUser(dc: DataConnect, vars: CreateUserVariables): MutationPromise<CreateUserData, CreateUserVariables>;
+
+interface CreateUserGroupAdminRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateUserGroupAdminVariables): MutationRef<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateUserGroupAdminVariables): MutationRef<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+  operationName: string;
+}
+export const createUserGroupAdminRef: CreateUserGroupAdminRef;
+
+export function createUserGroupAdmin(vars: CreateUserGroupAdminVariables): MutationPromise<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+export function createUserGroupAdmin(dc: DataConnect, vars: CreateUserGroupAdminVariables): MutationPromise<CreateUserGroupAdminData, CreateUserGroupAdminVariables>;
+
+interface AddUserToUserGroupAdminRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AddUserToUserGroupAdminVariables): MutationRef<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AddUserToUserGroupAdminVariables): MutationRef<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+  operationName: string;
+}
+export const addUserToUserGroupAdminRef: AddUserToUserGroupAdminRef;
+
+export function addUserToUserGroupAdmin(vars: AddUserToUserGroupAdminVariables): MutationPromise<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+export function addUserToUserGroupAdmin(dc: DataConnect, vars: AddUserToUserGroupAdminVariables): MutationPromise<AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables>;
+
+interface RemoveUserFromUserGroupAdminRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RemoveUserFromUserGroupAdminVariables): MutationRef<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RemoveUserFromUserGroupAdminVariables): MutationRef<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+  operationName: string;
+}
+export const removeUserFromUserGroupAdminRef: RemoveUserFromUserGroupAdminRef;
+
+export function removeUserFromUserGroupAdmin(vars: RemoveUserFromUserGroupAdminVariables): MutationPromise<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+export function removeUserFromUserGroupAdmin(dc: DataConnect, vars: RemoveUserFromUserGroupAdminVariables): MutationPromise<RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables>;
+
+interface GetUserGroupByNameRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetUserGroupByNameVariables): QueryRef<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetUserGroupByNameVariables): QueryRef<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+  operationName: string;
+}
+export const getUserGroupByNameRef: GetUserGroupByNameRef;
+
+export function getUserGroupByName(vars: GetUserGroupByNameVariables): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+export function getUserGroupByName(dc: DataConnect, vars: GetUserGroupByNameVariables): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+
+interface GetUserUserGroupsForAdminRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetUserUserGroupsForAdminVariables): QueryRef<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetUserUserGroupsForAdminVariables): QueryRef<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+  operationName: string;
+}
+export const getUserUserGroupsForAdminRef: GetUserUserGroupsForAdminRef;
+
+export function getUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+export function getUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGroupsForAdminVariables): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
 

@@ -1,11 +1,11 @@
-# Booking data model (proposed)
+# Booking data model
 
-This document captures the **proposed** persistence for member ticket booking. It aligns with [GitHub issue #45](https://github.com/rafsodc/sodc-web/issues/45) and epic [#52](https://github.com/rafsodc/sodc-web/issues/52). Implementation may evolve; update this doc when the schema lands.
+Persistence for member ticket booking. It aligns with [GitHub issue #45](https://github.com/rafsodc/sodc-web/issues/45) and epic [#52](https://github.com/rafsodc/sodc-web/issues/52). The canonical schema is in [`dataconnect/schema/schema.gql`](../../dataconnect/schema/schema.gql); update this doc when behavior or naming changes.
 
 ## Decisions (from issue discussion)
 
-- **Guest cap before moderator approval**: stored **per event** on `Event` (e.g. total guest headcount allowed without extra approval — exact field name TBD in schema).
-- **Ticket types**: each `TicketType` has an **audience** of **`MEMBER`** or **`GUEST`** (not “self/guest” naming). Validation in the booking rules layer must prevent booking a `GUEST` type against the member line and vice versa; pricing can differ per type.
+- **Guest cap before moderator approval**: stored **per event** on `Event` as **`maxGuestsWithoutModeratorApproval`** (`Int`, nullable — unset means rules layer / app default).
+- **Ticket types**: each `TicketType` has **`audience: TicketAudience`** (**`MEMBER`** | **`GUEST`**). Validation in the booking rules layer must prevent booking a `GUEST` type against the member line and vice versa; pricing can differ per type.
 - **Authorization** (section `ACCESS` / `MODERATOR`, `BOOKER`, booking window, `TicketType.userGroup`) remains as documented elsewhere — not all shown on this ERD.
 
 ## Entity relationship diagram
@@ -33,14 +33,14 @@ erDiagram
     string title
     timestamp booking_start
     timestamp booking_end
-    int max_guests_without_moderator_approval "NEW: cap on total guests without extra approval"
+    int maxGuestsWithoutModeratorApproval "nullable; cap on guest headcount before extra approval"
   }
 
   TicketType {
     uuid id PK
     uuid event_id FK
     uuid user_group_id FK
-    enum audience "NEW: MEMBER | GUEST"
+    enum audience "TicketAudience: MEMBER | GUEST"
     string title
     float price
     int sort_order
@@ -108,4 +108,4 @@ erDiagram
 
 ## Schema source of truth
 
-When implemented, the canonical definitions live in [`dataconnect/schema/schema.gql`](../../dataconnect/schema/schema.gql). Update this document after enums and table names are finalized.
+Canonical definitions: [`dataconnect/schema/schema.gql`](../../dataconnect/schema/schema.gql). Operations: [`dataconnect/api/queries.gql`](../../dataconnect/api/queries.gql), [`dataconnect/api/booking-mutations.gql`](../../dataconnect/api/booking-mutations.gql), and event/ticket admin mutations in [`dataconnect/api/user-group-mutations.gql`](../../dataconnect/api/user-group-mutations.gql).

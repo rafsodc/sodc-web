@@ -1,0 +1,65 @@
+# Booking mutations (member flow and admin cascade deletes).
+# Booking rules / audience validation live in issue #46; keep mutations permissive until then.
+
+mutation CreateBookingDraft($eventId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  booking_insert(
+    data: {
+      eventId: $eventId
+      bookerId_expr: "auth.uid"
+      status: DRAFT
+    }
+  )
+}
+
+mutation AddBookingLine(
+  $bookingId: UUID!
+  $ticketTypeId: UUID!
+  $guestUserId: String
+  $guestDisplayName: String
+  $dietaryNote: String
+  $sortOrder: Int!
+) @auth(expr: "auth.token.enabled == true") {
+  bookingLine_insert(
+    data: {
+      bookingId: $bookingId
+      ticketTypeId: $ticketTypeId
+      guestUserId: $guestUserId
+      guestDisplayName: $guestDisplayName
+      dietaryNote: $dietaryNote
+      sortOrder: $sortOrder
+    }
+  )
+}
+
+mutation UpdateBookingStatus($id: UUID!, $status: BookingStatus!) @auth(expr: "auth.token.enabled == true") {
+  booking_update(
+    id: $id
+    data: {
+      status: $status
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}
+
+mutation CreateGuestTicketRequest($bookingId: UUID!, $requestedGuestCount: Int!) @auth(expr: "auth.token.enabled == true") {
+  guestTicketRequest_insert(
+    data: {
+      bookingId: $bookingId
+      requestedGuestCount: $requestedGuestCount
+      status: PENDING
+    }
+  )
+}
+
+mutation AdminDeleteGuestTicketRequest($id: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  guestTicketRequest_delete(id: $id)
+}
+
+mutation AdminDeleteBookingLine($id: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  bookingLine_delete(id: $id)
+}
+
+mutation AdminDeleteBooking($id: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  booking_delete(id: $id)
+}
