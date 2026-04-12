@@ -69,23 +69,23 @@ const SECTION_PURPOSE_ORDER: SectionUserGroupPurpose[] = [
 const SECTION_PURPOSE_HELP: Record<SectionUserGroupPurpose, { title: string; body: string }> = {
   [SectionUserGroupPurpose.ACCESS]: {
     title: "ACCESS",
-    body: "Users who match these groups can open and see this section in the app.",
+    body: "Who can open this section in the app. Users must belong to at least one linked group (or match a status-based group) to see the section.",
   },
   [SectionUserGroupPurpose.MEMBER]: {
     title: "MEMBER",
-    body: "Defines who appears in the section member list and self-service subscription targets.",
+    body: "Who counts as a member for this section: member list, and which groups users can self-subscribe into when the group is subscribable.",
   },
   [SectionUserGroupPurpose.BOOKER]: {
     title: "BOOKER",
-    body: "Allows booking events in this section when combined with ACCESS (or MODERATOR) and ticket eligibility. If no group has BOOKER for the section, nobody can book.",
+    body: "EVENTS sections only. Which groups may book tickets when an event is open for booking. Users still need ACCESS (or MODERATOR), the right ticket type, and a booking window. If no group is given BOOKER for this section, no one can book.",
   },
   [SectionUserGroupPurpose.MESSAGE]: {
     title: "MESSAGE",
-    body: "Reserved for future messaging / announcements scope for this section.",
+    body: "Reserved for future messaging or announcements tied to this section.",
   },
   [SectionUserGroupPurpose.MODERATOR]: {
     title: "MODERATOR",
-    body: "Elevated access for this section (implies ACCESS for authorization).",
+    body: "Elevated access for this section. Counts like ACCESS for seeing the section, plus moderator-style capabilities as the app defines them.",
   },
 };
 
