@@ -31,6 +31,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListEventBookingsForAdmin*](#listeventbookingsforadmin)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
+  - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
 - [**Mutations**](#mutations)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
@@ -68,6 +69,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateUserGroupAdmin*](#createusergroupadmin)
   - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
   - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
+  - [*CreateBookingDraftForUser*](#createbookingdraftforuser)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `api`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -1516,6 +1518,7 @@ export interface GetEventByIdData {
         userGroup: {
           id: UUIDString;
           name: string;
+          membershipStatuses?: MembershipStatus[] | null;
         } & UserGroup_Key;
       } & TicketType_Key)[];
   } & Event_Key;
@@ -1641,6 +1644,7 @@ export interface GetSectionByIdData {
         name: string;
         description?: string | null;
         subscribable?: boolean | null;
+        membershipStatuses?: MembershipStatus[] | null;
       } & UserGroup_Key;
     })[];
   } & Section_Key;
@@ -2550,6 +2554,140 @@ const ref = getUserUserGroupsForAdminRef({ userId: ..., });
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getUserUserGroupsForAdminRef(dataConnect, getUserUserGroupsForAdminVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+## GetBookingsForBookerAndEvent
+You can execute the `GetBookingsForBookerAndEvent` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getBookingsForBookerAndEvent(vars: GetBookingsForBookerAndEventVariables): QueryPromise<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
+
+interface GetBookingsForBookerAndEventRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingsForBookerAndEventVariables): QueryRef<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
+}
+export const getBookingsForBookerAndEventRef: GetBookingsForBookerAndEventRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getBookingsForBookerAndEvent(dc: DataConnect, vars: GetBookingsForBookerAndEventVariables): QueryPromise<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
+
+interface GetBookingsForBookerAndEventRef {
+  ...
+  (dc: DataConnect, vars: GetBookingsForBookerAndEventVariables): QueryRef<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
+}
+export const getBookingsForBookerAndEventRef: GetBookingsForBookerAndEventRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getBookingsForBookerAndEventRef:
+```typescript
+const name = getBookingsForBookerAndEventRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetBookingsForBookerAndEvent` query requires an argument of type `GetBookingsForBookerAndEventVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetBookingsForBookerAndEventVariables {
+  bookerId: string;
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetBookingsForBookerAndEvent` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetBookingsForBookerAndEventData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetBookingsForBookerAndEventData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      clientSubmissionKey?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+        } & User_Key;
+          ticketType: {
+            id: UUIDString;
+            audience: TicketAudience;
+          } & TicketType_Key;
+      } & BookingLine_Key)[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+```
+### Using `GetBookingsForBookerAndEvent`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getBookingsForBookerAndEvent, GetBookingsForBookerAndEventVariables } from '@dataconnect/generated';
+
+// The `GetBookingsForBookerAndEvent` query requires an argument of type `GetBookingsForBookerAndEventVariables`:
+const getBookingsForBookerAndEventVars: GetBookingsForBookerAndEventVariables = {
+  bookerId: ..., 
+  eventId: ..., 
+};
+
+// Call the `getBookingsForBookerAndEvent()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getBookingsForBookerAndEvent(getBookingsForBookerAndEventVars);
+// Variables can be defined inline as well.
+const { data } = await getBookingsForBookerAndEvent({ bookerId: ..., eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getBookingsForBookerAndEvent(dataConnect, getBookingsForBookerAndEventVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getBookingsForBookerAndEvent(getBookingsForBookerAndEventVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetBookingsForBookerAndEvent`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getBookingsForBookerAndEventRef, GetBookingsForBookerAndEventVariables } from '@dataconnect/generated';
+
+// The `GetBookingsForBookerAndEvent` query requires an argument of type `GetBookingsForBookerAndEventVariables`:
+const getBookingsForBookerAndEventVars: GetBookingsForBookerAndEventVariables = {
+  bookerId: ..., 
+  eventId: ..., 
+};
+
+// Call the `getBookingsForBookerAndEventRef()` function to get a reference to the query.
+const ref = getBookingsForBookerAndEventRef(getBookingsForBookerAndEventVars);
+// Variables can be defined inline as well.
+const ref = getBookingsForBookerAndEventRef({ bookerId: ..., eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getBookingsForBookerAndEventRef(dataConnect, getBookingsForBookerAndEventVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -6773,6 +6911,121 @@ console.log(data.userUserGroup_delete);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.userUserGroup_delete);
+});
+```
+
+## CreateBookingDraftForUser
+You can execute the `CreateBookingDraftForUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createBookingDraftForUser(vars: CreateBookingDraftForUserVariables): MutationPromise<CreateBookingDraftForUserData, CreateBookingDraftForUserVariables>;
+
+interface CreateBookingDraftForUserRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateBookingDraftForUserVariables): MutationRef<CreateBookingDraftForUserData, CreateBookingDraftForUserVariables>;
+}
+export const createBookingDraftForUserRef: CreateBookingDraftForUserRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createBookingDraftForUser(dc: DataConnect, vars: CreateBookingDraftForUserVariables): MutationPromise<CreateBookingDraftForUserData, CreateBookingDraftForUserVariables>;
+
+interface CreateBookingDraftForUserRef {
+  ...
+  (dc: DataConnect, vars: CreateBookingDraftForUserVariables): MutationRef<CreateBookingDraftForUserData, CreateBookingDraftForUserVariables>;
+}
+export const createBookingDraftForUserRef: CreateBookingDraftForUserRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createBookingDraftForUserRef:
+```typescript
+const name = createBookingDraftForUserRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateBookingDraftForUser` mutation requires an argument of type `CreateBookingDraftForUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateBookingDraftForUserVariables {
+  eventId: UUIDString;
+  bookerId: string;
+  clientSubmissionKey: string;
+}
+```
+### Return Type
+Recall that executing the `CreateBookingDraftForUser` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateBookingDraftForUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateBookingDraftForUserData {
+  booking_insert: Booking_Key;
+}
+```
+### Using `CreateBookingDraftForUser`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createBookingDraftForUser, CreateBookingDraftForUserVariables } from '@dataconnect/generated';
+
+// The `CreateBookingDraftForUser` mutation requires an argument of type `CreateBookingDraftForUserVariables`:
+const createBookingDraftForUserVars: CreateBookingDraftForUserVariables = {
+  eventId: ..., 
+  bookerId: ..., 
+  clientSubmissionKey: ..., 
+};
+
+// Call the `createBookingDraftForUser()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createBookingDraftForUser(createBookingDraftForUserVars);
+// Variables can be defined inline as well.
+const { data } = await createBookingDraftForUser({ eventId: ..., bookerId: ..., clientSubmissionKey: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createBookingDraftForUser(dataConnect, createBookingDraftForUserVars);
+
+console.log(data.booking_insert);
+
+// Or, you can use the `Promise` API.
+createBookingDraftForUser(createBookingDraftForUserVars).then((response) => {
+  const data = response.data;
+  console.log(data.booking_insert);
+});
+```
+
+### Using `CreateBookingDraftForUser`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createBookingDraftForUserRef, CreateBookingDraftForUserVariables } from '@dataconnect/generated';
+
+// The `CreateBookingDraftForUser` mutation requires an argument of type `CreateBookingDraftForUserVariables`:
+const createBookingDraftForUserVars: CreateBookingDraftForUserVariables = {
+  eventId: ..., 
+  bookerId: ..., 
+  clientSubmissionKey: ..., 
+};
+
+// Call the `createBookingDraftForUserRef()` function to get a reference to the mutation.
+const ref = createBookingDraftForUserRef(createBookingDraftForUserVars);
+// Variables can be defined inline as well.
+const ref = createBookingDraftForUserRef({ eventId: ..., bookerId: ..., clientSubmissionKey: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createBookingDraftForUserRef(dataConnect, createBookingDraftForUserVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.booking_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.booking_insert);
 });
 ```
 

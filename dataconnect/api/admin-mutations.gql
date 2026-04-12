@@ -142,4 +142,49 @@ query GetUserUserGroupsForAdmin($userId: String!) @auth(level: NO_ACCESS) {
   }
 }
 
+# Load bookings for a booker and event (Firebase Functions / admin SDK only).
+query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
+  user(id: $bookerId) {
+    id
+    bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
+      id
+      status
+      clientSubmissionKey
+      createdAt
+      updatedAt
+      lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+        id
+        sortOrder
+        guestDisplayName
+        dietaryNote
+        guestUser {
+          id
+        }
+        ticketType {
+          id
+          audience
+        }
+      }
+    }
+  }
+}
+
+# Firebase Functions: create draft with explicit booker and idempotency key (NO_ACCESS; not client-callable).
+mutation CreateBookingDraftForUser(
+  $eventId: UUID!
+  $bookerId: String!
+  $clientSubmissionKey: String!
+) @auth(level: NO_ACCESS) {
+  booking_insert(
+    data: {
+      eventId: $eventId
+      bookerId: $bookerId
+      clientSubmissionKey: $clientSubmissionKey
+      status: DRAFT
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
 

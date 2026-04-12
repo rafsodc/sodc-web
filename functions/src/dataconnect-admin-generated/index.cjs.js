@@ -448,3 +448,17 @@ function getUserUserGroupsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getUserUserGroupsForAdmin = getUserUserGroupsForAdmin;
 
+function getBookingsForBookerAndEvent(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetBookingsForBookerAndEvent', inputVars, inputOpts);
+}
+exports.getBookingsForBookerAndEvent = getBookingsForBookerAndEvent;
+
+function createBookingDraftForUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateBookingDraftForUser', inputVars, inputOpts);
+}
+exports.createBookingDraftForUser = createBookingDraftForUser;
+

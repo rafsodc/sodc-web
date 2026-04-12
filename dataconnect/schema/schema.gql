@@ -160,11 +160,13 @@ type TicketType @table {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# Booking - one booker per event per purchase flow (enforce uniqueness in booking rules / app as needed).
-type Booking @table {
+# Booking - one booker per event per purchase flow. Idempotent submits use clientSubmissionKey (unique per event+booker+key).
+type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!
+  # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
+  clientSubmissionKey: String
   status: BookingStatus! @default(value: DRAFT)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")

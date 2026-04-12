@@ -60,6 +60,7 @@ erDiagram
     uuid id PK
     uuid event_id FK
     string booker_user_id FK
+    string client_submission_key "nullable; unique with event+booker for idempotent submit"
     enum status "e.g. DRAFT | SUBMITTED | CONFIRMED | CANCELLED"
     timestamp created_at
     timestamp updated_at
@@ -109,3 +110,5 @@ erDiagram
 ## Schema source of truth
 
 Canonical definitions: [`dataconnect/schema/schema.gql`](../../dataconnect/schema/schema.gql). Operations: [`dataconnect/api/queries.gql`](../../dataconnect/api/queries.gql), [`dataconnect/api/booking-mutations.gql`](../../dataconnect/api/booking-mutations.gql), and event/ticket admin mutations in [`dataconnect/api/user-group-mutations.gql`](../../dataconnect/api/user-group-mutations.gql).
+
+Server-side submission (rules + persistence): see [`booking-submission-api.md`](./booking-submission-api.md) (`submitEventBooking` callable, issue **#46**).

@@ -252,6 +252,7 @@ query GetEventById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
       userGroup {
         id
         name
+        membershipStatuses
       }
     }
   }
@@ -273,6 +274,7 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
         name
         description
         subscribable
+        membershipStatuses
       }
     }
   }

@@ -732,3 +732,27 @@ exports.getUserUserGroupsForAdminRef = getUserUserGroupsForAdminRef;
 exports.getUserUserGroupsForAdmin = function getUserUserGroupsForAdmin(dcOrVars, vars) {
   return executeQuery(getUserUserGroupsForAdminRef(dcOrVars, vars));
 };
+
+const getBookingsForBookerAndEventRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingsForBookerAndEvent', inputVars);
+}
+getBookingsForBookerAndEventRef.operationName = 'GetBookingsForBookerAndEvent';
+exports.getBookingsForBookerAndEventRef = getBookingsForBookerAndEventRef;
+
+exports.getBookingsForBookerAndEvent = function getBookingsForBookerAndEvent(dcOrVars, vars) {
+  return executeQuery(getBookingsForBookerAndEventRef(dcOrVars, vars));
+};
+
+const createBookingDraftForUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateBookingDraftForUser', inputVars);
+}
+createBookingDraftForUserRef.operationName = 'CreateBookingDraftForUser';
+exports.createBookingDraftForUserRef = createBookingDraftForUserRef;
+
+exports.createBookingDraftForUser = function createBookingDraftForUser(dcOrVars, vars) {
+  return executeMutation(createBookingDraftForUserRef(dcOrVars, vars));
+};
