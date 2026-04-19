@@ -39,6 +39,11 @@ export enum TicketAudience {
   MEMBER = "MEMBER",
   GUEST = "GUEST",
 }
+export enum GuestTicketRequestStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 
 export interface AddBookingLineData {
   bookingLine_insert: BookingLine_Key;
