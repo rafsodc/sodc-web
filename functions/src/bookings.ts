@@ -2,14 +2,14 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
   addBookingLineFromCallable,
-  adminDeleteBookingLine,
   BookingStatus,
   createBookingDraftForUser,
+  deleteBookingLineFromCallable,
   getBookingsForBookerAndEvent,
-  getEventById,
-  getSectionById,
-  getUserAccessGroupsById,
+  getEventByIdForCallable,
+  getSectionByIdForCallable,
   getUserMembershipStatus,
+  getUserUserGroupsForAdmin,
   updateBookingStatusFromCallable,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
@@ -92,9 +92,9 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
 
   try {
     const [eventResult, userStatusResult, userGroupsResult, initialBookings] = await Promise.all([
-      getEventById({ id: eventId }),
+      getEventByIdForCallable({ id: eventId }),
       getUserMembershipStatus({ id: uid }),
-      getUserAccessGroupsById({ userId: uid }),
+      getUserUserGroupsForAdmin({ userId: uid }),
       fetchBookingsForBookerAndEvent(uid, eventId),
     ]);
 
@@ -120,7 +120,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     );
 
     const sectionId = validateUUID(event.section.id as string, "sectionId") as UUIDString;
-    const sectionResult = await getSectionById({ id: sectionId });
+    const sectionResult = await getSectionByIdForCallable({ id: sectionId });
     const section = sectionResult.data?.section;
     if (!section) {
       throw new HttpsError("not-found", "Section not found");
@@ -207,7 +207,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     if (matchingDraft) {
       bookingId = matchingDraft.id;
       for (const ln of matchingDraft.lines ?? []) {
-        await adminDeleteBookingLine({ id: ln.id });
+        await deleteBookingLineFromCallable({ id: ln.id });
       }
     } else {
       try {
@@ -240,7 +240,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
         if (racedDraft) {
           bookingId = racedDraft.id;
           for (const ln of racedDraft.lines ?? []) {
-            await adminDeleteBookingLine({ id: ln.id });
+            await deleteBookingLineFromCallable({ id: ln.id });
           }
         } else {
           logger.error("submitEventBooking: duplicate key but no matching booking after refetch", e);
