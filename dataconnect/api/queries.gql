@@ -381,6 +381,14 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
         id
         status
         requestedGuestCount
+        guestDisplayName
+        dietaryNote
+        guestTicketType {
+          id
+          title
+          audience
+          price
+        }
         reviewedAt
         moderatorNote
       }

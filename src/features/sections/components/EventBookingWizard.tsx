@@ -27,6 +27,7 @@ import { BookingStatus, TicketAudience } from "@dataconnect/generated";
 import { submitEventBooking } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
+import AdditionalGuestRequestSection from "./AdditionalGuestRequestSection";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
 type SectionDetail = NonNullable<GetSectionByIdData["section"]>;
@@ -297,9 +298,23 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
 
   if (existingTerminalBooking) {
     return (
-      <Alert severity="success" sx={{ mt: 2 }}>
-        You already have a booking for this event ({existingTerminalBooking.status.toLowerCase()}).
-      </Alert>
+      <Box sx={{ mt: 2 }}>
+        <Alert severity="success">
+          You already have a booking for this event ({existingTerminalBooking.status.toLowerCase()}).
+        </Alert>
+        <AdditionalGuestRequestSection
+          bookingId={existingTerminalBooking.id}
+          eventTitle={event.title}
+          maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
+          guestTicketTypes={guestTicketTypes.map((tt) => ({
+            id: tt.id,
+            title: tt.title,
+            price: tt.price ?? null,
+          }))}
+          requests={existingTerminalBooking.guestTicketRequests ?? []}
+          onRequestCreated={() => void refetchMyBookings()}
+        />
+      </Box>
     );
   }
 

@@ -197,6 +197,10 @@ type GuestTicketRequest @table {
   booking: Booking!
   status: GuestTicketRequestStatus! @default(value: PENDING)
   requestedGuestCount: Int!
+  # Mirrors BookingLine guest fields so moderators see who/what is being requested (nullable on legacy rows).
+  guestTicketType: TicketType
+  guestDisplayName: String
+  dietaryNote: String
   reviewedBy: User
   reviewedAt: Timestamp
   moderatorNote: String
