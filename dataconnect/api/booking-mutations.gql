@@ -65,6 +65,24 @@ mutation AdminDeleteGuestTicketRequest($id: UUID!) @auth(expr: "auth.token.admin
   guestTicketRequest_delete(id: $id)
 }
 
+mutation AdminReviewGuestTicketRequest(
+  $id: UUID!
+  $status: GuestTicketRequestStatus!
+  $moderatorNote: String
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  guestTicketRequest_update(
+    id: $id
+    data: {
+      status: $status
+      moderatorNote: $moderatorNote
+      reviewedAt_expr: "request.time"
+      reviewedById_expr: "auth.uid"
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}
+
 mutation AdminDeleteBookingLine($id: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   bookingLine_delete(id: $id)
 }

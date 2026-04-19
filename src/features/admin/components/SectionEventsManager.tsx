@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Box,
   Alert,
@@ -22,11 +22,12 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Chip,
 } from "@mui/material";
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, ConfirmationNumber as TicketIcon } from "@mui/icons-material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
-import { useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
+import { useGetEventsForSection, useGetEventById, useListGuestTicketRequestsForAdmin } from "@dataconnect/generated/react";
 import {
   createEventRef,
   updateEventRef,
@@ -37,13 +38,14 @@ import {
   listUserGroupsRef,
   getEventByIdRef,
   listEventBookingsForAdminRef,
+  adminReviewGuestTicketRequestRef,
   adminDeleteGuestTicketRequestRef,
   adminDeleteBookingLineRef,
   adminDeleteBookingRef,
   TicketAudience,
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
-import type { GetEventByIdData } from "@dataconnect/generated";
+import type { GetEventByIdData, ListGuestTicketRequestsForAdminData } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
 
@@ -60,6 +62,11 @@ interface EventRow {
 }
 
 type TicketTypeRow = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];
+type GuestTicketRequestAdminRow = NonNullable<
+  NonNullable<
+    NonNullable<ListGuestTicketRequestsForAdminData["event"]>["bookings"][number]["guestTicketRequests"][number]
+  >
+>;
 
 function toDatetimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -115,6 +122,18 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [submittingTicketType, setSubmittingTicketType] = useState(false);
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState<string | null>(null);
+  const [requestStatusFilter, setRequestStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+  const [moderatorNoteDraft, setModeratorNoteDraft] = useState<Record<string, string>>({});
+  const {
+    data: guestRequestsData,
+    isLoading: loadingGuestRequests,
+    refetch: refetchGuestRequests,
+  } = useListGuestTicketRequestsForAdmin(
+    dataConnect,
+    { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
+    { enabled: !!ticketTypesEventId }
+  );
 
   const fetchUserGroups = useCallback(async () => {
     setLoadingUserGroups(true);
@@ -333,6 +352,49 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   };
 
   const events: EventRow[] = eventsData?.section?.events ?? [];
+  const guestRequests = useMemo(() => {
+    const bookings = guestRequestsData?.event?.bookings ?? [];
+    return bookings.flatMap((booking) =>
+      (booking.guestTicketRequests ?? []).map((request) => ({
+        ...request,
+        bookingId: booking.id,
+        bookingStatus: booking.status,
+        booker: booking.booker,
+      }))
+    );
+  }, [guestRequestsData]);
+
+  const filteredGuestRequests = useMemo(() => {
+    if (requestStatusFilter === "ALL") return guestRequests;
+    return guestRequests.filter((r) => r.status === requestStatusFilter);
+  }, [guestRequests, requestStatusFilter]);
+
+  const handleReviewRequest = async (request: GuestTicketRequestAdminRow & { bookingId: string }, status: "APPROVED" | "REJECTED") => {
+    setReviewingRequestId(request.id);
+    setError(null);
+    try {
+      await executeMutation(
+        adminReviewGuestTicketRequestRef(dataConnect, {
+          id: request.id as UUIDString,
+          status,
+          moderatorNote: moderatorNoteDraft[request.id]?.trim() || null,
+        })
+      );
+      setModeratorNoteDraft((prev) => ({ ...prev, [request.id]: "" }));
+      refetchGuestRequests();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to review guest ticket request");
+    } finally {
+      setReviewingRequestId(null);
+    }
+  };
+
+  const requestStatusColor = (status: string): "warning" | "success" | "error" | "default" => {
+    if (status === "PENDING") return "warning";
+    if (status === "APPROVED") return "success";
+    if (status === "REJECTED") return "error";
+    return "default";
+  };
 
   if (ticketTypesEventId) {
     const event = events.find((e) => e.id === ticketTypesEventId);
@@ -390,6 +452,109 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
             </Table>
           </TableContainer>
         )}
+
+        <Box sx={{ mt: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+            <Box sx={{ fontWeight: 600 }}>Additional guest ticket requests</Box>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <InputLabel id="guest-request-filter-label">Status filter</InputLabel>
+              <Select
+                labelId="guest-request-filter-label"
+                label="Status filter"
+                value={requestStatusFilter}
+                onChange={(e) => setRequestStatusFilter(e.target.value as "ALL" | "PENDING" | "APPROVED" | "REJECTED")}
+              >
+                <MenuItem value="PENDING">Pending</MenuItem>
+                <MenuItem value="APPROVED">Approved</MenuItem>
+                <MenuItem value="REJECTED">Rejected</MenuItem>
+                <MenuItem value="ALL">All</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          {loadingGuestRequests ? (
+            <CircularProgress size={22} />
+          ) : filteredGuestRequests.length === 0 ? (
+            <Alert severity="info">No guest ticket requests for this filter.</Alert>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Booker</TableCell>
+                    <TableCell>Guest</TableCell>
+                    <TableCell>Ticket</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell>Dietary</TableCell>
+                    <TableCell>Moderator note</TableCell>
+                    <TableCell>Created</TableCell>
+                    <TableCell>Reviewed</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredGuestRequests.map((req) => (
+                    <TableRow key={req.id}>
+                      <TableCell>
+                        <Chip size="small" label={req.status} color={requestStatusColor(req.status)} />
+                      </TableCell>
+                      <TableCell>
+                        {req.booker ? `${req.booker.firstName} ${req.booker.lastName}` : "—"}
+                      </TableCell>
+                      <TableCell>{req.guestDisplayName ?? "—"}</TableCell>
+                      <TableCell>{req.guestTicketType?.title ?? "—"}</TableCell>
+                      <TableCell align="right">{req.requestedGuestCount}</TableCell>
+                      <TableCell>{req.dietaryNote ?? "—"}</TableCell>
+                      <TableCell sx={{ minWidth: 240 }}>
+                        {req.status === "PENDING" ? (
+                          <TextField
+                            size="small"
+                            fullWidth
+                            placeholder="Optional note"
+                            value={moderatorNoteDraft[req.id] ?? ""}
+                            onChange={(e) =>
+                              setModeratorNoteDraft((prev) => ({ ...prev, [req.id]: e.target.value }))
+                            }
+                          />
+                        ) : (
+                          req.moderatorNote ?? "—"
+                        )}
+                      </TableCell>
+                      <TableCell>{new Date(req.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>{req.reviewedAt ? new Date(req.reviewedAt).toLocaleString() : "—"}</TableCell>
+                      <TableCell align="right">
+                        {req.status === "PENDING" ? (
+                          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="success"
+                              disabled={reviewingRequestId === req.id}
+                              onClick={() => void handleReviewRequest(req, "APPROVED")}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              disabled={reviewingRequestId === req.id}
+                              onClick={() => void handleReviewRequest(req, "REJECTED")}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
 
         <Dialog open={ticketTypeDialogOpen} onClose={() => setTicketTypeDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>{editingTicketType ? "Edit ticket type" : "Add ticket type"}</DialogTitle>

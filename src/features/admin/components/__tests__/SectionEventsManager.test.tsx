@@ -6,6 +6,7 @@ import * as reactGenerated from "@dataconnect/generated/react";
 vi.mock("@dataconnect/generated/react", () => ({
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
+  useListGuestTicketRequestsForAdmin: vi.fn(),
 }));
 
 vi.mock("firebase/data-connect", () => ({
@@ -37,6 +38,12 @@ describe("SectionEventsManager", () => {
     } as any);
     vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
       data: undefined,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useListGuestTicketRequestsForAdmin).mockReturnValue({
+      data: { event: { id: "ev-1", bookings: [] } } as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
