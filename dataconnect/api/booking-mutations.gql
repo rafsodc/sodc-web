@@ -42,11 +42,20 @@ mutation UpdateBookingStatus($id: UUID!, $status: BookingStatus!) @auth(expr: "a
   )
 }
 
-mutation CreateGuestTicketRequest($bookingId: UUID!, $requestedGuestCount: Int!) @auth(expr: "auth.token.enabled == true") {
+mutation CreateGuestTicketRequest(
+  $bookingId: UUID!
+  $requestedGuestCount: Int!
+  $guestTicketTypeId: UUID!
+  $guestDisplayName: String!
+  $dietaryNote: String
+) @auth(expr: "auth.token.enabled == true") {
   guestTicketRequest_insert(
     data: {
       bookingId: $bookingId
       requestedGuestCount: $requestedGuestCount
+      guestTicketTypeId: $guestTicketTypeId
+      guestDisplayName: $guestDisplayName
+      dietaryNote: $dietaryNote
       status: PENDING
     }
   )

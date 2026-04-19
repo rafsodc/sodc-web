@@ -80,7 +80,10 @@ erDiagram
     uuid id PK
     uuid booking_id FK
     enum status "PENDING | APPROVED | REJECTED"
-    int requested_guest_count "shape TBD vs line-level detail"
+    int requested_guest_count
+    uuid guest_ticket_type_id FK "nullable on legacy rows; requested guest ticket type"
+    string guest_display_name "nullable on legacy rows"
+    string dietary_note "nullable"
     string reviewed_by_user_id "nullable"
     timestamp reviewed_at
     string moderator_note "nullable"
@@ -95,7 +98,7 @@ erDiagram
 | **Event → new field** | Per-event limit on **total guest** headcount before additional moderator approval (semantics enforced in booking rules). |
 | **Booking** | One **booker** (`User`) for one **event**. |
 | **BookingLine** | Each row is a ticket line referencing a **`TicketType`**; the type’s **`audience`** must match use (**MEMBER** for the booker, **GUEST** for guests). Optional guest identity fields. |
-| **GuestTicketRequest** | Rows for **extra** guests that need **moderator approval** beyond the standard flow; ties to [#48](https://github.com/rafsodc/sodc-web/issues/48). |
+| **GuestTicketRequest** | Rows for **extra** guests that need **moderator approval** beyond the standard flow; stores requested **ticket type**, **guest name**, and **dietary** (aligned with `BookingLine`) plus **requested guest count**; ties to [#48](https://github.com/rafsodc/sodc-web/issues/48). |
 
 ## Related issues
 
