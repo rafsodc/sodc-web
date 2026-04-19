@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -25,6 +25,7 @@ import { colors } from "../../../config/colors";
 import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { BookingStatus, TicketAudience } from "@dataconnect/generated";
 import { submitEventBooking } from "../../../shared/utils/firebaseFunctions";
+import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
@@ -110,6 +111,24 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     return list.find((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED);
   }, [myBookingsData]);
 
+  /** Server draft for this event — reuse its idempotency key after refresh (new random UUID would conflict). */
+  const existingDraft = useMemo(() => {
+    const list = myBookingsData?.user?.bookings ?? [];
+    return list.find((b) => b.status === BookingStatus.DRAFT) ?? null;
+  }, [myBookingsData]);
+
+  useEffect(() => {
+    const raw = existingDraft?.clientSubmissionKey;
+    if (!raw || typeof raw !== "string" || !raw.trim()) {
+      return;
+    }
+    try {
+      idempotencyKeyRef.current = toCanonicalUuid(raw.trim());
+    } catch {
+      // leave ref unchanged if stored value is malformed
+    }
+  }, [existingDraft?.id, existingDraft?.clientSubmissionKey]);
+
   const selectedMember = memberTicketTypes.find((t) => t.id === memberTicketTypeId);
   const selectedGuest = guestTicketTypes.find((t) => t.id === guestTicketTypeId);
 
@@ -120,8 +139,11 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     setGuestTicketTypeId(null);
     setGuestDisplayName("");
     setSubmitError(null);
-    idempotencyKeyRef.current = null;
-  }, []);
+    // Keep idempotency key when a server draft exists; otherwise clear so the next submit starts fresh.
+    if (!existingDraft?.clientSubmissionKey?.trim()) {
+      idempotencyKeyRef.current = null;
+    }
+  }, [existingDraft?.clientSubmissionKey]);
 
   const handleNext = () => {
     setSubmitError(null);
@@ -162,7 +184,16 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     setSubmitError(null);
 
     if (!idempotencyKeyRef.current) {
-      idempotencyKeyRef.current = crypto.randomUUID();
+      const fromDraft = existingDraft?.clientSubmissionKey?.trim();
+      if (fromDraft) {
+        try {
+          idempotencyKeyRef.current = toCanonicalUuid(fromDraft);
+        } catch {
+          idempotencyKeyRef.current = crypto.randomUUID();
+        }
+      } else {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
     }
     const idempotencyKey = idempotencyKeyRef.current;
 
@@ -212,9 +243,26 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
       } else if (code === "OUTSIDE_BOOKING_WINDOW") {
         setSubmitError("The booking window is closed.");
       } else if (code === "IDEMPOTENCY_DRAFT_CONFLICT") {
-        setSubmitError(
-          "A draft booking is in progress. Please refresh the page or contact support if this continues."
-        );
+        const refreshed = await refetchMyBookings();
+        const bookings = refreshed.data?.user?.bookings ?? [];
+        const draft = bookings.find((b) => b.status === BookingStatus.DRAFT);
+        const raw = draft?.clientSubmissionKey?.trim();
+        if (raw) {
+          try {
+            idempotencyKeyRef.current = toCanonicalUuid(raw);
+            setSubmitError(
+              "Your in-progress booking was found. Review your choices and press Confirm booking again."
+            );
+          } catch {
+            setSubmitError(
+              "A draft booking is in progress but could not be resumed. Please contact support if this continues."
+            );
+          }
+        } else {
+          setSubmitError(
+            "A draft booking exists without a resume key. Please contact a moderator to clear it, or try again later."
+          );
+        }
       } else {
         setSubmitError(message);
       }

@@ -49,234 +49,6 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
-const getCurrentUserRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetCurrentUser');
-}
-getCurrentUserRef.operationName = 'GetCurrentUser';
-exports.getCurrentUserRef = getCurrentUserRef;
-
-exports.getCurrentUser = function getCurrentUser(dc) {
-  return executeQuery(getCurrentUserRef(dc));
-};
-
-const getUserByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserById', inputVars);
-}
-getUserByIdRef.operationName = 'GetUserById';
-exports.getUserByIdRef = getUserByIdRef;
-
-exports.getUserById = function getUserById(dcOrVars, vars) {
-  return executeQuery(getUserByIdRef(dcOrVars, vars));
-};
-
-const listUsersRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'ListUsers');
-}
-listUsersRef.operationName = 'ListUsers';
-exports.listUsersRef = listUsersRef;
-
-exports.listUsers = function listUsers(dc) {
-  return executeQuery(listUsersRef(dc));
-};
-
-const listSectionsRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'ListSections');
-}
-listSectionsRef.operationName = 'ListSections';
-exports.listSectionsRef = listSectionsRef;
-
-exports.listSections = function listSections(dc) {
-  return executeQuery(listSectionsRef(dc));
-};
-
-const getSectionsForUserRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetSectionsForUser');
-}
-getSectionsForUserRef.operationName = 'GetSectionsForUser';
-exports.getSectionsForUserRef = getSectionsForUserRef;
-
-exports.getSectionsForUser = function getSectionsForUser(dc) {
-  return executeQuery(getSectionsForUserRef(dc));
-};
-
-const listUserGroupsRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'ListUserGroups');
-}
-listUserGroupsRef.operationName = 'ListUserGroups';
-exports.listUserGroupsRef = listUserGroupsRef;
-
-exports.listUserGroups = function listUserGroups(dc) {
-  return executeQuery(listUserGroupsRef(dc));
-};
-
-const getUserAccessGroupsRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserAccessGroups');
-}
-getUserAccessGroupsRef.operationName = 'GetUserAccessGroups';
-exports.getUserAccessGroupsRef = getUserAccessGroupsRef;
-
-exports.getUserAccessGroups = function getUserAccessGroups(dc) {
-  return executeQuery(getUserAccessGroupsRef(dc));
-};
-
-const checkUserProfileExistsRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'CheckUserProfileExists');
-}
-checkUserProfileExistsRef.operationName = 'CheckUserProfileExists';
-exports.checkUserProfileExistsRef = checkUserProfileExistsRef;
-
-exports.checkUserProfileExists = function checkUserProfileExists(dc) {
-  return executeQuery(checkUserProfileExistsRef(dc));
-};
-
-const getUserMembershipStatusRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserMembershipStatus', inputVars);
-}
-getUserMembershipStatusRef.operationName = 'GetUserMembershipStatus';
-exports.getUserMembershipStatusRef = getUserMembershipStatusRef;
-
-exports.getUserMembershipStatus = function getUserMembershipStatus(dcOrVars, vars) {
-  return executeQuery(getUserMembershipStatusRef(dcOrVars, vars));
-};
-
-const getUserWithAccessGroupsRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserWithAccessGroups', inputVars);
-}
-getUserWithAccessGroupsRef.operationName = 'GetUserWithAccessGroups';
-exports.getUserWithAccessGroupsRef = getUserWithAccessGroupsRef;
-
-exports.getUserWithAccessGroups = function getUserWithAccessGroups(dcOrVars, vars) {
-  return executeQuery(getUserWithAccessGroupsRef(dcOrVars, vars));
-};
-
-const getUserAccessGroupsByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserAccessGroupsById', inputVars);
-}
-getUserAccessGroupsByIdRef.operationName = 'GetUserAccessGroupsById';
-exports.getUserAccessGroupsByIdRef = getUserAccessGroupsByIdRef;
-
-exports.getUserAccessGroupsById = function getUserAccessGroupsById(dcOrVars, vars) {
-  return executeQuery(getUserAccessGroupsByIdRef(dcOrVars, vars));
-};
-
-const getEventsForSectionRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetEventsForSection', inputVars);
-}
-getEventsForSectionRef.operationName = 'GetEventsForSection';
-exports.getEventsForSectionRef = getEventsForSectionRef;
-
-exports.getEventsForSection = function getEventsForSection(dcOrVars, vars) {
-  return executeQuery(getEventsForSectionRef(dcOrVars, vars));
-};
-
-const getEventByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetEventById', inputVars);
-}
-getEventByIdRef.operationName = 'GetEventById';
-exports.getEventByIdRef = getEventByIdRef;
-
-exports.getEventById = function getEventById(dcOrVars, vars) {
-  return executeQuery(getEventByIdRef(dcOrVars, vars));
-};
-
-const getSectionByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetSectionById', inputVars);
-}
-getSectionByIdRef.operationName = 'GetSectionById';
-exports.getSectionByIdRef = getSectionByIdRef;
-
-exports.getSectionById = function getSectionById(dcOrVars, vars) {
-  return executeQuery(getSectionByIdRef(dcOrVars, vars));
-};
-
-const getUserGroupByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserGroupById', inputVars);
-}
-getUserGroupByIdRef.operationName = 'GetUserGroupById';
-exports.getUserGroupByIdRef = getUserGroupByIdRef;
-
-exports.getUserGroupById = function getUserGroupById(dcOrVars, vars) {
-  return executeQuery(getUserGroupByIdRef(dcOrVars, vars));
-};
-
-const getAllUserGroupsWithStatusesRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAllUserGroupsWithStatuses');
-}
-getAllUserGroupsWithStatusesRef.operationName = 'GetAllUserGroupsWithStatuses';
-exports.getAllUserGroupsWithStatusesRef = getAllUserGroupsWithStatusesRef;
-
-exports.getAllUserGroupsWithStatuses = function getAllUserGroupsWithStatuses(dc) {
-  return executeQuery(getAllUserGroupsWithStatusesRef(dc));
-};
-
-const getSectionMembersRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetSectionMembers', inputVars);
-}
-getSectionMembersRef.operationName = 'GetSectionMembers';
-exports.getSectionMembersRef = getSectionMembersRef;
-
-exports.getSectionMembers = function getSectionMembers(dcOrVars, vars) {
-  return executeQuery(getSectionMembersRef(dcOrVars, vars));
-};
-
-const getMyBookingsForEventRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetMyBookingsForEvent', inputVars);
-}
-getMyBookingsForEventRef.operationName = 'GetMyBookingsForEvent';
-exports.getMyBookingsForEventRef = getMyBookingsForEventRef;
-
-exports.getMyBookingsForEvent = function getMyBookingsForEvent(dcOrVars, vars) {
-  return executeQuery(getMyBookingsForEventRef(dcOrVars, vars));
-};
-
-const listEventBookingsForAdminRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'ListEventBookingsForAdmin', inputVars);
-}
-listEventBookingsForAdminRef.operationName = 'ListEventBookingsForAdmin';
-exports.listEventBookingsForAdminRef = listEventBookingsForAdminRef;
-
-exports.listEventBookingsForAdmin = function listEventBookingsForAdmin(dcOrVars, vars) {
-  return executeQuery(listEventBookingsForAdminRef(dcOrVars, vars));
-};
-
 const createSectionRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -779,4 +551,232 @@ exports.adminDeleteBookingRef = adminDeleteBookingRef;
 
 exports.adminDeleteBooking = function adminDeleteBooking(dcOrVars, vars) {
   return executeMutation(adminDeleteBookingRef(dcOrVars, vars));
+};
+
+const getCurrentUserRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetCurrentUser');
+}
+getCurrentUserRef.operationName = 'GetCurrentUser';
+exports.getCurrentUserRef = getCurrentUserRef;
+
+exports.getCurrentUser = function getCurrentUser(dc) {
+  return executeQuery(getCurrentUserRef(dc));
+};
+
+const getUserByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserById', inputVars);
+}
+getUserByIdRef.operationName = 'GetUserById';
+exports.getUserByIdRef = getUserByIdRef;
+
+exports.getUserById = function getUserById(dcOrVars, vars) {
+  return executeQuery(getUserByIdRef(dcOrVars, vars));
+};
+
+const listUsersRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListUsers');
+}
+listUsersRef.operationName = 'ListUsers';
+exports.listUsersRef = listUsersRef;
+
+exports.listUsers = function listUsers(dc) {
+  return executeQuery(listUsersRef(dc));
+};
+
+const listSectionsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSections');
+}
+listSectionsRef.operationName = 'ListSections';
+exports.listSectionsRef = listSectionsRef;
+
+exports.listSections = function listSections(dc) {
+  return executeQuery(listSectionsRef(dc));
+};
+
+const getSectionsForUserRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionsForUser');
+}
+getSectionsForUserRef.operationName = 'GetSectionsForUser';
+exports.getSectionsForUserRef = getSectionsForUserRef;
+
+exports.getSectionsForUser = function getSectionsForUser(dc) {
+  return executeQuery(getSectionsForUserRef(dc));
+};
+
+const listUserGroupsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListUserGroups');
+}
+listUserGroupsRef.operationName = 'ListUserGroups';
+exports.listUserGroupsRef = listUserGroupsRef;
+
+exports.listUserGroups = function listUserGroups(dc) {
+  return executeQuery(listUserGroupsRef(dc));
+};
+
+const getUserAccessGroupsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserAccessGroups');
+}
+getUserAccessGroupsRef.operationName = 'GetUserAccessGroups';
+exports.getUserAccessGroupsRef = getUserAccessGroupsRef;
+
+exports.getUserAccessGroups = function getUserAccessGroups(dc) {
+  return executeQuery(getUserAccessGroupsRef(dc));
+};
+
+const checkUserProfileExistsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'CheckUserProfileExists');
+}
+checkUserProfileExistsRef.operationName = 'CheckUserProfileExists';
+exports.checkUserProfileExistsRef = checkUserProfileExistsRef;
+
+exports.checkUserProfileExists = function checkUserProfileExists(dc) {
+  return executeQuery(checkUserProfileExistsRef(dc));
+};
+
+const getUserMembershipStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserMembershipStatus', inputVars);
+}
+getUserMembershipStatusRef.operationName = 'GetUserMembershipStatus';
+exports.getUserMembershipStatusRef = getUserMembershipStatusRef;
+
+exports.getUserMembershipStatus = function getUserMembershipStatus(dcOrVars, vars) {
+  return executeQuery(getUserMembershipStatusRef(dcOrVars, vars));
+};
+
+const getUserWithAccessGroupsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserWithAccessGroups', inputVars);
+}
+getUserWithAccessGroupsRef.operationName = 'GetUserWithAccessGroups';
+exports.getUserWithAccessGroupsRef = getUserWithAccessGroupsRef;
+
+exports.getUserWithAccessGroups = function getUserWithAccessGroups(dcOrVars, vars) {
+  return executeQuery(getUserWithAccessGroupsRef(dcOrVars, vars));
+};
+
+const getUserAccessGroupsByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserAccessGroupsById', inputVars);
+}
+getUserAccessGroupsByIdRef.operationName = 'GetUserAccessGroupsById';
+exports.getUserAccessGroupsByIdRef = getUserAccessGroupsByIdRef;
+
+exports.getUserAccessGroupsById = function getUserAccessGroupsById(dcOrVars, vars) {
+  return executeQuery(getUserAccessGroupsByIdRef(dcOrVars, vars));
+};
+
+const getEventsForSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetEventsForSection', inputVars);
+}
+getEventsForSectionRef.operationName = 'GetEventsForSection';
+exports.getEventsForSectionRef = getEventsForSectionRef;
+
+exports.getEventsForSection = function getEventsForSection(dcOrVars, vars) {
+  return executeQuery(getEventsForSectionRef(dcOrVars, vars));
+};
+
+const getEventByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetEventById', inputVars);
+}
+getEventByIdRef.operationName = 'GetEventById';
+exports.getEventByIdRef = getEventByIdRef;
+
+exports.getEventById = function getEventById(dcOrVars, vars) {
+  return executeQuery(getEventByIdRef(dcOrVars, vars));
+};
+
+const getSectionByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionById', inputVars);
+}
+getSectionByIdRef.operationName = 'GetSectionById';
+exports.getSectionByIdRef = getSectionByIdRef;
+
+exports.getSectionById = function getSectionById(dcOrVars, vars) {
+  return executeQuery(getSectionByIdRef(dcOrVars, vars));
+};
+
+const getUserGroupByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserGroupById', inputVars);
+}
+getUserGroupByIdRef.operationName = 'GetUserGroupById';
+exports.getUserGroupByIdRef = getUserGroupByIdRef;
+
+exports.getUserGroupById = function getUserGroupById(dcOrVars, vars) {
+  return executeQuery(getUserGroupByIdRef(dcOrVars, vars));
+};
+
+const getAllUserGroupsWithStatusesRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAllUserGroupsWithStatuses');
+}
+getAllUserGroupsWithStatusesRef.operationName = 'GetAllUserGroupsWithStatuses';
+exports.getAllUserGroupsWithStatusesRef = getAllUserGroupsWithStatusesRef;
+
+exports.getAllUserGroupsWithStatuses = function getAllUserGroupsWithStatuses(dc) {
+  return executeQuery(getAllUserGroupsWithStatusesRef(dc));
+};
+
+const getSectionMembersRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionMembers', inputVars);
+}
+getSectionMembersRef.operationName = 'GetSectionMembers';
+exports.getSectionMembersRef = getSectionMembersRef;
+
+exports.getSectionMembers = function getSectionMembers(dcOrVars, vars) {
+  return executeQuery(getSectionMembersRef(dcOrVars, vars));
+};
+
+const getMyBookingsForEventRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetMyBookingsForEvent', inputVars);
+}
+getMyBookingsForEventRef.operationName = 'GetMyBookingsForEvent';
+exports.getMyBookingsForEventRef = getMyBookingsForEventRef;
+
+exports.getMyBookingsForEvent = function getMyBookingsForEvent(dcOrVars, vars) {
+  return executeQuery(getMyBookingsForEventRef(dcOrVars, vars));
+};
+
+const listEventBookingsForAdminRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListEventBookingsForAdmin', inputVars);
+}
+listEventBookingsForAdminRef.operationName = 'ListEventBookingsForAdmin';
+exports.listEventBookingsForAdminRef = listEventBookingsForAdminRef;
+
+exports.listEventBookingsForAdmin = function listEventBookingsForAdmin(dcOrVars, vars) {
+  return executeQuery(listEventBookingsForAdminRef(dcOrVars, vars));
 };

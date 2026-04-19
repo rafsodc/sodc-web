@@ -49,139 +49,6 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
-function getCurrentUser(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetCurrentUser', undefined, inputOpts);
-}
-exports.getCurrentUser = getCurrentUser;
-
-function getUserById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserById', inputVars, inputOpts);
-}
-exports.getUserById = getUserById;
-
-function listUsers(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('ListUsers', undefined, inputOpts);
-}
-exports.listUsers = listUsers;
-
-function listSections(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('ListSections', undefined, inputOpts);
-}
-exports.listSections = listSections;
-
-function getSectionsForUser(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetSectionsForUser', undefined, inputOpts);
-}
-exports.getSectionsForUser = getSectionsForUser;
-
-function listUserGroups(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('ListUserGroups', undefined, inputOpts);
-}
-exports.listUserGroups = listUserGroups;
-
-function getUserAccessGroups(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserAccessGroups', undefined, inputOpts);
-}
-exports.getUserAccessGroups = getUserAccessGroups;
-
-function checkUserProfileExists(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('CheckUserProfileExists', undefined, inputOpts);
-}
-exports.checkUserProfileExists = checkUserProfileExists;
-
-function getUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserMembershipStatus', inputVars, inputOpts);
-}
-exports.getUserMembershipStatus = getUserMembershipStatus;
-
-function getUserWithAccessGroups(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserWithAccessGroups', inputVars, inputOpts);
-}
-exports.getUserWithAccessGroups = getUserWithAccessGroups;
-
-function getUserAccessGroupsById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserAccessGroupsById', inputVars, inputOpts);
-}
-exports.getUserAccessGroupsById = getUserAccessGroupsById;
-
-function getEventsForSection(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetEventsForSection', inputVars, inputOpts);
-}
-exports.getEventsForSection = getEventsForSection;
-
-function getEventById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetEventById', inputVars, inputOpts);
-}
-exports.getEventById = getEventById;
-
-function getSectionById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetSectionById', inputVars, inputOpts);
-}
-exports.getSectionById = getSectionById;
-
-function getUserGroupById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserGroupById', inputVars, inputOpts);
-}
-exports.getUserGroupById = getUserGroupById;
-
-function getAllUserGroupsWithStatuses(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAllUserGroupsWithStatuses', undefined, inputOpts);
-}
-exports.getAllUserGroupsWithStatuses = getAllUserGroupsWithStatuses;
-
-function getSectionMembers(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetSectionMembers', inputVars, inputOpts);
-}
-exports.getSectionMembers = getSectionMembers;
-
-function getMyBookingsForEvent(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetMyBookingsForEvent', inputVars, inputOpts);
-}
-exports.getMyBookingsForEvent = getMyBookingsForEvent;
-
-function listEventBookingsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('ListEventBookingsForAdmin', inputVars, inputOpts);
-}
-exports.listEventBookingsForAdmin = listEventBookingsForAdmin;
-
 function createSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -475,4 +342,137 @@ function adminDeleteBooking(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeMutation('AdminDeleteBooking', inputVars, inputOpts);
 }
 exports.adminDeleteBooking = adminDeleteBooking;
+
+function getCurrentUser(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetCurrentUser', undefined, inputOpts);
+}
+exports.getCurrentUser = getCurrentUser;
+
+function getUserById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserById', inputVars, inputOpts);
+}
+exports.getUserById = getUserById;
+
+function listUsers(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListUsers', undefined, inputOpts);
+}
+exports.listUsers = listUsers;
+
+function listSections(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSections', undefined, inputOpts);
+}
+exports.listSections = listSections;
+
+function getSectionsForUser(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionsForUser', undefined, inputOpts);
+}
+exports.getSectionsForUser = getSectionsForUser;
+
+function listUserGroups(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListUserGroups', undefined, inputOpts);
+}
+exports.listUserGroups = listUserGroups;
+
+function getUserAccessGroups(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserAccessGroups', undefined, inputOpts);
+}
+exports.getUserAccessGroups = getUserAccessGroups;
+
+function checkUserProfileExists(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('CheckUserProfileExists', undefined, inputOpts);
+}
+exports.checkUserProfileExists = checkUserProfileExists;
+
+function getUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserMembershipStatus', inputVars, inputOpts);
+}
+exports.getUserMembershipStatus = getUserMembershipStatus;
+
+function getUserWithAccessGroups(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserWithAccessGroups', inputVars, inputOpts);
+}
+exports.getUserWithAccessGroups = getUserWithAccessGroups;
+
+function getUserAccessGroupsById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserAccessGroupsById', inputVars, inputOpts);
+}
+exports.getUserAccessGroupsById = getUserAccessGroupsById;
+
+function getEventsForSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetEventsForSection', inputVars, inputOpts);
+}
+exports.getEventsForSection = getEventsForSection;
+
+function getEventById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetEventById', inputVars, inputOpts);
+}
+exports.getEventById = getEventById;
+
+function getSectionById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionById', inputVars, inputOpts);
+}
+exports.getSectionById = getSectionById;
+
+function getUserGroupById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserGroupById', inputVars, inputOpts);
+}
+exports.getUserGroupById = getUserGroupById;
+
+function getAllUserGroupsWithStatuses(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAllUserGroupsWithStatuses', undefined, inputOpts);
+}
+exports.getAllUserGroupsWithStatuses = getAllUserGroupsWithStatuses;
+
+function getSectionMembers(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionMembers', inputVars, inputOpts);
+}
+exports.getSectionMembers = getSectionMembers;
+
+function getMyBookingsForEvent(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetMyBookingsForEvent', inputVars, inputOpts);
+}
+exports.getMyBookingsForEvent = getMyBookingsForEvent;
+
+function listEventBookingsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListEventBookingsForAdmin', inputVars, inputOpts);
+}
+exports.listEventBookingsForAdmin = listEventBookingsForAdmin;
 
