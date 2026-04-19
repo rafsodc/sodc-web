@@ -187,4 +187,38 @@ mutation CreateBookingDraftForUser(
   )
 }
 
+# submitEventBooking callable — admin SDK has no auth.uid; avoid @default(expr: "auth.uid") on BookingLine.
+mutation AddBookingLineFromCallable(
+  $bookingId: UUID!
+  $ticketTypeId: UUID!
+  $guestUserId: String
+  $guestDisplayName: String
+  $dietaryNote: String
+  $sortOrder: Int!
+) @auth(level: NO_ACCESS) {
+  bookingLine_insert(
+    data: {
+      bookingId: $bookingId
+      ticketTypeId: $ticketTypeId
+      guestUserId: $guestUserId
+      guestDisplayName: $guestDisplayName
+      dietaryNote: $dietaryNote
+      sortOrder: $sortOrder
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @auth(level: NO_ACCESS) {
+  booking_update(
+    id: $id
+    data: {
+      status: $status
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 

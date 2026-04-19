@@ -1,6 +1,7 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { firebaseApp } from "../../config/firebase";
 import type { MembershipStatus } from "@dataconnect/generated";
+import { toCanonicalUuid } from "./uuid";
 
 /**
  * Firebase Cloud Functions wrapper utilities
@@ -230,6 +231,53 @@ export async function getSectionMembersMerged(
     GetSectionMembersMergedResponse
   >(functions, "getSectionMembersMerged");
   const result = await callable({ sectionId });
+  return result.data;
+}
+
+// ============================================================================
+// Event booking (callable — server rules + idempotency)
+// ============================================================================
+
+export interface SubmitEventBookingLine {
+  ticketTypeId: string;
+  sortOrder: number;
+  guestUserId?: string | null;
+  guestDisplayName?: string | null;
+  dietaryNote?: string | null;
+}
+
+export interface SubmitEventBookingRequest {
+  idempotencyKey: string;
+  eventId: string;
+  lines: SubmitEventBookingLine[];
+}
+
+export interface SubmitEventBookingResponse {
+  bookingId: string;
+  status: string;
+  idempotentReplay?: boolean;
+}
+
+/**
+ * Submits a booking for an event (validated server-side). Reuse the same idempotency key on retries.
+ */
+export async function submitEventBooking(
+  payload: SubmitEventBookingRequest
+): Promise<SubmitEventBookingResponse> {
+  const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
+  const callable = httpsCallable<SubmitEventBookingRequest, SubmitEventBookingResponse>(
+    functions,
+    "submitEventBooking"
+  );
+  const normalized: SubmitEventBookingRequest = {
+    idempotencyKey: toCanonicalUuid(payload.idempotencyKey),
+    eventId: toCanonicalUuid(payload.eventId),
+    lines: payload.lines.map((line) => ({
+      ...line,
+      ticketTypeId: toCanonicalUuid(line.ticketTypeId),
+    })),
+  };
+  const result = await callable(normalized);
   return result.data;
 }
 
