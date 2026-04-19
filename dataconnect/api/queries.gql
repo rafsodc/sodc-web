@@ -411,3 +411,37 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
     }
   }
 }
+
+# Admin: list guest ticket requests for moderation queue on an event.
+query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event(id: $eventId) {
+    id
+    title
+    bookings: bookings_on_event {
+      id
+      status
+      booker {
+        id
+        firstName
+        lastName
+        email
+      }
+      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
+        id
+        status
+        requestedGuestCount
+        guestDisplayName
+        dietaryNote
+        moderatorNote
+        createdAt
+        reviewedAt
+        guestTicketType {
+          id
+          title
+          audience
+          price
+        }
+      }
+    }
+  }
+}
