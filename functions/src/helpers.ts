@@ -77,15 +77,15 @@ export function validateEmail(email: string): string {
 }
 
 /**
- * Validates UUID format (basic validation)
+ * Validates UUID format (hyphenated RFC-4122 string or 32-char hex without hyphens).
+ * Returns canonical lowercase hyphenated form so Data Connect and DB lookups stay consistent.
  */
 export function validateUUID(uuid: string, fieldName: string = "UUID"): string {
-  const trimmed = uuid.trim();
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(trimmed)) {
+  const compact = String(uuid).trim().replace(/-/g, "");
+  if (!/^[0-9a-f]{32}$/i.test(compact)) {
     throw new HttpsError("invalid-argument", `Invalid ${fieldName} format`);
   }
-  return trimmed;
+  return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20, 32)}`.toLowerCase();
 }
 
 // Input length limits (must match frontend constants)

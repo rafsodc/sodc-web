@@ -28,10 +28,11 @@ import {
   isUserMember,
   isMembersSection,
 } from "../utils/sectionHelpers";
+import EventBookingWizard from "./EventBookingWizard";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
-import type { UUIDString } from "@dataconnect/generated";
+import type { GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { TicketAudience } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
@@ -498,6 +499,15 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                     </TableBody>
                   </Table>
                 </TableContainer>
+              )}
+              {currentUser && (
+                <EventBookingWizard
+                  section={section as NonNullable<GetSectionByIdData["section"]>}
+                  event={eventDetailData.event}
+                  onBookingComplete={() => {
+                    void refetchEventDetail();
+                  }}
+                />
               )}
             </>
           )}

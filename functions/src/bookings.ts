@@ -1,16 +1,16 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
-  addBookingLine,
-  adminDeleteBookingLine,
+  addBookingLineFromCallable,
   BookingStatus,
   createBookingDraftForUser,
+  deleteBookingLineFromCallable,
   getBookingsForBookerAndEvent,
-  getEventById,
-  getSectionById,
-  getUserAccessGroupsById,
+  getEventByIdForCallable,
+  getSectionByIdForCallable,
   getUserMembershipStatus,
-  updateBookingStatus,
+  getUserUserGroupsForAdmin,
+  updateBookingStatusFromCallable,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import {
@@ -92,9 +92,9 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
 
   try {
     const [eventResult, userStatusResult, userGroupsResult, initialBookings] = await Promise.all([
-      getEventById({ id: eventId }),
+      getEventByIdForCallable({ id: eventId }),
       getUserMembershipStatus({ id: uid }),
-      getUserAccessGroupsById({ userId: uid }),
+      getUserUserGroupsForAdmin({ userId: uid }),
       fetchBookingsForBookerAndEvent(uid, eventId),
     ]);
 
@@ -112,18 +112,27 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       throw new HttpsError("failed-precondition", "Membership status is required before booking");
     }
 
+    /** Data Connect outputs UUID scalars as 32 hex chars; client/callable input is canonical hyphenated. Normalize for Set/Map lookups. */
     const explicitGroupIds = new Set(
-      (userGroupsResult.data?.user?.userGroups ?? []).map((ug: { userGroup: { id: string } }) => ug.userGroup.id)
+      (userGroupsResult.data?.user?.userGroups ?? []).map((ug: { userGroup: { id: string } }) =>
+        validateUUID(ug.userGroup.id, "userGroupId")
+      )
     );
 
-    const sectionId = event.section.id as UUIDString;
-    const sectionResult = await getSectionById({ id: sectionId });
+    const sectionId = validateUUID(event.section.id as string, "sectionId") as UUIDString;
+    const sectionResult = await getSectionByIdForCallable({ id: sectionId });
     const section = sectionResult.data?.section;
     if (!section) {
       throw new HttpsError("not-found", "Section not found");
     }
 
-    const purposeLinks = section.purposeLinks ?? [];
+    const purposeLinks = (section.purposeLinks ?? []).map((link: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }) => ({
+      purpose: link.purpose,
+      userGroup: {
+        id: validateUUID(link.userGroup.id, "userGroupId"),
+        membershipStatuses: link.userGroup.membershipStatuses ?? null,
+      },
+    }));
 
     const gate = evaluateBookingGatekeeping({
       purposeLinks,
@@ -139,10 +148,14 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     const ticketTypes = event.ticketTypes ?? [];
     const ticketTypesById = new Map<string, TicketTypeForRules>();
     for (const tt of ticketTypes) {
-      ticketTypesById.set(tt.id, {
-        id: tt.id,
+      const id = validateUUID(tt.id, "ticketTypeId");
+      ticketTypesById.set(id, {
+        id,
         audience: tt.audience,
-        userGroup: { id: tt.userGroup.id, membershipStatuses: tt.userGroup.membershipStatuses ?? null },
+        userGroup: {
+          id: validateUUID(tt.userGroup.id, "userGroupId"),
+          membershipStatuses: tt.userGroup.membershipStatuses ?? null,
+        },
       });
     }
 
@@ -194,7 +207,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     if (matchingDraft) {
       bookingId = matchingDraft.id;
       for (const ln of matchingDraft.lines ?? []) {
-        await adminDeleteBookingLine({ id: ln.id });
+        await deleteBookingLineFromCallable({ id: ln.id });
       }
     } else {
       try {
@@ -227,7 +240,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
         if (racedDraft) {
           bookingId = racedDraft.id;
           for (const ln of racedDraft.lines ?? []) {
-            await adminDeleteBookingLine({ id: ln.id });
+            await deleteBookingLineFromCallable({ id: ln.id });
           }
         } else {
           logger.error("submitEventBooking: duplicate key but no matching booking after refetch", e);
@@ -238,7 +251,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
 
     const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder);
     for (const line of sorted) {
-      await addBookingLine({
+      await addBookingLineFromCallable({
         bookingId: bookingId as UUIDString,
         ticketTypeId: line.ticketTypeId as UUIDString,
         guestUserId: line.guestUserId?.trim() || null,
@@ -248,7 +261,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       });
     }
 
-    await updateBookingStatus({
+    await updateBookingStatusFromCallable({
       id: bookingId as UUIDString,
       status: BookingStatus.SUBMITTED,
     });

@@ -142,6 +142,58 @@ query GetUserUserGroupsForAdmin($userId: String!) @auth(level: NO_ACCESS) {
   }
 }
 
+# submitEventBooking callable — admin SDK has no user JWT; avoid @auth(expr) on user queries.
+query GetEventByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  event(id: $id) {
+    id
+    section {
+      id
+    }
+    title
+    location
+    guestOfHonour
+    startDateTime
+    endDateTime
+    bookingStartDateTime
+    bookingEndDateTime
+    maxGuestsWithoutModeratorApproval
+    ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+      id
+      title
+      description
+      audience
+      price
+      sortOrder
+      userGroup {
+        id
+        name
+        membershipStatuses
+      }
+    }
+  }
+}
+
+query GetSectionByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  section(id: $id) {
+    id
+    name
+    type
+    description
+    isOpenForRegistration
+    allowedUserGroups
+    purposeLinks: sectionUserGroupPurposeLinks_on_section {
+      purpose
+      userGroup {
+        id
+        name
+        description
+        subscribable
+        membershipStatuses
+      }
+    }
+  }
+}
+
 # Load bookings for a booker and event (Firebase Functions / admin SDK only).
 query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
   user(id: $bookerId) {
@@ -185,6 +237,44 @@ mutation CreateBookingDraftForUser(
       updatedBy: "system"
     }
   )
+}
+
+# submitEventBooking callable — admin SDK has no auth.uid; avoid @default(expr: "auth.uid") on BookingLine.
+mutation AddBookingLineFromCallable(
+  $bookingId: UUID!
+  $ticketTypeId: UUID!
+  $guestUserId: String
+  $guestDisplayName: String
+  $dietaryNote: String
+  $sortOrder: Int!
+) @auth(level: NO_ACCESS) {
+  bookingLine_insert(
+    data: {
+      bookingId: $bookingId
+      ticketTypeId: $ticketTypeId
+      guestUserId: $guestUserId
+      guestDisplayName: $guestDisplayName
+      dietaryNote: $dietaryNote
+      sortOrder: $sortOrder
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @auth(level: NO_ACCESS) {
+  booking_update(
+    id: $id
+    data: {
+      status: $status
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  bookingLine_delete(id: $id)
 }
 
 

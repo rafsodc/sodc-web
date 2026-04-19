@@ -11,6 +11,8 @@ vi.mock('@dataconnect/generated/react', () => ({
   useGetUserAccessGroups: vi.fn(),
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
+  useGetCurrentUser: vi.fn(),
+  useGetMyBookingsForEvent: vi.fn(),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
@@ -55,6 +57,17 @@ describe('SectionDetail', () => {
     } as any);
     vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
       data: undefined,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useGetCurrentUser).mockReturnValue({
+      data: { user: { membershipStatus: 'REGULAR' } } as any,
+      isLoading: false,
+      isError: false,
+    } as any);
+    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
+      data: { user: { bookings: [] } } as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),

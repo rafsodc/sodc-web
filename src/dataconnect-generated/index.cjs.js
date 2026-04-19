@@ -49,6 +49,186 @@ const connectorConfig = {
 };
 exports.connectorConfig = connectorConfig;
 
+const updateUserMembershipStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUserMembershipStatus', inputVars);
+}
+updateUserMembershipStatusRef.operationName = 'UpdateUserMembershipStatus';
+exports.updateUserMembershipStatusRef = updateUserMembershipStatusRef;
+
+exports.updateUserMembershipStatus = function updateUserMembershipStatus(dcOrVars, vars) {
+  return executeMutation(updateUserMembershipStatusRef(dcOrVars, vars));
+};
+
+const deleteUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteUser', inputVars);
+}
+deleteUserRef.operationName = 'DeleteUser';
+exports.deleteUserRef = deleteUserRef;
+
+exports.deleteUser = function deleteUser(dcOrVars, vars) {
+  return executeMutation(deleteUserRef(dcOrVars, vars));
+};
+
+const createUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateUser', inputVars);
+}
+createUserRef.operationName = 'CreateUser';
+exports.createUserRef = createUserRef;
+
+exports.createUser = function createUser(dcOrVars, vars) {
+  return executeMutation(createUserRef(dcOrVars, vars));
+};
+
+const createUserGroupAdminRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateUserGroupAdmin', inputVars);
+}
+createUserGroupAdminRef.operationName = 'CreateUserGroupAdmin';
+exports.createUserGroupAdminRef = createUserGroupAdminRef;
+
+exports.createUserGroupAdmin = function createUserGroupAdmin(dcOrVars, vars) {
+  return executeMutation(createUserGroupAdminRef(dcOrVars, vars));
+};
+
+const addUserToUserGroupAdminRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AddUserToUserGroupAdmin', inputVars);
+}
+addUserToUserGroupAdminRef.operationName = 'AddUserToUserGroupAdmin';
+exports.addUserToUserGroupAdminRef = addUserToUserGroupAdminRef;
+
+exports.addUserToUserGroupAdmin = function addUserToUserGroupAdmin(dcOrVars, vars) {
+  return executeMutation(addUserToUserGroupAdminRef(dcOrVars, vars));
+};
+
+const removeUserFromUserGroupAdminRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RemoveUserFromUserGroupAdmin', inputVars);
+}
+removeUserFromUserGroupAdminRef.operationName = 'RemoveUserFromUserGroupAdmin';
+exports.removeUserFromUserGroupAdminRef = removeUserFromUserGroupAdminRef;
+
+exports.removeUserFromUserGroupAdmin = function removeUserFromUserGroupAdmin(dcOrVars, vars) {
+  return executeMutation(removeUserFromUserGroupAdminRef(dcOrVars, vars));
+};
+
+const getUserGroupByNameRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserGroupByName', inputVars);
+}
+getUserGroupByNameRef.operationName = 'GetUserGroupByName';
+exports.getUserGroupByNameRef = getUserGroupByNameRef;
+
+exports.getUserGroupByName = function getUserGroupByName(dcOrVars, vars) {
+  return executeQuery(getUserGroupByNameRef(dcOrVars, vars));
+};
+
+const getUserUserGroupsForAdminRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserUserGroupsForAdmin', inputVars);
+}
+getUserUserGroupsForAdminRef.operationName = 'GetUserUserGroupsForAdmin';
+exports.getUserUserGroupsForAdminRef = getUserUserGroupsForAdminRef;
+
+exports.getUserUserGroupsForAdmin = function getUserUserGroupsForAdmin(dcOrVars, vars) {
+  return executeQuery(getUserUserGroupsForAdminRef(dcOrVars, vars));
+};
+
+const getEventByIdForCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetEventByIdForCallable', inputVars);
+}
+getEventByIdForCallableRef.operationName = 'GetEventByIdForCallable';
+exports.getEventByIdForCallableRef = getEventByIdForCallableRef;
+
+exports.getEventByIdForCallable = function getEventByIdForCallable(dcOrVars, vars) {
+  return executeQuery(getEventByIdForCallableRef(dcOrVars, vars));
+};
+
+const getSectionByIdForCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionByIdForCallable', inputVars);
+}
+getSectionByIdForCallableRef.operationName = 'GetSectionByIdForCallable';
+exports.getSectionByIdForCallableRef = getSectionByIdForCallableRef;
+
+exports.getSectionByIdForCallable = function getSectionByIdForCallable(dcOrVars, vars) {
+  return executeQuery(getSectionByIdForCallableRef(dcOrVars, vars));
+};
+
+const getBookingsForBookerAndEventRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingsForBookerAndEvent', inputVars);
+}
+getBookingsForBookerAndEventRef.operationName = 'GetBookingsForBookerAndEvent';
+exports.getBookingsForBookerAndEventRef = getBookingsForBookerAndEventRef;
+
+exports.getBookingsForBookerAndEvent = function getBookingsForBookerAndEvent(dcOrVars, vars) {
+  return executeQuery(getBookingsForBookerAndEventRef(dcOrVars, vars));
+};
+
+const createBookingDraftForUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateBookingDraftForUser', inputVars);
+}
+createBookingDraftForUserRef.operationName = 'CreateBookingDraftForUser';
+exports.createBookingDraftForUserRef = createBookingDraftForUserRef;
+
+exports.createBookingDraftForUser = function createBookingDraftForUser(dcOrVars, vars) {
+  return executeMutation(createBookingDraftForUserRef(dcOrVars, vars));
+};
+
+const addBookingLineFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AddBookingLineFromCallable', inputVars);
+}
+addBookingLineFromCallableRef.operationName = 'AddBookingLineFromCallable';
+exports.addBookingLineFromCallableRef = addBookingLineFromCallableRef;
+
+exports.addBookingLineFromCallable = function addBookingLineFromCallable(dcOrVars, vars) {
+  return executeMutation(addBookingLineFromCallableRef(dcOrVars, vars));
+};
+
+const updateBookingStatusFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateBookingStatusFromCallable', inputVars);
+}
+updateBookingStatusFromCallableRef.operationName = 'UpdateBookingStatusFromCallable';
+exports.updateBookingStatusFromCallableRef = updateBookingStatusFromCallableRef;
+
+exports.updateBookingStatusFromCallable = function updateBookingStatusFromCallable(dcOrVars, vars) {
+  return executeMutation(updateBookingStatusFromCallableRef(dcOrVars, vars));
+};
+
+const deleteBookingLineFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteBookingLineFromCallable', inputVars);
+}
+deleteBookingLineFromCallableRef.operationName = 'DeleteBookingLineFromCallable';
+exports.deleteBookingLineFromCallableRef = deleteBookingLineFromCallableRef;
+
+exports.deleteBookingLineFromCallable = function deleteBookingLineFromCallable(dcOrVars, vars) {
+  return executeMutation(deleteBookingLineFromCallableRef(dcOrVars, vars));
+};
+
 const createBookingDraftRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -635,124 +815,4 @@ exports.unsubscribeFromUserGroupRef = unsubscribeFromUserGroupRef;
 
 exports.unsubscribeFromUserGroup = function unsubscribeFromUserGroup(dcOrVars, vars) {
   return executeMutation(unsubscribeFromUserGroupRef(dcOrVars, vars));
-};
-
-const updateUserMembershipStatusRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateUserMembershipStatus', inputVars);
-}
-updateUserMembershipStatusRef.operationName = 'UpdateUserMembershipStatus';
-exports.updateUserMembershipStatusRef = updateUserMembershipStatusRef;
-
-exports.updateUserMembershipStatus = function updateUserMembershipStatus(dcOrVars, vars) {
-  return executeMutation(updateUserMembershipStatusRef(dcOrVars, vars));
-};
-
-const deleteUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'DeleteUser', inputVars);
-}
-deleteUserRef.operationName = 'DeleteUser';
-exports.deleteUserRef = deleteUserRef;
-
-exports.deleteUser = function deleteUser(dcOrVars, vars) {
-  return executeMutation(deleteUserRef(dcOrVars, vars));
-};
-
-const createUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateUser', inputVars);
-}
-createUserRef.operationName = 'CreateUser';
-exports.createUserRef = createUserRef;
-
-exports.createUser = function createUser(dcOrVars, vars) {
-  return executeMutation(createUserRef(dcOrVars, vars));
-};
-
-const createUserGroupAdminRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateUserGroupAdmin', inputVars);
-}
-createUserGroupAdminRef.operationName = 'CreateUserGroupAdmin';
-exports.createUserGroupAdminRef = createUserGroupAdminRef;
-
-exports.createUserGroupAdmin = function createUserGroupAdmin(dcOrVars, vars) {
-  return executeMutation(createUserGroupAdminRef(dcOrVars, vars));
-};
-
-const addUserToUserGroupAdminRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AddUserToUserGroupAdmin', inputVars);
-}
-addUserToUserGroupAdminRef.operationName = 'AddUserToUserGroupAdmin';
-exports.addUserToUserGroupAdminRef = addUserToUserGroupAdminRef;
-
-exports.addUserToUserGroupAdmin = function addUserToUserGroupAdmin(dcOrVars, vars) {
-  return executeMutation(addUserToUserGroupAdminRef(dcOrVars, vars));
-};
-
-const removeUserFromUserGroupAdminRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'RemoveUserFromUserGroupAdmin', inputVars);
-}
-removeUserFromUserGroupAdminRef.operationName = 'RemoveUserFromUserGroupAdmin';
-exports.removeUserFromUserGroupAdminRef = removeUserFromUserGroupAdminRef;
-
-exports.removeUserFromUserGroupAdmin = function removeUserFromUserGroupAdmin(dcOrVars, vars) {
-  return executeMutation(removeUserFromUserGroupAdminRef(dcOrVars, vars));
-};
-
-const getUserGroupByNameRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserGroupByName', inputVars);
-}
-getUserGroupByNameRef.operationName = 'GetUserGroupByName';
-exports.getUserGroupByNameRef = getUserGroupByNameRef;
-
-exports.getUserGroupByName = function getUserGroupByName(dcOrVars, vars) {
-  return executeQuery(getUserGroupByNameRef(dcOrVars, vars));
-};
-
-const getUserUserGroupsForAdminRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserUserGroupsForAdmin', inputVars);
-}
-getUserUserGroupsForAdminRef.operationName = 'GetUserUserGroupsForAdmin';
-exports.getUserUserGroupsForAdminRef = getUserUserGroupsForAdminRef;
-
-exports.getUserUserGroupsForAdmin = function getUserUserGroupsForAdmin(dcOrVars, vars) {
-  return executeQuery(getUserUserGroupsForAdminRef(dcOrVars, vars));
-};
-
-const getBookingsForBookerAndEventRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetBookingsForBookerAndEvent', inputVars);
-}
-getBookingsForBookerAndEventRef.operationName = 'GetBookingsForBookerAndEvent';
-exports.getBookingsForBookerAndEventRef = getBookingsForBookerAndEventRef;
-
-exports.getBookingsForBookerAndEvent = function getBookingsForBookerAndEvent(dcOrVars, vars) {
-  return executeQuery(getBookingsForBookerAndEventRef(dcOrVars, vars));
-};
-
-const createBookingDraftForUserRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateBookingDraftForUser', inputVars);
-}
-createBookingDraftForUserRef.operationName = 'CreateBookingDraftForUser';
-exports.createBookingDraftForUserRef = createBookingDraftForUserRef;
-
-exports.createBookingDraftForUser = function createBookingDraftForUser(dcOrVars, vars) {
-  return executeMutation(createBookingDraftForUserRef(dcOrVars, vars));
 };
