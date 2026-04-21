@@ -49,6 +49,7 @@ import {
   adminDeleteBookingLineRef,
   adminDeleteBookingRef,
   TicketAudience,
+  GuestTicketRequestStatus,
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
 import type {
@@ -394,7 +395,10 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   const eventBookings: EventBookingAdminRow[] = eventBookingsData?.event?.bookings ?? [];
   const ticketOrders: TicketOrderAdminRow[] = ticketOrdersData?.event?.ticketOrders ?? [];
 
-  const handleReviewRequest = async (request: GuestTicketRequestAdminRow & { bookingId: string }, status: "APPROVED" | "REJECTED") => {
+  const handleReviewRequest = async (
+    request: GuestTicketRequestAdminRow & { bookingId: string },
+    status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED
+  ) => {
     setReviewingRequestId(request.id);
     setError(null);
     try {
@@ -555,7 +559,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
                               variant="outlined"
                               color="success"
                               disabled={reviewingRequestId === req.id}
-                              onClick={() => void handleReviewRequest(req, "APPROVED")}
+                              onClick={() => void handleReviewRequest(req, GuestTicketRequestStatus.APPROVED)}
                             >
                               Approve
                             </Button>
@@ -564,7 +568,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
                               variant="outlined"
                               color="error"
                               disabled={reviewingRequestId === req.id}
-                              onClick={() => void handleReviewRequest(req, "REJECTED")}
+                              onClick={() => void handleReviewRequest(req, GuestTicketRequestStatus.REJECTED)}
                             >
                               Reject
                             </Button>
