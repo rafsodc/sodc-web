@@ -32,6 +32,8 @@ describe("Data Connect auth contracts", () => {
     const queries = readApiFile("queries.gql");
     const bookingMutations = readApiFile("booking-mutations.gql");
     const adminSdk = readApiFile("admin-mutations.gql");
+    const userMutations = readApiFile("user-mutations.gql");
+    const groupMutations = readApiFile("user-group-mutations.gql");
 
     assertAuth(queries, [
       { op: "query ListEventBookingsForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
@@ -54,6 +56,20 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetBookingsForBookerAndEvent", mustInclude: "@auth(level: NO_ACCESS)" },
       { op: "mutation UpdateBookingStatusFromCallable", mustInclude: "@auth(level: NO_ACCESS)" },
       { op: "mutation UpdateBookingPreferencesFromCallable", mustInclude: "@auth(level: NO_ACCESS)" },
+    ]);
+
+    assertAuth(userMutations, [
+      { op: "mutation CreateUserProfile", mustInclude: "@auth(level: USER)" },
+      { op: "mutation UpsertUser", mustInclude: '@auth(expr: "auth.token.enabled == true")' },
+      { op: "mutation UpdateUser", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
+    ]);
+
+    assertAuth(groupMutations, [
+      { op: "mutation CreateSection", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
+      { op: "mutation CreateUserGroup", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
+      { op: "mutation GrantUserGroupToSectionForPurpose", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
+      { op: "mutation CreateEvent", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
+      { op: "mutation CreateTicketType", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
     ]);
   });
 
