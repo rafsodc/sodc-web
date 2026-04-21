@@ -23,6 +23,18 @@ import {
 import type { SearchUser } from "../../../types";
 import { colors } from "../../../config/colors";
 
+/** Hide button text on narrow viewports; icons + aria-label remain. */
+const labelOnlyFromSm = { display: { xs: "none", sm: "inline" } } as const;
+
+const compactActionButtonSx = {
+  minWidth: { xs: 36, sm: "auto" },
+  px: { xs: 0.75, sm: undefined },
+  "& .MuiButton-startIcon": {
+    marginRight: { xs: 0, sm: undefined },
+    marginLeft: { xs: 0, sm: undefined },
+  },
+} as const;
+
 interface UsersTableProps {
   users: SearchUser[];
   mode: "edit" | "admin";
@@ -89,6 +101,7 @@ export default function UsersTable({
               variant="outlined"
               color="error"
               aria-label="Revoke administrator access"
+              sx={compactActionButtonSx}
               startIcon={
                 updatingUserId === user.uid ? undefined : <RemoveModerator fontSize="small" />
               }
@@ -98,7 +111,13 @@ export default function UsersTable({
               }}
               disabled={updatingUserId === user.uid || !canRevoke}
             >
-              {updatingUserId === user.uid ? <CircularProgress color="inherit" size={16} /> : "Revoke Admin"}
+              {updatingUserId === user.uid ? (
+                <CircularProgress color="inherit" size={16} />
+              ) : (
+                <Box component="span" sx={labelOnlyFromSm}>
+                  Revoke Admin
+                </Box>
+              )}
             </Button>
           </span>
         </Tooltip>
@@ -125,9 +144,14 @@ export default function UsersTable({
                   }}
                   disabled={isDisabled}
                   sx={{
+                    ...compactActionButtonSx,
                     backgroundColor: colors.callToAction,
                     color: "white",
-                    "& .MuiButton-startIcon": { color: "white" },
+                    "& .MuiButton-startIcon": {
+                      color: "white",
+                      marginRight: { xs: 0, sm: undefined },
+                      marginLeft: { xs: 0, sm: undefined },
+                    },
                     "&:hover": {
                       backgroundColor: colors.callToAction,
                       opacity: 0.9,
@@ -141,7 +165,9 @@ export default function UsersTable({
                   {updatingUserId === user.uid ? (
                     <CircularProgress sx={{ color: "white" }} size={16} />
                   ) : (
-                    "Grant Admin"
+                    <Box component="span" sx={labelOnlyFromSm}>
+                      Grant Admin
+                    </Box>
                   )}
                 </Button>
               </span>
@@ -158,6 +184,7 @@ export default function UsersTable({
                 size="small"
                 variant="outlined"
                 aria-label="Edit user profile and details"
+                sx={compactActionButtonSx}
                 startIcon={<Edit fontSize="small" />}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -165,7 +192,9 @@ export default function UsersTable({
                 }}
                 disabled={disabled}
               >
-                Edit User
+                <Box component="span" sx={labelOnlyFromSm}>
+                  Edit User
+                </Box>
               </Button>
             </span>
           </Tooltip>
@@ -177,6 +206,7 @@ export default function UsersTable({
                 size="small"
                 variant="outlined"
                 aria-label="Edit user group memberships"
+                sx={compactActionButtonSx}
                 startIcon={<Groups fontSize="small" />}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -184,7 +214,9 @@ export default function UsersTable({
                 }}
                 disabled={disabled}
               >
-                Edit Groups
+                <Box component="span" sx={labelOnlyFromSm}>
+                  Edit Groups
+                </Box>
               </Button>
             </span>
           </Tooltip>

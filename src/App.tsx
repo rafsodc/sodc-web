@@ -60,6 +60,7 @@ function AppContent() {
   const [isOnline, setIsOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
@@ -114,6 +115,10 @@ function AppContent() {
       });
     }
   }, [emailCheckTrigger, user]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   const handleProfileUpdate = useCallback(() => {
     // Refetch user data after profile update
@@ -236,12 +241,7 @@ function AppContent() {
       userData={userData}
       onAccountClick={() => navigate(ROUTES.ACCOUNT)}
       onProfileClick={() => navigate(ROUTES.PROFILE)}
-      onManageUsersClick={() => navigate(ROUTES.MANAGE_USERS)}
-      onApproveUsersClick={() => navigate(ROUTES.APPROVE_USERS)}
-      onUserGroupsClick={() => navigate(ROUTES.USER_GROUPS)}
-      onAuditLogsClick={() => navigate(ROUTES.AUDIT_LOGS)}
-      onManageSectionsClick={() => navigate(ROUTES.MANAGE_SECTIONS)}
-      onSectionsClick={() => navigate(ROUTES.SECTIONS)}
+      onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
     />
   );
 
@@ -436,7 +436,13 @@ function AppContent() {
         }}
       >
         {user && isEnabled ? (
-          <AppSideNav sections={sectionsLinks} adminLinks={adminLinks} pathname={location.pathname} />
+          <AppSideNav
+            sections={sectionsLinks}
+            adminLinks={adminLinks}
+            pathname={location.pathname}
+            mobileOpen={mobileNavOpen}
+            onMobileClose={() => setMobileNavOpen(false)}
+          />
         ) : null}
         <Box
           sx={{
