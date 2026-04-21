@@ -121,6 +121,21 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("button", { name: /ticket types/i })).toBeInTheDocument();
   });
 
+  it("renders error message when events query fails", async () => {
+    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load events/i)).toBeInTheDocument();
+    });
+  });
+
   it("renders moderation queue and approves a pending request", async () => {
     const user = userEvent.setup();
     vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
@@ -243,5 +258,44 @@ describe("SectionEventsManager", () => {
     expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /approve/i }));
     await waitFor(() => expect(executeMutation).toHaveBeenCalled());
+  });
+
+  it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {
+    const user = userEvent.setup();
+    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+      data: {
+        section: {
+          id: sectionId,
+          events: [
+            {
+              id: "ev-1",
+              title: "Annual Dinner",
+              startDateTime: "2025-03-01T18:00:00Z",
+              endDateTime: "2025-03-01T22:00:00Z",
+              bookingStartDateTime: "2025-02-01T00:00:00Z",
+              bookingEndDateTime: "2025-02-28T23:59:59Z",
+              location: "Main Hall",
+              guestOfHonour: "Jane Doe",
+            },
+          ],
+        },
+      } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+      data: { event: { id: "ev-1", ticketTypes: [] } } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /ticket types/i }));
+
+    expect(screen.getByText(/no guest ticket requests for this filter/i)).toBeInTheDocument();
+    expect(screen.getByText(/no bookings found for this event/i)).toBeInTheDocument();
+    expect(screen.getByText(/no payment orders found for this event/i)).toBeInTheDocument();
   });
 });

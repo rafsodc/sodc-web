@@ -20,6 +20,10 @@ describe("auth guard helpers", () => {
     expect(() => requireEnabled(req as unknown as never)).toThrow("Account must be enabled");
   });
 
+  it("requireEnabled rejects unauthenticated calls", () => {
+    expect(() => requireEnabled({ auth: null } as unknown as never)).toThrow("Sign in required");
+  });
+
   it("requireEnabled accepts users with enabled claim", () => {
     const req: RequestLike = { auth: { uid: "u1", token: { enabled: true } } };
     expect(() => requireEnabled(req as unknown as never)).not.toThrow();
@@ -28,6 +32,10 @@ describe("auth guard helpers", () => {
   it("requireAdmin rejects non-admin calls", () => {
     const req: RequestLike = { auth: { uid: "u1", token: { admin: false } } };
     expect(() => requireAdmin(req as unknown as never)).toThrow("Admins only");
+  });
+
+  it("requireAdmin rejects unauthenticated calls", () => {
+    expect(() => requireAdmin({ auth: null } as unknown as never)).toThrow("Sign in required");
   });
 
   it("requireAdmin accepts admin calls", () => {
