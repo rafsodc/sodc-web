@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { AppBar, Avatar, Box, Button, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
-import { Person } from "@mui/icons-material";
+import { AppBar, Avatar, Box, Button, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
+import { ExpandMore, Menu as MenuIcon, Person } from "@mui/icons-material";
 import { signOut, type User } from "firebase/auth";
 import { auth } from "../../config/firebase";
 import { colors } from "../../config/colors";
 import type { UserData } from "../../types";
-import { useAdminClaim } from "../../features/users/hooks/useAdminClaim";
 import { useEnabledClaim } from "../../features/users/hooks/useEnabledClaim";
 
 interface HeaderProps {
@@ -15,28 +14,32 @@ interface HeaderProps {
   onJoinClick?: () => void;
   onProfileClick?: () => void;
   onSecurityClick?: () => void;
-  onPermissionsClick?: () => void;
-  onManageUsersClick?: () => void;
-  onApproveUsersClick?: () => void;
-  onUserGroupsClick?: () => void;
-  onAuditLogsClick?: () => void;
-  onManageSectionsClick?: () => void;
-  onSectionsClick?: () => void;
+  /** When set, shows a hamburger on small screens that opens the side navigation. */
+  onNavMenuOpen?: () => void;
 }
 
-function getInitials(userData: UserData | null): string {
+function getFullName(userData: UserData | null): string {
   if (!userData) return "";
-  const first = userData.firstName?.charAt(0).toUpperCase() || "";
-  const last = userData.lastName?.charAt(0).toUpperCase() || "";
-  return `${first}${last}` || "";
+  return `${userData.firstName ?? ""} ${userData.lastName ?? ""}`.trim();
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onUserGroupsClick, onAuditLogsClick, onManageSectionsClick, onSectionsClick }: HeaderProps) {
+function accountDisplayName(userData: UserData | null, firebaseUser: User | null): string {
+  const name = getFullName(userData);
+  if (name) return name;
+  return firebaseUser?.displayName?.trim() || firebaseUser?.email || "Account";
+}
+
+export default function Header({
+  user,
+  userData,
+  onAccountClick,
+  onJoinClick,
+  onProfileClick,
+  onSecurityClick,
+  onNavMenuOpen,
+}: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const adminMenuOpen = Boolean(adminAnchorEl);
-  const isAdmin = useAdminClaim(user);
   const isEnabled = useEnabledClaim(user);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -74,72 +77,10 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     }
   };
 
-  const handleAdminClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAdminAnchorEl(event.currentTarget);
-  };
-
-  const handleAdminMenuClose = () => {
-    setAdminAnchorEl(null);
-  };
-
-  const handlePermissions = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onPermissionsClick) {
-      onPermissionsClick();
-    }
-  };
-
-  const handleManageUsers = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onManageUsersClick) {
-      onManageUsersClick();
-    }
-  };
-
-  const handleApproveUsers = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onApproveUsersClick) {
-      onApproveUsersClick();
-    }
-  };
-
-  const handleUserGroups = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onUserGroupsClick) {
-      onUserGroupsClick();
-    }
-  };
-
-  const handleAuditLogs = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onAuditLogsClick) {
-      onAuditLogsClick();
-    }
-  };
-
-  const handleManageSections = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onManageSectionsClick) {
-      onManageSectionsClick();
-    }
-  };
-
   return (
-    <AppBar 
-      position="fixed" 
-      sx={{ 
+    <AppBar
+      position="fixed"
+      sx={{
         backgroundColor: colors.primary,
         top: 0,
         left: 0,
@@ -147,192 +88,95 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
       }}
     >
       <Toolbar>
+        {user && isEnabled && onNavMenuOpen ? (
+          <IconButton
+            color="inherit"
+            edge="start"
+            aria-label="Open navigation menu"
+            onClick={onNavMenuOpen}
+            sx={{ mr: 1, display: { xs: "inline-flex", md: "none" } }}
+          >
+            <MenuIcon />
+          </IconButton>
+        ) : null}
         <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
           SODC
         </Typography>
-        {user && isEnabled && (
-          <Box sx={{ flexGrow: 1, display: "flex", justifyContent: "center", gap: 2 }}>
-            {onSectionsClick && (
-              <Button
-                onClick={onSectionsClick}
-                sx={{
-                  textTransform: "none",
-                  backgroundColor: "white",
-                  color: colors.primary,
-                  borderRadius: "9999px",
-                  px: 3,
-                  fontWeight: 600,
-                  "&:hover": {
-                    backgroundColor: "white",
-                    opacity: 0.9,
-                  },
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Sections
-              </Button>
-            )}
-            {isAdmin && (
-              <Button
-                onClick={handleAdminClick}
-                sx={{
-                  textTransform: "none",
-                  backgroundColor: "white",
-                  color: colors.primary,
-                  borderRadius: "9999px",
-                  px: 3,
-                  fontWeight: 600,
-                  "&:hover": {
-                    backgroundColor: "white",
-                    opacity: 0.9,
-                  },
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
-                Admin
-              </Button>
-            )}
-            {isAdmin && (
-              <Menu
-                anchorEl={adminAnchorEl}
-                open={adminMenuOpen}
-                onClose={handleAdminMenuClose}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "center",
-                }}
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "center",
-                }}
-              >
-                <MenuItem 
-                  onClick={handlePermissions}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  Permissions
-                </MenuItem>
-                <MenuItem 
-                  onClick={handleManageUsers}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  Manage Users
-                </MenuItem>
-                <MenuItem 
-                  onClick={handleApproveUsers}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  Approve Users
-                </MenuItem>
-                <MenuItem 
-                  onClick={handleUserGroups}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  User Groups
-                </MenuItem>
-                <MenuItem 
-                  onClick={handleAuditLogs}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  Audit Logs
-                </MenuItem>
-                <MenuItem 
-                  onClick={handleManageSections}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  Manage Sections
-                </MenuItem>
-              </Menu>
-            )}
-          </Box>
-        )}
-        {!user || !isEnabled ? (
-          <Box sx={{ flexGrow: user && isEnabled ? 0 : 1 }} />
-        ) : null}
+        <Box sx={{ flexGrow: 1 }} />
         {user ? (
           <>
-            {userData ? (
+            <Button
+              id="account-menu-button"
+              onClick={handleAvatarClick}
+              aria-haspopup="true"
+              aria-expanded={open ? "true" : "false"}
+              aria-controls={open ? "account-menu" : undefined}
+              aria-label="Account menu"
+              color="inherit"
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                minWidth: 0,
+                maxWidth: { xs: 260, sm: 360 },
+                py: 0.5,
+                px: 0.75,
+                textTransform: "none",
+                color: "inherit",
+                borderRadius: "9999px",
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.28)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.18)",
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  borderColor: "rgba(255, 255, 255, 0.38)",
+                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.22)",
+                },
+              }}
+            >
               <Avatar
-                onClick={handleAvatarClick}
                 sx={{
+                  flexShrink: 0,
                   backgroundColor: colors.callToAction,
                   color: "white",
-                  cursor: "pointer",
                   width: 40,
                   height: 40,
-                  fontSize: "1rem",
+                }}
+              >
+                <Person sx={{ fontSize: 22 }} />
+              </Avatar>
+              <Typography
+                component="span"
+                variant="body2"
+                noWrap
+                title={accountDisplayName(userData, user)}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
                   fontWeight: 600,
+                  textAlign: "left",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: { xs: 140, sm: 240 },
                 }}
               >
-                {getInitials(userData)}
-              </Avatar>
-            ) : (
-              <Avatar
-                onClick={handleAvatarClick}
+                {accountDisplayName(userData, user)}
+              </Typography>
+              <ExpandMore
                 sx={{
-                  backgroundColor: colors.callToAction,
-                  color: "white",
-                  cursor: "pointer",
-                  width: 40,
-                  height: 40,
+                  flexShrink: 0,
+                  fontSize: 28,
+                  opacity: 0.95,
+                  transition: (theme) =>
+                    theme.transitions.create("transform", { duration: theme.transitions.duration.shortest }),
+                  transform: open ? "rotate(180deg)" : "none",
                 }}
-              >
-                <Person />
-              </Avatar>
-            )}
+              />
+            </Button>
             <Menu
+              id="account-menu"
               anchorEl={anchorEl}
               open={open}
               onClose={handleMenuClose}
@@ -344,38 +188,41 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                 vertical: "top",
                 horizontal: "right",
               }}
+              MenuListProps={{
+                "aria-labelledby": "account-menu-button",
+              }}
             >
               {isEnabled && (
-                <>
-                  <MenuItem 
-                    onClick={handleProfile}
-                    sx={{
-                      "&:focus": {
-                        outline: "none",
-                      },
-                      "&:focus-visible": {
-                        outline: "none",
-                      },
-                    }}
-                  >
-                    Profile
-                  </MenuItem>
-                  <MenuItem 
-                    onClick={handleSecurity}
-                    sx={{
-                      "&:focus": {
-                        outline: "none",
-                      },
-                      "&:focus-visible": {
-                        outline: "none",
-                      },
-                    }}
-                  >
-                    Security
-                  </MenuItem>
-                </>
+                <MenuItem
+                  onClick={handleProfile}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Profile
+                </MenuItem>
               )}
-              <MenuItem 
+              {isEnabled && (
+                <MenuItem
+                  onClick={handleSecurity}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Security
+                </MenuItem>
+              )}
+              <MenuItem
                 onClick={handleLogOut}
                 sx={{
                   "&:focus": {
@@ -392,9 +239,9 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
           </>
         ) : (
           <Box sx={{ display: "flex", gap: 1 }}>
-            <Button 
+            <Button
               onClick={onAccountClick}
-              sx={{ 
+              sx={{
                 textTransform: "none",
                 backgroundColor: "white",
                 color: colors.primary,
@@ -414,9 +261,9 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
             >
               Log In
             </Button>
-            <Button 
+            <Button
               onClick={onJoinClick || onAccountClick}
-              sx={{ 
+              sx={{
                 textTransform: "none",
                 backgroundColor: colors.callToAction,
                 color: "white",
@@ -442,4 +289,3 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
     </AppBar>
   );
 }
-

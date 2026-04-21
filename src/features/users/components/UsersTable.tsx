@@ -11,17 +11,40 @@ import {
   Button,
   CircularProgress,
   Tooltip,
+  Box,
 } from "@mui/material";
-import { Edit, CheckCircle } from "@mui/icons-material";
+import {
+  AddModerator,
+  CheckCircle,
+  Edit,
+  Groups,
+  RemoveModerator,
+} from "@mui/icons-material";
 import type { SearchUser } from "../../../types";
 import { colors } from "../../../config/colors";
+
+/** Hide button text on narrow viewports; icons + aria-label remain. */
+const labelOnlyFromSm = { display: { xs: "none", sm: "inline" } } as const;
+
+const compactActionButtonSx = {
+  minWidth: { xs: 36, sm: "auto" },
+  px: { xs: 0.75, sm: undefined },
+  "& .MuiButton-startIcon": {
+    marginRight: { xs: 0, sm: undefined },
+    marginLeft: { xs: 0, sm: undefined },
+  },
+} as const;
 
 interface UsersTableProps {
   users: SearchUser[];
   mode: "edit" | "admin";
+  /** When mode is "admin", show an edit control alongside grant/revoke actions. */
   onEdit?: (user: SearchUser) => void;
+  /** When set, shows an "Edit Groups" button (replaces row-click to open groups). */
+  onEditGroups?: (user: SearchUser) => void;
   onGrantAdmin?: (userId: string) => void;
   onRevokeAdmin?: (userId: string) => void;
+  /** Row click selects user (only used when onEditGroups is not provided). */
   onSelectUser?: (userId: string) => void;
   updatingUserId?: string | null;
   adminCount?: number; // Used to disable revoke if only one admin
@@ -33,6 +56,7 @@ export default function UsersTable({
   users,
   mode,
   onEdit,
+  onEditGroups,
   onGrantAdmin,
   onRevokeAdmin,
   onSelectUser,
@@ -44,14 +68,18 @@ export default function UsersTable({
   const renderActions = (user: SearchUser) => {
     if (mode === "edit") {
       return (
-        <IconButton
-          size="small"
-          onClick={() => onEdit?.(user)}
-          title="Edit user"
-          disabled={disabled}
-        >
-          <Edit />
-        </IconButton>
+        <Tooltip title="Edit this user's profile and account details.">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => onEdit?.(user)}
+              aria-label="Edit user"
+              disabled={disabled}
+            >
+              <Edit />
+            </IconButton>
+          </span>
+        </Tooltip>
       );
     } else {
       // mode === "admin"
@@ -59,63 +87,159 @@ export default function UsersTable({
       const isEnabled = user.customClaims?.enabled === true;
       const canRevoke = adminCount === undefined || adminCount > 1;
       
-      if (isAdmin) {
-        return (
-          <Tooltip title={!canRevoke ? "Cannot remove the last admin" : "Revoke admin"}>
+      const adminButtons = isAdmin ? (
+        <Tooltip
+          title={
+            !canRevoke
+              ? "At least one administrator must remain. Add another admin before revoking this user."
+              : "Remove administrator access for this user. They keep their account and section access unless you change it elsewhere."
+          }
+        >
+          <span>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              aria-label="Revoke administrator access"
+              sx={compactActionButtonSx}
+              startIcon={
+                updatingUserId === user.uid ? undefined : <RemoveModerator fontSize="small" />
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onRevokeAdmin?.(user.uid);
+              }}
+              disabled={updatingUserId === user.uid || !canRevoke}
+            >
+              {updatingUserId === user.uid ? (
+                <CircularProgress color="inherit" size={16} />
+              ) : (
+                <Box component="span" sx={labelOnlyFromSm}>
+                  Revoke Admin
+                </Box>
+              )}
+            </Button>
+          </span>
+        </Tooltip>
+      ) : (
+        (() => {
+          const isDisabled = updatingUserId === user.uid || !isEnabled;
+          const tooltipText = !isEnabled
+            ? "Only enabled members (non-restricted membership) can be granted administrator access."
+            : "Grant full administrator access: manage users, sections, and other admin tools.";
+
+          return (
+            <Tooltip title={tooltipText}>
+              <span>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  aria-label="Grant administrator access"
+                  startIcon={
+                    updatingUserId === user.uid ? undefined : <AddModerator fontSize="small" />
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGrantAdmin?.(user.uid);
+                  }}
+                  disabled={isDisabled}
+                  sx={{
+                    ...compactActionButtonSx,
+                    backgroundColor: colors.callToAction,
+                    color: "white",
+                    "& .MuiButton-startIcon": {
+                      color: "white",
+                      marginRight: { xs: 0, sm: undefined },
+                      marginLeft: { xs: 0, sm: undefined },
+                    },
+                    "&:hover": {
+                      backgroundColor: colors.callToAction,
+                      opacity: 0.9,
+                    },
+                    "&:disabled": {
+                      backgroundColor: colors.callToAction,
+                      opacity: 0.5,
+                    },
+                  }}
+                >
+                  {updatingUserId === user.uid ? (
+                    <CircularProgress sx={{ color: "white" }} size={16} />
+                  ) : (
+                    <Box component="span" sx={labelOnlyFromSm}>
+                      Grant Admin
+                    </Box>
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
+          );
+        })()
+      );
+
+      if (onEdit) {
+        const editUserBtn = (
+          <Tooltip title="Open the editor for this user's profile, membership status, and related details.">
             <span>
               <Button
                 size="small"
                 variant="outlined"
-                color="error"
-                onClick={() => onRevokeAdmin?.(user.uid)}
-                disabled={updatingUserId === user.uid || !canRevoke}
+                aria-label="Edit user profile and details"
+                sx={compactActionButtonSx}
+                startIcon={<Edit fontSize="small" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(user);
+                }}
+                disabled={disabled}
               >
-                {updatingUserId === user.uid ? (
-                  <CircularProgress size={16} />
-                ) : (
-                  "Revoke Admin"
-                )}
+                <Box component="span" sx={labelOnlyFromSm}>
+                  Edit User
+                </Box>
               </Button>
             </span>
           </Tooltip>
         );
-      } else {
-        const isDisabled = updatingUserId === user.uid || !isEnabled;
-        const tooltipText = !isEnabled 
-          ? "User must be enabled (have non-restricted membership status) to grant admin" 
-          : "Grant admin privileges";
-        
-        return (
-          <Tooltip title={tooltipText}>
+        const editGroupsBtn = onEditGroups ? (
+          <Tooltip title="Manage which user groups this user belongs to (section access, moderators, and similar).">
             <span>
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => onGrantAdmin?.(user.uid)}
-                disabled={isDisabled}
-                sx={{
-                  backgroundColor: colors.callToAction,
-                  color: "white",
-                  "&:hover": {
-                    backgroundColor: colors.callToAction,
-                    opacity: 0.9,
-                  },
-                  "&:disabled": {
-                    backgroundColor: colors.callToAction,
-                    opacity: 0.5,
-                  },
+                aria-label="Edit user group memberships"
+                sx={compactActionButtonSx}
+                startIcon={<Groups fontSize="small" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditGroups(user);
                 }}
+                disabled={disabled}
               >
-                {updatingUserId === user.uid ? (
-                  <CircularProgress size={16} />
-                ) : (
-                  "Grant Admin"
-                )}
+                <Box component="span" sx={labelOnlyFromSm}>
+                  Edit Groups
+                </Box>
               </Button>
             </span>
           </Tooltip>
+        ) : null;
+
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            {editUserBtn}
+            {editGroupsBtn}
+            {adminButtons}
+          </Box>
         );
       }
+
+      return adminButtons;
     }
   };
 
@@ -140,14 +264,16 @@ export default function UsersTable({
               </TableCell>
             </TableRow>
           ) : (
-            users.map((user) => (
+            users.map((user) => {
+              const rowClickSelect = Boolean(onSelectUser) && !onEditGroups;
+              return (
               <TableRow 
                 key={user.uid}
-                onClick={() => onSelectUser?.(user.uid)}
+                onClick={() => rowClickSelect && onSelectUser?.(user.uid)}
                 sx={{
-                  cursor: onSelectUser ? "pointer" : "default",
+                  cursor: rowClickSelect ? "pointer" : "default",
                   backgroundColor: selectedUserId === user.uid ? "action.selected" : "inherit",
-                  "&:hover": onSelectUser ? {
+                  "&:hover": rowClickSelect ? {
                     backgroundColor: "action.hover",
                   } : {},
                 }}
@@ -187,7 +313,8 @@ export default function UsersTable({
                   {renderActions(user)}
                 </TableCell>
               </TableRow>
-            ))
+            );
+            })
           )}
         </TableBody>
       </Table>

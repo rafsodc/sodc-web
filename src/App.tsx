@@ -1,26 +1,25 @@
-import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
-import { ErrorBoundary } from "./shared/components/ErrorBoundary";
+import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth, dataConnect } from "./config/firebase";
-import { reload } from "firebase/auth";
+import { onAuthStateChanged, reload, type User } from "firebase/auth";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { queryRef, executeQuery } from "firebase/data-connect";
+import { auth, dataConnect } from "./config/firebase";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
 import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
+import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
+import AppSideNav from "./shared/components/AppSideNav";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
-
-import type { Route } from "./constants/routes";
+import { useGetSectionsForUser } from "@dataconnect/generated/react";
 
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
 const Profile = lazy(() => import("./features/profile/components/Profile"));
-const Permissions = lazy(() => import("./features/admin/components/Permissions"));
 const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
 const UserGroups = lazy(() => import("./features/admin/components/UserGroups"));
@@ -39,9 +38,18 @@ const LoadingFallback = () => (
   </Box>
 );
 
-export default function App() {
-  const [view, setView] = useState<Route>("home");
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+function SectionDetailRoute() {
+  const { sectionId } = useParams<{ sectionId: string }>();
+  const navigate = useNavigate();
+  if (!sectionId) {
+    return <Navigate to={ROUTES.SECTIONS} replace />;
+  }
+  return <SectionDetail sectionId={sectionId} onBack={() => navigate(ROUTES.SECTIONS)} />;
+}
+
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [emailCheckTrigger, setEmailCheckTrigger] = useState(0);
   const [logoutSuccess, setLogoutSuccess] = useState(false);
@@ -52,9 +60,11 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
+  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -86,15 +96,14 @@ export default function App() {
       
       setUser(u);
       
-      // If user logged out, clear state and redirect to login
       if (wasLoggedIn && isNowLoggedOut) {
-        setView(ROUTES.ACCOUNT);
+        navigate(ROUTES.ACCOUNT);
         setEmailCheckTrigger(0);
         setLogoutSuccess(true);
       }
     });
     return () => unsub();
-  }, [user]);
+  }, [navigate, user]);
 
   // Re-check email verification when triggered
   useEffect(() => {
@@ -106,6 +115,10 @@ export default function App() {
       });
     }
   }, [emailCheckTrigger, user]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   const handleProfileUpdate = useCallback(() => {
     // Refetch user data after profile update
@@ -180,38 +193,65 @@ export default function App() {
   const needsProfileCompletion = user && user.emailVerified && !isEnabled && 
     profileExists === false && !checkingProfileRef.current;
 
+  const sectionsLinks = useMemo(() => {
+    if (!userSectionsData?.user?.userGroups) {
+      return [];
+    }
+
+    const sectionMap = new Map<string, { label: string; to: string }>();
+    const addSection = (section: { id: string; name: string }) => {
+      if (!section?.id || sectionMap.has(section.id)) {
+        return;
+      }
+      sectionMap.set(section.id, { label: section.name || "Untitled section", to: `/sections/${section.id}` });
+    };
+
+    for (const groupRelation of userSectionsData.user.userGroups) {
+      const userGroup = groupRelation?.userGroup;
+      if (!userGroup?.purposeLinks) {
+        continue;
+      }
+      for (const purposeLink of userGroup.purposeLinks) {
+        if ((purposeLink.purpose === "ACCESS" || purposeLink.purpose === "MODERATOR") && purposeLink.section) {
+          addSection({ id: purposeLink.section.id, name: purposeLink.section.name });
+        }
+      }
+    }
+
+    const userStatus = userSectionsData.user.membershipStatus;
+    if (userStatus && userSectionsData.allUserGroups) {
+      for (const userGroup of userSectionsData.allUserGroups) {
+        if (!userGroup?.membershipStatuses?.includes(userStatus) || !userGroup?.purposeLinks) {
+          continue;
+        }
+        for (const purposeLink of userGroup.purposeLinks) {
+          if ((purposeLink.purpose === "ACCESS" || purposeLink.purpose === "MODERATOR") && purposeLink.section) {
+            addSection({ id: purposeLink.section.id, name: purposeLink.section.name });
+          }
+        }
+      }
+    }
+
+    return Array.from(sectionMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [userSectionsData]);
+
+  const header = (
+    <Header
+      user={user}
+      userData={userData}
+      onAccountClick={() => navigate(ROUTES.ACCOUNT)}
+      onProfileClick={() => navigate(ROUTES.PROFILE)}
+      onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
+    />
+  );
+
   if (!isOnline) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
         <CssBaseline />
-        <Header
-          user={user}
-          userData={userData}
-          onAccountClick={() => setView(ROUTES.ACCOUNT)}
-          onProfileClick={() => setView(ROUTES.PROFILE)}
-          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
-          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
-          onSectionsClick={() => {
-            setView(ROUTES.SECTIONS);
-            setSelectedSectionId(null);
-          }}
-        />
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            width: "100%",
-            pt: 12,
-            pb: 4,
-          }}
-        >
-          <Box
-            sx={{
-              maxWidth: { sm: "700px" },
-              mx: "auto",
-              px: { xs: 3, sm: 4 },
-            }}
-          >
+        {header}
+        <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
+          <Box sx={{ maxWidth: { sm: "700px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
             <Alert severity="warning" sx={{ mb: 2 }}>
               Unable to connect. Check your internet connection and try again.
             </Alert>
@@ -224,23 +264,11 @@ export default function App() {
     );
   }
 
-  // If email is not verified, show email verification message
   if (emailNotVerified) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
         <CssBaseline />
-        <Header 
-          user={user} 
-          userData={userData} 
-          onAccountClick={() => setView(ROUTES.ACCOUNT)}
-          onProfileClick={() => setView(ROUTES.PROFILE)}
-          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
-          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
-          onSectionsClick={() => {
-            setView(ROUTES.SECTIONS);
-            setSelectedSectionId(null);
-          }}
-        />
+        {header}
         <Box
           component="main"
           sx={{
@@ -260,11 +288,8 @@ export default function App() {
             <Suspense fallback={<LoadingFallback />}>
               <EmailVerificationMessage
                 user={user}
-                onVerified={async () => {
-                  // Trigger a re-check of email verification status
-                  setEmailCheckTrigger(prev => prev + 1);
-                }}
-                onBack={() => setView(ROUTES.HOME)}
+                onVerified={async () => setEmailCheckTrigger((prev) => prev + 1)}
+                onBack={() => navigate(ROUTES.HOME)}
               />
             </Suspense>
           </Box>
@@ -273,23 +298,11 @@ export default function App() {
     );
   }
 
-  // If user needs to complete profile, show profile completion
   if (needsProfileCompletion) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
         <CssBaseline />
-        <Header 
-          user={user} 
-          userData={userData} 
-          onAccountClick={() => setView(ROUTES.ACCOUNT)}
-          onProfileClick={() => setView(ROUTES.PROFILE)}
-          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
-          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
-          onSectionsClick={() => {
-            setView(ROUTES.SECTIONS);
-            setSelectedSectionId(null);
-          }}
-        />
+        {header}
         <Box
           component="main"
           sx={{
@@ -309,13 +322,8 @@ export default function App() {
             <Suspense fallback={<LoadingFallback />}>
               <ProfileCompletion
                 userEmail={user?.email || ""}
-                onComplete={() => {
-                  // Refetch user data after profile completion
-                  if (refetch) {
-                    refetch();
-                  }
-                }}
-                onBack={() => setView(ROUTES.HOME)}
+                onComplete={() => refetch?.()}
+                onBack={() => navigate(ROUTES.HOME)}
               />
             </Suspense>
           </Box>
@@ -324,24 +332,11 @@ export default function App() {
     );
   }
 
-  // If user is authenticated but not enabled, show account status message
-  // (Only reached if email is verified and profile is complete)
   if (user && !isEnabled) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
         <CssBaseline />
-        <Header 
-          user={user} 
-          userData={userData} 
-          onAccountClick={() => setView(ROUTES.ACCOUNT)}
-          onProfileClick={() => setView(ROUTES.PROFILE)}
-          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
-          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
-          onSectionsClick={() => {
-            setView(ROUTES.SECTIONS);
-            setSelectedSectionId(null);
-          }}
-        />
+        {header}
         <Box
           component="main"
           sx={{
@@ -378,8 +373,41 @@ export default function App() {
     const url = new URL(window.location.href);
     url.searchParams.delete("checkout");
     url.searchParams.delete("orderId");
-    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    navigate(`${url.pathname}${url.search}${url.hash}`, { replace: true });
     setCheckoutQueryState(null);
+  };
+
+  const adminLinks = isAdmin
+    ? [
+        { label: "Manage Users", to: ROUTES.MANAGE_USERS },
+        { label: "Approvals", to: ROUTES.APPROVE_USERS },
+        { label: "User Groups", to: ROUTES.USER_GROUPS },
+        { label: "Audit Logs", to: ROUTES.AUDIT_LOGS },
+        { label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS },
+      ]
+    : [];
+
+  const renderAdminOnly = (title: string, element: ReactElement) => {
+    if (user && isAdmin) {
+      return element;
+    }
+    return (
+      <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+        <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+          {title}
+        </Typography>
+        {!user ? (
+          <Typography>Please log in to access this area.</Typography>
+        ) : (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Access denied. Admin privileges required.
+          </Alert>
+        )}
+        <Button variant="outlined" onClick={() => navigate(ROUTES.HOME)} sx={{ mt: 2 }}>
+          Back
+        </Button>
+      </Box>
+    );
   };
 
   return (
@@ -396,31 +424,36 @@ export default function App() {
           You have been successfully logged out.
         </Alert>
       </Snackbar>
-      <Header 
-        user={user} 
-        userData={userData} 
-        onAccountClick={() => setView("account")}
-        onProfileClick={() => setView("profile")}
-        onPermissionsClick={() => setView("permissions")}
-        onManageUsersClick={() => setView("manageUsers")}
-        onApproveUsersClick={() => setView(ROUTES.APPROVE_USERS)}
-        onUserGroupsClick={() => setView(ROUTES.USER_GROUPS)}
-        onAuditLogsClick={() => setView(ROUTES.AUDIT_LOGS)}
-        onManageSectionsClick={() => setView(ROUTES.MANAGE_SECTIONS)}
-        onSectionsClick={() => {
-          setView(ROUTES.SECTIONS);
-          setSelectedSectionId(null);
-        }}
-      />
+      {header}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           width: "100%",
-          pt: 12, // Padding top to account for fixed header
+          pt: 8,
           pb: 4,
+          display: "flex",
         }}
       >
+        {user && isEnabled ? (
+          <AppSideNav
+            sections={sectionsLinks}
+            adminLinks={adminLinks}
+            pathname={location.pathname}
+            mobileOpen={mobileNavOpen}
+            onMobileClose={() => setMobileNavOpen(false)}
+          />
+        ) : null}
+        <Box
+          sx={{
+            flex: 1,
+            px: { xs: 2, sm: 3 },
+            pt: 2,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <Box sx={{ width: "100%", maxWidth: "1200px" }}>
         {checkoutQueryState && (
           <Box
             sx={{
@@ -436,274 +469,83 @@ export default function App() {
             />
           </Box>
         )}
-        {view === "account" ? (
-          <Box 
-            sx={{ 
-              maxWidth: { sm: "600px" },
-              mx: "auto",
-              px: { xs: 3, sm: 4 },
-            }}
-          >
-            <Suspense fallback={<LoadingFallback />}>
-              <AuthGate 
-                userData={userData}
-                onBack={() => setView(ROUTES.HOME)}
-                onRegisterComplete={() => {
-                  // After registration, user will be signed in and need to verify email
-                  // The flow will handle this automatically
-                }}
-                onProfileComplete={() => {
-                  // After email verification, check if profile needs completion
-                  // This is handled by the needsProfileCompletion check above
-                }}
-              />
-            </Suspense>
-          </Box>
-        ) : view === ROUTES.PROFILE ? (
-          <Box 
-            sx={{ 
-              maxWidth: { sm: "600px" },
-              mx: "auto",
-              px: { xs: 3, sm: 4 },
-            }}
-          >
-            {user && (
-              <Suspense fallback={<LoadingFallback />}>
-                <Profile 
-                  key={user.uid}
-                  userData={userData} 
-                  userEmail={user?.email || ""}
-                  onBack={() => setView(ROUTES.HOME)}
-                  onUpdate={handleProfileUpdate}
-                />
-              </Suspense>
-            )}
-          </Box>
-        ) : view === ROUTES.PERMISSIONS ? (
-          user && isAdmin ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <Permissions onBack={() => setView("home")} />
-            </Suspense>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Permissions
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to access permissions.</Typography>
-              ) : !isAdmin ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Admin privileges required.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : view === ROUTES.MANAGE_USERS ? (
-          user && isAdmin ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <ManageUsers onBack={() => setView("home")} />
-            </Suspense>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Manage Users
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to access user management.</Typography>
-              ) : !isAdmin ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Admin privileges required.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : view === ROUTES.APPROVE_USERS ? (
-          user && isAdmin ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <ApproveUsers onBack={() => setView("home")} />
-            </Suspense>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Approve Users
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to access user approval.</Typography>
-              ) : !isAdmin ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Admin privileges required.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : view === ROUTES.USER_GROUPS ? (
-          user && isAdmin ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <UserGroups onBack={() => setView("home")} />
-            </Suspense>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                User Groups
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to user group management.</Typography>
-              ) : !isAdmin ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Admin privileges required.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : view === ROUTES.AUDIT_LOGS ? (
-          user && isAdmin ? (
-            <ErrorBoundary title="Audit Logs" onBack={() => setView("home")}>
-              <Suspense fallback={<LoadingFallback />}>
-                <AuditLogs onBack={() => setView("home")} />
-              </Suspense>
-            </ErrorBoundary>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Audit Logs
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to view audit logs.</Typography>
-              ) : !isAdmin ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Admin privileges required.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : view === ROUTES.MANAGE_SECTIONS ? (
-          user && isAdmin ? (
-            <ErrorBoundary title="Manage Sections" onBack={() => setView("home")}>
-              <Suspense fallback={<LoadingFallback />}>
-                <ManageSections onBack={() => setView("home")} />
-              </Suspense>
-            </ErrorBoundary>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Manage Sections
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to manage sections.</Typography>
-              ) : !isAdmin ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Admin privileges required.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : view === ROUTES.SECTIONS ? (
-          user && isEnabled ? (
-            <Box sx={{ width: "100%" }}>
-              <Suspense fallback={<LoadingFallback />}>
-                {selectedSectionId ? (
-                  <SectionDetail
-                    sectionId={selectedSectionId}
-                    onBack={() => setSelectedSectionId(null)}
-                  />
+        <Routes>
+          <Route path={ROUTES.HOME} element={<HomePage />} />
+          <Route
+            path={ROUTES.ACCOUNT}
+            element={
+              <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                <Suspense fallback={<LoadingFallback />}>
+                  <AuthGate userData={userData} onBack={() => navigate(ROUTES.HOME)} />
+                </Suspense>
+              </Box>
+            }
+          />
+          <Route
+            path={ROUTES.PROFILE}
+            element={
+              <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                {user ? (
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigate(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
+                  </Suspense>
                 ) : (
-                  <SectionsList
-                    onBack={() => setView("home")}
-                    onSelectSection={(sectionId) => {
-                      setSelectedSectionId(sectionId);
-                    }}
-                  />
+                  <Navigate to={ROUTES.ACCOUNT} replace />
                 )}
-              </Suspense>
-            </Box>
-          ) : (
-            <Box 
-              sx={{ 
-                maxWidth: { sm: "600px" },
-                mx: "auto",
-                px: { xs: 3, sm: 4 },
-              }}
-            >
-              <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
-                Sections
-              </Typography>
-              {!user ? (
-                <Typography>Please log in to view sections.</Typography>
-              ) : !isEnabled ? (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Access denied. Your account must be enabled to view sections.
-                </Alert>
-              ) : null}
-              <Button variant="outlined" onClick={() => setView("home")} sx={{ mt: 2 }}>
-                Back
-              </Button>
-            </Box>
-          )
-        ) : (
-          <Box
-            sx={{
-              pl: { xs: 6, sm: 10, md: 15 },
-              pr: { xs: 3, sm: 4 },
-            }}
-          >
-            <HomePage />
+              </Box>
+            }
+          />
+          <Route path={ROUTES.PERMISSIONS} element={<Navigate to={ROUTES.MANAGE_USERS} replace />} />
+          <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+          <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+          <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+          <Route
+            path={ROUTES.AUDIT_LOGS}
+            element={renderAdminOnly(
+              "Audit Logs",
+              <ErrorBoundary title="Audit Logs" onBack={() => navigate(ROUTES.HOME)}>
+                <Suspense fallback={<LoadingFallback />}>
+                  <AuditLogs onBack={() => navigate(ROUTES.HOME)} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          />
+          <Route
+            path={ROUTES.MANAGE_SECTIONS}
+            element={renderAdminOnly(
+              "Manage Sections",
+              <ErrorBoundary title="Manage Sections" onBack={() => navigate(ROUTES.HOME)}>
+                <Suspense fallback={<LoadingFallback />}>
+                  <ManageSections onBack={() => navigate(ROUTES.HOME)} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          />
+          <Route
+            path={ROUTES.SECTIONS}
+            element={
+              user && isEnabled ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <SectionsList onBack={() => navigate(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
+                </Suspense>
+              ) : (
+                <Navigate to={ROUTES.ACCOUNT} replace />
+              )
+            }
+          />
+          <Route
+            path={ROUTES.SECTION_DETAIL}
+            element={user && isEnabled ? <Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense> : <Navigate to={ROUTES.ACCOUNT} replace />}
+          />
+          <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
+        </Routes>
           </Box>
-        )}
+        </Box>
       </Box>
     </Box>
   );
+}
+
+export default function App() {
+  return <AppContent />;
 }

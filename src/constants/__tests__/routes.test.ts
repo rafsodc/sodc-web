@@ -4,14 +4,14 @@ import type { Route } from '../routes';
 
 describe('routes', () => {
   it('should export all route constants', () => {
-    expect(ROUTES.HOME).toBe('home');
-    expect(ROUTES.ACCOUNT).toBe('account');
-    expect(ROUTES.PROFILE).toBe('profile');
-    expect(ROUTES.PERMISSIONS).toBe('permissions');
-    expect(ROUTES.MANAGE_USERS).toBe('manageUsers');
-    expect(ROUTES.APPROVE_USERS).toBe('approveUsers');
-    expect(ROUTES.REGISTER).toBe('register');
-    expect(ROUTES.PROFILE_COMPLETION).toBe('profileCompletion');
+    expect(ROUTES.HOME).toBe('/');
+    expect(ROUTES.ACCOUNT).toBe('/account');
+    expect(ROUTES.PROFILE).toBe('/profile');
+    expect(ROUTES.PERMISSIONS).toBe('/admin/permissions');
+    expect(ROUTES.MANAGE_USERS).toBe('/admin/users');
+    expect(ROUTES.APPROVE_USERS).toBe('/admin/users/approvals');
+    expect(ROUTES.REGISTER).toBe('/register');
+    expect(ROUTES.PROFILE_COMPLETION).toBe('/profile-completion');
   });
 
   it('should have Route type that matches route values', () => {
