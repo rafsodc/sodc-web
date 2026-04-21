@@ -24,9 +24,9 @@
 ## Section Model
 
 Sections have:
-- `isOpenForRegistration: Boolean` - Whether users can register for this section
-- `allowedUserGroups: [UUID]` - Which user groups are eligible to register (can include both status-based and manual groups)
-- Access to section is controlled via `SectionAccessGroup` junction table (links section to user groups)
+- `isOpenForRegistration: Boolean` - whether users can register for this section
+- `allowedUserGroups: [UUID]` - which user groups are eligible to register (can include both status-based and manual groups)
+- Access and capabilities are controlled via section-purpose links (`SectionUserGroupPurposeLink`) using purposes such as `ACCESS`, `MODERATOR`, `MEMBER`, and `BOOKER`
 
 ## Default Sections
 
@@ -34,7 +34,7 @@ Sections have:
 - **Committee space** (type: MEMBERS) - Accessible to all status-based user groups (or separate "Committee" group if needed)
 - **Events page** (type: EVENTS) - Accessible to all status-based user groups
 
-Default sections are linked to all status-based user groups via `SectionAccessGroup` junction table.
+Default sections are linked to status-based user groups via section-purpose links for relevant purposes.
 
 ## Event Registration Flow
 
@@ -42,7 +42,7 @@ Example: "Annual Dinner 2024" event section
 
 1. Section has `isOpenForRegistration: true`
 2. Section has `allowedUserGroups: ["Status:Regular", "Status:Reserve"]` (status-based groups)
-3. Section is linked to "Event: Annual Dinner 2024" user group via `SectionAccessGroup`
+3. Section is linked to "Event: Annual Dinner 2024" user group via section-purpose link(s)
 4. User with REGULAR status is in "Status:Regular" group → eligible to register
 5. User clicks "Register" → automatically added to "Event: Annual Dinner 2024" user group
 6. User can now access the section (via the event-specific user group)
@@ -82,6 +82,6 @@ Example: "Annual Dinner 2024" event section
 
 ### Access Control
 
-- User can access section if they are in any user group linked to the section via `SectionAccessGroup`
+- User can access section if they are in a user group linked via `ACCESS` or `MODERATOR` purpose
 - Multiple user groups can grant access to the same section
-- User groups can be used for both eligibility (via `allowedUserGroups`) and access (via `SectionAccessGroup`)
+- User groups can be used for both eligibility (`allowedUserGroups`) and section-purpose access links
