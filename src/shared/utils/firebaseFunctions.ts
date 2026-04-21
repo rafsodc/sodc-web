@@ -250,6 +250,10 @@ export interface SubmitEventBookingRequest {
   idempotencyKey: string;
   eventId: string;
   lines: SubmitEventBookingLine[];
+  bookerDietaryNote?: string | null;
+  sitNextToUserIds?: string[];
+  accommodationRequested?: boolean;
+  accommodationNote?: string | null;
 }
 
 export interface SubmitEventBookingResponse {
@@ -276,6 +280,10 @@ export async function submitEventBooking(
       ...line,
       ticketTypeId: toCanonicalUuid(line.ticketTypeId),
     })),
+    bookerDietaryNote: payload.bookerDietaryNote?.trim() || null,
+    sitNextToUserIds: (payload.sitNextToUserIds ?? []).map((id) => id.trim()).filter(Boolean),
+    accommodationRequested: payload.accommodationRequested ?? false,
+    accommodationNote: payload.accommodationNote?.trim() || null,
   };
   const result = await callable(normalized);
   return result.data;

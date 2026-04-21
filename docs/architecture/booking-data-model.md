@@ -62,6 +62,10 @@ erDiagram
     string booker_user_id FK
     string client_submission_key "nullable; unique with event+booker for idempotent submit"
     enum status "e.g. DRAFT | SUBMITTED | CONFIRMED | CANCELLED"
+    string booker_dietary_note "nullable"
+    string[] sit_next_to_user_ids "nullable list of user ids"
+    boolean accommodation_requested "default false"
+    string accommodation_note "nullable"
     timestamp created_at
     timestamp updated_at
   }
@@ -96,7 +100,7 @@ erDiagram
 |--------------|--------|
 | **Event → TicketType** | Event offers priced **MEMBER** and **GUEST** types; eligibility for each type is still via `TicketType.userGroup`. |
 | **Event → new field** | Per-event limit on **total guest** headcount before additional moderator approval (semantics enforced in booking rules). |
-| **Booking** | One **booker** (`User`) for one **event**. |
+| **Booking** | One **booker** (`User`) for one **event**; includes booker-level dietary, seating preferences (`sitNextToUserIds`), and accommodation request fields. |
 | **BookingLine** | Each row is a ticket line referencing a **`TicketType`**; the type’s **`audience`** must match use (**MEMBER** for the booker, **GUEST** for guests). Optional guest identity fields. |
 | **GuestTicketRequest** | Rows for **extra** guests that need **moderator approval** beyond the standard flow; stores requested **ticket type**, **guest name**, and **dietary** (aligned with `BookingLine`) plus **requested guest count**; ties to [#48](https://github.com/rafsodc/sodc-web/issues/48). |
 

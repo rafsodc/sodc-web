@@ -202,6 +202,10 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
       id
       status
       clientSubmissionKey
+      bookerDietaryNote
+      sitNextToUserIds
+      accommodationRequested
+      accommodationNote
       createdAt
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
@@ -267,6 +271,26 @@ mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @a
     id: $id
     data: {
       status: $status
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdateBookingPreferencesFromCallable(
+  $id: UUID!
+  $bookerDietaryNote: String
+  $sitNextToUserIds: [String!]
+  $accommodationRequested: Boolean!
+  $accommodationNote: String
+) @auth(level: NO_ACCESS) {
+  booking_update(
+    id: $id
+    data: {
+      bookerDietaryNote: $bookerDietaryNote
+      sitNextToUserIds: $sitNextToUserIds
+      accommodationRequested: $accommodationRequested
+      accommodationNote: $accommodationNote
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }

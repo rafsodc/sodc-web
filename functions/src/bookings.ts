@@ -10,6 +10,7 @@ import {
   getSectionByIdForCallable,
   getUserMembershipStatus,
   getUserUserGroupsForAdmin,
+  updateBookingPreferencesFromCallable,
   updateBookingStatusFromCallable,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
@@ -65,6 +66,30 @@ function parseBookingLines(raw: unknown): LineInputForRules[] {
   return out;
 }
 
+function parseOptionalString(value: unknown, maxLen: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, maxLen);
+}
+
+function parseSitNextTo(raw: unknown, uid: string): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const v of raw) {
+    if (typeof v !== "string") {
+      throw new HttpsError("invalid-argument", "sitNextToUserIds must be an array of user ids");
+    }
+    const id = v.trim();
+    if (!id) continue;
+    if (id === uid) {
+      throw new HttpsError("invalid-argument", "You cannot select yourself in sit-next-to preferences");
+    }
+    if (!out.includes(id)) out.push(id);
+  }
+  return out.slice(0, 10);
+}
+
 async function fetchBookingsForBookerAndEvent(bookerId: string, eventId: UUIDString) {
   const res = await getBookingsForBookerAndEvent({ bookerId, eventId });
   return res.data?.user?.bookings ?? [];
@@ -89,6 +114,10 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
   );
   const eventId = validateUUID(request.data?.eventId as string, "eventId") as UUIDString;
   const lines = parseBookingLines(request.data?.lines);
+  const bookerDietaryNote = parseOptionalString(request.data?.bookerDietaryNote, 500);
+  const sitNextToUserIds = parseSitNextTo(request.data?.sitNextToUserIds, uid);
+  const accommodationRequested = request.data?.accommodationRequested === true;
+  const accommodationNote = parseOptionalString(request.data?.accommodationNote, 500);
 
   try {
     const [eventResult, userStatusResult, userGroupsResult, initialBookings] = await Promise.all([
@@ -110,6 +139,9 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     const membershipStatus = userStatusResult.data.user.membershipStatus;
     if (!membershipStatus) {
       throw new HttpsError("failed-precondition", "Membership status is required before booking");
+    }
+    if (accommodationRequested && membershipStatus !== "REGULAR" && membershipStatus !== "RESERVE") {
+      throw new HttpsError("failed-precondition", "Accommodation requests are only available for REGULAR or RESERVE members");
     }
 
     /** Data Connect outputs UUID scalars as 32 hex chars; client/callable input is canonical hyphenated. Normalize for Set/Map lookups. */
@@ -248,6 +280,14 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
         }
       }
     }
+
+    await updateBookingPreferencesFromCallable({
+      id: bookingId as UUIDString,
+      bookerDietaryNote,
+      sitNextToUserIds,
+      accommodationRequested,
+      accommodationNote: accommodationRequested ? accommodationNote : null,
+    });
 
     const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder);
     for (const line of sorted) {

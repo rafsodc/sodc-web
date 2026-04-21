@@ -17,6 +17,7 @@ vi.mock('@dataconnect/generated/react', () => ({
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
   getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
+  submitEventBooking: vi.fn(),
 }));
 
 vi.mock('firebase/data-connect', () => ({
