@@ -3,18 +3,19 @@
  */
 
 export const ROUTES = {
-  HOME: "home",
-  ACCOUNT: "account",
-  PROFILE: "profile",
-  PERMISSIONS: "permissions",
-  MANAGE_USERS: "manageUsers",
-  APPROVE_USERS: "approveUsers",
-  USER_GROUPS: "userGroups",
-  AUDIT_LOGS: "auditLogs",
-  SECTIONS: "sections",
-  MANAGE_SECTIONS: "manageSections",
-  REGISTER: "register",
-  PROFILE_COMPLETION: "profileCompletion",
+  HOME: "/",
+  ACCOUNT: "/account",
+  PROFILE: "/profile",
+  PERMISSIONS: "/admin/permissions",
+  MANAGE_USERS: "/admin/users",
+  APPROVE_USERS: "/admin/users/approvals",
+  USER_GROUPS: "/admin/user-groups",
+  AUDIT_LOGS: "/admin/audit-logs",
+  SECTIONS: "/sections",
+  SECTION_DETAIL: "/sections/:sectionId",
+  MANAGE_SECTIONS: "/admin/sections",
+  REGISTER: "/register",
+  PROFILE_COMPLETION: "/profile-completion",
 } as const;
 
 /**
