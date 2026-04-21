@@ -379,7 +379,6 @@ function AppContent() {
     setCheckoutQueryState(null);
   };
 
-  const quickActions = [{ label: "Home", to: ROUTES.HOME }, { label: "Profile", to: ROUTES.PROFILE }];
   const adminLinks = isAdmin
     ? [
         { label: "Permissions", to: ROUTES.PERMISSIONS },
@@ -440,7 +439,7 @@ function AppContent() {
         }}
       >
         {user && isEnabled ? (
-          <AppSideNav sections={sectionsLinks} quickActions={quickActions} adminLinks={adminLinks} pathname={location.pathname} />
+          <AppSideNav sections={sectionsLinks} adminLinks={adminLinks} pathname={location.pathname} />
         ) : null}
         <Box
           sx={{

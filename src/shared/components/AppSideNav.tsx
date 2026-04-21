@@ -12,7 +12,6 @@ type NavLink = {
 
 interface AppSideNavProps {
   sections: NavLink[];
-  quickActions: NavLink[];
   adminLinks: NavLink[];
   pathname: string;
 }
@@ -59,7 +58,7 @@ function NavList({
   );
 }
 
-export default function AppSideNav({ sections, quickActions, adminLinks, pathname }: AppSideNavProps) {
+export default function AppSideNav({ sections, adminLinks, pathname }: AppSideNavProps) {
   return (
     <Drawer
       variant="permanent"
@@ -78,8 +77,6 @@ export default function AppSideNav({ sections, quickActions, adminLinks, pathnam
     >
       <Box sx={{ overflow: "auto", py: 1 }}>
         <NavList title="Sections" links={sections} pathname={pathname} />
-        <Divider />
-        <NavList title="Quick Actions" links={quickActions} pathname={pathname} />
         {adminLinks.length > 0 && (
           <>
             <Divider />

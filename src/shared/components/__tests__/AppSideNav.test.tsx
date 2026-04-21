@@ -10,14 +10,12 @@ describe("AppSideNav", () => {
         <AppSideNav
           pathname="/admin/users"
           sections={[{ label: "Sections", to: "/sections" }]}
-          quickActions={[{ label: "Home", to: "/" }, { label: "Profile", to: "/profile" }]}
           adminLinks={[{ label: "Manage Users", to: "/admin/users" }]}
         />
       </MemoryRouter>
     );
 
     expect(screen.getAllByText("Sections").length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/profile");
     expect(screen.getByRole("link", { name: "Manage Users" })).toHaveAttribute("href", "/admin/users");
   });
 });
