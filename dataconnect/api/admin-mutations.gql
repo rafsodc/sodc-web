@@ -142,6 +142,50 @@ query GetUserUserGroupsForAdmin($userId: String!) @auth(level: NO_ACCESS) {
   }
 }
 
+query GetUserForCheckout($userId: String!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    email
+    firstName
+    lastName
+    membershipStatus
+    stripeCustomerId
+  }
+}
+
+query GetTicketTypeForCheckout($ticketTypeId: UUID!) @auth(level: NO_ACCESS) {
+  ticketType(id: $ticketTypeId) {
+    id
+    title
+    price
+    audience
+    userGroup {
+      id
+      membershipStatuses
+    }
+    event {
+      id
+      title
+      bookingStartDateTime
+      bookingEndDateTime
+      section {
+        id
+      }
+    }
+  }
+}
+
+mutation UpdateUserStripeCustomerId($userId: String!, $stripeCustomerId: String!) @auth(level: NO_ACCESS) {
+  user_update(
+    id: $userId
+    data: {
+      stripeCustomerId: $stripeCustomerId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 # submitEventBooking callable — admin SDK has no user JWT; avoid @auth(expr) on user queries.
 query GetEventByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
   event(id: $id) {
@@ -271,6 +315,60 @@ mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @a
     id: $id
     data: {
       status: $status
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation CreateTicketOrderForCheckout(
+  $userId: String!
+  $eventId: UUID!
+  $ticketTypeId: UUID!
+  $quantity: Int!
+  $unitAmountMinor: Int!
+  $totalAmountMinor: Int!
+  $currency: String!
+) @auth(level: NO_ACCESS) {
+  ticketOrder_insert(
+    data: {
+      userId: $userId
+      eventId: $eventId
+      ticketTypeId: $ticketTypeId
+      quantity: $quantity
+      unitAmountMinor: $unitAmountMinor
+      totalAmountMinor: $totalAmountMinor
+      currency: $currency
+      status: PENDING
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
+  ticketOrder(id: $id) {
+    id
+    status
+    stripeCheckoutSessionId
+    stripePaymentIntentId
+    webhookEventId
+  }
+}
+
+mutation MarkTicketOrderPaidFromWebhook(
+  $id: UUID!
+  $stripeCheckoutSessionId: String
+  $stripePaymentIntentId: String
+  $webhookEventId: String
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: PAID
+      stripeCheckoutSessionId: $stripeCheckoutSessionId
+      stripePaymentIntentId: $stripePaymentIntentId
+      webhookEventId: $webhookEventId
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }

@@ -38,6 +38,13 @@ enum GuestTicketRequestStatus {
   REJECTED
 }
 
+enum TicketOrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -53,6 +60,7 @@ type User @table {
   isReserve: Boolean @default(value: false)
   isCivilServant: Boolean @default(value: false)
   isIndustry: Boolean @default(value: false)
+  stripeCustomerId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -209,6 +217,27 @@ type GuestTicketRequest @table {
   reviewedBy: User
   reviewedAt: Timestamp
   moderatorNote: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Payment order for Stripe Checkout fulfillment and reconciliation.
+type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  user: User!
+  event: Event!
+  ticketType: TicketType!
+  quantity: Int! @default(value: 1)
+  unitAmountMinor: Int!
+  totalAmountMinor: Int!
+  currency: String! @default(value: "gbp")
+  status: TicketOrderStatus! @default(value: PENDING)
+  stripeCheckoutSessionId: String
+  stripePaymentIntentId: String
+  webhookEventId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

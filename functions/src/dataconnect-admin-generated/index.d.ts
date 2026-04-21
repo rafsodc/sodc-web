@@ -44,6 +44,12 @@ export enum TicketAudience {
   MEMBER = "MEMBER",
   GUEST = "GUEST",
 }
+export enum TicketOrderStatus {
+  PENDING = "PENDING",
+  PAID = "PAID",
+  FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
+}
 
 export interface AddBookingLineData {
   bookingLine_insert: BookingLine_Key;
@@ -197,6 +203,20 @@ export interface CreateSectionVariables {
   name: string;
   type: SectionType;
   description?: string | null;
+}
+
+export interface CreateTicketOrderForCheckoutData {
+  ticketOrder_insert: TicketOrder_Key;
+}
+
+export interface CreateTicketOrderForCheckoutVariables {
+  userId: string;
+  eventId: UUIDString;
+  ticketTypeId: UUIDString;
+  quantity: number;
+  unitAmountMinor: number;
+  totalAmountMinor: number;
+  currency: string;
 }
 
 export interface CreateTicketTypeData {
@@ -641,6 +661,46 @@ export interface GetSectionsForUserData {
     } & UserGroup_Key)[];
 }
 
+export interface GetTicketOrderForWebhookData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    webhookEventId?: string | null;
+  } & TicketOrder_Key;
+}
+
+export interface GetTicketOrderForWebhookVariables {
+  id: UUIDString;
+}
+
+export interface GetTicketTypeForCheckoutData {
+  ticketType?: {
+    id: UUIDString;
+    title: string;
+    price: number;
+    audience: TicketAudience;
+    userGroup: {
+      id: UUIDString;
+      membershipStatuses?: MembershipStatus[] | null;
+    } & UserGroup_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        bookingStartDateTime: TimestampString;
+        bookingEndDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+  } & TicketType_Key;
+}
+
+export interface GetTicketTypeForCheckoutVariables {
+  ticketTypeId: UUIDString;
+}
+
 export interface GetUserAccessGroupsByIdData {
   user?: {
     id: string;
@@ -693,6 +753,21 @@ export interface GetUserByIdData {
 
 export interface GetUserByIdVariables {
   id: string;
+}
+
+export interface GetUserForCheckoutData {
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    membershipStatus: MembershipStatus;
+    stripeCustomerId?: string | null;
+  } & User_Key;
+}
+
+export interface GetUserForCheckoutVariables {
+  userId: string;
 }
 
 export interface GetUserGroupByIdData {
@@ -910,6 +985,17 @@ export interface ListUsersData {
   } & User_Key)[];
 }
 
+export interface MarkTicketOrderPaidFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+
+export interface MarkTicketOrderPaidFromWebhookVariables {
+  id: UUIDString;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  webhookEventId?: string | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -964,6 +1050,11 @@ export interface SubscribeToUserGroupData {
 
 export interface SubscribeToUserGroupVariables {
   userGroupId: UUIDString;
+}
+
+export interface TicketOrder_Key {
+  id: UUIDString;
+  __typename?: 'TicketOrder_Key';
 }
 
 export interface TicketType_Key {
@@ -1082,6 +1173,15 @@ export interface UpdateUserMembershipStatusVariables {
   membershipStatus: MembershipStatus;
 }
 
+export interface UpdateUserStripeCustomerIdData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateUserStripeCustomerIdVariables {
+  userId: string;
+  stripeCustomerId: string;
+}
+
 export interface UpdateUserVariables {
   userId: string;
   firstName: string;
@@ -1124,46 +1224,6 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
-
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to execute without passing in DataConnect. */
-export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createBookingDraft(vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AddBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
-export function addBookingLine(dc: DataConnect, vars: AddBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineData>>;
-/** Generated Node Admin SDK operation action function for the 'AddBookingLine' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addBookingLine(vars: AddBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateBookingStatus' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateBookingStatus(dc: DataConnect, vars: UpdateBookingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateBookingStatus' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateBookingStatus(vars: UpdateBookingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
-export function createGuestTicketRequest(dc: DataConnect, vars: CreateGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createGuestTicketRequest(vars: CreateGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminDeleteGuestTicketRequest(dc: DataConnect, vars: AdminDeleteGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteGuestTicketRequestData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminDeleteGuestTicketRequest(vars: AdminDeleteGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteGuestTicketRequestData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminReviewGuestTicketRequest(dc: DataConnect, vars: AdminReviewGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminReviewGuestTicketRequest(vars: AdminReviewGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminDeleteBookingLine(dc: DataConnect, vars: AdminDeleteBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingLineData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminDeleteBookingLine(vars: AdminDeleteBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingLineData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteBooking' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminDeleteBooking(dc: DataConnect, vars: AdminDeleteBookingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteBooking' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminDeleteBooking(vars: AdminDeleteBookingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
 export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
@@ -1420,6 +1480,21 @@ export function getUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGrou
 /** Generated Node Admin SDK operation action function for the 'GetUserUserGroupsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
 export function getUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserUserGroupsForAdminData>>;
 
+/** Generated Node Admin SDK operation action function for the 'GetUserForCheckout' Query. Allow users to execute without passing in DataConnect. */
+export function getUserForCheckout(dc: DataConnect, vars: GetUserForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserForCheckoutData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserForCheckout' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserForCheckout(vars: GetUserForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserForCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetTicketTypeForCheckout' Query. Allow users to execute without passing in DataConnect. */
+export function getTicketTypeForCheckout(dc: DataConnect, vars: GetTicketTypeForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketTypeForCheckoutData>>;
+/** Generated Node Admin SDK operation action function for the 'GetTicketTypeForCheckout' Query. Allow users to pass in custom DataConnect instances. */
+export function getTicketTypeForCheckout(vars: GetTicketTypeForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketTypeForCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateUserStripeCustomerId' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateUserStripeCustomerId(dc: DataConnect, vars: UpdateUserStripeCustomerIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserStripeCustomerIdData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateUserStripeCustomerId' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateUserStripeCustomerId(vars: UpdateUserStripeCustomerIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserStripeCustomerIdData>>;
+
 /** Generated Node Admin SDK operation action function for the 'GetEventByIdForCallable' Query. Allow users to execute without passing in DataConnect. */
 export function getEventByIdForCallable(dc: DataConnect, vars: GetEventByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventByIdForCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'GetEventByIdForCallable' Query. Allow users to pass in custom DataConnect instances. */
@@ -1450,6 +1525,21 @@ export function updateBookingStatusFromCallable(dc: DataConnect, vars: UpdateBoo
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingStatusFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateBookingStatusFromCallable(vars: UpdateBookingStatusFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusFromCallableData>>;
 
+/** Generated Node Admin SDK operation action function for the 'CreateTicketOrderForCheckout' Mutation. Allow users to execute without passing in DataConnect. */
+export function createTicketOrderForCheckout(dc: DataConnect, vars: CreateTicketOrderForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketOrderForCheckoutData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateTicketOrderForCheckout' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createTicketOrderForCheckout(vars: CreateTicketOrderForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketOrderForCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to execute without passing in DataConnect. */
+export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
+/** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to pass in custom DataConnect instances. */
+export function getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkTicketOrderPaidFromWebhook' Mutation. Allow users to execute without passing in DataConnect. */
+export function markTicketOrderPaidFromWebhook(dc: DataConnect, vars: MarkTicketOrderPaidFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkTicketOrderPaidFromWebhookData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkTicketOrderPaidFromWebhook' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markTicketOrderPaidFromWebhook(vars: MarkTicketOrderPaidFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkTicketOrderPaidFromWebhookData>>;
+
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingPreferencesFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateBookingPreferencesFromCallable(dc: DataConnect, vars: UpdateBookingPreferencesFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPreferencesFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingPreferencesFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -1459,4 +1549,44 @@ export function updateBookingPreferencesFromCallable(vars: UpdateBookingPreferen
 export function deleteBookingLineFromCallable(dc: DataConnect, vars: DeleteBookingLineFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteBookingLineFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'DeleteBookingLineFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function deleteBookingLineFromCallable(vars: DeleteBookingLineFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteBookingLineFromCallableData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to execute without passing in DataConnect. */
+export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createBookingDraft(vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AddBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
+export function addBookingLine(dc: DataConnect, vars: AddBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineData>>;
+/** Generated Node Admin SDK operation action function for the 'AddBookingLine' Mutation. Allow users to pass in custom DataConnect instances. */
+export function addBookingLine(vars: AddBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateBookingStatus(dc: DataConnect, vars: UpdateBookingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateBookingStatus(vars: UpdateBookingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
+export function createGuestTicketRequest(dc: DataConnect, vars: CreateGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createGuestTicketRequest(vars: CreateGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AdminDeleteGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
+export function adminDeleteGuestTicketRequest(dc: DataConnect, vars: AdminDeleteGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteGuestTicketRequestData>>;
+/** Generated Node Admin SDK operation action function for the 'AdminDeleteGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
+export function adminDeleteGuestTicketRequest(vars: AdminDeleteGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteGuestTicketRequestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
+export function adminReviewGuestTicketRequest(dc: DataConnect, vars: AdminReviewGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestData>>;
+/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
+export function adminReviewGuestTicketRequest(vars: AdminReviewGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
+export function adminDeleteBookingLine(dc: DataConnect, vars: AdminDeleteBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingLineData>>;
+/** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to pass in custom DataConnect instances. */
+export function adminDeleteBookingLine(vars: AdminDeleteBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingLineData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AdminDeleteBooking' Mutation. Allow users to execute without passing in DataConnect. */
+export function adminDeleteBooking(dc: DataConnect, vars: AdminDeleteBookingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingData>>;
+/** Generated Node Admin SDK operation action function for the 'AdminDeleteBooking' Mutation. Allow users to pass in custom DataConnect instances. */
+export function adminDeleteBooking(vars: AdminDeleteBookingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingData>>;
 

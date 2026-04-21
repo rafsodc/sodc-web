@@ -43,99 +43,18 @@ export const TicketAudience = {
   GUEST: "GUEST",
 }
 
+export const TicketOrderStatus = {
+  PENDING: "PENDING",
+  PAID: "PAID",
+  FAILED: "FAILED",
+  REFUNDED: "REFUNDED",
+}
+
 export const connectorConfig = {
   connector: 'api',
   service: 'sodc-web-service',
   location: 'europe-west2'
 };
-
-export const createBookingDraftRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateBookingDraft', inputVars);
-}
-createBookingDraftRef.operationName = 'CreateBookingDraft';
-
-export function createBookingDraft(dcOrVars, vars) {
-  return executeMutation(createBookingDraftRef(dcOrVars, vars));
-}
-
-export const addBookingLineRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AddBookingLine', inputVars);
-}
-addBookingLineRef.operationName = 'AddBookingLine';
-
-export function addBookingLine(dcOrVars, vars) {
-  return executeMutation(addBookingLineRef(dcOrVars, vars));
-}
-
-export const updateBookingStatusRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateBookingStatus', inputVars);
-}
-updateBookingStatusRef.operationName = 'UpdateBookingStatus';
-
-export function updateBookingStatus(dcOrVars, vars) {
-  return executeMutation(updateBookingStatusRef(dcOrVars, vars));
-}
-
-export const createGuestTicketRequestRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateGuestTicketRequest', inputVars);
-}
-createGuestTicketRequestRef.operationName = 'CreateGuestTicketRequest';
-
-export function createGuestTicketRequest(dcOrVars, vars) {
-  return executeMutation(createGuestTicketRequestRef(dcOrVars, vars));
-}
-
-export const adminDeleteGuestTicketRequestRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AdminDeleteGuestTicketRequest', inputVars);
-}
-adminDeleteGuestTicketRequestRef.operationName = 'AdminDeleteGuestTicketRequest';
-
-export function adminDeleteGuestTicketRequest(dcOrVars, vars) {
-  return executeMutation(adminDeleteGuestTicketRequestRef(dcOrVars, vars));
-}
-
-export const adminReviewGuestTicketRequestRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AdminReviewGuestTicketRequest', inputVars);
-}
-adminReviewGuestTicketRequestRef.operationName = 'AdminReviewGuestTicketRequest';
-
-export function adminReviewGuestTicketRequest(dcOrVars, vars) {
-  return executeMutation(adminReviewGuestTicketRequestRef(dcOrVars, vars));
-}
-
-export const adminDeleteBookingLineRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AdminDeleteBookingLine', inputVars);
-}
-adminDeleteBookingLineRef.operationName = 'AdminDeleteBookingLine';
-
-export function adminDeleteBookingLine(dcOrVars, vars) {
-  return executeMutation(adminDeleteBookingLineRef(dcOrVars, vars));
-}
-
-export const adminDeleteBookingRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AdminDeleteBooking', inputVars);
-}
-adminDeleteBookingRef.operationName = 'AdminDeleteBooking';
-
-export function adminDeleteBooking(dcOrVars, vars) {
-  return executeMutation(adminDeleteBookingRef(dcOrVars, vars));
-}
 
 export const getCurrentUserRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
@@ -698,6 +617,39 @@ export function getUserUserGroupsForAdmin(dcOrVars, vars) {
   return executeQuery(getUserUserGroupsForAdminRef(dcOrVars, vars));
 }
 
+export const getUserForCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserForCheckout', inputVars);
+}
+getUserForCheckoutRef.operationName = 'GetUserForCheckout';
+
+export function getUserForCheckout(dcOrVars, vars) {
+  return executeQuery(getUserForCheckoutRef(dcOrVars, vars));
+}
+
+export const getTicketTypeForCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetTicketTypeForCheckout', inputVars);
+}
+getTicketTypeForCheckoutRef.operationName = 'GetTicketTypeForCheckout';
+
+export function getTicketTypeForCheckout(dcOrVars, vars) {
+  return executeQuery(getTicketTypeForCheckoutRef(dcOrVars, vars));
+}
+
+export const updateUserStripeCustomerIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUserStripeCustomerId', inputVars);
+}
+updateUserStripeCustomerIdRef.operationName = 'UpdateUserStripeCustomerId';
+
+export function updateUserStripeCustomerId(dcOrVars, vars) {
+  return executeMutation(updateUserStripeCustomerIdRef(dcOrVars, vars));
+}
+
 export const getEventByIdForCallableRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -764,6 +716,39 @@ export function updateBookingStatusFromCallable(dcOrVars, vars) {
   return executeMutation(updateBookingStatusFromCallableRef(dcOrVars, vars));
 }
 
+export const createTicketOrderForCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateTicketOrderForCheckout', inputVars);
+}
+createTicketOrderForCheckoutRef.operationName = 'CreateTicketOrderForCheckout';
+
+export function createTicketOrderForCheckout(dcOrVars, vars) {
+  return executeMutation(createTicketOrderForCheckoutRef(dcOrVars, vars));
+}
+
+export const getTicketOrderForWebhookRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetTicketOrderForWebhook', inputVars);
+}
+getTicketOrderForWebhookRef.operationName = 'GetTicketOrderForWebhook';
+
+export function getTicketOrderForWebhook(dcOrVars, vars) {
+  return executeQuery(getTicketOrderForWebhookRef(dcOrVars, vars));
+}
+
+export const markTicketOrderPaidFromWebhookRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkTicketOrderPaidFromWebhook', inputVars);
+}
+markTicketOrderPaidFromWebhookRef.operationName = 'MarkTicketOrderPaidFromWebhook';
+
+export function markTicketOrderPaidFromWebhook(dcOrVars, vars) {
+  return executeMutation(markTicketOrderPaidFromWebhookRef(dcOrVars, vars));
+}
+
 export const updateBookingPreferencesFromCallableRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -784,5 +769,93 @@ deleteBookingLineFromCallableRef.operationName = 'DeleteBookingLineFromCallable'
 
 export function deleteBookingLineFromCallable(dcOrVars, vars) {
   return executeMutation(deleteBookingLineFromCallableRef(dcOrVars, vars));
+}
+
+export const createBookingDraftRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateBookingDraft', inputVars);
+}
+createBookingDraftRef.operationName = 'CreateBookingDraft';
+
+export function createBookingDraft(dcOrVars, vars) {
+  return executeMutation(createBookingDraftRef(dcOrVars, vars));
+}
+
+export const addBookingLineRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AddBookingLine', inputVars);
+}
+addBookingLineRef.operationName = 'AddBookingLine';
+
+export function addBookingLine(dcOrVars, vars) {
+  return executeMutation(addBookingLineRef(dcOrVars, vars));
+}
+
+export const updateBookingStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateBookingStatus', inputVars);
+}
+updateBookingStatusRef.operationName = 'UpdateBookingStatus';
+
+export function updateBookingStatus(dcOrVars, vars) {
+  return executeMutation(updateBookingStatusRef(dcOrVars, vars));
+}
+
+export const createGuestTicketRequestRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateGuestTicketRequest', inputVars);
+}
+createGuestTicketRequestRef.operationName = 'CreateGuestTicketRequest';
+
+export function createGuestTicketRequest(dcOrVars, vars) {
+  return executeMutation(createGuestTicketRequestRef(dcOrVars, vars));
+}
+
+export const adminDeleteGuestTicketRequestRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminDeleteGuestTicketRequest', inputVars);
+}
+adminDeleteGuestTicketRequestRef.operationName = 'AdminDeleteGuestTicketRequest';
+
+export function adminDeleteGuestTicketRequest(dcOrVars, vars) {
+  return executeMutation(adminDeleteGuestTicketRequestRef(dcOrVars, vars));
+}
+
+export const adminReviewGuestTicketRequestRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminReviewGuestTicketRequest', inputVars);
+}
+adminReviewGuestTicketRequestRef.operationName = 'AdminReviewGuestTicketRequest';
+
+export function adminReviewGuestTicketRequest(dcOrVars, vars) {
+  return executeMutation(adminReviewGuestTicketRequestRef(dcOrVars, vars));
+}
+
+export const adminDeleteBookingLineRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminDeleteBookingLine', inputVars);
+}
+adminDeleteBookingLineRef.operationName = 'AdminDeleteBookingLine';
+
+export function adminDeleteBookingLine(dcOrVars, vars) {
+  return executeMutation(adminDeleteBookingLineRef(dcOrVars, vars));
+}
+
+export const adminDeleteBookingRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminDeleteBooking', inputVars);
+}
+adminDeleteBookingRef.operationName = 'AdminDeleteBooking';
+
+export function adminDeleteBooking(dcOrVars, vars) {
+  return executeMutation(adminDeleteBookingRef(dcOrVars, vars));
 }
 
