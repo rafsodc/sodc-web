@@ -11,6 +11,7 @@ import {
   Button,
   CircularProgress,
   Tooltip,
+  Box,
 } from "@mui/material";
 import { Edit, CheckCircle } from "@mui/icons-material";
 import type { SearchUser } from "../../../types";
@@ -19,9 +20,13 @@ import { colors } from "../../../config/colors";
 interface UsersTableProps {
   users: SearchUser[];
   mode: "edit" | "admin";
+  /** When mode is "admin", show an edit control alongside grant/revoke actions. */
   onEdit?: (user: SearchUser) => void;
+  /** When set, shows an "Edit Groups" button (replaces row-click to open groups). */
+  onEditGroups?: (user: SearchUser) => void;
   onGrantAdmin?: (userId: string) => void;
   onRevokeAdmin?: (userId: string) => void;
+  /** Row click selects user (only used when onEditGroups is not provided). */
   onSelectUser?: (userId: string) => void;
   updatingUserId?: string | null;
   adminCount?: number; // Used to disable revoke if only one admin
@@ -33,6 +38,7 @@ export default function UsersTable({
   users,
   mode,
   onEdit,
+  onEditGroups,
   onGrantAdmin,
   onRevokeAdmin,
   onSelectUser,
@@ -59,63 +65,116 @@ export default function UsersTable({
       const isEnabled = user.customClaims?.enabled === true;
       const canRevoke = adminCount === undefined || adminCount > 1;
       
-      if (isAdmin) {
-        return (
-          <Tooltip title={!canRevoke ? "Cannot remove the last admin" : "Revoke admin"}>
-            <span>
-              <Button
-                size="small"
-                variant="outlined"
-                color="error"
-                onClick={() => onRevokeAdmin?.(user.uid)}
-                disabled={updatingUserId === user.uid || !canRevoke}
-              >
-                {updatingUserId === user.uid ? (
-                  <CircularProgress size={16} />
-                ) : (
-                  "Revoke Admin"
-                )}
-              </Button>
-            </span>
-          </Tooltip>
+      const adminButtons = isAdmin ? (
+        <Tooltip title={!canRevoke ? "Cannot remove the last admin" : "Revoke admin"}>
+          <span>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRevokeAdmin?.(user.uid);
+              }}
+              disabled={updatingUserId === user.uid || !canRevoke}
+            >
+              {updatingUserId === user.uid ? (
+                <CircularProgress size={16} />
+              ) : (
+                "Revoke Admin"
+              )}
+            </Button>
+          </span>
+        </Tooltip>
+      ) : (
+        (() => {
+          const isDisabled = updatingUserId === user.uid || !isEnabled;
+          const tooltipText = !isEnabled
+            ? "User must be enabled (have non-restricted membership status) to grant admin"
+            : "Grant admin privileges";
+
+          return (
+            <Tooltip title={tooltipText}>
+              <span>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGrantAdmin?.(user.uid);
+                  }}
+                  disabled={isDisabled}
+                  sx={{
+                    backgroundColor: colors.callToAction,
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: colors.callToAction,
+                      opacity: 0.9,
+                    },
+                    "&:disabled": {
+                      backgroundColor: colors.callToAction,
+                      opacity: 0.5,
+                    },
+                  }}
+                >
+                  {updatingUserId === user.uid ? (
+                    <CircularProgress size={16} />
+                  ) : (
+                    "Grant Admin"
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
+          );
+        })()
+      );
+
+      if (onEdit) {
+        const editUserBtn = (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(user);
+            }}
+            disabled={disabled}
+          >
+            Edit User
+          </Button>
         );
-      } else {
-        const isDisabled = updatingUserId === user.uid || !isEnabled;
-        const tooltipText = !isEnabled 
-          ? "User must be enabled (have non-restricted membership status) to grant admin" 
-          : "Grant admin privileges";
-        
+        const editGroupsBtn = onEditGroups ? (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditGroups(user);
+            }}
+            disabled={disabled}
+          >
+            Edit Groups
+          </Button>
+        ) : null;
+
         return (
-          <Tooltip title={tooltipText}>
-            <span>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => onGrantAdmin?.(user.uid)}
-                disabled={isDisabled}
-                sx={{
-                  backgroundColor: colors.callToAction,
-                  color: "white",
-                  "&:hover": {
-                    backgroundColor: colors.callToAction,
-                    opacity: 0.9,
-                  },
-                  "&:disabled": {
-                    backgroundColor: colors.callToAction,
-                    opacity: 0.5,
-                  },
-                }}
-              >
-                {updatingUserId === user.uid ? (
-                  <CircularProgress size={16} />
-                ) : (
-                  "Grant Admin"
-                )}
-              </Button>
-            </span>
-          </Tooltip>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
+          >
+            {editUserBtn}
+            {editGroupsBtn}
+            {adminButtons}
+          </Box>
         );
       }
+
+      return adminButtons;
     }
   };
 
@@ -140,14 +199,16 @@ export default function UsersTable({
               </TableCell>
             </TableRow>
           ) : (
-            users.map((user) => (
+            users.map((user) => {
+              const rowClickSelect = Boolean(onSelectUser) && !onEditGroups;
+              return (
               <TableRow 
                 key={user.uid}
-                onClick={() => onSelectUser?.(user.uid)}
+                onClick={() => rowClickSelect && onSelectUser?.(user.uid)}
                 sx={{
-                  cursor: onSelectUser ? "pointer" : "default",
+                  cursor: rowClickSelect ? "pointer" : "default",
                   backgroundColor: selectedUserId === user.uid ? "action.selected" : "inherit",
-                  "&:hover": onSelectUser ? {
+                  "&:hover": rowClickSelect ? {
                     backgroundColor: "action.hover",
                   } : {},
                 }}
@@ -187,7 +248,8 @@ export default function UsersTable({
                   {renderActions(user)}
                 </TableCell>
               </TableRow>
-            ))
+            );
+            })
           )}
         </TableBody>
       </Table>

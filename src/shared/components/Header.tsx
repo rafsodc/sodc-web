@@ -15,7 +15,6 @@ interface HeaderProps {
   onJoinClick?: () => void;
   onProfileClick?: () => void;
   onSecurityClick?: () => void;
-  onPermissionsClick?: () => void;
   onManageUsersClick?: () => void;
   onApproveUsersClick?: () => void;
   onUserGroupsClick?: () => void;
@@ -31,7 +30,7 @@ function getInitials(userData: UserData | null): string {
   return `${first}${last}` || "";
 }
 
-export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onPermissionsClick, onManageUsersClick, onApproveUsersClick, onUserGroupsClick, onAuditLogsClick, onManageSectionsClick, onSectionsClick }: HeaderProps) {
+export default function Header({ user, userData, onAccountClick, onJoinClick, onProfileClick, onSecurityClick, onManageUsersClick, onApproveUsersClick, onUserGroupsClick, onAuditLogsClick, onManageSectionsClick, onSectionsClick }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [adminAnchorEl, setAdminAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -80,15 +79,6 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
 
   const handleAdminMenuClose = () => {
     setAdminAnchorEl(null);
-  };
-
-  const handlePermissions = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleAdminMenuClose();
-    if (onPermissionsClick) {
-      onPermissionsClick();
-    }
   };
 
   const handleManageUsers = (e: React.MouseEvent) => {
@@ -216,19 +206,6 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
                   horizontal: "center",
                 }}
               >
-                <MenuItem 
-                  onClick={handlePermissions}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
-                  Permissions
-                </MenuItem>
                 <MenuItem 
                   onClick={handleManageUsers}
                   sx={{

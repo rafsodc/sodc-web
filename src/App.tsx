@@ -20,7 +20,6 @@ import { useGetSectionsForUser } from "@dataconnect/generated/react";
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
 const Profile = lazy(() => import("./features/profile/components/Profile"));
-const Permissions = lazy(() => import("./features/admin/components/Permissions"));
 const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
 const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers"));
 const UserGroups = lazy(() => import("./features/admin/components/UserGroups"));
@@ -237,7 +236,6 @@ function AppContent() {
       userData={userData}
       onAccountClick={() => navigate(ROUTES.ACCOUNT)}
       onProfileClick={() => navigate(ROUTES.PROFILE)}
-      onPermissionsClick={() => navigate(ROUTES.PERMISSIONS)}
       onManageUsersClick={() => navigate(ROUTES.MANAGE_USERS)}
       onApproveUsersClick={() => navigate(ROUTES.APPROVE_USERS)}
       onUserGroupsClick={() => navigate(ROUTES.USER_GROUPS)}
@@ -381,7 +379,6 @@ function AppContent() {
 
   const adminLinks = isAdmin
     ? [
-        { label: "Permissions", to: ROUTES.PERMISSIONS },
         { label: "Manage Users", to: ROUTES.MANAGE_USERS },
         { label: "Approvals", to: ROUTES.APPROVE_USERS },
         { label: "User Groups", to: ROUTES.USER_GROUPS },
@@ -492,7 +489,7 @@ function AppContent() {
               </Box>
             }
           />
-          <Route path={ROUTES.PERMISSIONS} element={renderAdminOnly("Permissions", <Suspense fallback={<LoadingFallback />}><Permissions onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+          <Route path={ROUTES.PERMISSIONS} element={<Navigate to={ROUTES.MANAGE_USERS} replace />} />
           <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
           <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
           <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
