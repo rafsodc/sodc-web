@@ -11,7 +11,7 @@ import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
-import AppSideNav, { drawerWidth } from "./shared/components/AppSideNav";
+import AppSideNav from "./shared/components/AppSideNav";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
@@ -399,7 +399,16 @@ function AppContent() {
         {user && isEnabled ? (
           <AppSideNav sections={sectionsLinks} quickActions={quickActions} adminLinks={adminLinks} pathname={location.pathname} />
         ) : null}
-        <Box sx={{ flex: 1, px: { xs: 2, sm: 3 }, ml: { md: user && isEnabled ? `${drawerWidth}px` : 0 }, pt: 2 }}>
+        <Box
+          sx={{
+            flex: 1,
+            px: { xs: 2, sm: 3 },
+            pt: 2,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <Box sx={{ width: "100%", maxWidth: "1200px" }}>
         {checkoutQueryState && (
           <Box
             sx={{
@@ -485,6 +494,7 @@ function AppContent() {
           />
           <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
         </Routes>
+          </Box>
         </Box>
       </Box>
     </Box>

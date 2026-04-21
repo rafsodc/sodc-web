@@ -1,8 +1,9 @@
-import { Box, Divider, Drawer, List, ListItemButton, ListItemText, Toolbar, Typography } from "@mui/material";
+import { Box, Divider, Drawer, List, ListItemButton, ListItemText, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { ROUTES } from "../../constants";
 
 const drawerWidth = 280;
+const headerHeight = 64;
 
 type NavLink = {
   label: string;
@@ -69,11 +70,12 @@ export default function AppSideNav({ sections, quickActions, adminLinks, pathnam
           width: drawerWidth,
           boxSizing: "border-box",
           borderRight: "1px solid rgba(0,0,0,0.08)",
+          top: `${headerHeight}px`,
+          height: `calc(100% - ${headerHeight}px)`,
         },
         display: { xs: "none", md: "block" },
       }}
     >
-      <Toolbar />
       <Box sx={{ overflow: "auto", py: 1 }}>
         <NavList title="Sections" links={sections} pathname={pathname} />
         <Divider />
