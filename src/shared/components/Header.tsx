@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppBar, Avatar, Box, Button, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
-import { Menu as MenuIcon, Person } from "@mui/icons-material";
+import { ExpandMore, Menu as MenuIcon, Person } from "@mui/icons-material";
 import { signOut, type User } from "firebase/auth";
 import { auth } from "../../config/firebase";
 import { colors } from "../../config/colors";
@@ -23,6 +23,17 @@ function getInitials(userData: UserData | null): string {
   const first = userData.firstName?.charAt(0).toUpperCase() || "";
   const last = userData.lastName?.charAt(0).toUpperCase() || "";
   return `${first}${last}` || "";
+}
+
+function getFullName(userData: UserData | null): string {
+  if (!userData) return "";
+  return `${userData.firstName ?? ""} ${userData.lastName ?? ""}`.trim();
+}
+
+function accountDisplayName(userData: UserData | null, firebaseUser: User | null): string {
+  const name = getFullName(userData);
+  if (name) return name;
+  return firebaseUser?.displayName?.trim() || firebaseUser?.email || "Account";
 }
 
 export default function Header({
@@ -101,36 +112,80 @@ export default function Header({
         <Box sx={{ flexGrow: 1 }} />
         {user ? (
           <>
-            {userData ? (
+            <Button
+              id="account-menu-button"
+              onClick={handleAvatarClick}
+              aria-haspopup="true"
+              aria-expanded={open ? "true" : "false"}
+              aria-controls={open ? "account-menu" : undefined}
+              aria-label="Account menu"
+              color="inherit"
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                minWidth: 0,
+                maxWidth: { xs: 260, sm: 360 },
+                py: 0.5,
+                px: 0.75,
+                textTransform: "none",
+                color: "inherit",
+                borderRadius: "9999px",
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.28)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.18)",
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  borderColor: "rgba(255, 255, 255, 0.38)",
+                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.22)",
+                },
+              }}
+            >
               <Avatar
-                onClick={handleAvatarClick}
                 sx={{
+                  flexShrink: 0,
                   backgroundColor: colors.callToAction,
                   color: "white",
-                  cursor: "pointer",
                   width: 40,
                   height: 40,
                   fontSize: "1rem",
                   fontWeight: 600,
                 }}
               >
-                {getInitials(userData)}
+                {userData ? getInitials(userData) || <Person /> : <Person />}
               </Avatar>
-            ) : (
-              <Avatar
-                onClick={handleAvatarClick}
+              <Typography
+                component="span"
+                variant="body2"
+                noWrap
+                title={accountDisplayName(userData, user)}
                 sx={{
-                  backgroundColor: colors.callToAction,
-                  color: "white",
-                  cursor: "pointer",
-                  width: 40,
-                  height: 40,
+                  flex: 1,
+                  minWidth: 0,
+                  fontWeight: 600,
+                  textAlign: "left",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: { xs: 140, sm: 240 },
                 }}
               >
-                <Person />
-              </Avatar>
-            )}
+                {accountDisplayName(userData, user)}
+              </Typography>
+              <ExpandMore
+                sx={{
+                  flexShrink: 0,
+                  fontSize: 28,
+                  opacity: 0.95,
+                  transition: (theme) =>
+                    theme.transitions.create("transform", { duration: theme.transitions.duration.shortest }),
+                  transform: open ? "rotate(180deg)" : "none",
+                }}
+              />
+            </Button>
             <Menu
+              id="account-menu"
               anchorEl={anchorEl}
               open={open}
               onClose={handleMenuClose}
@@ -141,6 +196,9 @@ export default function Header({
               transformOrigin={{
                 vertical: "top",
                 horizontal: "right",
+              }}
+              MenuListProps={{
+                "aria-labelledby": "account-menu-button",
               }}
             >
               {isEnabled && (
