@@ -18,13 +18,6 @@ interface HeaderProps {
   onNavMenuOpen?: () => void;
 }
 
-function getInitials(userData: UserData | null): string {
-  if (!userData) return "";
-  const first = userData.firstName?.charAt(0).toUpperCase() || "";
-  const last = userData.lastName?.charAt(0).toUpperCase() || "";
-  return `${first}${last}` || "";
-}
-
 function getFullName(userData: UserData | null): string {
   if (!userData) return "";
   return `${userData.firstName ?? ""} ${userData.lastName ?? ""}`.trim();
@@ -150,11 +143,9 @@ export default function Header({
                   color: "white",
                   width: 40,
                   height: 40,
-                  fontSize: "1rem",
-                  fontWeight: 600,
                 }}
               >
-                {userData ? getInitials(userData) || <Person /> : <Person />}
+                <Person sx={{ fontSize: 22 }} />
               </Avatar>
               <Typography
                 component="span"
