@@ -145,7 +145,7 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     let alive = true;
     void (async () => {
       try {
-        const merged = await getSectionMembersMerged({ sectionId: section.id });
+        const merged = await getSectionMembersMerged(section.id);
         if (!alive) return;
         const options = (merged.members ?? [])
           .filter((m) => m.id !== currentUserData?.user?.id)
