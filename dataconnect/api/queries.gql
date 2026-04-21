@@ -400,6 +400,29 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
   }
 }
 
+# Current user's ticket order by id (used for post-checkout status UI).
+query GetMyTicketOrderById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    ticketOrders: ticketOrders_on_user(where: { id: { eq: $id } }) {
+      id
+      status
+      quantity
+      totalAmountMinor
+      currency
+      updatedAt
+      ticketType {
+        id
+        title
+      }
+      event {
+        id
+        title
+      }
+    }
+  }
+}
+
 # Admin: list booking graph for cascade delete before removing an event.
 query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event(id: $eventId) {
