@@ -13,7 +13,13 @@ import {
   Tooltip,
   Box,
 } from "@mui/material";
-import { Edit, CheckCircle } from "@mui/icons-material";
+import {
+  AddModerator,
+  CheckCircle,
+  Edit,
+  Groups,
+  RemoveModerator,
+} from "@mui/icons-material";
 import type { SearchUser } from "../../../types";
 import { colors } from "../../../config/colors";
 
@@ -50,14 +56,18 @@ export default function UsersTable({
   const renderActions = (user: SearchUser) => {
     if (mode === "edit") {
       return (
-        <IconButton
-          size="small"
-          onClick={() => onEdit?.(user)}
-          title="Edit user"
-          disabled={disabled}
-        >
-          <Edit />
-        </IconButton>
+        <Tooltip title="Edit this user's profile and account details.">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => onEdit?.(user)}
+              aria-label="Edit user"
+              disabled={disabled}
+            >
+              <Edit />
+            </IconButton>
+          </span>
+        </Tooltip>
       );
     } else {
       // mode === "admin"
@@ -66,23 +76,29 @@ export default function UsersTable({
       const canRevoke = adminCount === undefined || adminCount > 1;
       
       const adminButtons = isAdmin ? (
-        <Tooltip title={!canRevoke ? "Cannot remove the last admin" : "Revoke admin"}>
+        <Tooltip
+          title={
+            !canRevoke
+              ? "At least one administrator must remain. Add another admin before revoking this user."
+              : "Remove administrator access for this user. They keep their account and section access unless you change it elsewhere."
+          }
+        >
           <span>
             <Button
               size="small"
               variant="outlined"
               color="error"
+              aria-label="Revoke administrator access"
+              startIcon={
+                updatingUserId === user.uid ? undefined : <RemoveModerator fontSize="small" />
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 onRevokeAdmin?.(user.uid);
               }}
               disabled={updatingUserId === user.uid || !canRevoke}
             >
-              {updatingUserId === user.uid ? (
-                <CircularProgress size={16} />
-              ) : (
-                "Revoke Admin"
-              )}
+              {updatingUserId === user.uid ? <CircularProgress color="inherit" size={16} /> : "Revoke Admin"}
             </Button>
           </span>
         </Tooltip>
@@ -90,8 +106,8 @@ export default function UsersTable({
         (() => {
           const isDisabled = updatingUserId === user.uid || !isEnabled;
           const tooltipText = !isEnabled
-            ? "User must be enabled (have non-restricted membership status) to grant admin"
-            : "Grant admin privileges";
+            ? "Only enabled members (non-restricted membership) can be granted administrator access."
+            : "Grant full administrator access: manage users, sections, and other admin tools.";
 
           return (
             <Tooltip title={tooltipText}>
@@ -99,6 +115,10 @@ export default function UsersTable({
                 <Button
                   size="small"
                   variant="outlined"
+                  aria-label="Grant administrator access"
+                  startIcon={
+                    updatingUserId === user.uid ? undefined : <AddModerator fontSize="small" />
+                  }
                   onClick={(e) => {
                     e.stopPropagation();
                     onGrantAdmin?.(user.uid);
@@ -107,6 +127,7 @@ export default function UsersTable({
                   sx={{
                     backgroundColor: colors.callToAction,
                     color: "white",
+                    "& .MuiButton-startIcon": { color: "white" },
                     "&:hover": {
                       backgroundColor: colors.callToAction,
                       opacity: 0.9,
@@ -118,7 +139,7 @@ export default function UsersTable({
                   }}
                 >
                   {updatingUserId === user.uid ? (
-                    <CircularProgress size={16} />
+                    <CircularProgress sx={{ color: "white" }} size={16} />
                   ) : (
                     "Grant Admin"
                   )}
@@ -131,30 +152,42 @@ export default function UsersTable({
 
       if (onEdit) {
         const editUserBtn = (
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(user);
-            }}
-            disabled={disabled}
-          >
-            Edit User
-          </Button>
+          <Tooltip title="Open the editor for this user's profile, membership status, and related details.">
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                aria-label="Edit user profile and details"
+                startIcon={<Edit fontSize="small" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(user);
+                }}
+                disabled={disabled}
+              >
+                Edit User
+              </Button>
+            </span>
+          </Tooltip>
         );
         const editGroupsBtn = onEditGroups ? (
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditGroups(user);
-            }}
-            disabled={disabled}
-          >
-            Edit Groups
-          </Button>
+          <Tooltip title="Manage which user groups this user belongs to (section access, moderators, and similar).">
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                aria-label="Edit user group memberships"
+                startIcon={<Groups fontSize="small" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditGroups(user);
+                }}
+                disabled={disabled}
+              >
+                Edit Groups
+              </Button>
+            </span>
+          </Tooltip>
         ) : null;
 
         return (
