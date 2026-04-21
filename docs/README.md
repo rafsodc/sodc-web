@@ -1,0 +1,28 @@
+# Documentation Index
+
+This folder captures architecture, domain decisions, and contributor-facing guidance.
+
+## Architecture
+
+- `architecture/system-overview.md`: end-to-end request/data flow map.
+- `architecture/repo-structure.md`: repository ownership boundaries and safe cleanup rules.
+- `architecture/booking-data-model.md`: booking entities, relationships, and issue cross-links.
+- `architecture/booking-submission-api.md`: callable contract for `submitEventBooking`.
+- `architecture/security-and-permissions.md`: auth model across Data Connect and Cloud Functions.
+- `operations/environment-and-secrets.md`: environment variables and secrets matrix.
+
+## Domain Guides
+
+- `user-groups-architecture.md`: user group and section access architecture.
+
+## Contributor Guide
+
+- `contributor-workflow.md`: branch/issue/PR workflow, testing expectations, and CI checks.
+
+## Maintenance expectations
+
+When behavior changes:
+
+1. Update the relevant architecture/domain doc in the same PR.
+2. Keep issue/epic links current in docs.
+3. Ensure command snippets still match current scripts.

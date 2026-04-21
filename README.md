@@ -12,6 +12,9 @@ SODC Web is a React + Firebase application for section membership, event booking
 Detailed structure conventions live in:
 - `docs/architecture/repo-structure.md`
 
+Documentation index:
+- `docs/README.md`
+
 ## Generated code
 
 These folders are generated from Data Connect operations and should not be hand-edited in normal flow:
@@ -55,6 +58,13 @@ Functions tests:
 ```sh
 cd functions
 npm run test
+```
+
+Focused security/permission regression suites (functions):
+
+```sh
+cd functions
+npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
 ```
 
 ## Dev-only reset helper (emulator)
