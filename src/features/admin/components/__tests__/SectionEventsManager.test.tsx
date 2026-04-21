@@ -8,7 +8,9 @@ import { executeMutation } from "firebase/data-connect";
 vi.mock("@dataconnect/generated/react", () => ({
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
+  useListEventBookingsForAdmin: vi.fn(),
   useListGuestTicketRequestsForAdmin: vi.fn(),
+  useListTicketOrdersForAdmin: vi.fn(),
 }));
 
 vi.mock("firebase/data-connect", () => ({
@@ -53,6 +55,18 @@ describe("SectionEventsManager", () => {
     } as any);
     vi.mocked(reactGenerated.useListGuestTicketRequestsForAdmin).mockReturnValue({
       data: { event: { id: "ev-1", bookings: [] } } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue({
+      data: { event: { id: "ev-1", bookings: [] } } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useListTicketOrdersForAdmin).mockReturnValue({
+      data: { event: { id: "ev-1", ticketOrders: [] } } as any,
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -172,11 +186,60 @@ describe("SectionEventsManager", () => {
       isError: false,
       refetch: vi.fn(),
     } as any);
+    vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue({
+      data: {
+        event: {
+          id: "ev-1",
+          bookings: [
+            {
+              id: "b-1",
+              status: "SUBMITTED",
+              lines: [{ id: "line-1" }],
+              createdAt: "2026-02-01T00:00:00Z",
+              updatedAt: "2026-02-01T01:00:00Z",
+              createdBy: "u-1",
+              updatedBy: "u-1",
+              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+            },
+          ],
+        },
+      } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(reactGenerated.useListTicketOrdersForAdmin).mockReturnValue({
+      data: {
+        event: {
+          id: "ev-1",
+          ticketOrders: [
+            {
+              id: "o-1",
+              status: "PAID",
+              quantity: 2,
+              totalAmountMinor: 5000,
+              currency: "gbp",
+              webhookEventId: "evt_123",
+              updatedAt: "2026-02-01T02:00:00Z",
+              updatedBy: "system",
+              user: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+              ticketType: { id: "tt-1", title: "Member ticket" },
+            },
+          ],
+        },
+      } as any,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /ticket types/i }));
 
     expect(screen.getByText(/additional guest ticket requests/i)).toBeInTheDocument();
+    expect(screen.getByText(/booking audit activity/i)).toBeInTheDocument();
+    expect(screen.getByText(/payment status activity/i)).toBeInTheDocument();
+    expect(screen.getByText(/evt_123/i)).toBeInTheDocument();
     expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /approve/i }));
     await waitFor(() => expect(executeMutation).toHaveBeenCalled());

@@ -429,11 +429,45 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
     id
     bookings: bookings_on_event {
       id
+      status
+      clientSubmissionKey
+      bookerDietaryNote
+      sitNextToUserIds
+      accommodationRequested
+      accommodationNote
+      createdAt
+      updatedAt
+      createdBy
+      updatedBy
+      booker {
+        id
+        firstName
+        lastName
+        email
+      }
       guestTicketRequests: guestTicketRequests_on_booking {
         id
+        status
+        requestedGuestCount
+        reviewedAt
+        moderatorNote
+        createdAt
+        updatedAt
+        createdBy
+        updatedBy
+        reviewedBy {
+          id
+          firstName
+          lastName
+        }
       }
       lines: bookingLines_on_booking {
         id
+        ticketType {
+          id
+          title
+          audience
+        }
       }
     }
   }
@@ -462,12 +496,53 @@ query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.a
         moderatorNote
         createdAt
         reviewedAt
+        createdBy
+        updatedAt
+        updatedBy
+        reviewedBy {
+          id
+          firstName
+          lastName
+          email
+        }
         guestTicketType {
           id
           title
           audience
           price
         }
+      }
+    }
+  }
+}
+
+# Admin: list ticket payment orders for event-level observability.
+query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event(id: $eventId) {
+    id
+    title
+    ticketOrders: ticketOrders_on_event(orderBy: { updatedAt: DESC }) {
+      id
+      status
+      quantity
+      totalAmountMinor
+      currency
+      stripeCheckoutSessionId
+      stripePaymentIntentId
+      webhookEventId
+      createdAt
+      updatedAt
+      createdBy
+      updatedBy
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+      ticketType {
+        id
+        title
       }
     }
   }
