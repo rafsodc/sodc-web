@@ -13,6 +13,7 @@ import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
+import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
 
 import type { Route } from "./constants/routes";
 
@@ -44,9 +45,25 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [emailCheckTrigger, setEmailCheckTrigger] = useState(0);
   const [logoutSuccess, setLogoutSuccess] = useState(false);
+  const [checkoutQueryState, setCheckoutQueryState] = useState<{
+    checkout: "success" | "cancel";
+    orderId: string | null;
+  } | null>(null);
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if (checkout !== "success" && checkout !== "cancel") {
+      return;
+    }
+    setCheckoutQueryState({
+      checkout,
+      orderId: params.get("orderId"),
+    });
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -299,6 +316,14 @@ export default function App() {
     setLogoutSuccess(false);
   };
 
+  const handleDismissCheckoutStatus = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("checkout");
+    url.searchParams.delete("orderId");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setCheckoutQueryState(null);
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
       <CssBaseline />
@@ -338,6 +363,21 @@ export default function App() {
           pb: 4,
         }}
       >
+        {checkoutQueryState && (
+          <Box
+            sx={{
+              maxWidth: { sm: "700px" },
+              mx: "auto",
+              px: { xs: 3, sm: 4 },
+            }}
+          >
+            <CheckoutStatusNotice
+              checkoutState={checkoutQueryState.checkout}
+              orderId={checkoutQueryState.orderId}
+              onDismiss={handleDismissCheckoutStatus}
+            />
+          </Box>
+        )}
         {view === "account" ? (
           <Box 
             sx={{ 

@@ -262,6 +262,16 @@ export interface SubmitEventBookingResponse {
   idempotentReplay?: boolean;
 }
 
+export interface CreateTicketCheckoutSessionRequest {
+  ticketTypeId: string;
+  quantity?: number;
+}
+
+export interface CreateTicketCheckoutSessionResponse {
+  url: string;
+  orderId: string;
+}
+
 /**
  * Submits a booking for an event (validated server-side). Reuse the same idempotency key on retries.
  */
@@ -284,6 +294,22 @@ export async function submitEventBooking(
     sitNextToUserIds: (payload.sitNextToUserIds ?? []).map((id) => id.trim()).filter(Boolean),
     accommodationRequested: payload.accommodationRequested ?? false,
     accommodationNote: payload.accommodationNote?.trim() || null,
+  };
+  const result = await callable(normalized);
+  return result.data;
+}
+
+export async function createTicketCheckoutSession(
+  payload: CreateTicketCheckoutSessionRequest
+): Promise<CreateTicketCheckoutSessionResponse> {
+  const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
+  const callable = httpsCallable<CreateTicketCheckoutSessionRequest, CreateTicketCheckoutSessionResponse>(
+    functions,
+    "createTicketCheckoutSession"
+  );
+  const normalized: CreateTicketCheckoutSessionRequest = {
+    ticketTypeId: toCanonicalUuid(payload.ticketTypeId),
+    quantity: payload.quantity ?? 1,
   };
   const result = await callable(normalized);
   return result.data;

@@ -49,6 +49,14 @@ const TicketAudience = {
 }
 exports.TicketAudience = TicketAudience;
 
+const TicketOrderStatus = {
+  PENDING: "PENDING",
+  PAID: "PAID",
+  FAILED: "FAILED",
+  REFUNDED: "REFUNDED",
+}
+exports.TicketOrderStatus = TicketOrderStatus;
+
 const connectorConfig = {
   connector: 'api',
   serviceId: 'sodc-web-service',
@@ -237,6 +245,13 @@ function getMyBookingsForEvent(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('GetMyBookingsForEvent', inputVars, inputOpts);
 }
 exports.getMyBookingsForEvent = getMyBookingsForEvent;
+
+function getMyTicketOrderById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetMyTicketOrderById', inputVars, inputOpts);
+}
+exports.getMyTicketOrderById = getMyTicketOrderById;
 
 function listEventBookingsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -469,6 +484,27 @@ function getUserUserGroupsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getUserUserGroupsForAdmin = getUserUserGroupsForAdmin;
 
+function getUserForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserForCheckout', inputVars, inputOpts);
+}
+exports.getUserForCheckout = getUserForCheckout;
+
+function getTicketTypeForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketTypeForCheckout', inputVars, inputOpts);
+}
+exports.getTicketTypeForCheckout = getTicketTypeForCheckout;
+
+function updateUserStripeCustomerId(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUserStripeCustomerId', inputVars, inputOpts);
+}
+exports.updateUserStripeCustomerId = updateUserStripeCustomerId;
+
 function getEventByIdForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -510,6 +546,27 @@ function updateBookingStatusFromCallable(dcOrVarsOrOptions, varsOrOptions, optio
   return dcInstance.executeMutation('UpdateBookingStatusFromCallable', inputVars, inputOpts);
 }
 exports.updateBookingStatusFromCallable = updateBookingStatusFromCallable;
+
+function createTicketOrderForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateTicketOrderForCheckout', inputVars, inputOpts);
+}
+exports.createTicketOrderForCheckout = createTicketOrderForCheckout;
+
+function getTicketOrderForWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketOrderForWebhook', inputVars, inputOpts);
+}
+exports.getTicketOrderForWebhook = getTicketOrderForWebhook;
+
+function markTicketOrderPaidFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkTicketOrderPaidFromWebhook', inputVars, inputOpts);
+}
+exports.markTicketOrderPaidFromWebhook = markTicketOrderPaidFromWebhook;
 
 function updateBookingPreferencesFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

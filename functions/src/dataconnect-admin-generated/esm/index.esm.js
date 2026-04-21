@@ -43,6 +43,13 @@ export const TicketAudience = {
   GUEST: "GUEST",
 }
 
+export const TicketOrderStatus = {
+  PENDING: "PENDING",
+  PAID: "PAID",
+  FAILED: "FAILED",
+  REFUNDED: "REFUNDED",
+}
+
 export const connectorConfig = {
   connector: 'api',
   serviceId: 'sodc-web-service',
@@ -203,6 +210,12 @@ export function getMyBookingsForEvent(dcOrVarsOrOptions, varsOrOptions, options)
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeQuery('GetMyBookingsForEvent', inputVars, inputOpts);
+}
+
+export function getMyTicketOrderById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetMyTicketOrderById', inputVars, inputOpts);
 }
 
 export function listEventBookingsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
@@ -403,6 +416,24 @@ export function getUserUserGroupsForAdmin(dcOrVarsOrOptions, varsOrOptions, opti
   return dcInstance.executeQuery('GetUserUserGroupsForAdmin', inputVars, inputOpts);
 }
 
+export function getUserForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserForCheckout', inputVars, inputOpts);
+}
+
+export function getTicketTypeForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketTypeForCheckout', inputVars, inputOpts);
+}
+
+export function updateUserStripeCustomerId(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUserStripeCustomerId', inputVars, inputOpts);
+}
+
 export function getEventByIdForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -437,6 +468,24 @@ export function updateBookingStatusFromCallable(dcOrVarsOrOptions, varsOrOptions
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('UpdateBookingStatusFromCallable', inputVars, inputOpts);
+}
+
+export function createTicketOrderForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateTicketOrderForCheckout', inputVars, inputOpts);
+}
+
+export function getTicketOrderForWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketOrderForWebhook', inputVars, inputOpts);
+}
+
+export function markTicketOrderPaidFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkTicketOrderPaidFromWebhook', inputVars, inputOpts);
 }
 
 export function updateBookingPreferencesFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {

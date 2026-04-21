@@ -35,13 +35,17 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetAllUserGroupsWithStatuses*](#getallusergroupswithstatuses)
   - [*GetSectionMembers*](#getsectionmembers)
   - [*GetMyBookingsForEvent*](#getmybookingsforevent)
+  - [*GetMyTicketOrderById*](#getmyticketorderbyid)
   - [*ListEventBookingsForAdmin*](#listeventbookingsforadmin)
   - [*ListGuestTicketRequestsForAdmin*](#listguestticketrequestsforadmin)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
+  - [*GetUserForCheckout*](#getuserforcheckout)
+  - [*GetTicketTypeForCheckout*](#gettickettypeforcheckout)
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
+  - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
 - [**Mutations**](#mutations)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
@@ -80,9 +84,12 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*CreateUserGroupAdmin*](#createusergroupadmin)
   - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
   - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
+  - [*UpdateUserStripeCustomerId*](#updateuserstripecustomerid)
   - [*CreateBookingDraftForUser*](#createbookingdraftforuser)
   - [*AddBookingLineFromCallable*](#addbookinglinefromcallable)
   - [*UpdateBookingStatusFromCallable*](#updatebookingstatusfromcallable)
+  - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
+  - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
   - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
 
@@ -1841,6 +1848,106 @@ export default function GetMyBookingsForEventComponent() {
 }
 ```
 
+## GetMyTicketOrderById
+You can execute the `GetMyTicketOrderById` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables, options?: useDataConnectQueryOptions<GetMyTicketOrderByIdData>): UseDataConnectQueryResult<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetMyTicketOrderById(vars: GetMyTicketOrderByIdVariables, options?: useDataConnectQueryOptions<GetMyTicketOrderByIdData>): UseDataConnectQueryResult<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+```
+
+### Variables
+The `GetMyTicketOrderById` Query requires an argument of type `GetMyTicketOrderByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetMyTicketOrderByIdVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetMyTicketOrderById` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetMyTicketOrderById` Query is of type `GetMyTicketOrderByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetMyTicketOrderByIdData {
+  user?: {
+    id: string;
+    ticketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+      quantity: number;
+      totalAmountMinor: number;
+      currency: string;
+      updatedAt: TimestampString;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+      } & TicketType_Key;
+        event: {
+          id: UUIDString;
+          title: string;
+        } & Event_Key;
+    } & TicketOrder_Key)[];
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetMyTicketOrderById`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetMyTicketOrderByIdVariables } from '@dataconnect/generated';
+import { useGetMyTicketOrderById } from '@dataconnect/generated/react'
+
+export default function GetMyTicketOrderByIdComponent() {
+  // The `useGetMyTicketOrderById` Query hook requires an argument of type `GetMyTicketOrderByIdVariables`:
+  const getMyTicketOrderByIdVars: GetMyTicketOrderByIdVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetMyTicketOrderById(getMyTicketOrderByIdVars);
+  // Variables can be defined inline as well.
+  const query = useGetMyTicketOrderById({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetMyTicketOrderById(dataConnect, getMyTicketOrderByIdVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetMyTicketOrderById(getMyTicketOrderByIdVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetMyTicketOrderById(dataConnect, getMyTicketOrderByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## ListEventBookingsForAdmin
 You can execute the `ListEventBookingsForAdmin` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -2222,6 +2329,195 @@ export default function GetUserUserGroupsForAdminComponent() {
 }
 ```
 
+## GetUserForCheckout
+You can execute the `GetUserForCheckout` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetUserForCheckout(dc: DataConnect, vars: GetUserForCheckoutVariables, options?: useDataConnectQueryOptions<GetUserForCheckoutData>): UseDataConnectQueryResult<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetUserForCheckout(vars: GetUserForCheckoutVariables, options?: useDataConnectQueryOptions<GetUserForCheckoutData>): UseDataConnectQueryResult<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+```
+
+### Variables
+The `GetUserForCheckout` Query requires an argument of type `GetUserForCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetUserForCheckoutVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that calling the `GetUserForCheckout` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetUserForCheckout` Query is of type `GetUserForCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetUserForCheckoutData {
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    membershipStatus: MembershipStatus;
+    stripeCustomerId?: string | null;
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetUserForCheckout`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetUserForCheckoutVariables } from '@dataconnect/generated';
+import { useGetUserForCheckout } from '@dataconnect/generated/react'
+
+export default function GetUserForCheckoutComponent() {
+  // The `useGetUserForCheckout` Query hook requires an argument of type `GetUserForCheckoutVariables`:
+  const getUserForCheckoutVars: GetUserForCheckoutVariables = {
+    userId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetUserForCheckout(getUserForCheckoutVars);
+  // Variables can be defined inline as well.
+  const query = useGetUserForCheckout({ userId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetUserForCheckout(dataConnect, getUserForCheckoutVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetUserForCheckout(getUserForCheckoutVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetUserForCheckout(dataConnect, getUserForCheckoutVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetTicketTypeForCheckout
+You can execute the `GetTicketTypeForCheckout` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetTicketTypeForCheckout(dc: DataConnect, vars: GetTicketTypeForCheckoutVariables, options?: useDataConnectQueryOptions<GetTicketTypeForCheckoutData>): UseDataConnectQueryResult<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetTicketTypeForCheckout(vars: GetTicketTypeForCheckoutVariables, options?: useDataConnectQueryOptions<GetTicketTypeForCheckoutData>): UseDataConnectQueryResult<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+```
+
+### Variables
+The `GetTicketTypeForCheckout` Query requires an argument of type `GetTicketTypeForCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetTicketTypeForCheckoutVariables {
+  ticketTypeId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetTicketTypeForCheckout` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetTicketTypeForCheckout` Query is of type `GetTicketTypeForCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetTicketTypeForCheckoutData {
+  ticketType?: {
+    id: UUIDString;
+    title: string;
+    price: number;
+    audience: TicketAudience;
+    userGroup: {
+      id: UUIDString;
+      membershipStatuses?: MembershipStatus[] | null;
+    } & UserGroup_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        bookingStartDateTime: TimestampString;
+        bookingEndDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+  } & TicketType_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetTicketTypeForCheckout`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetTicketTypeForCheckoutVariables } from '@dataconnect/generated';
+import { useGetTicketTypeForCheckout } from '@dataconnect/generated/react'
+
+export default function GetTicketTypeForCheckoutComponent() {
+  // The `useGetTicketTypeForCheckout` Query hook requires an argument of type `GetTicketTypeForCheckoutVariables`:
+  const getTicketTypeForCheckoutVars: GetTicketTypeForCheckoutVariables = {
+    ticketTypeId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetTicketTypeForCheckout(getTicketTypeForCheckoutVars);
+  // Variables can be defined inline as well.
+  const query = useGetTicketTypeForCheckout({ ticketTypeId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetTicketTypeForCheckout(dataConnect, getTicketTypeForCheckoutVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketTypeForCheckout(getTicketTypeForCheckoutVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketTypeForCheckout(dataConnect, getTicketTypeForCheckoutVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.ticketType);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetEventByIdForCallable
 You can execute the `GetEventByIdForCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -2534,6 +2830,94 @@ export default function GetBookingsForBookerAndEventComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetTicketOrderForWebhook
+You can execute the `GetTicketOrderForWebhook` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: useDataConnectQueryOptions<GetTicketOrderForWebhookData>): UseDataConnectQueryResult<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables, options?: useDataConnectQueryOptions<GetTicketOrderForWebhookData>): UseDataConnectQueryResult<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+```
+
+### Variables
+The `GetTicketOrderForWebhook` Query requires an argument of type `GetTicketOrderForWebhookVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetTicketOrderForWebhookVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetTicketOrderForWebhook` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetTicketOrderForWebhook` Query is of type `GetTicketOrderForWebhookData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetTicketOrderForWebhookData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    webhookEventId?: string | null;
+  } & TicketOrder_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetTicketOrderForWebhook`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetTicketOrderForWebhookVariables } from '@dataconnect/generated';
+import { useGetTicketOrderForWebhook } from '@dataconnect/generated/react'
+
+export default function GetTicketOrderForWebhookComponent() {
+  // The `useGetTicketOrderForWebhook` Query hook requires an argument of type `GetTicketOrderForWebhookVariables`:
+  const getTicketOrderForWebhookVars: GetTicketOrderForWebhookVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetTicketOrderForWebhook(getTicketOrderForWebhookVars);
+  // Variables can be defined inline as well.
+  const query = useGetTicketOrderForWebhook({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetTicketOrderForWebhook(dataConnect, getTicketOrderForWebhookVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketOrderForWebhook(getTicketOrderForWebhookVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketOrderForWebhook(dataConnect, getTicketOrderForWebhookVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.ticketOrder);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -6234,6 +6618,102 @@ export default function RemoveUserFromUserGroupAdminComponent() {
 }
 ```
 
+## UpdateUserStripeCustomerId
+You can execute the `UpdateUserStripeCustomerId` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateUserStripeCustomerId(options?: useDataConnectMutationOptions<UpdateUserStripeCustomerIdData, FirebaseError, UpdateUserStripeCustomerIdVariables>): UseDataConnectMutationResult<UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateUserStripeCustomerId(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserStripeCustomerIdData, FirebaseError, UpdateUserStripeCustomerIdVariables>): UseDataConnectMutationResult<UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables>;
+```
+
+### Variables
+The `UpdateUserStripeCustomerId` Mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateUserStripeCustomerIdVariables {
+  userId: string;
+  stripeCustomerId: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateUserStripeCustomerId` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateUserStripeCustomerId` Mutation is of type `UpdateUserStripeCustomerIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateUserStripeCustomerIdData {
+  user_update?: User_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateUserStripeCustomerId`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateUserStripeCustomerIdVariables } from '@dataconnect/generated';
+import { useUpdateUserStripeCustomerId } from '@dataconnect/generated/react'
+
+export default function UpdateUserStripeCustomerIdComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateUserStripeCustomerId();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateUserStripeCustomerId(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateUserStripeCustomerId(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateUserStripeCustomerId(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateUserStripeCustomerId` Mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`:
+  const updateUserStripeCustomerIdVars: UpdateUserStripeCustomerIdVariables = {
+    userId: ..., 
+    stripeCustomerId: ..., 
+  };
+  mutation.mutate(updateUserStripeCustomerIdVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., stripeCustomerId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateUserStripeCustomerIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## CreateBookingDraftForUser
 You can execute the `CreateBookingDraftForUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -6527,6 +7007,212 @@ export default function UpdateBookingStatusFromCallableComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.booking_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateTicketOrderForCheckout
+You can execute the `CreateTicketOrderForCheckout` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateTicketOrderForCheckout(options?: useDataConnectMutationOptions<CreateTicketOrderForCheckoutData, FirebaseError, CreateTicketOrderForCheckoutVariables>): UseDataConnectMutationResult<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateTicketOrderForCheckout(dc: DataConnect, options?: useDataConnectMutationOptions<CreateTicketOrderForCheckoutData, FirebaseError, CreateTicketOrderForCheckoutVariables>): UseDataConnectMutationResult<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+```
+
+### Variables
+The `CreateTicketOrderForCheckout` Mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateTicketOrderForCheckoutVariables {
+  userId: string;
+  eventId: UUIDString;
+  ticketTypeId: UUIDString;
+  quantity: number;
+  unitAmountMinor: number;
+  totalAmountMinor: number;
+  currency: string;
+}
+```
+### Return Type
+Recall that calling the `CreateTicketOrderForCheckout` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateTicketOrderForCheckout` Mutation is of type `CreateTicketOrderForCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateTicketOrderForCheckoutData {
+  ticketOrder_insert: TicketOrder_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateTicketOrderForCheckout`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateTicketOrderForCheckoutVariables } from '@dataconnect/generated';
+import { useCreateTicketOrderForCheckout } from '@dataconnect/generated/react'
+
+export default function CreateTicketOrderForCheckoutComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateTicketOrderForCheckout();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateTicketOrderForCheckout(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateTicketOrderForCheckout(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateTicketOrderForCheckout(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateTicketOrderForCheckout` Mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`:
+  const createTicketOrderForCheckoutVars: CreateTicketOrderForCheckoutVariables = {
+    userId: ..., 
+    eventId: ..., 
+    ticketTypeId: ..., 
+    quantity: ..., 
+    unitAmountMinor: ..., 
+    totalAmountMinor: ..., 
+    currency: ..., 
+  };
+  mutation.mutate(createTicketOrderForCheckoutVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., eventId: ..., ticketTypeId: ..., quantity: ..., unitAmountMinor: ..., totalAmountMinor: ..., currency: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createTicketOrderForCheckoutVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.ticketOrder_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkTicketOrderPaidFromWebhook
+You can execute the `MarkTicketOrderPaidFromWebhook` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkTicketOrderPaidFromWebhook(options?: useDataConnectMutationOptions<MarkTicketOrderPaidFromWebhookData, FirebaseError, MarkTicketOrderPaidFromWebhookVariables>): UseDataConnectMutationResult<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkTicketOrderPaidFromWebhook(dc: DataConnect, options?: useDataConnectMutationOptions<MarkTicketOrderPaidFromWebhookData, FirebaseError, MarkTicketOrderPaidFromWebhookVariables>): UseDataConnectMutationResult<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
+```
+
+### Variables
+The `MarkTicketOrderPaidFromWebhook` Mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkTicketOrderPaidFromWebhookVariables {
+  id: UUIDString;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  webhookEventId?: string | null;
+}
+```
+### Return Type
+Recall that calling the `MarkTicketOrderPaidFromWebhook` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkTicketOrderPaidFromWebhook` Mutation is of type `MarkTicketOrderPaidFromWebhookData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkTicketOrderPaidFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkTicketOrderPaidFromWebhook`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkTicketOrderPaidFromWebhookVariables } from '@dataconnect/generated';
+import { useMarkTicketOrderPaidFromWebhook } from '@dataconnect/generated/react'
+
+export default function MarkTicketOrderPaidFromWebhookComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkTicketOrderPaidFromWebhook();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkTicketOrderPaidFromWebhook(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkTicketOrderPaidFromWebhook(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkTicketOrderPaidFromWebhook(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkTicketOrderPaidFromWebhook` Mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`:
+  const markTicketOrderPaidFromWebhookVars: MarkTicketOrderPaidFromWebhookVariables = {
+    id: ..., 
+    stripeCheckoutSessionId: ..., // optional
+    stripePaymentIntentId: ..., // optional
+    webhookEventId: ..., // optional
+  };
+  mutation.mutate(markTicketOrderPaidFromWebhookVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., stripeCheckoutSessionId: ..., stripePaymentIntentId: ..., webhookEventId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markTicketOrderPaidFromWebhookVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.ticketOrder_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

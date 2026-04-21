@@ -28,13 +28,17 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetAllUserGroupsWithStatuses*](#getallusergroupswithstatuses)
   - [*GetSectionMembers*](#getsectionmembers)
   - [*GetMyBookingsForEvent*](#getmybookingsforevent)
+  - [*GetMyTicketOrderById*](#getmyticketorderbyid)
   - [*ListEventBookingsForAdmin*](#listeventbookingsforadmin)
   - [*ListGuestTicketRequestsForAdmin*](#listguestticketrequestsforadmin)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
+  - [*GetUserForCheckout*](#getuserforcheckout)
+  - [*GetTicketTypeForCheckout*](#gettickettypeforcheckout)
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
+  - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
 - [**Mutations**](#mutations)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
@@ -73,9 +77,12 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateUserGroupAdmin*](#createusergroupadmin)
   - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
   - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
+  - [*UpdateUserStripeCustomerId*](#updateuserstripecustomerid)
   - [*CreateBookingDraftForUser*](#createbookingdraftforuser)
   - [*AddBookingLineFromCallable*](#addbookinglinefromcallable)
   - [*UpdateBookingStatusFromCallable*](#updatebookingstatusfromcallable)
+  - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
+  - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
   - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
 
@@ -2238,6 +2245,133 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetMyTicketOrderById
+You can execute the `GetMyTicketOrderById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getMyTicketOrderById(vars: GetMyTicketOrderByIdVariables): QueryPromise<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+
+interface GetMyTicketOrderByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetMyTicketOrderByIdVariables): QueryRef<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+}
+export const getMyTicketOrderByIdRef: GetMyTicketOrderByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables): QueryPromise<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+
+interface GetMyTicketOrderByIdRef {
+  ...
+  (dc: DataConnect, vars: GetMyTicketOrderByIdVariables): QueryRef<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+}
+export const getMyTicketOrderByIdRef: GetMyTicketOrderByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getMyTicketOrderByIdRef:
+```typescript
+const name = getMyTicketOrderByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetMyTicketOrderById` query requires an argument of type `GetMyTicketOrderByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetMyTicketOrderByIdVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetMyTicketOrderById` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetMyTicketOrderByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetMyTicketOrderByIdData {
+  user?: {
+    id: string;
+    ticketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+      quantity: number;
+      totalAmountMinor: number;
+      currency: string;
+      updatedAt: TimestampString;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+      } & TicketType_Key;
+        event: {
+          id: UUIDString;
+          title: string;
+        } & Event_Key;
+    } & TicketOrder_Key)[];
+  } & User_Key;
+}
+```
+### Using `GetMyTicketOrderById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getMyTicketOrderById, GetMyTicketOrderByIdVariables } from '@dataconnect/generated';
+
+// The `GetMyTicketOrderById` query requires an argument of type `GetMyTicketOrderByIdVariables`:
+const getMyTicketOrderByIdVars: GetMyTicketOrderByIdVariables = {
+  id: ..., 
+};
+
+// Call the `getMyTicketOrderById()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getMyTicketOrderById(getMyTicketOrderByIdVars);
+// Variables can be defined inline as well.
+const { data } = await getMyTicketOrderById({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getMyTicketOrderById(dataConnect, getMyTicketOrderByIdVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getMyTicketOrderById(getMyTicketOrderByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetMyTicketOrderById`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getMyTicketOrderByIdRef, GetMyTicketOrderByIdVariables } from '@dataconnect/generated';
+
+// The `GetMyTicketOrderById` query requires an argument of type `GetMyTicketOrderByIdVariables`:
+const getMyTicketOrderByIdVars: GetMyTicketOrderByIdVariables = {
+  id: ..., 
+};
+
+// Call the `getMyTicketOrderByIdRef()` function to get a reference to the query.
+const ref = getMyTicketOrderByIdRef(getMyTicketOrderByIdVars);
+// Variables can be defined inline as well.
+const ref = getMyTicketOrderByIdRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getMyTicketOrderByIdRef(dataConnect, getMyTicketOrderByIdVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
 ## ListEventBookingsForAdmin
 You can execute the `ListEventBookingsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -2727,6 +2861,249 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetUserForCheckout
+You can execute the `GetUserForCheckout` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getUserForCheckout(vars: GetUserForCheckoutVariables): QueryPromise<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+
+interface GetUserForCheckoutRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetUserForCheckoutVariables): QueryRef<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+}
+export const getUserForCheckoutRef: GetUserForCheckoutRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getUserForCheckout(dc: DataConnect, vars: GetUserForCheckoutVariables): QueryPromise<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+
+interface GetUserForCheckoutRef {
+  ...
+  (dc: DataConnect, vars: GetUserForCheckoutVariables): QueryRef<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+}
+export const getUserForCheckoutRef: GetUserForCheckoutRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getUserForCheckoutRef:
+```typescript
+const name = getUserForCheckoutRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetUserForCheckout` query requires an argument of type `GetUserForCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetUserForCheckoutVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that executing the `GetUserForCheckout` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetUserForCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetUserForCheckoutData {
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    membershipStatus: MembershipStatus;
+    stripeCustomerId?: string | null;
+  } & User_Key;
+}
+```
+### Using `GetUserForCheckout`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getUserForCheckout, GetUserForCheckoutVariables } from '@dataconnect/generated';
+
+// The `GetUserForCheckout` query requires an argument of type `GetUserForCheckoutVariables`:
+const getUserForCheckoutVars: GetUserForCheckoutVariables = {
+  userId: ..., 
+};
+
+// Call the `getUserForCheckout()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getUserForCheckout(getUserForCheckoutVars);
+// Variables can be defined inline as well.
+const { data } = await getUserForCheckout({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getUserForCheckout(dataConnect, getUserForCheckoutVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getUserForCheckout(getUserForCheckoutVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetUserForCheckout`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getUserForCheckoutRef, GetUserForCheckoutVariables } from '@dataconnect/generated';
+
+// The `GetUserForCheckout` query requires an argument of type `GetUserForCheckoutVariables`:
+const getUserForCheckoutVars: GetUserForCheckoutVariables = {
+  userId: ..., 
+};
+
+// Call the `getUserForCheckoutRef()` function to get a reference to the query.
+const ref = getUserForCheckoutRef(getUserForCheckoutVars);
+// Variables can be defined inline as well.
+const ref = getUserForCheckoutRef({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getUserForCheckoutRef(dataConnect, getUserForCheckoutVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+## GetTicketTypeForCheckout
+You can execute the `GetTicketTypeForCheckout` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getTicketTypeForCheckout(vars: GetTicketTypeForCheckoutVariables): QueryPromise<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+
+interface GetTicketTypeForCheckoutRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketTypeForCheckoutVariables): QueryRef<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+}
+export const getTicketTypeForCheckoutRef: GetTicketTypeForCheckoutRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getTicketTypeForCheckout(dc: DataConnect, vars: GetTicketTypeForCheckoutVariables): QueryPromise<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+
+interface GetTicketTypeForCheckoutRef {
+  ...
+  (dc: DataConnect, vars: GetTicketTypeForCheckoutVariables): QueryRef<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+}
+export const getTicketTypeForCheckoutRef: GetTicketTypeForCheckoutRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getTicketTypeForCheckoutRef:
+```typescript
+const name = getTicketTypeForCheckoutRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetTicketTypeForCheckout` query requires an argument of type `GetTicketTypeForCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetTicketTypeForCheckoutVariables {
+  ticketTypeId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetTicketTypeForCheckout` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetTicketTypeForCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetTicketTypeForCheckoutData {
+  ticketType?: {
+    id: UUIDString;
+    title: string;
+    price: number;
+    audience: TicketAudience;
+    userGroup: {
+      id: UUIDString;
+      membershipStatuses?: MembershipStatus[] | null;
+    } & UserGroup_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        bookingStartDateTime: TimestampString;
+        bookingEndDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+  } & TicketType_Key;
+}
+```
+### Using `GetTicketTypeForCheckout`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getTicketTypeForCheckout, GetTicketTypeForCheckoutVariables } from '@dataconnect/generated';
+
+// The `GetTicketTypeForCheckout` query requires an argument of type `GetTicketTypeForCheckoutVariables`:
+const getTicketTypeForCheckoutVars: GetTicketTypeForCheckoutVariables = {
+  ticketTypeId: ..., 
+};
+
+// Call the `getTicketTypeForCheckout()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getTicketTypeForCheckout(getTicketTypeForCheckoutVars);
+// Variables can be defined inline as well.
+const { data } = await getTicketTypeForCheckout({ ticketTypeId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getTicketTypeForCheckout(dataConnect, getTicketTypeForCheckoutVars);
+
+console.log(data.ticketType);
+
+// Or, you can use the `Promise` API.
+getTicketTypeForCheckout(getTicketTypeForCheckoutVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketType);
+});
+```
+
+### Using `GetTicketTypeForCheckout`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getTicketTypeForCheckoutRef, GetTicketTypeForCheckoutVariables } from '@dataconnect/generated';
+
+// The `GetTicketTypeForCheckout` query requires an argument of type `GetTicketTypeForCheckoutVariables`:
+const getTicketTypeForCheckoutVars: GetTicketTypeForCheckoutVariables = {
+  ticketTypeId: ..., 
+};
+
+// Call the `getTicketTypeForCheckoutRef()` function to get a reference to the query.
+const ref = getTicketTypeForCheckoutRef(getTicketTypeForCheckoutVars);
+// Variables can be defined inline as well.
+const ref = getTicketTypeForCheckoutRef({ ticketTypeId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getTicketTypeForCheckoutRef(dataConnect, getTicketTypeForCheckoutVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketType);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketType);
+});
+```
+
 ## GetEventByIdForCallable
 You can execute the `GetEventByIdForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -3123,6 +3500,121 @@ console.log(data.user);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.user);
+});
+```
+
+## GetTicketOrderForWebhook
+You can execute the `GetTicketOrderForWebhook` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+
+interface GetTicketOrderForWebhookRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketOrderForWebhookVariables): QueryRef<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+}
+export const getTicketOrderForWebhookRef: GetTicketOrderForWebhookRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+
+interface GetTicketOrderForWebhookRef {
+  ...
+  (dc: DataConnect, vars: GetTicketOrderForWebhookVariables): QueryRef<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+}
+export const getTicketOrderForWebhookRef: GetTicketOrderForWebhookRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getTicketOrderForWebhookRef:
+```typescript
+const name = getTicketOrderForWebhookRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetTicketOrderForWebhook` query requires an argument of type `GetTicketOrderForWebhookVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetTicketOrderForWebhookVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetTicketOrderForWebhook` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetTicketOrderForWebhookData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetTicketOrderForWebhookData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    webhookEventId?: string | null;
+  } & TicketOrder_Key;
+}
+```
+### Using `GetTicketOrderForWebhook`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrderForWebhook, GetTicketOrderForWebhookVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrderForWebhook` query requires an argument of type `GetTicketOrderForWebhookVariables`:
+const getTicketOrderForWebhookVars: GetTicketOrderForWebhookVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketOrderForWebhook()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getTicketOrderForWebhook(getTicketOrderForWebhookVars);
+// Variables can be defined inline as well.
+const { data } = await getTicketOrderForWebhook({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getTicketOrderForWebhook(dataConnect, getTicketOrderForWebhookVars);
+
+console.log(data.ticketOrder);
+
+// Or, you can use the `Promise` API.
+getTicketOrderForWebhook(getTicketOrderForWebhookVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder);
+});
+```
+
+### Using `GetTicketOrderForWebhook`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrderForWebhookRef, GetTicketOrderForWebhookVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrderForWebhook` query requires an argument of type `GetTicketOrderForWebhookVariables`:
+const getTicketOrderForWebhookVars: GetTicketOrderForWebhookVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketOrderForWebhookRef()` function to get a reference to the query.
+const ref = getTicketOrderForWebhookRef(getTicketOrderForWebhookVars);
+// Variables can be defined inline as well.
+const ref = getTicketOrderForWebhookRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getTicketOrderForWebhookRef(dataConnect, getTicketOrderForWebhookVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketOrder);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder);
 });
 ```
 
@@ -7462,6 +7954,118 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## UpdateUserStripeCustomerId
+You can execute the `UpdateUserStripeCustomerId` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateUserStripeCustomerId(vars: UpdateUserStripeCustomerIdVariables): MutationPromise<UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables>;
+
+interface UpdateUserStripeCustomerIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserStripeCustomerIdVariables): MutationRef<UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables>;
+}
+export const updateUserStripeCustomerIdRef: UpdateUserStripeCustomerIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateUserStripeCustomerId(dc: DataConnect, vars: UpdateUserStripeCustomerIdVariables): MutationPromise<UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables>;
+
+interface UpdateUserStripeCustomerIdRef {
+  ...
+  (dc: DataConnect, vars: UpdateUserStripeCustomerIdVariables): MutationRef<UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables>;
+}
+export const updateUserStripeCustomerIdRef: UpdateUserStripeCustomerIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateUserStripeCustomerIdRef:
+```typescript
+const name = updateUserStripeCustomerIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateUserStripeCustomerId` mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateUserStripeCustomerIdVariables {
+  userId: string;
+  stripeCustomerId: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateUserStripeCustomerId` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateUserStripeCustomerIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateUserStripeCustomerIdData {
+  user_update?: User_Key | null;
+}
+```
+### Using `UpdateUserStripeCustomerId`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateUserStripeCustomerId, UpdateUserStripeCustomerIdVariables } from '@dataconnect/generated';
+
+// The `UpdateUserStripeCustomerId` mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`:
+const updateUserStripeCustomerIdVars: UpdateUserStripeCustomerIdVariables = {
+  userId: ..., 
+  stripeCustomerId: ..., 
+};
+
+// Call the `updateUserStripeCustomerId()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateUserStripeCustomerId(updateUserStripeCustomerIdVars);
+// Variables can be defined inline as well.
+const { data } = await updateUserStripeCustomerId({ userId: ..., stripeCustomerId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateUserStripeCustomerId(dataConnect, updateUserStripeCustomerIdVars);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+updateUserStripeCustomerId(updateUserStripeCustomerIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
+### Using `UpdateUserStripeCustomerId`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateUserStripeCustomerIdRef, UpdateUserStripeCustomerIdVariables } from '@dataconnect/generated';
+
+// The `UpdateUserStripeCustomerId` mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`:
+const updateUserStripeCustomerIdVars: UpdateUserStripeCustomerIdVariables = {
+  userId: ..., 
+  stripeCustomerId: ..., 
+};
+
+// Call the `updateUserStripeCustomerIdRef()` function to get a reference to the mutation.
+const ref = updateUserStripeCustomerIdRef(updateUserStripeCustomerIdVars);
+// Variables can be defined inline as well.
+const ref = updateUserStripeCustomerIdRef({ userId: ..., stripeCustomerId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateUserStripeCustomerIdRef(dataConnect, updateUserStripeCustomerIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
 ## CreateBookingDraftForUser
 You can execute the `CreateBookingDraftForUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -7810,6 +8414,251 @@ console.log(data.booking_update);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.booking_update);
+});
+```
+
+## CreateTicketOrderForCheckout
+You can execute the `CreateTicketOrderForCheckout` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createTicketOrderForCheckout(vars: CreateTicketOrderForCheckoutVariables): MutationPromise<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+
+interface CreateTicketOrderForCheckoutRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateTicketOrderForCheckoutVariables): MutationRef<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+}
+export const createTicketOrderForCheckoutRef: CreateTicketOrderForCheckoutRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createTicketOrderForCheckout(dc: DataConnect, vars: CreateTicketOrderForCheckoutVariables): MutationPromise<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+
+interface CreateTicketOrderForCheckoutRef {
+  ...
+  (dc: DataConnect, vars: CreateTicketOrderForCheckoutVariables): MutationRef<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+}
+export const createTicketOrderForCheckoutRef: CreateTicketOrderForCheckoutRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createTicketOrderForCheckoutRef:
+```typescript
+const name = createTicketOrderForCheckoutRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateTicketOrderForCheckout` mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateTicketOrderForCheckoutVariables {
+  userId: string;
+  eventId: UUIDString;
+  ticketTypeId: UUIDString;
+  quantity: number;
+  unitAmountMinor: number;
+  totalAmountMinor: number;
+  currency: string;
+}
+```
+### Return Type
+Recall that executing the `CreateTicketOrderForCheckout` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateTicketOrderForCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateTicketOrderForCheckoutData {
+  ticketOrder_insert: TicketOrder_Key;
+}
+```
+### Using `CreateTicketOrderForCheckout`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createTicketOrderForCheckout, CreateTicketOrderForCheckoutVariables } from '@dataconnect/generated';
+
+// The `CreateTicketOrderForCheckout` mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`:
+const createTicketOrderForCheckoutVars: CreateTicketOrderForCheckoutVariables = {
+  userId: ..., 
+  eventId: ..., 
+  ticketTypeId: ..., 
+  quantity: ..., 
+  unitAmountMinor: ..., 
+  totalAmountMinor: ..., 
+  currency: ..., 
+};
+
+// Call the `createTicketOrderForCheckout()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createTicketOrderForCheckout(createTicketOrderForCheckoutVars);
+// Variables can be defined inline as well.
+const { data } = await createTicketOrderForCheckout({ userId: ..., eventId: ..., ticketTypeId: ..., quantity: ..., unitAmountMinor: ..., totalAmountMinor: ..., currency: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createTicketOrderForCheckout(dataConnect, createTicketOrderForCheckoutVars);
+
+console.log(data.ticketOrder_insert);
+
+// Or, you can use the `Promise` API.
+createTicketOrderForCheckout(createTicketOrderForCheckoutVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder_insert);
+});
+```
+
+### Using `CreateTicketOrderForCheckout`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createTicketOrderForCheckoutRef, CreateTicketOrderForCheckoutVariables } from '@dataconnect/generated';
+
+// The `CreateTicketOrderForCheckout` mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`:
+const createTicketOrderForCheckoutVars: CreateTicketOrderForCheckoutVariables = {
+  userId: ..., 
+  eventId: ..., 
+  ticketTypeId: ..., 
+  quantity: ..., 
+  unitAmountMinor: ..., 
+  totalAmountMinor: ..., 
+  currency: ..., 
+};
+
+// Call the `createTicketOrderForCheckoutRef()` function to get a reference to the mutation.
+const ref = createTicketOrderForCheckoutRef(createTicketOrderForCheckoutVars);
+// Variables can be defined inline as well.
+const ref = createTicketOrderForCheckoutRef({ userId: ..., eventId: ..., ticketTypeId: ..., quantity: ..., unitAmountMinor: ..., totalAmountMinor: ..., currency: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createTicketOrderForCheckoutRef(dataConnect, createTicketOrderForCheckoutVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.ticketOrder_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder_insert);
+});
+```
+
+## MarkTicketOrderPaidFromWebhook
+You can execute the `MarkTicketOrderPaidFromWebhook` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markTicketOrderPaidFromWebhook(vars: MarkTicketOrderPaidFromWebhookVariables): MutationPromise<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
+
+interface MarkTicketOrderPaidFromWebhookRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkTicketOrderPaidFromWebhookVariables): MutationRef<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
+}
+export const markTicketOrderPaidFromWebhookRef: MarkTicketOrderPaidFromWebhookRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markTicketOrderPaidFromWebhook(dc: DataConnect, vars: MarkTicketOrderPaidFromWebhookVariables): MutationPromise<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
+
+interface MarkTicketOrderPaidFromWebhookRef {
+  ...
+  (dc: DataConnect, vars: MarkTicketOrderPaidFromWebhookVariables): MutationRef<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
+}
+export const markTicketOrderPaidFromWebhookRef: MarkTicketOrderPaidFromWebhookRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markTicketOrderPaidFromWebhookRef:
+```typescript
+const name = markTicketOrderPaidFromWebhookRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkTicketOrderPaidFromWebhook` mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkTicketOrderPaidFromWebhookVariables {
+  id: UUIDString;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  webhookEventId?: string | null;
+}
+```
+### Return Type
+Recall that executing the `MarkTicketOrderPaidFromWebhook` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkTicketOrderPaidFromWebhookData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkTicketOrderPaidFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+```
+### Using `MarkTicketOrderPaidFromWebhook`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markTicketOrderPaidFromWebhook, MarkTicketOrderPaidFromWebhookVariables } from '@dataconnect/generated';
+
+// The `MarkTicketOrderPaidFromWebhook` mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`:
+const markTicketOrderPaidFromWebhookVars: MarkTicketOrderPaidFromWebhookVariables = {
+  id: ..., 
+  stripeCheckoutSessionId: ..., // optional
+  stripePaymentIntentId: ..., // optional
+  webhookEventId: ..., // optional
+};
+
+// Call the `markTicketOrderPaidFromWebhook()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markTicketOrderPaidFromWebhook(markTicketOrderPaidFromWebhookVars);
+// Variables can be defined inline as well.
+const { data } = await markTicketOrderPaidFromWebhook({ id: ..., stripeCheckoutSessionId: ..., stripePaymentIntentId: ..., webhookEventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markTicketOrderPaidFromWebhook(dataConnect, markTicketOrderPaidFromWebhookVars);
+
+console.log(data.ticketOrder_update);
+
+// Or, you can use the `Promise` API.
+markTicketOrderPaidFromWebhook(markTicketOrderPaidFromWebhookVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder_update);
+});
+```
+
+### Using `MarkTicketOrderPaidFromWebhook`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markTicketOrderPaidFromWebhookRef, MarkTicketOrderPaidFromWebhookVariables } from '@dataconnect/generated';
+
+// The `MarkTicketOrderPaidFromWebhook` mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`:
+const markTicketOrderPaidFromWebhookVars: MarkTicketOrderPaidFromWebhookVariables = {
+  id: ..., 
+  stripeCheckoutSessionId: ..., // optional
+  stripePaymentIntentId: ..., // optional
+  webhookEventId: ..., // optional
+};
+
+// Call the `markTicketOrderPaidFromWebhookRef()` function to get a reference to the mutation.
+const ref = markTicketOrderPaidFromWebhookRef(markTicketOrderPaidFromWebhookVars);
+// Variables can be defined inline as well.
+const ref = markTicketOrderPaidFromWebhookRef({ id: ..., stripeCheckoutSessionId: ..., stripePaymentIntentId: ..., webhookEventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markTicketOrderPaidFromWebhookRef(dataConnect, markTicketOrderPaidFromWebhookVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.ticketOrder_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder_update);
 });
 ```
 

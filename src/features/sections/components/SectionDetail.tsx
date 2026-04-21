@@ -31,7 +31,7 @@ import {
 import EventBookingWizard from "./EventBookingWizard";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
-import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
+import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { TicketAudience } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE } from "../../../constants";
@@ -55,6 +55,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [startingCheckoutId, setStartingCheckoutId] = useState<string | null>(null);
 
   const currentUser = auth.currentUser;
 
@@ -276,6 +277,22 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const handleStartCheckout = async (ticketTypeId: string) => {
+    setStartingCheckoutId(ticketTypeId);
+    try {
+      const { url } = await createTicketCheckoutSession({ ticketTypeId, quantity: 1 });
+      window.location.assign(url);
+    } catch (error: unknown) {
+      const message =
+        error && typeof (error as { message?: string }).message === "string"
+          ? (error as { message: string }).message
+          : "Could not start checkout. Please try again.";
+      setSnackbar({ open: true, message, severity: "error" });
+    } finally {
+      setStartingCheckoutId(null);
+    }
+  };
+
   if (loadingSection || loadingMembers || loadingUserGroups) {
     return (
       <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
@@ -484,6 +501,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                         <TableCell>Price</TableCell>
                         <TableCell>Audience</TableCell>
                         <TableCell>User group</TableCell>
+                        <TableCell align="right">Purchase</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -494,6 +512,21 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
                           <TableCell>{tt.price}</TableCell>
                           <TableCell>{tt.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
                           <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
+                          <TableCell align="right">
+                            {currentUser && tt.audience === TicketAudience.MEMBER ? (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                disabled={startingCheckoutId === tt.id}
+                                onClick={() => void handleStartCheckout(tt.id)}
+                                sx={{ backgroundColor: colors.callToAction }}
+                              >
+                                {startingCheckoutId === tt.id ? "Starting..." : "Pay"}
+                              </Button>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
