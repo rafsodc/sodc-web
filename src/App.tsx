@@ -49,6 +49,9 @@ export default function App() {
     checkout: "success" | "cancel";
     orderId: string | null;
   } | null>(null);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
@@ -63,6 +66,17 @@ export default function App() {
       checkout,
       orderId: params.get("orderId"),
     });
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -165,6 +179,50 @@ export default function App() {
   // Wait for profile check to complete (profileExists !== null) before deciding
   const needsProfileCompletion = user && user.emailVerified && !isEnabled && 
     profileExists === false && !checkingProfileRef.current;
+
+  if (!isOnline) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        <Header
+          user={user}
+          userData={userData}
+          onAccountClick={() => setView(ROUTES.ACCOUNT)}
+          onProfileClick={() => setView(ROUTES.PROFILE)}
+          onPermissionsClick={() => setView(ROUTES.PERMISSIONS)}
+          onManageUsersClick={() => setView(ROUTES.MANAGE_USERS)}
+          onSectionsClick={() => {
+            setView(ROUTES.SECTIONS);
+            setSelectedSectionId(null);
+          }}
+        />
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            width: "100%",
+            pt: 12,
+            pb: 4,
+          }}
+        >
+          <Box
+            sx={{
+              maxWidth: { sm: "700px" },
+              mx: "auto",
+              px: { xs: 3, sm: 4 },
+            }}
+          >
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Unable to connect. Check your internet connection and try again.
+            </Alert>
+            <Typography variant="body2" color="text.secondary">
+              The app needs network access to load account and section data.
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 
   // If email is not verified, show email verification message
   if (emailNotVerified) {
