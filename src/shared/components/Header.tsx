@@ -346,34 +346,34 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
               }}
             >
               {isEnabled && (
-                <>
-                  <MenuItem 
-                    onClick={handleProfile}
-                    sx={{
-                      "&:focus": {
-                        outline: "none",
-                      },
-                      "&:focus-visible": {
-                        outline: "none",
-                      },
-                    }}
-                  >
-                    Profile
-                  </MenuItem>
-                  <MenuItem 
-                    onClick={handleSecurity}
-                    sx={{
-                      "&:focus": {
-                        outline: "none",
-                      },
-                      "&:focus-visible": {
-                        outline: "none",
-                      },
-                    }}
-                  >
-                    Security
-                  </MenuItem>
-                </>
+                <MenuItem
+                  onClick={handleProfile}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Profile
+                </MenuItem>
+              )}
+              {isEnabled && (
+                <MenuItem
+                  onClick={handleSecurity}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  Security
+                </MenuItem>
               )}
               <MenuItem 
                 onClick={handleLogOut}

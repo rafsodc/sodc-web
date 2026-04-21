@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, lazy, Suspense, type ReactElement } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { onAuthStateChanged, reload, type User } from "firebase/auth";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -15,6 +15,7 @@ import AppSideNav from "./shared/components/AppSideNav";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
+import { useGetSectionsForUser } from "@dataconnect/generated/react";
 
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
@@ -63,6 +64,7 @@ function AppContent() {
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
+  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -186,6 +188,48 @@ function AppContent() {
   // Wait for profile check to complete (profileExists !== null) before deciding
   const needsProfileCompletion = user && user.emailVerified && !isEnabled && 
     profileExists === false && !checkingProfileRef.current;
+
+  const sectionsLinks = useMemo(() => {
+    if (!userSectionsData?.user?.userGroups) {
+      return [];
+    }
+
+    const sectionMap = new Map<string, { label: string; to: string }>();
+    const addSection = (section: { id: string; name: string }) => {
+      if (!section?.id || sectionMap.has(section.id)) {
+        return;
+      }
+      sectionMap.set(section.id, { label: section.name || "Untitled section", to: `/sections/${section.id}` });
+    };
+
+    for (const groupRelation of userSectionsData.user.userGroups) {
+      const userGroup = groupRelation?.userGroup;
+      if (!userGroup?.purposeLinks) {
+        continue;
+      }
+      for (const purposeLink of userGroup.purposeLinks) {
+        if ((purposeLink.purpose === "ACCESS" || purposeLink.purpose === "MODERATOR") && purposeLink.section) {
+          addSection({ id: purposeLink.section.id, name: purposeLink.section.name });
+        }
+      }
+    }
+
+    const userStatus = userSectionsData.user.membershipStatus;
+    if (userStatus && userSectionsData.allUserGroups) {
+      for (const userGroup of userSectionsData.allUserGroups) {
+        if (!userGroup?.membershipStatuses?.includes(userStatus) || !userGroup?.purposeLinks) {
+          continue;
+        }
+        for (const purposeLink of userGroup.purposeLinks) {
+          if ((purposeLink.purpose === "ACCESS" || purposeLink.purpose === "MODERATOR") && purposeLink.section) {
+            addSection({ id: purposeLink.section.id, name: purposeLink.section.name });
+          }
+        }
+      }
+    }
+
+    return Array.from(sectionMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [userSectionsData]);
 
   const header = (
     <Header
@@ -335,7 +379,6 @@ function AppContent() {
     setCheckoutQueryState(null);
   };
 
-  const sectionsLinks = [{ label: "Sections", to: ROUTES.SECTIONS }];
   const quickActions = [{ label: "Home", to: ROUTES.HOME }, { label: "Profile", to: ROUTES.PROFILE }];
   const adminLinks = isAdmin
     ? [
