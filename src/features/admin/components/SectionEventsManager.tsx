@@ -27,7 +27,13 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, ConfirmationNumber as TicketIcon } from "@mui/icons-material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
-import { useGetEventsForSection, useGetEventById, useListGuestTicketRequestsForAdmin } from "@dataconnect/generated/react";
+import {
+  useGetEventsForSection,
+  useGetEventById,
+  useListEventBookingsForAdmin,
+  useListGuestTicketRequestsForAdmin,
+  useListTicketOrdersForAdmin,
+} from "@dataconnect/generated/react";
 import {
   createEventRef,
   updateEventRef,
@@ -45,7 +51,12 @@ import {
   TicketAudience,
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
-import type { GetEventByIdData, ListGuestTicketRequestsForAdminData } from "@dataconnect/generated";
+import type {
+  GetEventByIdData,
+  ListEventBookingsForAdminData,
+  ListGuestTicketRequestsForAdminData,
+  ListTicketOrdersForAdminData,
+} from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
 
@@ -67,6 +78,8 @@ type GuestTicketRequestAdminRow = NonNullable<
     NonNullable<ListGuestTicketRequestsForAdminData["event"]>["bookings"][number]["guestTicketRequests"][number]
   >
 >;
+type EventBookingAdminRow = NonNullable<NonNullable<ListEventBookingsForAdminData["event"]>["bookings"][number]>;
+type TicketOrderAdminRow = NonNullable<NonNullable<ListTicketOrdersForAdminData["event"]>["ticketOrders"][number]>;
 
 function toDatetimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -130,6 +143,16 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
     isLoading: loadingGuestRequests,
     refetch: refetchGuestRequests,
   } = useListGuestTicketRequestsForAdmin(
+    dataConnect,
+    { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
+    { enabled: !!ticketTypesEventId }
+  );
+  const { data: eventBookingsData, isLoading: loadingEventBookings } = useListEventBookingsForAdmin(
+    dataConnect,
+    { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
+    { enabled: !!ticketTypesEventId }
+  );
+  const { data: ticketOrdersData, isLoading: loadingTicketOrders } = useListTicketOrdersForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
@@ -368,6 +391,8 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
     if (requestStatusFilter === "ALL") return guestRequests;
     return guestRequests.filter((r) => r.status === requestStatusFilter);
   }, [guestRequests, requestStatusFilter]);
+  const eventBookings: EventBookingAdminRow[] = eventBookingsData?.event?.bookings ?? [];
+  const ticketOrders: TicketOrderAdminRow[] = ticketOrdersData?.event?.ticketOrders ?? [];
 
   const handleReviewRequest = async (request: GuestTicketRequestAdminRow & { bookingId: string }, status: "APPROVED" | "REJECTED") => {
     setReviewingRequestId(request.id);
@@ -548,6 +573,94 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
                           "—"
                         )}
                       </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+
+        <Box sx={{ mt: 3 }}>
+          <Box sx={{ fontWeight: 600, mb: 1 }}>Booking audit activity</Box>
+          {loadingEventBookings ? (
+            <CircularProgress size={22} />
+          ) : eventBookings.length === 0 ? (
+            <Alert severity="info">No bookings found for this event.</Alert>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Booking</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Booker</TableCell>
+                    <TableCell align="right">Lines</TableCell>
+                    <TableCell>Created</TableCell>
+                    <TableCell>Created by</TableCell>
+                    <TableCell>Updated</TableCell>
+                    <TableCell>Updated by</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {eventBookings.map((booking) => (
+                    <TableRow key={booking.id}>
+                      <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{booking.id}</TableCell>
+                      <TableCell>
+                        <Chip size="small" label={booking.status} />
+                      </TableCell>
+                      <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
+                      <TableCell align="right">{booking.lines.length}</TableCell>
+                      <TableCell>{new Date(booking.createdAt).toLocaleString()}</TableCell>
+                      <TableCell>{booking.createdBy ?? "—"}</TableCell>
+                      <TableCell>{new Date(booking.updatedAt).toLocaleString()}</TableCell>
+                      <TableCell>{booking.updatedBy ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+
+        <Box sx={{ mt: 3 }}>
+          <Box sx={{ fontWeight: 600, mb: 1 }}>Payment status activity</Box>
+          {loadingTicketOrders ? (
+            <CircularProgress size={22} />
+          ) : ticketOrders.length === 0 ? (
+            <Alert severity="info">No payment orders found for this event.</Alert>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Purchaser</TableCell>
+                    <TableCell>Ticket</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell align="right">Amount</TableCell>
+                    <TableCell>Webhook Event ID</TableCell>
+                    <TableCell>Updated</TableCell>
+                    <TableCell>Updated by</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {ticketOrders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <Chip size="small" label={order.status} color={order.status === "PAID" ? "success" : "default"} />
+                      </TableCell>
+                      <TableCell>{order.user ? `${order.user.firstName} ${order.user.lastName}` : "—"}</TableCell>
+                      <TableCell>{order.ticketType?.title ?? "—"}</TableCell>
+                      <TableCell align="right">{order.quantity}</TableCell>
+                      <TableCell align="right">
+                        {(order.totalAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {order.webhookEventId ?? "—"}
+                      </TableCell>
+                      <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
+                      <TableCell>{order.updatedBy ?? "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
