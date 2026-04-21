@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   FormControl,
   FormControlLabel,
@@ -24,7 +26,7 @@ import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { BookingStatus, TicketAudience } from "@dataconnect/generated";
-import { submitEventBooking } from "../../../shared/utils/firebaseFunctions";
+import { getSectionMembersMerged, submitEventBooking } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
 import AdditionalGuestRequestSection from "./AdditionalGuestRequestSection";
@@ -56,6 +58,11 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
   const [includeGuest, setIncludeGuest] = useState(false);
   const [guestTicketTypeId, setGuestTicketTypeId] = useState<string | null>(null);
   const [guestDisplayName, setGuestDisplayName] = useState("");
+  const [bookerDietaryNote, setBookerDietaryNote] = useState("");
+  const [sitNextToUserIds, setSitNextToUserIds] = useState<string[]>([]);
+  const [accommodationRequested, setAccommodationRequested] = useState(false);
+  const [accommodationNote, setAccommodationNote] = useState("");
+  const [seatingOptions, setSeatingOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,6 +139,26 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
 
   const selectedMember = memberTicketTypes.find((t) => t.id === memberTicketTypeId);
   const selectedGuest = guestTicketTypes.find((t) => t.id === guestTicketTypeId);
+  const canRequestAccommodation = membershipStatus === "REGULAR" || membershipStatus === "RESERVE";
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const merged = await getSectionMembersMerged({ sectionId: section.id });
+        if (!alive) return;
+        const options = (merged.members ?? [])
+          .filter((m) => m.id !== currentUserData?.user?.id)
+          .map((m) => ({ id: m.id, label: `${m.firstName} ${m.lastName}` }));
+        setSeatingOptions(options);
+      } catch {
+        if (alive) setSeatingOptions([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [section.id, currentUserData?.user?.id]);
 
   const resetWizardState = useCallback(() => {
     setActiveStep(0);
@@ -139,6 +166,10 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     setIncludeGuest(false);
     setGuestTicketTypeId(null);
     setGuestDisplayName("");
+    setBookerDietaryNote("");
+    setSitNextToUserIds([]);
+    setAccommodationRequested(false);
+    setAccommodationNote("");
     setSubmitError(null);
     // Keep idempotency key when a server draft exists; otherwise clear so the next submit starts fresh.
     if (!existingDraft?.clientSubmissionKey?.trim()) {
@@ -229,6 +260,10 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
         idempotencyKey,
         eventId: event.id,
         lines,
+        bookerDietaryNote,
+        sitNextToUserIds,
+        accommodationRequested,
+        accommodationNote,
       });
       await refetchMyBookings();
       onBookingComplete?.();
@@ -374,6 +409,51 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
                 />
               ))}
             </RadioGroup>
+            <TextField
+              label="Dietary requirements (you)"
+              fullWidth
+              size="small"
+              value={bookerDietaryNote}
+              onChange={(e) => setBookerDietaryNote(e.target.value)}
+              sx={{ mt: 2 }}
+            />
+            <Autocomplete
+              multiple
+              options={seatingOptions}
+              value={seatingOptions.filter((o) => sitNextToUserIds.includes(o.id))}
+              onChange={(_, next) => setSitNextToUserIds(next.map((n) => n.id))}
+              getOptionLabel={(o) => o.label}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Sit next to (optional)"
+                  helperText="Member picker sourced from section member list."
+                  size="small"
+                  sx={{ mt: 2 }}
+                />
+              )}
+            />
+            <FormControlLabel
+              sx={{ mt: 1 }}
+              control={<Checkbox checked={accommodationRequested} onChange={(_, checked) => setAccommodationRequested(checked)} />}
+              label="Request accommodation (booker only)"
+              disabled={!canRequestAccommodation}
+            />
+            {accommodationRequested && (
+              <TextField
+                label="Accommodation details (optional)"
+                fullWidth
+                size="small"
+                value={accommodationNote}
+                onChange={(e) => setAccommodationNote(e.target.value)}
+              />
+            )}
+            {!canRequestAccommodation && (
+              <Typography variant="caption" color="text.secondary">
+                Accommodation requests are only available for REGULAR or RESERVE members.
+              </Typography>
+            )}
           </FormControl>
         )}
 
@@ -458,6 +538,29 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
             </Typography>
             <Typography component="dd" variant="body2" color="text.secondary">
               {event.title}
+            </Typography>
+            <Typography component="dt" variant="body2">
+              Dietary (you)
+            </Typography>
+            <Typography component="dd" variant="body2" color="text.secondary">
+              {bookerDietaryNote.trim() || "None"}
+            </Typography>
+            <Typography component="dt" variant="body2">
+              Sit next to
+            </Typography>
+            <Typography component="dd" variant="body2" color="text.secondary">
+              {sitNextToUserIds.length > 0
+                ? seatingOptions
+                    .filter((o) => sitNextToUserIds.includes(o.id))
+                    .map((o) => o.label)
+                    .join(", ")
+                : "No preference"}
+            </Typography>
+            <Typography component="dt" variant="body2">
+              Accommodation
+            </Typography>
+            <Typography component="dd" variant="body2" color="text.secondary">
+              {accommodationRequested ? accommodationNote.trim() || "Requested" : "Not requested"}
             </Typography>
           </Box>
         )}

@@ -168,6 +168,11 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
   clientSubmissionKey: String
   status: BookingStatus! @default(value: DRAFT)
+  # Booker-level preferences captured during booking flow (#49).
+  bookerDietaryNote: String
+  sitNextToUserIds: [String!]
+  accommodationRequested: Boolean! @default(value: false)
+  accommodationNote: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

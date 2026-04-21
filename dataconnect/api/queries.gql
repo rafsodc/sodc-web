@@ -358,6 +358,10 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
       id
       status
       clientSubmissionKey
+      bookerDietaryNote
+      sitNextToUserIds
+      accommodationRequested
+      accommodationNote
       createdAt
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
