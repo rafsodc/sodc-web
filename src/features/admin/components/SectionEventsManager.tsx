@@ -95,10 +95,11 @@ function fromDatetimeLocal(s: string): string {
 interface SectionEventsManagerProps {
   sectionId: string;
   sectionName: string;
+  initialEventId?: string | null;
   onBack: () => void;
 }
 
-export default function SectionEventsManager({ sectionId, sectionName, onBack }: SectionEventsManagerProps) {
+export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
   const { data: eventsData, isLoading: loadingEvents, isError: errorEvents, refetch: refetchEvents } = useGetEventsForSection(
     dataConnect,
     { sectionId: sectionId as UUIDString }
@@ -118,7 +119,7 @@ export default function SectionEventsManager({ sectionId, sectionName, onBack }:
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   // Ticket types: which event we're managing ticket types for
-  const [ticketTypesEventId, setTicketTypesEventId] = useState<string | null>(null);
+  const [ticketTypesEventId, setTicketTypesEventId] = useState<string | null>(initialEventId ?? null);
   const { data: eventDetailData, isLoading: loadingEventDetail, refetch: refetchEventDetail } = useGetEventById(
     dataConnect,
     { id: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
