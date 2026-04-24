@@ -42,16 +42,27 @@ const LoadingFallback = () => (
 function SectionDetailRoute() {
   const { sectionId } = useParams<{ sectionId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   if (!sectionId) {
     return <Navigate to={ROUTES.SECTIONS} replace />;
   }
-  return <SectionDetail sectionId={sectionId} onBack={() => navigate(ROUTES.SECTIONS)} />;
+
+  const handleBack = () => {
+    if (window.history.state?.idx > 0 || location.key !== "default") {
+      navigate(-1);
+      return;
+    }
+    navigate(ROUTES.SECTIONS, { replace: true });
+  };
+
+  return <SectionDetail sectionId={sectionId} onBack={handleBack} />;
 }
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
   const [emailCheckTrigger, setEmailCheckTrigger] = useState(0);
   const [logoutSuccess, setLogoutSuccess] = useState(false);
   const [checkoutQueryState, setCheckoutQueryState] = useState<{
@@ -68,7 +79,7 @@ function AppContent() {
   const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const checkout = params.get("checkout");
     if (checkout !== "success" && checkout !== "cancel") {
       return;
@@ -77,7 +88,7 @@ function AppContent() {
       checkout,
       orderId: params.get("orderId"),
     });
-  }, []);
+  }, [location.search]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -96,6 +107,7 @@ function AppContent() {
       const isNowLoggedOut = u === null;
       
       setUser(u);
+      setAuthInitialized(true);
       
       if (wasLoggedIn && isNowLoggedOut) {
         navigate(ROUTES.ACCOUNT);
@@ -379,11 +391,20 @@ function AppContent() {
   };
 
   const handleDismissCheckoutStatus = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("checkout");
-    url.searchParams.delete("orderId");
-    navigate(`${url.pathname}${url.search}${url.hash}`, { replace: true });
+    const params = new URLSearchParams(location.search);
+    params.delete("checkout");
+    params.delete("orderId");
+    const search = params.toString();
+    navigate(`${location.pathname}${search ? `?${search}` : ""}${location.hash}`, { replace: true });
     setCheckoutQueryState(null);
+  };
+
+  const navigateBackOr = (fallbackRoute: string) => {
+    if (window.history.state?.idx > 0 || location.key !== "default") {
+      navigate(-1);
+      return;
+    }
+    navigate(fallbackRoute, { replace: true });
   };
 
   const adminLinks = isAdmin
@@ -397,6 +418,9 @@ function AppContent() {
     : [];
 
   const renderAdminOnly = (title: string, element: ReactElement) => {
+    if (!authInitialized) {
+      return <LoadingFallback />;
+    }
     if (user && isAdmin) {
       return element;
     }
@@ -417,6 +441,13 @@ function AppContent() {
         </Button>
       </Box>
     );
+  };
+
+  const protectedRoute = (element: ReactElement) => {
+    if (!authInitialized) {
+      return <LoadingFallback />;
+    }
+    return user && isEnabled ? element : <Navigate to={ROUTES.ACCOUNT} replace />;
   };
 
   return (
@@ -486,7 +517,7 @@ function AppContent() {
                   element={
                     <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
                       <Suspense fallback={<LoadingFallback />}>
-                        <AuthGate userData={userData} onBack={() => navigate(ROUTES.HOME)} />
+                        <AuthGate userData={userData} onBack={() => navigateBackOr(ROUTES.HOME)} />
                       </Suspense>
                     </Box>
                   }
@@ -497,7 +528,7 @@ function AppContent() {
                     <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
                       {user ? (
                         <Suspense fallback={<LoadingFallback />}>
-                          <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigate(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
+                          <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigateBackOr(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
                         </Suspense>
                       ) : (
                         <Navigate to={ROUTES.ACCOUNT} replace />
@@ -506,16 +537,16 @@ function AppContent() {
                   }
                 />
                 <Route path={ROUTES.PERMISSIONS} element={<Navigate to={ROUTES.MANAGE_USERS} replace />} />
-                <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
-                <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
-                <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+                <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigateBackOr(ROUTES.HOME)} /></Suspense>)} />
+                <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigateBackOr(ROUTES.HOME)} /></Suspense>)} />
+                <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigateBackOr(ROUTES.HOME)} /></Suspense>)} />
                 <Route
                   path={ROUTES.AUDIT_LOGS}
                   element={renderAdminOnly(
                     "Audit Logs",
-                    <ErrorBoundary title="Audit Logs" onBack={() => navigate(ROUTES.HOME)}>
+                    <ErrorBoundary title="Audit Logs" onBack={() => navigateBackOr(ROUTES.HOME)}>
                       <Suspense fallback={<LoadingFallback />}>
-                        <AuditLogs onBack={() => navigate(ROUTES.HOME)} />
+                        <AuditLogs onBack={() => navigateBackOr(ROUTES.HOME)} />
                       </Suspense>
                     </ErrorBoundary>
                   )}
@@ -524,28 +555,24 @@ function AppContent() {
                   path={ROUTES.MANAGE_SECTIONS}
                   element={renderAdminOnly(
                     "Manage Sections",
-                    <ErrorBoundary title="Manage Sections" onBack={() => navigate(ROUTES.HOME)}>
+                    <ErrorBoundary title="Manage Sections" onBack={() => navigateBackOr(ROUTES.HOME)}>
                       <Suspense fallback={<LoadingFallback />}>
-                        <ManageSections onBack={() => navigate(ROUTES.HOME)} />
+                        <ManageSections onBack={() => navigateBackOr(ROUTES.HOME)} />
                       </Suspense>
                     </ErrorBoundary>
                   )}
                 />
                 <Route
                   path={ROUTES.SECTIONS}
-                  element={
-                    user && isEnabled ? (
+                  element={protectedRoute(
                       <Suspense fallback={<LoadingFallback />}>
-                        <SectionsList onBack={() => navigate(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
+                        <SectionsList onBack={() => navigateBackOr(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
                       </Suspense>
-                    ) : (
-                      <Navigate to={ROUTES.ACCOUNT} replace />
-                    )
-                  }
+                  )}
                 />
                 <Route
                   path={ROUTES.SECTION_DETAIL}
-                  element={user && isEnabled ? <Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense> : <Navigate to={ROUTES.ACCOUNT} replace />}
+                  element={protectedRoute(<Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense>)}
                 />
                 <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
               </Routes>
