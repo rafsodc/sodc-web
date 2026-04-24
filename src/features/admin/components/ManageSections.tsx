@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Typography,
@@ -56,6 +56,7 @@ import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
+import { useLocation } from "react-router-dom";
 import "../../../shared/components/PageContainer.css";
 
 const SECTION_PURPOSE_ORDER: SectionUserGroupPurpose[] = [
@@ -102,7 +103,18 @@ interface SectionWithDetails {
   updatedAt: string;
 }
 
+interface ManageSectionsLocationState {
+  managedSection?: {
+    id: string;
+    name: string;
+  };
+  eventId?: string;
+  editSectionId?: string;
+}
+
 export default function ManageSections({ onBack }: ManageSectionsProps) {
+  const location = useLocation();
+  const initialState = location.state as ManageSectionsLocationState | null;
   const isAdmin = useAdminClaim(auth.currentUser);
   const [sections, setSections] = useState<SectionWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,8 +142,10 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const [selectedPurpose, setSelectedPurpose] = useState<SectionUserGroupPurpose>(SectionUserGroupPurpose.ACCESS);
   const [addingUserGroup, setAddingUserGroup] = useState(false);
   const [removingUserGroupId, setRemovingUserGroupId] = useState<string | null>(null);
-  const [managedSectionId, setManagedSectionId] = useState<string | null>(null);
-  const [managedSectionName, setManagedSectionName] = useState("");
+  const [managedSectionId, setManagedSectionId] = useState<string | null>(initialState?.managedSection?.id ?? null);
+  const [managedSectionName, setManagedSectionName] = useState(initialState?.managedSection?.name ?? "");
+  const initialEventIdRef = useRef(initialState?.eventId ?? null);
+  const initialEditSectionIdRef = useRef(initialState?.editSectionId ?? null);
 
   const fetchSections = useCallback(async () => {
     setLoading(true);
@@ -233,6 +247,21 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     // Fetch user groups when editing
     await fetchSectionUserGroups(section.id);
   };
+
+  useEffect(() => {
+    const editSectionId = initialEditSectionIdRef.current;
+    if (!editSectionId || loading || managedSectionId) {
+      return;
+    }
+
+    const section = sections.find((item) => item.id === editSectionId);
+    if (!section) {
+      return;
+    }
+
+    initialEditSectionIdRef.current = null;
+    void handleEdit(section);
+  }, [handleEdit, loading, managedSectionId, sections]);
 
   const handleDelete = async (section: SectionWithDetails) => {
     if (!confirm(`Are you sure you want to delete the section "${section.name}"? This will remove all user group associations.`)) {
@@ -352,9 +381,11 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       <SectionEventsManager
         sectionId={managedSectionId}
         sectionName={managedSectionName}
+        initialEventId={initialEventIdRef.current}
         onBack={() => {
           setManagedSectionId(null);
           setManagedSectionName("");
+          initialEventIdRef.current = null;
         }}
       />
     );

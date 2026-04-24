@@ -12,6 +12,7 @@ import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
 import AppSideNav from "./shared/components/AppSideNav";
+import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
@@ -235,6 +236,14 @@ function AppContent() {
     return Array.from(sectionMap.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [userSectionsData]);
 
+  const pageHeaderAdminAction = useMemo(
+    () => ({
+      visible: Boolean(user && isEnabled && isAdmin),
+      onClick: () => navigate(ROUTES.MANAGE_USERS),
+    }),
+    [isAdmin, isEnabled, navigate, user]
+  );
+
   const header = (
     <Header
       user={user}
@@ -454,91 +463,93 @@ function AppContent() {
           }}
         >
           <Box sx={{ width: "100%", maxWidth: "1200px" }}>
-        {checkoutQueryState && (
-          <Box
-            sx={{
-              maxWidth: { sm: "700px" },
-              mx: "auto",
-              px: { xs: 3, sm: 4 },
-            }}
-          >
-            <CheckoutStatusNotice
-              checkoutState={checkoutQueryState.checkout}
-              orderId={checkoutQueryState.orderId}
-              onDismiss={handleDismissCheckoutStatus}
-            />
-          </Box>
-        )}
-        <Routes>
-          <Route path={ROUTES.HOME} element={<HomePage />} />
-          <Route
-            path={ROUTES.ACCOUNT}
-            element={
-              <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-                <Suspense fallback={<LoadingFallback />}>
-                  <AuthGate userData={userData} onBack={() => navigate(ROUTES.HOME)} />
-                </Suspense>
-              </Box>
-            }
-          />
-          <Route
-            path={ROUTES.PROFILE}
-            element={
-              <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-                {user ? (
-                  <Suspense fallback={<LoadingFallback />}>
-                    <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigate(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
-                  </Suspense>
-                ) : (
-                  <Navigate to={ROUTES.ACCOUNT} replace />
-                )}
-              </Box>
-            }
-          />
-          <Route path={ROUTES.PERMISSIONS} element={<Navigate to={ROUTES.MANAGE_USERS} replace />} />
-          <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
-          <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
-          <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
-          <Route
-            path={ROUTES.AUDIT_LOGS}
-            element={renderAdminOnly(
-              "Audit Logs",
-              <ErrorBoundary title="Audit Logs" onBack={() => navigate(ROUTES.HOME)}>
-                <Suspense fallback={<LoadingFallback />}>
-                  <AuditLogs onBack={() => navigate(ROUTES.HOME)} />
-                </Suspense>
-              </ErrorBoundary>
-            )}
-          />
-          <Route
-            path={ROUTES.MANAGE_SECTIONS}
-            element={renderAdminOnly(
-              "Manage Sections",
-              <ErrorBoundary title="Manage Sections" onBack={() => navigate(ROUTES.HOME)}>
-                <Suspense fallback={<LoadingFallback />}>
-                  <ManageSections onBack={() => navigate(ROUTES.HOME)} />
-                </Suspense>
-              </ErrorBoundary>
-            )}
-          />
-          <Route
-            path={ROUTES.SECTIONS}
-            element={
-              user && isEnabled ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <SectionsList onBack={() => navigate(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
-                </Suspense>
-              ) : (
-                <Navigate to={ROUTES.ACCOUNT} replace />
-              )
-            }
-          />
-          <Route
-            path={ROUTES.SECTION_DETAIL}
-            element={user && isEnabled ? <Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense> : <Navigate to={ROUTES.ACCOUNT} replace />}
-          />
-          <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
-        </Routes>
+            <PageHeaderAdminActionProvider value={pageHeaderAdminAction}>
+              {checkoutQueryState && (
+                <Box
+                  sx={{
+                    maxWidth: { sm: "700px" },
+                    mx: "auto",
+                    px: { xs: 3, sm: 4 },
+                  }}
+                >
+                  <CheckoutStatusNotice
+                    checkoutState={checkoutQueryState.checkout}
+                    orderId={checkoutQueryState.orderId}
+                    onDismiss={handleDismissCheckoutStatus}
+                  />
+                </Box>
+              )}
+              <Routes>
+                <Route path={ROUTES.HOME} element={<HomePage />} />
+                <Route
+                  path={ROUTES.ACCOUNT}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <AuthGate userData={userData} onBack={() => navigate(ROUTES.HOME)} />
+                      </Suspense>
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.PROFILE}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      {user ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                          <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigate(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
+                        </Suspense>
+                      ) : (
+                        <Navigate to={ROUTES.ACCOUNT} replace />
+                      )}
+                    </Box>
+                  }
+                />
+                <Route path={ROUTES.PERMISSIONS} element={<Navigate to={ROUTES.MANAGE_USERS} replace />} />
+                <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+                <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+                <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigate(ROUTES.HOME)} /></Suspense>)} />
+                <Route
+                  path={ROUTES.AUDIT_LOGS}
+                  element={renderAdminOnly(
+                    "Audit Logs",
+                    <ErrorBoundary title="Audit Logs" onBack={() => navigate(ROUTES.HOME)}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <AuditLogs onBack={() => navigate(ROUTES.HOME)} />
+                      </Suspense>
+                    </ErrorBoundary>
+                  )}
+                />
+                <Route
+                  path={ROUTES.MANAGE_SECTIONS}
+                  element={renderAdminOnly(
+                    "Manage Sections",
+                    <ErrorBoundary title="Manage Sections" onBack={() => navigate(ROUTES.HOME)}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <ManageSections onBack={() => navigate(ROUTES.HOME)} />
+                      </Suspense>
+                    </ErrorBoundary>
+                  )}
+                />
+                <Route
+                  path={ROUTES.SECTIONS}
+                  element={
+                    user && isEnabled ? (
+                      <Suspense fallback={<LoadingFallback />}>
+                        <SectionsList onBack={() => navigate(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
+                      </Suspense>
+                    ) : (
+                      <Navigate to={ROUTES.ACCOUNT} replace />
+                    )
+                  }
+                />
+                <Route
+                  path={ROUTES.SECTION_DETAIL}
+                  element={user && isEnabled ? <Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense> : <Navigate to={ROUTES.ACCOUNT} replace />}
+                />
+                <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
+              </Routes>
+            </PageHeaderAdminActionProvider>
           </Box>
         </Box>
       </Box>

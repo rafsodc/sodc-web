@@ -31,6 +31,9 @@ import {
 import EventBookingWizard from "./EventBookingWizard";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
+import { ROUTES } from "../../../constants";
+import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { useNavigate } from "react-router-dom";
 import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { TicketAudience } from "@dataconnect/generated";
@@ -43,6 +46,7 @@ interface SectionDetailProps {
 }
 
 export default function SectionDetail({ sectionId, onBack }: SectionDetailProps) {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
@@ -58,6 +62,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [startingCheckoutId, setStartingCheckoutId] = useState<string | null>(null);
 
   const currentUser = auth.currentUser;
+  const isAdmin = useAdminClaim(currentUser);
 
   // Get section details (for user group info and subscribability)
   const {
@@ -161,6 +166,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       userUserGroupIds.filter((id) => memberGroups.some((g) => g.id === id))
     );
   }, [sectionData, currentUser, userUserGroupIds, sectionPurposeLinks, memberGroups]);
+
+  const canModerateSection = useMemo(() => {
+    return sectionPurposeLinks.some(
+      (link) => link.purpose === "MODERATOR" && userUserGroupIds.includes(link.userGroup.id)
+    );
+  }, [sectionPurposeLinks, userUserGroupIds]);
 
   const allMembers = sectionMembers;
   const refetchMembers = fetchMembers;
@@ -327,10 +338,31 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   const section = sectionData.section;
   const isMembers = isMembersSection(section as any);
+  const sectionAdminAction = {
+    visible: Boolean(currentUser && (isAdmin || canModerateSection)),
+    onClick: () => {
+      if (isMembers) {
+        navigate(ROUTES.MANAGE_SECTIONS, {
+          state: { editSectionId: section.id },
+        });
+        return;
+      }
+
+      navigate(ROUTES.MANAGE_SECTIONS, {
+        state: {
+          managedSection: {
+            id: section.id,
+            name: section.name,
+          },
+          eventId: selectedEventId ?? undefined,
+        },
+      });
+    },
+  };
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <PageHeader title={section.name} onBack={onBack} />
+      <PageHeader title={section.name} onBack={onBack} adminAction={sectionAdminAction} />
       
       <Box sx={{ mt: 3, mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
