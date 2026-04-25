@@ -13,6 +13,7 @@ import Header from "./shared/components/Header";
 import HomePage from "./shared/components/HomePage";
 import AppSideNav from "./shared/components/AppSideNav";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
+import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
 import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
@@ -206,47 +207,10 @@ function AppContent() {
   const needsProfileCompletion = user && user.emailVerified && !isEnabled && 
     profileExists === false && !checkingProfileRef.current;
 
-  const sectionsLinks = useMemo(() => {
-    if (!userSectionsData?.user?.userGroups) {
-      return [];
-    }
-
-    const sectionMap = new Map<string, { label: string; to: string }>();
-    const addSection = (section: { id: string; name: string }) => {
-      if (!section?.id || sectionMap.has(section.id)) {
-        return;
-      }
-      sectionMap.set(section.id, { label: section.name || "Untitled section", to: `/sections/${section.id}` });
-    };
-
-    for (const groupRelation of userSectionsData.user.userGroups) {
-      const userGroup = groupRelation?.userGroup;
-      if (!userGroup?.purposeLinks) {
-        continue;
-      }
-      for (const purposeLink of userGroup.purposeLinks) {
-        if ((purposeLink.purpose === "ACCESS" || purposeLink.purpose === "MODERATOR") && purposeLink.section) {
-          addSection({ id: purposeLink.section.id, name: purposeLink.section.name });
-        }
-      }
-    }
-
-    const userStatus = userSectionsData.user.membershipStatus;
-    if (userStatus && userSectionsData.allUserGroups) {
-      for (const userGroup of userSectionsData.allUserGroups) {
-        if (!userGroup?.membershipStatuses?.includes(userStatus) || !userGroup?.purposeLinks) {
-          continue;
-        }
-        for (const purposeLink of userGroup.purposeLinks) {
-          if ((purposeLink.purpose === "ACCESS" || purposeLink.purpose === "MODERATOR") && purposeLink.section) {
-            addSection({ id: purposeLink.section.id, name: purposeLink.section.name });
-          }
-        }
-      }
-    }
-
-    return Array.from(sectionMap.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [userSectionsData]);
+  const navigationLinks = useMemo(
+    () => buildNavigationLinks({ isEnabled, isAdmin, sectionsData: userSectionsData }),
+    [isAdmin, isEnabled, userSectionsData]
+  );
 
   const pageHeaderAdminAction = useMemo(
     () => ({
@@ -255,6 +219,14 @@ function AppContent() {
     }),
     [isAdmin, isEnabled, navigate, user]
   );
+  const selectedAdminSectionId =
+    location.pathname === ROUTES.MANAGE_SECTIONS
+      ? ((location.state as { managedSection?: { id?: string } } | null)?.managedSection?.id ?? null)
+      : null;
+  const selectedAdminUserGroupId =
+    location.pathname === ROUTES.USER_GROUPS
+      ? ((location.state as { expandedGroupId?: string } | null)?.expandedGroupId ?? null)
+      : null;
 
   const header = (
     <Header
@@ -407,16 +379,6 @@ function AppContent() {
     navigate(fallbackRoute, { replace: true });
   };
 
-  const adminLinks = isAdmin
-    ? [
-        { label: "Manage Users", to: ROUTES.MANAGE_USERS },
-        { label: "Approvals", to: ROUTES.APPROVE_USERS },
-        { label: "User Groups", to: ROUTES.USER_GROUPS },
-        { label: "Audit Logs", to: ROUTES.AUDIT_LOGS },
-        { label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS },
-      ]
-    : [];
-
   const renderAdminOnly = (title: string, element: ReactElement) => {
     if (!authInitialized) {
       return <LoadingFallback />;
@@ -477,9 +439,11 @@ function AppContent() {
       >
         {user && isEnabled ? (
           <AppSideNav
-            sections={sectionsLinks}
-            adminLinks={adminLinks}
+            sections={navigationLinks.sections}
+            adminLinks={navigationLinks.admin}
             pathname={location.pathname}
+            selectedAdminSectionId={selectedAdminSectionId}
+            selectedAdminUserGroupId={selectedAdminUserGroupId}
             mobileOpen={mobileNavOpen}
             onMobileClose={() => setMobileNavOpen(false)}
           />

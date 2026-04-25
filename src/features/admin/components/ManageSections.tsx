@@ -147,6 +147,24 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const initialEventIdRef = useRef(initialState?.eventId ?? null);
   const initialEditSectionIdRef = useRef(initialState?.editSectionId ?? null);
 
+  useEffect(() => {
+    const state = location.state as ManageSectionsLocationState | null;
+    if (state?.managedSection) {
+      setManagedSectionId(state.managedSection.id);
+      setManagedSectionName(state.managedSection.name);
+      initialEventIdRef.current = state.eventId ?? null;
+      return;
+    }
+    if (state?.editSectionId) {
+      initialEditSectionIdRef.current = state.editSectionId;
+      return;
+    }
+    setManagedSectionId(null);
+    setManagedSectionName("");
+    initialEventIdRef.current = null;
+    initialEditSectionIdRef.current = null;
+  }, [location.state]);
+
   const fetchSections = useCallback(async () => {
     setLoading(true);
     setError(null);

@@ -63,6 +63,7 @@ import {
 import { searchUsers } from "../../users/utils/searchUsers";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
+import { useLocation } from "react-router-dom";
 import "../../../shared/components/PageContainer.css";
 
 interface UserGroupsProps {
@@ -80,7 +81,12 @@ interface UserGroupWithDetails {
   sectionCount?: number;
 }
 
+interface UserGroupsLocationState {
+  expandedGroupId?: string | null;
+}
+
 export default function UserGroups({ onBack }: UserGroupsProps) {
+  const location = useLocation();
   const isAdmin = useAdminClaim(auth.currentUser);
   const [userGroups, setUserGroups] = useState<UserGroupWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,6 +170,16 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   useEffect(() => {
     fetchUserGroupsList();
   }, [fetchUserGroupsList]);
+
+  useEffect(() => {
+    const expandedGroupId = (location.state as UserGroupsLocationState | null)?.expandedGroupId;
+    if (!expandedGroupId) {
+      setExpandedGroupId(null);
+      return;
+    }
+    setExpandedGroupId(expandedGroupId);
+    fetchGroupDetails(expandedGroupId);
+  }, [fetchGroupDetails, location.state]);
 
   useEffect(() => {
     if (!isAdmin) return;
