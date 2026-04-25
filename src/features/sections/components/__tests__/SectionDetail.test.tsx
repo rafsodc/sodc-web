@@ -574,7 +574,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();
       expect(screen.getByText('Ticket types')).toBeInTheDocument();
       expect(screen.getByText('Standard')).toBeInTheDocument();
-      expect(screen.getByText('Member')).toBeInTheDocument();
+      expect(screen.getByText('Member ticket')).toBeInTheDocument();
       expect(screen.getByText('Standard Access')).toBeInTheDocument();
     });
   });

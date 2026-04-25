@@ -17,6 +17,7 @@ import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData, ty
 import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
+import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../shared/utils/ticketAudienceLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
 import EventBookingWizard from "./EventBookingWizard";
 
@@ -374,7 +375,7 @@ export function SectionEventDetailView({
                     <TableCell>Title</TableCell>
                     <TableCell>Description</TableCell>
                     <TableCell>Price</TableCell>
-                    <TableCell>Audience</TableCell>
+                    <TableCell>{TICKET_CATEGORY_LABEL}</TableCell>
                     <TableCell>User group</TableCell>
                     <TableCell align="right">Purchase</TableCell>
                   </TableRow>
@@ -385,7 +386,7 @@ export function SectionEventDetailView({
                       <TableCell>{ticketType.title}</TableCell>
                       <TableCell>{ticketType.description ?? "-"}</TableCell>
                       <TableCell>{ticketType.price}</TableCell>
-                      <TableCell>{ticketType.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
+                      <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
                       <TableCell>{ticketType.userGroup?.name ?? "-"}</TableCell>
                       <TableCell align="right">
                         {hasCurrentUser && ticketType.audience === TicketAudience.MEMBER ? (
