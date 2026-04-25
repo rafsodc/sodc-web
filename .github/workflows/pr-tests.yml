@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build-checks:
-    name: TypeScript and build checks
+    name: Frontend and functions build checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,7 +36,7 @@ jobs:
         working-directory: functions
 
   frontend-tests:
-    name: Frontend targeted tests
+    name: Frontend full test suite
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -52,7 +52,7 @@ jobs:
         run: npm ci
 
       - name: Run frontend test suite
-        run: npm run test -- SectionEventsManager --run
+        run: npm run test:run
 
   functions-security-tests:
     name: Functions security tests
