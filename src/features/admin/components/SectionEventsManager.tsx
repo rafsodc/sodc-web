@@ -1,30 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import {
-  Box,
-  Alert,
-  CircularProgress,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Autocomplete,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Chip,
-} from "@mui/material";
-import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, ConfirmationNumber as TicketIcon } from "@mui/icons-material";
+import { Box } from "@mui/material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
@@ -53,44 +28,20 @@ import {
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
 import type {
-  GetEventByIdData,
-  ListEventBookingsForAdminData,
-  ListGuestTicketRequestsForAdminData,
-  ListTicketOrdersForAdminData,
-} from "@dataconnect/generated";
-import PageHeader from "../../../shared/components/PageHeader";
+  EventBookingAdminRow,
+  EventRow,
+  GuestTicketRequestWithBooking,
+  TicketOrderAdminRow,
+  TicketTypeRow,
+} from "./sectionEventsManagerTypes";
+import { fromDatetimeLocal, toDatetimeLocal } from "../utils/eventDatetime";
+import {
+  EventDialogSurface,
+  EventListSurface,
+  TicketAdminSurface,
+  TicketTypeDialogSurface,
+} from "./SectionEventsManagerSurfaces";
 import "../../../shared/components/PageContainer.css";
-
-interface EventRow {
-  id: string;
-  title: string;
-  location?: string | null;
-  guestOfHonour?: string | null;
-  startDateTime: string;
-  endDateTime: string;
-  bookingStartDateTime: string;
-  bookingEndDateTime: string;
-  maxGuestsWithoutModeratorApproval?: number | null;
-}
-
-type TicketTypeRow = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];
-type GuestTicketRequestAdminRow = NonNullable<
-  NonNullable<
-    NonNullable<ListGuestTicketRequestsForAdminData["event"]>["bookings"][number]["guestTicketRequests"][number]
-  >
->;
-type EventBookingAdminRow = NonNullable<NonNullable<ListEventBookingsForAdminData["event"]>["bookings"][number]>;
-type TicketOrderAdminRow = NonNullable<NonNullable<ListTicketOrdersForAdminData["event"]>["ticketOrders"][number]>;
-
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromDatetimeLocal(s: string): string {
-  return new Date(s).toISOString();
-}
 
 interface SectionEventsManagerProps {
   sectionId: string;
@@ -377,7 +328,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const events: EventRow[] = eventsData?.section?.events ?? [];
-  const guestRequests = useMemo(() => {
+  const guestRequests = useMemo<GuestTicketRequestWithBooking[]>(() => {
     const bookings = guestRequestsData?.event?.bookings ?? [];
     return bookings.flatMap((booking) =>
       (booking.guestTicketRequests ?? []).map((request) => ({
@@ -397,7 +348,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const ticketOrders: TicketOrderAdminRow[] = ticketOrdersData?.event?.ticketOrders ?? [];
 
   const handleReviewRequest = async (
-    request: GuestTicketRequestAdminRow & { bookingId: string },
+    request: GuestTicketRequestWithBooking,
     status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED
   ) => {
     setReviewingRequestId(request.id);
@@ -419,390 +370,103 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
   };
 
-  const requestStatusColor = (status: string): "warning" | "success" | "error" | "default" => {
-    if (status === "PENDING") return "warning";
-    if (status === "APPROVED") return "success";
-    if (status === "REJECTED") return "error";
-    return "default";
-  };
-
   if (ticketTypesEventId) {
     const event = events.find((e) => e.id === ticketTypesEventId);
     const ticketTypes = eventDetailData?.event?.ticketTypes ?? [];
     return (
       <Box className="page-container" sx={{ backgroundColor: "#fafafa", minHeight: "100vh" }}>
-        <PageHeader title={`Ticket types: ${event?.title ?? "Event"}`} onBack={() => setTicketTypesEventId(null)} />
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        <Button startIcon={<AddIcon />} variant="contained" onClick={() => openTicketTypeDialog()} sx={{ mb: 2 }}>
-          Add ticket type
-        </Button>
-        {loadingEventDetail ? (
-          <CircularProgress />
-        ) : (
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Price</TableCell>
-                  <TableCell>Audience</TableCell>
-                  <TableCell>Access group</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ticketTypes.map((tt) => (
-                  <TableRow key={tt.id}>
-                    <TableCell>{tt.title}</TableCell>
-                    <TableCell>{tt.description ?? "—"}</TableCell>
-                    <TableCell>{tt.price}</TableCell>
-                    <TableCell>{tt.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
-                    <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => openTicketTypeDialog(tt)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        disabled={deletingTicketTypeId === tt.id}
-                        onClick={() => handleDeleteTicketType(tt.id)}
-                      >
-                        {deletingTicketTypeId === tt.id ? <CircularProgress size={16} /> : <DeleteIcon />}
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <TicketAdminSurface
+          eventTitle={event?.title ?? "Event"}
+          error={error}
+          onDismissError={() => setError(null)}
+          onBack={() => setTicketTypesEventId(null)}
+          onAddTicketType={() => openTicketTypeDialog()}
+          loadingEventDetail={loadingEventDetail}
+          ticketTypes={ticketTypes}
+          deletingTicketTypeId={deletingTicketTypeId}
+          onEditTicketType={openTicketTypeDialog}
+          onDeleteTicketType={(id) => void handleDeleteTicketType(id)}
+          requestStatusFilter={requestStatusFilter}
+          onRequestStatusFilterChange={setRequestStatusFilter}
+          loadingGuestRequests={loadingGuestRequests}
+          guestRequests={filteredGuestRequests}
+          moderatorNoteDraft={moderatorNoteDraft}
+          onModeratorNoteChange={(requestId, value) =>
+            setModeratorNoteDraft((prev) => ({ ...prev, [requestId]: value }))
+          }
+          reviewingRequestId={reviewingRequestId}
+          onReviewRequest={(request, status) => void handleReviewRequest(request, status)}
+          loadingEventBookings={loadingEventBookings}
+          eventBookings={eventBookings}
+          loadingTicketOrders={loadingTicketOrders}
+          ticketOrders={ticketOrders}
+        />
 
-        <Box sx={{ mt: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-            <Box sx={{ fontWeight: 600 }}>Additional guest ticket requests</Box>
-            <FormControl size="small" sx={{ minWidth: 170 }}>
-              <InputLabel id="guest-request-filter-label">Status filter</InputLabel>
-              <Select
-                labelId="guest-request-filter-label"
-                label="Status filter"
-                value={requestStatusFilter}
-                onChange={(e) => setRequestStatusFilter(e.target.value as "ALL" | "PENDING" | "APPROVED" | "REJECTED")}
-              >
-                <MenuItem value="PENDING">Pending</MenuItem>
-                <MenuItem value="APPROVED">Approved</MenuItem>
-                <MenuItem value="REJECTED">Rejected</MenuItem>
-                <MenuItem value="ALL">All</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-          {loadingGuestRequests ? (
-            <CircularProgress size={22} />
-          ) : filteredGuestRequests.length === 0 ? (
-            <Alert severity="info">No guest ticket requests for this filter.</Alert>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Booker</TableCell>
-                    <TableCell>Guest</TableCell>
-                    <TableCell>Ticket</TableCell>
-                    <TableCell align="right">Qty</TableCell>
-                    <TableCell>Dietary</TableCell>
-                    <TableCell>Moderator note</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Reviewed</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredGuestRequests.map((req) => (
-                    <TableRow key={req.id}>
-                      <TableCell>
-                        <Chip size="small" label={req.status} color={requestStatusColor(req.status)} />
-                      </TableCell>
-                      <TableCell>
-                        {req.booker ? `${req.booker.firstName} ${req.booker.lastName}` : "—"}
-                      </TableCell>
-                      <TableCell>{req.guestDisplayName ?? "—"}</TableCell>
-                      <TableCell>{req.guestTicketType?.title ?? "—"}</TableCell>
-                      <TableCell align="right">{req.requestedGuestCount}</TableCell>
-                      <TableCell>{req.dietaryNote ?? "—"}</TableCell>
-                      <TableCell sx={{ minWidth: 240 }}>
-                        {req.status === "PENDING" ? (
-                          <TextField
-                            size="small"
-                            fullWidth
-                            placeholder="Optional note"
-                            value={moderatorNoteDraft[req.id] ?? ""}
-                            onChange={(e) =>
-                              setModeratorNoteDraft((prev) => ({ ...prev, [req.id]: e.target.value }))
-                            }
-                          />
-                        ) : (
-                          req.moderatorNote ?? "—"
-                        )}
-                      </TableCell>
-                      <TableCell>{new Date(req.createdAt).toLocaleString()}</TableCell>
-                      <TableCell>{req.reviewedAt ? new Date(req.reviewedAt).toLocaleString() : "—"}</TableCell>
-                      <TableCell align="right">
-                        {req.status === "PENDING" ? (
-                          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="success"
-                              disabled={reviewingRequestId === req.id}
-                              onClick={() => void handleReviewRequest(req, GuestTicketRequestStatus.APPROVED)}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              disabled={reviewingRequestId === req.id}
-                              onClick={() => void handleReviewRequest(req, GuestTicketRequestStatus.REJECTED)}
-                            >
-                              Reject
-                            </Button>
-                          </Box>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Box>
-
-        <Box sx={{ mt: 3 }}>
-          <Box sx={{ fontWeight: 600, mb: 1 }}>Booking audit activity</Box>
-          {loadingEventBookings ? (
-            <CircularProgress size={22} />
-          ) : eventBookings.length === 0 ? (
-            <Alert severity="info">No bookings found for this event.</Alert>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Booking</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Booker</TableCell>
-                    <TableCell align="right">Lines</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Created by</TableCell>
-                    <TableCell>Updated</TableCell>
-                    <TableCell>Updated by</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {eventBookings.map((booking) => (
-                    <TableRow key={booking.id}>
-                      <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{booking.id}</TableCell>
-                      <TableCell>
-                        <Chip size="small" label={booking.status} />
-                      </TableCell>
-                      <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
-                      <TableCell align="right">{booking.lines.length}</TableCell>
-                      <TableCell>{new Date(booking.createdAt).toLocaleString()}</TableCell>
-                      <TableCell>{booking.createdBy ?? "—"}</TableCell>
-                      <TableCell>{new Date(booking.updatedAt).toLocaleString()}</TableCell>
-                      <TableCell>{booking.updatedBy ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Box>
-
-        <Box sx={{ mt: 3 }}>
-          <Box sx={{ fontWeight: 600, mb: 1 }}>Payment status activity</Box>
-          {loadingTicketOrders ? (
-            <CircularProgress size={22} />
-          ) : ticketOrders.length === 0 ? (
-            <Alert severity="info">No payment orders found for this event.</Alert>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Purchaser</TableCell>
-                    <TableCell>Ticket</TableCell>
-                    <TableCell align="right">Qty</TableCell>
-                    <TableCell align="right">Amount</TableCell>
-                    <TableCell>Webhook Event ID</TableCell>
-                    <TableCell>Updated</TableCell>
-                    <TableCell>Updated by</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {ticketOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <Chip size="small" label={order.status} color={order.status === "PAID" ? "success" : "default"} />
-                      </TableCell>
-                      <TableCell>{order.user ? `${order.user.firstName} ${order.user.lastName}` : "—"}</TableCell>
-                      <TableCell>{order.ticketType?.title ?? "—"}</TableCell>
-                      <TableCell align="right">{order.quantity}</TableCell>
-                      <TableCell align="right">
-                        {(order.totalAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {order.webhookEventId ?? "—"}
-                      </TableCell>
-                      <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
-                      <TableCell>{order.updatedBy ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Box>
-
-        <Dialog open={ticketTypeDialogOpen} onClose={() => setTicketTypeDialogOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>{editingTicketType ? "Edit ticket type" : "Add ticket type"}</DialogTitle>
-          <DialogContent>
-            <TextField label="Title" fullWidth value={ttTitle} onChange={(e) => setTtTitle(e.target.value)} margin="dense" required />
-            <TextField label="Description" fullWidth value={ttDescription} onChange={(e) => setTtDescription(e.target.value)} margin="dense" multiline />
-            <TextField label="Price" type="number" fullWidth value={ttPrice} onChange={(e) => setTtPrice(e.target.value)} margin="dense" inputProps={{ min: 0, step: 0.01 }} />
-            <TextField label="Sort order" type="number" fullWidth value={ttSortOrder} onChange={(e) => setTtSortOrder(e.target.value)} margin="dense" />
-            <FormControl fullWidth margin="dense" sx={{ mt: 1 }}>
-              <InputLabel id="ticket-audience-label">Audience</InputLabel>
-              <Select
-                labelId="ticket-audience-label"
-                label="Audience"
-                value={ttAudience}
-                onChange={(e) => setTtAudience(e.target.value as TicketAudience)}
-              >
-                <MenuItem value={TicketAudience.MEMBER}>Member</MenuItem>
-                <MenuItem value={TicketAudience.GUEST}>Guest</MenuItem>
-              </Select>
-            </FormControl>
-            <Autocomplete
-              options={allUserGroups}
-              getOptionLabel={(o) => o.name}
-              value={ttAccessGroup}
-              onChange={(_, v) => setTtAccessGroup(v)}
-              loading={loadingUserGroups}
-              renderInput={(params) => <TextField {...params} label="Access group" required margin="dense" />}
-              sx={{ mt: 1 }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setTicketTypeDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleTicketTypeSubmit} disabled={submittingTicketType || !ttTitle.trim() || !ttAccessGroup}>
-              {submittingTicketType ? <CircularProgress size={20} /> : "Save"}
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <TicketTypeDialogSurface
+          open={ticketTypeDialogOpen}
+          editingTicketType={editingTicketType}
+          title={ttTitle}
+          description={ttDescription}
+          price={ttPrice}
+          sortOrder={ttSortOrder}
+          audience={ttAudience}
+          accessGroup={ttAccessGroup}
+          userGroups={allUserGroups}
+          loadingUserGroups={loadingUserGroups}
+          submitting={submittingTicketType}
+          onClose={() => setTicketTypeDialogOpen(false)}
+          onSubmit={handleTicketTypeSubmit}
+          onTitleChange={setTtTitle}
+          onDescriptionChange={setTtDescription}
+          onPriceChange={setTtPrice}
+          onSortOrderChange={setTtSortOrder}
+          onAudienceChange={setTtAudience}
+          onAccessGroupChange={setTtAccessGroup}
+        />
       </Box>
     );
   }
 
   return (
     <Box className="page-container" sx={{ backgroundColor: "#fafafa", minHeight: "100vh" }}>
-      <PageHeader title={`Events: ${sectionName}`} onBack={onBack} />
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      <Button startIcon={<AddIcon />} variant="contained" onClick={() => openEventDialog()} sx={{ mb: 2 }}>
-        Add event
-      </Button>
-      {loadingEvents ? (
-        <CircularProgress />
-      ) : errorEvents ? (
-        <Alert severity="error">Failed to load events.</Alert>
-      ) : events.length === 0 ? (
-        <Alert severity="info">No events yet. Add one to get started.</Alert>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Date / time</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Guest of honour</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {events.map((ev) => (
-                <TableRow key={ev.id}>
-                  <TableCell>{ev.title}</TableCell>
-                  <TableCell>
-                    {new Date(ev.startDateTime).toLocaleString()} – {new Date(ev.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </TableCell>
-                  <TableCell>{ev.location ?? "—"}</TableCell>
-                  <TableCell>{ev.guestOfHonour ?? "—"}</TableCell>
-                  <TableCell align="right">
-                    <Button size="small" startIcon={<TicketIcon />} onClick={() => setTicketTypesEventId(ev.id)}>
-                      Ticket types
-                    </Button>
-                    <IconButton size="small" onClick={() => openEventDialog(ev)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      disabled={deletingEventId === ev.id}
-                      onClick={() => handleDeleteEvent(ev)}
-                    >
-                      {deletingEventId === ev.id ? <CircularProgress size={16} /> : <DeleteIcon />}
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <EventListSurface
+        sectionName={sectionName}
+        onBack={onBack}
+        error={error}
+        onDismissError={() => setError(null)}
+        onAddEvent={() => openEventDialog()}
+        loadingEvents={loadingEvents}
+        errorEvents={errorEvents}
+        events={events}
+        deletingEventId={deletingEventId}
+        onManageTicketTypes={setTicketTypesEventId}
+        onEditEvent={openEventDialog}
+        onDeleteEvent={(event) => void handleDeleteEvent(event)}
+      />
 
-      <Dialog open={eventDialogOpen} onClose={() => setEventDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingEvent ? "Edit event" : "Add event"}</DialogTitle>
-        <DialogContent>
-          <TextField label="Title" fullWidth value={title} onChange={(e) => setTitle(e.target.value)} margin="dense" required />
-          <TextField label="Location" fullWidth value={location} onChange={(e) => setLocation(e.target.value)} margin="dense" />
-          <TextField label="Guest of honour" fullWidth value={guestOfHonour} onChange={(e) => setGuestOfHonour(e.target.value)} margin="dense" />
-          <TextField label="Start date/time" type="datetime-local" fullWidth value={startDateTime} onChange={(e) => setStartDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
-          <TextField label="End date/time" type="datetime-local" fullWidth value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
-          <TextField label="Booking window start" type="datetime-local" fullWidth value={bookingStartDateTime} onChange={(e) => setBookingStartDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
-          <TextField label="Booking window end" type="datetime-local" fullWidth value={bookingEndDateTime} onChange={(e) => setBookingEndDateTime(e.target.value)} margin="dense" InputLabelProps={{ shrink: true }} />
-          <TextField
-            label="Max guests without moderator approval"
-            type="number"
-            fullWidth
-            value={maxGuestsStr}
-            onChange={(e) => setMaxGuestsStr(e.target.value)}
-            margin="dense"
-            inputProps={{ min: 0 }}
-            helperText="Leave blank if unset. Total guest headcount allowed before extra approval."
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEventDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleEventSubmit} disabled={submitting || !title.trim()}>
-            {submitting ? <CircularProgress size={20} /> : "Save"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EventDialogSurface
+        open={eventDialogOpen}
+        editingEvent={editingEvent}
+        title={title}
+        location={location}
+        guestOfHonour={guestOfHonour}
+        startDateTime={startDateTime}
+        endDateTime={endDateTime}
+        bookingStartDateTime={bookingStartDateTime}
+        bookingEndDateTime={bookingEndDateTime}
+        maxGuestsStr={maxGuestsStr}
+        submitting={submitting}
+        onClose={() => setEventDialogOpen(false)}
+        onSubmit={handleEventSubmit}
+        onTitleChange={setTitle}
+        onLocationChange={setLocation}
+        onGuestOfHonourChange={setGuestOfHonour}
+        onStartDateTimeChange={setStartDateTime}
+        onEndDateTimeChange={setEndDateTime}
+        onBookingStartDateTimeChange={setBookingStartDateTime}
+        onBookingEndDateTimeChange={setBookingEndDateTime}
+        onMaxGuestsChange={setMaxGuestsStr}
+      />
     </Box>
   );
 }
