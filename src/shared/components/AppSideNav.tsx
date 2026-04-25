@@ -2,8 +2,8 @@ import { Box, Divider, Drawer, List, ListItemButton, ListItemText, Typography } 
 import { Link as RouterLink } from "react-router-dom";
 import { ROUTES } from "../../constants";
 import type { NavigationLink } from "../navigation/buildNavigationLinks";
+import { drawerWidth } from "./appSideNavConstants";
 
-const drawerWidth = 280;
 const headerHeight = 64;
 
 interface AppSideNavProps {
@@ -234,5 +234,3 @@ export default function AppSideNav({
     </>
   );
 }
-
-export { drawerWidth };

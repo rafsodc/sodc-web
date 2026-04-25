@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Alert,
@@ -43,15 +43,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchAllUsers();
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [tabValue]);
-
-  const fetchAllUsers = async () => {
+  const fetchAllUsers = useCallback(async () => {
     try {
       const ref = listUsersRef(dataConnect);
       const result = await executeQuery(ref);
@@ -59,9 +51,9 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
     } catch (err: any) {
       console.error("Failed to fetch users for audit log lookup:", err);
     }
-  };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -83,7 +75,15 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tabValue]);
+
+  useEffect(() => {
+    void fetchAllUsers();
+  }, [fetchAllUsers]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   // Create lookup map for user IDs to display names
   const getUserDisplayName = (userId: string | null | undefined): string => {

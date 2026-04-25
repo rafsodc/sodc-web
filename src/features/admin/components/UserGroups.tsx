@@ -255,7 +255,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
                   membershipStatus: userResult.data.user.membershipStatus,
                 };
               }
-            } catch (err) {
+            } catch (_err) {
               // If we can't fetch user data, use display name from search
               const nameParts = user.displayName?.split(", ") || [];
               return {

@@ -35,7 +35,7 @@ export function useUserData(firebaseUser: User | null) {
         authErrorRef.current = true;
         return;
       }
-    } catch (err) {
+    } catch (_err) {
       // If we can't check the token, don't proceed
       setUserData(null);
       hasFetchedRef.current = firebaseUser.uid;
@@ -88,7 +88,7 @@ export function useUserData(firebaseUser: User | null) {
               hasFetchedRef.current = firebaseUser.uid;
               return;
             }
-          } catch (retryErr) {
+          } catch (_retryErr) {
             // If retry also fails, it's a real auth error (likely user doesn't have enabled claim)
             // Don't set error state, just set userData to null
             setUserData(null);

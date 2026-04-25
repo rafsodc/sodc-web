@@ -105,7 +105,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         setIsCivilServant(false);
         setIsIndustry(false);
       }
-    } catch (err) {
+    } catch (_err) {
       // Fallback if getUserById fails
       const parsed = parseDisplayName(userToLoad.displayName);
       setFirstName(parsed.firstName);
