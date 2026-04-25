@@ -1,4 +1,7 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Autocomplete,
   Box,
@@ -23,7 +26,13 @@ import {
   TableRow,
   TextField,
 } from "@mui/material";
-import { Add as AddIcon, ConfirmationNumber as TicketIcon, Delete as DeleteIcon, Edit as EditIcon } from "@mui/icons-material";
+import type { ReactNode } from "react";
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  ExpandMore as ExpandMoreIcon,
+} from "@mui/icons-material";
 import { GuestTicketRequestStatus, TicketAudience } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import type {
@@ -45,8 +54,7 @@ interface EventListSurfaceProps {
   errorEvents: boolean;
   events: EventRow[];
   deletingEventId: string | null;
-  onManageTicketTypes: (eventId: string) => void;
-  onEditEvent: (event: EventRow) => void;
+  onManageEventAdmin: (eventId: string) => void;
   onDeleteEvent: (event: EventRow) => void;
 }
 
@@ -60,8 +68,7 @@ export function EventListSurface({
   errorEvents,
   events,
   deletingEventId,
-  onManageTicketTypes,
-  onEditEvent,
+  onManageEventAdmin,
   onDeleteEvent,
 }: EventListSurfaceProps) {
   return (
@@ -82,8 +89,7 @@ export function EventListSurface({
       ) : events.length === 0 ? (
         <Alert severity="info">No events yet. Add one to get started.</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
+        <AdminTable>
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
@@ -104,12 +110,14 @@ export function EventListSurface({
                   <TableCell>{event.location ?? "—"}</TableCell>
                   <TableCell>{event.guestOfHonour ?? "—"}</TableCell>
                   <TableCell align="right">
-                    <Button size="small" startIcon={<TicketIcon />} onClick={() => onManageTicketTypes(event.id)}>
-                      Ticket types
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => onManageEventAdmin(event.id)}
+                      sx={{ mr: 1 }}
+                    >
+                      Event admin
                     </Button>
-                    <IconButton size="small" onClick={() => onEditEvent(event)}>
-                      <EditIcon />
-                    </IconButton>
                     <IconButton
                       size="small"
                       color="error"
@@ -122,8 +130,7 @@ export function EventListSurface({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </TableContainer>
+        </AdminTable>
       )}
     </>
   );
@@ -247,10 +254,12 @@ export function EventDialogSurface({
 }
 
 interface TicketAdminSurfaceProps {
+  event: EventRow | null;
   eventTitle: string;
   error: string | null;
   onDismissError: () => void;
   onBack: () => void;
+  onEditEvent: (event: EventRow) => void;
   onAddTicketType: () => void;
   loadingEventDetail: boolean;
   ticketTypes: TicketTypeRow[];
@@ -275,10 +284,12 @@ interface TicketAdminSurfaceProps {
 }
 
 export function TicketAdminSurface({
+  event,
   eventTitle,
   error,
   onDismissError,
   onBack,
+  onEditEvent,
   onAddTicketType,
   loadingEventDetail,
   ticketTypes,
@@ -300,35 +311,229 @@ export function TicketAdminSurface({
 }: TicketAdminSurfaceProps) {
   return (
     <>
-      <PageHeader title={`Ticket types: ${eventTitle}`} onBack={onBack} />
+      <PageHeader title={`Event admin: ${eventTitle}`} onBack={onBack} />
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={onDismissError}>
           {error}
         </Alert>
       )}
-      <Button startIcon={<AddIcon />} variant="contained" onClick={onAddTicketType} sx={{ mb: 2 }}>
-        Add ticket type
-      </Button>
-      <TicketTypesTable
-        loading={loadingEventDetail}
-        ticketTypes={ticketTypes}
-        deletingTicketTypeId={deletingTicketTypeId}
-        onEdit={onEditTicketType}
-        onDelete={onDeleteTicketType}
-      />
-      <GuestTicketRequestsSection
-        filter={requestStatusFilter}
-        onFilterChange={onRequestStatusFilterChange}
-        loading={loadingGuestRequests}
-        requests={guestRequests}
-        moderatorNoteDraft={moderatorNoteDraft}
-        onModeratorNoteChange={onModeratorNoteChange}
-        reviewingRequestId={reviewingRequestId}
-        onReview={onReviewRequest}
-      />
-      <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
-      <PaymentActivitySection loading={loadingTicketOrders} ticketOrders={ticketOrders} />
+      <AdminAccordion title="Event details">
+        <EventDetailsSection event={event} loading={loadingEventDetail} onEditEvent={onEditEvent} />
+      </AdminAccordion>
+      <AdminAccordion title="Ticket types">
+        <Button startIcon={<AddIcon />} variant="contained" onClick={onAddTicketType} sx={{ mb: 2 }}>
+          Add ticket type
+        </Button>
+        <TicketTypesTable
+          loading={loadingEventDetail}
+          ticketTypes={ticketTypes}
+          deletingTicketTypeId={deletingTicketTypeId}
+          onEdit={onEditTicketType}
+          onDelete={onDeleteTicketType}
+        />
+      </AdminAccordion>
+      <AdminAccordion title="Guest ticket requests">
+        <GuestTicketRequestsSection
+          filter={requestStatusFilter}
+          onFilterChange={onRequestStatusFilterChange}
+          loading={loadingGuestRequests}
+          requests={guestRequests}
+          moderatorNoteDraft={moderatorNoteDraft}
+          onModeratorNoteChange={onModeratorNoteChange}
+          reviewingRequestId={reviewingRequestId}
+          onReview={onReviewRequest}
+        />
+      </AdminAccordion>
+      <AdminAccordion title="Booking audit activity">
+        <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
+      </AdminAccordion>
+      <AdminAccordion title="Payment status activity">
+        <PaymentActivitySection loading={loadingTicketOrders} ticketOrders={ticketOrders} />
+      </AdminAccordion>
     </>
+  );
+}
+
+function AdminAccordion({
+  title,
+  defaultExpanded = false,
+  children,
+}: {
+  title: string;
+  defaultExpanded?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Accordion
+      defaultExpanded={defaultExpanded}
+      disableGutters
+      sx={{
+        mb: 2,
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: "12px !important",
+        boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
+        overflow: "hidden",
+        "&:before": {
+          display: "none",
+        },
+        "&:focus, &:focus-visible, &:focus-within": {
+          outline: "none",
+          boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
+        },
+      }}
+    >
+      <AccordionSummary
+        disableRipple
+        expandIcon={<ExpandMoreIcon />}
+        sx={{
+          bgcolor: "background.paper",
+          minHeight: 58,
+          px: 2.5,
+          transition: "background-color 150ms ease",
+          outline: "none",
+          boxShadow: "none",
+          "&:hover": {
+            bgcolor: "grey.50",
+          },
+          "&:focus, &:focus-visible, &:active": {
+            outline: "none",
+            boxShadow: "none",
+          },
+          "&.Mui-focusVisible": {
+            bgcolor: "background.paper",
+            outline: "none",
+            boxShadow: "none",
+          },
+          "& .MuiTouchRipple-root": {
+            display: "none",
+          },
+          "&.Mui-expanded": {
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            minHeight: 58,
+          },
+          "& .MuiAccordionSummary-content": {
+            alignItems: "center",
+            my: 1.5,
+          },
+          "& .MuiAccordionSummary-expandIconWrapper": {
+            color: "text.secondary",
+          },
+        }}
+      >
+        <Box sx={{ fontWeight: 700, color: "text.primary", letterSpacing: "0.01em" }}>{title}</Box>
+      </AccordionSummary>
+      <AccordionDetails sx={{ bgcolor: "grey.50", p: 2.5 }}>{children}</AccordionDetails>
+    </Accordion>
+  );
+}
+
+function AdminTable({ children, minWidth = 650 }: { children: ReactNode; minWidth?: number }) {
+  return (
+    <TableContainer
+      component={Paper}
+      variant="outlined"
+      sx={{
+        borderColor: "divider",
+        borderRadius: 2,
+        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+        overflow: "hidden",
+      }}
+    >
+      <Table
+        size="small"
+        sx={{
+          minWidth,
+          "& .MuiTableCell-head": {
+            bgcolor: "grey.50",
+            color: "text.secondary",
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          },
+          "& .MuiTableCell-body": {
+            borderBottomColor: "divider",
+            py: 1.25,
+          },
+          "& .MuiTableBody-root .MuiTableRow-root:hover": {
+            bgcolor: "action.hover",
+          },
+          "& .MuiTableRow-root:last-of-type .MuiTableCell-body": {
+            borderBottom: 0,
+          },
+        }}
+      >
+        {children}
+      </Table>
+    </TableContainer>
+  );
+}
+
+function EventDetailsSection({
+  event,
+  loading,
+  onEditEvent,
+}: {
+  event: EventRow | null;
+  loading: boolean;
+  onEditEvent: (event: EventRow) => void;
+}) {
+  if (loading && !event) {
+    return <CircularProgress size={22} />;
+  }
+
+  if (!event) {
+    return <Alert severity="info">Event details are not available.</Alert>;
+  }
+
+  return (
+    <Box>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button size="small" startIcon={<EditIcon />} variant="outlined" onClick={() => onEditEvent(event)}>
+          Edit event details
+        </Button>
+      </Box>
+      <AdminTable minWidth={360}>
+          <TableBody>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600, width: 220 }}>Title</TableCell>
+              <TableCell>{event.title}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Date / time</TableCell>
+              <TableCell>
+                {new Date(event.startDateTime).toLocaleString()} –{" "}
+                {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Location</TableCell>
+              <TableCell>{event.location ?? "—"}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Guest of honour</TableCell>
+              <TableCell>{event.guestOfHonour ?? "—"}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Booking window</TableCell>
+              <TableCell>
+                {new Date(event.bookingStartDateTime).toLocaleString()} –{" "}
+                {new Date(event.bookingEndDateTime).toLocaleString()}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Max guests without moderator approval</TableCell>
+              <TableCell>
+                {event.maxGuestsWithoutModeratorApproval != null
+                  ? String(event.maxGuestsWithoutModeratorApproval)
+                  : "—"}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+      </AdminTable>
+    </Box>
   );
 }
 
@@ -350,8 +555,7 @@ function TicketTypesTable({
   }
 
   return (
-    <TableContainer component={Paper}>
-      <Table size="small">
+    <AdminTable>
         <TableHead>
           <TableRow>
             <TableCell>Title</TableCell>
@@ -369,7 +573,13 @@ function TicketTypesTable({
               <TableCell>{ticketType.description ?? "—"}</TableCell>
               <TableCell>{ticketType.price}</TableCell>
               <TableCell>{ticketType.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
-              <TableCell>{ticketType.userGroup?.name ?? "—"}</TableCell>
+              <TableCell>
+                {ticketType.userGroup ? (
+                  <Chip label={ticketType.userGroup.name} size="small" variant="outlined" color="primary" />
+                ) : (
+                  "—"
+                )}
+              </TableCell>
               <TableCell align="right">
                 <IconButton size="small" onClick={() => onEdit(ticketType)}>
                   <EditIcon />
@@ -386,8 +596,7 @@ function TicketTypesTable({
             </TableRow>
           ))}
         </TableBody>
-      </Table>
-    </TableContainer>
+    </AdminTable>
   );
 }
 
@@ -437,8 +646,7 @@ function GuestTicketRequestsSection({
       ) : requests.length === 0 ? (
         <Alert severity="info">No guest ticket requests for this filter.</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
+        <AdminTable>
             <TableHead>
               <TableRow>
                 <TableCell>Status</TableCell>
@@ -510,8 +718,7 @@ function GuestTicketRequestsSection({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </TableContainer>
+        </AdminTable>
       )}
     </Box>
   );
@@ -519,15 +726,13 @@ function GuestTicketRequestsSection({
 
 function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings: EventBookingAdminRow[] }) {
   return (
-    <Box sx={{ mt: 3 }}>
-      <Box sx={{ fontWeight: 600, mb: 1 }}>Booking audit activity</Box>
+    <Box>
       {loading ? (
         <CircularProgress size={22} />
       ) : bookings.length === 0 ? (
         <Alert severity="info">No bookings found for this event.</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
+        <AdminTable>
             <TableHead>
               <TableRow>
                 <TableCell>Booking</TableCell>
@@ -556,8 +761,7 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </TableContainer>
+        </AdminTable>
       )}
     </Box>
   );
@@ -565,15 +769,13 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
 
 function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; ticketOrders: TicketOrderAdminRow[] }) {
   return (
-    <Box sx={{ mt: 3 }}>
-      <Box sx={{ fontWeight: 600, mb: 1 }}>Payment status activity</Box>
+    <Box>
       {loading ? (
         <CircularProgress size={22} />
       ) : ticketOrders.length === 0 ? (
         <Alert severity="info">No payment orders found for this event.</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
+        <AdminTable>
             <TableHead>
               <TableRow>
                 <TableCell>Status</TableCell>
@@ -606,8 +808,7 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </TableContainer>
+        </AdminTable>
       )}
     </Box>
   );
