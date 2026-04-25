@@ -1,37 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
-  Typography,
   Alert,
-  CircularProgress,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Tooltip,
 } from "@mui/material";
-import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  ExpandMore as ExpandMoreIcon,
-  PersonAdd as PersonAddIcon,
-  PersonRemove as PersonRemoveIcon,
-} from "@mui/icons-material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
@@ -44,41 +15,32 @@ import {
   addUserToUserGroupRef,
   removeUserFromUserGroupRef,
   getUserWithAccessGroupsRef,
-  type GetUserGroupByIdData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
-import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
-import {
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  ListItemText,
-  OutlinedInput,
-  Autocomplete,
-} from "@mui/material";
 import { searchUsers } from "../../users/utils/searchUsers";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import { useLocation } from "react-router-dom";
 import "../../../shared/components/PageContainer.css";
+import {
+  AddUserToGroupDialogSurface,
+  UserDetailDialogSurface,
+  UserGroupDialogSurface,
+  UserGroupsListSurface,
+} from "./UserGroupsSurfaces";
+import type {
+  MergedUser,
+  SectionWithPurpose,
+  UserGroupDetails,
+  UserGroupWithDetails,
+  UserSearchResult,
+  UserSummary,
+} from "./userGroupsTypes";
 
 interface UserGroupsProps {
   onBack: () => void;
-}
-
-interface UserGroupWithDetails {
-  id: string;
-  name: string;
-  description?: string | null;
-  membershipStatuses?: MembershipStatus[] | null;
-  createdAt: string;
-  updatedAt: string;
-  userCount?: number;
-  sectionCount?: number;
 }
 
 interface UserGroupsLocationState {
@@ -92,7 +54,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
-  const [groupDetails, setGroupDetails] = useState<Record<string, NonNullable<GetUserGroupByIdData["userGroup"]>>>({});
+  const [groupDetails, setGroupDetails] = useState<Record<string, UserGroupDetails>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
   
   // Create/Edit dialog state
@@ -107,15 +69,15 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [addingToGroupId, setAddingToGroupId] = useState<string | null>(null);
   const [userSearchTerm, setUserSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus }>>([]);
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   // All users: for merged group membership (explicit + by membership status)
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus }>>([]);
+  const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
   const [loadingAllUsers, setLoadingAllUsers] = useState(false);
 
-  const [selectedUserDetail, setSelectedUserDetail] = useState<{ id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus } | null>(null);
+  const [selectedUserDetail, setSelectedUserDetail] = useState<UserSummary | null>(null);
 
   const fetchUserGroupsList = useCallback(async () => {
     setLoading(true);
@@ -230,6 +192,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     }
   };
 
+  const handleCloseAddUserDialog = () => {
+    setAddUserDialogOpen(false);
+    setAddingToGroupId(null);
+    setUserSearchTerm("");
+    setSearchResults([]);
+  };
+
+  const handleAddUserSearchTermChange = (value: string) => {
+    setUserSearchTerm(value);
+    handleSearchUsers(value);
+  };
+
   const handleSearchUsers = useCallback(async (term: string) => {
     if (!term.trim() || term.length < 2) {
       setSearchResults([]);
@@ -255,7 +229,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
                   membershipStatus: userResult.data.user.membershipStatus,
                 };
               }
-            } catch (err) {
+            } catch (_err) {
               // If we can't fetch user data, use display name from search
               const nameParts = user.displayName?.split(", ") || [];
               return {
@@ -418,10 +392,6 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const details = expandedGroupId ? groupDetails[expandedGroupId] : null;
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
-  type SectionWithPurpose = {
-    section: { id: string; name: string; type: string; description?: string | null };
-    purpose: string;
-  };
   const sectionsForGroup: SectionWithPurpose[] = details
     ? (details.purposeLinks ?? []).map((item) => ({
         section: item.section,
@@ -430,7 +400,6 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     : [];
 
   // Merged users: explicit (UserUserGroup) + users whose membershipStatus is in group's membershipStatuses
-  type MergedUser = { id: string; firstName: string; lastName: string; email: string; membershipStatus: MembershipStatus; isExplicit: boolean };
   const mergedUsersForGroup: MergedUser[] = details
     ? (() => {
         const explicitIds = new Set((details.users ?? []).map((u) => u.user.id));
@@ -478,499 +447,54 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <PageHeader title="User Groups" onBack={onBack} />
-      
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-          Manage user groups that control section visibility. Groups can include individual users and/or membership statuses (automatically includes all users with those statuses).
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          sx={{ ml: 2 }}
-        >
-          Create User Group
-        </Button>
-      </Box>
+      <UserGroupsListSurface
+        onBack={onBack}
+        error={error}
+        onDismissError={() => setError(null)}
+        loading={loading}
+        userGroups={userGroups}
+        expandedGroupId={expandedGroupId}
+        isLoadingDetails={isLoadingDetails}
+        detailsLoaded={Boolean(details)}
+        mergedUsersForGroup={mergedUsersForGroup}
+        sectionsForGroup={sectionsForGroup}
+        onCreate={handleCreate}
+        onExpand={handleExpand}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onAddUser={handleAddUser}
+        onRemoveUser={handleRemoveUserFromGroup}
+      />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      <UserGroupDialogSurface
+        open={dialogOpen}
+        editingGroup={editingGroup}
+        groupName={groupName}
+        groupDescription={groupDescription}
+        selectedStatuses={selectedStatuses}
+        submitting={submitting}
+        loadingAllUsers={loadingAllUsers}
+        allUsers={allUsers}
+        onClose={() => setDialogOpen(false)}
+        onSubmit={handleSubmit}
+        onGroupNameChange={setGroupName}
+        onGroupDescriptionChange={setGroupDescription}
+        onSelectedStatusesChange={setSelectedStatuses}
+      />
 
-      {loading ? (
-        <Box className="loading-container">
-          <CircularProgress />
-        </Box>
-      ) : userGroups.length === 0 ? (
-        <Alert severity="info">No user groups found.</Alert>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Membership Statuses</TableCell>
-                <TableCell>Users</TableCell>
-                <TableCell>Sections</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {userGroups.map((group) => (
-                <React.Fragment key={group.id}>
-                  <TableRow>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {group.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {group.description || "-"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {group.membershipStatuses && group.membershipStatuses.length > 0 ? (
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                          {group.membershipStatuses.map((status) => {
-                            const statusOption = MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === status);
-                            return (
-                              <Chip
-                                key={status}
-                                label={statusOption?.label || status}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
-                            );
-                          })}
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          None
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {expandedGroupId === group.id && details ? (
-                        <Typography variant="body2">
-                          {mergedUsersForGroup.length}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Click to view
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {expandedGroupId === group.id && details ? (
-                        <Typography variant="body2">
-                          {sectionsForGroup.length}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Click to view
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleExpand(group)}
-                        disabled={isLoadingDetails}
-                      >
-                        <ExpandMoreIcon
-                          sx={{
-                            transform: expandedGroupId === group.id ? "rotate(180deg)" : "rotate(0deg)",
-                            transition: "transform 0.2s",
-                          }}
-                        />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(group)}
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(group)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                  {expandedGroupId === group.id && (
-                    <TableRow>
-                      <TableCell colSpan={6} sx={{ py: 0 }}>
-                        {isLoadingDetails ? (
-                          <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
-                            <CircularProgress size={24} />
-                          </Box>
-                        ) : details ? (
-                          <Box sx={{ p: 2 }}>
-                            <Accordion defaultExpanded>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", mr: 2 }}>
-                                  <Typography variant="subtitle2">
-                                    Users ({mergedUsersForGroup.length})
-                                  </Typography>
-                                  <Button
-                                    size="small"
-                                    startIcon={<PersonAddIcon />}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAddUser(group.id);
-                                    }}
-                                    variant="outlined"
-                                  >
-                                    Add User
-                                  </Button>
-                                </Box>
-                              </AccordionSummary>
-                              <AccordionDetails>
-                                {mergedUsersForGroup.length > 0 ? (
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell>Name</TableCell>
-                                        <TableCell>Email</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell align="right">Actions</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {mergedUsersForGroup.map((user) => {
-                                        const isStatusBased = !user.isExplicit;
-                                        return (
-                                          <TableRow key={user.id}>
-                                            <TableCell>
-                                              {user.firstName} {user.lastName}
-                                            </TableCell>
-                                            <TableCell>{user.email}</TableCell>
-                                            <TableCell>
-                                              <Chip
-                                                label={user.membershipStatus}
-                                                size="small"
-                                                variant="outlined"
-                                              />
-                                            </TableCell>
-                                            <TableCell align="right">
-                                              {isStatusBased ? (
-                                                <Tooltip title="User is automatically included via membership status">
-                                                  <Chip label="Auto" size="small" color="primary" variant="outlined" />
-                                                </Tooltip>
-                                              ) : (
-                                                <IconButton
-                                                  size="small"
-                                                  onClick={() => handleRemoveUserFromGroup(user.id, group.id)}
-                                                  color="error"
-                                                >
-                                                  <PersonRemoveIcon />
-                                                </IconButton>
-                                              )}
-                                            </TableCell>
-                                          </TableRow>
-                                        );
-                                      })}
-                                    </TableBody>
-                                  </Table>
-                                ) : (
-                                  <Box>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                      No users assigned to this group.
-                                    </Typography>
-                                    <Button
-                                      size="small"
-                                      startIcon={<PersonAddIcon />}
-                                      onClick={() => handleAddUser(group.id)}
-                                      variant="outlined"
-                                    >
-                                      Add User
-                                    </Button>
-                                  </Box>
-                                )}
-                              </AccordionDetails>
-                            </Accordion>
-                            <Accordion defaultExpanded>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="subtitle2">
-                                  Sections ({sectionsForGroup.length})
-                                </Typography>
-                              </AccordionSummary>
-                              <AccordionDetails>
-                                {sectionsForGroup.length > 0 ? (
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell>Name</TableCell>
-                                        <TableCell>Purpose</TableCell>
-                                        <TableCell>Type</TableCell>
-                                        <TableCell>Description</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {sectionsForGroup.map((item, index) => (
-                                        <TableRow key={`${item.section.id}-${item.purpose}-${index}`}>
-                                          <TableCell>{item.section.name}</TableCell>
-                                          <TableCell>
-                                            <Chip
-                                              label={item.purpose}
-                                              size="small"
-                                              variant="outlined"
-                                              color={
-                                                item.purpose === "ACCESS"
-                                                  ? "primary"
-                                                  : item.purpose === "MEMBER"
-                                                    ? "secondary"
-                                                    : "default"
-                                              }
-                                            />
-                                          </TableCell>
-                                          <TableCell>
-                                            <Chip
-                                              label={item.section.type}
-                                              size="small"
-                                              variant="outlined"
-                                            />
-                                          </TableCell>
-                                          <TableCell>
-                                            {item.section.description || "-"}
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    No sections assigned to this group.
-                                  </Typography>
-                                )}
-                              </AccordionDetails>
-                            </Accordion>
-                          </Box>
-                        ) : (
-                          <Alert severity="error">Failed to load group details</Alert>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <AddUserToGroupDialogSurface
+        open={addUserDialogOpen}
+        searchResults={searchResults}
+        searchingUsers={searchingUsers}
+        userSearchTerm={userSearchTerm}
+        addingUserId={addingUserId}
+        mergedUserIdsForAddDialog={mergedUserIdsForAddDialog}
+        onClose={handleCloseAddUserDialog}
+        onSearchTermChange={handleAddUserSearchTermChange}
+        onSelectUser={handleAddUserToGroup}
+      />
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingGroup ? "Edit User Group" : "Create User Group"}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Group Name"
-            fullWidth
-            variant="outlined"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            inputProps={{ maxLength: MAX_NAME_LENGTH }}
-            helperText={`${groupName.length}/${MAX_NAME_LENGTH} characters`}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Description"
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={3}
-            value={groupDescription}
-            onChange={(e) => setGroupDescription(e.target.value)}
-            inputProps={{ maxLength: MAX_DESCRIPTION_LENGTH }}
-            helperText={`${groupDescription.length}/${MAX_DESCRIPTION_LENGTH} characters`}
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Membership Statuses (Optional)</InputLabel>
-            <Select
-              multiple
-              value={selectedStatuses}
-              onChange={(e) => setSelectedStatuses(e.target.value as MembershipStatus[])}
-              input={<OutlinedInput label="Membership Statuses (Optional)" />}
-              renderValue={(selected) => {
-                if (selected.length === 0) return "None";
-                return selected
-                  .map((status) => {
-                    const option = MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === status);
-                    return option?.label || status;
-                  })
-                  .join(", ");
-              }}
-            >
-              {MEMBERSHIP_STATUS_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  <Checkbox checked={selectedStatuses.indexOf(option.value) > -1} />
-                  <ListItemText primary={option.label} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-            Select membership statuses to automatically include all users with those statuses in this group.
-            You can also manually add individual users to groups.
-          </Typography>
-          {selectedStatuses.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              {loadingAllUsers ? (
-                <Typography variant="caption" color="text.secondary">Loading users…</Typography>
-              ) : (
-                <>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                    Users with selected statuses:{" "}
-                    {allUsers.filter((u) => selectedStatuses.includes(u.membershipStatus)).length}
-                  </Typography>
-                  <Box sx={{ maxHeight: 120, overflow: "auto" }}>
-                    {allUsers
-                      .filter((u) => selectedStatuses.includes(u.membershipStatus))
-                      .slice(0, 20)
-                      .map((u) => (
-                        <Typography key={u.id} variant="caption" component="div" color="text.secondary">
-                          {u.firstName} {u.lastName} ({u.email})
-                        </Typography>
-                      ))}
-                    {allUsers.filter((u) => selectedStatuses.includes(u.membershipStatus)).length > 20 && (
-                      <Typography variant="caption" color="text.secondary">
-                        … and {allUsers.filter((u) => selectedStatuses.includes(u.membershipStatus)).length - 20} more
-                      </Typography>
-                    )}
-                  </Box>
-                </>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={submitting || !groupName.trim()}>
-            {submitting ? <CircularProgress size={20} /> : editingGroup ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add User Dialog */}
-      <Dialog open={addUserDialogOpen} onClose={() => setAddUserDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add User to User Group</DialogTitle>
-        <DialogContent>
-          <Autocomplete
-            options={searchResults}
-            getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
-            loading={searchingUsers}
-            inputValue={userSearchTerm}
-            onInputChange={(_, value) => {
-              setUserSearchTerm(value);
-              handleSearchUsers(value);
-            }}
-            onChange={(_, selectedUser) => {
-              if (selectedUser) {
-                handleAddUserToGroup(selectedUser.id);
-              }
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search Users"
-                placeholder="Type to search by name or email (min 2 characters)..."
-                margin="dense"
-                fullWidth
-                variant="outlined"
-              />
-            )}
-            renderOption={(props, option) => {
-              const isAlreadyInGroup = mergedUserIdsForAddDialog.has(option.id);
-              return (
-                <Box
-                  component="li"
-                  {...props}
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    opacity: isAlreadyInGroup ? 0.5 : 1,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="body2">
-                      {option.firstName} {option.lastName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {option.email}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                    {isAlreadyInGroup && (
-                      <Chip label="Already in group" size="small" color="info" />
-                    )}
-                    <Chip
-                      label={option.membershipStatus}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Box>
-                </Box>
-              );
-            }}
-            filterOptions={(x) => x} // We're handling filtering server-side
-            sx={{ mt: 1 }}
-            disabled={addingUserId !== null}
-            getOptionDisabled={(option) => mergedUserIdsForAddDialog.has(option.id)}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
-            Search for users by name or email. Note: Restricted users (PENDING, RESIGNED, LOST, DECEASED) cannot log in but can be added to user groups to preserve memberships.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setAddUserDialogOpen(false);
-            setAddingToGroupId(null);
-            setUserSearchTerm("");
-            setSearchResults([]);
-          }} disabled={addingUserId !== null}>
-            Cancel
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* User detail (from "Users by membership status" click) */}
-      <Dialog open={!!selectedUserDetail} onClose={() => setSelectedUserDetail(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>User</DialogTitle>
-        <DialogContent>
-          {selectedUserDetail && (
-            <Box sx={{ pt: 0.5 }}>
-              <Typography variant="body2">
-                <strong>{selectedUserDetail.firstName} {selectedUserDetail.lastName}</strong>
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedUserDetail.email}
-              </Typography>
-              <Chip label={selectedUserDetail.membershipStatus} size="small" variant="outlined" sx={{ mt: 1 }} />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedUserDetail(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+      <UserDetailDialogSurface user={selectedUserDetail} onClose={() => setSelectedUserDetail(null)} />
     </Box>
   );
 }

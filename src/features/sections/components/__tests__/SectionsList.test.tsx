@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '../../../../test-utils';
 import SectionsList from '../SectionsList';
 import * as reactGenerated from '@dataconnect/generated/react';
+import {
+  dataConnectQueryResult,
+  type DataConnectQueryResultOverrides,
+} from '../../../../test-utils/dataConnectMocks';
 
 // Mock the DataConnect hooks
 vi.mock('@dataconnect/generated/react', () => ({
@@ -25,6 +29,18 @@ vi.mock('../../../users/hooks/useAdminClaim', () => ({
   useAdminClaim: vi.fn(() => false),
 }));
 
+function mockGetSectionsForUser(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetSectionsForUser>(overrides)
+  );
+}
+
+function mockListSections(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListSections).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListSections>(overrides)
+  );
+}
+
 describe('SectionsList', () => {
   const mockOnBack = vi.fn();
   const mockOnSelectSection = vi.fn();
@@ -36,19 +52,17 @@ describe('SectionsList', () => {
   });
 
   it('should render loading state', () => {
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+    mockGetSectionsForUser({
       data: undefined,
       isLoading: true,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
@@ -57,19 +71,17 @@ describe('SectionsList', () => {
   });
 
   it('should render error state', () => {
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+    mockGetSectionsForUser({
       data: undefined,
       isLoading: false,
       isError: true,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
@@ -103,19 +115,17 @@ describe('SectionsList', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
-      data: mockSectionsData as any,
+    mockGetSectionsForUser({
+      data: mockSectionsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
@@ -153,19 +163,17 @@ describe('SectionsList', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
-      data: mockSectionsData as any,
+    mockGetSectionsForUser({
+      data: mockSectionsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
@@ -209,19 +217,17 @@ describe('SectionsList', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
-      data: mockSectionsData as any,
+    mockGetSectionsForUser({
+      data: mockSectionsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
@@ -235,7 +241,7 @@ describe('SectionsList', () => {
     const useAdminClaimModule = await import('../../../users/hooks/useAdminClaim');
     vi.mocked(useAdminClaimModule.useAdminClaim).mockReturnValue(true);
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: {
         sections: [
           {
@@ -245,11 +251,10 @@ describe('SectionsList', () => {
             description: 'Admin description',
           },
         ],
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
@@ -293,19 +298,17 @@ describe('SectionsList', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
-      data: mockSectionsData as any,
+    mockGetSectionsForUser({
+      data: mockSectionsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
@@ -349,19 +352,17 @@ describe('SectionsList', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
-      data: mockSectionsData as any,
+    mockGetSectionsForUser({
+      data: mockSectionsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
@@ -404,19 +405,17 @@ describe('SectionsList', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
-      data: mockSectionsData as any,
+    mockGetSectionsForUser({
+      data: mockSectionsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
@@ -434,24 +433,22 @@ describe('SectionsList', () => {
   });
 
   it('should show empty state when no sections available', async () => {
-    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+    mockGetSectionsForUser({
       data: {
         user: {
           id: 'user-1',
           userGroups: [],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
     
-    vi.mocked(reactGenerated.useListSections).mockReturnValue({
+    mockListSections({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 

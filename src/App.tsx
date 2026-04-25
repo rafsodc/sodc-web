@@ -1,9 +1,7 @@
-import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense, type ReactElement } from "react";
+import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
-import { onAuthStateChanged, reload, type User } from "firebase/auth";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { queryRef, executeQuery } from "firebase/data-connect";
-import { auth, dataConnect } from "./config/firebase";
+import { dataConnect } from "./config/firebase";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
@@ -18,6 +16,15 @@ import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
 import { useGetSectionsForUser } from "@dataconnect/generated/react";
+import {
+  navigateBackOr as navigateBackOrHelper,
+  selectedAdminSectionId as getSelectedAdminSectionId,
+  selectedAdminUserGroupId as getSelectedAdminUserGroupId,
+} from "./shared/appShell/appRoutingHelpers";
+import { useAppAuthSession } from "./shared/appShell/useAppAuthSession";
+import { useCheckoutQueryState } from "./shared/appShell/useCheckoutQueryState";
+import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
+import { useUnenabledProfileCheck } from "./shared/appShell/useUnenabledProfileCheck";
 
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
@@ -49,11 +56,7 @@ function SectionDetailRoute() {
   }
 
   const handleBack = () => {
-    if (window.history.state?.idx > 0 || location.key !== "default") {
-      navigate(-1);
-      return;
-    }
-    navigate(ROUTES.SECTIONS, { replace: true });
+    navigateBackOrHelper(ROUTES.SECTIONS, location, navigate);
   };
 
   return <SectionDetail sectionId={sectionId} onBack={handleBack} />;
@@ -62,73 +65,31 @@ function SectionDetailRoute() {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false);
-  const [emailCheckTrigger, setEmailCheckTrigger] = useState(0);
-  const [logoutSuccess, setLogoutSuccess] = useState(false);
-  const [checkoutQueryState, setCheckoutQueryState] = useState<{
-    checkout: "success" | "cancel";
-    orderId: string | null;
-  } | null>(null);
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator === "undefined" ? true : navigator.onLine
-  );
+  const handleLoggedOut = useCallback(() => {
+    navigate(ROUTES.ACCOUNT);
+  }, [navigate]);
+  const {
+    user,
+    authInitialized,
+    logoutSuccess,
+    setLogoutSuccess,
+    triggerEmailCheck,
+  } = useAppAuthSession(handleLoggedOut);
+  const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
+  const isOnline = useOnlineStatus();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
+  const {
+    membershipStatusForUnenabled,
+    needsProfileCompletion,
+  } = useUnenabledProfileCheck(
+    user,
+    userData,
+    isEnabled
+  );
   const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const checkout = params.get("checkout");
-    if (checkout !== "success" && checkout !== "cancel") {
-      return;
-    }
-    setCheckoutQueryState({
-      checkout,
-      orderId: params.get("orderId"),
-    });
-  }, [location.search]);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      const wasLoggedIn = user !== null;
-      const isNowLoggedOut = u === null;
-      
-      setUser(u);
-      setAuthInitialized(true);
-      
-      if (wasLoggedIn && isNowLoggedOut) {
-        navigate(ROUTES.ACCOUNT);
-        setEmailCheckTrigger(0);
-        setLogoutSuccess(true);
-      }
-    });
-    return () => unsub();
-  }, [navigate, user]);
-
-  // Re-check email verification when triggered
-  useEffect(() => {
-    if (user && emailCheckTrigger > 0) {
-      reload(user).then(() => {
-        // The onAuthStateChanged listener will update the user state
-      }).catch(() => {
-        // Silently fail
-      });
-    }
-  }, [emailCheckTrigger, user]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -144,69 +105,6 @@ function AppContent() {
   // Check if email is verified
   const emailNotVerified = user && !user.emailVerified;
 
-  // Check if user needs to complete profile
-  // We need to check if profile exists even if user doesn't have enabled claim
-  const [profileExists, setProfileExists] = useState<boolean | null>(null);
-  const [membershipStatusForUnenabled, setMembershipStatusForUnenabled] = useState<string | null>(null);
-  const checkingProfileRef = useRef(false);
-  const hasCheckedRef = useRef<string | null>(null); // Track which user we've checked
-
-  // Check if profile exists for users without enabled claim
-  useEffect(() => {
-    // If user has enabled claim, userData will be available, so no need to check
-    if (isEnabled || !user || !user.emailVerified) {
-      if (userData !== null) {
-        setProfileExists(true);
-      } else {
-        setProfileExists(null);
-      }
-      hasCheckedRef.current = null; // Reset when conditions change
-      setMembershipStatusForUnenabled(null);
-      return;
-    }
-
-    // If userData exists, profile definitely exists
-    if (userData !== null) {
-      setProfileExists(true);
-      setMembershipStatusForUnenabled(null); // Clear unenabled status since we have userData
-      hasCheckedRef.current = user.uid;
-      return;
-    }
-
-    // Only check if we haven't checked for this user yet and aren't currently checking
-    if (hasCheckedRef.current !== user.uid && !checkingProfileRef.current) {
-      checkingProfileRef.current = true;
-      const ref = queryRef(dataConnect, "CheckUserProfileExists", {});
-      executeQuery(ref)
-        .then((result) => {
-          const profileData = (result.data as { user?: { membershipStatus?: string } | null })?.user;
-          setProfileExists(profileData !== null && profileData !== undefined);
-          // Store membership status for unenabled users so we can show appropriate message
-          if (profileData?.membershipStatus) {
-            setMembershipStatusForUnenabled(profileData.membershipStatus);
-          } else {
-            setMembershipStatusForUnenabled(null);
-          }
-          hasCheckedRef.current = user.uid; // Mark as checked for this user
-        })
-        .catch(() => {
-          // If query fails, assume profile doesn't exist
-          setProfileExists(false);
-          setMembershipStatusForUnenabled(null);
-          hasCheckedRef.current = user.uid; // Mark as checked even on error
-        })
-        .finally(() => {
-          checkingProfileRef.current = false;
-        });
-    }
-  }, [user, userData, isEnabled]);
-
-  // Check if user needs to complete profile (email verified but no profile data)
-  // Only show profile completion if we've confirmed the profile doesn't exist
-  // Wait for profile check to complete (profileExists !== null) before deciding
-  const needsProfileCompletion = user && user.emailVerified && !isEnabled && 
-    profileExists === false && !checkingProfileRef.current;
-
   const navigationLinks = useMemo(
     () => buildNavigationLinks({ isEnabled, isAdmin, sectionsData: userSectionsData }),
     [isAdmin, isEnabled, userSectionsData]
@@ -220,13 +118,9 @@ function AppContent() {
     [isAdmin, isEnabled, navigate, user]
   );
   const selectedAdminSectionId =
-    location.pathname === ROUTES.MANAGE_SECTIONS
-      ? ((location.state as { managedSection?: { id?: string } } | null)?.managedSection?.id ?? null)
-      : null;
+    getSelectedAdminSectionId(location.pathname, ROUTES.MANAGE_SECTIONS, location.state);
   const selectedAdminUserGroupId =
-    location.pathname === ROUTES.USER_GROUPS
-      ? ((location.state as { expandedGroupId?: string } | null)?.expandedGroupId ?? null)
-      : null;
+    getSelectedAdminUserGroupId(location.pathname, ROUTES.USER_GROUPS, location.state);
 
   const header = (
     <Header
@@ -281,7 +175,7 @@ function AppContent() {
             <Suspense fallback={<LoadingFallback />}>
               <EmailVerificationMessage
                 user={user}
-                onVerified={async () => setEmailCheckTrigger((prev) => prev + 1)}
+                onVerified={async () => triggerEmailCheck()}
                 onBack={() => navigate(ROUTES.HOME)}
               />
             </Suspense>
@@ -362,21 +256,8 @@ function AppContent() {
     setLogoutSuccess(false);
   };
 
-  const handleDismissCheckoutStatus = () => {
-    const params = new URLSearchParams(location.search);
-    params.delete("checkout");
-    params.delete("orderId");
-    const search = params.toString();
-    navigate(`${location.pathname}${search ? `?${search}` : ""}${location.hash}`, { replace: true });
-    setCheckoutQueryState(null);
-  };
-
   const navigateBackOr = (fallbackRoute: string) => {
-    if (window.history.state?.idx > 0 || location.key !== "default") {
-      navigate(-1);
-      return;
-    }
-    navigate(fallbackRoute, { replace: true });
+    navigateBackOrHelper(fallbackRoute, location, navigate);
   };
 
   const renderAdminOnly = (title: string, element: ReactElement) => {
@@ -470,7 +351,7 @@ function AppContent() {
                   <CheckoutStatusNotice
                     checkoutState={checkoutQueryState.checkout}
                     orderId={checkoutQueryState.orderId}
-                    onDismiss={handleDismissCheckoutStatus}
+                    onDismiss={dismissCheckoutStatus}
                   />
                 </Box>
               )}

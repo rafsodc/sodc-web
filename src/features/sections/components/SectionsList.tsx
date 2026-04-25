@@ -58,20 +58,8 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
     refetch: refetchAllSections,
   } = useListSections(dataConnect, { enabled: isAdmin });
 
-  // Log errors and data for debugging
+  // Surface query errors without logging successful query state on every render.
   useEffect(() => {
-    console.log('SectionsList Debug:', {
-      isAdmin,
-      loadingUserSections,
-      loadingAllSections,
-      errorUserSections,
-      errorAllSections,
-      userSectionsData,
-      allSectionsData,
-      userSectionsError,
-      allSectionsError,
-    });
-    
     if (userSectionsError) {
       console.error('GetSectionsForUser error:', userSectionsError);
       setErrorMessage(userSectionsError instanceof Error ? userSectionsError.message : 'Failed to load sections');
@@ -80,7 +68,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
       console.error('ListSections error:', allSectionsError);
       setErrorMessage(allSectionsError instanceof Error ? allSectionsError.message : 'Failed to load sections');
     }
-  }, [isAdmin, loadingUserSections, loadingAllSections, errorUserSections, errorAllSections, userSectionsData, allSectionsData, userSectionsError, allSectionsError]);
+  }, [userSectionsError, allSectionsError]);
 
   // Extract sections from query results
   const sections = useMemo(() => {

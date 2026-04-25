@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "../../../../test-utils";
+import { act, render, screen } from "../../../../test-utils";
 import CheckoutStatusNotice from "../CheckoutStatusNotice";
 import * as dcReact from "@dataconnect/generated/react";
 
@@ -88,7 +88,9 @@ describe("CheckoutStatusNotice", () => {
     );
 
     expect(screen.getByText(/payment processing/i)).toBeInTheDocument();
-    vi.advanceTimersByTime(2500);
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
     expect(refetch).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });

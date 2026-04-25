@@ -5,6 +5,10 @@ import SectionDetail from '../SectionDetail';
 import * as reactGenerated from '@dataconnect/generated/react';
 import { createMockUser } from '../../../../test-utils/mocks/firebase';
 import { getSectionMembersMerged } from '../../../../shared/utils/firebaseFunctions';
+import {
+  dataConnectQueryResult,
+  type DataConnectQueryResultOverrides,
+} from '../../../../test-utils/dataConnectMocks';
 
 // Mock the DataConnect hooks (SectionDetail uses getSectionMembersMerged callable, not useGetSectionMembers)
 vi.mock('@dataconnect/generated/react', () => ({
@@ -19,6 +23,10 @@ vi.mock('@dataconnect/generated/react', () => ({
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
   getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
   submitEventBooking: vi.fn(),
+}));
+
+vi.mock('../../../users/hooks/useAdminClaim', () => ({
+  useAdminClaim: vi.fn(() => false),
 }));
 
 vi.mock('firebase/data-connect', () => ({
@@ -47,10 +55,46 @@ vi.mock('@dataconnect/generated', async () => {
   const actual = await vi.importActual('@dataconnect/generated');
   return {
     ...actual,
-    subscribeToUserGroupRef: vi.fn((dc: any, vars: any) => ({ type: 'mutation', dc, vars })),
-    unsubscribeFromUserGroupRef: vi.fn((dc: any, vars: any) => ({ type: 'mutation', dc, vars })),
+    subscribeToUserGroupRef: vi.fn((dc: unknown, vars: unknown) => ({ type: 'mutation', dc, vars })),
+    unsubscribeFromUserGroupRef: vi.fn((dc: unknown, vars: unknown) => ({ type: 'mutation', dc, vars })),
   };
 });
+
+function mockGetSectionById(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetSectionById).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetSectionById>(overrides)
+  );
+}
+
+function mockGetUserAccessGroups(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetUserAccessGroups>(overrides)
+  );
+}
+
+function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetEventsForSection>(overrides)
+  );
+}
+
+function mockGetEventById(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetEventById).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetEventById>(overrides)
+  );
+}
+
+function mockGetCurrentUser(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetCurrentUser).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetCurrentUser>(overrides)
+  );
+}
+
+function mockGetMyBookingsForEvent(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetMyBookingsForEvent>(overrides)
+  );
+}
 
 describe('SectionDetail', () => {
   const mockOnBack = vi.fn();
@@ -65,44 +109,43 @@ describe('SectionDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
-      data: { section: { id: sectionId, events: [] } } as any,
+    vi.mocked(getSectionMembersMerged).mockResolvedValue({ members: [] });
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+    });
+    mockGetEventById({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useGetCurrentUser).mockReturnValue({
-      data: { user: { membershipStatus: 'REGULAR' } } as any,
+    });
+    mockGetCurrentUser({
+      data: { user: { membershipStatus: 'REGULAR' } },
       isLoading: false,
       isError: false,
-    } as any);
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: { user: { bookings: [] } } as any,
+    });
+    mockGetMyBookingsForEvent({
+      data: { user: { bookings: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
   });
 
   it('should render loading state', () => {
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
+    vi.mocked(getSectionMembersMerged).mockReturnValue(new Promise(() => undefined));
+
+    mockGetSectionById({
       data: undefined,
       isLoading: true,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: undefined,
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -111,18 +154,17 @@ describe('SectionDetail', () => {
   });
 
   it('should render error state', async () => {
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
+    mockGetSectionById({
       data: undefined,
       isLoading: false,
       isError: true,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: undefined,
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -153,23 +195,22 @@ describe('SectionDetail', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: {
         user: {
           id: 'user-1',
           userGroups: [],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -208,23 +249,22 @@ describe('SectionDetail', () => {
       ],
     });
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: {
         user: {
           id: 'user-1',
           userGroups: [],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -267,14 +307,13 @@ describe('SectionDetail', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: {
         user: {
           id: 'user-1',
@@ -282,10 +321,10 @@ describe('SectionDetail', () => {
             { userGroup: { id: 'view-group-1' } },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -321,14 +360,13 @@ describe('SectionDetail', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: {
         user: {
           id: 'user-1',
@@ -337,10 +375,10 @@ describe('SectionDetail', () => {
             { userGroup: { id: 'member-group-1' } },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -366,23 +404,22 @@ describe('SectionDetail', () => {
       ],
     });
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: {
         user: {
           id: 'user-1',
           userGroups: [],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
@@ -411,30 +448,28 @@ describe('SectionDetail', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+    mockGetUserAccessGroups({
       data: {
         user: {
           id: 'user-1',
           userGroups: [],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
-      data: { section: { id: sectionId, events: [] } } as any,
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -497,32 +532,29 @@ describe('SectionDetail', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
-      data: { user: { id: 'user-1', userGroups: [] } } as any,
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
-      data: mockEventsData as any,
+    mockGetEventsForSection({
+      data: mockEventsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
-      data: mockEventDetailData as any,
+    mockGetEventById({
+      data: mockEventDetailData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     renderSectionDetail();
 
@@ -577,32 +609,29 @@ describe('SectionDetail', () => {
       },
     };
 
-    vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
-      data: mockSectionData as any,
+    mockGetSectionById({
+      data: mockSectionData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
-      data: { user: { id: 'user-1', userGroups: [] } } as any,
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
       isLoading: false,
       isError: false,
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
-      data: mockEventsData as any,
+    mockGetEventsForSection({
+      data: mockEventsData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
-    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
-      data: mockEventDetailData as any,
+    mockGetEventById({
+      data: mockEventDetailData,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     renderSectionDetail();
 

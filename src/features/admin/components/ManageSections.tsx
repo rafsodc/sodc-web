@@ -1,40 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
-  Typography,
   Alert,
-  CircularProgress,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Autocomplete,
-  Divider,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormLabel,
 } from "@mui/material";
-import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-} from "@mui/icons-material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
@@ -51,56 +19,21 @@ import {
   type ListUserGroupsData,
 } from "@dataconnect/generated";
 import SectionEventsManager from "./SectionEventsManager";
-import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "../../../constants";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import { useLocation } from "react-router-dom";
 import "../../../shared/components/PageContainer.css";
-
-const SECTION_PURPOSE_ORDER: SectionUserGroupPurpose[] = [
-  SectionUserGroupPurpose.ACCESS,
-  SectionUserGroupPurpose.MEMBER,
-  SectionUserGroupPurpose.BOOKER,
-  SectionUserGroupPurpose.MESSAGE,
-  SectionUserGroupPurpose.MODERATOR,
-];
-
-const SECTION_PURPOSE_HELP: Record<SectionUserGroupPurpose, { title: string; body: string }> = {
-  [SectionUserGroupPurpose.ACCESS]: {
-    title: "ACCESS",
-    body: "Who can open this section in the app. Users must belong to at least one linked group (or match a status-based group) to see the section.",
-  },
-  [SectionUserGroupPurpose.MEMBER]: {
-    title: "MEMBER",
-    body: "Who counts as a member for this section: member list, and which groups users can self-subscribe into when the group is subscribable.",
-  },
-  [SectionUserGroupPurpose.BOOKER]: {
-    title: "BOOKER",
-    body: "EVENTS sections only. Which groups may book tickets when an event is open for booking. Users still need ACCESS (or MODERATOR), the right ticket type, and a booking window. If no group is given BOOKER for this section, no one can book.",
-  },
-  [SectionUserGroupPurpose.MESSAGE]: {
-    title: "MESSAGE",
-    body: "Reserved for future messaging or announcements tied to this section.",
-  },
-  [SectionUserGroupPurpose.MODERATOR]: {
-    title: "MODERATOR",
-    body: "Elevated access for this section. Counts like ACCESS for seeing the section, plus moderator-style capabilities as the app defines them.",
-  },
-};
+import {
+  AddSectionUserGroupDialogSurface,
+  ManageSectionsListSurface,
+  SectionEditorDialogSurface,
+} from "./ManageSectionsSurfaces";
+import type { SectionUserGroupRow, SectionWithDetails } from "./manageSectionsTypes";
 
 interface ManageSectionsProps {
   onBack: () => void;
-}
-
-interface SectionWithDetails {
-  id: string;
-  name: string;
-  type: SectionType;
-  description?: string | null;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface ManageSectionsLocationState {
@@ -129,16 +62,15 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const [submitting, setSubmitting] = useState(false);
   
   // User groups state
-  const [sectionUserGroups, setSectionUserGroups] = useState<Array<{
-    id: string;
-    name: string;
-    description?: string | null;
-    purpose: SectionUserGroupPurpose;
-  }>>([]);
+  const [sectionUserGroups, setSectionUserGroups] = useState<SectionUserGroupRow[]>([]);
   const [allUserGroups, setAllUserGroups] = useState<ListUserGroupsData["userGroups"]>([]);
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [addUserGroupDialogOpen, setAddUserGroupDialogOpen] = useState(false);
-  const [selectedUserGroup, setSelectedUserGroup] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUserGroup, setSelectedUserGroup] = useState<{
+    id: string;
+    name: string;
+    description?: string | null;
+  } | null>(null);
   const [selectedPurpose, setSelectedPurpose] = useState<SectionUserGroupPurpose>(SectionUserGroupPurpose.ACCESS);
   const [addingUserGroup, setAddingUserGroup] = useState(false);
   const [removingUserGroupId, setRemovingUserGroupId] = useState<string | null>(null);
@@ -215,12 +147,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       const section = result.data?.section;
       
       if (section?.purposeLinks?.length) {
-        const rows: Array<{
-          id: string;
-          name: string;
-          description?: string | null;
-          purpose: SectionUserGroupPurpose;
-        }> = [];
+        const rows: SectionUserGroupRow[] = [];
         section.purposeLinks.forEach((link) => {
           if (link.userGroup) {
             rows.push({
@@ -256,7 +183,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setDialogOpen(true);
   };
 
-  const handleEdit = async (section: SectionWithDetails) => {
+  const handleEdit = useCallback(async (section: SectionWithDetails) => {
     setEditingSection(section);
     setSectionName(section.name);
     setSectionType(section.type);
@@ -264,7 +191,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setDialogOpen(true);
     // Fetch user groups when editing
     await fetchSectionUserGroups(section.id);
-  };
+  }, [fetchSectionUserGroups]);
 
   useEffect(() => {
     const editSectionId = initialEditSectionIdRef.current;
@@ -394,6 +321,28 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       )
   );
 
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setAddUserGroupDialogOpen(false);
+    setSectionUserGroups([]);
+  };
+
+  const handleManageEvents = (section: SectionWithDetails) => {
+    setManagedSectionId(section.id);
+    setManagedSectionName(section.name);
+  };
+
+  const handleOpenAddUserGroup = () => {
+    setSelectedUserGroup(null);
+    setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
+    setAddUserGroupDialogOpen(true);
+  };
+
+  const handlePurposeChange = (purpose: SectionUserGroupPurpose) => {
+    setSelectedPurpose(purpose);
+    setSelectedUserGroup(null);
+  };
+
   if (managedSectionId && managedSectionName) {
     return (
       <SectionEventsManager
@@ -423,343 +372,48 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <PageHeader title="Manage Sections" onBack={onBack} />
-      
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-          Manage sections that organize content and control access. Sections can be MEMBERS (user lists) or EVENTS (event listings).
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          sx={{ ml: 2 }}
-        >
-          Create Section
-        </Button>
-      </Box>
+      <ManageSectionsListSurface
+        onBack={onBack}
+        error={error}
+        onDismissError={() => setError(null)}
+        loading={loading}
+        sections={sections}
+        onCreate={handleCreate}
+        onManageEvents={handleManageEvents}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      <SectionEditorDialogSurface
+        open={dialogOpen}
+        editingSection={editingSection}
+        sectionName={sectionName}
+        sectionType={sectionType}
+        sectionDescription={sectionDescription}
+        submitting={submitting}
+        loadingUserGroups={loadingUserGroups}
+        sectionUserGroups={sectionUserGroups}
+        removingUserGroupId={removingUserGroupId}
+        onClose={handleDialogClose}
+        onSubmit={handleSubmit}
+        onSectionNameChange={setSectionName}
+        onSectionTypeChange={setSectionType}
+        onSectionDescriptionChange={setSectionDescription}
+        onOpenAddUserGroup={handleOpenAddUserGroup}
+        onRemoveUserGroup={handleRemoveUserGroup}
+      />
 
-      {loading ? (
-        <Box className="loading-container">
-          <CircularProgress />
-        </Box>
-      ) : sections.length === 0 ? (
-        <Alert severity="info">No sections found.</Alert>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sections.map((section) => (
-                <TableRow key={section.id}>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {section.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={section.type}
-                      size="small"
-                      color={section.type === "MEMBERS" ? "primary" : "secondary"}
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {section.description || "-"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    {section.type === "EVENTS" && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => {
-                          setManagedSectionId(section.id);
-                          setManagedSectionName(section.name);
-                        }}
-                        sx={{ mr: 1 }}
-                      >
-                        Manage events
-                      </Button>
-                    )}
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(section)}
-                      color="primary"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(section)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-
-      {/* Create/Edit Dialog */}
-      <Dialog 
-        open={dialogOpen} 
-        onClose={() => {
-          setDialogOpen(false);
-          setAddUserGroupDialogOpen(false);
-          setSectionUserGroups([]);
-        }} 
-        maxWidth="md" 
-        fullWidth
-      >
-        <DialogTitle>
-          {editingSection ? "Edit Section" : "Create Section"}
-        </DialogTitle>
-        <DialogContent sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Section Name"
-            fullWidth
-            variant="outlined"
-            value={sectionName}
-            onChange={(e) => setSectionName(e.target.value)}
-            inputProps={{ maxLength: MAX_NAME_LENGTH }}
-            helperText={`${sectionName.length}/${MAX_NAME_LENGTH} characters`}
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth margin="dense" sx={{ mb: 2 }}>
-            <InputLabel>Section Type</InputLabel>
-            <Select
-              value={sectionType}
-              onChange={(e) => setSectionType(e.target.value as SectionType)}
-              label="Section Type"
-              disabled={!!editingSection} // Read-only when editing
-            >
-              <MenuItem value="MEMBERS">MEMBERS</MenuItem>
-              <MenuItem value="EVENTS">EVENTS</MenuItem>
-            </Select>
-            {editingSection && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                Section type cannot be changed after creation.
-              </Typography>
-            )}
-          </FormControl>
-          <TextField
-            margin="dense"
-            label="Description"
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={3}
-            value={sectionDescription}
-            onChange={(e) => setSectionDescription(e.target.value)}
-            inputProps={{ maxLength: MAX_DESCRIPTION_LENGTH }}
-            helperText={`${sectionDescription.length}/${MAX_DESCRIPTION_LENGTH} characters`}
-            sx={{ mb: 2 }}
-          />
-          
-          {/* User Groups Section - Only show when editing */}
-          {editingSection && (
-            <>
-              <Divider sx={{ my: 3 }} />
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                User Groups
-              </Typography>
-              
-              {loadingUserGroups ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : sectionUserGroups.length === 0 ? (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  No user groups assigned to this section.
-                </Alert>
-              ) : (
-                <TableContainer component={Paper} sx={{ mb: 2 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Group Name</TableCell>
-                        <TableCell>Purpose</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {sectionUserGroups.map((group) => (
-                        <TableRow key={`${group.id}-${group.purpose}`}>
-                          <TableCell>
-                            <Typography variant="body2">{group.name}</Typography>
-                            {group.description && (
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                {group.description}
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={group.purpose}
-                              size="small"
-                              color={
-                                group.purpose === SectionUserGroupPurpose.ACCESS
-                                  ? "primary"
-                                  : group.purpose === SectionUserGroupPurpose.MEMBER
-                                    ? "secondary"
-                                    : "default"
-                              }
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleRemoveUserGroup(group.id, group.purpose)}
-                              color="error"
-                              disabled={removingUserGroupId === `${group.id}-${group.purpose}`}
-                            >
-                              {removingUserGroupId === `${group.id}-${group.purpose}` ? (
-                                <CircularProgress size={16} />
-                              ) : (
-                                <DeleteIcon />
-                              )}
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-              
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  setSelectedUserGroup(null);
-                  setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
-                  setAddUserGroupDialogOpen(true);
-                }}
-                disabled={loadingUserGroups}
-                sx={{ mb: 2 }}
-              >
-                Add User Group
-              </Button>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={submitting || !sectionName.trim()}>
-            {submitting ? <CircularProgress size={20} /> : editingSection ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add User Group Dialog */}
-      <Dialog open={addUserGroupDialogOpen} onClose={() => setAddUserGroupDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add User Group to Section</DialogTitle>
-        <DialogContent>
-          <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
-            <FormLabel component="legend">Purpose</FormLabel>
-            <RadioGroup
-              value={selectedPurpose}
-              onChange={(e) => {
-                setSelectedPurpose(e.target.value as SectionUserGroupPurpose);
-                setSelectedUserGroup(null);
-              }}
-            >
-              {SECTION_PURPOSE_ORDER.map((p) => (
-                <FormControlLabel
-                  key={p}
-                  value={p}
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body2" component="span" fontWeight={600}>
-                        {SECTION_PURPOSE_HELP[p].title}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {SECTION_PURPOSE_HELP[p].body}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
-
-          {availableUserGroups.length === 0 ? (
-            <Alert severity="info" sx={{ mt: 1 }}>
-              All available user groups have been assigned for the selected purpose.
-            </Alert>
-          ) : (
-            <Autocomplete
-              options={availableUserGroups}
-              getOptionLabel={(option) => option.name}
-              value={selectedUserGroup}
-              onChange={(_, newValue) => setSelectedUserGroup(newValue ? { id: newValue.id, name: newValue.name } : null)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Select User Group"
-                  placeholder="Choose a user group..."
-                  margin="dense"
-                  fullWidth
-                  variant="outlined"
-                />
-              )}
-              renderOption={(props, option) => {
-                const group = option as { id: string; name: string; description?: string | null };
-                return (
-                  <Box component="li" {...props}>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="body2">{group.name}</Typography>
-                      {group.description && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {group.description}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                );
-              }}
-              disabled={addingUserGroup}
-              sx={{ mt: 1 }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddUserGroupDialogOpen(false)} disabled={addingUserGroup}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAddUserGroup}
-            variant="contained"
-            disabled={addingUserGroup || !selectedUserGroup}
-          >
-            {addingUserGroup ? <CircularProgress size={20} /> : "Add"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AddSectionUserGroupDialogSurface
+        open={addUserGroupDialogOpen}
+        selectedPurpose={selectedPurpose}
+        selectedUserGroup={selectedUserGroup}
+        availableUserGroups={availableUserGroups}
+        addingUserGroup={addingUserGroup}
+        onClose={() => setAddUserGroupDialogOpen(false)}
+        onAdd={handleAddUserGroup}
+        onPurposeChange={handlePurposeChange}
+        onUserGroupChange={setSelectedUserGroup}
+      />
     </Box>
   );
 }
