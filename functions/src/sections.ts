@@ -18,10 +18,6 @@ export interface SectionMemberResponse {
   membershipStatus: string;
 }
 
-function purposeGrantsSectionAccess(purpose: string): boolean {
-  return purpose === "ACCESS" || purpose === "MODERATOR";
-}
-
 function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
   if (link.purpose) return link.purpose === target;
   return link.purposes?.includes(target) ?? false;
