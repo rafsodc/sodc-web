@@ -1,18 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
-  Typography,
   Alert,
   CircularProgress,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
   Snackbar,
 } from "@mui/material";
 import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
@@ -20,25 +11,27 @@ import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
-import SearchBar from "../../../shared/components/SearchBar";
-import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import {
   getMemberGroups,
   canUserSubscribe,
   isUserMember,
   isMembersSection,
 } from "../utils/sectionHelpers";
-import EventBookingWizard from "./EventBookingWizard";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
-import { ROUTES } from "../../../constants";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate } from "react-router-dom";
 import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
-import type { GetSectionByIdData, UUIDString } from "@dataconnect/generated";
-import { TicketAudience } from "@dataconnect/generated";
+import type { UUIDString } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
+import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
+import {
+  SectionEventDetailView,
+  SectionEventsListView,
+  SectionInformationView,
+  SectionMembersView,
+} from "./SectionDetailViews";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -338,316 +331,68 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   const section = sectionData.section;
   const isMembers = isMembersSection(section as any);
+  const hasSubscribableMemberGroup = memberGroups.some((group) => group.subscribable === true);
+  const eventRows = eventsData?.section?.events ?? [];
   const sectionAdminAction = {
     visible: Boolean(currentUser && (isAdmin || canModerateSection)),
     onClick: () => {
-      if (isMembers) {
-        navigate(ROUTES.MANAGE_SECTIONS, {
-          state: { editSectionId: section.id },
-        });
-        return;
-      }
-
-      navigate(ROUTES.MANAGE_SECTIONS, {
-        state: {
-          managedSection: {
-            id: section.id,
-            name: section.name,
-          },
-          eventId: selectedEventId ?? undefined,
-        },
-      });
+      const destination = getSectionAdminDestination(section, isMembers, selectedEventId);
+      navigate(destination.to, { state: destination.state });
     },
   };
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <PageHeader title={section.name} onBack={onBack} adminAction={sectionAdminAction} />
-      
-      <Box sx={{ mt: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          Section Information
-        </Typography>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
-          <Chip
-            label={section.type}
-            size="small"
-            color={section.type === "MEMBERS" ? "primary" : "secondary"}
-          />
-          {section.description && (
-            <Typography variant="body2" color="text.secondary">
-              {section.description}
-            </Typography>
-          )}
-        </Box>
-        
-        {/* Subscribe/Unsubscribe button */}
-        {isMembers && currentUser && (
-          <Box sx={{ mt: 2 }}>
-            {canSubscribe && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                sx={{ backgroundColor: colors.callToAction }}
-              >
-                {subscribing ? "Subscribing..." : "Subscribe"}
-              </Button>
-            )}
-            {userIsMember && memberGroups.some((g) => g.subscribable === true) && (
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleUnsubscribe}
-                disabled={subscribing}
-                sx={{ ml: 2 }}
-              >
-                {subscribing ? "Unsubscribing..." : "Unsubscribe"}
-              </Button>
-            )}
-          </Box>
-        )}
-      </Box>
+
+      <SectionInformationView
+        section={section}
+        isMembers={isMembers}
+        hasCurrentUser={Boolean(currentUser)}
+        canSubscribe={canSubscribe}
+        userIsMember={userIsMember}
+        hasSubscribableMemberGroup={hasSubscribableMemberGroup}
+        subscribing={subscribing}
+        onSubscribe={handleSubscribe}
+        onUnsubscribe={handleUnsubscribe}
+      />
 
       {isMembers ? (
-        <>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Members ({allMembers.length})
-          </Typography>
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            onRefresh={() => refetchSection()}
-            loading={loadingSection}
-            label="Search members"
-            placeholder="Search by name or email..."
-          />
-          {filteredMembers.length === 0 ? (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              {searchTerm ? "No members match your search." : "No members in this section."}
-            </Alert>
-          ) : (
-            <>
-              <Typography variant="body2" sx={{ mt: 2, mb: 2, color: colors.titleSecondary }}>
-                Showing {paginatedMembers.length} of {filteredMembers.length} {searchTerm ? "filtered " : ""}members
-                {totalPages > 1 && ` (page ${page} of ${totalPages})`}
-              </Typography>
-              <TableContainer component={Paper} sx={{ mt: 2 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Membership Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedMembers.map((member) => (
-                      <TableRow key={member.userId}>
-                        <TableCell>
-                          <Typography variant="body1">
-                            {member.firstName} {member.lastName}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="text.secondary">
-                            {member.email}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={member.membershipStatus} size="small" />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <PaginationDisplay
-                page={page}
-                totalPages={totalPages}
-                onChange={(newPage) => setPage(newPage)}
-              />
-            </>
-          )}
-        </>
+        <SectionMembersView
+          allMembersCount={allMembers.length}
+          filteredMembers={filteredMembers}
+          paginatedMembers={paginatedMembers}
+          searchTerm={searchTerm}
+          page={page}
+          totalPages={totalPages}
+          loading={loadingSection}
+          onSearchTermChange={setSearchTerm}
+          onRefresh={() => refetchSection()}
+          onPageChange={setPage}
+        />
       ) : selectedEventId ? (
-        <Box sx={{ mt: 2 }}>
-          <Button size="small" onClick={() => setSelectedEventId(null)} sx={{ mb: 2 }}>
-            Back to events
-          </Button>
-          {loadingEventDetail ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : errorEventDetail ? (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Failed to load event.{" "}
-              <Button size="small" onClick={() => refetchEventDetail()}>
-                Retry
-              </Button>
-            </Alert>
-          ) : !eventDetailData?.event ? (
-            <Alert severity="info">Event not found.</Alert>
-          ) : (
-            <>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                {eventDetailData.event.title}
-              </Typography>
-              <Box component="dl" sx={{ "& dd": { m: 0 }, "& dt": { fontWeight: 500, mt: 1 } }}>
-                <Typography component="dt" variant="body2">Date / time</Typography>
-                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {new Date(eventDetailData.event.startDateTime).toLocaleString()} –{" "}
-                  {new Date(eventDetailData.event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </Typography>
-                <Typography component="dt" variant="body2">Location</Typography>
-                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {eventDetailData.event.location || "—"}
-                </Typography>
-                <Typography component="dt" variant="body2">Guest of honour</Typography>
-                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {eventDetailData.event.guestOfHonour || "—"}
-                </Typography>
-                <Typography component="dt" variant="body2">Booking window</Typography>
-                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {new Date(eventDetailData.event.bookingStartDateTime).toLocaleString()} –{" "}
-                  {new Date(eventDetailData.event.bookingEndDateTime).toLocaleString()}
-                </Typography>
-                <Typography component="dt" variant="body2">Max guests without moderator approval</Typography>
-                <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {eventDetailData.event.maxGuestsWithoutModeratorApproval != null
-                    ? String(eventDetailData.event.maxGuestsWithoutModeratorApproval)
-                    : "—"}
-                </Typography>
-              </Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Ticket types</Typography>
-              {!eventDetailData.event.ticketTypes?.length ? (
-                <Typography variant="body2" color="text.secondary">No ticket types.</Typography>
-              ) : (
-                <TableContainer component={Paper}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Title</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell>Price</TableCell>
-                        <TableCell>Audience</TableCell>
-                        <TableCell>User group</TableCell>
-                        <TableCell align="right">Purchase</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {eventDetailData.event.ticketTypes.map((tt) => (
-                        <TableRow key={tt.id}>
-                          <TableCell>{tt.title}</TableCell>
-                          <TableCell>{tt.description ?? "—"}</TableCell>
-                          <TableCell>{tt.price}</TableCell>
-                          <TableCell>{tt.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
-                          <TableCell>{tt.userGroup?.name ?? "—"}</TableCell>
-                          <TableCell align="right">
-                            {currentUser && tt.audience === TicketAudience.MEMBER ? (
-                              <Button
-                                size="small"
-                                variant="contained"
-                                disabled={startingCheckoutId === tt.id}
-                                onClick={() => void handleStartCheckout(tt.id)}
-                                sx={{ backgroundColor: colors.callToAction }}
-                              >
-                                {startingCheckoutId === tt.id ? "Starting..." : "Pay"}
-                              </Button>
-                            ) : (
-                              "—"
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-              {currentUser && (
-                <EventBookingWizard
-                  section={section as NonNullable<GetSectionByIdData["section"]>}
-                  event={eventDetailData.event}
-                  onBookingComplete={() => {
-                    void refetchEventDetail();
-                  }}
-                />
-              )}
-            </>
-          )}
-        </Box>
+        <SectionEventDetailView
+          section={section}
+          event={eventDetailData?.event ?? null}
+          loading={loadingEventDetail}
+          isError={errorEventDetail}
+          hasCurrentUser={Boolean(currentUser)}
+          startingCheckoutId={startingCheckoutId}
+          onBackToEvents={() => setSelectedEventId(null)}
+          onRetry={() => refetchEventDetail()}
+          onStartCheckout={(ticketTypeId) => void handleStartCheckout(ticketTypeId)}
+          onBookingComplete={() => {
+            void refetchEventDetail();
+          }}
+        />
       ) : (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Events
-          </Typography>
-          {loadingEvents ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : errorEvents ? (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Failed to load events.{" "}
-              <Button size="small" onClick={() => refetchEvents()}>
-                Retry
-              </Button>
-            </Alert>
-          ) : !eventsData?.section?.events?.length ? (
-            <Alert severity="info">No events yet.</Alert>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Date / time</TableCell>
-                    <TableCell>Location</TableCell>
-                    <TableCell>Guest of honour</TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {eventsData.section.events.map((ev) => (
-                    <TableRow
-                      key={ev.id}
-                      hover
-                      sx={{ cursor: "pointer" }}
-                      onClick={() => setSelectedEventId(ev.id)}
-                    >
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={500}>
-                          {ev.title}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {new Date(ev.startDateTime).toLocaleString()} –{" "}
-                          {new Date(ev.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {ev.location || "—"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {ev.guestOfHonour || "—"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Button size="small" onClick={(e) => { e.stopPropagation(); setSelectedEventId(ev.id); }}>
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Box>
+        <SectionEventsListView
+          events={eventRows}
+          loading={loadingEvents}
+          isError={errorEvents}
+          onRetry={() => refetchEvents()}
+          onSelectEvent={setSelectedEventId}
+        />
       )}
 
       <Snackbar
