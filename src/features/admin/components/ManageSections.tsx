@@ -256,7 +256,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setDialogOpen(true);
   };
 
-  const handleEdit = async (section: SectionWithDetails) => {
+  const handleEdit = useCallback(async (section: SectionWithDetails) => {
     setEditingSection(section);
     setSectionName(section.name);
     setSectionType(section.type);
@@ -264,7 +264,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setDialogOpen(true);
     // Fetch user groups when editing
     await fetchSectionUserGroups(section.id);
-  };
+  }, [fetchSectionUserGroups]);
 
   useEffect(() => {
     const editSectionId = initialEditSectionIdRef.current;
