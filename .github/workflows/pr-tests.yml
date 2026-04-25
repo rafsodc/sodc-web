@@ -25,15 +25,13 @@ jobs:
         run: npm ci
 
       - name: Run root build
-        run: npm run build
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm run build
 
       - name: Install functions dependencies
-        run: npm ci
-        working-directory: functions
+        run: npm ci --prefix functions
 
       - name: Run functions build
-        run: npm run build
-        working-directory: functions
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run build
 
   frontend-tests:
     name: Frontend full test suite
@@ -52,7 +50,7 @@ jobs:
         run: npm ci
 
       - name: Run frontend test suite
-        run: npm run test:run
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm run test:run
 
   functions-security-tests:
     name: Functions security tests
@@ -69,9 +67,7 @@ jobs:
           cache-dependency-path: functions/package-lock.json
 
       - name: Install functions dependencies
-        run: npm ci
-        working-directory: functions
+        run: npm ci --prefix functions
 
       - name: Run functions security suites
-        run: npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
-        working-directory: functions
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
