@@ -146,7 +146,7 @@ describe("SectionEventsManager", () => {
     });
     expect(screen.getByText("Main Hall")).toBeInTheDocument();
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /ticket types/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /event admin/i })).toBeInTheDocument();
   });
 
   it("renders error message when events query fails", async () => {
@@ -190,6 +190,14 @@ describe("SectionEventsManager", () => {
       data: {
         event: {
           id: "ev-1",
+          title: "Annual Dinner",
+          startDateTime: "2025-03-01T18:00:00Z",
+          endDateTime: "2025-03-01T22:00:00Z",
+          bookingStartDateTime: "2025-02-01T00:00:00Z",
+          bookingEndDateTime: "2025-02-28T23:59:59Z",
+          location: "Main Hall",
+          guestOfHonour: "Jane Doe",
+          maxGuestsWithoutModeratorApproval: 1,
           ticketTypes: [],
         },
       },
@@ -271,15 +279,93 @@ describe("SectionEventsManager", () => {
     });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
-    await user.click(screen.getByRole("button", { name: /ticket types/i }));
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
 
+    expect(screen.getByText(/event admin: annual dinner/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^event details$/i })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: /^ticket types$/i })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: /^guest ticket requests$/i })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(screen.getByRole("button", { name: /^booking audit activity$/i })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(screen.getByRole("button", { name: /^payment status activity$/i })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+    await user.click(screen.getByRole("button", { name: /^event details$/i }));
+    expect(screen.getByRole("button", { name: /edit event details/i })).toBeInTheDocument();
+    expect(screen.getByText(/max guests without moderator approval/i)).toBeInTheDocument();
+    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
     expect(screen.getByText(/additional guest ticket requests/i)).toBeInTheDocument();
+    expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
     expect(screen.getByText(/booking audit activity/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
     expect(screen.getByText(/payment status activity/i)).toBeInTheDocument();
     expect(screen.getByText(/evt_123/i)).toBeInTheDocument();
-    expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /approve/i }));
     await waitFor(() => expect(executeMutation).toHaveBeenCalled());
+  });
+
+  it("opens event edit dialog from the event admin details section", async () => {
+    const user = userEvent.setup();
+    mockGetEventsForSection({
+      data: {
+        section: {
+          id: sectionId,
+          events: [
+            {
+              id: "ev-1",
+              title: "Annual Dinner",
+              startDateTime: "2025-03-01T18:00:00Z",
+              endDateTime: "2025-03-01T22:00:00Z",
+              bookingStartDateTime: "2025-02-01T00:00:00Z",
+              bookingEndDateTime: "2025-02-28T23:59:59Z",
+              location: "Main Hall",
+              guestOfHonour: "Jane Doe",
+              maxGuestsWithoutModeratorApproval: 2,
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventById({
+      data: {
+        event: {
+          id: "ev-1",
+          title: "Annual Dinner",
+          startDateTime: "2025-03-01T18:00:00Z",
+          endDateTime: "2025-03-01T22:00:00Z",
+          bookingStartDateTime: "2025-02-01T00:00:00Z",
+          bookingEndDateTime: "2025-02-28T23:59:59Z",
+          location: "Main Hall",
+          guestOfHonour: "Jane Doe",
+          maxGuestsWithoutModeratorApproval: 2,
+          ticketTypes: [],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^event details$/i }));
+    await user.click(screen.getByRole("button", { name: /edit event details/i }));
+
+    expect(screen.getByRole("dialog", { name: /edit event/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/title/i)).toHaveValue("Annual Dinner");
+    expect(screen.getByLabelText(/location/i)).toHaveValue("Main Hall");
+    expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
   });
 
   it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {
@@ -306,13 +392,29 @@ describe("SectionEventsManager", () => {
       isError: false,
     });
     mockGetEventById({
-      data: { event: { id: "ev-1", ticketTypes: [] } },
+      data: {
+        event: {
+          id: "ev-1",
+          title: "Annual Dinner",
+          startDateTime: "2025-03-01T18:00:00Z",
+          endDateTime: "2025-03-01T22:00:00Z",
+          bookingStartDateTime: "2025-02-01T00:00:00Z",
+          bookingEndDateTime: "2025-02-28T23:59:59Z",
+          location: "Main Hall",
+          guestOfHonour: "Jane Doe",
+          maxGuestsWithoutModeratorApproval: null,
+          ticketTypes: [],
+        },
+      },
       isLoading: false,
       isError: false,
     });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
-    await user.click(screen.getByRole("button", { name: /ticket types/i }));
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
+    await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
+    await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
 
     expect(screen.getByText(/no guest ticket requests for this filter/i)).toBeInTheDocument();
     expect(screen.getByText(/no bookings found for this event/i)).toBeInTheDocument();

@@ -372,14 +372,29 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
 
   if (ticketTypesEventId) {
     const event = events.find((e) => e.id === ticketTypesEventId);
+    const eventForAdmin: EventRow | null = eventDetailData?.event
+      ? {
+          id: eventDetailData.event.id,
+          title: eventDetailData.event.title,
+          location: eventDetailData.event.location,
+          guestOfHonour: eventDetailData.event.guestOfHonour,
+          startDateTime: eventDetailData.event.startDateTime,
+          endDateTime: eventDetailData.event.endDateTime,
+          bookingStartDateTime: eventDetailData.event.bookingStartDateTime,
+          bookingEndDateTime: eventDetailData.event.bookingEndDateTime,
+          maxGuestsWithoutModeratorApproval: eventDetailData.event.maxGuestsWithoutModeratorApproval,
+        }
+      : event ?? null;
     const ticketTypes = eventDetailData?.event?.ticketTypes ?? [];
     return (
       <Box className="page-container" sx={{ backgroundColor: "#fafafa", minHeight: "100vh" }}>
         <TicketAdminSurface
-          eventTitle={event?.title ?? "Event"}
+          event={eventForAdmin}
+          eventTitle={eventForAdmin?.title ?? "Event"}
           error={error}
           onDismissError={() => setError(null)}
           onBack={() => setTicketTypesEventId(null)}
+          onEditEvent={openEventDialog}
           onAddTicketType={() => openTicketTypeDialog()}
           loadingEventDetail={loadingEventDetail}
           ticketTypes={ticketTypes}
@@ -423,6 +438,30 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onAudienceChange={setTtAudience}
           onAccessGroupChange={setTtAccessGroup}
         />
+
+        <EventDialogSurface
+          open={eventDialogOpen}
+          editingEvent={editingEvent}
+          title={title}
+          location={location}
+          guestOfHonour={guestOfHonour}
+          startDateTime={startDateTime}
+          endDateTime={endDateTime}
+          bookingStartDateTime={bookingStartDateTime}
+          bookingEndDateTime={bookingEndDateTime}
+          maxGuestsStr={maxGuestsStr}
+          submitting={submitting}
+          onClose={() => setEventDialogOpen(false)}
+          onSubmit={handleEventSubmit}
+          onTitleChange={setTitle}
+          onLocationChange={setLocation}
+          onGuestOfHonourChange={setGuestOfHonour}
+          onStartDateTimeChange={setStartDateTime}
+          onEndDateTimeChange={setEndDateTime}
+          onBookingStartDateTimeChange={setBookingStartDateTime}
+          onBookingEndDateTimeChange={setBookingEndDateTime}
+          onMaxGuestsChange={setMaxGuestsStr}
+        />
       </Box>
     );
   }
@@ -439,8 +478,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         errorEvents={errorEvents}
         events={events}
         deletingEventId={deletingEventId}
-        onManageTicketTypes={setTicketTypesEventId}
-        onEditEvent={openEventDialog}
+        onManageEventAdmin={setTicketTypesEventId}
         onDeleteEvent={(event) => void handleDeleteEvent(event)}
       />
 
