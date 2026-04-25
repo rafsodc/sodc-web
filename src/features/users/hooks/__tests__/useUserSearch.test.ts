@@ -26,10 +26,29 @@ describe('useUserSearch', () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it('should initialize with provided search term', () => {
+  it('should initialize with provided search term', async () => {
+    vi.mocked(searchUsers.searchUsers).mockResolvedValue({
+      success: true,
+      data: {
+        users: [],
+        total: 0,
+        page: 1,
+        pageSize: 25,
+        totalPages: 1,
+      },
+    });
+
     const { result } = renderHook(() => useUserSearch('test'));
     
     expect(result.current.searchTerm).toBe('test');
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(searchUsers.searchUsers).toHaveBeenCalledWith('test', 1, 25);
+    expect(result.current.loading).toBe(false);
   });
 
   it.skip('should not search when search term is empty', async () => {

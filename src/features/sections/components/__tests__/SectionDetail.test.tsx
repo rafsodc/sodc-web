@@ -21,6 +21,10 @@ vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
   submitEventBooking: vi.fn(),
 }));
 
+vi.mock('../../../users/hooks/useAdminClaim', () => ({
+  useAdminClaim: vi.fn(() => false),
+}));
+
 vi.mock('firebase/data-connect', () => ({
   executeMutation: vi.fn().mockResolvedValue({}),
 }));
@@ -65,6 +69,7 @@ describe('SectionDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getSectionMembersMerged).mockResolvedValue({ members: [] });
     vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
       data: { section: { id: sectionId, events: [] } } as any,
       isLoading: false,
@@ -91,6 +96,8 @@ describe('SectionDetail', () => {
   });
 
   it('should render loading state', () => {
+    vi.mocked(getSectionMembersMerged).mockReturnValue(new Promise(() => undefined) as any);
+
     vi.mocked(reactGenerated.useGetSectionById).mockReturnValue({
       data: undefined,
       isLoading: true,
