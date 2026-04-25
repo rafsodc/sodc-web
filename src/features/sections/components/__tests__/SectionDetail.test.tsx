@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '../../../../test-utils';
+import { MemoryRouter } from 'react-router-dom';
 import SectionDetail from '../SectionDetail';
 import * as reactGenerated from '@dataconnect/generated/react';
 import { createMockUser } from '../../../../test-utils/mocks/firebase';
@@ -22,6 +23,13 @@ vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
 
 vi.mock('firebase/data-connect', () => ({
   executeMutation: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('firebase/auth', () => ({
+  onIdTokenChanged: vi.fn((_auth, callback) => {
+    callback(null);
+    return vi.fn();
+  }),
 }));
 
 const mockCurrentUser = createMockUser({ uid: 'user-1' });
@@ -47,6 +55,13 @@ vi.mock('@dataconnect/generated', async () => {
 describe('SectionDetail', () => {
   const mockOnBack = vi.fn();
   const sectionId = 'section-1';
+
+  const renderSectionDetail = () =>
+    render(
+      <MemoryRouter>
+        <SectionDetail sectionId={sectionId} onBack={mockOnBack} />
+      </MemoryRouter>
+    );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -89,7 +104,7 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     expect(screen.getByText('Section Details')).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
@@ -109,7 +124,7 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText(/failed to load section details/i)).toBeInTheDocument();
@@ -156,7 +171,7 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText('Test Section')).toBeInTheDocument();
@@ -211,7 +226,7 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText('Members (2)')).toBeInTheDocument();
@@ -272,7 +287,7 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /subscribe/i })).toBeInTheDocument();
@@ -327,7 +342,7 @@ describe('SectionDetail', () => {
       isError: false,
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
@@ -372,7 +387,7 @@ describe('SectionDetail', () => {
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -421,7 +436,7 @@ describe('SectionDetail', () => {
       refetch: vi.fn(),
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText('Events')).toBeInTheDocument();
@@ -509,7 +524,7 @@ describe('SectionDetail', () => {
       refetch: vi.fn(),
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText('Events')).toBeInTheDocument();
@@ -589,7 +604,7 @@ describe('SectionDetail', () => {
       refetch: vi.fn(),
     } as any);
 
-    render(<SectionDetail sectionId={sectionId} onBack={mockOnBack} />);
+    renderSectionDetail();
 
     await waitFor(() => {
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();

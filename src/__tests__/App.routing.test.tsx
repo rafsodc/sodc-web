@@ -3,6 +3,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { render, screen, waitFor } from "../test-utils";
 import userEvent from "@testing-library/user-event";
 import type { User } from "firebase/auth";
+import type { GetSectionsForUserData } from "@dataconnect/generated";
 import App from "../App";
 import { ROUTES } from "../constants";
 import { createMockUser } from "../test-utils/mocks/firebase";
@@ -11,26 +12,40 @@ let currentUser: User | null = null;
 let enabledClaim = false;
 let adminClaim = false;
 
-const mockSectionsData = {
-  user: {
-    id: "user-1",
-    membershipStatus: "REGULAR",
-    userGroups: [
-      {
-        userGroup: {
-          id: "group-1",
-          purposeLinks: [
-            {
-              purpose: "ACCESS",
-              section: { id: "section-1", name: "Signals" },
-            },
-          ],
+function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
+  return {
+    purpose,
+    section: { id, name },
+  };
+}
+
+function sectionsData(overrides: Partial<GetSectionsForUserData> = {}): GetSectionsForUserData {
+  return {
+    user: {
+      id: "user-1",
+      membershipStatus: "REGULAR",
+      userGroups: [
+        {
+          userGroup: {
+            id: "group-1",
+            purposeLinks: [purposeLink("ACCESS", "section-1", "Signals")],
+          },
         },
-      },
-    ],
-  },
-  allUserGroups: [],
-};
+      ],
+    },
+    allUserGroups: [],
+    ...overrides,
+  } as GetSectionsForUserData;
+}
+
+let mockSectionsData = sectionsData();
+
+function signInEnabledUser({ admin = false, data = sectionsData() } = {}) {
+  currentUser = createMockUser({ uid: admin ? "admin-1" : "user-1" });
+  enabledClaim = true;
+  adminClaim = admin;
+  mockSectionsData = data;
+}
 
 vi.mock("firebase/auth", () => ({
   onAuthStateChanged: vi.fn((_auth, callback) => {
@@ -196,10 +211,15 @@ vi.mock("../features/auth/components/EmailVerificationMessage", () => ({
 
 function LocationProbe() {
   const location = useLocation();
-  return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
+  return (
+    <>
+      <div data-testid="location">{`${location.pathname}${location.search}`}</div>
+      <div data-testid="location-state">{JSON.stringify(location.state)}</div>
+    </>
+  );
 }
 
-function renderApp(initialEntries: string[]) {
+function renderApp(initialEntries: Array<string | { pathname: string; search?: string; state?: unknown }>) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <App />
@@ -213,6 +233,7 @@ describe("App routing", () => {
     currentUser = null;
     enabledClaim = false;
     adminClaim = false;
+    mockSectionsData = sectionsData();
     vi.clearAllMocks();
   });
 
@@ -231,8 +252,7 @@ describe("App routing", () => {
   });
 
   it("renders section detail from a direct deep link for enabled users", async () => {
-    currentUser = createMockUser({ uid: "user-1" });
-    enabledClaim = true;
+    signInEnabledUser();
 
     renderApp(["/sections/section-1"]);
 
@@ -241,8 +261,7 @@ describe("App routing", () => {
   });
 
   it("uses browser history for section detail Back when history exists", async () => {
-    currentUser = createMockUser({ uid: "user-1" });
-    enabledClaim = true;
+    signInEnabledUser();
     const user = userEvent.setup();
 
     renderApp([ROUTES.HOME, "/sections/section-1"]);
@@ -255,8 +274,7 @@ describe("App routing", () => {
   });
 
   it("falls back to sections when section detail has no prior history", async () => {
-    currentUser = createMockUser({ uid: "user-1" });
-    enabledClaim = true;
+    signInEnabledUser();
     const user = userEvent.setup();
 
     renderApp(["/sections/section-1"]);
@@ -269,8 +287,7 @@ describe("App routing", () => {
   });
 
   it("renders access denied for non-admin admin deep links", async () => {
-    currentUser = createMockUser({ uid: "user-1" });
-    enabledClaim = true;
+    signInEnabledUser();
 
     renderApp([ROUTES.MANAGE_USERS]);
 
@@ -278,20 +295,142 @@ describe("App routing", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_USERS);
   });
 
-  it("renders admin pages for admin deep links", async () => {
-    currentUser = createMockUser({ uid: "admin-1" });
-    enabledClaim = true;
-    adminClaim = true;
+  it.each([
+    [ROUTES.MANAGE_USERS, "Manage Users Page"],
+    [ROUTES.APPROVE_USERS, "Approvals Page"],
+    [ROUTES.USER_GROUPS, "User Groups Page"],
+    [ROUTES.AUDIT_LOGS, "Audit Logs Page"],
+    [ROUTES.MANAGE_SECTIONS, "Manage Sections Page"],
+  ])("renders %s for admin deep links", async (route, heading) => {
+    signInEnabledUser({ admin: true });
 
-    renderApp([ROUTES.MANAGE_USERS]);
+    renderApp([route]);
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(route);
+  });
+
+  it("redirects legacy permissions route to manage users", async () => {
+    signInEnabledUser({ admin: true });
+
+    renderApp([ROUTES.PERMISSIONS]);
 
     expect(await screen.findByRole("heading", { name: "Manage Users Page" })).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_USERS);
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_USERS));
+  });
+
+  it("shows permitted section links without admin-only nav for enabled members", async () => {
+    signInEnabledUser();
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Signals" })).toHaveAttribute("href", "/sections/section-1");
+    expect(screen.queryByRole("link", { name: "Administer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
+  });
+
+  it("shows moderator section admin links without admin-only management links", async () => {
+    signInEnabledUser({
+      data: sectionsData({
+        user: {
+          id: "user-1",
+          membershipStatus: "REGULAR",
+          userGroups: [
+            {
+              userGroup: {
+                id: "moderator-group",
+                purposeLinks: [purposeLink("MODERATOR", "section-1", "Signals")],
+              },
+            },
+          ],
+        },
+      } as Partial<GetSectionsForUserData>),
+    });
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Administer" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
+    expect(screen.getByRole("link", { name: "Manage Sections" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
+    expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
+  });
+
+  it("navigates section admin links with managed section route state", async () => {
+    signInEnabledUser({ admin: true });
+    const user = userEvent.setup();
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Administer" }));
+
+    expect(await screen.findByRole("heading", { name: "Manage Sections Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_SECTIONS);
+    expect(screen.getByTestId("location-state")).toHaveTextContent(
+      JSON.stringify({ managedSection: { id: "section-1", name: "Signals" } })
+    );
+  });
+
+  it("clears managed section route state from the root Manage Sections link", async () => {
+    signInEnabledUser({ admin: true });
+    const user = userEvent.setup();
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Administer" }));
+    await screen.findByRole("heading", { name: "Manage Sections Page" });
+    expect(screen.getByTestId("location-state")).toHaveTextContent("section-1");
+
+    await user.click(screen.getByRole("link", { name: "Manage Sections" }));
+
+    await waitFor(() => expect(screen.getByTestId("location-state")).toHaveTextContent("null"));
+  });
+
+  it("navigates user group admin links with expanded group route state", async () => {
+    signInEnabledUser({
+      admin: true,
+      data: sectionsData({
+        allUserGroups: [
+          {
+            id: "group-1",
+            name: "Access group",
+            membershipStatuses: ["REGULAR"],
+            purposeLinks: [purposeLink("ACCESS", "section-1", "Signals")],
+          },
+        ],
+      } as Partial<GetSectionsForUserData>),
+    });
+    const user = userEvent.setup();
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Access group" }));
+
+    expect(await screen.findByRole("heading", { name: "User Groups Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.USER_GROUPS);
+    expect(screen.getByTestId("location-state")).toHaveTextContent(JSON.stringify({ expandedGroupId: "group-1" }));
+  });
+
+  it("uses browser history for admin Back when history exists", async () => {
+    signInEnabledUser({ admin: true });
+    const user = userEvent.setup();
+
+    renderApp([ROUTES.HOME, ROUTES.MANAGE_USERS]);
+
+    expect(await screen.findByRole("heading", { name: "Manage Users Page" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 
   it("cleans checkout query params with replace when dismissed", async () => {
-    currentUser = createMockUser({ uid: "user-1" });
-    enabledClaim = true;
+    signInEnabledUser();
     const user = userEvent.setup();
 
     renderApp(["/?checkout=success&orderId=00000000-0000-0000-0000-000000000001"]);
