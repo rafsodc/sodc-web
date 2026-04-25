@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDataConnect } from "firebase/data-connect";
+import { getFunctions } from "firebase/functions";
 import { connectorConfig } from "../dataconnect-generated";
 
 // Optional: only load Analytics in the browser and only if a measurementId is provided.
@@ -29,6 +30,7 @@ const firebaseConfig = {
 
 export const firebaseApp = initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
+export const functions = getFunctions(firebaseApp, "europe-west2");
 
 // Initialize Data Connect
 export const dataConnect = getDataConnect(connectorConfig);
