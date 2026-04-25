@@ -4,6 +4,10 @@ import SectionEventsManager from "../SectionEventsManager";
 import * as reactGenerated from "@dataconnect/generated/react";
 import userEvent from "@testing-library/user-event";
 import { executeMutation } from "firebase/data-connect";
+import {
+  dataConnectQueryResult,
+  type DataConnectQueryResultOverrides,
+} from "../../../../test-utils/dataConnectMocks";
 
 vi.mock("@dataconnect/generated/react", () => ({
   useGetEventsForSection: vi.fn(),
@@ -26,6 +30,36 @@ vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
 }));
 
+function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetEventsForSection>(overrides)
+  );
+}
+
+function mockGetEventById(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetEventById).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetEventById>(overrides)
+  );
+}
+
+function mockGuestTicketRequests(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListGuestTicketRequestsForAdmin).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListGuestTicketRequestsForAdmin>(overrides)
+  );
+}
+
+function mockEventBookings(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListEventBookingsForAdmin>(overrides)
+  );
+}
+
+function mockTicketOrders(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListTicketOrdersForAdmin).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListTicketOrdersForAdmin>(overrides)
+  );
+}
+
 vi.mock("@dataconnect/generated", async () => {
   const actual = await vi.importActual("@dataconnect/generated");
   return {
@@ -41,36 +75,31 @@ describe("SectionEventsManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
-      data: { section: { id: sectionId, events: [] } } as any,
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+    });
+    mockGetEventById({
       data: undefined,
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useListGuestTicketRequestsForAdmin).mockReturnValue({
-      data: { event: { id: "ev-1", bookings: [] } } as any,
+    });
+    mockGuestTicketRequests({
+      data: { event: { id: "ev-1", bookings: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue({
-      data: { event: { id: "ev-1", bookings: [] } } as any,
+    });
+    mockEventBookings({
+      data: { event: { id: "ev-1", bookings: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useListTicketOrdersForAdmin).mockReturnValue({
-      data: { event: { id: "ev-1", ticketOrders: [] } } as any,
+    });
+    mockTicketOrders({
+      data: { event: { id: "ev-1", ticketOrders: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
   });
 
   it("renders events list with section name and Back returns to sections", async () => {
@@ -88,7 +117,7 @@ describe("SectionEventsManager", () => {
   });
 
   it("shows events table when section has events", async () => {
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+    mockGetEventsForSection({
       data: {
         section: {
           id: sectionId,
@@ -105,11 +134,10 @@ describe("SectionEventsManager", () => {
             },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
 
@@ -122,12 +150,11 @@ describe("SectionEventsManager", () => {
   });
 
   it("renders error message when events query fails", async () => {
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+    mockGetEventsForSection({
       data: undefined,
       isLoading: false,
       isError: true,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
 
@@ -138,7 +165,7 @@ describe("SectionEventsManager", () => {
 
   it("renders moderation queue and approves a pending request", async () => {
     const user = userEvent.setup();
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+    mockGetEventsForSection({
       data: {
         section: {
           id: sectionId,
@@ -155,23 +182,21 @@ describe("SectionEventsManager", () => {
             },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
+    });
+    mockGetEventById({
       data: {
         event: {
           id: "ev-1",
           ticketTypes: [],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useListGuestTicketRequestsForAdmin).mockReturnValue({
+    });
+    mockGuestTicketRequests({
       data: {
         event: {
           id: "ev-1",
@@ -196,12 +221,11 @@ describe("SectionEventsManager", () => {
             },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue({
+    });
+    mockEventBookings({
       data: {
         event: {
           id: "ev-1",
@@ -218,12 +242,11 @@ describe("SectionEventsManager", () => {
             },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useListTicketOrdersForAdmin).mockReturnValue({
+    });
+    mockTicketOrders({
       data: {
         event: {
           id: "ev-1",
@@ -242,11 +265,10 @@ describe("SectionEventsManager", () => {
             },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /ticket types/i }));
@@ -262,7 +284,7 @@ describe("SectionEventsManager", () => {
 
   it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {
     const user = userEvent.setup();
-    vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue({
+    mockGetEventsForSection({
       data: {
         section: {
           id: sectionId,
@@ -279,17 +301,15 @@ describe("SectionEventsManager", () => {
             },
           ],
         },
-      } as any,
+      },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
-    vi.mocked(reactGenerated.useGetEventById).mockReturnValue({
-      data: { event: { id: "ev-1", ticketTypes: [] } } as any,
+    });
+    mockGetEventById({
+      data: { event: { id: "ev-1", ticketTypes: [] } },
       isLoading: false,
       isError: false,
-      refetch: vi.fn(),
-    } as any);
+    });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /ticket types/i }));
