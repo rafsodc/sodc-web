@@ -385,7 +385,7 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
         {activeStep === 0 && (
           <FormControl component="fieldset" fullWidth>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Select your ticket (member-priced).
+              Select your member ticket category.
             </Typography>
             <RadioGroup
               value={memberTicketTypeId ?? ""}
@@ -485,7 +485,7 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
                   <Box sx={{ mt: 2, pl: 1, borderLeft: 2, borderColor: "divider" }}>
                     <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
                       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
-                        Guest ticket type
+                        Guest ticket category
                       </Typography>
                       <RadioGroup
                         value={guestTicketTypeId ?? ""}

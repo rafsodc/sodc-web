@@ -35,6 +35,7 @@ import {
 } from "@mui/icons-material";
 import { GuestTicketRequestStatus, TicketAudience } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
+import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../shared/utils/ticketAudienceLabels";
 import type {
   EventBookingAdminRow,
   EventRow,
@@ -561,7 +562,7 @@ function TicketTypesTable({
             <TableCell>Title</TableCell>
             <TableCell>Description</TableCell>
             <TableCell>Price</TableCell>
-            <TableCell>Audience</TableCell>
+            <TableCell>{TICKET_CATEGORY_LABEL}</TableCell>
             <TableCell>Access group</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -572,7 +573,7 @@ function TicketTypesTable({
               <TableCell>{ticketType.title}</TableCell>
               <TableCell>{ticketType.description ?? "—"}</TableCell>
               <TableCell>{ticketType.price}</TableCell>
-              <TableCell>{ticketType.audience === TicketAudience.GUEST ? "Guest" : "Member"}</TableCell>
+              <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
               <TableCell>
                 {ticketType.userGroup ? (
                   <Chip label={ticketType.userGroup.name} size="small" variant="outlined" color="primary" />
@@ -888,15 +889,15 @@ export function TicketTypeDialogSurface({
           margin="dense"
         />
         <FormControl fullWidth margin="dense" sx={{ mt: 1 }}>
-          <InputLabel id="ticket-audience-label">Audience</InputLabel>
+          <InputLabel id="ticket-audience-label">{TICKET_CATEGORY_LABEL}</InputLabel>
           <Select
             labelId="ticket-audience-label"
-            label="Audience"
+            label={TICKET_CATEGORY_LABEL}
             value={audience}
             onChange={(event) => onAudienceChange(event.target.value as TicketAudience)}
           >
-            <MenuItem value={TicketAudience.MEMBER}>Member</MenuItem>
-            <MenuItem value={TicketAudience.GUEST}>Guest</MenuItem>
+            <MenuItem value={TicketAudience.MEMBER}>{getTicketCategoryLabel(TicketAudience.MEMBER)}</MenuItem>
+            <MenuItem value={TicketAudience.GUEST}>{getTicketCategoryLabel(TicketAudience.GUEST)}</MenuItem>
           </Select>
         </FormControl>
         <Autocomplete
