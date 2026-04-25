@@ -24,7 +24,8 @@ export function isMembersSection(section: { type: SectionType }): boolean {
 }
 
 type PurposeLinkWithUsers = {
-  purpose: string;
+  purpose?: string;
+  purposes?: string[] | null;
   userGroup: {
     id: string;
     name: string;
@@ -41,6 +42,11 @@ type PurposeLinkWithUsers = {
   };
 };
 
+function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
+  if (link.purpose) return link.purpose === target;
+  return link.purposes?.includes(target) ?? false;
+}
+
 type SectionDataWithPurposeLinks = {
   purposeLinks?: PurposeLinkWithUsers[];
 };
@@ -50,8 +56,8 @@ function getRollupPurposeLinks(
   sectionData: SectionDataWithPurposeLinks | null | undefined
 ): PurposeLinkWithUsers[] {
   const links = sectionData?.purposeLinks ?? [];
-  const memberLinks = links.filter((l) => l.purpose === "MEMBER");
-  return memberLinks.length > 0 ? memberLinks : links.filter((l) => l.purpose === "ACCESS");
+  const memberLinks = links.filter((l) => linkHasPurpose(l, "MEMBER"));
+  return memberLinks.length > 0 ? memberLinks : links.filter((l) => linkHasPurpose(l, "ACCESS"));
 }
 
 /**
@@ -104,7 +110,8 @@ export function getAllUsersFromSection(
 
 type SectionMemberGroupData = {
   purposeLinks?: Array<{
-    purpose: string;
+    purpose?: string;
+    purposes?: string[] | null;
     userGroup: {
       id: string;
       name: string;
@@ -129,8 +136,8 @@ export function getMemberGroups(
   if (!sectionData?.purposeLinks?.length) {
     return [];
   }
-  const member = sectionData.purposeLinks.filter((l) => l.purpose === "MEMBER");
-  const source = member.length > 0 ? member : sectionData.purposeLinks.filter((l) => l.purpose === "ACCESS");
+  const member = sectionData.purposeLinks.filter((l) => linkHasPurpose(l, "MEMBER"));
+  const source = member.length > 0 ? member : sectionData.purposeLinks.filter((l) => linkHasPurpose(l, "ACCESS"));
   return source.map((groupRelation) => groupRelation.userGroup);
 }
 
@@ -139,11 +146,14 @@ export function getMemberGroups(
  */
 export function canUserAccessSection(
   userUserGroupIds: string[],
-  sectionPurposeLinks: Array<{ purpose: string; userGroup: { id: string } }>
+  sectionPurposeLinks: Array<{ purpose?: string; purposes?: string[] | null; userGroup: { id: string } }>
 ): boolean {
   return sectionPurposeLinks.some(
-    (link) =>
-      purposeGrantsSectionAccess(link.purpose) && userUserGroupIds.includes(link.userGroup.id)
+    (link) => {
+      const grantsAccess =
+        linkHasPurpose(link, "ACCESS") || linkHasPurpose(link, "MODERATOR");
+      return grantsAccess && userUserGroupIds.includes(link.userGroup.id);
+    }
   );
 }
 
@@ -154,7 +164,7 @@ export function canUserAccessSection(
 export function canUserSubscribe(
   _userId: string,
   userUserGroupIds: string[],
-  sectionPurposeLinks: Array<{ purpose: string; userGroup: { id: string } }>,
+  sectionPurposeLinks: Array<{ purpose?: string; purposes?: string[] | null; userGroup: { id: string } }>,
   memberGroups: Array<{
     id: string;
     subscribable?: boolean | null;

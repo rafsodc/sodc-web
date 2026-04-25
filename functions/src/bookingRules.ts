@@ -31,6 +31,11 @@ export function purposeGrantsSectionAccess(purpose: string): boolean {
   return purpose === "ACCESS" || purpose === "MODERATOR";
 }
 
+function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
+  if (link.purpose) return link.purpose === target;
+  return link.purposes?.includes(target) ?? false;
+}
+
 /** Explicit group membership or membership-status–based group (same idea as getSectionMembersMerged). */
 export function userMatchesUserGroup(
   membershipStatus: string,
@@ -44,12 +49,12 @@ export function userMatchesUserGroup(
 }
 
 export function userHasSectionAccess(
-  purposeLinks: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
   explicitGroupIds: Set<string>,
   membershipStatus: string
 ): boolean {
   for (const link of purposeLinks) {
-    if (!purposeGrantsSectionAccess(link.purpose)) continue;
+    if (!linkHasPurpose(link, "ACCESS") && !linkHasPurpose(link, "MODERATOR")) continue;
     if (userMatchesUserGroup(membershipStatus, link.userGroup, explicitGroupIds)) {
       return true;
     }
@@ -58,11 +63,11 @@ export function userHasSectionAccess(
 }
 
 export function userHasBookerPurpose(
-  purposeLinks: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
   explicitGroupIds: Set<string>,
   membershipStatus: string
 ): boolean {
-  const bookerLinks = purposeLinks.filter((l) => l.purpose === "BOOKER");
+  const bookerLinks = purposeLinks.filter((l) => linkHasPurpose(l, "BOOKER"));
   if (bookerLinks.length === 0) return false;
   return bookerLinks.some((l) => userMatchesUserGroup(membershipStatus, l.userGroup, explicitGroupIds));
 }
@@ -166,7 +171,7 @@ export function evaluateBookingLines(
 }
 
 export function evaluateBookingGatekeeping(args: {
-  purposeLinks: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }[];
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[];
   membershipStatus: string;
   explicitGroupIds: Set<string>;
   bookingStartDateTime: string;
@@ -176,7 +181,7 @@ export function evaluateBookingGatekeeping(args: {
   if (!userHasSectionAccess(args.purposeLinks, args.explicitGroupIds, args.membershipStatus)) {
     return fail(BOOKING_RULE_ERROR_CODES.NO_SECTION_ACCESS, "You do not have permission to access this section");
   }
-  if (!args.purposeLinks.some((l) => l.purpose === "BOOKER")) {
+  if (!args.purposeLinks.some((l) => linkHasPurpose(l, "BOOKER"))) {
     return fail(BOOKING_RULE_ERROR_CODES.NO_BOOKER_PURPOSE, "This section is not configured for bookings");
   }
   if (!userHasBookerPurpose(args.purposeLinks, args.explicitGroupIds, args.membershipStatus)) {

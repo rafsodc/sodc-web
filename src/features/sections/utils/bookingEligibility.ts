@@ -16,13 +16,18 @@ export function purposeGrantsSectionAccess(purpose: string): boolean {
   return purpose === "ACCESS" || purpose === "MODERATOR";
 }
 
+function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
+  if (link.purpose) return link.purpose === target;
+  return link.purposes?.includes(target) ?? false;
+}
+
 export function userHasSectionAccess(
-  purposeLinks: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
   explicitGroupIds: Set<string>,
   membershipStatus: string
 ): boolean {
   for (const link of purposeLinks) {
-    if (!purposeGrantsSectionAccess(link.purpose)) continue;
+    if (!linkHasPurpose(link, "ACCESS") && !linkHasPurpose(link, "MODERATOR")) continue;
     if (userMatchesUserGroup(membershipStatus, link.userGroup, explicitGroupIds)) {
       return true;
     }
@@ -31,11 +36,11 @@ export function userHasSectionAccess(
 }
 
 export function userHasBookerPurpose(
-  purposeLinks: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
   explicitGroupIds: Set<string>,
   membershipStatus: string
 ): boolean {
-  const bookerLinks = purposeLinks.filter((l) => l.purpose === "BOOKER");
+  const bookerLinks = purposeLinks.filter((l) => linkHasPurpose(l, "BOOKER"));
   if (bookerLinks.length === 0) return false;
   return bookerLinks.some((l) => userMatchesUserGroup(membershipStatus, l.userGroup, explicitGroupIds));
 }
@@ -65,7 +70,7 @@ export type BookingGateResult =
  * Client-side gate preview (server still enforces). Uses the same rules as `evaluateBookingGatekeeping`.
  */
 export function evaluateBookingGatePreview(args: {
-  purposeLinks: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }[];
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[];
   membershipStatus: MembershipStatus | string;
   explicitGroupIds: Set<string>;
   bookingStartDateTime: string;
@@ -82,7 +87,7 @@ export function evaluateBookingGatePreview(args: {
       message: "You do not have permission to access this section.",
     };
   }
-  if (!purposeLinks.some((l) => l.purpose === "BOOKER")) {
+  if (!purposeLinks.some((l) => linkHasPurpose(l, "BOOKER"))) {
     return {
       ok: false,
       code: "NO_BOOKER_PURPOSE",

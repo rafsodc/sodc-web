@@ -162,7 +162,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   const canModerateSection = useMemo(() => {
     return sectionPurposeLinks.some(
-      (link) => link.purpose === "MODERATOR" && userUserGroupIds.includes(link.userGroup.id)
+      (link) =>
+        (link.purpose === "MODERATOR" || link.purposes?.includes("MODERATOR")) &&
+        userUserGroupIds.includes(link.userGroup.id)
     );
   }, [sectionPurposeLinks, userUserGroupIds]);
 

@@ -36,6 +36,9 @@ interface Section {
   description?: string | null;
 }
 
+const grantsAccess = (purpose?: string, purposes?: string[] | null): boolean =>
+  purpose === "ACCESS" || purpose === "MODERATOR" || Boolean(purposes?.includes("ACCESS") || purposes?.includes("MODERATOR"));
+
 function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
   const isAdmin = useAdminClaim(auth.currentUser);
   const [searchTerm, setSearchTerm] = useState("");
@@ -100,7 +103,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
             const ug = groupRelation?.userGroup;
             if (ug?.purposeLinks && Array.isArray(ug.purposeLinks)) {
               for (const pl of ug.purposeLinks) {
-                if ((pl.purpose === "ACCESS" || pl.purpose === "MODERATOR") && pl.section) {
+                if (grantsAccess(pl.purpose, pl.purposes) && pl.section) {
                   addSection(pl.section);
                 }
               }
@@ -115,7 +118,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
               }
               if (ug.purposeLinks && Array.isArray(ug.purposeLinks)) {
                 for (const pl of ug.purposeLinks) {
-                  if ((pl.purpose === "ACCESS" || pl.purpose === "MODERATOR") && pl.section) {
+                  if (grantsAccess(pl.purpose, pl.purposes) && pl.section) {
                     addSection(pl.section);
                   }
                 }
