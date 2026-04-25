@@ -26,7 +26,7 @@ export default defineConfig({
           ) {
             return 'mui-vendor'
           }
-          if (id.includes('node_modules/firebase/')) {
+          if (id.includes('node_modules/firebase/') || id.includes('node_modules/@firebase/')) {
             return 'firebase-vendor'
           }
           if (id.includes('dataconnect-generated') || id.includes('node_modules/@dataconnect/')) {

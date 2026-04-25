@@ -1,5 +1,5 @@
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { firebaseApp } from "../../config/firebase";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../../config/firebase";
 import type { MembershipStatus } from "@dataconnect/generated";
 import { toCanonicalUuid } from "./uuid";
 
@@ -7,8 +7,6 @@ import { toCanonicalUuid } from "./uuid";
  * Firebase Cloud Functions wrapper utilities
  * All functions are deployed to europe-west2 region
  */
-
-const FUNCTIONS_REGION = "europe-west2";
 
 // ============================================================================
 // Admin Functions
@@ -32,7 +30,6 @@ export async function grantAdminClaim(
   uid: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
-    const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
     const grantAdminCallable = httpsCallable<GrantAdminRequest, GrantAdminResponse>(
       functions,
       "grantAdmin"
@@ -66,7 +63,6 @@ export async function revokeAdminClaim(
   uid: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
-    const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
     const revokeAdminCallable = httpsCallable<RevokeAdminRequest, RevokeAdminResponse>(
       functions,
       "revokeAdmin"
@@ -104,7 +100,6 @@ export async function updateDisplayName(
   displayName: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
     const updateDisplayNameCallable = httpsCallable<UpdateDisplayNameRequest, UpdateDisplayNameResponse>(
       functions,
       "updateDisplayName"
@@ -141,7 +136,6 @@ export async function updateUserDisplayName(
   displayName: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
     const updateUserDisplayNameCallable = httpsCallable<UpdateUserDisplayNameRequest, UpdateUserDisplayNameResponse>(
       functions,
       "updateUserDisplayName"
@@ -183,7 +177,6 @@ export async function updateMembershipStatus(
   newStatus: MembershipStatus
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
     const updateMembershipStatusCallable = httpsCallable<
       UpdateMembershipStatusRequest,
       UpdateMembershipStatusResponse
@@ -225,7 +218,6 @@ export interface GetSectionMembersMergedResponse {
 export async function getSectionMembersMerged(
   sectionId: string
 ): Promise<GetSectionMembersMergedResponse> {
-  const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
   const callable = httpsCallable<
     GetSectionMembersMergedRequest,
     GetSectionMembersMergedResponse
@@ -278,7 +270,6 @@ export interface CreateTicketCheckoutSessionResponse {
 export async function submitEventBooking(
   payload: SubmitEventBookingRequest
 ): Promise<SubmitEventBookingResponse> {
-  const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
   const callable = httpsCallable<SubmitEventBookingRequest, SubmitEventBookingResponse>(
     functions,
     "submitEventBooking"
@@ -302,7 +293,6 @@ export async function submitEventBooking(
 export async function createTicketCheckoutSession(
   payload: CreateTicketCheckoutSessionRequest
 ): Promise<CreateTicketCheckoutSessionResponse> {
-  const functions = getFunctions(firebaseApp, FUNCTIONS_REGION);
   const callable = httpsCallable<CreateTicketCheckoutSessionRequest, CreateTicketCheckoutSessionResponse>(
     functions,
     "createTicketCheckoutSession"
