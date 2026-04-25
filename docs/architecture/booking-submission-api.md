@@ -2,6 +2,9 @@
 
 Server-side enforcement for issue **#46**. Member UI (**#47**) should call this instead of writing bookings directly via Data Connect.
 
+For payment lifecycle transitions and webhook semantics, see
+`docs/architecture/payment-state-machine.md`.
+
 ## Callable
 
 | Field | Value |

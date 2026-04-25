@@ -8,16 +8,22 @@ import {
   getTicketTypeForCheckout,
   getUserForCheckout,
   getUserUserGroupsForAdmin,
+  markTicketOrderFailedFromWebhook,
   markTicketOrderPaidFromWebhook,
+  markTicketOrderRefundedFromWebhook,
   updateUserStripeCustomerId,
   TicketAudience,
-  TicketOrderStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
 import Stripe from "stripe";
+import {
+  evaluateTransition,
+  mapIntentToTargetStatus,
+  normalizeStripeEvent,
+} from "./paymentStateMachine";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
@@ -165,29 +171,84 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
     }
 
     const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as any;
-      const orderId = session.metadata?.orderId;
-      if (!orderId) {
-        res.status(200).send("No order metadata");
-        return;
-      }
-      const canonicalOrderId = validateUUID(orderId, "orderId") as UUIDString;
-      const existing = await getTicketOrderForWebhook({ id: canonicalOrderId });
-      const order = existing.data?.ticketOrder;
-      if (!order) {
-        res.status(200).send("Order not found");
-        return;
-      }
-      if (order.status === TicketOrderStatus.PAID) {
-        res.status(200).send("Already processed");
-        return;
-      }
+    const normalized = normalizeStripeEvent(event);
+    if (normalized.kind === "ignore") {
+      logger.info("stripeWebhook ignored event", { eventType: event.type, reason: normalized.reason, eventId: event.id });
+      res.status(200).send("Ignored event");
+      return;
+    }
+    if (!normalized.orderId) {
+      logger.info("stripeWebhook missing order metadata", { eventType: event.type, reason: normalized.reason, eventId: event.id });
+      res.status(200).send("No order metadata");
+      return;
+    }
+
+    const canonicalOrderId = validateUUID(normalized.orderId, "orderId") as UUIDString;
+    const existing = await getTicketOrderForWebhook({ id: canonicalOrderId });
+    const order = existing.data?.ticketOrder;
+    if (!order) {
+      logger.info("stripeWebhook order not found", { eventType: event.type, eventId: event.id, orderId: canonicalOrderId });
+      res.status(200).send("Order not found");
+      return;
+    }
+
+    if (normalized.kind === "dispute_side_state") {
+      logger.info("stripeWebhook dispute side-state (no order status change)", {
+        eventType: event.type,
+        eventId: event.id,
+        orderId: canonicalOrderId,
+        disputeState: normalized.disputeState,
+      });
+      res.status(200).send("Dispute side-state acknowledged");
+      return;
+    }
+
+    const intent = normalized.intent;
+    if (!intent) {
+      logger.error("stripeWebhook payment transition without intent", {
+        eventType: event.type,
+        eventId: event.id,
+        orderId: canonicalOrderId,
+      });
+      res.status(200).send("Missing transition intent");
+      return;
+    }
+    const targetStatus = mapIntentToTargetStatus(intent);
+    const decision = evaluateTransition(order.status, intent);
+    if (decision.action !== "apply") {
+      logger.info("stripeWebhook transition skipped", {
+        eventType: event.type,
+        eventId: event.id,
+        orderId: canonicalOrderId,
+        fromStatus: order.status,
+        targetStatus,
+        decision: decision.action,
+        reason: decision.reason,
+      });
+      res.status(200).send(decision.action === "noop_replay" ? "Already processed" : "Illegal transition skipped");
+      return;
+    }
+
+    if (intent === "MARK_PAID") {
+      const session = event.data.object as {
+        id?: string;
+        payment_intent?: string | { id?: string };
+      };
       await markTicketOrderPaidFromWebhook({
         id: canonicalOrderId,
-        stripeCheckoutSessionId: session.id,
+        stripeCheckoutSessionId: session.id ?? null,
         stripePaymentIntentId:
           typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+        webhookEventId: event.id,
+      });
+    } else if (intent === "MARK_FAILED") {
+      await markTicketOrderFailedFromWebhook({
+        id: canonicalOrderId,
+        webhookEventId: event.id,
+      });
+    } else if (intent === "MARK_REFUNDED") {
+      await markTicketOrderRefundedFromWebhook({
+        id: canonicalOrderId,
         webhookEventId: event.id,
       });
     }
