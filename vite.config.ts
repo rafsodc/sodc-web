@@ -18,12 +18,24 @@ export default defineConfig({
     // Manual chunking strategy for better code splitting
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Vendor chunks
-          'react-vendor': ['react', 'react-dom'],
-          'mui-vendor': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
-          'firebase-vendor': ['firebase/auth', 'firebase/functions', 'firebase/data-connect'],
-          'dataconnect-vendor': ['@dataconnect/generated'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor'
+          }
+          if (
+            id.includes('node_modules/@mui/material') ||
+            id.includes('node_modules/@mui/icons-material') ||
+            id.includes('node_modules/@emotion/react') ||
+            id.includes('node_modules/@emotion/styled')
+          ) {
+            return 'mui-vendor'
+          }
+          if (id.includes('node_modules/firebase/')) {
+            return 'firebase-vendor'
+          }
+          if (id.includes('dataconnect-generated') || id.includes('node_modules/@dataconnect/')) {
+            return 'dataconnect-vendor'
+          }
         },
       },
     },
