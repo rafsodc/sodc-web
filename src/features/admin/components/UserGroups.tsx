@@ -394,7 +394,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
   const sectionsForGroup: SectionWithPurpose[] = details
     ? (details.purposeLinks ?? []).flatMap((item) => {
-        const purposes = item.purposes ?? (item.purpose ? [item.purpose] : []);
+        const purposes = item.purposes ?? [];
         return purposes.map((purpose) => ({
           section: item.section,
           purpose,

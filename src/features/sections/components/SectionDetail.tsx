@@ -22,7 +22,8 @@ import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate } from "react-router-dom";
 import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
-import type { UUIDString } from "@dataconnect/generated";
+import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
+import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
@@ -163,7 +164,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const canModerateSection = useMemo(() => {
     return sectionPurposeLinks.some(
       (link) =>
-        (link.purpose === "MODERATOR" || link.purposes?.includes("MODERATOR")) &&
+        (link.purposes?.includes(SectionPurpose.MODERATOR as SectionUserGroupPurpose) ?? false) &&
         userUserGroupIds.includes(link.userGroup.id)
     );
   }, [sectionPurposeLinks, userUserGroupIds]);

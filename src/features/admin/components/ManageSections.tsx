@@ -150,7 +150,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         const rows: SectionUserGroupRow[] = [];
         section.purposeLinks.forEach((link) => {
           if (link.userGroup) {
-            const purposes = link.purposes ?? (link.purpose ? [link.purpose] : []);
+            const purposes = link.purposes ?? [];
             purposes.forEach((purpose) => {
               rows.push({
                 id: link.userGroup.id,
