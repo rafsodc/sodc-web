@@ -375,6 +375,36 @@ mutation MarkTicketOrderPaidFromWebhook(
   )
 }
 
+mutation MarkTicketOrderFailedFromWebhook(
+  $id: UUID!
+  $webhookEventId: String
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: FAILED
+      webhookEventId: $webhookEventId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkTicketOrderRefundedFromWebhook(
+  $id: UUID!
+  $webhookEventId: String
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: REFUNDED
+      webhookEventId: $webhookEventId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 mutation UpdateBookingPreferencesFromCallable(
   $id: UUID!
   $bookerDietaryNote: String
