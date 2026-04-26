@@ -26,7 +26,7 @@
 Sections have:
 - `isOpenForRegistration: Boolean` - whether users can register for this section
 - `allowedUserGroups: [UUID]` - which user groups are eligible to register (can include both status-based and manual groups)
-- Access and capabilities are controlled via section-purpose links (`SectionUserGroupPurposeLink`) using purposes such as `ACCESS`, `MODERATOR`, `MEMBER`, and `BOOKER`
+- Access and capabilities are controlled via section-purpose links (`SectionUserGroupPurposeLink`), where each `(section,userGroup)` link can include multiple purposes such as `ACCESS`, `MODERATOR`, `MEMBER`, and `BOOKER`
 
 ## Default Sections
 

@@ -21,7 +21,8 @@ import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
-import type { SectionType } from "@dataconnect/generated";
+import type { SectionType, SectionUserGroupPurpose } from "@dataconnect/generated";
+import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionsListProps {
@@ -35,6 +36,12 @@ interface Section {
   type: SectionType;
   description?: string | null;
 }
+
+const grantsAccess = (purposes?: SectionUserGroupPurpose[] | null): boolean =>
+  Boolean(
+    purposes?.includes(SectionPurpose.ACCESS) ||
+    purposes?.includes(SectionPurpose.MODERATOR)
+  );
 
 function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
   const isAdmin = useAdminClaim(auth.currentUser);
@@ -100,7 +107,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
             const ug = groupRelation?.userGroup;
             if (ug?.purposeLinks && Array.isArray(ug.purposeLinks)) {
               for (const pl of ug.purposeLinks) {
-                if ((pl.purpose === "ACCESS" || pl.purpose === "MODERATOR") && pl.section) {
+                if (grantsAccess(pl.purposes) && pl.section) {
                   addSection(pl.section);
                 }
               }
@@ -115,7 +122,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
               }
               if (ug.purposeLinks && Array.isArray(ug.purposeLinks)) {
                 for (const pl of ug.purposeLinks) {
-                  if ((pl.purpose === "ACCESS" || pl.purpose === "MODERATOR") && pl.section) {
+                  if (grantsAccess(pl.purposes) && pl.section) {
                     addSection(pl.section);
                   }
                 }

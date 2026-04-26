@@ -1,4 +1,5 @@
-import type { GetSectionsForUserData } from "@dataconnect/generated";
+import type { GetSectionsForUserData, SectionUserGroupPurpose } from "@dataconnect/generated";
+import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ROUTES } from "../../constants";
 
 export interface NavigationLink {
@@ -20,15 +21,15 @@ interface BuildNavigationLinksArgs {
 }
 
 type SectionLinkSource = {
-  purpose?: string | null;
+  purposes?: SectionUserGroupPurpose[] | null;
   section?: {
     id?: string | null;
     name?: string | null;
   } | null;
 };
 
-function grantsSectionAccess(purpose?: string | null): boolean {
-  return purpose === "ACCESS" || purpose === "MODERATOR";
+function linkHasPurpose(link: SectionLinkSource, target: SectionUserGroupPurpose): boolean {
+  return link.purposes?.includes(target) ?? false;
 }
 
 function addSectionLink(map: Map<string, NavigationLink>, link: SectionLinkSource) {
@@ -42,7 +43,7 @@ function addSectionLink(map: Map<string, NavigationLink>, link: SectionLinkSourc
 
 function markSectionAdministerable(map: Map<string, boolean>, link: SectionLinkSource) {
   const section = link.section;
-  if (link.purpose !== "MODERATOR" || !section?.id) {
+  if (!linkHasPurpose(link, SectionPurpose.MODERATOR) || !section?.id) {
     return;
   }
   map.set(section.id, true);
@@ -156,7 +157,10 @@ export function buildNavigationLinks({
 
   for (const groupRelation of explicitGroups) {
     for (const purposeLink of groupRelation?.userGroup?.purposeLinks ?? []) {
-      if (grantsSectionAccess(purposeLink.purpose)) {
+      if (
+        linkHasPurpose(purposeLink, SectionPurpose.ACCESS) ||
+        linkHasPurpose(purposeLink, SectionPurpose.MODERATOR)
+      ) {
         addSectionLink(sectionMap, purposeLink);
       }
       markSectionAdministerable(administerableSectionIds, purposeLink);
@@ -170,7 +174,10 @@ export function buildNavigationLinks({
         continue;
       }
       for (const purposeLink of userGroup.purposeLinks ?? []) {
-        if (grantsSectionAccess(purposeLink.purpose)) {
+        if (
+          linkHasPurpose(purposeLink, SectionPurpose.ACCESS) ||
+          linkHasPurpose(purposeLink, SectionPurpose.MODERATOR)
+        ) {
           addSectionLink(sectionMap, purposeLink);
         }
         markSectionAdministerable(administerableSectionIds, purposeLink);

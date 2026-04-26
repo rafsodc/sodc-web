@@ -17,7 +17,7 @@ function sectionsData(overrides: Partial<GetSectionsForUserData> = {}): GetSecti
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
   return {
-    purpose,
+    purposes: [purpose],
     section: {
       id,
       name,

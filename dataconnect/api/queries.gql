@@ -99,7 +99,7 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
         name
         membershipStatuses
         purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
-          purpose
+          purposes
           section {
             id
             name
@@ -116,7 +116,7 @@ query GetSectionsForUser @auth(expr: "auth.token.enabled == true") {
     name
     membershipStatuses
     purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
-      purpose
+      purposes
       section {
         id
         name
@@ -268,7 +268,7 @@ query GetSectionById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
     isOpenForRegistration
     allowedUserGroups
     purposeLinks: sectionUserGroupPurposeLinks_on_section {
-      purpose
+      purposes
       userGroup {
         id
         name
@@ -302,7 +302,7 @@ query GetUserGroupById($id: UUID!) @auth(expr: "auth.token.admin == true && auth
       }
     }
     purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
-      purpose
+      purposes
       section {
         id
         name
@@ -331,7 +331,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
     type
     description
     purposeLinks: sectionUserGroupPurposeLinks_on_section {
-      purpose
+      purposes
       userGroup {
         id
         name

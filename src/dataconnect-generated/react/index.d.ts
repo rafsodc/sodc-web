@@ -1,9 +1,75 @@
-import { CreateSectionData, CreateSectionVariables, CreateUserGroupData, CreateUserGroupVariables, AddUserToUserGroupData, AddUserToUserGroupVariables, RemoveUserFromUserGroupData, RemoveUserFromUserGroupVariables, GrantUserGroupToSectionForPurposeData, GrantUserGroupToSectionForPurposeVariables, RevokeUserGroupFromSectionForPurposeData, RevokeUserGroupFromSectionForPurposeVariables, UpdateUserGroupData, UpdateUserGroupVariables, DeleteUserGroupData, DeleteUserGroupVariables, UpdateSectionData, UpdateSectionVariables, DeleteSectionData, DeleteSectionVariables, CreateEventData, CreateEventVariables, UpdateEventData, UpdateEventVariables, DeleteEventData, DeleteEventVariables, CreateTicketTypeData, CreateTicketTypeVariables, UpdateTicketTypeData, UpdateTicketTypeVariables, DeleteTicketTypeData, DeleteTicketTypeVariables, CreateUserProfileData, CreateUserProfileVariables, UpsertUserData, UpsertUserVariables, UpdateUserData, UpdateUserVariables, RegisterForSectionData, RegisterForSectionVariables, UnregisterFromSectionData, UnregisterFromSectionVariables, SubscribeToUserGroupData, SubscribeToUserGroupVariables, UnsubscribeFromUserGroupData, UnsubscribeFromUserGroupVariables, UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables, DeleteUserData, DeleteUserVariables, CreateUserData, CreateUserVariables, CreateUserGroupAdminData, CreateUserGroupAdminVariables, AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables, RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables, GetUserGroupByNameData, GetUserGroupByNameVariables, GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables, GetUserForCheckoutData, GetUserForCheckoutVariables, GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables, UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables, GetEventByIdForCallableData, GetEventByIdForCallableVariables, GetSectionByIdForCallableData, GetSectionByIdForCallableVariables, GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables, CreateBookingDraftForUserData, CreateBookingDraftForUserVariables, AddBookingLineFromCallableData, AddBookingLineFromCallableVariables, UpdateBookingStatusFromCallableData, UpdateBookingStatusFromCallableVariables, CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables, GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables, MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables, UpdateBookingPreferencesFromCallableData, UpdateBookingPreferencesFromCallableVariables, DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables, CreateBookingDraftData, CreateBookingDraftVariables, AddBookingLineData, AddBookingLineVariables, UpdateBookingStatusData, UpdateBookingStatusVariables, CreateGuestTicketRequestData, CreateGuestTicketRequestVariables, AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables, AdminReviewGuestTicketRequestData, AdminReviewGuestTicketRequestVariables, AdminDeleteBookingLineData, AdminDeleteBookingLineVariables, AdminDeleteBookingData, AdminDeleteBookingVariables, GetCurrentUserData, GetUserByIdData, GetUserByIdVariables, ListUsersData, ListSectionsData, GetSectionsForUserData, ListUserGroupsData, GetUserAccessGroupsData, CheckUserProfileExistsData, GetUserMembershipStatusData, GetUserMembershipStatusVariables, GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables, GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables, GetEventsForSectionData, GetEventsForSectionVariables, GetEventByIdData, GetEventByIdVariables, GetSectionByIdData, GetSectionByIdVariables, GetUserGroupByIdData, GetUserGroupByIdVariables, GetAllUserGroupsWithStatusesData, GetSectionMembersData, GetSectionMembersVariables, GetMyBookingsForEventData, GetMyBookingsForEventVariables, GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables, ListEventBookingsForAdminData, ListEventBookingsForAdminVariables, ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables, ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables } from '../';
+import { GetCurrentUserData, GetUserByIdData, GetUserByIdVariables, ListUsersData, ListSectionsData, GetSectionsForUserData, ListUserGroupsData, GetUserAccessGroupsData, CheckUserProfileExistsData, GetUserMembershipStatusData, GetUserMembershipStatusVariables, GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables, GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables, GetEventsForSectionData, GetEventsForSectionVariables, GetEventByIdData, GetEventByIdVariables, GetSectionByIdData, GetSectionByIdVariables, GetUserGroupByIdData, GetUserGroupByIdVariables, GetAllUserGroupsWithStatusesData, GetSectionMembersData, GetSectionMembersVariables, GetMyBookingsForEventData, GetMyBookingsForEventVariables, GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables, ListEventBookingsForAdminData, ListEventBookingsForAdminVariables, ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables, ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables, CreateSectionData, CreateSectionVariables, CreateUserGroupData, CreateUserGroupVariables, AddUserToUserGroupData, AddUserToUserGroupVariables, RemoveUserFromUserGroupData, RemoveUserFromUserGroupVariables, GrantUserGroupToSectionForPurposeData, GrantUserGroupToSectionForPurposeVariables, RevokeUserGroupFromSectionForPurposeData, RevokeUserGroupFromSectionForPurposeVariables, UpdateUserGroupData, UpdateUserGroupVariables, DeleteUserGroupData, DeleteUserGroupVariables, UpdateSectionData, UpdateSectionVariables, DeleteSectionData, DeleteSectionVariables, CreateEventData, CreateEventVariables, UpdateEventData, UpdateEventVariables, DeleteEventData, DeleteEventVariables, CreateTicketTypeData, CreateTicketTypeVariables, UpdateTicketTypeData, UpdateTicketTypeVariables, DeleteTicketTypeData, DeleteTicketTypeVariables, CreateUserProfileData, CreateUserProfileVariables, UpsertUserData, UpsertUserVariables, UpdateUserData, UpdateUserVariables, RegisterForSectionData, RegisterForSectionVariables, UnregisterFromSectionData, UnregisterFromSectionVariables, SubscribeToUserGroupData, SubscribeToUserGroupVariables, UnsubscribeFromUserGroupData, UnsubscribeFromUserGroupVariables, UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables, DeleteUserData, DeleteUserVariables, CreateUserData, CreateUserVariables, CreateUserGroupAdminData, CreateUserGroupAdminVariables, AddUserToUserGroupAdminData, AddUserToUserGroupAdminVariables, RemoveUserFromUserGroupAdminData, RemoveUserFromUserGroupAdminVariables, GetUserGroupByNameData, GetUserGroupByNameVariables, GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables, GetUserForCheckoutData, GetUserForCheckoutVariables, GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables, UpdateUserStripeCustomerIdData, UpdateUserStripeCustomerIdVariables, GetEventByIdForCallableData, GetEventByIdForCallableVariables, GetSectionByIdForCallableData, GetSectionByIdForCallableVariables, GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables, CreateBookingDraftForUserData, CreateBookingDraftForUserVariables, AddBookingLineFromCallableData, AddBookingLineFromCallableVariables, UpdateBookingStatusFromCallableData, UpdateBookingStatusFromCallableVariables, CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables, GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables, MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables, UpdateBookingPreferencesFromCallableData, UpdateBookingPreferencesFromCallableVariables, DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables, CreateBookingDraftData, CreateBookingDraftVariables, AddBookingLineData, AddBookingLineVariables, UpdateBookingStatusData, UpdateBookingStatusVariables, CreateGuestTicketRequestData, CreateGuestTicketRequestVariables, AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables, AdminReviewGuestTicketRequestData, AdminReviewGuestTicketRequestVariables, AdminDeleteBookingLineData, AdminDeleteBookingLineVariables, AdminDeleteBookingData, AdminDeleteBookingVariables } from '../';
 import { UseDataConnectQueryResult, useDataConnectQueryOptions, UseDataConnectMutationResult, useDataConnectMutationOptions} from '@tanstack-query-firebase/react/data-connect';
 import { UseQueryResult, UseMutationResult} from '@tanstack/react-query';
 import { DataConnect } from 'firebase/data-connect';
 import { FirebaseError } from 'firebase/app';
 
+
+export function useGetCurrentUser(options?: useDataConnectQueryOptions<GetCurrentUserData>): UseDataConnectQueryResult<GetCurrentUserData, undefined>;
+export function useGetCurrentUser(dc: DataConnect, options?: useDataConnectQueryOptions<GetCurrentUserData>): UseDataConnectQueryResult<GetCurrentUserData, undefined>;
+
+export function useGetUserById(vars: GetUserByIdVariables, options?: useDataConnectQueryOptions<GetUserByIdData>): UseDataConnectQueryResult<GetUserByIdData, GetUserByIdVariables>;
+export function useGetUserById(dc: DataConnect, vars: GetUserByIdVariables, options?: useDataConnectQueryOptions<GetUserByIdData>): UseDataConnectQueryResult<GetUserByIdData, GetUserByIdVariables>;
+
+export function useListUsers(options?: useDataConnectQueryOptions<ListUsersData>): UseDataConnectQueryResult<ListUsersData, undefined>;
+export function useListUsers(dc: DataConnect, options?: useDataConnectQueryOptions<ListUsersData>): UseDataConnectQueryResult<ListUsersData, undefined>;
+
+export function useListSections(options?: useDataConnectQueryOptions<ListSectionsData>): UseDataConnectQueryResult<ListSectionsData, undefined>;
+export function useListSections(dc: DataConnect, options?: useDataConnectQueryOptions<ListSectionsData>): UseDataConnectQueryResult<ListSectionsData, undefined>;
+
+export function useGetSectionsForUser(options?: useDataConnectQueryOptions<GetSectionsForUserData>): UseDataConnectQueryResult<GetSectionsForUserData, undefined>;
+export function useGetSectionsForUser(dc: DataConnect, options?: useDataConnectQueryOptions<GetSectionsForUserData>): UseDataConnectQueryResult<GetSectionsForUserData, undefined>;
+
+export function useListUserGroups(options?: useDataConnectQueryOptions<ListUserGroupsData>): UseDataConnectQueryResult<ListUserGroupsData, undefined>;
+export function useListUserGroups(dc: DataConnect, options?: useDataConnectQueryOptions<ListUserGroupsData>): UseDataConnectQueryResult<ListUserGroupsData, undefined>;
+
+export function useGetUserAccessGroups(options?: useDataConnectQueryOptions<GetUserAccessGroupsData>): UseDataConnectQueryResult<GetUserAccessGroupsData, undefined>;
+export function useGetUserAccessGroups(dc: DataConnect, options?: useDataConnectQueryOptions<GetUserAccessGroupsData>): UseDataConnectQueryResult<GetUserAccessGroupsData, undefined>;
+
+export function useCheckUserProfileExists(options?: useDataConnectQueryOptions<CheckUserProfileExistsData>): UseDataConnectQueryResult<CheckUserProfileExistsData, undefined>;
+export function useCheckUserProfileExists(dc: DataConnect, options?: useDataConnectQueryOptions<CheckUserProfileExistsData>): UseDataConnectQueryResult<CheckUserProfileExistsData, undefined>;
+
+export function useGetUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: useDataConnectQueryOptions<GetUserMembershipStatusData>): UseDataConnectQueryResult<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+export function useGetUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: useDataConnectQueryOptions<GetUserMembershipStatusData>): UseDataConnectQueryResult<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+
+export function useGetUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables, options?: useDataConnectQueryOptions<GetUserWithAccessGroupsData>): UseDataConnectQueryResult<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
+export function useGetUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables, options?: useDataConnectQueryOptions<GetUserWithAccessGroupsData>): UseDataConnectQueryResult<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
+
+export function useGetUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsByIdData>): UseDataConnectQueryResult<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
+export function useGetUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsByIdData>): UseDataConnectQueryResult<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
+
+export function useGetEventsForSection(vars: GetEventsForSectionVariables, options?: useDataConnectQueryOptions<GetEventsForSectionData>): UseDataConnectQueryResult<GetEventsForSectionData, GetEventsForSectionVariables>;
+export function useGetEventsForSection(dc: DataConnect, vars: GetEventsForSectionVariables, options?: useDataConnectQueryOptions<GetEventsForSectionData>): UseDataConnectQueryResult<GetEventsForSectionData, GetEventsForSectionVariables>;
+
+export function useGetEventById(vars: GetEventByIdVariables, options?: useDataConnectQueryOptions<GetEventByIdData>): UseDataConnectQueryResult<GetEventByIdData, GetEventByIdVariables>;
+export function useGetEventById(dc: DataConnect, vars: GetEventByIdVariables, options?: useDataConnectQueryOptions<GetEventByIdData>): UseDataConnectQueryResult<GetEventByIdData, GetEventByIdVariables>;
+
+export function useGetSectionById(vars: GetSectionByIdVariables, options?: useDataConnectQueryOptions<GetSectionByIdData>): UseDataConnectQueryResult<GetSectionByIdData, GetSectionByIdVariables>;
+export function useGetSectionById(dc: DataConnect, vars: GetSectionByIdVariables, options?: useDataConnectQueryOptions<GetSectionByIdData>): UseDataConnectQueryResult<GetSectionByIdData, GetSectionByIdVariables>;
+
+export function useGetUserGroupById(vars: GetUserGroupByIdVariables, options?: useDataConnectQueryOptions<GetUserGroupByIdData>): UseDataConnectQueryResult<GetUserGroupByIdData, GetUserGroupByIdVariables>;
+export function useGetUserGroupById(dc: DataConnect, vars: GetUserGroupByIdVariables, options?: useDataConnectQueryOptions<GetUserGroupByIdData>): UseDataConnectQueryResult<GetUserGroupByIdData, GetUserGroupByIdVariables>;
+
+export function useGetAllUserGroupsWithStatuses(options?: useDataConnectQueryOptions<GetAllUserGroupsWithStatusesData>): UseDataConnectQueryResult<GetAllUserGroupsWithStatusesData, undefined>;
+export function useGetAllUserGroupsWithStatuses(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllUserGroupsWithStatusesData>): UseDataConnectQueryResult<GetAllUserGroupsWithStatusesData, undefined>;
+
+export function useGetSectionMembers(vars: GetSectionMembersVariables, options?: useDataConnectQueryOptions<GetSectionMembersData>): UseDataConnectQueryResult<GetSectionMembersData, GetSectionMembersVariables>;
+export function useGetSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables, options?: useDataConnectQueryOptions<GetSectionMembersData>): UseDataConnectQueryResult<GetSectionMembersData, GetSectionMembersVariables>;
+
+export function useGetMyBookingsForEvent(vars: GetMyBookingsForEventVariables, options?: useDataConnectQueryOptions<GetMyBookingsForEventData>): UseDataConnectQueryResult<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+export function useGetMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables, options?: useDataConnectQueryOptions<GetMyBookingsForEventData>): UseDataConnectQueryResult<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+
+export function useGetMyTicketOrderById(vars: GetMyTicketOrderByIdVariables, options?: useDataConnectQueryOptions<GetMyTicketOrderByIdData>): UseDataConnectQueryResult<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+export function useGetMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables, options?: useDataConnectQueryOptions<GetMyTicketOrderByIdData>): UseDataConnectQueryResult<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+
+export function useListEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: useDataConnectQueryOptions<ListEventBookingsForAdminData>): UseDataConnectQueryResult<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+export function useListEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: useDataConnectQueryOptions<ListEventBookingsForAdminData>): UseDataConnectQueryResult<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+
+export function useListGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: useDataConnectQueryOptions<ListGuestTicketRequestsForAdminData>): UseDataConnectQueryResult<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
+export function useListGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: useDataConnectQueryOptions<ListGuestTicketRequestsForAdminData>): UseDataConnectQueryResult<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
+
+export function useListTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables, options?: useDataConnectQueryOptions<ListTicketOrdersForAdminData>): UseDataConnectQueryResult<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
+export function useListTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: useDataConnectQueryOptions<ListTicketOrdersForAdminData>): UseDataConnectQueryResult<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
 
 export function useCreateSection(options?: useDataConnectMutationOptions<CreateSectionData, FirebaseError, CreateSectionVariables>): UseDataConnectMutationResult<CreateSectionData, CreateSectionVariables>;
 export function useCreateSection(dc: DataConnect, options?: useDataConnectMutationOptions<CreateSectionData, FirebaseError, CreateSectionVariables>): UseDataConnectMutationResult<CreateSectionData, CreateSectionVariables>;
@@ -163,69 +229,3 @@ export function useAdminDeleteBookingLine(dc: DataConnect, options?: useDataConn
 
 export function useAdminDeleteBooking(options?: useDataConnectMutationOptions<AdminDeleteBookingData, FirebaseError, AdminDeleteBookingVariables>): UseDataConnectMutationResult<AdminDeleteBookingData, AdminDeleteBookingVariables>;
 export function useAdminDeleteBooking(dc: DataConnect, options?: useDataConnectMutationOptions<AdminDeleteBookingData, FirebaseError, AdminDeleteBookingVariables>): UseDataConnectMutationResult<AdminDeleteBookingData, AdminDeleteBookingVariables>;
-
-export function useGetCurrentUser(options?: useDataConnectQueryOptions<GetCurrentUserData>): UseDataConnectQueryResult<GetCurrentUserData, undefined>;
-export function useGetCurrentUser(dc: DataConnect, options?: useDataConnectQueryOptions<GetCurrentUserData>): UseDataConnectQueryResult<GetCurrentUserData, undefined>;
-
-export function useGetUserById(vars: GetUserByIdVariables, options?: useDataConnectQueryOptions<GetUserByIdData>): UseDataConnectQueryResult<GetUserByIdData, GetUserByIdVariables>;
-export function useGetUserById(dc: DataConnect, vars: GetUserByIdVariables, options?: useDataConnectQueryOptions<GetUserByIdData>): UseDataConnectQueryResult<GetUserByIdData, GetUserByIdVariables>;
-
-export function useListUsers(options?: useDataConnectQueryOptions<ListUsersData>): UseDataConnectQueryResult<ListUsersData, undefined>;
-export function useListUsers(dc: DataConnect, options?: useDataConnectQueryOptions<ListUsersData>): UseDataConnectQueryResult<ListUsersData, undefined>;
-
-export function useListSections(options?: useDataConnectQueryOptions<ListSectionsData>): UseDataConnectQueryResult<ListSectionsData, undefined>;
-export function useListSections(dc: DataConnect, options?: useDataConnectQueryOptions<ListSectionsData>): UseDataConnectQueryResult<ListSectionsData, undefined>;
-
-export function useGetSectionsForUser(options?: useDataConnectQueryOptions<GetSectionsForUserData>): UseDataConnectQueryResult<GetSectionsForUserData, undefined>;
-export function useGetSectionsForUser(dc: DataConnect, options?: useDataConnectQueryOptions<GetSectionsForUserData>): UseDataConnectQueryResult<GetSectionsForUserData, undefined>;
-
-export function useListUserGroups(options?: useDataConnectQueryOptions<ListUserGroupsData>): UseDataConnectQueryResult<ListUserGroupsData, undefined>;
-export function useListUserGroups(dc: DataConnect, options?: useDataConnectQueryOptions<ListUserGroupsData>): UseDataConnectQueryResult<ListUserGroupsData, undefined>;
-
-export function useGetUserAccessGroups(options?: useDataConnectQueryOptions<GetUserAccessGroupsData>): UseDataConnectQueryResult<GetUserAccessGroupsData, undefined>;
-export function useGetUserAccessGroups(dc: DataConnect, options?: useDataConnectQueryOptions<GetUserAccessGroupsData>): UseDataConnectQueryResult<GetUserAccessGroupsData, undefined>;
-
-export function useCheckUserProfileExists(options?: useDataConnectQueryOptions<CheckUserProfileExistsData>): UseDataConnectQueryResult<CheckUserProfileExistsData, undefined>;
-export function useCheckUserProfileExists(dc: DataConnect, options?: useDataConnectQueryOptions<CheckUserProfileExistsData>): UseDataConnectQueryResult<CheckUserProfileExistsData, undefined>;
-
-export function useGetUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: useDataConnectQueryOptions<GetUserMembershipStatusData>): UseDataConnectQueryResult<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
-export function useGetUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: useDataConnectQueryOptions<GetUserMembershipStatusData>): UseDataConnectQueryResult<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
-
-export function useGetUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables, options?: useDataConnectQueryOptions<GetUserWithAccessGroupsData>): UseDataConnectQueryResult<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
-export function useGetUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables, options?: useDataConnectQueryOptions<GetUserWithAccessGroupsData>): UseDataConnectQueryResult<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
-
-export function useGetUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsByIdData>): UseDataConnectQueryResult<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
-export function useGetUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables, options?: useDataConnectQueryOptions<GetUserAccessGroupsByIdData>): UseDataConnectQueryResult<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
-
-export function useGetEventsForSection(vars: GetEventsForSectionVariables, options?: useDataConnectQueryOptions<GetEventsForSectionData>): UseDataConnectQueryResult<GetEventsForSectionData, GetEventsForSectionVariables>;
-export function useGetEventsForSection(dc: DataConnect, vars: GetEventsForSectionVariables, options?: useDataConnectQueryOptions<GetEventsForSectionData>): UseDataConnectQueryResult<GetEventsForSectionData, GetEventsForSectionVariables>;
-
-export function useGetEventById(vars: GetEventByIdVariables, options?: useDataConnectQueryOptions<GetEventByIdData>): UseDataConnectQueryResult<GetEventByIdData, GetEventByIdVariables>;
-export function useGetEventById(dc: DataConnect, vars: GetEventByIdVariables, options?: useDataConnectQueryOptions<GetEventByIdData>): UseDataConnectQueryResult<GetEventByIdData, GetEventByIdVariables>;
-
-export function useGetSectionById(vars: GetSectionByIdVariables, options?: useDataConnectQueryOptions<GetSectionByIdData>): UseDataConnectQueryResult<GetSectionByIdData, GetSectionByIdVariables>;
-export function useGetSectionById(dc: DataConnect, vars: GetSectionByIdVariables, options?: useDataConnectQueryOptions<GetSectionByIdData>): UseDataConnectQueryResult<GetSectionByIdData, GetSectionByIdVariables>;
-
-export function useGetUserGroupById(vars: GetUserGroupByIdVariables, options?: useDataConnectQueryOptions<GetUserGroupByIdData>): UseDataConnectQueryResult<GetUserGroupByIdData, GetUserGroupByIdVariables>;
-export function useGetUserGroupById(dc: DataConnect, vars: GetUserGroupByIdVariables, options?: useDataConnectQueryOptions<GetUserGroupByIdData>): UseDataConnectQueryResult<GetUserGroupByIdData, GetUserGroupByIdVariables>;
-
-export function useGetAllUserGroupsWithStatuses(options?: useDataConnectQueryOptions<GetAllUserGroupsWithStatusesData>): UseDataConnectQueryResult<GetAllUserGroupsWithStatusesData, undefined>;
-export function useGetAllUserGroupsWithStatuses(dc: DataConnect, options?: useDataConnectQueryOptions<GetAllUserGroupsWithStatusesData>): UseDataConnectQueryResult<GetAllUserGroupsWithStatusesData, undefined>;
-
-export function useGetSectionMembers(vars: GetSectionMembersVariables, options?: useDataConnectQueryOptions<GetSectionMembersData>): UseDataConnectQueryResult<GetSectionMembersData, GetSectionMembersVariables>;
-export function useGetSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables, options?: useDataConnectQueryOptions<GetSectionMembersData>): UseDataConnectQueryResult<GetSectionMembersData, GetSectionMembersVariables>;
-
-export function useGetMyBookingsForEvent(vars: GetMyBookingsForEventVariables, options?: useDataConnectQueryOptions<GetMyBookingsForEventData>): UseDataConnectQueryResult<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
-export function useGetMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables, options?: useDataConnectQueryOptions<GetMyBookingsForEventData>): UseDataConnectQueryResult<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
-
-export function useGetMyTicketOrderById(vars: GetMyTicketOrderByIdVariables, options?: useDataConnectQueryOptions<GetMyTicketOrderByIdData>): UseDataConnectQueryResult<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
-export function useGetMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables, options?: useDataConnectQueryOptions<GetMyTicketOrderByIdData>): UseDataConnectQueryResult<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
-
-export function useListEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: useDataConnectQueryOptions<ListEventBookingsForAdminData>): UseDataConnectQueryResult<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
-export function useListEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: useDataConnectQueryOptions<ListEventBookingsForAdminData>): UseDataConnectQueryResult<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
-
-export function useListGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: useDataConnectQueryOptions<ListGuestTicketRequestsForAdminData>): UseDataConnectQueryResult<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
-export function useListGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: useDataConnectQueryOptions<ListGuestTicketRequestsForAdminData>): UseDataConnectQueryResult<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
-
-export function useListTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables, options?: useDataConnectQueryOptions<ListTicketOrdersForAdminData>): UseDataConnectQueryResult<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
-export function useListTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: useDataConnectQueryOptions<ListTicketOrdersForAdminData>): UseDataConnectQueryResult<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;

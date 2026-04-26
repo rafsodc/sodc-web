@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "../test-utils";
 import userEvent from "@testing-library/user-event";
 import type { User } from "firebase/auth";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
+import { SectionType } from "@dataconnect/generated";
 import App from "../App";
 import { ROUTES } from "../constants";
 import { createMockUser } from "../test-utils/mocks/firebase";
@@ -14,8 +15,8 @@ let adminClaim = false;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
   return {
-    purpose,
-    section: { id, name },
+    purposes: [purpose],
+    section: { id, name, type: SectionType.MEMBERS, description: null },
   };
 }
 
@@ -28,6 +29,8 @@ function sectionsData(overrides: Partial<GetSectionsForUserData> = {}): GetSecti
         {
           userGroup: {
             id: "group-1",
+            name: "Group 1",
+            membershipStatuses: null,
             purposeLinks: [purposeLink("ACCESS", "section-1", "Signals")],
           },
         },
@@ -341,6 +344,8 @@ describe("App routing", () => {
             {
               userGroup: {
                 id: "moderator-group",
+                name: "Moderators",
+                membershipStatuses: null,
                 purposeLinks: [purposeLink("MODERATOR", "section-1", "Signals")],
               },
             },

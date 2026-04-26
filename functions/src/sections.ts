@@ -18,8 +18,9 @@ export interface SectionMemberResponse {
   membershipStatus: string;
 }
 
-function purposeGrantsSectionAccess(purpose: string): boolean {
-  return purpose === "ACCESS" || purpose === "MODERATOR";
+function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
+  if (link.purpose) return link.purpose === target;
+  return link.purposes?.includes(target) ?? false;
 }
 
 /**
@@ -49,7 +50,7 @@ export const getSectionMembersMerged = onCall(
       const purposeLinks = section.purposeLinks ?? [];
       const accessGroupIds = new Set(
         purposeLinks
-          .filter((pl) => purposeGrantsSectionAccess(pl.purpose))
+          .filter((pl) => linkHasPurpose(pl, "ACCESS") || linkHasPurpose(pl, "MODERATOR"))
           .map((pl) => pl.userGroup.id)
       );
       const callerGroupIds = new Set(
@@ -65,7 +66,7 @@ export const getSectionMembersMerged = onCall(
         if (userStatus && sectionData?.purposeLinks?.length) {
           canAccessByStatus = sectionData.purposeLinks.some(
             (rel) =>
-              purposeGrantsSectionAccess(rel.purpose) &&
+              (linkHasPurpose(rel, "ACCESS") || linkHasPurpose(rel, "MODERATOR")) &&
               (rel.userGroup.membershipStatuses?.includes(userStatus) ?? false)
           );
         }
@@ -81,8 +82,8 @@ export const getSectionMembersMerged = onCall(
       }
 
       const links = sectionData.purposeLinks ?? [];
-      const memberLinks = links.filter((p) => p.purpose === "MEMBER");
-      const sourceLinks = memberLinks.length > 0 ? memberLinks : links.filter((p) => p.purpose === "ACCESS");
+      const memberLinks = links.filter((p) => linkHasPurpose(p, "MEMBER"));
+      const sourceLinks = memberLinks.length > 0 ? memberLinks : links.filter((p) => linkHasPurpose(p, "ACCESS"));
 
       const statuses = new Set<string>();
       const explicitMap = new Map<string, SectionMemberResponse>();
