@@ -40,6 +40,14 @@ Disputes are intentionally modeled as **side-state metadata** for now (issue #12
 | `charge.dispute.closed` | dispute side-state | `DISPUTE_CLOSED` | no `TicketOrderStatus` change |
 | anything else | ignore | n/a | logged as ignored |
 
+### Supported-event allowlist
+
+Functions maintain an explicit Stripe event allowlist in code (`SUPPORTED_STRIPE_EVENT_TYPES`), used by routing and observability:
+
+- supported events are normalized into transition or dispute side-state handling
+- unsupported events are acknowledged (2xx) and logged as ignored
+- this keeps webhook processing non-destructive for unknown event types
+
 ## Webhook Outcome Contract
 
 - Missing `orderId` metadata: acknowledge webhook (2xx), no mutation.

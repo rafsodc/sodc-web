@@ -23,6 +23,16 @@ export interface TransitionDecision {
   reason: string;
 }
 
+export const SUPPORTED_STRIPE_EVENT_TYPES = new Set<string>([
+  "checkout.session.completed",
+  "checkout.session.expired",
+  "checkout.session.async_payment_failed",
+  "charge.refunded",
+  "charge.dispute.created",
+  "charge.dispute.updated",
+  "charge.dispute.closed",
+]);
+
 const LEGAL_TRANSITIONS: Record<TicketOrderStatus, ReadonlySet<TicketOrderStatus>> = {
   [TicketOrderStatus.PENDING]: new Set([TicketOrderStatus.PAID, TicketOrderStatus.FAILED]),
   [TicketOrderStatus.PAID]: new Set([TicketOrderStatus.REFUNDED]),
@@ -43,8 +53,15 @@ function extractOrderIdFromStripeEvent(event: StripeEventLike): string | null {
   return extractMetadataOrderId(objectWithMetadata);
 }
 
+export function isSupportedStripeEventType(eventType: string): boolean {
+  return SUPPORTED_STRIPE_EVENT_TYPES.has(eventType);
+}
+
 export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormalization {
   const orderId = extractOrderIdFromStripeEvent(event) ?? undefined;
+  if (!isSupportedStripeEventType(event.type)) {
+    return { kind: "ignore", reason: "unsupported_event_type" };
+  }
   switch (event.type) {
     case "checkout.session.completed":
       return {
@@ -75,7 +92,8 @@ export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormali
     case "charge.dispute.closed":
       return { kind: "dispute_side_state", disputeState: "DISPUTE_CLOSED", orderId, reason: "dispute_closed" };
     default:
-      return { kind: "ignore", reason: "unsupported_event_type" };
+      // Defensive fallback if a supported-event list and switch ever drift.
+      return { kind: "ignore", reason: "unmapped_supported_event_type" };
   }
 }
 

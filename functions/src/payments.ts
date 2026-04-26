@@ -21,6 +21,7 @@ import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
 import Stripe from "stripe";
 import {
   evaluateTransition,
+  isSupportedStripeEventType,
   mapIntentToTargetStatus,
   normalizeStripeEvent,
 } from "./paymentStateMachine";
@@ -171,9 +172,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
     }
 
     const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
+    const supportedEventType = isSupportedStripeEventType(event.type);
     const normalized = normalizeStripeEvent(event);
     if (normalized.kind === "ignore") {
-      logger.info("stripeWebhook ignored event", { eventType: event.type, reason: normalized.reason, eventId: event.id });
+      logger.info("stripeWebhook ignored event", {
+        eventType: event.type,
+        eventId: event.id,
+        supportedEventType,
+        reason: normalized.reason,
+      });
       res.status(200).send("Ignored event");
       return;
     }
