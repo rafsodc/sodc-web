@@ -80,7 +80,7 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   if (
     !userHasBookerPurpose(
       (sectionData.purposeLinks ?? []).map((l) => ({
-        purpose: l.purpose,
+        purposes: l.purposes ?? [],
         userGroup: { id: validateUUID(l.userGroup.id), membershipStatuses: l.userGroup.membershipStatuses ?? null },
       })),
       explicitGroupIds,

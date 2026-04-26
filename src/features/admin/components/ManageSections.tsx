@@ -150,11 +150,14 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         const rows: SectionUserGroupRow[] = [];
         section.purposeLinks.forEach((link) => {
           if (link.userGroup) {
-            rows.push({
-              id: link.userGroup.id,
-              name: link.userGroup.name,
-              description: link.userGroup.description,
-              purpose: link.purpose,
+            const purposes = link.purposes ?? [];
+            purposes.forEach((purpose) => {
+              rows.push({
+                id: link.userGroup.id,
+                name: link.userGroup.name,
+                description: link.userGroup.description,
+                purpose,
+              });
             });
           }
         });
@@ -268,7 +271,14 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       const ref = grantUserGroupToSectionForPurposeRef(dataConnect, {
         sectionId: editingSection.id,
         userGroupId: selectedUserGroup.id,
-        purpose: selectedPurpose,
+        purposes: Array.from(
+          new Set(
+            sectionUserGroups
+              .filter((row) => row.id === selectedUserGroup.id)
+              .map((row) => row.purpose)
+              .concat(selectedPurpose)
+          )
+        ),
       });
       await executeMutation(ref);
       
@@ -297,12 +307,25 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setRemovingUserGroupId(removingKey);
     setError(null);
     try {
-      const ref = revokeUserGroupFromSectionForPurposeRef(dataConnect, {
-        sectionId: editingSection.id,
-        userGroupId,
-        purpose,
-      });
-      await executeMutation(ref);
+      const refetch = getSectionByIdRef(dataConnect, { id: editingSection.id });
+      const currentSection = await executeQuery(refetch);
+      const currentLink = currentSection.data?.section?.purposeLinks?.find((link) => link.userGroup?.id === userGroupId);
+      const currentPurposes = (currentLink?.purposes ?? []).filter((item) => item !== purpose);
+
+      if (currentPurposes.length === 0) {
+        const deleteRef = revokeUserGroupFromSectionForPurposeRef(dataConnect, {
+          sectionId: editingSection.id,
+          userGroupId,
+        });
+        await executeMutation(deleteRef);
+      } else {
+        const updateRef = grantUserGroupToSectionForPurposeRef(dataConnect, {
+          sectionId: editingSection.id,
+          userGroupId,
+          purposes: currentPurposes,
+        });
+        await executeMutation(updateRef);
+      }
       
       // Refresh section user groups
       await fetchSectionUserGroups(editingSection.id);

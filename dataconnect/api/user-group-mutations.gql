@@ -65,32 +65,30 @@ mutation RemoveUserFromUserGroup(
   )
 }
 
-# Grant a user group a section purpose (admin only). One row per (section, userGroup, purpose).
+# Set purposes for a section/user-group link (admin only). One row per (section, userGroup).
 mutation GrantUserGroupToSectionForPurpose(
   $sectionId: UUID!
   $userGroupId: UUID!
-  $purpose: SectionUserGroupPurpose!
+  $purposes: [SectionUserGroupPurpose!]
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sectionUserGroupPurposeLink_upsert(
     data: {
       sectionId: $sectionId
       userGroupId: $userGroupId
-      purpose: $purpose
+      purposes: $purposes
     }
   )
 }
 
-# Revoke a user group's purpose link for a section (admin only)
+# Delete a section/user-group link entirely (admin only)
 mutation RevokeUserGroupFromSectionForPurpose(
   $sectionId: UUID!
   $userGroupId: UUID!
-  $purpose: SectionUserGroupPurpose!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   sectionUserGroupPurposeLink_delete(
     key: {
       sectionId: $sectionId
       userGroupId: $userGroupId
-      purpose: $purpose
     }
   )
 }

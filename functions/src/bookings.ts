@@ -158,13 +158,15 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       throw new HttpsError("not-found", "Section not found");
     }
 
-    const purposeLinks = (section.purposeLinks ?? []).map((link: { purpose: string; userGroup: { id: string; membershipStatuses?: string[] | null } }) => ({
-      purpose: link.purpose,
-      userGroup: {
-        id: validateUUID(link.userGroup.id, "userGroupId"),
-        membershipStatuses: link.userGroup.membershipStatuses ?? null,
-      },
-    }));
+    const purposeLinks = (section.purposeLinks ?? []).map(
+      (link: { purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }) => ({
+        purposes: link.purposes ?? [],
+        userGroup: {
+          id: validateUUID(link.userGroup.id, "userGroupId"),
+          membershipStatuses: link.userGroup.membershipStatuses ?? null,
+        },
+      })
+    );
 
     const gate = evaluateBookingGatekeeping({
       purposeLinks,

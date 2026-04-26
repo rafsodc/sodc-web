@@ -119,11 +119,11 @@ enum SectionUserGroupPurpose {
   MODERATOR
 }
 
-# One row per (section, userGroup, purpose). Same group may appear multiple times with different purposes.
-type SectionUserGroupPurposeLink @table(key: ["section", "userGroup", "purpose"]) {
+# One row per (section, userGroup). A single row may include multiple purposes.
+type SectionUserGroupPurposeLink @table(key: ["section", "userGroup"]) {
   section: Section!
   userGroup: UserGroup!
-  purpose: SectionUserGroupPurpose!
+  purposes: [SectionUserGroupPurpose!]
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

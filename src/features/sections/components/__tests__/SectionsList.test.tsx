@@ -100,7 +100,7 @@ describe('SectionsList', () => {
               name: 'Group 1',
               purposeLinks: [
                 {
-                  purpose: 'ACCESS',
+                  purposes: ['ACCESS'],
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -148,7 +148,7 @@ describe('SectionsList', () => {
               name: 'Member Group',
               purposeLinks: [
                 {
-                  purpose: 'MEMBER',
+                  purposes: ['MEMBER'],
                   section: {
                     id: 'events-section-1',
                     name: 'Events Section',
@@ -193,7 +193,7 @@ describe('SectionsList', () => {
               name: 'Group 1',
               purposeLinks: [
                 {
-                  purpose: 'ACCESS',
+                  purposes: ['ACCESS'],
                   section: {
                     id: 'section-1',
                     name: 'Same Section',
@@ -202,7 +202,7 @@ describe('SectionsList', () => {
                   },
                 },
                 {
-                  purpose: 'MEMBER',
+                  purposes: ['MEMBER'],
                   section: {
                     id: 'section-1',
                     name: 'Same Section',
@@ -274,7 +274,7 @@ describe('SectionsList', () => {
               name: 'Group 1',
               purposeLinks: [
                 {
-                  purpose: 'ACCESS',
+                  purposes: ['ACCESS'],
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -283,7 +283,7 @@ describe('SectionsList', () => {
                   },
                 },
                 {
-                  purpose: 'ACCESS',
+                  purposes: ['ACCESS'],
                   section: {
                     id: 'section-2',
                     name: 'Another Section',
@@ -337,7 +337,7 @@ describe('SectionsList', () => {
               name: 'Group 1',
               purposeLinks: [
                 {
-                  purpose: 'ACCESS',
+                  purposes: ['ACCESS'],
                   section: {
                     id: 'section-1',
                     name: 'Test Section',
@@ -390,7 +390,7 @@ describe('SectionsList', () => {
               name: 'Group 1',
               purposeLinks: [
                 {
-                  purpose: 'ACCESS',
+                  purposes: ['ACCESS'],
                   section: {
                     id: 'section-1',
                     name: 'Test Section',

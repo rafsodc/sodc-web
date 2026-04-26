@@ -226,7 +226,7 @@ query GetSectionByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
     isOpenForRegistration
     allowedUserGroups
     purposeLinks: sectionUserGroupPurposeLinks_on_section {
-      purpose
+      purposes
       userGroup {
         id
         name

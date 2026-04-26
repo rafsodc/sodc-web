@@ -393,10 +393,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const isLoadingDetails = expandedGroupId ? loadingDetails[expandedGroupId] : false;
 
   const sectionsForGroup: SectionWithPurpose[] = details
-    ? (details.purposeLinks ?? []).map((item) => ({
-        section: item.section,
-        purpose: item.purpose,
-      }))
+    ? (details.purposeLinks ?? []).flatMap((item) => {
+        const purposes = item.purposes ?? [];
+        return purposes.map((purpose) => ({
+          section: item.section,
+          purpose,
+        }));
+      })
     : [];
 
   // Merged users: explicit (UserUserGroup) + users whose membershipStatus is in group's membershipStatuses
