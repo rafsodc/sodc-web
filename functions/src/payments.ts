@@ -16,7 +16,11 @@ import {
   upsertTicketOrderDisputeFromWebhook,
   updateUserStripeCustomerId,
   PaymentWebhookEventOutcome,
+  PaymentReconciliationExceptionStatus,
+  PaymentReconciliationExceptionType,
   TicketAudience,
+  TicketOrderStatus,
+  upsertPaymentReconciliationException,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
@@ -28,6 +32,7 @@ import {
   normalizeStripeEvent,
 } from "./paymentStateMachine";
 import { runTicketOrderTransition } from "./paymentTransitionEngine";
+import { evaluateReconciliationSignals } from "./paymentReconciliation";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
@@ -84,6 +89,40 @@ async function appendWebhookLedgerEvent(args: {
     stripeObjectId: args.stripeObjectId ?? null,
     livemode: args.livemode,
   });
+}
+
+const RECONCILIATION_EXCEPTION_TYPES = [
+  PaymentReconciliationExceptionType.MISSING_PAYMENT_INTENT,
+  PaymentReconciliationExceptionType.REFUND_AMOUNT_MISMATCH,
+  PaymentReconciliationExceptionType.ACTIVE_DISPUTE,
+] as const;
+
+async function upsertReconciliationSnapshot(args: {
+  orderId: UUIDString;
+  snapshot: {
+    status: TicketOrderStatus;
+    totalAmountMinor: number;
+    refundedAmountMinor?: number | null;
+    stripePaymentIntentId?: string | null;
+    disputeStatus?: string | null;
+  };
+}): Promise<void> {
+  const signals = evaluateReconciliationSignals(args.snapshot);
+  const signalMap = new Map(signals.map((signal) => [signal.type, signal]));
+  const nowIso = new Date().toISOString();
+
+  for (const type of RECONCILIATION_EXCEPTION_TYPES) {
+    const signal = signalMap.get(type);
+    await upsertPaymentReconciliationException({
+      ticketOrderId: args.orderId,
+      exceptionType: type,
+      status: signal ? PaymentReconciliationExceptionStatus.OPEN : PaymentReconciliationExceptionStatus.RESOLVED,
+      note: signal?.note ?? "Auto-resolved by reconciliation snapshot",
+      ownerUserId: null,
+      lastAttemptedAt: nowIso,
+      resolvedAt: signal ? null : nowIso,
+    });
+  }
 }
 
 export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
@@ -305,6 +344,16 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         stripeObjectId,
         livemode: event.livemode,
       });
+      await upsertReconciliationSnapshot({
+        orderId: canonicalOrderId,
+        snapshot: {
+          status: order.status,
+          totalAmountMinor: order.totalAmountMinor,
+          refundedAmountMinor: order.refundedAmountMinor ?? null,
+          stripePaymentIntentId: order.stripePaymentIntentId ?? null,
+          disputeStatus: dispute.status ?? normalized.disputeState ?? null,
+        },
+      });
       res.status(200).send("Dispute side-state acknowledged");
       return;
     }
@@ -402,6 +451,31 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
       ticketOrderId: canonicalOrderId,
       stripeObjectId,
       livemode: event.livemode,
+    });
+    const nextStatus = transitionResult.action === "applied" ? transitionResult.targetStatus : order.status;
+    const paymentIntentIdFromEvent =
+      intent === "MARK_PAID"
+        ? (() => {
+            const session = event.data.object as { payment_intent?: string | { id?: string } };
+            return typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
+          })()
+        : null;
+    const refundAmountFromEvent =
+      intent === "MARK_REFUNDED"
+        ? (() => {
+            const charge = event.data.object as { amount_refunded?: number };
+            return typeof charge.amount_refunded === "number" ? charge.amount_refunded : null;
+          })()
+        : null;
+    await upsertReconciliationSnapshot({
+      orderId: canonicalOrderId,
+      snapshot: {
+        status: nextStatus,
+        totalAmountMinor: order.totalAmountMinor,
+        refundedAmountMinor: refundAmountFromEvent ?? order.refundedAmountMinor ?? null,
+        stripePaymentIntentId: paymentIntentIdFromEvent ?? order.stripePaymentIntentId ?? null,
+        disputeStatus: order.disputeStatus ?? null,
+      },
     });
     res.status(200).send("ok");
   } catch (err) {

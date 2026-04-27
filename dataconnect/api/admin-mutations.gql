@@ -350,6 +350,7 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
   ticketOrder(id: $id) {
     id
     status
+    totalAmountMinor
     stripeCheckoutSessionId
     stripePaymentIntentId
     stripeRefundId
@@ -483,6 +484,30 @@ mutation UpsertTicketOrderDisputeFromWebhook(
       disputeOpenedAt: $disputeOpenedAt
       disputeUpdatedAt: $disputeUpdatedAt
       disputeClosedAt: $disputeClosedAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpsertPaymentReconciliationException(
+  $ticketOrderId: UUID!
+  $exceptionType: PaymentReconciliationExceptionType!
+  $status: PaymentReconciliationExceptionStatus!
+  $note: String
+  $ownerUserId: String
+  $lastAttemptedAt: Timestamp
+  $resolvedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  paymentReconciliationException_upsert(
+    data: {
+      ticketOrderId: $ticketOrderId
+      exceptionType: $exceptionType
+      status: $status
+      note: $note
+      ownerUserId: $ownerUserId
+      lastAttemptedAt: $lastAttemptedAt
+      resolvedAt: $resolvedAt
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }

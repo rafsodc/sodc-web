@@ -71,6 +71,16 @@ Webhook handling continues to treat disputes as side-state metadata (no `TicketO
 - Existing `TicketOrderStatus` semantics are unchanged.
 - Existing webhook idempotency behavior (event ledger keyed by Stripe event id) remains the source of replay protection.
 
+## Reconciliation Primitives
+
+The payment domain exposes deterministic exception signals for operator triage:
+
+- `MISSING_PAYMENT_INTENT`
+- `REFUND_AMOUNT_MISMATCH`
+- `ACTIVE_DISPUTE`
+
+Signals are evaluated from persisted order metadata and upserted to reconciliation exception records with remediation metadata (`status`, `ownerUserId`, `lastAttemptedAt`, `resolvedAt`).
+
 ## Scope Boundary
 
 - #128 and #131 cover transition contract and execution guards.

@@ -557,3 +557,38 @@ query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin ==
     }
   }
 }
+
+query ListOpenPaymentReconciliationExceptions @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  paymentReconciliationExceptions(
+    where: { status: { eq: OPEN } }
+    orderBy: { updatedAt: DESC }
+  ) {
+    id
+    exceptionType
+    status
+    note
+    ownerUserId
+    lastAttemptedAt
+    resolvedAt
+    createdAt
+    updatedAt
+    ticketOrder {
+      id
+      status
+      totalAmountMinor
+      currency
+      refundedAmountMinor
+      disputeStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+      event {
+        id
+        title
+      }
+    }
+  }
+}

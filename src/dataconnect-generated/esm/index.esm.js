@@ -25,6 +25,17 @@ export const MembershipStatus = {
   DECEASED: "DECEASED",
 }
 
+export const PaymentReconciliationExceptionStatus = {
+  OPEN: "OPEN",
+  RESOLVED: "RESOLVED",
+}
+
+export const PaymentReconciliationExceptionType = {
+  MISSING_PAYMENT_INTENT: "MISSING_PAYMENT_INTENT",
+  REFUND_AMOUNT_MISMATCH: "REFUND_AMOUNT_MISMATCH",
+  ACTIVE_DISPUTE: "ACTIVE_DISPUTE",
+}
+
 export const PaymentWebhookEventOutcome = {
   PROCESSED: "PROCESSED",
   IGNORED: "IGNORED",
@@ -303,6 +314,17 @@ listTicketOrdersForAdminRef.operationName = 'ListTicketOrdersForAdmin';
 
 export function listTicketOrdersForAdmin(dcOrVars, vars) {
   return executeQuery(listTicketOrdersForAdminRef(dcOrVars, vars));
+}
+
+export const listOpenPaymentReconciliationExceptionsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListOpenPaymentReconciliationExceptions');
+}
+listOpenPaymentReconciliationExceptionsRef.operationName = 'ListOpenPaymentReconciliationExceptions';
+
+export function listOpenPaymentReconciliationExceptions(dc) {
+  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dc));
 }
 
 export const createSectionRef = (dcOrVars, vars) => {
@@ -831,6 +853,17 @@ upsertTicketOrderDisputeFromWebhookRef.operationName = 'UpsertTicketOrderDispute
 
 export function upsertTicketOrderDisputeFromWebhook(dcOrVars, vars) {
   return executeMutation(upsertTicketOrderDisputeFromWebhookRef(dcOrVars, vars));
+}
+
+export const upsertPaymentReconciliationExceptionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertPaymentReconciliationException', inputVars);
+}
+upsertPaymentReconciliationExceptionRef.operationName = 'UpsertPaymentReconciliationException';
+
+export function upsertPaymentReconciliationException(dcOrVars, vars) {
+  return executeMutation(upsertPaymentReconciliationExceptionRef(dcOrVars, vars));
 }
 
 export const updateBookingPreferencesFromCallableRef = (dcOrVars, vars) => {
