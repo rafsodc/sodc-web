@@ -193,22 +193,25 @@ export function buildNavigationLinks({
   }
 
   return {
-    sections: sortLinks(sectionMap.values()).map((section) => {
-      const sectionId = section.to.replace("/sections/", "");
-      if (!administerableSectionIds.has(sectionId)) {
-        return section;
-      }
-      return {
-        ...section,
-        children: [
-          manageSectionLink({
-            label: "Administer",
-            sectionId,
-            sectionName: section.label,
-          }),
-        ],
-      };
-    }),
+    sections: [
+      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
+      ...sortLinks(sectionMap.values()).map((section) => {
+        const sectionId = section.to.replace("/sections/", "");
+        if (!administerableSectionIds.has(sectionId)) {
+          return section;
+        }
+        return {
+          ...section,
+          children: [
+            manageSectionLink({
+              label: "Administer",
+              sectionId,
+              sectionName: section.label,
+            }),
+          ],
+        };
+      }),
+    ],
     admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionsData }),
   };
 }

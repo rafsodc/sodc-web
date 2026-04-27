@@ -423,6 +423,36 @@ query GetMyTicketOrderById($id: UUID!) @auth(expr: "auth.token.enabled == true")
   }
 }
 
+# Current user's ticket order history (member lifecycle visibility).
+query GetMyTicketOrders @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    ticketOrders: ticketOrders_on_user(orderBy: { updatedAt: DESC }) {
+      id
+      status
+      quantity
+      totalAmountMinor
+      currency
+      refundedAmountMinor
+      refundedAt
+      disputeStatus
+      disputeReason
+      stripePaymentIntentId
+      createdAt
+      updatedAt
+      ticketType {
+        id
+        title
+      }
+      event {
+        id
+        title
+        startDateTime
+      }
+    }
+  }
+}
+
 # Admin: list booking graph for cascade delete before removing an event.
 query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event(id: $eventId) {

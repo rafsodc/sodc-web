@@ -12,28 +12,28 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useCreateBookingDraft, useAddBookingLine, useUpdateBookingStatus, useCreateGuestTicketRequest, useAdminDeleteGuestTicketRequest, useAdminReviewGuestTicketRequest, useAdminDeleteBookingLine, useAdminDeleteBooking, useResolvePaymentReconciliationException, useGetCurrentUser } from '@dataconnect/generated/react';
+import { useCreateUserProfile, useUpsertUser, useUpdateUser, useRegisterForSection, useUnregisterFromSection, useSubscribeToUserGroup, useUnsubscribeFromUserGroup, useUpdateUserMembershipStatus, useDeleteUser, useCreateUser } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
-const { data, isPending, isSuccess, isError, error } = useCreateBookingDraft(createBookingDraftVars);
+const { data, isPending, isSuccess, isError, error } = useCreateUserProfile(createUserProfileVars);
 
-const { data, isPending, isSuccess, isError, error } = useAddBookingLine(addBookingLineVars);
+const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
 
-const { data, isPending, isSuccess, isError, error } = useUpdateBookingStatus(updateBookingStatusVars);
+const { data, isPending, isSuccess, isError, error } = useUpdateUser(updateUserVars);
 
-const { data, isPending, isSuccess, isError, error } = useCreateGuestTicketRequest(createGuestTicketRequestVars);
+const { data, isPending, isSuccess, isError, error } = useRegisterForSection(registerForSectionVars);
 
-const { data, isPending, isSuccess, isError, error } = useAdminDeleteGuestTicketRequest(adminDeleteGuestTicketRequestVars);
+const { data, isPending, isSuccess, isError, error } = useUnregisterFromSection(unregisterFromSectionVars);
 
-const { data, isPending, isSuccess, isError, error } = useAdminReviewGuestTicketRequest(adminReviewGuestTicketRequestVars);
+const { data, isPending, isSuccess, isError, error } = useSubscribeToUserGroup(subscribeToUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useAdminDeleteBookingLine(adminDeleteBookingLineVars);
+const { data, isPending, isSuccess, isError, error } = useUnsubscribeFromUserGroup(unsubscribeFromUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useAdminDeleteBooking(adminDeleteBookingVars);
+const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
 
-const { data, isPending, isSuccess, isError, error } = useResolvePaymentReconciliationException(resolvePaymentReconciliationExceptionVars);
+const { data, isPending, isSuccess, isError, error } = useDeleteUser(deleteUserVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetCurrentUser();
+const { data, isPending, isSuccess, isError, error } = useCreateUser(createUserVars);
 
 ```
 
@@ -72,38 +72,38 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { createBookingDraft, addBookingLine, updateBookingStatus, createGuestTicketRequest, adminDeleteGuestTicketRequest, adminReviewGuestTicketRequest, adminDeleteBookingLine, adminDeleteBooking, resolvePaymentReconciliationException, getCurrentUser } from '@dataconnect/generated';
+import { createUserProfile, upsertUser, updateUser, registerForSection, unregisterFromSection, subscribeToUserGroup, unsubscribeFromUserGroup, updateUserMembershipStatus, deleteUser, createUser } from '@dataconnect/generated';
 
 
-// Operation CreateBookingDraft:  For variables, look at type CreateBookingDraftVars in ../index.d.ts
-const { data } = await CreateBookingDraft(dataConnect, createBookingDraftVars);
+// Operation CreateUserProfile:  For variables, look at type CreateUserProfileVars in ../index.d.ts
+const { data } = await CreateUserProfile(dataConnect, createUserProfileVars);
 
-// Operation AddBookingLine:  For variables, look at type AddBookingLineVars in ../index.d.ts
-const { data } = await AddBookingLine(dataConnect, addBookingLineVars);
+// Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
+const { data } = await UpsertUser(dataConnect, upsertUserVars);
 
-// Operation UpdateBookingStatus:  For variables, look at type UpdateBookingStatusVars in ../index.d.ts
-const { data } = await UpdateBookingStatus(dataConnect, updateBookingStatusVars);
+// Operation UpdateUser:  For variables, look at type UpdateUserVars in ../index.d.ts
+const { data } = await UpdateUser(dataConnect, updateUserVars);
 
-// Operation CreateGuestTicketRequest:  For variables, look at type CreateGuestTicketRequestVars in ../index.d.ts
-const { data } = await CreateGuestTicketRequest(dataConnect, createGuestTicketRequestVars);
+// Operation RegisterForSection:  For variables, look at type RegisterForSectionVars in ../index.d.ts
+const { data } = await RegisterForSection(dataConnect, registerForSectionVars);
 
-// Operation AdminDeleteGuestTicketRequest:  For variables, look at type AdminDeleteGuestTicketRequestVars in ../index.d.ts
-const { data } = await AdminDeleteGuestTicketRequest(dataConnect, adminDeleteGuestTicketRequestVars);
+// Operation UnregisterFromSection:  For variables, look at type UnregisterFromSectionVars in ../index.d.ts
+const { data } = await UnregisterFromSection(dataConnect, unregisterFromSectionVars);
 
-// Operation AdminReviewGuestTicketRequest:  For variables, look at type AdminReviewGuestTicketRequestVars in ../index.d.ts
-const { data } = await AdminReviewGuestTicketRequest(dataConnect, adminReviewGuestTicketRequestVars);
+// Operation SubscribeToUserGroup:  For variables, look at type SubscribeToUserGroupVars in ../index.d.ts
+const { data } = await SubscribeToUserGroup(dataConnect, subscribeToUserGroupVars);
 
-// Operation AdminDeleteBookingLine:  For variables, look at type AdminDeleteBookingLineVars in ../index.d.ts
-const { data } = await AdminDeleteBookingLine(dataConnect, adminDeleteBookingLineVars);
+// Operation UnsubscribeFromUserGroup:  For variables, look at type UnsubscribeFromUserGroupVars in ../index.d.ts
+const { data } = await UnsubscribeFromUserGroup(dataConnect, unsubscribeFromUserGroupVars);
 
-// Operation AdminDeleteBooking:  For variables, look at type AdminDeleteBookingVars in ../index.d.ts
-const { data } = await AdminDeleteBooking(dataConnect, adminDeleteBookingVars);
+// Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
+const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
 
-// Operation ResolvePaymentReconciliationException:  For variables, look at type ResolvePaymentReconciliationExceptionVars in ../index.d.ts
-const { data } = await ResolvePaymentReconciliationException(dataConnect, resolvePaymentReconciliationExceptionVars);
+// Operation DeleteUser:  For variables, look at type DeleteUserVars in ../index.d.ts
+const { data } = await DeleteUser(dataConnect, deleteUserVars);
 
-// Operation GetCurrentUser: 
-const { data } = await GetCurrentUser(dataConnect);
+// Operation CreateUser:  For variables, look at type CreateUserVars in ../index.d.ts
+const { data } = await CreateUser(dataConnect, createUserVars);
 
 
 ```

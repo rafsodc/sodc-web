@@ -175,6 +175,15 @@ vi.mock("../features/sections/components/SectionDetail", () => ({
   ),
 }));
 
+vi.mock("../features/sections/components/MyPayments", () => ({
+  default: ({ onBack }: { onBack: () => void }) => (
+    <div>
+      <h1>My Payments Page</h1>
+      <button onClick={onBack}>Back</button>
+    </div>
+  ),
+}));
+
 vi.mock("../features/admin/components/ManageUsers", () => ({
   default: ({ onBack }: { onBack: () => void }) => (
     <div>
@@ -261,6 +270,14 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/sections/section-1");
+  });
+
+  it("renders member payment history from a direct deep link for enabled users", async () => {
+    signInEnabledUser();
+    renderApp([ROUTES.MY_PAYMENTS]);
+
+    expect(await screen.findByRole("heading", { name: "My Payments Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
   });
 
   it("uses browser history for section detail Back when history exists", async () => {
