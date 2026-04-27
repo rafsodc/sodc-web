@@ -25,6 +25,17 @@ export const MembershipStatus = {
   DECEASED: "DECEASED",
 }
 
+export const PaymentReconciliationExceptionStatus = {
+  OPEN: "OPEN",
+  RESOLVED: "RESOLVED",
+}
+
+export const PaymentReconciliationExceptionType = {
+  MISSING_PAYMENT_INTENT: "MISSING_PAYMENT_INTENT",
+  REFUND_AMOUNT_MISMATCH: "REFUND_AMOUNT_MISMATCH",
+  ACTIVE_DISPUTE: "ACTIVE_DISPUTE",
+}
+
 export const PaymentWebhookEventOutcome = {
   PROCESSED: "PROCESSED",
   IGNORED: "IGNORED",
@@ -193,6 +204,12 @@ export function listTicketOrdersForAdmin(dcOrVarsOrOptions, varsOrOptions, optio
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeQuery('ListTicketOrdersForAdmin', inputVars, inputOpts);
+}
+
+export function listOpenPaymentReconciliationExceptions(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListOpenPaymentReconciliationExceptions', undefined, inputOpts);
 }
 
 export function createSection(dcOrVarsOrOptions, varsOrOptions, options) {
@@ -481,6 +498,12 @@ export function upsertTicketOrderDisputeFromWebhook(dcOrVarsOrOptions, varsOrOpt
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('UpsertTicketOrderDisputeFromWebhook', inputVars, inputOpts);
+}
+
+export function upsertPaymentReconciliationException(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpsertPaymentReconciliationException', inputVars, inputOpts);
 }
 
 export function updateBookingPreferencesFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {

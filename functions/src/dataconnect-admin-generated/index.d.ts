@@ -29,6 +29,15 @@ export enum MembershipStatus {
   LOST = "LOST",
   DECEASED = "DECEASED",
 }
+export enum PaymentReconciliationExceptionStatus {
+  OPEN = "OPEN",
+  RESOLVED = "RESOLVED",
+}
+export enum PaymentReconciliationExceptionType {
+  MISSING_PAYMENT_INTENT = "MISSING_PAYMENT_INTENT",
+  REFUND_AMOUNT_MISMATCH = "REFUND_AMOUNT_MISMATCH",
+  ACTIVE_DISPUTE = "ACTIVE_DISPUTE",
+}
 export enum PaymentWebhookEventOutcome {
   PROCESSED = "PROCESSED",
   IGNORED = "IGNORED",
@@ -731,6 +740,7 @@ export interface GetTicketOrderForWebhookData {
   ticketOrder?: {
     id: UUIDString;
     status: TicketOrderStatus;
+    totalAmountMinor: number;
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     stripeRefundId?: string | null;
@@ -1057,6 +1067,38 @@ export interface ListGuestTicketRequestsForAdminVariables {
   eventId: UUIDString;
 }
 
+export interface ListOpenPaymentReconciliationExceptionsData {
+  paymentReconciliationExceptions: ({
+    id: UUIDString;
+    exceptionType: PaymentReconciliationExceptionType;
+    status: PaymentReconciliationExceptionStatus;
+    note?: string | null;
+    ownerUserId?: string | null;
+    lastAttemptedAt?: TimestampString | null;
+    resolvedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    ticketOrder: {
+      id: UUIDString;
+      status: TicketOrderStatus;
+      totalAmountMinor: number;
+      currency: string;
+      refundedAmountMinor?: number | null;
+      disputeStatus?: string | null;
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      } & User_Key;
+        event: {
+          id: UUIDString;
+          title: string;
+        } & Event_Key;
+    } & TicketOrder_Key;
+  } & PaymentReconciliationException_Key)[];
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -1179,6 +1221,11 @@ export interface MarkTicketOrderRefundedFromWebhookVariables {
   stripeRefundId?: string | null;
   refundedAmountMinor?: number | null;
   refundedAt?: TimestampString | null;
+}
+
+export interface PaymentReconciliationException_Key {
+  id: UUIDString;
+  __typename?: 'PaymentReconciliationException_Key';
 }
 
 export interface PaymentWebhookEvent_Key {
@@ -1382,6 +1429,20 @@ export interface UpdateUserVariables {
   isIndustry?: boolean | null;
 }
 
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
+}
+
+export interface UpsertPaymentReconciliationExceptionVariables {
+  ticketOrderId: UUIDString;
+  exceptionType: PaymentReconciliationExceptionType;
+  status: PaymentReconciliationExceptionStatus;
+  note?: string | null;
+  ownerUserId?: string | null;
+  lastAttemptedAt?: TimestampString | null;
+  resolvedAt?: TimestampString | null;
+}
+
 export interface UpsertTicketOrderDisputeFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -1538,6 +1599,11 @@ export function listGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsFor
 export function listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;
 /** Generated Node Admin SDK operation action function for the 'ListTicketOrdersForAdmin' Query. Allow users to pass in custom DataConnect instances. */
 export function listTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListOpenPaymentReconciliationExceptions' Query. Allow users to execute without passing in DataConnect. */
+export function listOpenPaymentReconciliationExceptions(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOpenPaymentReconciliationExceptionsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListOpenPaymentReconciliationExceptions' Query. Allow users to pass in custom DataConnect instances. */
+export function listOpenPaymentReconciliationExceptions(options?: OperationOptions): Promise<ExecuteOperationResponse<ListOpenPaymentReconciliationExceptionsData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
 export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
@@ -1778,6 +1844,11 @@ export function markTicketOrderRefundedFromWebhook(vars: MarkTicketOrderRefunded
 export function upsertTicketOrderDisputeFromWebhook(dc: DataConnect, vars: UpsertTicketOrderDisputeFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertTicketOrderDisputeFromWebhookData>>;
 /** Generated Node Admin SDK operation action function for the 'UpsertTicketOrderDisputeFromWebhook' Mutation. Allow users to pass in custom DataConnect instances. */
 export function upsertTicketOrderDisputeFromWebhook(vars: UpsertTicketOrderDisputeFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertTicketOrderDisputeFromWebhookData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpsertPaymentReconciliationException' Mutation. Allow users to execute without passing in DataConnect. */
+export function upsertPaymentReconciliationException(dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertPaymentReconciliationExceptionData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertPaymentReconciliationException' Mutation. Allow users to pass in custom DataConnect instances. */
+export function upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertPaymentReconciliationExceptionData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingPreferencesFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateBookingPreferencesFromCallable(dc: DataConnect, vars: UpdateBookingPreferencesFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPreferencesFromCallableData>>;

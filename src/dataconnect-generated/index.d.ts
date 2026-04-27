@@ -33,6 +33,17 @@ export enum MembershipStatus {
   DECEASED = "DECEASED",
 };
 
+export enum PaymentReconciliationExceptionStatus {
+  OPEN = "OPEN",
+  RESOLVED = "RESOLVED",
+};
+
+export enum PaymentReconciliationExceptionType {
+  MISSING_PAYMENT_INTENT = "MISSING_PAYMENT_INTENT",
+  REFUND_AMOUNT_MISMATCH = "REFUND_AMOUNT_MISMATCH",
+  ACTIVE_DISPUTE = "ACTIVE_DISPUTE",
+};
+
 export enum PaymentWebhookEventOutcome {
   PROCESSED = "PROCESSED",
   IGNORED = "IGNORED",
@@ -741,6 +752,7 @@ export interface GetTicketOrderForWebhookData {
   ticketOrder?: {
     id: UUIDString;
     status: TicketOrderStatus;
+    totalAmountMinor: number;
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     stripeRefundId?: string | null;
@@ -1067,6 +1079,38 @@ export interface ListGuestTicketRequestsForAdminVariables {
   eventId: UUIDString;
 }
 
+export interface ListOpenPaymentReconciliationExceptionsData {
+  paymentReconciliationExceptions: ({
+    id: UUIDString;
+    exceptionType: PaymentReconciliationExceptionType;
+    status: PaymentReconciliationExceptionStatus;
+    note?: string | null;
+    ownerUserId?: string | null;
+    lastAttemptedAt?: TimestampString | null;
+    resolvedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    ticketOrder: {
+      id: UUIDString;
+      status: TicketOrderStatus;
+      totalAmountMinor: number;
+      currency: string;
+      refundedAmountMinor?: number | null;
+      disputeStatus?: string | null;
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      } & User_Key;
+        event: {
+          id: UUIDString;
+          title: string;
+        } & Event_Key;
+    } & TicketOrder_Key;
+  } & PaymentReconciliationException_Key)[];
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -1189,6 +1233,11 @@ export interface MarkTicketOrderRefundedFromWebhookVariables {
   stripeRefundId?: string | null;
   refundedAmountMinor?: number | null;
   refundedAt?: TimestampString | null;
+}
+
+export interface PaymentReconciliationException_Key {
+  id: UUIDString;
+  __typename?: 'PaymentReconciliationException_Key';
 }
 
 export interface PaymentWebhookEvent_Key {
@@ -1390,6 +1439,20 @@ export interface UpdateUserVariables {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+}
+
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
+}
+
+export interface UpsertPaymentReconciliationExceptionVariables {
+  ticketOrderId: UUIDString;
+  exceptionType: PaymentReconciliationExceptionType;
+  status: PaymentReconciliationExceptionStatus;
+  note?: string | null;
+  ownerUserId?: string | null;
+  lastAttemptedAt?: TimestampString | null;
+  resolvedAt?: TimestampString | null;
 }
 
 export interface UpsertTicketOrderDisputeFromWebhookData {
@@ -1702,6 +1765,18 @@ export const listTicketOrdersForAdminRef: ListTicketOrdersForAdminRef;
 
 export function listTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables): QueryPromise<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
 export function listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables): QueryPromise<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
+
+interface ListOpenPaymentReconciliationExceptionsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<ListOpenPaymentReconciliationExceptionsData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<ListOpenPaymentReconciliationExceptionsData, undefined>;
+  operationName: string;
+}
+export const listOpenPaymentReconciliationExceptionsRef: ListOpenPaymentReconciliationExceptionsRef;
+
+export function listOpenPaymentReconciliationExceptions(): QueryPromise<ListOpenPaymentReconciliationExceptionsData, undefined>;
+export function listOpenPaymentReconciliationExceptions(dc: DataConnect): QueryPromise<ListOpenPaymentReconciliationExceptionsData, undefined>;
 
 interface CreateSectionRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -2278,6 +2353,18 @@ export const upsertTicketOrderDisputeFromWebhookRef: UpsertTicketOrderDisputeFro
 
 export function upsertTicketOrderDisputeFromWebhook(vars: UpsertTicketOrderDisputeFromWebhookVariables): MutationPromise<UpsertTicketOrderDisputeFromWebhookData, UpsertTicketOrderDisputeFromWebhookVariables>;
 export function upsertTicketOrderDisputeFromWebhook(dc: DataConnect, vars: UpsertTicketOrderDisputeFromWebhookVariables): MutationPromise<UpsertTicketOrderDisputeFromWebhookData, UpsertTicketOrderDisputeFromWebhookVariables>;
+
+interface UpsertPaymentReconciliationExceptionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
+  operationName: string;
+}
+export const upsertPaymentReconciliationExceptionRef: UpsertPaymentReconciliationExceptionRef;
+
+export function upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
+export function upsertPaymentReconciliationException(dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 
 interface UpdateBookingPreferencesFromCallableRef {
   /* Allow users to create refs without passing in DataConnect */

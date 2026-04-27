@@ -52,6 +52,17 @@ enum PaymentWebhookEventOutcome {
   FAILED
 }
 
+enum PaymentReconciliationExceptionType {
+  MISSING_PAYMENT_INTENT
+  REFUND_AMOUNT_MISMATCH
+  ACTIVE_DISPUTE
+}
+
+enum PaymentReconciliationExceptionStatus {
+  OPEN
+  RESOLVED
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -274,6 +285,22 @@ type PaymentWebhookEvent @table @unique(fields: ["stripeEventId"]) {
   # Lightweight payload metadata for diagnostics (not full raw payload storage).
   stripeObjectId: String
   livemode: Boolean!
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+type PaymentReconciliationException @table @unique(fields: ["ticketOrder", "exceptionType"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  ticketOrder: TicketOrder!
+  exceptionType: PaymentReconciliationExceptionType!
+  status: PaymentReconciliationExceptionStatus! @default(value: OPEN)
+  note: String
+  ownerUserId: String
+  lastAttemptedAt: Timestamp
+  resolvedAt: Timestamp
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

@@ -28,6 +28,19 @@ const MembershipStatus = {
 }
 exports.MembershipStatus = MembershipStatus;
 
+const PaymentReconciliationExceptionStatus = {
+  OPEN: "OPEN",
+  RESOLVED: "RESOLVED",
+}
+exports.PaymentReconciliationExceptionStatus = PaymentReconciliationExceptionStatus;
+
+const PaymentReconciliationExceptionType = {
+  MISSING_PAYMENT_INTENT: "MISSING_PAYMENT_INTENT",
+  REFUND_AMOUNT_MISMATCH: "REFUND_AMOUNT_MISMATCH",
+  ACTIVE_DISPUTE: "ACTIVE_DISPUTE",
+}
+exports.PaymentReconciliationExceptionType = PaymentReconciliationExceptionType;
+
 const PaymentWebhookEventOutcome = {
   PROCESSED: "PROCESSED",
   IGNORED: "IGNORED",
@@ -225,6 +238,13 @@ function listTicketOrdersForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('ListTicketOrdersForAdmin', inputVars, inputOpts);
 }
 exports.listTicketOrdersForAdmin = listTicketOrdersForAdmin;
+
+function listOpenPaymentReconciliationExceptions(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListOpenPaymentReconciliationExceptions', undefined, inputOpts);
+}
+exports.listOpenPaymentReconciliationExceptions = listOpenPaymentReconciliationExceptions;
 
 function createSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -561,6 +581,13 @@ function upsertTicketOrderDisputeFromWebhook(dcOrVarsOrOptions, varsOrOptions, o
   return dcInstance.executeMutation('UpsertTicketOrderDisputeFromWebhook', inputVars, inputOpts);
 }
 exports.upsertTicketOrderDisputeFromWebhook = upsertTicketOrderDisputeFromWebhook;
+
+function upsertPaymentReconciliationException(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpsertPaymentReconciliationException', inputVars, inputOpts);
+}
+exports.upsertPaymentReconciliationException = upsertPaymentReconciliationException;
 
 function updateBookingPreferencesFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
