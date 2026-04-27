@@ -2,6 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
   addBookingLineFromCallable,
+  createBookingPaymentAdjustmentFromCallable,
   BookingStatus,
   markBookingSupersededFromCallable,
   createBookingDraftForUser,
@@ -27,6 +28,7 @@ import {
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
+import { computeBookingPaymentDelta } from "./bookingPaymentAdjustments";
 
 function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   if (
@@ -346,6 +348,17 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     });
     if (revisionPlan.supersedesBookingId) {
       await markBookingSupersededFromCallable({ id: revisionPlan.supersedesBookingId });
+      const refreshed = await fetchBookingsForBookerAndEvent(uid, eventId);
+      const previousBooking = refreshed.find((booking) => booking.id === revisionPlan.supersedesBookingId);
+      const revisedBooking = refreshed.find((booking) => booking.id === bookingId);
+      const delta = computeBookingPaymentDelta(previousBooking, revisedBooking);
+      await createBookingPaymentAdjustmentFromCallable({
+        revisionBookingId: bookingId as UUIDString,
+        supersededBookingId: revisionPlan.supersedesBookingId,
+        deltaAmountMinor: delta.deltaAmountMinor,
+        status: delta.status,
+        orchestrationKey: `${bookingId}:${idempotencyKey}`,
+      });
     }
 
     logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
