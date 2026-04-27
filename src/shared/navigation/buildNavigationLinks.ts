@@ -136,6 +136,7 @@ function buildAdminLinks({
       state: null,
       children: userGroupChildren,
     });
+    links.push({ label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION });
     links.push({ label: "Audit Logs", to: ROUTES.AUDIT_LOGS });
   }
 
