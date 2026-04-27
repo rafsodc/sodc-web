@@ -357,6 +357,7 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      revisionNumber
       clientSubmissionKey
       bookerDietaryNote
       sitNextToUserIds

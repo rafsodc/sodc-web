@@ -241,6 +241,8 @@ export interface SubmitEventBookingLine {
 export interface SubmitEventBookingRequest {
   idempotencyKey: string;
   eventId: string;
+  baseBookingId?: string;
+  baseRevisionNumber?: number;
   lines: SubmitEventBookingLine[];
   bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[];
@@ -277,6 +279,8 @@ export async function submitEventBooking(
   const normalized: SubmitEventBookingRequest = {
     idempotencyKey: toCanonicalUuid(payload.idempotencyKey),
     eventId: toCanonicalUuid(payload.eventId),
+    baseBookingId: payload.baseBookingId ? toCanonicalUuid(payload.baseBookingId) : undefined,
+    baseRevisionNumber: payload.baseRevisionNumber,
     lines: payload.lines.map((line) => ({
       ...line,
       ticketTypeId: toCanonicalUuid(line.ticketTypeId),

@@ -1,0 +1,130 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "../../../../test-utils";
+import userEvent from "@testing-library/user-event";
+import EventBookingWizard from "../EventBookingWizard";
+import { BookingStatus, TicketAudience } from "@dataconnect/generated";
+import * as reactGenerated from "@dataconnect/generated/react";
+import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
+
+vi.mock("@dataconnect/generated/react", () => ({
+  useGetCurrentUser: vi.fn(),
+  useGetMyBookingsForEvent: vi.fn(),
+  useGetUserAccessGroups: vi.fn(),
+}));
+
+vi.mock("../../../../config/firebase", () => ({
+  dataConnect: {},
+}));
+
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
+  submitEventBooking: vi.fn().mockResolvedValue({
+    bookingId: "booking-new",
+    status: "SUBMITTED",
+  }),
+}));
+
+describe("EventBookingWizard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(reactGenerated.useGetCurrentUser).mockReturnValue({
+      data: { user: { id: "user-1", membershipStatus: "REGULAR" } },
+      isLoading: false,
+    } as never);
+    vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
+      data: { user: { userGroups: [{ userGroup: { id: "group-1" } }] } },
+    } as never);
+    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
+      data: {
+        user: {
+          bookings: [
+            {
+              id: "booking-1",
+              status: BookingStatus.SUBMITTED,
+              revisionNumber: 2,
+              clientSubmissionKey: null,
+              bookerDietaryNote: "No nuts",
+              sitNextToUserIds: [],
+              accommodationRequested: false,
+              accommodationNote: null,
+              lines: [
+                {
+                  id: "line-1",
+                  sortOrder: 0,
+                  guestDisplayName: null,
+                  dietaryNote: null,
+                  ticketType: {
+                    id: "ticket-member",
+                    title: "Member standard",
+                    audience: TicketAudience.MEMBER,
+                    price: 50,
+                  },
+                },
+              ],
+              guestTicketRequests: [],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } }),
+    } as never);
+  });
+
+  it("submits booking edits with base revision metadata", async () => {
+    const user = userEvent.setup();
+    render(
+      <EventBookingWizard
+        section={{
+          id: "section-1",
+          name: "Events",
+          type: "EVENTS",
+          description: null,
+          purposeLinks: [
+            { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+          ],
+        } as never}
+        event={{
+          id: "event-1",
+          title: "Annual Dinner",
+          bookingStartDateTime: "2025-01-01T00:00:00Z",
+          bookingEndDateTime: "2030-01-01T00:00:00Z",
+          maxGuestsWithoutModeratorApproval: 1,
+          ticketTypes: [
+            {
+              id: "ticket-member",
+              title: "Member standard",
+              audience: TicketAudience.MEMBER,
+              price: 50,
+              userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+            },
+            {
+              id: "ticket-guest",
+              title: "Guest standard",
+              audience: TicketAudience.GUEST,
+              price: 25,
+              userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+            },
+          ],
+        } as never}
+      />
+    );
+
+    expect(screen.getByText("Edit your booking")).toBeInTheDocument();
+    expect(screen.getByText(/editing revision 2/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Save booking changes" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: "event-1",
+          baseBookingId: "booking-1",
+          baseRevisionNumber: 2,
+        })
+      );
+    });
+  });
+});
