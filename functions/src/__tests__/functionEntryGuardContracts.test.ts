@@ -45,5 +45,6 @@ describe("function entry guard contracts", () => {
     expect(payments).toContain("constructEvent(req.rawBody, signature, webhookSecret)");
     expect(payments).toContain("getPaymentWebhookEventByStripeEventId");
     expect(payments).toContain("createPaymentWebhookEvent");
+    expect(payments).toContain("emitPaymentLifecycleNotification");
   });
 });

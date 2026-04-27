@@ -33,6 +33,7 @@ import {
 } from "./paymentStateMachine";
 import { runTicketOrderTransition } from "./paymentTransitionEngine";
 import { evaluateReconciliationSignals } from "./paymentReconciliation";
+import { emitPaymentLifecycleNotification } from "./paymentNotifications";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
@@ -344,6 +345,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         stripeObjectId,
         livemode: event.livemode,
       });
+      await emitPaymentLifecycleNotification({
+        type: "PAYMENT_DISPUTE_UPDATED",
+        orderId: canonicalOrderId,
+        eventId: order.event.id,
+        stripeEventId: event.id,
+        status: order.status,
+        disputeState: normalized.disputeState ?? dispute.status ?? null,
+        occurredAt: new Date().toISOString(),
+      });
       await upsertReconciliationSnapshot({
         orderId: canonicalOrderId,
         snapshot: {
@@ -451,6 +461,16 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
       ticketOrderId: canonicalOrderId,
       stripeObjectId,
       livemode: event.livemode,
+    });
+    const notificationType =
+      intent === "MARK_PAID" ? "PAYMENT_PAID" : intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
+    await emitPaymentLifecycleNotification({
+      type: notificationType,
+      orderId: canonicalOrderId,
+      eventId: order.event.id,
+      stripeEventId: event.id,
+      status: transitionResult.targetStatus,
+      occurredAt: new Date().toISOString(),
     });
     const nextStatus = transitionResult.action === "applied" ? transitionResult.targetStatus : order.status;
     const paymentIntentIdFromEvent =
