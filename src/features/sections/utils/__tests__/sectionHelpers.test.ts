@@ -234,6 +234,14 @@ describe('sectionHelpers', () => {
   });
 
   describe('canUserAccessSection', () => {
+    it('should use purposes array even when legacy purpose field is present with a different value', () => {
+      const userUserGroupIds = ['group-1'];
+      const links = [
+        { purpose: 'MEMBER', purposes: ['MEMBER', 'ACCESS'], userGroup: { id: 'group-1' } },
+      ];
+      expect(canUserAccessSection(userUserGroupIds, links)).toBe(true);
+    });
+
     it('should return true when user matches ACCESS purpose', () => {
       const userUserGroupIds = ['group-1', 'group-2'];
       const links = [

@@ -53,6 +53,20 @@ describe("bookingRules", () => {
     ).toBe(true);
   });
 
+  it("accepts ACCESS from purposes array when legacy purpose differs", () => {
+    const r = evaluateBookingGatekeeping({
+      purposeLinks: [
+        { purpose: "MEMBER", purposes: ["MEMBER", "ACCESS"], userGroup: group("g1", ["REGULAR"]) },
+        { purpose: "BOOKER", userGroup: group("g1", ["REGULAR"]) },
+      ],
+      membershipStatus: "REGULAR",
+      explicitGroupIds: explicit,
+      bookingStartDateTime: new Date(Date.now() - 60_000).toISOString(),
+      bookingEndDateTime: new Date(Date.now() + 60_000).toISOString(),
+    });
+    expect(r.ok).toBe(true);
+  });
+
   it("denies when no BOOKER purpose rows exist", () => {
     const r = evaluateBookingGatekeeping({
       purposeLinks: [{ purpose: "ACCESS", userGroup: group("g1", ["REGULAR"]) }],
