@@ -63,6 +63,12 @@ enum PaymentReconciliationExceptionStatus {
   RESOLVED
 }
 
+enum BookingPaymentAdjustmentStatus {
+  NOT_REQUIRED
+  PENDING_AUTO_REFUND
+  PENDING_AUTO_CHARGE
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -305,6 +311,20 @@ type PaymentReconciliationException @table @unique(fields: ["ticketOrder", "exce
   ownerUserId: String
   lastAttemptedAt: Timestamp
   resolvedAt: Timestamp
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+type BookingPaymentAdjustment @table @unique(fields: ["revisionBooking"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  revisionBooking: Booking!
+  supersededBooking: Booking
+  deltaAmountMinor: Int!
+  status: BookingPaymentAdjustmentStatus!
+  orchestrationKey: String!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

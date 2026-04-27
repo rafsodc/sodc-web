@@ -269,6 +269,7 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
         ticketType {
           id
           audience
+          price
         }
       }
       guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
@@ -310,6 +311,26 @@ mutation MarkBookingSupersededFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
     data: {
       supersededAt_expr: "request.time"
       updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation CreateBookingPaymentAdjustmentFromCallable(
+  $revisionBookingId: UUID!
+  $supersededBookingId: UUID
+  $deltaAmountMinor: Int!
+  $status: BookingPaymentAdjustmentStatus!
+  $orchestrationKey: String!
+) @auth(level: NO_ACCESS) {
+  bookingPaymentAdjustment_upsert(
+    data: {
+      revisionBookingId: $revisionBookingId
+      supersededBookingId: $supersededBookingId
+      deltaAmountMinor: $deltaAmountMinor
+      status: $status
+      orchestrationKey: $orchestrationKey
+      createdBy: "system"
       updatedBy: "system"
     }
   )
