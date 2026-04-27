@@ -487,6 +487,11 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
     bookings: bookings_on_event {
       id
       status
+      revisionNumber
+      supersedesBooking {
+        id
+        revisionNumber
+      }
       clientSubmissionKey
       bookerDietaryNote
       sitNextToUserIds
@@ -538,6 +543,11 @@ query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.a
     bookings: bookings_on_event {
       id
       status
+      revisionNumber
+      supersedesBooking {
+        id
+        revisionNumber
+      }
       booker {
         id
         firstName

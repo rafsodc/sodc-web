@@ -342,6 +342,9 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         ...request,
         bookingId: booking.id,
         bookingStatus: booking.status,
+        bookingRevisionNumber: booking.revisionNumber,
+        supersedesBookingId: booking.supersedesBooking?.id ?? null,
+        supersedesRevisionNumber: booking.supersedesBooking?.revisionNumber ?? null,
         booker: booking.booker,
       }))
     );
