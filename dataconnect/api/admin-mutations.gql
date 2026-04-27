@@ -245,6 +245,12 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      revisionGroupId
+      revisionNumber
+      supersededAt
+      supersedesBooking {
+        id
+      }
       clientSubmissionKey
       bookerDietaryNote
       sitNextToUserIds
@@ -274,14 +280,31 @@ mutation CreateBookingDraftForUser(
   $eventId: UUID!
   $bookerId: String!
   $clientSubmissionKey: String!
+  $revisionGroupId: UUID!
+  $revisionNumber: Int!
+  $supersedesBookingId: UUID
 ) @auth(level: NO_ACCESS) {
   booking_insert(
     data: {
       eventId: $eventId
       bookerId: $bookerId
       clientSubmissionKey: $clientSubmissionKey
+      revisionGroupId: $revisionGroupId
+      revisionNumber: $revisionNumber
+      supersedesBookingId: $supersedesBookingId
       status: DRAFT
       createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkBookingSupersededFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  booking_update(
+    id: $id
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
       updatedBy: "system"
     }
   )
