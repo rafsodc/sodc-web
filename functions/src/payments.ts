@@ -23,11 +23,10 @@ import { FUNCTIONS_REGION } from "./constants";
 import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
 import Stripe from "stripe";
 import {
-  evaluateTransition,
   isSupportedStripeEventType,
-  mapIntentToTargetStatus,
   normalizeStripeEvent,
 } from "./paymentStateMachine";
+import { runTicketOrderTransition } from "./paymentTransitionEngine";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
@@ -303,59 +302,61 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
       res.status(200).send("Missing transition intent");
       return;
     }
-    const targetStatus = mapIntentToTargetStatus(intent);
-    const decision = evaluateTransition(order.status, intent);
-    if (decision.action !== "apply") {
+    const transitionResult = await runTicketOrderTransition(
+      {
+        orderId: canonicalOrderId,
+        currentStatus: order.status,
+        intent,
+        webhookEventId: event.id,
+        paidContext:
+          intent === "MARK_PAID"
+            ? (() => {
+                const session = event.data.object as {
+                  id?: string;
+                  payment_intent?: string | { id?: string };
+                };
+                return {
+                  stripeCheckoutSessionId: session.id ?? null,
+                  stripePaymentIntentId:
+                    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+                };
+              })()
+            : undefined,
+      },
+      {
+        markPaid: markTicketOrderPaidFromWebhook,
+        markFailed: markTicketOrderFailedFromWebhook,
+        markRefunded: markTicketOrderRefundedFromWebhook,
+      }
+    );
+    if (transitionResult.action !== "applied") {
       logger.info("stripeWebhook transition skipped", {
         eventType: event.type,
         eventId: event.id,
         orderId: canonicalOrderId,
-        fromStatus: order.status,
-        targetStatus,
-        decision: decision.action,
-        reason: decision.reason,
+        fromStatus: transitionResult.fromStatus,
+        targetStatus: transitionResult.targetStatus,
+        decision: transitionResult.action,
+        reason: transitionResult.reason,
+        intent: transitionResult.intent,
       });
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
         eventType: event.type,
         outcome: PaymentWebhookEventOutcome.IGNORED,
-        reason: `transition_skipped:${decision.reason}`,
+        reason: `transition_${transitionResult.action}:${transitionResult.reason}:${transitionResult.fromStatus}->${transitionResult.targetStatus}:${transitionResult.intent}`,
         ticketOrderId: canonicalOrderId,
         stripeObjectId,
         livemode: event.livemode,
       });
-      res.status(200).send(decision.action === "noop_replay" ? "Already processed" : "Illegal transition skipped");
+      res.status(200).send(transitionResult.action === "noop_replay" ? "Already processed" : "Illegal transition skipped");
       return;
-    }
-
-    if (intent === "MARK_PAID") {
-      const session = event.data.object as {
-        id?: string;
-        payment_intent?: string | { id?: string };
-      };
-      await markTicketOrderPaidFromWebhook({
-        id: canonicalOrderId,
-        stripeCheckoutSessionId: session.id ?? null,
-        stripePaymentIntentId:
-          typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
-        webhookEventId: event.id,
-      });
-    } else if (intent === "MARK_FAILED") {
-      await markTicketOrderFailedFromWebhook({
-        id: canonicalOrderId,
-        webhookEventId: event.id,
-      });
-    } else if (intent === "MARK_REFUNDED") {
-      await markTicketOrderRefundedFromWebhook({
-        id: canonicalOrderId,
-        webhookEventId: event.id,
-      });
     }
     await appendWebhookLedgerEvent({
       stripeEventId: event.id,
       eventType: event.type,
       outcome: PaymentWebhookEventOutcome.PROCESSED,
-      reason: `transition_applied:${intent}`,
+      reason: `transition_applied:${transitionResult.reason}:${transitionResult.fromStatus}->${transitionResult.targetStatus}:${transitionResult.intent}`,
       ticketOrderId: canonicalOrderId,
       stripeObjectId,
       livemode: event.livemode,
