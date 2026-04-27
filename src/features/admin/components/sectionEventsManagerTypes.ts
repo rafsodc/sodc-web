@@ -1,5 +1,6 @@
 import type {
   GetEventByIdData,
+  ListBookingPaymentAdjustmentsForAdminData,
   ListEventBookingsForAdminData,
   ListGuestTicketRequestsForAdminData,
   ListTicketOrdersForAdminData,
@@ -25,6 +26,9 @@ export type GuestTicketRequestAdminRow = NonNullable<
 >;
 export type EventBookingAdminRow = NonNullable<NonNullable<ListEventBookingsForAdminData["event"]>["bookings"][number]>;
 export type TicketOrderAdminRow = NonNullable<NonNullable<ListTicketOrdersForAdminData["event"]>["ticketOrders"][number]>;
+export type BookingPaymentAdjustmentAdminRow = NonNullable<
+  NonNullable<ListBookingPaymentAdjustmentsForAdminData["event"]>["bookings"][number]
+>;
 export type GuestRequestStatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
 export type GuestTicketRequestWithBooking = GuestTicketRequestAdminRow & {
