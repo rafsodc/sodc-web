@@ -13,6 +13,7 @@ export const BOOKING_RULE_ERROR_CODES = {
   GUEST_BEFORE_SELF: "GUEST_BEFORE_SELF",
   TOO_MANY_GUEST_LINES: "TOO_MANY_GUEST_LINES",
   INVALID_GUEST_FIELDS: "INVALID_GUEST_FIELDS",
+  GUEST_APPROVAL_REQUIRED: "GUEST_APPROVAL_REQUIRED",
   BOOKING_ALREADY_SUBMITTED: "BOOKING_ALREADY_SUBMITTED",
   IDEMPOTENCY_DRAFT_CONFLICT: "IDEMPOTENCY_DRAFT_CONFLICT",
 } as const;
@@ -104,7 +105,8 @@ export function evaluateBookingLines(
   lines: LineInputForRules[],
   ticketTypesById: Map<string, TicketTypeForRules>,
   membershipStatus: string,
-  explicitGroupIds: Set<string>
+  explicitGroupIds: Set<string>,
+  options?: { maxGuestLines?: number }
 ): BookingRulesResult {
   if (lines.length === 0) {
     return fail(BOOKING_RULE_ERROR_CODES.INVALID_LINES, "At least one ticket line is required");
@@ -154,10 +156,13 @@ export function evaluateBookingLines(
     return fail(BOOKING_RULE_ERROR_CODES.SELF_TICKET_REQUIRED, "At least one member ticket line is required for the booker");
   }
 
-  if (guestLineCount > 1) {
+  const maxGuestLines = options?.maxGuestLines ?? 1;
+  if (guestLineCount > maxGuestLines) {
     return fail(
       BOOKING_RULE_ERROR_CODES.TOO_MANY_GUEST_LINES,
-      "Only one guest ticket is allowed in the standard flow; use moderator approval for more guests"
+      maxGuestLines === 1
+        ? "Only one guest ticket is allowed in the standard flow; use moderator approval for more guests"
+        : `A maximum of ${maxGuestLines} guest tickets is allowed`
     );
   }
 
@@ -168,6 +173,25 @@ export function evaluateBookingLines(
   }
 
   return { ok: true };
+}
+
+export function evaluateGuestApprovalGate(args: {
+  guestTicketCount: number;
+  maxGuestsWithoutModeratorApproval?: number | null;
+  approvedGuestCapacity: number;
+}): BookingRulesResult {
+  const threshold = args.maxGuestsWithoutModeratorApproval;
+  if (threshold == null || args.guestTicketCount <= threshold) {
+    return { ok: true };
+  }
+  const requiredApprovedGuestCount = args.guestTicketCount - threshold;
+  if (args.approvedGuestCapacity >= requiredApprovedGuestCount) {
+    return { ok: true };
+  }
+  return fail(
+    BOOKING_RULE_ERROR_CODES.GUEST_APPROVAL_REQUIRED,
+    "Guest ticket count exceeds approved moderation threshold for this booking revision"
+  );
 }
 
 export function evaluateBookingGatekeeping(args: {

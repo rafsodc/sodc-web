@@ -271,6 +271,11 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
           audience
         }
       }
+      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
+        id
+        status
+        requestedGuestCount
+      }
     }
   }
 }

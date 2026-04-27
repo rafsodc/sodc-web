@@ -18,6 +18,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import {
   BOOKING_RULE_ERROR_CODES,
   evaluateBookingGatekeeping,
+  evaluateGuestApprovalGate,
   evaluateBookingLines,
   type BookingRulesFailure,
   type LineInputForRules,
@@ -207,7 +208,9 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       }
     }
 
-    const lineRules = evaluateBookingLines(lines, ticketTypesById, membershipStatus, explicitGroupIds);
+    const lineRules = evaluateBookingLines(lines, ticketTypesById, membershipStatus, explicitGroupIds, {
+      maxGuestLines: Number.POSITIVE_INFINITY,
+    });
     if (!lineRules.ok) {
       throw bookingRulesToHttps(lineRules);
     }
@@ -233,6 +236,28 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       })),
       { idempotencyKey, baseBookingId, baseRevisionNumber }
     );
+
+    if (revisionPlan.supersedesBookingId) {
+      const superseded = terminalBookings.find((b) => b.id === revisionPlan.supersedesBookingId);
+      const approvedGuestCapacity = Math.max(
+        0,
+        ...(superseded?.guestTicketRequests ?? [])
+          .filter((request) => request.status === "APPROVED")
+          .map((request) => request.requestedGuestCount)
+      );
+      const revisedGuestTicketCount = lines.reduce((count, line) => {
+        const tt = ticketTypesById.get(line.ticketTypeId);
+        return count + (tt?.audience === "GUEST" ? 1 : 0);
+      }, 0);
+      const guestApprovalGate = evaluateGuestApprovalGate({
+        guestTicketCount: revisedGuestTicketCount,
+        maxGuestsWithoutModeratorApproval: event.maxGuestsWithoutModeratorApproval ?? null,
+        approvedGuestCapacity,
+      });
+      if (!guestApprovalGate.ok) {
+        throw bookingRulesToHttps(guestApprovalGate);
+      }
+    }
 
     const drafts = bookings.filter((b) => b.status === BookingStatus.DRAFT);
     const matchingDraft = drafts.find((b) => b.clientSubmissionKey === idempotencyKey);
