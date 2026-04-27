@@ -45,6 +45,13 @@ enum TicketOrderStatus {
   REFUNDED
 }
 
+enum PaymentWebhookEventOutcome {
+  PROCESSED
+  IGNORED
+  DUPLICATE
+  FAILED
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -238,6 +245,25 @@ type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
   stripeCheckoutSessionId: String
   stripePaymentIntentId: String
   webhookEventId: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Immutable ledger of Stripe webhook events for idempotency and reconciliation audit.
+type PaymentWebhookEvent @table @unique(fields: ["stripeEventId"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  stripeEventId: String!
+  eventType: String!
+  outcome: PaymentWebhookEventOutcome!
+  reason: String
+  # Linked order when event metadata includes orderId and lookup succeeds.
+  ticketOrder: TicketOrder
+  # Lightweight payload metadata for diagnostics (not full raw payload storage).
+  stripeObjectId: String
+  livemode: Boolean!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
