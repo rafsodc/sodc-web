@@ -784,6 +784,8 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
                 <TableCell>Ticket</TableCell>
                 <TableCell align="right">Qty</TableCell>
                 <TableCell align="right">Amount</TableCell>
+                <TableCell>Refund</TableCell>
+                <TableCell>Dispute</TableCell>
                 <TableCell>Webhook Event ID</TableCell>
                 <TableCell>Updated</TableCell>
                 <TableCell>Updated by</TableCell>
@@ -800,6 +802,32 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
                   <TableCell align="right">{order.quantity}</TableCell>
                   <TableCell align="right">
                     {(order.totalAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
+                  </TableCell>
+                  <TableCell>
+                    {order.refundedAmountMinor != null ? (
+                      <Box>
+                        <Box>
+                          {(order.refundedAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
+                        </Box>
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                          {order.refundedAt ? new Date(order.refundedAt).toLocaleString() : "time unknown"}
+                        </Box>
+                      </Box>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {order.stripeDisputeId ? (
+                      <Box>
+                        <Chip size="small" label={order.disputeStatus ?? "OPEN"} color="warning" />
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem", mt: 0.5 }}>
+                          {order.disputeReason ?? "Reason not supplied"}
+                        </Box>
+                      </Box>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {order.webhookEventId ?? "—"}

@@ -244,6 +244,16 @@ type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
   status: TicketOrderStatus! @default(value: PENDING)
   stripeCheckoutSessionId: String
   stripePaymentIntentId: String
+  stripeRefundId: String
+  refundedAmountMinor: Int
+  refundedAt: Timestamp
+  stripeDisputeId: String
+  disputeStatus: String
+  disputeReason: String
+  disputeAmountMinor: Int
+  disputeOpenedAt: Timestamp
+  disputeUpdatedAt: Timestamp
+  disputeClosedAt: Timestamp
   webhookEventId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")

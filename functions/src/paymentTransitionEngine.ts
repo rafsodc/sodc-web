@@ -11,6 +11,11 @@ export interface TicketOrderTransitionRequest {
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
   };
+  refundContext?: {
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: string | null;
+  };
 }
 
 export interface TicketOrderTransitionResult {
@@ -36,6 +41,9 @@ export interface TicketOrderTransitionMutations {
   markRefunded(args: {
     id: UUIDString;
     webhookEventId: string;
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: string | null;
   }): Promise<unknown>;
 }
 
@@ -63,6 +71,9 @@ export async function runTicketOrderTransition(
       await mutations.markRefunded({
         id: request.orderId,
         webhookEventId: request.webhookEventId,
+        stripeRefundId: request.refundContext?.stripeRefundId ?? null,
+        refundedAmountMinor: request.refundContext?.refundedAmountMinor ?? null,
+        refundedAt: request.refundContext?.refundedAt ?? null,
       });
     }
     return {
