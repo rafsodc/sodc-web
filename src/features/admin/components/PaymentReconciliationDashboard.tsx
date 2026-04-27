@@ -40,8 +40,8 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const rows = data?.paymentReconciliationExceptions ?? [];
   const filteredRows = useMemo(() => {
+    const rows = data?.paymentReconciliationExceptions ?? [];
     const eventSearchLower = eventSearch.trim().toLowerCase();
     return rows.filter((row) => {
       if (typeFilter !== "ALL" && row.exceptionType !== typeFilter) {
@@ -53,7 +53,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
       const eventTitle = row.ticketOrder?.event?.title?.toLowerCase() ?? "";
       return eventTitle.includes(eventSearchLower);
     });
-  }, [rows, typeFilter, eventSearch]);
+  }, [data?.paymentReconciliationExceptions, typeFilter, eventSearch]);
 
   const handleResolve = async (id: string) => {
     setResolvingId(id);
