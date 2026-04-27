@@ -34,6 +34,9 @@ export type GuestRequestStatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTE
 export type GuestTicketRequestWithBooking = GuestTicketRequestAdminRow & {
   bookingId: string;
   bookingStatus: string;
+  bookingRevisionNumber: number;
+  supersedesBookingId?: string | null;
+  supersedesRevisionNumber?: number | null;
   booker?: {
     firstName: string;
     lastName: string;

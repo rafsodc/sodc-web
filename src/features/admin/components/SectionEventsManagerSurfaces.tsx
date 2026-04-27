@@ -660,6 +660,7 @@ function GuestTicketRequestsSection({
             <TableHead>
               <TableRow>
                 <TableCell>Status</TableCell>
+                <TableCell>Revision</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell>Guest</TableCell>
                 <TableCell>Ticket</TableCell>
@@ -676,6 +677,16 @@ function GuestTicketRequestsSection({
                 <TableRow key={request.id}>
                   <TableCell>
                     <Chip size="small" label={request.status} color={requestStatusColor(request.status)} />
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Chip size="small" variant="outlined" label={`Rev ${request.bookingRevisionNumber}`} />
+                      {request.supersedesRevisionNumber != null ? (
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                          Supersedes rev {request.supersedesRevisionNumber}
+                        </Box>
+                      ) : null}
+                    </Box>
                   </TableCell>
                   <TableCell>
                     {request.booker ? `${request.booker.firstName} ${request.booker.lastName}` : "—"}
@@ -746,6 +757,7 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
             <TableHead>
               <TableRow>
                 <TableCell>Booking</TableCell>
+                <TableCell>Revision</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell align="right">Lines</TableCell>
@@ -759,6 +771,16 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
               {bookings.map((booking) => (
                 <TableRow key={booking.id}>
                   <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{booking.id}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Chip size="small" variant="outlined" label={`Rev ${booking.revisionNumber}`} />
+                      {booking.supersedesBooking?.revisionNumber != null ? (
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                          Supersedes rev {booking.supersedesBooking.revisionNumber}
+                        </Box>
+                      ) : null}
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <Chip size="small" label={booking.status} />
                   </TableCell>
