@@ -3,6 +3,7 @@ import * as logger from "firebase-functions/logger";
 import {
   addBookingLineFromCallable,
   BookingStatus,
+  markBookingSupersededFromCallable,
   createBookingDraftForUser,
   deleteBookingLineFromCallable,
   getBookingsForBookerAndEvent,
@@ -24,6 +25,7 @@ import {
 } from "./bookingRules";
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
+import { computeRevisionPlan } from "./bookingRevisionEngine";
 
 function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   if (
@@ -113,6 +115,10 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     "idempotencyKey"
   );
   const eventId = validateUUID(request.data?.eventId as string, "eventId") as UUIDString;
+  const baseBookingId = request.data?.baseBookingId ? (validateUUID(String(request.data.baseBookingId), "baseBookingId") as UUIDString) : undefined;
+  const baseRevisionNumberRaw = request.data?.baseRevisionNumber;
+  const baseRevisionNumber =
+    baseRevisionNumberRaw == null ? undefined : Number.isInteger(Number(baseRevisionNumberRaw)) ? Number(baseRevisionNumberRaw) : undefined;
   const lines = parseBookingLines(request.data?.lines);
   const bookerDietaryNote = parseOptionalString(request.data?.bookerDietaryNote, 500);
   const sitNextToUserIds = parseSitNextTo(request.data?.sitNextToUserIds, uid);
@@ -208,9 +214,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
 
     let bookings = initialBookings;
 
-    const terminalBookings = bookings.filter(
-      (b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED
-    );
+    const terminalBookings = bookings.filter((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED);
     const replayCompleted = terminalBookings.find((b) => b.clientSubmissionKey === idempotencyKey);
     if (replayCompleted) {
       return {
@@ -219,11 +223,16 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
         idempotentReplay: true,
       };
     }
-    if (terminalBookings.length > 0) {
-      throw new HttpsError("failed-precondition", "A booking for this event is already submitted", {
-        code: BOOKING_RULE_ERROR_CODES.BOOKING_ALREADY_SUBMITTED,
-      });
-    }
+    const revisionPlan = computeRevisionPlan(
+      terminalBookings.map((b) => ({
+        id: b.id as UUIDString,
+        status: b.status,
+        revisionGroupId: b.revisionGroupId as UUIDString,
+        revisionNumber: b.revisionNumber,
+        clientSubmissionKey: b.clientSubmissionKey ?? null,
+      })),
+      { idempotencyKey, baseBookingId, baseRevisionNumber }
+    );
 
     const drafts = bookings.filter((b) => b.status === BookingStatus.DRAFT);
     const matchingDraft = drafts.find((b) => b.clientSubmissionKey === idempotencyKey);
@@ -249,6 +258,9 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
           eventId,
           bookerId: uid,
           clientSubmissionKey: idempotencyKey,
+          revisionGroupId: revisionPlan.revisionGroupId,
+          revisionNumber: revisionPlan.revisionNumber,
+          supersedesBookingId: revisionPlan.supersedesBookingId,
         });
         const key = insert.data?.booking_insert;
         if (!key?.id) {
@@ -307,6 +319,9 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       id: bookingId as UUIDString,
       status: BookingStatus.SUBMITTED,
     });
+    if (revisionPlan.supersedesBookingId) {
+      await markBookingSupersededFromCallable({ id: revisionPlan.supersedesBookingId });
+    }
 
     logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
     return { bookingId, status: BookingStatus.SUBMITTED, idempotentReplay: false };

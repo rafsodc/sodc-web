@@ -191,6 +191,10 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!
+  revisionGroupId: UUID! @default(expr: "uuidV4()")
+  revisionNumber: Int! @default(value: 1)
+  supersedesBooking: Booking
+  supersededAt: Timestamp
   # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
   clientSubmissionKey: String
   status: BookingStatus! @default(value: DRAFT)
