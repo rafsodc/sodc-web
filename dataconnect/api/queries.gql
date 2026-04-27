@@ -453,6 +453,32 @@ query GetMyTicketOrders @auth(expr: "auth.token.enabled == true") {
   }
 }
 
+query GetMyBookingPaymentAdjustments @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    bookings: bookings_on_booker(where: { supersedesBookingId: { isNull: false } }, orderBy: { updatedAt: DESC }) {
+      id
+      revisionNumber
+      event {
+        id
+        title
+      }
+      adjustment: bookingPaymentAdjustment_on_revisionBooking {
+        id
+        deltaAmountMinor
+        status
+        orchestrationKey
+        createdAt
+        updatedAt
+        supersededBooking {
+          id
+          revisionNumber
+        }
+      }
+    }
+  }
+}
+
 # Admin: list booking graph for cascade delete before removing an event.
 query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event(id: $eventId) {
@@ -583,6 +609,34 @@ query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin ==
       ticketType {
         id
         title
+      }
+    }
+  }
+}
+
+query ListBookingPaymentAdjustmentsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event(id: $eventId) {
+    id
+    bookings: bookings_on_event(where: { supersedesBookingId: { isNull: false } }, orderBy: { updatedAt: DESC }) {
+      id
+      revisionNumber
+      status
+      booker {
+        id
+        firstName
+        lastName
+      }
+      adjustment: bookingPaymentAdjustment_on_revisionBooking {
+        id
+        deltaAmountMinor
+        status
+        orchestrationKey
+        createdAt
+        updatedAt
+        supersededBooking {
+          id
+          revisionNumber
+        }
       }
     }
   }

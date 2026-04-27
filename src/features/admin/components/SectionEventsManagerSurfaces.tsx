@@ -41,6 +41,7 @@ import type {
   EventRow,
   GuestRequestStatusFilter,
   GuestTicketRequestWithBooking,
+  BookingPaymentAdjustmentAdminRow,
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "./sectionEventsManagerTypes";
@@ -282,6 +283,8 @@ interface TicketAdminSurfaceProps {
   eventBookings: EventBookingAdminRow[];
   loadingTicketOrders: boolean;
   ticketOrders: TicketOrderAdminRow[];
+  loadingPaymentAdjustments: boolean;
+  bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
 }
 
 export function TicketAdminSurface({
@@ -309,6 +312,8 @@ export function TicketAdminSurface({
   eventBookings,
   loadingTicketOrders,
   ticketOrders,
+  loadingPaymentAdjustments,
+  bookingPaymentAdjustments,
 }: TicketAdminSurfaceProps) {
   return (
     <>
@@ -349,7 +354,11 @@ export function TicketAdminSurface({
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
       </AdminAccordion>
       <AdminAccordion title="Payment status activity">
-        <PaymentActivitySection loading={loadingTicketOrders} ticketOrders={ticketOrders} />
+        <PaymentActivitySection
+          loading={loadingTicketOrders || loadingPaymentAdjustments}
+          ticketOrders={ticketOrders}
+          bookingPaymentAdjustments={bookingPaymentAdjustments}
+        />
       </AdminAccordion>
     </>
   );
@@ -768,7 +777,15 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
   );
 }
 
-function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; ticketOrders: TicketOrderAdminRow[] }) {
+function PaymentActivitySection({
+  loading,
+  ticketOrders,
+  bookingPaymentAdjustments,
+}: {
+  loading: boolean;
+  ticketOrders: TicketOrderAdminRow[];
+  bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
+}) {
   return (
     <Box>
       {loading ? (
@@ -839,6 +856,36 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
             </TableBody>
         </AdminTable>
       )}
+      {bookingPaymentAdjustments.length > 0 ? (
+        <Box sx={{ mt: 2 }}>
+          <AdminTable>
+            <TableHead>
+              <TableRow>
+                <TableCell>Adjustment</TableCell>
+                <TableCell>Booker</TableCell>
+                <TableCell align="right">Delta</TableCell>
+                <TableCell>Revision</TableCell>
+                <TableCell>Updated</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {bookingPaymentAdjustments
+                .filter((booking): booking is BookingPaymentAdjustmentAdminRow & { adjustment: NonNullable<BookingPaymentAdjustmentAdminRow["adjustment"]> } => booking.adjustment != null)
+                .map((booking) => (
+                  <TableRow key={booking.adjustment.id}>
+                    <TableCell>
+                      <Chip size="small" color="warning" label={booking.adjustment.status.replaceAll("_", " ")} />
+                    </TableCell>
+                    <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
+                    <TableCell align="right">{(booking.adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
+                    <TableCell>Rev {booking.revisionNumber}</TableCell>
+                    <TableCell>{new Date(booking.adjustment.updatedAt).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </AdminTable>
+        </Box>
+      ) : null}
     </Box>
   );
 }

@@ -12,6 +12,7 @@ import {
 vi.mock("@dataconnect/generated/react", () => ({
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
+  useListBookingPaymentAdjustmentsForAdmin: vi.fn(),
   useListEventBookingsForAdmin: vi.fn(),
   useListGuestTicketRequestsForAdmin: vi.fn(),
   useListTicketOrdersForAdmin: vi.fn(),
@@ -51,6 +52,12 @@ function mockGuestTicketRequests(overrides: DataConnectQueryResultOverrides) {
 function mockEventBookings(overrides: DataConnectQueryResultOverrides) {
   vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue(
     dataConnectQueryResult<typeof reactGenerated.useListEventBookingsForAdmin>(overrides)
+  );
+}
+
+function mockBookingPaymentAdjustments(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListBookingPaymentAdjustmentsForAdmin).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListBookingPaymentAdjustmentsForAdmin>(overrides)
   );
 }
 
@@ -97,6 +104,11 @@ describe("SectionEventsManager", () => {
     });
     mockTicketOrders({
       data: { event: { id: "ev-1", ticketOrders: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockBookingPaymentAdjustments({
+      data: { event: { id: "ev-1", bookings: [] } },
       isLoading: false,
       isError: false,
     });
