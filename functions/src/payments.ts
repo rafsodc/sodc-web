@@ -2,7 +2,9 @@ import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import {
+  createPaymentWebhookEvent,
   createTicketOrderForCheckout,
+  getPaymentWebhookEventByStripeEventId,
   getSectionByIdForCallable,
   getTicketOrderForWebhook,
   getTicketTypeForCheckout,
@@ -12,6 +14,7 @@ import {
   markTicketOrderPaidFromWebhook,
   markTicketOrderRefundedFromWebhook,
   updateUserStripeCustomerId,
+  PaymentWebhookEventOutcome,
   TicketAudience,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
@@ -49,6 +52,31 @@ function ensureBookingWindow(start: string, end: string): void {
 
 function toMinorUnits(price: number): number {
   return Math.round(price * 100);
+}
+
+function stripeObjectIdFromEvent(event: { data: { object: unknown } }): string | null {
+  const obj = event.data.object as { id?: unknown };
+  return typeof obj.id === "string" ? obj.id : null;
+}
+
+async function appendWebhookLedgerEvent(args: {
+  stripeEventId: string;
+  eventType: string;
+  outcome: PaymentWebhookEventOutcome;
+  reason: string;
+  ticketOrderId?: UUIDString;
+  stripeObjectId?: string | null;
+  livemode: boolean;
+}): Promise<void> {
+  await createPaymentWebhookEvent({
+    stripeEventId: args.stripeEventId,
+    eventType: args.eventType,
+    outcome: args.outcome,
+    reason: args.reason,
+    ticketOrderId: args.ticketOrderId ?? null,
+    stripeObjectId: args.stripeObjectId ?? null,
+    livemode: args.livemode,
+  });
 }
 
 export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
@@ -173,6 +201,18 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
 
     const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
     const supportedEventType = isSupportedStripeEventType(event.type);
+    const stripeObjectId = stripeObjectIdFromEvent(event);
+    const existingWebhookEvent = await getPaymentWebhookEventByStripeEventId({ stripeEventId: event.id });
+    if ((existingWebhookEvent.data?.paymentWebhookEvents?.length ?? 0) > 0) {
+      logger.info("stripeWebhook duplicate delivery", {
+        eventType: event.type,
+        eventId: event.id,
+        stripeObjectId,
+      });
+      res.status(200).send("Duplicate event");
+      return;
+    }
+
     const normalized = normalizeStripeEvent(event);
     if (normalized.kind === "ignore") {
       logger.info("stripeWebhook ignored event", {
@@ -181,11 +221,27 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         supportedEventType,
         reason: normalized.reason,
       });
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.IGNORED,
+        reason: normalized.reason,
+        stripeObjectId,
+        livemode: event.livemode,
+      });
       res.status(200).send("Ignored event");
       return;
     }
     if (!normalized.orderId) {
       logger.info("stripeWebhook missing order metadata", { eventType: event.type, reason: normalized.reason, eventId: event.id });
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.IGNORED,
+        reason: "missing_order_metadata",
+        stripeObjectId,
+        livemode: event.livemode,
+      });
       res.status(200).send("No order metadata");
       return;
     }
@@ -195,6 +251,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
     const order = existing.data?.ticketOrder;
     if (!order) {
       logger.info("stripeWebhook order not found", { eventType: event.type, eventId: event.id, orderId: canonicalOrderId });
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.IGNORED,
+        reason: "order_not_found",
+        ticketOrderId: canonicalOrderId,
+        stripeObjectId,
+        livemode: event.livemode,
+      });
       res.status(200).send("Order not found");
       return;
     }
@@ -206,6 +271,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         orderId: canonicalOrderId,
         disputeState: normalized.disputeState,
       });
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.PROCESSED,
+        reason: `dispute_side_state:${normalized.disputeState ?? "UNKNOWN"}`,
+        ticketOrderId: canonicalOrderId,
+        stripeObjectId,
+        livemode: event.livemode,
+      });
       res.status(200).send("Dispute side-state acknowledged");
       return;
     }
@@ -216,6 +290,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         eventType: event.type,
         eventId: event.id,
         orderId: canonicalOrderId,
+      });
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.FAILED,
+        reason: "missing_transition_intent",
+        ticketOrderId: canonicalOrderId,
+        stripeObjectId,
+        livemode: event.livemode,
       });
       res.status(200).send("Missing transition intent");
       return;
@@ -231,6 +314,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         targetStatus,
         decision: decision.action,
         reason: decision.reason,
+      });
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.IGNORED,
+        reason: `transition_skipped:${decision.reason}`,
+        ticketOrderId: canonicalOrderId,
+        stripeObjectId,
+        livemode: event.livemode,
       });
       res.status(200).send(decision.action === "noop_replay" ? "Already processed" : "Illegal transition skipped");
       return;
@@ -259,6 +351,15 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         webhookEventId: event.id,
       });
     }
+    await appendWebhookLedgerEvent({
+      stripeEventId: event.id,
+      eventType: event.type,
+      outcome: PaymentWebhookEventOutcome.PROCESSED,
+      reason: `transition_applied:${intent}`,
+      ticketOrderId: canonicalOrderId,
+      stripeObjectId,
+      livemode: event.livemode,
+    });
     res.status(200).send("ok");
   } catch (err) {
     logger.error("stripeWebhook error", err);

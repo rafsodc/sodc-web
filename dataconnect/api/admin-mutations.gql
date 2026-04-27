@@ -356,6 +356,46 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+query GetPaymentWebhookEventByStripeEventId($stripeEventId: String!) @auth(level: NO_ACCESS) {
+  paymentWebhookEvents(where: { stripeEventId: { eq: $stripeEventId } }, limit: 1) {
+    id
+    stripeEventId
+    eventType
+    outcome
+    reason
+    ticketOrder {
+      id
+    }
+    stripeObjectId
+    livemode
+    createdAt
+  }
+}
+
+mutation CreatePaymentWebhookEvent(
+  $stripeEventId: String!
+  $eventType: String!
+  $outcome: PaymentWebhookEventOutcome!
+  $reason: String
+  $ticketOrderId: UUID
+  $stripeObjectId: String
+  $livemode: Boolean!
+) @auth(level: NO_ACCESS) {
+  paymentWebhookEvent_insert(
+    data: {
+      stripeEventId: $stripeEventId
+      eventType: $eventType
+      outcome: $outcome
+      reason: $reason
+      ticketOrderId: $ticketOrderId
+      stripeObjectId: $stripeObjectId
+      livemode: $livemode
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
 mutation MarkTicketOrderPaidFromWebhook(
   $id: UUID!
   $stripeCheckoutSessionId: String
