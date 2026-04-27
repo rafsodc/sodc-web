@@ -13,6 +13,7 @@ import {
   markTicketOrderFailedFromWebhook,
   markTicketOrderPaidFromWebhook,
   markTicketOrderRefundedFromWebhook,
+  upsertTicketOrderDisputeFromWebhook,
   updateUserStripeCustomerId,
   PaymentWebhookEventOutcome,
   TicketAudience,
@@ -56,6 +57,13 @@ function toMinorUnits(price: number): number {
 function stripeObjectIdFromEvent(event: { data: { object: unknown } }): string | null {
   const obj = event.data.object as { id?: unknown };
   return typeof obj.id === "string" ? obj.id : null;
+}
+
+function isoTimestampFromStripeEpochSeconds(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return new Date(value * 1000).toISOString();
 }
 
 async function appendWebhookLedgerEvent(args: {
@@ -264,6 +272,24 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
     }
 
     if (normalized.kind === "dispute_side_state") {
+      const dispute = event.data.object as {
+        id?: string;
+        status?: string;
+        reason?: string;
+        amount?: number;
+      };
+      const eventTimestamp = isoTimestampFromStripeEpochSeconds((event as { created?: unknown }).created);
+      await upsertTicketOrderDisputeFromWebhook({
+        id: canonicalOrderId,
+        webhookEventId: event.id,
+        stripeDisputeId: dispute.id ?? null,
+        disputeStatus: dispute.status ?? normalized.disputeState ?? null,
+        disputeReason: dispute.reason ?? null,
+        disputeAmountMinor: typeof dispute.amount === "number" ? dispute.amount : null,
+        disputeOpenedAt: normalized.disputeState === "DISPUTE_OPEN" ? eventTimestamp : null,
+        disputeUpdatedAt: eventTimestamp,
+        disputeClosedAt: normalized.disputeState === "DISPUTE_CLOSED" ? eventTimestamp : null,
+      });
       logger.info("stripeWebhook dispute side-state (no order status change)", {
         eventType: event.type,
         eventId: event.id,
@@ -319,6 +345,22 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
                   stripeCheckoutSessionId: session.id ?? null,
                   stripePaymentIntentId:
                     typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+                };
+              })()
+            : undefined,
+        refundContext:
+          intent === "MARK_REFUNDED"
+            ? (() => {
+                const charge = event.data.object as {
+                  id?: string;
+                  amount_refunded?: number;
+                  refunds?: { data?: Array<{ id?: string }> };
+                };
+                const latestRefundId = charge.refunds?.data?.[0]?.id ?? null;
+                return {
+                  stripeRefundId: latestRefundId,
+                  refundedAmountMinor: typeof charge.amount_refunded === "number" ? charge.amount_refunded : null,
+                  refundedAt: isoTimestampFromStripeEpochSeconds((event as { created?: unknown }).created),
                 };
               })()
             : undefined,

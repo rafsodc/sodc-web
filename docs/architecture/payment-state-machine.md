@@ -56,7 +56,23 @@ Functions maintain an explicit Stripe event allowlist in code (`SUPPORTED_STRIPE
 - Illegal transition: acknowledge webhook (2xx), no mutation.
 - Valid transition: apply mutation and acknowledge webhook (2xx).
 
+## Refund/Dispute Persistence Model
+
+`TicketOrder` now stores lifecycle side-state metadata required for reconciliation and support workflows:
+
+- refund fields: `stripeRefundId`, `refundedAmountMinor`, `refundedAt`
+- dispute fields: `stripeDisputeId`, `disputeStatus`, `disputeReason`, `disputeAmountMinor`, `disputeOpenedAt`, `disputeUpdatedAt`, `disputeClosedAt`
+
+Webhook handling continues to treat disputes as side-state metadata (no `TicketOrderStatus` change), while still persisting the latest dispute state and timestamps for auditability.
+
+## Migration and Compatibility Notes
+
+- These are additive nullable fields on `TicketOrder`; existing rows remain valid without backfill.
+- Existing `TicketOrderStatus` semantics are unchanged.
+- Existing webhook idempotency behavior (event ledger keyed by Stripe event id) remains the source of replay protection.
+
 ## Scope Boundary
 
-- #128 includes transition contract + runtime guards + event mapping.
-- Full dispute persistence/reporting remains for #132/#133.
+- #128 and #131 cover transition contract and execution guards.
+- #132 extends persistence for refund/dispute metadata.
+- #133+ builds reconciliation and operator workflows on top of this model.

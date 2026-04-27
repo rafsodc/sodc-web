@@ -352,6 +352,16 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
     status
     stripeCheckoutSessionId
     stripePaymentIntentId
+    stripeRefundId
+    refundedAmountMinor
+    refundedAt
+    stripeDisputeId
+    disputeStatus
+    disputeReason
+    disputeAmountMinor
+    disputeOpenedAt
+    disputeUpdatedAt
+    disputeClosedAt
     webhookEventId
   }
 }
@@ -433,12 +443,46 @@ mutation MarkTicketOrderFailedFromWebhook(
 mutation MarkTicketOrderRefundedFromWebhook(
   $id: UUID!
   $webhookEventId: String
+  $stripeRefundId: String
+  $refundedAmountMinor: Int
+  $refundedAt: Timestamp
 ) @auth(level: NO_ACCESS) {
   ticketOrder_update(
     id: $id
     data: {
       status: REFUNDED
       webhookEventId: $webhookEventId
+      stripeRefundId: $stripeRefundId
+      refundedAmountMinor: $refundedAmountMinor
+      refundedAt: $refundedAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpsertTicketOrderDisputeFromWebhook(
+  $id: UUID!
+  $webhookEventId: String
+  $stripeDisputeId: String
+  $disputeStatus: String
+  $disputeReason: String
+  $disputeAmountMinor: Int
+  $disputeOpenedAt: Timestamp
+  $disputeUpdatedAt: Timestamp
+  $disputeClosedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      webhookEventId: $webhookEventId
+      stripeDisputeId: $stripeDisputeId
+      disputeStatus: $disputeStatus
+      disputeReason: $disputeReason
+      disputeAmountMinor: $disputeAmountMinor
+      disputeOpenedAt: $disputeOpenedAt
+      disputeUpdatedAt: $disputeUpdatedAt
+      disputeClosedAt: $disputeClosedAt
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }

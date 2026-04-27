@@ -77,4 +77,32 @@ describe("paymentTransitionEngine", () => {
     expect(mutations.markFailed).not.toHaveBeenCalled();
     expect(mutations.markRefunded).not.toHaveBeenCalled();
   });
+
+  it("applies legal refunded transition and forwards refund metadata", async () => {
+    const mutations = buildMutations();
+    const result = await runTicketOrderTransition(
+      {
+        orderId: "00000000-0000-0000-0000-000000000004",
+        currentStatus: TicketOrderStatus.PAID,
+        intent: "MARK_REFUNDED",
+        webhookEventId: "evt_refund",
+        refundContext: {
+          stripeRefundId: "re_123",
+          refundedAmountMinor: 1599,
+          refundedAt: "2026-04-27T18:00:00.000Z",
+        },
+      },
+      mutations
+    );
+
+    expect(result.action).toBe("applied");
+    expect(result.targetStatus).toBe(TicketOrderStatus.REFUNDED);
+    expect(mutations.markRefunded).toHaveBeenCalledWith({
+      id: "00000000-0000-0000-0000-000000000004",
+      webhookEventId: "evt_refund",
+      stripeRefundId: "re_123",
+      refundedAmountMinor: 1599,
+      refundedAt: "2026-04-27T18:00:00.000Z",
+    });
+  });
 });

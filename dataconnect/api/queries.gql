@@ -529,6 +529,16 @@ query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin ==
       currency
       stripeCheckoutSessionId
       stripePaymentIntentId
+      stripeRefundId
+      refundedAmountMinor
+      refundedAt
+      stripeDisputeId
+      disputeStatus
+      disputeReason
+      disputeAmountMinor
+      disputeOpenedAt
+      disputeUpdatedAt
+      disputeClosedAt
       webhookEventId
       createdAt
       updatedAt
