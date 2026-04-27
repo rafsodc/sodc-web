@@ -62,6 +62,20 @@ describe("bookingEligibility", () => {
       expect(r.ok).toBe(true);
     });
 
+    it("uses purposes array for access checks when legacy purpose differs", () => {
+      const r = evaluateBookingGatePreview({
+        purposeLinks: [
+          { purpose: "MEMBER", purposes: ["MEMBER", "ACCESS"], userGroup: { id: "ag", membershipStatuses: ["REGULAR"] } },
+          { purpose: "BOOKER", userGroup: { id: "bg", membershipStatuses: ["REGULAR"] } },
+        ],
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(),
+        ...window,
+        nowMs: Date.parse("2025-06-01T12:00:00.000Z"),
+      });
+      expect(r.ok).toBe(true);
+    });
+
     it("fails outside booking window", () => {
       const r = evaluateBookingGatePreview({
         purposeLinks: baseLinks,
