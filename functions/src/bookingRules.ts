@@ -33,8 +33,7 @@ export function purposeGrantsSectionAccess(purpose: string): boolean {
 }
 
 function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
-  if (link.purpose) return link.purpose === target;
-  return link.purposes?.includes(target) ?? false;
+  return link.purpose === target || (link.purposes?.includes(target) ?? false);
 }
 
 /** Explicit group membership or membership-status–based group (same idea as getSectionMembersMerged). */
