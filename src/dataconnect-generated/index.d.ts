@@ -602,6 +602,7 @@ export interface GetMyBookingsForEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      revisionNumber: number;
       clientSubmissionKey?: string | null;
       bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;

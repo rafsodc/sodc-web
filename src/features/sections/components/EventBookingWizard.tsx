@@ -65,8 +65,10 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
   const [seatingOptions, setSeatingOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editingExistingBooking, setEditingExistingBooking] = useState(false);
 
   const idempotencyKeyRef = useRef<string | null>(null);
+  const hydratedBookingIdRef = useRef<string | null>(null);
 
   const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
   const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
@@ -116,7 +118,12 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
 
   const existingTerminalBooking = useMemo(() => {
     const list = myBookingsData?.user?.bookings ?? [];
-    return list.find((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED);
+    return list
+      .filter((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED)
+      .reduce<typeof list[number] | null>((latest, booking) => {
+        if (!latest) return booking;
+        return booking.revisionNumber > latest.revisionNumber ? booking : latest;
+      }, null);
   }, [myBookingsData]);
 
   /** Server draft for this event — reuse its idempotency key after refresh (new random UUID would conflict). */
@@ -136,6 +143,32 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
       // leave ref unchanged if stored value is malformed
     }
   }, [existingDraft?.id, existingDraft?.clientSubmissionKey]);
+
+  useEffect(() => {
+    const booking = existingTerminalBooking;
+    if (!booking) {
+      hydratedBookingIdRef.current = null;
+      setEditingExistingBooking(false);
+      return;
+    }
+    if (hydratedBookingIdRef.current === booking.id) {
+      return;
+    }
+    hydratedBookingIdRef.current = booking.id;
+    setEditingExistingBooking(true);
+    const memberLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.MEMBER);
+    const guestLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.GUEST);
+    setMemberTicketTypeId(memberLine?.ticketType?.id ?? null);
+    setIncludeGuest(Boolean(guestLine?.ticketType?.id));
+    setGuestTicketTypeId(guestLine?.ticketType?.id ?? null);
+    setGuestDisplayName(guestLine?.guestDisplayName ?? "");
+    setBookerDietaryNote(booking.bookerDietaryNote ?? "");
+    setSitNextToUserIds(booking.sitNextToUserIds ?? []);
+    setAccommodationRequested(booking.accommodationRequested === true);
+    setAccommodationNote(booking.accommodationNote ?? "");
+    setActiveStep(0);
+    setSubmitError(null);
+  }, [existingTerminalBooking]);
 
   const selectedMember = memberTicketTypes.find((t) => t.id === memberTicketTypeId);
   const selectedGuest = guestTicketTypes.find((t) => t.id === guestTicketTypeId);
@@ -259,6 +292,8 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
       await submitEventBooking({
         idempotencyKey,
         eventId: event.id,
+        baseBookingId: existingTerminalBooking?.id,
+        baseRevisionNumber: existingTerminalBooking?.revisionNumber,
         lines,
         bookerDietaryNote,
         sitNextToUserIds,
@@ -331,28 +366,6 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     );
   }
 
-  if (existingTerminalBooking) {
-    return (
-      <Box sx={{ mt: 2 }}>
-        <Alert severity="success">
-          You already have a booking for this event ({existingTerminalBooking.status.toLowerCase()}).
-        </Alert>
-        <AdditionalGuestRequestSection
-          bookingId={existingTerminalBooking.id}
-          eventTitle={event.title}
-          maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
-          guestTicketTypes={guestTicketTypes.map((tt) => ({
-            id: tt.id,
-            title: tt.title,
-            price: tt.price ?? null,
-          }))}
-          requests={existingTerminalBooking.guestTicketRequests ?? []}
-          onRequestCreated={() => void refetchMyBookings()}
-        />
-      </Box>
-    );
-  }
-
   if (!memberTicketTypes.length) {
     return (
       <Alert severity="warning" sx={{ mt: 2 }}>
@@ -364,8 +377,14 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-        Book this event
+        {editingExistingBooking ? "Edit your booking" : "Book this event"}
       </Typography>
+      {editingExistingBooking && existingTerminalBooking ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Editing revision {existingTerminalBooking.revisionNumber} ({existingTerminalBooking.status.toLowerCase()}).
+          Saving will create a new booking revision.
+        </Alert>
+      ) : null}
 
       <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
         {STEPS.map((label) => (
@@ -583,7 +602,7 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
               disabled={submitting}
               sx={{ backgroundColor: colors.callToAction }}
             >
-              {submitting ? "Submitting…" : "Confirm booking"}
+              {submitting ? "Submitting…" : editingExistingBooking ? "Save booking changes" : "Confirm booking"}
             </Button>
           )}
         </Box>
@@ -594,6 +613,22 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
           Start over
         </Button>
       )}
+      {existingTerminalBooking ? (
+        <Box sx={{ mt: 2 }}>
+          <AdditionalGuestRequestSection
+            bookingId={existingTerminalBooking.id}
+            eventTitle={event.title}
+            maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
+            guestTicketTypes={guestTicketTypes.map((tt) => ({
+              id: tt.id,
+              title: tt.title,
+              price: tt.price ?? null,
+            }))}
+            requests={existingTerminalBooking.guestTicketRequests ?? []}
+            onRequestCreated={() => void refetchMyBookings()}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 }
