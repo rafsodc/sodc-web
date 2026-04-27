@@ -351,6 +351,9 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
     id
     status
     totalAmountMinor
+    event {
+      id
+    }
     stripeCheckoutSessionId
     stripePaymentIntentId
     stripeRefundId
