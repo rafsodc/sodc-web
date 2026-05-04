@@ -266,6 +266,18 @@ export interface CreateTicketCheckoutSessionResponse {
   orderId: string;
 }
 
+export interface GetMyTicketOrderInvoiceRequest {
+  orderId: string;
+}
+
+export interface GetMyTicketOrderInvoiceResponse {
+  invoiceReference: string;
+  fileName: string;
+  mimeType: string;
+  contentBase64: string;
+  generatedAt: string;
+}
+
 /**
  * Submits a booking for an event (validated server-side). Reuse the same idempotency key on retries.
  */
@@ -306,6 +318,19 @@ export async function createTicketCheckoutSession(
     quantity: payload.quantity ?? 1,
   };
   const result = await callable(normalized);
+  return result.data;
+}
+
+export async function getMyTicketOrderInvoice(
+  payload: GetMyTicketOrderInvoiceRequest
+): Promise<GetMyTicketOrderInvoiceResponse> {
+  const callable = httpsCallable<GetMyTicketOrderInvoiceRequest, GetMyTicketOrderInvoiceResponse>(
+    functions,
+    "getMyTicketOrderInvoice"
+  );
+  const result = await callable({
+    orderId: toCanonicalUuid(payload.orderId),
+  });
   return result.data;
 }
 

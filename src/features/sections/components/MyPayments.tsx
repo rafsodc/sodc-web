@@ -1,8 +1,23 @@
-import { Alert, Box, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@mui/material";
+import { useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
+import { getMyTicketOrderInvoice } from "../../../shared/utils/firebaseFunctions";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -18,6 +33,8 @@ function statusChipColor(status: string): "success" | "error" | "warning" | "def
 export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
+  const [downloadingByOrderId, setDownloadingByOrderId] = useState<Record<string, boolean>>({});
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const orders = data?.user?.ticketOrders ?? [];
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
     (booking.adjustments ?? []).map((adjustment) => ({
@@ -28,9 +45,36 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     }))
   );
 
+  const handleDownloadInvoice = async (orderId: string): Promise<void> => {
+    setInvoiceError(null);
+    setDownloadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+    try {
+      const invoice = await getMyTicketOrderInvoice({ orderId });
+      const binary = atob(invoice.contentBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: invoice.mimeType });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = invoice.fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(objectUrl);
+    } catch (downloadError) {
+      setInvoiceError(downloadError instanceof Error ? downloadError.message : "Failed to download invoice.");
+    } finally {
+      setDownloadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   return (
     <Box className="page-container">
       <PageHeader title="My Payments" onBack={onBack} />
+      {invoiceError ? <Alert severity="error">{invoiceError}</Alert> : null}
       {isLoading ? (
         <CircularProgress size={24} />
       ) : isError ? (
@@ -51,6 +95,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                   <TableCell align="right">Qty</TableCell>
                   <TableCell align="right">Amount</TableCell>
                   <TableCell>Lifecycle detail</TableCell>
+                  <TableCell>Invoice</TableCell>
                   <TableCell>Updated</TableCell>
                 </TableRow>
               </TableHead>
@@ -74,6 +119,16 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                           : order.disputeStatus
                             ? `Dispute: ${order.disputeStatus}${order.disputeReason ? ` (${order.disputeReason})` : ""}`
                             : "Payment settled"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => void handleDownloadInvoice(order.id)}
+                        disabled={Boolean(downloadingByOrderId[order.id])}
+                      >
+                        {downloadingByOrderId[order.id] ? "Downloading..." : "Download invoice"}
+                      </Button>
                     </TableCell>
                     <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
                   </TableRow>
