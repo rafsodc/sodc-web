@@ -464,7 +464,7 @@ query GetMyBookingPaymentAdjustments @auth(expr: "auth.token.enabled == true") {
         id
         title
       }
-      adjustment: bookingPaymentAdjustment_on_revisionBooking {
+      adjustments: bookingPaymentAdjustments_on_revisionBooking {
         id
         deltaAmountMinor
         status
@@ -637,7 +637,7 @@ query ListBookingPaymentAdjustmentsForAdmin($eventId: UUID!) @auth(expr: "auth.t
         firstName
         lastName
       }
-      adjustment: bookingPaymentAdjustment_on_revisionBooking {
+      adjustments: bookingPaymentAdjustments_on_revisionBooking {
         id
         deltaAmountMinor
         status

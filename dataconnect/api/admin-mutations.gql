@@ -282,13 +282,32 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
 }
 
 # Firebase Functions: create draft with explicit booker and idempotency key (NO_ACCESS; not client-callable).
+# Backward-compatible form: revision fields omitted so schema defaults apply.
 mutation CreateBookingDraftForUser(
+  $eventId: UUID!
+  $bookerId: String!
+  $clientSubmissionKey: String!
+) @auth(level: NO_ACCESS) {
+  booking_insert(
+    data: {
+      eventId: $eventId
+      bookerId: $bookerId
+      clientSubmissionKey: $clientSubmissionKey
+      status: DRAFT
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+# Firebase Functions: explicit revision insert for mutable booking updates.
+mutation CreateBookingDraftRevisionForUser(
   $eventId: UUID!
   $bookerId: String!
   $clientSubmissionKey: String!
   $revisionGroupId: UUID!
   $revisionNumber: Int!
-  $supersedesBookingId: UUID
+  $supersedesBookingId: UUID!
 ) @auth(level: NO_ACCESS) {
   booking_insert(
     data: {
@@ -318,7 +337,7 @@ mutation MarkBookingSupersededFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
 
 mutation CreateBookingPaymentAdjustmentFromCallable(
   $revisionBookingId: UUID!
-  $supersededBookingId: UUID
+  $supersededBookingId: UUID!
   $deltaAmountMinor: Int!
   $status: BookingPaymentAdjustmentStatus!
   $orchestrationKey: String!
@@ -542,7 +561,22 @@ mutation UpsertTicketOrderDisputeFromWebhook(
   )
 }
 
-mutation UpsertPaymentReconciliationException(
+query GetPaymentReconciliationExceptionByOrderAndType(
+  $ticketOrderId: UUID!
+  $exceptionType: PaymentReconciliationExceptionType!
+) @auth(level: NO_ACCESS) {
+  paymentReconciliationExceptions(
+    where: {
+      ticketOrderId: { eq: $ticketOrderId }
+      exceptionType: { eq: $exceptionType }
+    }
+    limit: 1
+  ) {
+    id
+  }
+}
+
+mutation CreatePaymentReconciliationException(
   $ticketOrderId: UUID!
   $exceptionType: PaymentReconciliationExceptionType!
   $status: PaymentReconciliationExceptionStatus!
@@ -551,10 +585,33 @@ mutation UpsertPaymentReconciliationException(
   $lastAttemptedAt: Timestamp
   $resolvedAt: Timestamp
 ) @auth(level: NO_ACCESS) {
-  paymentReconciliationException_upsert(
+  paymentReconciliationException_insert(
     data: {
       ticketOrderId: $ticketOrderId
       exceptionType: $exceptionType
+      status: $status
+      note: $note
+      ownerUserId: $ownerUserId
+      lastAttemptedAt: $lastAttemptedAt
+      resolvedAt: $resolvedAt
+      createdBy: "system"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdatePaymentReconciliationExceptionById(
+  $id: UUID!
+  $status: PaymentReconciliationExceptionStatus!
+  $note: String
+  $ownerUserId: String
+  $lastAttemptedAt: Timestamp
+  $resolvedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  paymentReconciliationException_update(
+    id: $id
+    data: {
       status: $status
       note: $note
       ownerUserId: $ownerUserId

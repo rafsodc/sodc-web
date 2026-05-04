@@ -302,7 +302,7 @@ type PaymentWebhookEvent @table @unique(fields: ["stripeEventId"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-type PaymentReconciliationException @table @unique(fields: ["ticketOrder", "exceptionType"]) {
+type PaymentReconciliationException @table {
   id: UUID! @default(expr: "uuidV4()")
   ticketOrder: TicketOrder!
   exceptionType: PaymentReconciliationExceptionType!
@@ -318,10 +318,10 @@ type PaymentReconciliationException @table @unique(fields: ["ticketOrder", "exce
   updatedBy: String @default(expr: "auth.uid")
 }
 
-type BookingPaymentAdjustment @table @unique(fields: ["revisionBooking"]) {
+type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking"]) {
   id: UUID! @default(expr: "uuidV4()")
   revisionBooking: Booking!
-  supersededBooking: Booking
+  supersededBooking: Booking!
   deltaAmountMinor: Int!
   status: BookingPaymentAdjustmentStatus!
   orchestrationKey: String!

@@ -19,19 +19,14 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
   const orders = data?.user?.ticketOrders ?? [];
-  const bookingAdjustments = (adjustmentsData?.user?.bookings ?? [])
-    .map((booking) => {
-      if (!booking.adjustment) {
-        return null;
-      }
-      return {
-        bookingId: booking.id,
-        eventTitle: booking.event?.title ?? "—",
-        revisionNumber: booking.revisionNumber,
-        ...booking.adjustment,
-      };
-    })
-    .filter((adjustment): adjustment is NonNullable<typeof adjustment> => adjustment !== null);
+  const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
+    (booking.adjustments ?? []).map((adjustment) => ({
+      bookingId: booking.id,
+      eventTitle: booking.event?.title ?? "—",
+      revisionNumber: booking.revisionNumber,
+      ...adjustment,
+    }))
+  );
 
   return (
     <Box className="page-container">
