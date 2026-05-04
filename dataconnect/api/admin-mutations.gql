@@ -449,17 +449,6 @@ query GetTicketOrderStripeArtifactsForCallable($id: UUID!) @auth(level: NO_ACCES
   }
 }
 
-query GetTicketOrdersStripeArtifactsForCallable($orderIds: [UUID!]!) @auth(level: NO_ACCESS) {
-  ticketOrders(where: { id: { in: $orderIds } }) {
-    id
-    stripeCheckoutSessionId
-    stripePaymentIntentId
-    user {
-      id
-    }
-  }
-}
-
 query GetPaymentWebhookEventByStripeEventId($stripeEventId: String!) @auth(level: NO_ACCESS) {
   paymentWebhookEvents(where: { stripeEventId: { eq: $stripeEventId } }, limit: 1) {
     id

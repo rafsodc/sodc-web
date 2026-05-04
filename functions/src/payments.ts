@@ -8,7 +8,7 @@ import {
   getSectionByIdForCallable,
   getPaymentReconciliationExceptionByOrderAndType,
   getTicketOrderForWebhook,
-  getTicketOrdersStripeArtifactsForCallable,
+  getTicketOrderStripeArtifactsForCallable,
   getTicketTypeForCheckout,
   getUserForCheckout,
   getUserUserGroupsForAdmin,
@@ -327,12 +327,14 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
     if (orderIds.length === 0 || orderIds.length > 50) {
       throw new HttpsError("invalid-argument", "orderIds must contain between 1 and 50 ids");
     }
-    const result = await getTicketOrdersStripeArtifactsForCallable({ orderIds });
-    const orders = result.data?.ticketOrders ?? [];
-    const orderMap = new Map(orders.map((order) => [order.id, order]));
-
+    const ordersById = new Map<
+      UUIDString,
+      Awaited<ReturnType<typeof getTicketOrderStripeArtifactsForCallable>>["data"]["ticketOrder"] | null
+    >();
     for (const requestedOrderId of orderIds) {
-      const order = orderMap.get(requestedOrderId);
+      const one = await getTicketOrderStripeArtifactsForCallable({ id: requestedOrderId });
+      const order = one.data?.ticketOrder ?? null;
+      ordersById.set(requestedOrderId, order);
       if (!order) {
         continue;
       }
@@ -351,7 +353,7 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
       artifactsByOrderId: Object.fromEntries(
         await Promise.all(
           orderIds.map(async (orderId: UUIDString) => {
-            const order = orderMap.get(orderId);
+            const order = ordersById.get(orderId) ?? null;
             if (!order) {
               logger.info("stripe artifacts skipped: order missing from batch result", {
                 orderId,
