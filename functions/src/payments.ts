@@ -8,6 +8,7 @@ import {
   getSectionByIdForCallable,
   getPaymentReconciliationExceptionByOrderAndType,
   getTicketOrderForWebhook,
+  getTicketOrderStripeArtifactsForCallable,
   getTicketTypeForCheckout,
   getUserForCheckout,
   getUserUserGroupsForAdmin,
@@ -253,6 +254,83 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   if (!session.url) throw new HttpsError("internal", "Failed to create Stripe Checkout session");
   return { url: session.url, orderId };
 });
+
+export const getMyTicketOrderStripeArtifacts = onCall(
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
+  async (request) => {
+    requireEnabled(request);
+    const uid = request.auth!.uid;
+    const orderId = validateUUID(String(request.data?.orderId ?? ""), "orderId") as UUIDString;
+    const result = await getTicketOrderStripeArtifactsForCallable({ id: orderId });
+    const order = result.data?.ticketOrder;
+    if (!order) {
+      throw new HttpsError("not-found", "Ticket order not found");
+    }
+    if (order.user.id !== uid) {
+      logger.warn("stripe artifact access denied: order ownership mismatch", {
+        orderId,
+        uid,
+        orderUserId: order.user.id,
+      });
+      throw new HttpsError("permission-denied", "You can only view Stripe artifacts for your own orders");
+    }
+    if (!order.stripePaymentIntentId) {
+      return {
+        receiptUrl: null,
+        hostedInvoiceUrl: null,
+        invoicePdfUrl: null,
+      };
+    }
+
+    let receiptUrl: string | null = null;
+    let hostedInvoiceUrl: string | null = null;
+    let invoicePdfUrl: string | null = null;
+    const stripeClient = requireStripe(stripeSecret.value());
+
+    if (order.stripeCheckoutSessionId) {
+      const session = (await stripeClient.checkout.sessions.retrieve(order.stripeCheckoutSessionId, {
+        expand: ["invoice", "payment_intent.latest_charge"],
+      })) as {
+        invoice?: string | { hosted_invoice_url?: string | null; invoice_pdf?: string | null };
+        payment_intent?: string | { latest_charge?: string | { receipt_url?: string | null } };
+      };
+      const invoice = session.invoice && typeof session.invoice !== "string" ? session.invoice : null;
+      hostedInvoiceUrl = invoice?.hosted_invoice_url ?? null;
+      invoicePdfUrl = invoice?.invoice_pdf ?? null;
+      const paymentIntent =
+        session.payment_intent && typeof session.payment_intent !== "string" ? session.payment_intent : null;
+      const latestCharge =
+        paymentIntent?.latest_charge && typeof paymentIntent.latest_charge !== "string"
+          ? paymentIntent.latest_charge
+          : null;
+      receiptUrl = latestCharge?.receipt_url ?? null;
+    }
+
+    if (!receiptUrl) {
+      const paymentIntent = (await stripeClient.paymentIntents.retrieve(order.stripePaymentIntentId, {
+        expand: ["latest_charge"],
+      })) as { latest_charge?: string | { receipt_url?: string | null } };
+      const latestCharge =
+        paymentIntent.latest_charge && typeof paymentIntent.latest_charge !== "string"
+          ? paymentIntent.latest_charge
+          : null;
+      receiptUrl = latestCharge?.receipt_url ?? null;
+    }
+
+    logger.info("stripe artifacts fetched", {
+      orderId,
+      uid,
+      hasReceiptUrl: Boolean(receiptUrl),
+      hasHostedInvoiceUrl: Boolean(hostedInvoiceUrl),
+      hasInvoicePdfUrl: Boolean(invoicePdfUrl),
+    });
+    return {
+      receiptUrl,
+      hostedInvoiceUrl,
+      invoicePdfUrl,
+    };
+  }
+);
 
 function resolveWebhookSecret(domain: "payments"): string | undefined {
   if (domain === "payments") {

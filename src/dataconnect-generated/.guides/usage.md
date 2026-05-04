@@ -12,28 +12,28 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpdateUserMembershipStatus, useDeleteUser, useCreateUser, useCreateUserGroupAdmin, useAddUserToUserGroupAdmin, useRemoveUserFromUserGroupAdmin, useGetUserGroupByName, useGetUserUserGroupsForAdmin, useGetUserForCheckout, useGetTicketTypeForCheckout } from '@dataconnect/generated/react';
+import { useCreateSection, useCreateUserGroup, useAddUserToUserGroup, useRemoveUserFromUserGroup, useGrantUserGroupToSectionForPurpose, useRevokeUserGroupFromSectionForPurpose, useUpdateUserGroup, useDeleteUserGroup, useUpdateSection, useDeleteSection } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
-const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
+const { data, isPending, isSuccess, isError, error } = useCreateSection(createSectionVars);
 
-const { data, isPending, isSuccess, isError, error } = useDeleteUser(deleteUserVars);
+const { data, isPending, isSuccess, isError, error } = useCreateUserGroup(createUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useCreateUser(createUserVars);
+const { data, isPending, isSuccess, isError, error } = useAddUserToUserGroup(addUserToUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useCreateUserGroupAdmin(createUserGroupAdminVars);
+const { data, isPending, isSuccess, isError, error } = useRemoveUserFromUserGroup(removeUserFromUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useAddUserToUserGroupAdmin(addUserToUserGroupAdminVars);
+const { data, isPending, isSuccess, isError, error } = useGrantUserGroupToSectionForPurpose(grantUserGroupToSectionForPurposeVars);
 
-const { data, isPending, isSuccess, isError, error } = useRemoveUserFromUserGroupAdmin(removeUserFromUserGroupAdminVars);
+const { data, isPending, isSuccess, isError, error } = useRevokeUserGroupFromSectionForPurpose(revokeUserGroupFromSectionForPurposeVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserGroupByName(getUserGroupByNameVars);
+const { data, isPending, isSuccess, isError, error } = useUpdateUserGroup(updateUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars);
+const { data, isPending, isSuccess, isError, error } = useDeleteUserGroup(deleteUserGroupVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserForCheckout(getUserForCheckoutVars);
+const { data, isPending, isSuccess, isError, error } = useUpdateSection(updateSectionVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetTicketTypeForCheckout(getTicketTypeForCheckoutVars);
+const { data, isPending, isSuccess, isError, error } = useDeleteSection(deleteSectionVars);
 
 ```
 
@@ -72,38 +72,38 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { updateUserMembershipStatus, deleteUser, createUser, createUserGroupAdmin, addUserToUserGroupAdmin, removeUserFromUserGroupAdmin, getUserGroupByName, getUserUserGroupsForAdmin, getUserForCheckout, getTicketTypeForCheckout } from '@dataconnect/generated';
+import { createSection, createUserGroup, addUserToUserGroup, removeUserFromUserGroup, grantUserGroupToSectionForPurpose, revokeUserGroupFromSectionForPurpose, updateUserGroup, deleteUserGroup, updateSection, deleteSection } from '@dataconnect/generated';
 
 
-// Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
-const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
+// Operation CreateSection:  For variables, look at type CreateSectionVars in ../index.d.ts
+const { data } = await CreateSection(dataConnect, createSectionVars);
 
-// Operation DeleteUser:  For variables, look at type DeleteUserVars in ../index.d.ts
-const { data } = await DeleteUser(dataConnect, deleteUserVars);
+// Operation CreateUserGroup:  For variables, look at type CreateUserGroupVars in ../index.d.ts
+const { data } = await CreateUserGroup(dataConnect, createUserGroupVars);
 
-// Operation CreateUser:  For variables, look at type CreateUserVars in ../index.d.ts
-const { data } = await CreateUser(dataConnect, createUserVars);
+// Operation AddUserToUserGroup:  For variables, look at type AddUserToUserGroupVars in ../index.d.ts
+const { data } = await AddUserToUserGroup(dataConnect, addUserToUserGroupVars);
 
-// Operation CreateUserGroupAdmin:  For variables, look at type CreateUserGroupAdminVars in ../index.d.ts
-const { data } = await CreateUserGroupAdmin(dataConnect, createUserGroupAdminVars);
+// Operation RemoveUserFromUserGroup:  For variables, look at type RemoveUserFromUserGroupVars in ../index.d.ts
+const { data } = await RemoveUserFromUserGroup(dataConnect, removeUserFromUserGroupVars);
 
-// Operation AddUserToUserGroupAdmin:  For variables, look at type AddUserToUserGroupAdminVars in ../index.d.ts
-const { data } = await AddUserToUserGroupAdmin(dataConnect, addUserToUserGroupAdminVars);
+// Operation GrantUserGroupToSectionForPurpose:  For variables, look at type GrantUserGroupToSectionForPurposeVars in ../index.d.ts
+const { data } = await GrantUserGroupToSectionForPurpose(dataConnect, grantUserGroupToSectionForPurposeVars);
 
-// Operation RemoveUserFromUserGroupAdmin:  For variables, look at type RemoveUserFromUserGroupAdminVars in ../index.d.ts
-const { data } = await RemoveUserFromUserGroupAdmin(dataConnect, removeUserFromUserGroupAdminVars);
+// Operation RevokeUserGroupFromSectionForPurpose:  For variables, look at type RevokeUserGroupFromSectionForPurposeVars in ../index.d.ts
+const { data } = await RevokeUserGroupFromSectionForPurpose(dataConnect, revokeUserGroupFromSectionForPurposeVars);
 
-// Operation GetUserGroupByName:  For variables, look at type GetUserGroupByNameVars in ../index.d.ts
-const { data } = await GetUserGroupByName(dataConnect, getUserGroupByNameVars);
+// Operation UpdateUserGroup:  For variables, look at type UpdateUserGroupVars in ../index.d.ts
+const { data } = await UpdateUserGroup(dataConnect, updateUserGroupVars);
 
-// Operation GetUserUserGroupsForAdmin:  For variables, look at type GetUserUserGroupsForAdminVars in ../index.d.ts
-const { data } = await GetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars);
+// Operation DeleteUserGroup:  For variables, look at type DeleteUserGroupVars in ../index.d.ts
+const { data } = await DeleteUserGroup(dataConnect, deleteUserGroupVars);
 
-// Operation GetUserForCheckout:  For variables, look at type GetUserForCheckoutVars in ../index.d.ts
-const { data } = await GetUserForCheckout(dataConnect, getUserForCheckoutVars);
+// Operation UpdateSection:  For variables, look at type UpdateSectionVars in ../index.d.ts
+const { data } = await UpdateSection(dataConnect, updateSectionVars);
 
-// Operation GetTicketTypeForCheckout:  For variables, look at type GetTicketTypeForCheckoutVars in ../index.d.ts
-const { data } = await GetTicketTypeForCheckout(dataConnect, getTicketTypeForCheckoutVars);
+// Operation DeleteSection:  For variables, look at type DeleteSectionVars in ../index.d.ts
+const { data } = await DeleteSection(dataConnect, deleteSectionVars);
 
 
 ```
