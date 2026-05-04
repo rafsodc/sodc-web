@@ -56,6 +56,15 @@ Functions maintain an explicit Stripe event allowlist in code (`SUPPORTED_STRIPE
 - Illegal transition: acknowledge webhook (2xx), no mutation.
 - Valid transition: apply mutation and acknowledge webhook (2xx).
 
+## Endpoint Topology
+
+Stripe webhooks are split by domain starting with a dedicated payments endpoint:
+
+- `stripeWebhookPayments` (preferred): handles payment lifecycle allowlisted events.
+- `stripeWebhook` (legacy compatibility): still accepts payment lifecycle events during cutover.
+
+See `docs/operations/stripe-webhook-endpoints.md` for endpoint URLs, Stripe dashboard setup, secret mapping, local replay/testing, and migration steps.
+
 ## Refund/Dispute Persistence Model
 
 `TicketOrder` now stores lifecycle side-state metadata required for reconciliation and support workflows:
