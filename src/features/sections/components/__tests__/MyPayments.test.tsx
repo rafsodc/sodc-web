@@ -13,6 +13,7 @@ vi.mock("@dataconnect/generated/react", () => ({
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getMyTicketOrderInvoice: vi.fn(),
+  getMyTicketOrderStripeArtifacts: vi.fn(),
 }));
 
 vi.mock("../../../../config/firebase", () => ({
@@ -31,6 +32,11 @@ describe("MyPayments", () => {
       mimeType: "application/pdf",
       contentBase64: btoa("invoice"),
       generatedAt: "2026-05-04T10:00:00Z",
+    });
+    vi.mocked(firebaseFunctions.getMyTicketOrderStripeArtifacts).mockResolvedValue({
+      receiptUrl: "https://pay.stripe.com/receipts/test",
+      hostedInvoiceUrl: null,
+      invoicePdfUrl: null,
     });
   });
 
@@ -148,5 +154,49 @@ describe("MyPayments", () => {
     expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectUrlSpy).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads Stripe links and renders receipt action when available", async () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+        data: {
+          user: {
+            id: "u-1",
+            ticketOrders: [
+              {
+                id: "order-1",
+                status: "PAID",
+                quantity: 1,
+                totalAmountMinor: 2500,
+                currency: "gbp",
+                updatedAt: "2026-04-01T12:00:00Z",
+                refundedAmountMinor: null,
+                disputeStatus: null,
+                disputeReason: null,
+                event: { id: "event-1", title: "Spring Ball" },
+                ticketType: { id: "ticket-1", title: "Member ticket" },
+              },
+            ],
+          },
+        },
+        isLoading: false,
+        isError: false,
+      })
+    );
+    vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>({
+        data: { user: { id: "u-1", bookings: [] } },
+        isLoading: false,
+        isError: false,
+      })
+    );
+
+    const user = userEvent.setup();
+    render(<MyPayments onBack={() => undefined} />);
+    await user.click(screen.getByRole("button", { name: "Load Stripe links" }));
+    await waitFor(() => {
+      expect(firebaseFunctions.getMyTicketOrderStripeArtifacts).toHaveBeenCalledWith({ orderId: "order-1" });
+    });
+    expect(screen.getByRole("button", { name: "View receipt" })).toBeInTheDocument();
   });
 });

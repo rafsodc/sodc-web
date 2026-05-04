@@ -446,6 +446,7 @@ query GetTicketOrderInvoiceForCallable($id: UUID!) @auth(level: NO_ACCESS) {
     unitAmountMinor
     totalAmountMinor
     currency
+    stripeCheckoutSessionId
     stripePaymentIntentId
     stripeRefundId
     refundedAmountMinor

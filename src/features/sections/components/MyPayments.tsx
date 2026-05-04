@@ -17,7 +17,7 @@ import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataco
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
-import { getMyTicketOrderInvoice } from "../../../shared/utils/firebaseFunctions";
+import { getMyTicketOrderInvoice, getMyTicketOrderStripeArtifacts } from "../../../shared/utils/firebaseFunctions";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -34,6 +34,10 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
   const [downloadingByOrderId, setDownloadingByOrderId] = useState<Record<string, boolean>>({});
+  const [loadingStripeLinksByOrderId, setLoadingStripeLinksByOrderId] = useState<Record<string, boolean>>({});
+  const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
+    Record<string, { receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }>
+  >({});
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const orders = data?.user?.ticketOrders ?? [];
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
@@ -71,6 +75,19 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     }
   };
 
+  const handleFetchStripeArtifacts = async (orderId: string): Promise<void> => {
+    setInvoiceError(null);
+    setLoadingStripeLinksByOrderId((prev) => ({ ...prev, [orderId]: true }));
+    try {
+      const artifacts = await getMyTicketOrderStripeArtifacts({ orderId });
+      setStripeArtifactsByOrderId((prev) => ({ ...prev, [orderId]: artifacts }));
+    } catch (error) {
+      setInvoiceError(error instanceof Error ? error.message : "Failed to load Stripe links.");
+    } finally {
+      setLoadingStripeLinksByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   return (
     <Box className="page-container">
       <PageHeader title="My Payments" onBack={onBack} />
@@ -96,6 +113,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                   <TableCell align="right">Amount</TableCell>
                   <TableCell>Lifecycle detail</TableCell>
                   <TableCell>Invoice</TableCell>
+                  <TableCell>Stripe artifacts</TableCell>
                   <TableCell>Updated</TableCell>
                 </TableRow>
               </TableHead>
@@ -129,6 +147,47 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                       >
                         {downloadingByOrderId[order.id] ? "Downloading..." : "Download invoice"}
                       </Button>
+                    </TableCell>
+                    <TableCell>
+                      {stripeArtifactsByOrderId[order.id]?.receiptUrl ? (
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => window.open(stripeArtifactsByOrderId[order.id].receiptUrl as string, "_blank")}
+                        >
+                          View receipt
+                        </Button>
+                      ) : null}
+                      {stripeArtifactsByOrderId[order.id]?.hostedInvoiceUrl ? (
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() =>
+                            window.open(stripeArtifactsByOrderId[order.id].hostedInvoiceUrl as string, "_blank")
+                          }
+                        >
+                          View hosted invoice
+                        </Button>
+                      ) : null}
+                      {stripeArtifactsByOrderId[order.id]?.invoicePdfUrl ? (
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => window.open(stripeArtifactsByOrderId[order.id].invoicePdfUrl as string, "_blank")}
+                        >
+                          View invoice PDF
+                        </Button>
+                      ) : null}
+                      {!stripeArtifactsByOrderId[order.id] ? (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => void handleFetchStripeArtifacts(order.id)}
+                          disabled={Boolean(loadingStripeLinksByOrderId[order.id])}
+                        >
+                          {loadingStripeLinksByOrderId[order.id] ? "Loading..." : "Load Stripe links"}
+                        </Button>
+                      ) : null}
                     </TableCell>
                     <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
                   </TableRow>

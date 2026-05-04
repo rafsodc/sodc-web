@@ -278,6 +278,16 @@ export interface GetMyTicketOrderInvoiceResponse {
   generatedAt: string;
 }
 
+export interface GetMyTicketOrderStripeArtifactsRequest {
+  orderId: string;
+}
+
+export interface GetMyTicketOrderStripeArtifactsResponse {
+  receiptUrl: string | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdfUrl: string | null;
+}
+
 /**
  * Submits a booking for an event (validated server-side). Reuse the same idempotency key on retries.
  */
@@ -327,6 +337,19 @@ export async function getMyTicketOrderInvoice(
   const callable = httpsCallable<GetMyTicketOrderInvoiceRequest, GetMyTicketOrderInvoiceResponse>(
     functions,
     "getMyTicketOrderInvoice"
+  );
+  const result = await callable({
+    orderId: toCanonicalUuid(payload.orderId),
+  });
+  return result.data;
+}
+
+export async function getMyTicketOrderStripeArtifacts(
+  payload: GetMyTicketOrderStripeArtifactsRequest
+): Promise<GetMyTicketOrderStripeArtifactsResponse> {
+  const callable = httpsCallable<GetMyTicketOrderStripeArtifactsRequest, GetMyTicketOrderStripeArtifactsResponse>(
+    functions,
+    "getMyTicketOrderStripeArtifacts"
   );
   const result = await callable({
     orderId: toCanonicalUuid(payload.orderId),
