@@ -18,6 +18,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
+  - [*GetTicketOrderInvoiceForCallable*](#getticketorderinvoiceforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetCurrentUser*](#getcurrentuser)
@@ -1148,6 +1149,145 @@ const ref = getTicketOrderForWebhookRef({ id: ..., });
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getTicketOrderForWebhookRef(dataConnect, getTicketOrderForWebhookVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketOrder);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder);
+});
+```
+
+## GetTicketOrderInvoiceForCallable
+You can execute the `GetTicketOrderInvoiceForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getTicketOrderInvoiceForCallable(vars: GetTicketOrderInvoiceForCallableVariables): QueryPromise<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+
+interface GetTicketOrderInvoiceForCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketOrderInvoiceForCallableVariables): QueryRef<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+}
+export const getTicketOrderInvoiceForCallableRef: GetTicketOrderInvoiceForCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getTicketOrderInvoiceForCallable(dc: DataConnect, vars: GetTicketOrderInvoiceForCallableVariables): QueryPromise<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+
+interface GetTicketOrderInvoiceForCallableRef {
+  ...
+  (dc: DataConnect, vars: GetTicketOrderInvoiceForCallableVariables): QueryRef<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+}
+export const getTicketOrderInvoiceForCallableRef: GetTicketOrderInvoiceForCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getTicketOrderInvoiceForCallableRef:
+```typescript
+const name = getTicketOrderInvoiceForCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetTicketOrderInvoiceForCallable` query requires an argument of type `GetTicketOrderInvoiceForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetTicketOrderInvoiceForCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetTicketOrderInvoiceForCallable` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetTicketOrderInvoiceForCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetTicketOrderInvoiceForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
+    totalAmountMinor: number;
+    currency: string;
+    stripePaymentIntentId?: string | null;
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: TimestampString | null;
+    disputeStatus?: string | null;
+    disputeReason?: string | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+  } & TicketOrder_Key;
+}
+```
+### Using `GetTicketOrderInvoiceForCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrderInvoiceForCallable, GetTicketOrderInvoiceForCallableVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrderInvoiceForCallable` query requires an argument of type `GetTicketOrderInvoiceForCallableVariables`:
+const getTicketOrderInvoiceForCallableVars: GetTicketOrderInvoiceForCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketOrderInvoiceForCallable()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getTicketOrderInvoiceForCallable(getTicketOrderInvoiceForCallableVars);
+// Variables can be defined inline as well.
+const { data } = await getTicketOrderInvoiceForCallable({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getTicketOrderInvoiceForCallable(dataConnect, getTicketOrderInvoiceForCallableVars);
+
+console.log(data.ticketOrder);
+
+// Or, you can use the `Promise` API.
+getTicketOrderInvoiceForCallable(getTicketOrderInvoiceForCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder);
+});
+```
+
+### Using `GetTicketOrderInvoiceForCallable`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrderInvoiceForCallableRef, GetTicketOrderInvoiceForCallableVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrderInvoiceForCallable` query requires an argument of type `GetTicketOrderInvoiceForCallableVariables`:
+const getTicketOrderInvoiceForCallableVars: GetTicketOrderInvoiceForCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketOrderInvoiceForCallableRef()` function to get a reference to the query.
+const ref = getTicketOrderInvoiceForCallableRef(getTicketOrderInvoiceForCallableVars);
+// Variables can be defined inline as well.
+const ref = getTicketOrderInvoiceForCallableRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getTicketOrderInvoiceForCallableRef(dataConnect, getTicketOrderInvoiceForCallableVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.

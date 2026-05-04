@@ -37,6 +37,9 @@ describe("function entry guard contracts", () => {
 
     const payments = readSource("payments.ts");
     assertOnCallGuard(payments, "createTicketCheckoutSession", "requireEnabled(request);");
+
+    const invoices = readSource("invoices.ts");
+    assertOnCallGuard(invoices, "getMyTicketOrderInvoice", "requireEnabled(request);");
   });
 
   it("keeps Stripe webhook signature verification in place", () => {

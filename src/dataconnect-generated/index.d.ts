@@ -906,6 +906,44 @@ export interface GetTicketOrderForWebhookVariables {
   id: UUIDString;
 }
 
+export interface GetTicketOrderInvoiceForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
+    totalAmountMinor: number;
+    currency: string;
+    stripePaymentIntentId?: string | null;
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: TimestampString | null;
+    disputeStatus?: string | null;
+    disputeReason?: string | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+  } & TicketOrder_Key;
+}
+
+export interface GetTicketOrderInvoiceForCallableVariables {
+  id: UUIDString;
+}
+
 export interface GetTicketTypeForCheckoutData {
   ticketType?: {
     id: UUIDString;
@@ -1956,6 +1994,18 @@ export const getTicketOrderForWebhookRef: GetTicketOrderForWebhookRef;
 
 export function getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
 export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+
+interface GetTicketOrderInvoiceForCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketOrderInvoiceForCallableVariables): QueryRef<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetTicketOrderInvoiceForCallableVariables): QueryRef<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+  operationName: string;
+}
+export const getTicketOrderInvoiceForCallableRef: GetTicketOrderInvoiceForCallableRef;
+
+export function getTicketOrderInvoiceForCallable(vars: GetTicketOrderInvoiceForCallableVariables): QueryPromise<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+export function getTicketOrderInvoiceForCallable(dc: DataConnect, vars: GetTicketOrderInvoiceForCallableVariables): QueryPromise<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
 
 interface GetPaymentWebhookEventByStripeEventIdRef {
   /* Allow users to create refs without passing in DataConnect */
