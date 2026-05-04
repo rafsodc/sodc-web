@@ -319,7 +319,7 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
     for (const requestedOrderId of orderIds) {
       const order = orderMap.get(requestedOrderId);
       if (!order) {
-        throw new HttpsError("not-found", `Ticket order not found: ${requestedOrderId}`);
+        continue;
       }
       if (order.user.id !== uid) {
         logger.warn("stripe artifact batch access denied: order ownership mismatch", {
@@ -336,7 +336,21 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
       artifactsByOrderId: Object.fromEntries(
         await Promise.all(
           orderIds.map(async (orderId: UUIDString) => {
-            const order = orderMap.get(orderId)!;
+            const order = orderMap.get(orderId);
+            if (!order) {
+              logger.info("stripe artifacts skipped: order missing from batch result", {
+                orderId,
+                uid,
+              });
+              return [
+                orderId,
+                {
+                  receiptUrl: null,
+                  hostedInvoiceUrl: null,
+                  invoicePdfUrl: null,
+                },
+              ];
+            }
             if (!order.stripePaymentIntentId) {
               return [
                 orderId,
