@@ -5,6 +5,7 @@ import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
 import { getMyTicketOrderStripeArtifactsBatch } from "../../../shared/utils/firebaseFunctions";
+import { toCanonicalUuid } from "../../../shared/utils/uuid";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -15,6 +16,14 @@ function statusChipColor(status: string): "success" | "error" | "warning" | "def
   if (status === "FAILED") return "error";
   if (status === "REFUNDED") return "warning";
   return "default";
+}
+
+function artifactKey(orderId: string): string {
+  try {
+    return toCanonicalUuid(orderId);
+  } catch {
+    return String(orderId).trim().toLowerCase();
+  }
 }
 
 export default function MyPayments({ onBack }: MyPaymentsProps) {
@@ -42,19 +51,22 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     }
     const pendingOrderIds = orders
       .map((order) => order.id)
-      .filter((orderId) => !attemptedStripeArtifactOrderIds.current.has(orderId));
+      .filter((orderId) => !attemptedStripeArtifactOrderIds.current.has(artifactKey(orderId)));
     if (pendingOrderIds.length === 0) {
       return;
     }
     for (const orderId of pendingOrderIds) {
-      attemptedStripeArtifactOrderIds.current.add(orderId);
+      attemptedStripeArtifactOrderIds.current.add(artifactKey(orderId));
     }
     const load = async (): Promise<void> => {
       setLoadingStripeLinks(true);
       setStripeArtifactError(null);
       try {
         const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: pendingOrderIds });
-        setStripeArtifactsByOrderId((prev) => ({ ...prev, ...artifacts.artifactsByOrderId }));
+        const normalizedArtifacts = Object.fromEntries(
+          Object.entries(artifacts.artifactsByOrderId).map(([orderId, value]) => [artifactKey(orderId), value])
+        );
+        setStripeArtifactsByOrderId((prev) => ({ ...prev, ...normalizedArtifacts }));
       } catch (error) {
         setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
       } finally {
@@ -114,16 +126,18 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                             : "Payment settled"}
                     </TableCell>
                     <TableCell>
-                      {stripeArtifactsByOrderId[order.id]?.receiptUrl ? (
+                      {stripeArtifactsByOrderId[artifactKey(order.id)]?.receiptUrl ? (
                         <Button
                           variant="text"
                           size="small"
-                          onClick={() => window.open(stripeArtifactsByOrderId[order.id].receiptUrl as string, "_blank")}
+                          onClick={() =>
+                            window.open(stripeArtifactsByOrderId[artifactKey(order.id)].receiptUrl as string, "_blank")
+                          }
                         >
                           View receipt
                         </Button>
                       ) : null}
-                      {!stripeArtifactsByOrderId[order.id] && loadingStripeLinks ? (
+                      {!stripeArtifactsByOrderId[artifactKey(order.id)] && loadingStripeLinks ? (
                         <Chip size="small" label="Loading links..." />
                       ) : null}
                     </TableCell>

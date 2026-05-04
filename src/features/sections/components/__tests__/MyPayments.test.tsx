@@ -29,6 +29,9 @@ describe("MyPayments", () => {
         "order-1": {
           receiptUrl: "https://pay.stripe.com/receipts/test",
         },
+        "07dba59c-18ee-4801-8ce0-e7f3d1c83eb5": {
+          receiptUrl: "https://pay.stripe.com/receipts/test",
+        },
       },
     });
   });
@@ -105,7 +108,7 @@ describe("MyPayments", () => {
             id: "u-1",
             ticketOrders: [
               {
-                id: "order-1",
+                id: "07DBA59C-18EE-4801-8CE0-E7F3D1C83EB5",
                 status: "PAID",
                 quantity: 1,
                 totalAmountMinor: 2500,
@@ -134,7 +137,9 @@ describe("MyPayments", () => {
 
     render(<MyPayments onBack={() => undefined} />);
     await waitFor(() => {
-      expect(firebaseFunctions.getMyTicketOrderStripeArtifactsBatch).toHaveBeenCalledWith({ orderIds: ["order-1"] });
+      expect(firebaseFunctions.getMyTicketOrderStripeArtifactsBatch).toHaveBeenCalledWith({
+        orderIds: ["07DBA59C-18EE-4801-8CE0-E7F3D1C83EB5"],
+      });
     });
     expect(await screen.findByRole("button", { name: "View receipt" })).toBeInTheDocument();
   });
