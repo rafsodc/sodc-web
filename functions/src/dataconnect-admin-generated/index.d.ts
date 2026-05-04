@@ -893,6 +893,44 @@ export interface GetTicketOrderForWebhookVariables {
   id: UUIDString;
 }
 
+export interface GetTicketOrderInvoiceForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
+    totalAmountMinor: number;
+    currency: string;
+    stripePaymentIntentId?: string | null;
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: TimestampString | null;
+    disputeStatus?: string | null;
+    disputeReason?: string | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+  } & TicketOrder_Key;
+}
+
+export interface GetTicketOrderInvoiceForCallableVariables {
+  id: UUIDString;
+}
+
 export interface GetTicketTypeForCheckoutData {
   ticketType?: {
     id: UUIDString;
@@ -1789,6 +1827,11 @@ export function createTicketOrderForCheckout(vars: CreateTicketOrderForCheckoutV
 export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to pass in custom DataConnect instances. */
 export function getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetTicketOrderInvoiceForCallable' Query. Allow users to execute without passing in DataConnect. */
+export function getTicketOrderInvoiceForCallable(dc: DataConnect, vars: GetTicketOrderInvoiceForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderInvoiceForCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'GetTicketOrderInvoiceForCallable' Query. Allow users to pass in custom DataConnect instances. */
+export function getTicketOrderInvoiceForCallable(vars: GetTicketOrderInvoiceForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderInvoiceForCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetPaymentWebhookEventByStripeEventId' Query. Allow users to execute without passing in DataConnect. */
 export function getPaymentWebhookEventByStripeEventId(dc: DataConnect, vars: GetPaymentWebhookEventByStripeEventIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPaymentWebhookEventByStripeEventIdData>>;

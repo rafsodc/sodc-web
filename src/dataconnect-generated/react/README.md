@@ -25,6 +25,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
+  - [*GetTicketOrderInvoiceForCallable*](#getticketorderinvoiceforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetCurrentUser*](#getcurrentuser)
@@ -979,6 +980,118 @@ export default function GetTicketOrderForWebhookComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetTicketOrderForWebhook(dataConnect, getTicketOrderForWebhookVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.ticketOrder);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetTicketOrderInvoiceForCallable
+You can execute the `GetTicketOrderInvoiceForCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetTicketOrderInvoiceForCallable(dc: DataConnect, vars: GetTicketOrderInvoiceForCallableVariables, options?: useDataConnectQueryOptions<GetTicketOrderInvoiceForCallableData>): UseDataConnectQueryResult<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetTicketOrderInvoiceForCallable(vars: GetTicketOrderInvoiceForCallableVariables, options?: useDataConnectQueryOptions<GetTicketOrderInvoiceForCallableData>): UseDataConnectQueryResult<GetTicketOrderInvoiceForCallableData, GetTicketOrderInvoiceForCallableVariables>;
+```
+
+### Variables
+The `GetTicketOrderInvoiceForCallable` Query requires an argument of type `GetTicketOrderInvoiceForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetTicketOrderInvoiceForCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetTicketOrderInvoiceForCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetTicketOrderInvoiceForCallable` Query is of type `GetTicketOrderInvoiceForCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetTicketOrderInvoiceForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
+    totalAmountMinor: number;
+    currency: string;
+    stripePaymentIntentId?: string | null;
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: TimestampString | null;
+    disputeStatus?: string | null;
+    disputeReason?: string | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+  } & TicketOrder_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetTicketOrderInvoiceForCallable`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetTicketOrderInvoiceForCallableVariables } from '@dataconnect/generated';
+import { useGetTicketOrderInvoiceForCallable } from '@dataconnect/generated/react'
+
+export default function GetTicketOrderInvoiceForCallableComponent() {
+  // The `useGetTicketOrderInvoiceForCallable` Query hook requires an argument of type `GetTicketOrderInvoiceForCallableVariables`:
+  const getTicketOrderInvoiceForCallableVars: GetTicketOrderInvoiceForCallableVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetTicketOrderInvoiceForCallable(getTicketOrderInvoiceForCallableVars);
+  // Variables can be defined inline as well.
+  const query = useGetTicketOrderInvoiceForCallable({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetTicketOrderInvoiceForCallable(dataConnect, getTicketOrderInvoiceForCallableVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketOrderInvoiceForCallable(getTicketOrderInvoiceForCallableVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketOrderInvoiceForCallable(dataConnect, getTicketOrderInvoiceForCallableVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {

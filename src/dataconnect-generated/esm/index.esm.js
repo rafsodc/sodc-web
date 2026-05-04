@@ -322,6 +322,17 @@ export function getTicketOrderForWebhook(dcOrVars, vars) {
   return executeQuery(getTicketOrderForWebhookRef(dcOrVars, vars));
 }
 
+export const getTicketOrderInvoiceForCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetTicketOrderInvoiceForCallable', inputVars);
+}
+getTicketOrderInvoiceForCallableRef.operationName = 'GetTicketOrderInvoiceForCallable';
+
+export function getTicketOrderInvoiceForCallable(dcOrVars, vars) {
+  return executeQuery(getTicketOrderInvoiceForCallableRef(dcOrVars, vars));
+}
+
 export const getPaymentWebhookEventByStripeEventIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

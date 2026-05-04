@@ -4,7 +4,7 @@ const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
-};
+}
 exports.BookingPaymentAdjustmentStatus = BookingPaymentAdjustmentStatus;
 
 const BookingStatus = {
@@ -12,14 +12,14 @@ const BookingStatus = {
   SUBMITTED: "SUBMITTED",
   CONFIRMED: "CONFIRMED",
   CANCELLED: "CANCELLED",
-};
+}
 exports.BookingStatus = BookingStatus;
 
 const GuestTicketRequestStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
   REJECTED: "REJECTED",
-};
+}
 exports.GuestTicketRequestStatus = GuestTicketRequestStatus;
 
 const MembershipStatus = {
@@ -32,20 +32,20 @@ const MembershipStatus = {
   RESIGNED: "RESIGNED",
   LOST: "LOST",
   DECEASED: "DECEASED",
-};
+}
 exports.MembershipStatus = MembershipStatus;
 
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
-};
+}
 exports.PaymentReconciliationExceptionStatus = PaymentReconciliationExceptionStatus;
 
 const PaymentReconciliationExceptionType = {
   MISSING_PAYMENT_INTENT: "MISSING_PAYMENT_INTENT",
   REFUND_AMOUNT_MISMATCH: "REFUND_AMOUNT_MISMATCH",
   ACTIVE_DISPUTE: "ACTIVE_DISPUTE",
-};
+}
 exports.PaymentReconciliationExceptionType = PaymentReconciliationExceptionType;
 
 const PaymentWebhookEventOutcome = {
@@ -53,13 +53,13 @@ const PaymentWebhookEventOutcome = {
   IGNORED: "IGNORED",
   DUPLICATE: "DUPLICATE",
   FAILED: "FAILED",
-};
+}
 exports.PaymentWebhookEventOutcome = PaymentWebhookEventOutcome;
 
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
-};
+}
 exports.SectionType = SectionType;
 
 const SectionUserGroupPurpose = {
@@ -68,13 +68,13 @@ const SectionUserGroupPurpose = {
   BOOKER: "BOOKER",
   MESSAGE: "MESSAGE",
   MODERATOR: "MODERATOR",
-};
+}
 exports.SectionUserGroupPurpose = SectionUserGroupPurpose;
 
 const TicketAudience = {
   MEMBER: "MEMBER",
   GUEST: "GUEST",
-};
+}
 exports.TicketAudience = TicketAudience;
 
 const TicketOrderStatus = {
@@ -82,7 +82,7 @@ const TicketOrderStatus = {
   PAID: "PAID",
   FAILED: "FAILED",
   REFUNDED: "REFUNDED",
-};
+}
 exports.TicketOrderStatus = TicketOrderStatus;
 
 const connectorConfig = {
@@ -245,6 +245,13 @@ function getTicketOrderForWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('GetTicketOrderForWebhook', inputVars, inputOpts);
 }
 exports.getTicketOrderForWebhook = getTicketOrderForWebhook;
+
+function getTicketOrderInvoiceForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketOrderInvoiceForCallable', inputVars, inputOpts);
+}
+exports.getTicketOrderInvoiceForCallable = getTicketOrderInvoiceForCallable;
 
 function getPaymentWebhookEventByStripeEventId(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
