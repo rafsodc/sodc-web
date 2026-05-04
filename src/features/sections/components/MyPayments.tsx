@@ -24,7 +24,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
     Record<string, { receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }>
   >({});
-  const hasAutoLoadedStripeArtifacts = useRef(false);
+  const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
   const [stripeArtifactError, setStripeArtifactError] = useState<string | null>(null);
   const orders = data?.user?.ticketOrders ?? [];
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
@@ -37,15 +37,23 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   );
 
   useEffect(() => {
-    if (isLoading || orders.length === 0 || hasAutoLoadedStripeArtifacts.current) {
+    if (isLoading || orders.length === 0) {
       return;
     }
-    hasAutoLoadedStripeArtifacts.current = true;
+    const pendingOrderIds = orders
+      .map((order) => order.id)
+      .filter((orderId) => !attemptedStripeArtifactOrderIds.current.has(orderId));
+    if (pendingOrderIds.length === 0) {
+      return;
+    }
+    for (const orderId of pendingOrderIds) {
+      attemptedStripeArtifactOrderIds.current.add(orderId);
+    }
     const load = async (): Promise<void> => {
       setLoadingStripeLinks(true);
       setStripeArtifactError(null);
       try {
-        const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: orders.map((order) => order.id) });
+        const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: pendingOrderIds });
         setStripeArtifactsByOrderId((prev) => ({ ...prev, ...artifacts.artifactsByOrderId }));
       } catch (error) {
         setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
