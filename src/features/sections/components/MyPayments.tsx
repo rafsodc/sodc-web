@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
@@ -24,6 +24,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
     Record<string, { receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }>
   >({});
+  const hasAutoLoadedStripeArtifacts = useRef(false);
   const [stripeArtifactError, setStripeArtifactError] = useState<string | null>(null);
   const orders = data?.user?.ticketOrders ?? [];
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
@@ -36,38 +37,24 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   );
 
   useEffect(() => {
-    if (isLoading || orders.length === 0) {
+    if (isLoading || orders.length === 0 || hasAutoLoadedStripeArtifacts.current) {
       return;
     }
-    const orderIds = orders.map((order) => order.id);
-    const missingOrderIds = orderIds.filter((id) => !stripeArtifactsByOrderId[id]);
-    if (missingOrderIds.length === 0) {
-      return;
-    }
-    let cancelled = false;
+    hasAutoLoadedStripeArtifacts.current = true;
     const load = async (): Promise<void> => {
       setLoadingStripeLinks(true);
       setStripeArtifactError(null);
       try {
-        const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: missingOrderIds });
-        if (!cancelled) {
-          setStripeArtifactsByOrderId((prev) => ({ ...prev, ...artifacts.artifactsByOrderId }));
-        }
+        const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: orders.map((order) => order.id) });
+        setStripeArtifactsByOrderId((prev) => ({ ...prev, ...artifacts.artifactsByOrderId }));
       } catch (error) {
-        if (!cancelled) {
-          setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
-        }
+        setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
       } finally {
-        if (!cancelled) {
-          setLoadingStripeLinks(false);
-        }
+        setLoadingStripeLinks(false);
       }
     };
     void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoading, orders, stripeArtifactsByOrderId]);
+  }, [isLoading, orders]);
 
   return (
     <Box className="page-container">

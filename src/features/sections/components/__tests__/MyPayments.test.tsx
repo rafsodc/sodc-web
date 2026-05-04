@@ -138,6 +138,6 @@ describe("MyPayments", () => {
     await waitFor(() => {
       expect(firebaseFunctions.getMyTicketOrderStripeArtifactsBatch).toHaveBeenCalledWith({ orderIds: ["order-1"] });
     });
-    expect(screen.getByRole("button", { name: "View receipt" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "View receipt" })).toBeInTheDocument();
   });
 });
