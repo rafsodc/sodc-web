@@ -3,7 +3,6 @@ import { render, screen, waitFor } from "../../../../test-utils";
 import MyPayments from "../MyPayments";
 import * as reactGenerated from "@dataconnect/generated/react";
 import { dataConnectQueryResult } from "../../../../test-utils/dataConnectMocks";
-import userEvent from "@testing-library/user-event";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
 vi.mock("@dataconnect/generated/react", () => ({
@@ -12,7 +11,7 @@ vi.mock("@dataconnect/generated/react", () => ({
 }));
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
-  getMyTicketOrderStripeArtifacts: vi.fn(),
+  getMyTicketOrderStripeArtifactsBatch: vi.fn(),
 }));
 
 vi.mock("../../../../config/firebase", () => ({
@@ -25,10 +24,14 @@ describe("MyPayments", () => {
   });
 
   beforeEach(() => {
-    vi.mocked(firebaseFunctions.getMyTicketOrderStripeArtifacts).mockResolvedValue({
-      receiptUrl: "https://pay.stripe.com/receipts/test",
-      hostedInvoiceUrl: null,
-      invoicePdfUrl: null,
+    vi.mocked(firebaseFunctions.getMyTicketOrderStripeArtifactsBatch).mockResolvedValue({
+      artifactsByOrderId: {
+        "order-1": {
+          receiptUrl: "https://pay.stripe.com/receipts/test",
+          hostedInvoiceUrl: null,
+          invoicePdfUrl: null,
+        },
+      },
     });
   });
 
@@ -96,7 +99,7 @@ describe("MyPayments", () => {
     expect(screen.getByText("-5.00 GBP")).toBeInTheDocument();
   });
 
-  it("loads Stripe links and renders receipt action when available", async () => {
+  it("auto-loads Stripe links and renders receipt action", async () => {
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
       dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
         data: {
@@ -131,11 +134,9 @@ describe("MyPayments", () => {
       })
     );
 
-    const user = userEvent.setup();
     render(<MyPayments onBack={() => undefined} />);
-    await user.click(screen.getByRole("button", { name: "Load Stripe links" }));
     await waitFor(() => {
-      expect(firebaseFunctions.getMyTicketOrderStripeArtifacts).toHaveBeenCalledWith({ orderId: "order-1" });
+      expect(firebaseFunctions.getMyTicketOrderStripeArtifactsBatch).toHaveBeenCalledWith({ orderIds: ["order-1"] });
     });
     expect(screen.getByRole("button", { name: "View receipt" })).toBeInTheDocument();
   });

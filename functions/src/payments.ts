@@ -8,7 +8,7 @@ import {
   getSectionByIdForCallable,
   getPaymentReconciliationExceptionByOrderAndType,
   getTicketOrderForWebhook,
-  getTicketOrderStripeArtifactsForCallable,
+  getTicketOrdersStripeArtifactsForCallable,
   getTicketTypeForCheckout,
   getUserForCheckout,
   getUserUserGroupsForAdmin,
@@ -255,79 +255,114 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   return { url: session.url, orderId };
 });
 
-export const getMyTicketOrderStripeArtifacts = onCall(
+async function fetchStripeArtifactsForOrder(args: {
+  stripeClient: InstanceType<typeof Stripe>;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId: string;
+}): Promise<{ receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }> {
+  let receiptUrl: string | null = null;
+  let hostedInvoiceUrl: string | null = null;
+  let invoicePdfUrl: string | null = null;
+
+  if (args.stripeCheckoutSessionId) {
+    const session = (await args.stripeClient.checkout.sessions.retrieve(args.stripeCheckoutSessionId, {
+      expand: ["invoice", "payment_intent.latest_charge"],
+    })) as {
+      invoice?: string | { hosted_invoice_url?: string | null; invoice_pdf?: string | null };
+      payment_intent?: string | { latest_charge?: string | { receipt_url?: string | null } };
+    };
+    const invoice = session.invoice && typeof session.invoice !== "string" ? session.invoice : null;
+    hostedInvoiceUrl = invoice?.hosted_invoice_url ?? null;
+    invoicePdfUrl = invoice?.invoice_pdf ?? null;
+    const paymentIntent =
+      session.payment_intent && typeof session.payment_intent !== "string" ? session.payment_intent : null;
+    const latestCharge =
+      paymentIntent?.latest_charge && typeof paymentIntent.latest_charge !== "string"
+        ? paymentIntent.latest_charge
+        : null;
+    receiptUrl = latestCharge?.receipt_url ?? null;
+  }
+
+  if (!receiptUrl) {
+    const paymentIntent = (await args.stripeClient.paymentIntents.retrieve(args.stripePaymentIntentId, {
+      expand: ["latest_charge"],
+    })) as { latest_charge?: string | { receipt_url?: string | null } };
+    const latestCharge =
+      paymentIntent.latest_charge && typeof paymentIntent.latest_charge !== "string"
+        ? paymentIntent.latest_charge
+        : null;
+    receiptUrl = latestCharge?.receipt_url ?? null;
+  }
+
+  return {
+    receiptUrl,
+    hostedInvoiceUrl,
+    invoicePdfUrl,
+  };
+}
+
+export const getMyTicketOrderStripeArtifactsBatch = onCall(
   { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
   async (request) => {
     requireEnabled(request);
     const uid = request.auth!.uid;
-    const orderId = validateUUID(String(request.data?.orderId ?? ""), "orderId") as UUIDString;
-    const result = await getTicketOrderStripeArtifactsForCallable({ id: orderId });
-    const order = result.data?.ticketOrder;
-    if (!order) {
-      throw new HttpsError("not-found", "Ticket order not found");
+    const orderIds = Array.isArray(request.data?.orderIds)
+      ? request.data.orderIds.map((id: unknown) => validateUUID(String(id), "orderId") as UUIDString)
+      : [];
+    if (orderIds.length === 0 || orderIds.length > 50) {
+      throw new HttpsError("invalid-argument", "orderIds must contain between 1 and 50 ids");
     }
-    if (order.user.id !== uid) {
-      logger.warn("stripe artifact access denied: order ownership mismatch", {
-        orderId,
-        uid,
-        orderUserId: order.user.id,
-      });
-      throw new HttpsError("permission-denied", "You can only view Stripe artifacts for your own orders");
-    }
-    if (!order.stripePaymentIntentId) {
-      return {
-        receiptUrl: null,
-        hostedInvoiceUrl: null,
-        invoicePdfUrl: null,
-      };
+    const result = await getTicketOrdersStripeArtifactsForCallable({ orderIds });
+    const orders = result.data?.ticketOrders ?? [];
+    const orderMap = new Map(orders.map((order) => [order.id, order]));
+
+    for (const requestedOrderId of orderIds) {
+      const order = orderMap.get(requestedOrderId);
+      if (!order) {
+        throw new HttpsError("not-found", `Ticket order not found: ${requestedOrderId}`);
+      }
+      if (order.user.id !== uid) {
+        logger.warn("stripe artifact batch access denied: order ownership mismatch", {
+          orderId: requestedOrderId,
+          uid,
+          orderUserId: order.user.id,
+        });
+        throw new HttpsError("permission-denied", "You can only view Stripe artifacts for your own orders");
+      }
     }
 
-    let receiptUrl: string | null = null;
-    let hostedInvoiceUrl: string | null = null;
-    let invoicePdfUrl: string | null = null;
     const stripeClient = requireStripe(stripeSecret.value());
-
-    if (order.stripeCheckoutSessionId) {
-      const session = (await stripeClient.checkout.sessions.retrieve(order.stripeCheckoutSessionId, {
-        expand: ["invoice", "payment_intent.latest_charge"],
-      })) as {
-        invoice?: string | { hosted_invoice_url?: string | null; invoice_pdf?: string | null };
-        payment_intent?: string | { latest_charge?: string | { receipt_url?: string | null } };
-      };
-      const invoice = session.invoice && typeof session.invoice !== "string" ? session.invoice : null;
-      hostedInvoiceUrl = invoice?.hosted_invoice_url ?? null;
-      invoicePdfUrl = invoice?.invoice_pdf ?? null;
-      const paymentIntent =
-        session.payment_intent && typeof session.payment_intent !== "string" ? session.payment_intent : null;
-      const latestCharge =
-        paymentIntent?.latest_charge && typeof paymentIntent.latest_charge !== "string"
-          ? paymentIntent.latest_charge
-          : null;
-      receiptUrl = latestCharge?.receipt_url ?? null;
-    }
-
-    if (!receiptUrl) {
-      const paymentIntent = (await stripeClient.paymentIntents.retrieve(order.stripePaymentIntentId, {
-        expand: ["latest_charge"],
-      })) as { latest_charge?: string | { receipt_url?: string | null } };
-      const latestCharge =
-        paymentIntent.latest_charge && typeof paymentIntent.latest_charge !== "string"
-          ? paymentIntent.latest_charge
-          : null;
-      receiptUrl = latestCharge?.receipt_url ?? null;
-    }
-
-    logger.info("stripe artifacts fetched", {
-      orderId,
-      uid,
-      hasReceiptUrl: Boolean(receiptUrl),
-      hasHostedInvoiceUrl: Boolean(hostedInvoiceUrl),
-      hasInvoicePdfUrl: Boolean(invoicePdfUrl),
-    });
     return {
-      receiptUrl,
-      hostedInvoiceUrl,
-      invoicePdfUrl,
+      artifactsByOrderId: Object.fromEntries(
+        await Promise.all(
+          orderIds.map(async (orderId: UUIDString) => {
+            const order = orderMap.get(orderId)!;
+            if (!order.stripePaymentIntentId) {
+              return [
+                orderId,
+                {
+                  receiptUrl: null,
+                  hostedInvoiceUrl: null,
+                  invoicePdfUrl: null,
+                },
+              ];
+            }
+            const artifacts = await fetchStripeArtifactsForOrder({
+              stripeClient,
+              stripeCheckoutSessionId: order.stripeCheckoutSessionId ?? null,
+              stripePaymentIntentId: order.stripePaymentIntentId,
+            });
+            logger.info("stripe artifacts fetched", {
+              orderId,
+              uid,
+              hasReceiptUrl: Boolean(artifacts.receiptUrl),
+              hasHostedInvoiceUrl: Boolean(artifacts.hostedInvoiceUrl),
+              hasInvoicePdfUrl: Boolean(artifacts.invoicePdfUrl),
+            });
+            return [orderId, artifacts];
+          })
+        )
+      ),
     };
   }
 );

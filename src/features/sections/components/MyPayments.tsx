@@ -1,10 +1,10 @@
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
-import { getMyTicketOrderStripeArtifacts } from "../../../shared/utils/firebaseFunctions";
+import { getMyTicketOrderStripeArtifactsBatch } from "../../../shared/utils/firebaseFunctions";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -20,7 +20,7 @@ function statusChipColor(status: string): "success" | "error" | "warning" | "def
 export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
-  const [loadingStripeLinksByOrderId, setLoadingStripeLinksByOrderId] = useState<Record<string, boolean>>({});
+  const [loadingStripeLinks, setLoadingStripeLinks] = useState(false);
   const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
     Record<string, { receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }>
   >({});
@@ -35,18 +35,39 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     }))
   );
 
-  const handleFetchStripeArtifacts = async (orderId: string): Promise<void> => {
-    setStripeArtifactError(null);
-    setLoadingStripeLinksByOrderId((prev) => ({ ...prev, [orderId]: true }));
-    try {
-      const artifacts = await getMyTicketOrderStripeArtifacts({ orderId });
-      setStripeArtifactsByOrderId((prev) => ({ ...prev, [orderId]: artifacts }));
-    } catch (error) {
-      setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
-    } finally {
-      setLoadingStripeLinksByOrderId((prev) => ({ ...prev, [orderId]: false }));
+  useEffect(() => {
+    if (isLoading || orders.length === 0) {
+      return;
     }
-  };
+    const orderIds = orders.map((order) => order.id);
+    const missingOrderIds = orderIds.filter((id) => !stripeArtifactsByOrderId[id]);
+    if (missingOrderIds.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      setLoadingStripeLinks(true);
+      setStripeArtifactError(null);
+      try {
+        const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: missingOrderIds });
+        if (!cancelled) {
+          setStripeArtifactsByOrderId((prev) => ({ ...prev, ...artifacts.artifactsByOrderId }));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingStripeLinks(false);
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, orders, stripeArtifactsByOrderId]);
 
   return (
     <Box className="page-container">
@@ -127,15 +148,8 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                           View invoice PDF
                         </Button>
                       ) : null}
-                      {!stripeArtifactsByOrderId[order.id] ? (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => void handleFetchStripeArtifacts(order.id)}
-                          disabled={Boolean(loadingStripeLinksByOrderId[order.id])}
-                        >
-                          {loadingStripeLinksByOrderId[order.id] ? "Loading..." : "Load Stripe links"}
-                        </Button>
+                      {!stripeArtifactsByOrderId[order.id] && loadingStripeLinks ? (
+                        <Chip size="small" label="Loading links..." />
                       ) : null}
                     </TableCell>
                     <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>

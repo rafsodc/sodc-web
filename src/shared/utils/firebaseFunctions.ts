@@ -266,14 +266,18 @@ export interface CreateTicketCheckoutSessionResponse {
   orderId: string;
 }
 
-export interface GetMyTicketOrderStripeArtifactsRequest {
-  orderId: string;
-}
-
 export interface GetMyTicketOrderStripeArtifactsResponse {
   receiptUrl: string | null;
   hostedInvoiceUrl: string | null;
   invoicePdfUrl: string | null;
+}
+
+export interface GetMyTicketOrderStripeArtifactsBatchRequest {
+  orderIds: string[];
+}
+
+export interface GetMyTicketOrderStripeArtifactsBatchResponse {
+  artifactsByOrderId: Record<string, GetMyTicketOrderStripeArtifactsResponse>;
 }
 
 /**
@@ -319,15 +323,15 @@ export async function createTicketCheckoutSession(
   return result.data;
 }
 
-export async function getMyTicketOrderStripeArtifacts(
-  payload: GetMyTicketOrderStripeArtifactsRequest
-): Promise<GetMyTicketOrderStripeArtifactsResponse> {
-  const callable = httpsCallable<GetMyTicketOrderStripeArtifactsRequest, GetMyTicketOrderStripeArtifactsResponse>(
+export async function getMyTicketOrderStripeArtifactsBatch(
+  payload: GetMyTicketOrderStripeArtifactsBatchRequest
+): Promise<GetMyTicketOrderStripeArtifactsBatchResponse> {
+  const callable = httpsCallable<GetMyTicketOrderStripeArtifactsBatchRequest, GetMyTicketOrderStripeArtifactsBatchResponse>(
     functions,
-    "getMyTicketOrderStripeArtifacts"
+    "getMyTicketOrderStripeArtifactsBatch"
   );
   const result = await callable({
-    orderId: toCanonicalUuid(payload.orderId),
+    orderIds: payload.orderIds.map((orderId) => toCanonicalUuid(orderId)),
   });
   return result.data;
 }
