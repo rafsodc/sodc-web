@@ -41,6 +41,7 @@ import type {
   EventRow,
   GuestRequestStatusFilter,
   GuestTicketRequestWithBooking,
+  BookingPaymentAdjustmentAdminRow,
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "./sectionEventsManagerTypes";
@@ -282,6 +283,8 @@ interface TicketAdminSurfaceProps {
   eventBookings: EventBookingAdminRow[];
   loadingTicketOrders: boolean;
   ticketOrders: TicketOrderAdminRow[];
+  loadingPaymentAdjustments: boolean;
+  bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
 }
 
 export function TicketAdminSurface({
@@ -309,6 +312,8 @@ export function TicketAdminSurface({
   eventBookings,
   loadingTicketOrders,
   ticketOrders,
+  loadingPaymentAdjustments,
+  bookingPaymentAdjustments,
 }: TicketAdminSurfaceProps) {
   return (
     <>
@@ -349,7 +354,11 @@ export function TicketAdminSurface({
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
       </AdminAccordion>
       <AdminAccordion title="Payment status activity">
-        <PaymentActivitySection loading={loadingTicketOrders} ticketOrders={ticketOrders} />
+        <PaymentActivitySection
+          loading={loadingTicketOrders || loadingPaymentAdjustments}
+          ticketOrders={ticketOrders}
+          bookingPaymentAdjustments={bookingPaymentAdjustments}
+        />
       </AdminAccordion>
     </>
   );
@@ -651,6 +660,7 @@ function GuestTicketRequestsSection({
             <TableHead>
               <TableRow>
                 <TableCell>Status</TableCell>
+                <TableCell>Revision</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell>Guest</TableCell>
                 <TableCell>Ticket</TableCell>
@@ -667,6 +677,16 @@ function GuestTicketRequestsSection({
                 <TableRow key={request.id}>
                   <TableCell>
                     <Chip size="small" label={request.status} color={requestStatusColor(request.status)} />
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Chip size="small" variant="outlined" label={`Rev ${request.bookingRevisionNumber}`} />
+                      {request.supersedesRevisionNumber != null ? (
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                          Supersedes rev {request.supersedesRevisionNumber}
+                        </Box>
+                      ) : null}
+                    </Box>
                   </TableCell>
                   <TableCell>
                     {request.booker ? `${request.booker.firstName} ${request.booker.lastName}` : "—"}
@@ -737,6 +757,7 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
             <TableHead>
               <TableRow>
                 <TableCell>Booking</TableCell>
+                <TableCell>Revision</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell align="right">Lines</TableCell>
@@ -750,6 +771,16 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
               {bookings.map((booking) => (
                 <TableRow key={booking.id}>
                   <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{booking.id}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Chip size="small" variant="outlined" label={`Rev ${booking.revisionNumber}`} />
+                      {booking.supersedesBooking?.revisionNumber != null ? (
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                          Supersedes rev {booking.supersedesBooking.revisionNumber}
+                        </Box>
+                      ) : null}
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <Chip size="small" label={booking.status} />
                   </TableCell>
@@ -768,7 +799,15 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
   );
 }
 
-function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; ticketOrders: TicketOrderAdminRow[] }) {
+function PaymentActivitySection({
+  loading,
+  ticketOrders,
+  bookingPaymentAdjustments,
+}: {
+  loading: boolean;
+  ticketOrders: TicketOrderAdminRow[];
+  bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
+}) {
   return (
     <Box>
       {loading ? (
@@ -784,6 +823,8 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
                 <TableCell>Ticket</TableCell>
                 <TableCell align="right">Qty</TableCell>
                 <TableCell align="right">Amount</TableCell>
+                <TableCell>Refund</TableCell>
+                <TableCell>Dispute</TableCell>
                 <TableCell>Webhook Event ID</TableCell>
                 <TableCell>Updated</TableCell>
                 <TableCell>Updated by</TableCell>
@@ -801,6 +842,32 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
                   <TableCell align="right">
                     {(order.totalAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
                   </TableCell>
+                  <TableCell>
+                    {order.refundedAmountMinor != null ? (
+                      <Box>
+                        <Box>
+                          {(order.refundedAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
+                        </Box>
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                          {order.refundedAt ? new Date(order.refundedAt).toLocaleString() : "time unknown"}
+                        </Box>
+                      </Box>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {order.stripeDisputeId ? (
+                      <Box>
+                        <Chip size="small" label={order.disputeStatus ?? "OPEN"} color="warning" />
+                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem", mt: 0.5 }}>
+                          {order.disputeReason ?? "Reason not supplied"}
+                        </Box>
+                      </Box>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {order.webhookEventId ?? "—"}
                   </TableCell>
@@ -811,6 +878,36 @@ function PaymentActivitySection({ loading, ticketOrders }: { loading: boolean; t
             </TableBody>
         </AdminTable>
       )}
+      {bookingPaymentAdjustments.length > 0 ? (
+        <Box sx={{ mt: 2 }}>
+          <AdminTable>
+            <TableHead>
+              <TableRow>
+                <TableCell>Adjustment</TableCell>
+                <TableCell>Booker</TableCell>
+                <TableCell align="right">Delta</TableCell>
+                <TableCell>Revision</TableCell>
+                <TableCell>Updated</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {bookingPaymentAdjustments.flatMap((booking) =>
+                (booking.adjustments ?? []).map((adjustment) => (
+                  <TableRow key={adjustment.id}>
+                    <TableCell>
+                      <Chip size="small" color="warning" label={adjustment.status.replaceAll("_", " ")} />
+                    </TableCell>
+                    <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
+                    <TableCell align="right">{(adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
+                    <TableCell>Rev {booking.revisionNumber}</TableCell>
+                    <TableCell>{new Date(adjustment.updatedAt).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </AdminTable>
+        </Box>
+      ) : null}
     </Box>
   );
 }

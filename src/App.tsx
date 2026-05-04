@@ -34,8 +34,10 @@ const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers
 const UserGroups = lazy(() => import("./features/admin/components/UserGroups"));
 const AuditLogs = lazy(() => import("./features/admin/components/AuditLogs"));
 const ManageSections = lazy(() => import("./features/admin/components/ManageSections"));
+const PaymentReconciliationDashboard = lazy(() => import("./features/admin/components/PaymentReconciliationDashboard"));
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
 const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
+const MyPayments = lazy(() => import("./features/sections/components/MyPayments"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
@@ -397,6 +399,17 @@ function AppContent() {
                   )}
                 />
                 <Route
+                  path={ROUTES.PAYMENT_RECONCILIATION}
+                  element={renderAdminOnly(
+                    "Payment Reconciliation",
+                    <ErrorBoundary title="Payment Reconciliation" onBack={() => navigateBackOr(ROUTES.HOME)}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <PaymentReconciliationDashboard onBack={() => navigateBackOr(ROUTES.HOME)} />
+                      </Suspense>
+                    </ErrorBoundary>
+                  )}
+                />
+                <Route
                   path={ROUTES.MANAGE_SECTIONS}
                   element={renderAdminOnly(
                     "Manage Sections",
@@ -405,6 +418,14 @@ function AppContent() {
                         <ManageSections onBack={() => navigateBackOr(ROUTES.HOME)} />
                       </Suspense>
                     </ErrorBoundary>
+                  )}
+                />
+                <Route
+                  path={ROUTES.MY_PAYMENTS}
+                  element={protectedRoute(
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MyPayments onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
                   )}
                 />
                 <Route

@@ -357,6 +357,7 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      revisionNumber
       clientSubmissionKey
       bookerDietaryNote
       sitNextToUserIds
@@ -423,6 +424,62 @@ query GetMyTicketOrderById($id: UUID!) @auth(expr: "auth.token.enabled == true")
   }
 }
 
+# Current user's ticket order history (member lifecycle visibility).
+query GetMyTicketOrders @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    ticketOrders: ticketOrders_on_user(orderBy: { updatedAt: DESC }) {
+      id
+      status
+      quantity
+      totalAmountMinor
+      currency
+      refundedAmountMinor
+      refundedAt
+      disputeStatus
+      disputeReason
+      stripePaymentIntentId
+      createdAt
+      updatedAt
+      ticketType {
+        id
+        title
+      }
+      event {
+        id
+        title
+        startDateTime
+      }
+    }
+  }
+}
+
+query GetMyBookingPaymentAdjustments @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    bookings: bookings_on_booker(where: { supersedesBookingId: { isNull: false } }, orderBy: { updatedAt: DESC }) {
+      id
+      revisionNumber
+      event {
+        id
+        title
+      }
+      adjustments: bookingPaymentAdjustments_on_revisionBooking {
+        id
+        deltaAmountMinor
+        status
+        orchestrationKey
+        createdAt
+        updatedAt
+        supersededBooking {
+          id
+          revisionNumber
+        }
+      }
+    }
+  }
+}
+
 # Admin: list booking graph for cascade delete before removing an event.
 query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event(id: $eventId) {
@@ -430,6 +487,11 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
     bookings: bookings_on_event {
       id
       status
+      revisionNumber
+      supersedesBooking {
+        id
+        revisionNumber
+      }
       clientSubmissionKey
       bookerDietaryNote
       sitNextToUserIds
@@ -481,6 +543,11 @@ query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.a
     bookings: bookings_on_event {
       id
       status
+      revisionNumber
+      supersedesBooking {
+        id
+        revisionNumber
+      }
       booker {
         id
         firstName
@@ -529,6 +596,16 @@ query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin ==
       currency
       stripeCheckoutSessionId
       stripePaymentIntentId
+      stripeRefundId
+      refundedAmountMinor
+      refundedAt
+      stripeDisputeId
+      disputeStatus
+      disputeReason
+      disputeAmountMinor
+      disputeOpenedAt
+      disputeUpdatedAt
+      disputeClosedAt
       webhookEventId
       createdAt
       updatedAt
@@ -541,6 +618,69 @@ query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin ==
         email
       }
       ticketType {
+        id
+        title
+      }
+    }
+  }
+}
+
+query ListBookingPaymentAdjustmentsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  event(id: $eventId) {
+    id
+    bookings: bookings_on_event(where: { supersedesBookingId: { isNull: false } }, orderBy: { updatedAt: DESC }) {
+      id
+      revisionNumber
+      status
+      booker {
+        id
+        firstName
+        lastName
+      }
+      adjustments: bookingPaymentAdjustments_on_revisionBooking {
+        id
+        deltaAmountMinor
+        status
+        orchestrationKey
+        createdAt
+        updatedAt
+        supersededBooking {
+          id
+          revisionNumber
+        }
+      }
+    }
+  }
+}
+
+query ListOpenPaymentReconciliationExceptions @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  paymentReconciliationExceptions(
+    where: { status: { eq: OPEN } }
+    orderBy: { updatedAt: DESC }
+  ) {
+    id
+    exceptionType
+    status
+    note
+    ownerUserId
+    lastAttemptedAt
+    resolvedAt
+    createdAt
+    updatedAt
+    ticketOrder {
+      id
+      status
+      totalAmountMinor
+      currency
+      refundedAmountMinor
+      disputeStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+      event {
         id
         title
       }

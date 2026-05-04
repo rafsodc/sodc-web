@@ -4,6 +4,7 @@ import {
   BOOKING_RULE_ERROR_CODES,
   evaluateBookingGatekeeping,
   evaluateBookingLines,
+  evaluateGuestApprovalGate,
   userHasSectionAccess,
   userHasBookerPurpose,
   isWithinBookingWindow,
@@ -156,5 +157,26 @@ describe("bookingRules", () => {
     const r = evaluateBookingLines(lines, map, "REGULAR", explicit);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe(BOOKING_RULE_ERROR_CODES.INVALID_GUEST_FIELDS);
+  });
+
+  it("allows over-threshold guest count when approved capacity is sufficient", () => {
+    const result = evaluateGuestApprovalGate({
+      guestTicketCount: 4,
+      maxGuestsWithoutModeratorApproval: 1,
+      approvedGuestCapacity: 3,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("requires approval when revised guest count exceeds threshold", () => {
+    const result = evaluateGuestApprovalGate({
+      guestTicketCount: 3,
+      maxGuestsWithoutModeratorApproval: 1,
+      approvedGuestCapacity: 1,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.GUEST_APPROVAL_REQUIRED);
+    }
   });
 });

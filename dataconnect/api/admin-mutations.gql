@@ -245,6 +245,12 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      revisionGroupId
+      revisionNumber
+      supersededAt
+      supersedesBooking {
+        id
+      }
       clientSubmissionKey
       bookerDietaryNote
       sitNextToUserIds
@@ -263,13 +269,20 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
         ticketType {
           id
           audience
+          price
         }
+      }
+      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
+        id
+        status
+        requestedGuestCount
       }
     }
   }
 }
 
 # Firebase Functions: create draft with explicit booker and idempotency key (NO_ACCESS; not client-callable).
+# Backward-compatible form: revision fields omitted so schema defaults apply.
 mutation CreateBookingDraftForUser(
   $eventId: UUID!
   $bookerId: String!
@@ -281,6 +294,61 @@ mutation CreateBookingDraftForUser(
       bookerId: $bookerId
       clientSubmissionKey: $clientSubmissionKey
       status: DRAFT
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+# Firebase Functions: explicit revision insert for mutable booking updates.
+mutation CreateBookingDraftRevisionForUser(
+  $eventId: UUID!
+  $bookerId: String!
+  $clientSubmissionKey: String!
+  $revisionGroupId: UUID!
+  $revisionNumber: Int!
+  $supersedesBookingId: UUID!
+) @auth(level: NO_ACCESS) {
+  booking_insert(
+    data: {
+      eventId: $eventId
+      bookerId: $bookerId
+      clientSubmissionKey: $clientSubmissionKey
+      revisionGroupId: $revisionGroupId
+      revisionNumber: $revisionNumber
+      supersedesBookingId: $supersedesBookingId
+      status: DRAFT
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkBookingSupersededFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  booking_update(
+    id: $id
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation CreateBookingPaymentAdjustmentFromCallable(
+  $revisionBookingId: UUID!
+  $supersededBookingId: UUID!
+  $deltaAmountMinor: Int!
+  $status: BookingPaymentAdjustmentStatus!
+  $orchestrationKey: String!
+) @auth(level: NO_ACCESS) {
+  bookingPaymentAdjustment_upsert(
+    data: {
+      revisionBookingId: $revisionBookingId
+      supersededBookingId: $supersededBookingId
+      deltaAmountMinor: $deltaAmountMinor
+      status: $status
+      orchestrationKey: $orchestrationKey
       createdBy: "system"
       updatedBy: "system"
     }
@@ -350,10 +418,64 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
   ticketOrder(id: $id) {
     id
     status
+    totalAmountMinor
+    event {
+      id
+    }
     stripeCheckoutSessionId
     stripePaymentIntentId
+    stripeRefundId
+    refundedAmountMinor
+    refundedAt
+    stripeDisputeId
+    disputeStatus
+    disputeReason
+    disputeAmountMinor
+    disputeOpenedAt
+    disputeUpdatedAt
+    disputeClosedAt
     webhookEventId
   }
+}
+
+query GetPaymentWebhookEventByStripeEventId($stripeEventId: String!) @auth(level: NO_ACCESS) {
+  paymentWebhookEvents(where: { stripeEventId: { eq: $stripeEventId } }, limit: 1) {
+    id
+    stripeEventId
+    eventType
+    outcome
+    reason
+    ticketOrder {
+      id
+    }
+    stripeObjectId
+    livemode
+    createdAt
+  }
+}
+
+mutation CreatePaymentWebhookEvent(
+  $stripeEventId: String!
+  $eventType: String!
+  $outcome: PaymentWebhookEventOutcome!
+  $reason: String
+  $ticketOrderId: UUID
+  $stripeObjectId: String
+  $livemode: Boolean!
+) @auth(level: NO_ACCESS) {
+  paymentWebhookEvent_insert(
+    data: {
+      stripeEventId: $stripeEventId
+      eventType: $eventType
+      outcome: $outcome
+      reason: $reason
+      ticketOrderId: $ticketOrderId
+      stripeObjectId: $stripeObjectId
+      livemode: $livemode
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
 }
 
 mutation MarkTicketOrderPaidFromWebhook(
@@ -369,6 +491,132 @@ mutation MarkTicketOrderPaidFromWebhook(
       stripeCheckoutSessionId: $stripeCheckoutSessionId
       stripePaymentIntentId: $stripePaymentIntentId
       webhookEventId: $webhookEventId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkTicketOrderFailedFromWebhook(
+  $id: UUID!
+  $webhookEventId: String
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: FAILED
+      webhookEventId: $webhookEventId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkTicketOrderRefundedFromWebhook(
+  $id: UUID!
+  $webhookEventId: String
+  $stripeRefundId: String
+  $refundedAmountMinor: Int
+  $refundedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: REFUNDED
+      webhookEventId: $webhookEventId
+      stripeRefundId: $stripeRefundId
+      refundedAmountMinor: $refundedAmountMinor
+      refundedAt: $refundedAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpsertTicketOrderDisputeFromWebhook(
+  $id: UUID!
+  $webhookEventId: String
+  $stripeDisputeId: String
+  $disputeStatus: String
+  $disputeReason: String
+  $disputeAmountMinor: Int
+  $disputeOpenedAt: Timestamp
+  $disputeUpdatedAt: Timestamp
+  $disputeClosedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      webhookEventId: $webhookEventId
+      stripeDisputeId: $stripeDisputeId
+      disputeStatus: $disputeStatus
+      disputeReason: $disputeReason
+      disputeAmountMinor: $disputeAmountMinor
+      disputeOpenedAt: $disputeOpenedAt
+      disputeUpdatedAt: $disputeUpdatedAt
+      disputeClosedAt: $disputeClosedAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+query GetPaymentReconciliationExceptionByOrderAndType(
+  $ticketOrderId: UUID!
+  $exceptionType: PaymentReconciliationExceptionType!
+) @auth(level: NO_ACCESS) {
+  paymentReconciliationExceptions(
+    where: {
+      ticketOrderId: { eq: $ticketOrderId }
+      exceptionType: { eq: $exceptionType }
+    }
+    limit: 1
+  ) {
+    id
+  }
+}
+
+mutation CreatePaymentReconciliationException(
+  $ticketOrderId: UUID!
+  $exceptionType: PaymentReconciliationExceptionType!
+  $status: PaymentReconciliationExceptionStatus!
+  $note: String
+  $ownerUserId: String
+  $lastAttemptedAt: Timestamp
+  $resolvedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  paymentReconciliationException_insert(
+    data: {
+      ticketOrderId: $ticketOrderId
+      exceptionType: $exceptionType
+      status: $status
+      note: $note
+      ownerUserId: $ownerUserId
+      lastAttemptedAt: $lastAttemptedAt
+      resolvedAt: $resolvedAt
+      createdBy: "system"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdatePaymentReconciliationExceptionById(
+  $id: UUID!
+  $status: PaymentReconciliationExceptionStatus!
+  $note: String
+  $ownerUserId: String
+  $lastAttemptedAt: Timestamp
+  $resolvedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  paymentReconciliationException_update(
+    id: $id
+    data: {
+      status: $status
+      note: $note
+      ownerUserId: $ownerUserId
+      lastAttemptedAt: $lastAttemptedAt
+      resolvedAt: $resolvedAt
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }

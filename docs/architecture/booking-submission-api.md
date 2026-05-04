@@ -2,6 +2,9 @@
 
 Server-side enforcement for issue **#46**. Member UI (**#47**) should call this instead of writing bookings directly via Data Connect.
 
+For payment lifecycle transitions and webhook semantics, see
+`docs/architecture/payment-state-machine.md`.
+
 ## Callable
 
 | Field | Value |
@@ -17,12 +20,15 @@ Server-side enforcement for issue **#46**. Member UI (**#47**) should call this 
 | `idempotencyKey` | string (UUID) | yes | **Per submit attempt** — generate a new UUID (v4) when the user commits; **reuse the same value** on retries after network errors so the server returns the same booking instead of creating another |
 | `eventId` | string (UUID) | yes | Event being booked |
 | `lines` | array | yes | Non-empty list of line items (see below) |
+| `baseBookingId` | string (UUID) | no | Required for mutable-booking revision updates once a terminal revision exists |
+| `baseRevisionNumber` | integer | no | Required with `baseBookingId`; optimistic concurrency guard |
 
 ### Idempotency semantics
 
 - The database enforces **uniqueness of `(event, booker, clientSubmissionKey)`** on `Booking` (see `dataconnect/schema/schema.gql`). The callable maps `idempotencyKey` → `clientSubmissionKey`.
 - **Replay (success, no duplicate writes):** If a **SUBMITTED** or **CONFIRMED** booking already exists for this event and booker with the same `idempotencyKey`, the callable returns **`idempotentReplay: true`** and the existing `bookingId` / `status`.
-- **One terminal booking per event:** If any **SUBMITTED** or **CONFIRMED** booking exists for this event and booker with a **different** key, the call fails with `BOOKING_ALREADY_SUBMITTED` (prevents a second completed booking using another key).
+- **Revision lineage:** Bookings now carry `revisionGroupId`, `revisionNumber`, and optional `supersedesBookingId`.
+- **Optimistic concurrency:** When terminal revisions already exist, caller must provide `baseBookingId` + `baseRevisionNumber` for the latest terminal revision. Stale base inputs fail with conflict semantics.
 - **Draft conflict:** If a **DRAFT** exists for this event with a **different** `clientSubmissionKey` (including legacy drafts with a null key), the call fails with `IDEMPOTENCY_DRAFT_CONFLICT` until that draft is cleared or the client retries with the matching key.
 - **Concurrent creates:** If two requests race with the same key, one insert wins; the other may hit a unique violation, refetch, and continue using the winner’s draft (or replay if already completed).
 

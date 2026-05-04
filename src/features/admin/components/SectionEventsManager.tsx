@@ -5,6 +5,7 @@ import { dataConnect } from "../../../config/firebase";
 import {
   useGetEventsForSection,
   useGetEventById,
+  useListBookingPaymentAdjustmentsForAdmin,
   useListEventBookingsForAdmin,
   useListGuestTicketRequestsForAdmin,
   useListTicketOrdersForAdmin,
@@ -31,6 +32,7 @@ import type {
   EventBookingAdminRow,
   EventRow,
   GuestTicketRequestWithBooking,
+  BookingPaymentAdjustmentAdminRow,
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "./sectionEventsManagerTypes";
@@ -106,6 +108,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     { enabled: !!ticketTypesEventId }
   );
   const { data: ticketOrdersData, isLoading: loadingTicketOrders } = useListTicketOrdersForAdmin(
+    dataConnect,
+    { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
+    { enabled: !!ticketTypesEventId }
+  );
+  const { data: paymentAdjustmentsData, isLoading: loadingPaymentAdjustments } = useListBookingPaymentAdjustmentsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
@@ -335,6 +342,9 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         ...request,
         bookingId: booking.id,
         bookingStatus: booking.status,
+        bookingRevisionNumber: booking.revisionNumber,
+        supersedesBookingId: booking.supersedesBooking?.id ?? null,
+        supersedesRevisionNumber: booking.supersedesBooking?.revisionNumber ?? null,
         booker: booking.booker,
       }))
     );
@@ -346,6 +356,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   }, [guestRequests, requestStatusFilter]);
   const eventBookings: EventBookingAdminRow[] = eventBookingsData?.event?.bookings ?? [];
   const ticketOrders: TicketOrderAdminRow[] = ticketOrdersData?.event?.ticketOrders ?? [];
+  const bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[] = paymentAdjustmentsData?.event?.bookings ?? [];
 
   const handleReviewRequest = async (
     request: GuestTicketRequestWithBooking,
@@ -415,6 +426,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           eventBookings={eventBookings}
           loadingTicketOrders={loadingTicketOrders}
           ticketOrders={ticketOrders}
+          loadingPaymentAdjustments={loadingPaymentAdjustments}
+          bookingPaymentAdjustments={bookingPaymentAdjustments}
         />
 
         <TicketTypeDialogSurface

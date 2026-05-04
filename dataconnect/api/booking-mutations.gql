@@ -90,3 +90,21 @@ mutation AdminDeleteBookingLine($id: UUID!) @auth(expr: "auth.token.admin == tru
 mutation AdminDeleteBooking($id: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   booking_delete(id: $id)
 }
+
+mutation ResolvePaymentReconciliationException(
+  $id: UUID!
+  $note: String
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+  paymentReconciliationException_update(
+    id: $id
+    data: {
+      status: RESOLVED
+      note: $note
+      ownerUserId_expr: "auth.uid"
+      lastAttemptedAt_expr: "request.time"
+      resolvedAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}

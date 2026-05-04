@@ -11,6 +11,8 @@ export const ROUTES = {
   APPROVE_USERS: "/admin/users/approvals",
   USER_GROUPS: "/admin/user-groups",
   AUDIT_LOGS: "/admin/audit-logs",
+  PAYMENT_RECONCILIATION: "/admin/payments/reconciliation",
+  MY_PAYMENTS: "/payments",
   SECTIONS: "/sections",
   SECTION_DETAIL: "/sections/:sectionId",
   MANAGE_SECTIONS: "/admin/sections",

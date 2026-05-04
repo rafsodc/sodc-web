@@ -136,6 +136,7 @@ function buildAdminLinks({
       state: null,
       children: userGroupChildren,
     });
+    links.push({ label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION });
     links.push({ label: "Audit Logs", to: ROUTES.AUDIT_LOGS });
   }
 
@@ -192,22 +193,25 @@ export function buildNavigationLinks({
   }
 
   return {
-    sections: sortLinks(sectionMap.values()).map((section) => {
-      const sectionId = section.to.replace("/sections/", "");
-      if (!administerableSectionIds.has(sectionId)) {
-        return section;
-      }
-      return {
-        ...section,
-        children: [
-          manageSectionLink({
-            label: "Administer",
-            sectionId,
-            sectionName: section.label,
-          }),
-        ],
-      };
-    }),
+    sections: [
+      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
+      ...sortLinks(sectionMap.values()).map((section) => {
+        const sectionId = section.to.replace("/sections/", "");
+        if (!administerableSectionIds.has(sectionId)) {
+          return section;
+        }
+        return {
+          ...section,
+          children: [
+            manageSectionLink({
+              label: "Administer",
+              sectionId,
+              sectionName: section.label,
+            }),
+          ],
+        };
+      }),
+    ],
     admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionsData }),
   };
 }

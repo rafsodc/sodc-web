@@ -12,6 +12,7 @@ import {
 vi.mock("@dataconnect/generated/react", () => ({
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
+  useListBookingPaymentAdjustmentsForAdmin: vi.fn(),
   useListEventBookingsForAdmin: vi.fn(),
   useListGuestTicketRequestsForAdmin: vi.fn(),
   useListTicketOrdersForAdmin: vi.fn(),
@@ -51,6 +52,12 @@ function mockGuestTicketRequests(overrides: DataConnectQueryResultOverrides) {
 function mockEventBookings(overrides: DataConnectQueryResultOverrides) {
   vi.mocked(reactGenerated.useListEventBookingsForAdmin).mockReturnValue(
     dataConnectQueryResult<typeof reactGenerated.useListEventBookingsForAdmin>(overrides)
+  );
+}
+
+function mockBookingPaymentAdjustments(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListBookingPaymentAdjustmentsForAdmin).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListBookingPaymentAdjustmentsForAdmin>(overrides)
   );
 }
 
@@ -97,6 +104,11 @@ describe("SectionEventsManager", () => {
     });
     mockTicketOrders({
       data: { event: { id: "ev-1", ticketOrders: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockBookingPaymentAdjustments({
+      data: { event: { id: "ev-1", bookings: [] } },
       isLoading: false,
       isError: false,
     });
@@ -212,6 +224,8 @@ describe("SectionEventsManager", () => {
             {
               id: "b-1",
               status: "SUBMITTED",
+              revisionNumber: 2,
+              supersedesBooking: { id: "b-0", revisionNumber: 1 },
               booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
               guestTicketRequests: [
                 {
@@ -241,6 +255,8 @@ describe("SectionEventsManager", () => {
             {
               id: "b-1",
               status: "SUBMITTED",
+              revisionNumber: 2,
+              supersedesBooking: { id: "b-0", revisionNumber: 1 },
               lines: [{ id: "line-1" }],
               createdAt: "2026-02-01T00:00:00Z",
               updatedAt: "2026-02-01T01:00:00Z",
@@ -305,6 +321,8 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
     expect(screen.getByText(/additional guest ticket requests/i)).toBeInTheDocument();
     expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
+    expect(screen.getAllByText("Rev 2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Supersedes rev 1/i).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
     expect(screen.getByText(/booking audit activity/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));

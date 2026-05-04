@@ -45,6 +45,30 @@ enum TicketOrderStatus {
   REFUNDED
 }
 
+enum PaymentWebhookEventOutcome {
+  PROCESSED
+  IGNORED
+  DUPLICATE
+  FAILED
+}
+
+enum PaymentReconciliationExceptionType {
+  MISSING_PAYMENT_INTENT
+  REFUND_AMOUNT_MISMATCH
+  ACTIVE_DISPUTE
+}
+
+enum PaymentReconciliationExceptionStatus {
+  OPEN
+  RESOLVED
+}
+
+enum BookingPaymentAdjustmentStatus {
+  NOT_REQUIRED
+  PENDING_AUTO_REFUND
+  PENDING_AUTO_CHARGE
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -173,6 +197,10 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!
+  revisionGroupId: UUID! @default(expr: "uuidV4()")
+  revisionNumber: Int! @default(value: 1)
+  supersedesBooking: Booking
+  supersededAt: Timestamp
   # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
   clientSubmissionKey: String
   status: BookingStatus! @default(value: DRAFT)
@@ -237,7 +265,66 @@ type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
   status: TicketOrderStatus! @default(value: PENDING)
   stripeCheckoutSessionId: String
   stripePaymentIntentId: String
+  stripeRefundId: String
+  refundedAmountMinor: Int
+  refundedAt: Timestamp
+  stripeDisputeId: String
+  disputeStatus: String
+  disputeReason: String
+  disputeAmountMinor: Int
+  disputeOpenedAt: Timestamp
+  disputeUpdatedAt: Timestamp
+  disputeClosedAt: Timestamp
   webhookEventId: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Immutable ledger of Stripe webhook events for idempotency and reconciliation audit.
+type PaymentWebhookEvent @table @unique(fields: ["stripeEventId"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  stripeEventId: String!
+  eventType: String!
+  outcome: PaymentWebhookEventOutcome!
+  reason: String
+  # Linked order when event metadata includes orderId and lookup succeeds.
+  ticketOrder: TicketOrder
+  # Lightweight payload metadata for diagnostics (not full raw payload storage).
+  stripeObjectId: String
+  livemode: Boolean!
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+type PaymentReconciliationException @table {
+  id: UUID! @default(expr: "uuidV4()")
+  ticketOrder: TicketOrder!
+  exceptionType: PaymentReconciliationExceptionType!
+  status: PaymentReconciliationExceptionStatus! @default(value: OPEN)
+  note: String
+  ownerUserId: String
+  lastAttemptedAt: Timestamp
+  resolvedAt: Timestamp
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  revisionBooking: Booking!
+  supersededBooking: Booking!
+  deltaAmountMinor: Int!
+  status: BookingPaymentAdjustmentStatus!
+  orchestrationKey: String!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

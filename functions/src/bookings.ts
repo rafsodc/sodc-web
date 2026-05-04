@@ -2,8 +2,11 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
   addBookingLineFromCallable,
+  createBookingPaymentAdjustmentFromCallable,
   BookingStatus,
+  markBookingSupersededFromCallable,
   createBookingDraftForUser,
+  createBookingDraftRevisionForUser,
   deleteBookingLineFromCallable,
   getBookingsForBookerAndEvent,
   getEventByIdForCallable,
@@ -17,6 +20,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import {
   BOOKING_RULE_ERROR_CODES,
   evaluateBookingGatekeeping,
+  evaluateGuestApprovalGate,
   evaluateBookingLines,
   type BookingRulesFailure,
   type LineInputForRules,
@@ -24,6 +28,8 @@ import {
 } from "./bookingRules";
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
+import { computeRevisionPlan } from "./bookingRevisionEngine";
+import { computeBookingPaymentDelta } from "./bookingPaymentAdjustments";
 
 function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   if (
@@ -113,6 +119,10 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
     "idempotencyKey"
   );
   const eventId = validateUUID(request.data?.eventId as string, "eventId") as UUIDString;
+  const baseBookingId = request.data?.baseBookingId ? (validateUUID(String(request.data.baseBookingId), "baseBookingId") as UUIDString) : undefined;
+  const baseRevisionNumberRaw = request.data?.baseRevisionNumber;
+  const baseRevisionNumber =
+    baseRevisionNumberRaw == null ? undefined : Number.isInteger(Number(baseRevisionNumberRaw)) ? Number(baseRevisionNumberRaw) : undefined;
   const lines = parseBookingLines(request.data?.lines);
   const bookerDietaryNote = parseOptionalString(request.data?.bookerDietaryNote, 500);
   const sitNextToUserIds = parseSitNextTo(request.data?.sitNextToUserIds, uid);
@@ -201,16 +211,16 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       }
     }
 
-    const lineRules = evaluateBookingLines(lines, ticketTypesById, membershipStatus, explicitGroupIds);
+    const lineRules = evaluateBookingLines(lines, ticketTypesById, membershipStatus, explicitGroupIds, {
+      maxGuestLines: Number.POSITIVE_INFINITY,
+    });
     if (!lineRules.ok) {
       throw bookingRulesToHttps(lineRules);
     }
 
     let bookings = initialBookings;
 
-    const terminalBookings = bookings.filter(
-      (b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED
-    );
+    const terminalBookings = bookings.filter((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED);
     const replayCompleted = terminalBookings.find((b) => b.clientSubmissionKey === idempotencyKey);
     if (replayCompleted) {
       return {
@@ -219,10 +229,37 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
         idempotentReplay: true,
       };
     }
-    if (terminalBookings.length > 0) {
-      throw new HttpsError("failed-precondition", "A booking for this event is already submitted", {
-        code: BOOKING_RULE_ERROR_CODES.BOOKING_ALREADY_SUBMITTED,
+    const revisionPlan = computeRevisionPlan(
+      terminalBookings.map((b) => ({
+        id: b.id as UUIDString,
+        status: b.status,
+        revisionGroupId: b.revisionGroupId as UUIDString,
+        revisionNumber: b.revisionNumber,
+        clientSubmissionKey: b.clientSubmissionKey ?? null,
+      })),
+      { idempotencyKey, baseBookingId, baseRevisionNumber }
+    );
+
+    if (revisionPlan.supersedesBookingId) {
+      const superseded = terminalBookings.find((b) => b.id === revisionPlan.supersedesBookingId);
+      const approvedGuestCapacity = Math.max(
+        0,
+        ...(superseded?.guestTicketRequests ?? [])
+          .filter((request) => request.status === "APPROVED")
+          .map((request) => request.requestedGuestCount)
+      );
+      const revisedGuestTicketCount = lines.reduce((count, line) => {
+        const tt = ticketTypesById.get(line.ticketTypeId);
+        return count + (tt?.audience === "GUEST" ? 1 : 0);
+      }, 0);
+      const guestApprovalGate = evaluateGuestApprovalGate({
+        guestTicketCount: revisedGuestTicketCount,
+        maxGuestsWithoutModeratorApproval: event.maxGuestsWithoutModeratorApproval ?? null,
+        approvedGuestCapacity,
       });
+      if (!guestApprovalGate.ok) {
+        throw bookingRulesToHttps(guestApprovalGate);
+      }
     }
 
     const drafts = bookings.filter((b) => b.status === BookingStatus.DRAFT);
@@ -245,11 +282,20 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       }
     } else {
       try {
-        const insert = await createBookingDraftForUser({
-          eventId,
-          bookerId: uid,
-          clientSubmissionKey: idempotencyKey,
-        });
+        const insert = revisionPlan.supersedesBookingId
+          ? await createBookingDraftRevisionForUser({
+              eventId,
+              bookerId: uid,
+              clientSubmissionKey: idempotencyKey,
+              revisionGroupId: revisionPlan.revisionGroupId,
+              revisionNumber: revisionPlan.revisionNumber,
+              supersedesBookingId: revisionPlan.supersedesBookingId,
+            })
+          : await createBookingDraftForUser({
+              eventId,
+              bookerId: uid,
+              clientSubmissionKey: idempotencyKey,
+            });
         const key = insert.data?.booking_insert;
         if (!key?.id) {
           throw new HttpsError("internal", "Failed to create booking");
@@ -307,6 +353,20 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       id: bookingId as UUIDString,
       status: BookingStatus.SUBMITTED,
     });
+    if (revisionPlan.supersedesBookingId) {
+      await markBookingSupersededFromCallable({ id: revisionPlan.supersedesBookingId });
+      const refreshed = await fetchBookingsForBookerAndEvent(uid, eventId);
+      const previousBooking = refreshed.find((booking) => booking.id === revisionPlan.supersedesBookingId);
+      const revisedBooking = refreshed.find((booking) => booking.id === bookingId);
+      const delta = computeBookingPaymentDelta(previousBooking, revisedBooking);
+      await createBookingPaymentAdjustmentFromCallable({
+        revisionBookingId: bookingId as UUIDString,
+        supersededBookingId: revisionPlan.supersedesBookingId,
+        deltaAmountMinor: delta.deltaAmountMinor,
+        status: delta.status,
+        orchestrationKey: `${bookingId}:${idempotencyKey}`,
+      });
+    }
 
     logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
     return { bookingId, status: BookingStatus.SUBMITTED, idempotentReplay: false };
