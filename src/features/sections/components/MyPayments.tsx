@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
@@ -35,7 +35,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   >({});
   const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
   const [stripeArtifactError, setStripeArtifactError] = useState<string | null>(null);
-  const orders = data?.user?.ticketOrders ?? [];
+  const orders = useMemo(() => data?.user?.ticketOrders ?? [], [data?.user?.ticketOrders]);
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
     (booking.adjustments ?? []).map((adjustment) => ({
       bookingId: booking.id,
