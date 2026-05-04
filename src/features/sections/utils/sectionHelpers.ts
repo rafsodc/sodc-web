@@ -12,8 +12,10 @@ export interface SectionMember {
 }
 
 /** Purposes that allow opening / seeing a section. MODERATOR implies this for authorization. */
+export const SECTION_ACCESS_PURPOSES: ReadonlyArray<string> = ["ACCESS", "MODERATOR"];
+
 export function purposeGrantsSectionAccess(purpose: SectionUserGroupPurpose | string): boolean {
-  return purpose === "ACCESS" || purpose === "MODERATOR";
+  return SECTION_ACCESS_PURPOSES.includes(purpose);
 }
 
 /**
@@ -23,9 +25,12 @@ export function isMembersSection(section: { type: SectionType }): boolean {
   return section.type === "MEMBERS";
 }
 
-type PurposeLinkWithUsers = {
+type PurposeBearingLink = {
   purpose?: string;
   purposes?: string[] | null;
+};
+
+type PurposeLinkWithUsers = PurposeBearingLink & {
   userGroup: {
     id: string;
     name: string;
@@ -42,7 +47,8 @@ type PurposeLinkWithUsers = {
   };
 };
 
-function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
+// TODO: Extract to a shared utility module and reuse across bookingEligibility, sections, and bookingRules.
+function linkHasPurpose(link: PurposeBearingLink, target: string): boolean {
   return link.purpose === target || (link.purposes?.includes(target) ?? false);
 }
 
