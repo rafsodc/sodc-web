@@ -258,24 +258,28 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
 async function fetchStripeArtifactsForOrder(args: {
   stripeClient: InstanceType<typeof Stripe>;
   stripeCheckoutSessionId?: string | null;
-  stripePaymentIntentId: string;
+  stripePaymentIntentId?: string | null;
 }): Promise<{ receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }> {
   let receiptUrl: string | null = null;
   let hostedInvoiceUrl: string | null = null;
   let invoicePdfUrl: string | null = null;
+  let resolvedPaymentIntentId = args.stripePaymentIntentId ?? null;
 
   if (args.stripeCheckoutSessionId) {
     const session = (await args.stripeClient.checkout.sessions.retrieve(args.stripeCheckoutSessionId, {
       expand: ["invoice", "payment_intent.latest_charge"],
     })) as {
       invoice?: string | { hosted_invoice_url?: string | null; invoice_pdf?: string | null };
-      payment_intent?: string | { latest_charge?: string | { receipt_url?: string | null } };
+      payment_intent?: string | { id?: string; latest_charge?: string | { id?: string; receipt_url?: string | null } };
     };
     const invoice = session.invoice && typeof session.invoice !== "string" ? session.invoice : null;
     hostedInvoiceUrl = invoice?.hosted_invoice_url ?? null;
     invoicePdfUrl = invoice?.invoice_pdf ?? null;
-    const paymentIntent =
-      session.payment_intent && typeof session.payment_intent !== "string" ? session.payment_intent : null;
+    resolvedPaymentIntentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? resolvedPaymentIntentId;
+    const paymentIntent = session.payment_intent && typeof session.payment_intent !== "string" ? session.payment_intent : null;
     const latestCharge =
       paymentIntent?.latest_charge && typeof paymentIntent.latest_charge !== "string"
         ? paymentIntent.latest_charge
@@ -283,15 +287,26 @@ async function fetchStripeArtifactsForOrder(args: {
     receiptUrl = latestCharge?.receipt_url ?? null;
   }
 
-  if (!receiptUrl) {
-    const paymentIntent = (await args.stripeClient.paymentIntents.retrieve(args.stripePaymentIntentId, {
+  if (!receiptUrl && resolvedPaymentIntentId) {
+    const paymentIntent = (await args.stripeClient.paymentIntents.retrieve(resolvedPaymentIntentId, {
       expand: ["latest_charge"],
-    })) as { latest_charge?: string | { receipt_url?: string | null } };
-    const latestCharge =
-      paymentIntent.latest_charge && typeof paymentIntent.latest_charge !== "string"
-        ? paymentIntent.latest_charge
-        : null;
-    receiptUrl = latestCharge?.receipt_url ?? null;
+    })) as { latest_charge?: string | { id?: string; receipt_url?: string | null } };
+    const latestCharge = paymentIntent.latest_charge;
+    if (latestCharge && typeof latestCharge !== "string") {
+      receiptUrl = latestCharge.receipt_url ?? null;
+    } else if (typeof latestCharge === "string") {
+      const charge = await args.stripeClient.charges.retrieve(latestCharge);
+      receiptUrl = charge.receipt_url ?? null;
+    }
+  }
+
+  // Fallback for older/edge payments where latest_charge is missing on PI.
+  if (!receiptUrl && resolvedPaymentIntentId) {
+    const charges = await args.stripeClient.charges.list({
+      payment_intent: resolvedPaymentIntentId,
+      limit: 1,
+    });
+    receiptUrl = charges.data[0]?.receipt_url ?? null;
   }
 
   return {
@@ -351,7 +366,7 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
                 },
               ];
             }
-            if (!order.stripePaymentIntentId) {
+            if (!order.stripePaymentIntentId && !order.stripeCheckoutSessionId) {
               return [
                 orderId,
                 {
@@ -364,7 +379,7 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
             const artifacts = await fetchStripeArtifactsForOrder({
               stripeClient,
               stripeCheckoutSessionId: order.stripeCheckoutSessionId ?? null,
-              stripePaymentIntentId: order.stripePaymentIntentId,
+              stripePaymentIntentId: order.stripePaymentIntentId ?? null,
             });
             logger.info("stripe artifacts fetched", {
               orderId,
