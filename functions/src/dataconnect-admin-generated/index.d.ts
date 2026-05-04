@@ -893,6 +893,21 @@ export interface GetTicketOrderForWebhookVariables {
   id: UUIDString;
 }
 
+export interface GetTicketOrderStripeArtifactsForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    user: {
+      id: string;
+    } & User_Key;
+  } & TicketOrder_Key;
+}
+
+export interface GetTicketOrderStripeArtifactsForCallableVariables {
+  id: UUIDString;
+}
+
 export interface GetTicketTypeForCheckoutData {
   ticketType?: {
     id: UUIDString;
@@ -1789,6 +1804,11 @@ export function createTicketOrderForCheckout(vars: CreateTicketOrderForCheckoutV
 export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to pass in custom DataConnect instances. */
 export function getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetTicketOrderStripeArtifactsForCallable' Query. Allow users to execute without passing in DataConnect. */
+export function getTicketOrderStripeArtifactsForCallable(dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderStripeArtifactsForCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'GetTicketOrderStripeArtifactsForCallable' Query. Allow users to pass in custom DataConnect instances. */
+export function getTicketOrderStripeArtifactsForCallable(vars: GetTicketOrderStripeArtifactsForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderStripeArtifactsForCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetPaymentWebhookEventByStripeEventId' Query. Allow users to execute without passing in DataConnect. */
 export function getPaymentWebhookEventByStripeEventId(dc: DataConnect, vars: GetPaymentWebhookEventByStripeEventIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPaymentWebhookEventByStripeEventIdData>>;

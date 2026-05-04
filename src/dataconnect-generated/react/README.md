@@ -25,6 +25,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
+  - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetCurrentUser*](#getcurrentuser)
@@ -979,6 +980,95 @@ export default function GetTicketOrderForWebhookComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetTicketOrderForWebhook(dataConnect, getTicketOrderForWebhookVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.ticketOrder);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetTicketOrderStripeArtifactsForCallable
+You can execute the `GetTicketOrderStripeArtifactsForCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetTicketOrderStripeArtifactsForCallable(dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables, options?: useDataConnectQueryOptions<GetTicketOrderStripeArtifactsForCallableData>): UseDataConnectQueryResult<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetTicketOrderStripeArtifactsForCallable(vars: GetTicketOrderStripeArtifactsForCallableVariables, options?: useDataConnectQueryOptions<GetTicketOrderStripeArtifactsForCallableData>): UseDataConnectQueryResult<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+```
+
+### Variables
+The `GetTicketOrderStripeArtifactsForCallable` Query requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetTicketOrderStripeArtifactsForCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetTicketOrderStripeArtifactsForCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetTicketOrderStripeArtifactsForCallable` Query is of type `GetTicketOrderStripeArtifactsForCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetTicketOrderStripeArtifactsForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    user: {
+      id: string;
+    } & User_Key;
+  } & TicketOrder_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetTicketOrderStripeArtifactsForCallable`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetTicketOrderStripeArtifactsForCallableVariables } from '@dataconnect/generated';
+import { useGetTicketOrderStripeArtifactsForCallable } from '@dataconnect/generated/react'
+
+export default function GetTicketOrderStripeArtifactsForCallableComponent() {
+  // The `useGetTicketOrderStripeArtifactsForCallable` Query hook requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`:
+  const getTicketOrderStripeArtifactsForCallableVars: GetTicketOrderStripeArtifactsForCallableVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetTicketOrderStripeArtifactsForCallable(getTicketOrderStripeArtifactsForCallableVars);
+  // Variables can be defined inline as well.
+  const query = useGetTicketOrderStripeArtifactsForCallable({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetTicketOrderStripeArtifactsForCallable(dataConnect, getTicketOrderStripeArtifactsForCallableVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketOrderStripeArtifactsForCallable(getTicketOrderStripeArtifactsForCallableVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketOrderStripeArtifactsForCallable(dataConnect, getTicketOrderStripeArtifactsForCallableVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {

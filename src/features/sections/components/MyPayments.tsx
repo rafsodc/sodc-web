@@ -1,8 +1,11 @@
-import { Alert, Box, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
+import { getMyTicketOrderStripeArtifactsBatch } from "../../../shared/utils/firebaseFunctions";
+import { toCanonicalUuid } from "../../../shared/utils/uuid";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -15,10 +18,24 @@ function statusChipColor(status: string): "success" | "error" | "warning" | "def
   return "default";
 }
 
+function artifactKey(orderId: string): string {
+  try {
+    return toCanonicalUuid(orderId);
+  } catch {
+    return String(orderId).trim().toLowerCase();
+  }
+}
+
 export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
-  const orders = data?.user?.ticketOrders ?? [];
+  const [loadingStripeLinks, setLoadingStripeLinks] = useState(false);
+  const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
+    Record<string, { receiptUrl: string | null }>
+  >({});
+  const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
+  const [stripeArtifactError, setStripeArtifactError] = useState<string | null>(null);
+  const orders = useMemo(() => data?.user?.ticketOrders ?? [], [data?.user?.ticketOrders]);
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
     (booking.adjustments ?? []).map((adjustment) => ({
       bookingId: booking.id,
@@ -28,9 +45,41 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     }))
   );
 
+  useEffect(() => {
+    if (isLoading || orders.length === 0) {
+      return;
+    }
+    const pendingOrderIds = orders
+      .map((order) => order.id)
+      .filter((orderId) => !attemptedStripeArtifactOrderIds.current.has(artifactKey(orderId)));
+    if (pendingOrderIds.length === 0) {
+      return;
+    }
+    for (const orderId of pendingOrderIds) {
+      attemptedStripeArtifactOrderIds.current.add(artifactKey(orderId));
+    }
+    const load = async (): Promise<void> => {
+      setLoadingStripeLinks(true);
+      setStripeArtifactError(null);
+      try {
+        const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: pendingOrderIds });
+        const normalizedArtifacts = Object.fromEntries(
+          Object.entries(artifacts.artifactsByOrderId).map(([orderId, value]) => [artifactKey(orderId), value])
+        );
+        setStripeArtifactsByOrderId((prev) => ({ ...prev, ...normalizedArtifacts }));
+      } catch (error) {
+        setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
+      } finally {
+        setLoadingStripeLinks(false);
+      }
+    };
+    void load();
+  }, [isLoading, orders]);
+
   return (
     <Box className="page-container">
       <PageHeader title="My Payments" onBack={onBack} />
+      {stripeArtifactError ? <Alert severity="error">{stripeArtifactError}</Alert> : null}
       {isLoading ? (
         <CircularProgress size={24} />
       ) : isError ? (
@@ -51,6 +100,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                   <TableCell align="right">Qty</TableCell>
                   <TableCell align="right">Amount</TableCell>
                   <TableCell>Lifecycle detail</TableCell>
+                  <TableCell>Stripe artifacts</TableCell>
                   <TableCell>Updated</TableCell>
                 </TableRow>
               </TableHead>
@@ -74,6 +124,22 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                           : order.disputeStatus
                             ? `Dispute: ${order.disputeStatus}${order.disputeReason ? ` (${order.disputeReason})` : ""}`
                             : "Payment settled"}
+                    </TableCell>
+                    <TableCell>
+                      {stripeArtifactsByOrderId[artifactKey(order.id)]?.receiptUrl ? (
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() =>
+                            window.open(stripeArtifactsByOrderId[artifactKey(order.id)].receiptUrl as string, "_blank")
+                          }
+                        >
+                          View receipt
+                        </Button>
+                      ) : null}
+                      {!stripeArtifactsByOrderId[artifactKey(order.id)] && loadingStripeLinks ? (
+                        <Chip size="small" label="Loading links..." />
+                      ) : null}
                     </TableCell>
                     <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
                   </TableRow>

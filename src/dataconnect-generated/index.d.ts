@@ -906,6 +906,21 @@ export interface GetTicketOrderForWebhookVariables {
   id: UUIDString;
 }
 
+export interface GetTicketOrderStripeArtifactsForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    user: {
+      id: string;
+    } & User_Key;
+  } & TicketOrder_Key;
+}
+
+export interface GetTicketOrderStripeArtifactsForCallableVariables {
+  id: UUIDString;
+}
+
 export interface GetTicketTypeForCheckoutData {
   ticketType?: {
     id: UUIDString;
@@ -1956,6 +1971,18 @@ export const getTicketOrderForWebhookRef: GetTicketOrderForWebhookRef;
 
 export function getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
 export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+
+interface GetTicketOrderStripeArtifactsForCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryRef<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryRef<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+  operationName: string;
+}
+export const getTicketOrderStripeArtifactsForCallableRef: GetTicketOrderStripeArtifactsForCallableRef;
+
+export function getTicketOrderStripeArtifactsForCallable(vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+export function getTicketOrderStripeArtifactsForCallable(dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
 
 interface GetPaymentWebhookEventByStripeEventIdRef {
   /* Allow users to create refs without passing in DataConnect */

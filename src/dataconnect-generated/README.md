@@ -18,6 +18,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
+  - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetCurrentUser*](#getcurrentuser)
@@ -1148,6 +1149,122 @@ const ref = getTicketOrderForWebhookRef({ id: ..., });
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getTicketOrderForWebhookRef(dataConnect, getTicketOrderForWebhookVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketOrder);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder);
+});
+```
+
+## GetTicketOrderStripeArtifactsForCallable
+You can execute the `GetTicketOrderStripeArtifactsForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getTicketOrderStripeArtifactsForCallable(vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+
+interface GetTicketOrderStripeArtifactsForCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryRef<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+}
+export const getTicketOrderStripeArtifactsForCallableRef: GetTicketOrderStripeArtifactsForCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getTicketOrderStripeArtifactsForCallable(dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+
+interface GetTicketOrderStripeArtifactsForCallableRef {
+  ...
+  (dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryRef<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+}
+export const getTicketOrderStripeArtifactsForCallableRef: GetTicketOrderStripeArtifactsForCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getTicketOrderStripeArtifactsForCallableRef:
+```typescript
+const name = getTicketOrderStripeArtifactsForCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetTicketOrderStripeArtifactsForCallable` query requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetTicketOrderStripeArtifactsForCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetTicketOrderStripeArtifactsForCallable` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetTicketOrderStripeArtifactsForCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetTicketOrderStripeArtifactsForCallableData {
+  ticketOrder?: {
+    id: UUIDString;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    user: {
+      id: string;
+    } & User_Key;
+  } & TicketOrder_Key;
+}
+```
+### Using `GetTicketOrderStripeArtifactsForCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrderStripeArtifactsForCallable, GetTicketOrderStripeArtifactsForCallableVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrderStripeArtifactsForCallable` query requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`:
+const getTicketOrderStripeArtifactsForCallableVars: GetTicketOrderStripeArtifactsForCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketOrderStripeArtifactsForCallable()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getTicketOrderStripeArtifactsForCallable(getTicketOrderStripeArtifactsForCallableVars);
+// Variables can be defined inline as well.
+const { data } = await getTicketOrderStripeArtifactsForCallable({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getTicketOrderStripeArtifactsForCallable(dataConnect, getTicketOrderStripeArtifactsForCallableVars);
+
+console.log(data.ticketOrder);
+
+// Or, you can use the `Promise` API.
+getTicketOrderStripeArtifactsForCallable(getTicketOrderStripeArtifactsForCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder);
+});
+```
+
+### Using `GetTicketOrderStripeArtifactsForCallable`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrderStripeArtifactsForCallableRef, GetTicketOrderStripeArtifactsForCallableVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrderStripeArtifactsForCallable` query requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`:
+const getTicketOrderStripeArtifactsForCallableVars: GetTicketOrderStripeArtifactsForCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketOrderStripeArtifactsForCallableRef()` function to get a reference to the query.
+const ref = getTicketOrderStripeArtifactsForCallableRef(getTicketOrderStripeArtifactsForCallableVars);
+// Variables can be defined inline as well.
+const ref = getTicketOrderStripeArtifactsForCallableRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getTicketOrderStripeArtifactsForCallableRef(dataConnect, getTicketOrderStripeArtifactsForCallableVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
