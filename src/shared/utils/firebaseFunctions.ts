@@ -268,8 +268,6 @@ export interface CreateTicketCheckoutSessionResponse {
 
 export interface GetMyTicketOrderStripeArtifactsResponse {
   receiptUrl: string | null;
-  hostedInvoiceUrl: string | null;
-  invoicePdfUrl: string | null;
 }
 
 export interface GetMyTicketOrderStripeArtifactsBatchRequest {
@@ -333,6 +331,7 @@ export async function getMyTicketOrderStripeArtifactsBatch(
   const result = await callable({
     orderIds: payload.orderIds.map((orderId) => toCanonicalUuid(orderId)),
   });
-  return result.data;
+  const data = result.data as { result?: GetMyTicketOrderStripeArtifactsBatchResponse } & GetMyTicketOrderStripeArtifactsBatchResponse;
+  return data.result ?? data;
 }
 

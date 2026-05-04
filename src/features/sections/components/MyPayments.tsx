@@ -22,7 +22,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
   const [loadingStripeLinks, setLoadingStripeLinks] = useState(false);
   const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
-    Record<string, { receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }>
+    Record<string, { receiptUrl: string | null }>
   >({});
   const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
   const [stripeArtifactError, setStripeArtifactError] = useState<string | null>(null);
@@ -121,26 +121,6 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                           onClick={() => window.open(stripeArtifactsByOrderId[order.id].receiptUrl as string, "_blank")}
                         >
                           View receipt
-                        </Button>
-                      ) : null}
-                      {stripeArtifactsByOrderId[order.id]?.hostedInvoiceUrl ? (
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={() =>
-                            window.open(stripeArtifactsByOrderId[order.id].hostedInvoiceUrl as string, "_blank")
-                          }
-                        >
-                          View hosted invoice
-                        </Button>
-                      ) : null}
-                      {stripeArtifactsByOrderId[order.id]?.invoicePdfUrl ? (
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={() => window.open(stripeArtifactsByOrderId[order.id].invoicePdfUrl as string, "_blank")}
-                        >
-                          View invoice PDF
                         </Button>
                       ) : null}
                       {!stripeArtifactsByOrderId[order.id] && loadingStripeLinks ? (

@@ -259,22 +259,16 @@ async function fetchStripeArtifactsForOrder(args: {
   stripeClient: InstanceType<typeof Stripe>;
   stripeCheckoutSessionId?: string | null;
   stripePaymentIntentId?: string | null;
-}): Promise<{ receiptUrl: string | null; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null }> {
+}): Promise<{ receiptUrl: string | null }> {
   let receiptUrl: string | null = null;
-  let hostedInvoiceUrl: string | null = null;
-  let invoicePdfUrl: string | null = null;
   let resolvedPaymentIntentId = args.stripePaymentIntentId ?? null;
 
   if (args.stripeCheckoutSessionId) {
     const session = (await args.stripeClient.checkout.sessions.retrieve(args.stripeCheckoutSessionId, {
       expand: ["invoice", "payment_intent.latest_charge"],
     })) as {
-      invoice?: string | { hosted_invoice_url?: string | null; invoice_pdf?: string | null };
       payment_intent?: string | { id?: string; latest_charge?: string | { id?: string; receipt_url?: string | null } };
     };
-    const invoice = session.invoice && typeof session.invoice !== "string" ? session.invoice : null;
-    hostedInvoiceUrl = invoice?.hosted_invoice_url ?? null;
-    invoicePdfUrl = invoice?.invoice_pdf ?? null;
     resolvedPaymentIntentId =
       typeof session.payment_intent === "string"
         ? session.payment_intent
@@ -311,8 +305,6 @@ async function fetchStripeArtifactsForOrder(args: {
 
   return {
     receiptUrl,
-    hostedInvoiceUrl,
-    invoicePdfUrl,
   };
 }
 
@@ -373,8 +365,6 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
                 orderId,
                 {
                   receiptUrl: null,
-                  hostedInvoiceUrl: null,
-                  invoicePdfUrl: null,
                 },
               ];
             }
@@ -387,8 +377,6 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
               orderId,
               uid,
               hasReceiptUrl: Boolean(artifacts.receiptUrl),
-              hasHostedInvoiceUrl: Boolean(artifacts.hostedInvoiceUrl),
-              hasInvoicePdfUrl: Boolean(artifacts.invoicePdfUrl),
             });
             return [orderId, artifacts];
           })

@@ -28,8 +28,6 @@ describe("MyPayments", () => {
       artifactsByOrderId: {
         "order-1": {
           receiptUrl: "https://pay.stripe.com/receipts/test",
-          hostedInvoiceUrl: null,
-          invoicePdfUrl: null,
         },
       },
     });

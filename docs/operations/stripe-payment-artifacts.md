@@ -5,8 +5,6 @@
 ## Supported links
 
 - Receipt link (`receiptUrl`) from the latest charge.
-- Hosted invoice link (`hostedInvoiceUrl`) when an invoice exists.
-- Invoice PDF link (`invoicePdfUrl`) when an invoice exists and Stripe provides PDF URL.
 
 ## Prerequisites
 
