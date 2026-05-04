@@ -6,6 +6,7 @@ import {
   BookingStatus,
   markBookingSupersededFromCallable,
   createBookingDraftForUser,
+  createBookingDraftRevisionForUser,
   deleteBookingLineFromCallable,
   getBookingsForBookerAndEvent,
   getEventByIdForCallable,
@@ -281,14 +282,20 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       }
     } else {
       try {
-        const insert = await createBookingDraftForUser({
-          eventId,
-          bookerId: uid,
-          clientSubmissionKey: idempotencyKey,
-          revisionGroupId: revisionPlan.revisionGroupId,
-          revisionNumber: revisionPlan.revisionNumber,
-          supersedesBookingId: revisionPlan.supersedesBookingId,
-        });
+        const insert = revisionPlan.supersedesBookingId
+          ? await createBookingDraftRevisionForUser({
+              eventId,
+              bookerId: uid,
+              clientSubmissionKey: idempotencyKey,
+              revisionGroupId: revisionPlan.revisionGroupId,
+              revisionNumber: revisionPlan.revisionNumber,
+              supersedesBookingId: revisionPlan.supersedesBookingId,
+            })
+          : await createBookingDraftForUser({
+              eventId,
+              bookerId: uid,
+              clientSubmissionKey: idempotencyKey,
+            });
         const key = insert.data?.booking_insert;
         if (!key?.id) {
           throw new HttpsError("internal", "Failed to create booking");

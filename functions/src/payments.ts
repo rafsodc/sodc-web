@@ -6,6 +6,7 @@ import {
   createTicketOrderForCheckout,
   getPaymentWebhookEventByStripeEventId,
   getSectionByIdForCallable,
+  getPaymentReconciliationExceptionByOrderAndType,
   getTicketOrderForWebhook,
   getTicketTypeForCheckout,
   getUserForCheckout,
@@ -20,7 +21,8 @@ import {
   PaymentReconciliationExceptionType,
   TicketAudience,
   TicketOrderStatus,
-  upsertPaymentReconciliationException,
+  createPaymentReconciliationException,
+  updatePaymentReconciliationExceptionById,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
@@ -114,15 +116,34 @@ async function upsertReconciliationSnapshot(args: {
 
   for (const type of RECONCILIATION_EXCEPTION_TYPES) {
     const signal = signalMap.get(type);
-    await upsertPaymentReconciliationException({
+    const status = signal ? PaymentReconciliationExceptionStatus.OPEN : PaymentReconciliationExceptionStatus.RESOLVED;
+    const note = signal?.note ?? "Auto-resolved by reconciliation snapshot";
+    const existing = await getPaymentReconciliationExceptionByOrderAndType({
       ticketOrderId: args.orderId,
       exceptionType: type,
-      status: signal ? PaymentReconciliationExceptionStatus.OPEN : PaymentReconciliationExceptionStatus.RESOLVED,
-      note: signal?.note ?? "Auto-resolved by reconciliation snapshot",
-      ownerUserId: null,
-      lastAttemptedAt: nowIso,
-      resolvedAt: signal ? null : nowIso,
     });
+    const existingRow = existing.data?.paymentReconciliationExceptions?.[0];
+
+    if (existingRow?.id) {
+      await updatePaymentReconciliationExceptionById({
+        id: existingRow.id,
+        status,
+        note,
+        ownerUserId: null,
+        lastAttemptedAt: nowIso,
+        resolvedAt: signal ? null : nowIso,
+      });
+    } else {
+      await createPaymentReconciliationException({
+        ticketOrderId: args.orderId,
+        exceptionType: type,
+        status,
+        note,
+        ownerUserId: null,
+        lastAttemptedAt: nowIso,
+        resolvedAt: signal ? null : nowIso,
+      });
+    }
   }
 }
 

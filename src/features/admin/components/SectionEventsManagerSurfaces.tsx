@@ -891,19 +891,19 @@ function PaymentActivitySection({
               </TableRow>
             </TableHead>
             <TableBody>
-              {bookingPaymentAdjustments
-                .filter((booking): booking is BookingPaymentAdjustmentAdminRow & { adjustment: NonNullable<BookingPaymentAdjustmentAdminRow["adjustment"]> } => booking.adjustment != null)
-                .map((booking) => (
-                  <TableRow key={booking.adjustment.id}>
+              {bookingPaymentAdjustments.flatMap((booking) =>
+                (booking.adjustments ?? []).map((adjustment) => (
+                  <TableRow key={adjustment.id}>
                     <TableCell>
-                      <Chip size="small" color="warning" label={booking.adjustment.status.replaceAll("_", " ")} />
+                      <Chip size="small" color="warning" label={adjustment.status.replaceAll("_", " ")} />
                     </TableCell>
                     <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
-                    <TableCell align="right">{(booking.adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
+                    <TableCell align="right">{(adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
                     <TableCell>Rev {booking.revisionNumber}</TableCell>
-                    <TableCell>{new Date(booking.adjustment.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell>{new Date(adjustment.updatedAt).toLocaleString()}</TableCell>
                   </TableRow>
-                ))}
+                ))
+              )}
             </TableBody>
           </AdminTable>
         </Box>
