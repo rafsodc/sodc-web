@@ -36,9 +36,11 @@ import {
 import { runTicketOrderTransition } from "./paymentTransitionEngine";
 import { evaluateReconciliationSignals } from "./paymentReconciliation";
 import { emitPaymentLifecycleNotification } from "./paymentNotifications";
+import { classifyStripeWebhookDomain } from "./stripeWebhookRouting";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
 const CHECKOUT_CURRENCY = "gbp";
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
@@ -252,12 +254,28 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   return { url: session.url, orderId };
 });
 
-export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret] }, async (req, res) => {
+function resolveWebhookSecret(domain: "payments"): string | undefined {
+  if (domain === "payments") {
+    return stripeWebhookPaymentsSecret.value() || stripeWebhookSecret.value();
+  }
+  return stripeWebhookSecret.value();
+}
+
+async function handleStripeWebhookRequest(args: {
+  domain: "payments";
+  endpointName: "stripeWebhookPayments" | "stripeWebhook";
+  req: { headers: Record<string, unknown>; rawBody: Buffer };
+  res: { status: (code: number) => { send: (body: string) => void } };
+}): Promise<void> {
+  const { req, res, domain, endpointName } = args;
   try {
     const stripeClient = requireStripe(stripeSecret.value());
-    const webhookSecret = stripeWebhookSecret.value();
+    const webhookSecret = resolveWebhookSecret(domain);
     if (!webhookSecret) {
-      logger.error("Missing STRIPE_WEBHOOK_SECRET");
+      logger.error(`${endpointName} missing webhook secret`, {
+        domain,
+        expectedSecret: "STRIPE_WEBHOOK_SECRET_PAYMENTS or STRIPE_WEBHOOK_SECRET",
+      });
       res.status(500).send("Webhook secret not configured");
       return;
     }
@@ -269,10 +287,21 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
 
     const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
     const supportedEventType = isSupportedStripeEventType(event.type);
+    const routedDomain = classifyStripeWebhookDomain(event.type);
+    if (routedDomain !== domain) {
+      logger.info(`${endpointName} ignored out-of-domain event`, {
+        eventType: event.type,
+        eventId: event.id,
+        domain,
+        routedDomain,
+      });
+      res.status(200).send("Ignored out-of-domain event");
+      return;
+    }
     const stripeObjectId = stripeObjectIdFromEvent(event);
     const existingWebhookEvent = await getPaymentWebhookEventByStripeEventId({ stripeEventId: event.id });
     if ((existingWebhookEvent.data?.paymentWebhookEvents?.length ?? 0) > 0) {
-      logger.info("stripeWebhook duplicate delivery", {
+      logger.info(`${endpointName} duplicate delivery`, {
         eventType: event.type,
         eventId: event.id,
         stripeObjectId,
@@ -283,7 +312,7 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
 
     const normalized = normalizeStripeEvent(event);
     if (normalized.kind === "ignore") {
-      logger.info("stripeWebhook ignored event", {
+      logger.info(`${endpointName} ignored event`, {
         eventType: event.type,
         eventId: event.id,
         supportedEventType,
@@ -301,7 +330,7 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
       return;
     }
     if (!normalized.orderId) {
-      logger.info("stripeWebhook missing order metadata", { eventType: event.type, reason: normalized.reason, eventId: event.id });
+      logger.info(`${endpointName} missing order metadata`, { eventType: event.type, reason: normalized.reason, eventId: event.id });
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
         eventType: event.type,
@@ -318,7 +347,7 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
     const existing = await getTicketOrderForWebhook({ id: canonicalOrderId });
     const order = existing.data?.ticketOrder;
     if (!order) {
-      logger.info("stripeWebhook order not found", { eventType: event.type, eventId: event.id, orderId: canonicalOrderId });
+      logger.info(`${endpointName} order not found`, { eventType: event.type, eventId: event.id, orderId: canonicalOrderId });
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
         eventType: event.type,
@@ -351,7 +380,7 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
         disputeUpdatedAt: eventTimestamp,
         disputeClosedAt: normalized.disputeState === "DISPUTE_CLOSED" ? eventTimestamp : null,
       });
-      logger.info("stripeWebhook dispute side-state (no order status change)", {
+      logger.info(`${endpointName} dispute side-state (no order status change)`, {
         eventType: event.type,
         eventId: event.id,
         orderId: canonicalOrderId,
@@ -391,7 +420,7 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
 
     const intent = normalized.intent;
     if (!intent) {
-      logger.error("stripeWebhook payment transition without intent", {
+      logger.error(`${endpointName} payment transition without intent`, {
         eventType: event.type,
         eventId: event.id,
         orderId: canonicalOrderId,
@@ -452,7 +481,7 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
       }
     );
     if (transitionResult.action !== "applied") {
-      logger.info("stripeWebhook transition skipped", {
+      logger.info(`${endpointName} transition skipped`, {
         eventType: event.type,
         eventId: event.id,
         orderId: canonicalOrderId,
@@ -520,7 +549,24 @@ export const stripeWebhook = onRequest({ region: FUNCTIONS_REGION, secrets: [str
     });
     res.status(200).send("ok");
   } catch (err) {
-    logger.error("stripeWebhook error", err);
+    logger.error(`${endpointName} error`, err);
     res.status(400).send("Webhook error");
   }
-});
+}
+
+export const stripeWebhookPayments = onRequest(
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret] },
+  async (req, res) => {
+    await handleStripeWebhookRequest({ domain: "payments", endpointName: "stripeWebhookPayments", req, res });
+  }
+);
+
+export const stripeWebhook = onRequest(
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret] },
+  async (req, res) => {
+    logger.warn("stripeWebhook legacy endpoint invoked", {
+      migrationTarget: "stripeWebhookPayments",
+    });
+    await handleStripeWebhookRequest({ domain: "payments", endpointName: "stripeWebhook", req, res });
+  }
+);
