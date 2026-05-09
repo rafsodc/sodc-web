@@ -228,8 +228,8 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
     customer: customerId ?? undefined,
-    success_url: `${APP_BASE_URL}/?checkout=success&orderId=${orderId}`,
-    cancel_url: `${APP_BASE_URL}/?checkout=cancel&orderId=${orderId}`,
+    success_url: `${APP_BASE_URL}/my-payments?checkout=success&orderId=${orderId}`,
+    cancel_url: `${APP_BASE_URL}/my-payments?checkout=cancel&orderId=${orderId}`,
     line_items: [
       {
         quantity,
@@ -386,11 +386,11 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
   }
 );
 
-function resolveWebhookSecret(domain: "payments"): string | undefined {
-  if (domain === "payments") {
-    return stripeWebhookPaymentsSecret.value() || stripeWebhookSecret.value();
-  }
-  return stripeWebhookSecret.value();
+function webhookSecretCandidates(endpointName: "stripeWebhookPayments" | "stripeWebhook"): string[] {
+  const payments = stripeWebhookPaymentsSecret.value();
+  const legacy = stripeWebhookSecret.value();
+  const candidates = endpointName === "stripeWebhookPayments" ? [payments, legacy] : [legacy, payments];
+  return candidates.filter((value): value is string => Boolean(value));
 }
 
 async function handleStripeWebhookRequest(args: {
@@ -402,8 +402,8 @@ async function handleStripeWebhookRequest(args: {
   const { req, res, domain, endpointName } = args;
   try {
     const stripeClient = requireStripe(stripeSecret.value());
-    const webhookSecret = resolveWebhookSecret(domain);
-    if (!webhookSecret) {
+    const candidates = webhookSecretCandidates(endpointName);
+    if (candidates.length === 0) {
       logger.error(`${endpointName} missing webhook secret`, {
         domain,
         expectedSecret: "STRIPE_WEBHOOK_SECRET_PAYMENTS or STRIPE_WEBHOOK_SECRET",
@@ -417,7 +417,27 @@ async function handleStripeWebhookRequest(args: {
       return;
     }
 
-    const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
+    let event: ReturnType<InstanceType<typeof Stripe>["webhooks"]["constructEvent"]> | null = null;
+    let matchedSecretIndex = -1;
+    let constructEventError: unknown = null;
+    for (let i = 0; i < candidates.length; i += 1) {
+      try {
+        event = stripeClient.webhooks.constructEvent(req.rawBody, signature, candidates[i]);
+        matchedSecretIndex = i;
+        break;
+      } catch (err) {
+        constructEventError = err;
+      }
+    }
+    if (!event) {
+      throw constructEventError ?? new Error("Unable to verify webhook signature");
+    }
+    if (matchedSecretIndex > 0) {
+      logger.warn(`${endpointName} verified with fallback webhook secret`, {
+        domain,
+        fallbackIndex: matchedSecretIndex,
+      });
+    }
     const supportedEventType = isSupportedStripeEventType(event.type);
     const routedDomain = classifyStripeWebhookDomain(event.type);
     if (routedDomain !== domain) {
