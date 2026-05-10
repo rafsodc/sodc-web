@@ -2,6 +2,10 @@
 
 This guide defines the expected development workflow for issues, branches, PRs, and checks.
 
+## Environments
+
+We target **three Firebase projects** (Dev, Beta, Prod); local development uses Vite env files pointing at **Dev** unless you intentionally aim at another project. See [operations/environments-dev-beta-prod.md](operations/environments-dev-beta-prod.md) for aliases, builds, deploy order, and Stripe notes.
+
 ## Branching
 
 - Branch from `main` unless coordinating multi-PR stacked work.
