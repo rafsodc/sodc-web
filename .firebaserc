@@ -1,6 +1,7 @@
 {
   "projects": {
     "dev": "sodc-web",
+    "beta": "sodc-web-beta",
     "prod": "sodc-web-production"
   },
   "targets": {},

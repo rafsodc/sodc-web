@@ -10,6 +10,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `architecture/booking-submission-api.md`: callable contract for `submitEventBooking`.
 - `architecture/security-and-permissions.md`: auth model across Data Connect and Cloud Functions.
 - `operations/environment-and-secrets.md`: environment variables and secrets matrix.
+- `operations/environments-dev-beta-prod.md`: Dev / Beta / Prod Firebase projects, deploy flow, and local setup (cloud-backed dev; no emulators).
 
 ## Domain Guides
 

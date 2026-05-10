@@ -2,6 +2,10 @@
 
 This reference covers runtime configuration for frontend and functions.
 
+For **how we use Dev, Beta, and Prod Firebase projects** (no emulators), promotion flow, and developer setup, see [environments-dev-beta-prod.md](./environments-dev-beta-prod.md).
+
+Each environment should have its **own** values for the variables below (typically three Firebase web apps and three sets of secrets).
+
 ## Frontend (Vite) variables
 
 Defined via `.env*` files and read from `import.meta.env`:
