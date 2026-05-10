@@ -6,6 +6,15 @@ For **how we use Dev, Beta, and Prod Firebase projects** (no emulators), promoti
 
 Each environment should have its **own** values for the variables below (typically three Firebase web apps and three sets of secrets).
 
+### Template files (committed)
+
+| Template | Copy to (gitignored) | When loaded |
+|----------|----------------------|-------------|
+| `.env.development.example` | `.env.development.local` | `npm run dev` (default mode `development`) |
+| `.env.staging.example` | `.env.staging.local` | `npm run build -- --mode staging` |
+
+Do not put real keys in the `.example` files; copy them and fill in `.env.*.local` locally or inject vars in CI.
+
 ## Frontend (Vite) variables
 
 Defined via `.env*` files and read from `import.meta.env`:
