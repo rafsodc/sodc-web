@@ -46,9 +46,13 @@ The repo expects a **beta** Firebase project whose ID matches the `beta` entry i
 ## Local development (laptop → cloud Dev)
 
 1. **Clone** the repo and install dependencies (`npm install`, `cd functions && npm install`).
-2. **Configure web app env** — Copy or merge from your team’s secure storage (do not commit secrets):
-   - Use a **Dev-only** Firebase web app config in `.env` or `.env.local` (see variable list in [environment-and-secrets.md](./environment-and-secrets.md)).
-   - Ensure every `VITE_FIREBASE_*` value matches the **dev** Firebase project that backends should use.
+2. **Configure web app env** — Start from the committed template (no secrets in git):
+
+   ```sh
+   cp .env.development.example .env.development.local
+   ```
+
+   Edit `.env.development.local` with the **dev** Firebase web app values from the console (Project settings → Your apps). Variable meanings are listed in [environment-and-secrets.md](./environment-and-secrets.md). Ensure every `VITE_FIREBASE_*` value matches the **dev** project (`firebase use dev`).
 3. **Run the app**:
 
    ```sh
@@ -67,20 +71,25 @@ The repo expects a **beta** Firebase project whose ID matches the `beta` entry i
 
 ## Building and deploying the SPA
 
-Always build with the environment variables for **the project you are about to deploy to**:
+Always build with the environment variables for **the project you are about to deploy to**.
+
+**Beta (staging mode)** — copy the template once, then fill with the **beta** Firebase web app:
 
 ```sh
-# Example: deploy Hosting to beta — ensure VITE_* point at the beta Firebase web app
-npm run build
+cp .env.staging.example .env.staging.local
+# edit .env.staging.local …
+npm run build -- --mode staging
 firebase deploy --only hosting --project beta
 ```
 
+**Production** — use `.env.production.local` (gitignored) with the **prod** web app config, then `npm run build` (default mode is `production`), or set `VITE_*` in CI for the prod project.
+
 Common mistakes:
 
-- Building with **prod** `.env` and deploying to **dev** (wrong Auth project, confusing failures).
-- Deploying **without** rebuilding after changing `.env` (stale API keys in `dist/`).
+- Building with **prod** vars and deploying to **beta** (or vice versa): wrong Auth project and confusing failures.
+- Deploying **without** rebuilding after changing env files (stale API keys in `dist/`).
 
-Recommendation: maintain **separate env files** that are **not committed**, e.g. `.env.dev.local`, `.env.beta.local`, `.env.prod.local`, and copy or symlink the right one before `npm run build`, or use your shell/CI to export variables.
+Recommendation: keep **only** `*.local` files on disk for secrets; use the committed `*.example` files as the checklist of keys, or export `VITE_*` in CI per environment.
 
 ## Promotion flow (recommended)
 
