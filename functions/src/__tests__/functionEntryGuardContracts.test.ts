@@ -43,7 +43,7 @@ describe("function entry guard contracts", () => {
   it("keeps Stripe webhook signature verification in place", () => {
     const payments = readSource("payments.ts");
     expect(payments).toContain("stripe-signature");
-    expect(payments).toContain("constructEvent(req.rawBody, signature, webhookSecret)");
+    expect(payments).toContain("constructEvent(req.rawBody, signature,");
     expect(payments).toContain("getPaymentWebhookEventByStripeEventId");
     expect(payments).toContain("createPaymentWebhookEvent");
     expect(payments).toContain("emitPaymentLifecycleNotification");

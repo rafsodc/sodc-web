@@ -46,7 +46,17 @@ describe("CheckoutStatusNotice", () => {
     vi.mocked(dcReact.useGetMyTicketOrderById).mockReturnValue({
       data: {
         user: {
-          ticketOrders: [{ id: "abc", status: "PAID", ticketType: { title: "Member Ticket" } }],
+          ticketOrders: [
+            {
+              id: "abc",
+              status: "PAID",
+              ticketType: { title: "Member Ticket" },
+              event: { title: "Spring Gala" },
+              quantity: 2,
+              totalAmountMinor: 2500,
+              currency: "gbp",
+            },
+          ],
         },
       },
       isLoading: false,
@@ -63,6 +73,10 @@ describe("CheckoutStatusNotice", () => {
     );
     expect(screen.getByText(/payment confirmed/i)).toBeInTheDocument();
     expect(screen.getByText(/member ticket purchase is complete/i)).toBeInTheDocument();
+    expect(screen.getByText(/event: spring gala/i)).toBeInTheDocument();
+    expect(screen.getByText(/quantity: 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/amount: 25.00 GBP/i)).toBeInTheDocument();
+    expect(screen.getByText(/reference: abc/i)).toBeInTheDocument();
   });
 
   it("polls while order is pending", () => {

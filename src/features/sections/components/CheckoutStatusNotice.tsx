@@ -15,6 +15,11 @@ interface CheckoutStatusNoticeProps {
 const POLL_MS = 2500;
 const MAX_POLLS = 8;
 
+function formatMoney(amountMinor: number | null | undefined, currency: string | null | undefined): string | null {
+  if (typeof amountMinor !== "number" || !currency) return null;
+  return `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`;
+}
+
 export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss }: CheckoutStatusNoticeProps) {
   const [pollCount, setPollCount] = useState(0);
 
@@ -107,10 +112,17 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
   }
 
   if (status === "PAID") {
+    const amountSummary = formatMoney(order.totalAmountMinor, order.currency);
     return (
       <Alert severity="success" onClose={onDismiss} sx={{ mb: 2 }}>
         <AlertTitle>Payment confirmed</AlertTitle>
-        Your {order.ticketType?.title ?? "ticket"} purchase is complete.
+        <Typography variant="body2" sx={{ mb: 0.75 }}>
+          Your {order.ticketType?.title ?? "ticket"} purchase is complete.
+        </Typography>
+        <Typography variant="body2">Event: {order.event?.title ?? "Unknown event"}</Typography>
+        <Typography variant="body2">Quantity: {order.quantity ?? 0}</Typography>
+        <Typography variant="body2">Amount: {amountSummary ?? "Unknown amount"}</Typography>
+        <Typography variant="body2">Reference: {order.id}</Typography>
       </Alert>
     );
   }
