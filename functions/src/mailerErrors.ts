@@ -39,17 +39,20 @@ function sanitizeProviderErrors(value: unknown): SanitizedMailerError["providerE
     return undefined;
   }
 
-  return value
-    .map((entry) => {
-      if (!isRecord(entry)) {
-        return undefined;
-      }
-      return {
-        error: sanitizedString(entry.error),
-        message: sanitizedString(entry.message),
-      };
-    })
-    .filter((entry): entry is { error?: string; message?: string } => Boolean(entry?.error || entry?.message));
+  const providerErrors: Array<{ error?: string; message?: string }> = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+    const sanitizedEntry = {
+      error: sanitizedString(entry.error),
+      message: sanitizedString(entry.message),
+    };
+    if (sanitizedEntry.error || sanitizedEntry.message) {
+      providerErrors.push(sanitizedEntry);
+    }
+  }
+  return providerErrors.length > 0 ? providerErrors : undefined;
 }
 
 export function sanitizeMailerError(error: unknown): SanitizedMailerError {
