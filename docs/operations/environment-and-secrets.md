@@ -27,12 +27,19 @@ Defined via `.env*` files and read from `import.meta.env`:
 |---|---|---|---|
 | `STRIPE_SECRET` | Firebase secret | `createTicketCheckoutSession`, `stripeWebhook` | yes for payments |
 | `STRIPE_WEBHOOK_SECRET` | Firebase secret | `stripeWebhook` | yes for webhook processing |
+| `GOV_NOTIFY_API_KEY` | Firebase secret | Transactional mailer / payment webhook notification path | yes for app-owned transactional email |
 | `APP_BASE_URL` | env var | Checkout success/cancel URLs | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
+| `GOV_NOTIFY_EMAIL_REPLY_TO_ID` | env var | Optional GOV.UK Notify reply-to selection | optional |
+| `GOV_NOTIFY_TEMPLATE_<TEMPLATE_NAME>` | env var | GOV.UK Notify template IDs for app-owned transactional email templates | required for each enabled app email template |
 
 ## Operational notes
 
 - Do not commit secret values to repo.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
+- Rotate `GOV_NOTIFY_API_KEY` if compromised and update Firebase secrets before redeploy.
 - Keep environment docs and deployment settings aligned when adding new variables.
+- Configure GOV.UK Notify API keys and template IDs independently per Firebase environment.
+- Template env var names are derived from typed template names in `functions/src/mailer.ts`; for example, `paymentConfirmation` maps to `GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION`.
+- Stripe may send customer receipts/invoices for payment activity when enabled in Stripe. Use GOV.UK Notify for app-owned transactional messages that need application context, links, membership/booking workflow details, or internal operational recipients.

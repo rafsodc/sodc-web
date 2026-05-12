@@ -1,6 +1,7 @@
 import * as logger from "firebase-functions/logger";
 import { TicketOrderStatus } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
+import { sanitizeMailerError } from "./mailerErrors";
 
 export type PaymentLifecycleNotificationType =
   | "PAYMENT_PAID"
@@ -35,7 +36,7 @@ export async function emitPaymentLifecycleNotification(
       notificationType: notification.type,
       orderId: notification.orderId,
       stripeEventId: notification.stripeEventId,
-      error,
+      error: sanitizeMailerError(error),
     });
   }
 }
