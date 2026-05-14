@@ -39,6 +39,18 @@ export enum MembershipStatus {
   DECEASED = "DECEASED",
 };
 
+export enum NotificationChannel {
+  EMAIL = "EMAIL",
+  SMS = "SMS",
+  PUSH = "PUSH",
+};
+
+export enum NotificationDeliveryStatus {
+  PENDING = "PENDING",
+  SENT = "SENT",
+  FAILED = "FAILED",
+};
+
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -257,6 +269,23 @@ export interface CreateGuestTicketRequestVariables {
   guestTicketTypeId: UUIDString;
   guestDisplayName: string;
   dietaryNote?: string | null;
+}
+
+export interface CreateNotificationDeliveryData {
+  notificationDelivery_insert: NotificationDelivery_Key;
+}
+
+export interface CreateNotificationDeliveryVariables {
+  channel: NotificationChannel;
+  notificationType: string;
+  deliveryKey: string;
+  status: NotificationDeliveryStatus;
+  ticketOrderId?: UUIDString | null;
+  bookingId?: UUIDString | null;
+  userId?: string | null;
+  provider?: string | null;
+  attemptCount: number;
+  lastAttemptedAt?: TimestampString | null;
 }
 
 export interface CreatePaymentReconciliationExceptionData {
@@ -728,6 +757,29 @@ export interface GetMyTicketOrdersData {
         } & Event_Key;
     } & TicketOrder_Key)[];
   } & User_Key;
+}
+
+export interface GetNotificationDeliveryByChannelAndKeyData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    sentAt?: TimestampString | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface GetNotificationDeliveryByChannelAndKeyVariables {
+  channel: NotificationChannel;
+  deliveryKey: string;
 }
 
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
@@ -1401,6 +1453,45 @@ export interface MarkBookingSupersededFromCallableVariables {
   id: UUIDString;
 }
 
+export interface MarkNotificationDeliveryFailedByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+
+export interface MarkNotificationDeliveryFailedByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+}
+
+export interface MarkNotificationDeliveryPendingByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+
+export interface MarkNotificationDeliveryPendingByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
+export interface MarkNotificationDeliverySentByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+
+export interface MarkNotificationDeliverySentByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  sentAt: TimestampString;
+  provider?: string | null;
+  providerMessageId?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+}
+
 export interface MarkTicketOrderFailedFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -1431,6 +1522,11 @@ export interface MarkTicketOrderRefundedFromWebhookVariables {
   stripeRefundId?: string | null;
   refundedAmountMinor?: number | null;
   refundedAt?: TimestampString | null;
+}
+
+export interface NotificationDelivery_Key {
+  id: UUIDString;
+  __typename?: 'NotificationDelivery_Key';
 }
 
 export interface PaymentReconciliationException_Key {
@@ -2007,6 +2103,66 @@ export const createPaymentWebhookEventRef: CreatePaymentWebhookEventRef;
 
 export function createPaymentWebhookEvent(vars: CreatePaymentWebhookEventVariables): MutationPromise<CreatePaymentWebhookEventData, CreatePaymentWebhookEventVariables>;
 export function createPaymentWebhookEvent(dc: DataConnect, vars: CreatePaymentWebhookEventVariables): MutationPromise<CreatePaymentWebhookEventData, CreatePaymentWebhookEventVariables>;
+
+interface GetNotificationDeliveryByChannelAndKeyRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryRef<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryRef<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+  operationName: string;
+}
+export const getNotificationDeliveryByChannelAndKeyRef: GetNotificationDeliveryByChannelAndKeyRef;
+
+export function getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+export function getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+
+interface CreateNotificationDeliveryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateNotificationDeliveryVariables): MutationRef<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateNotificationDeliveryVariables): MutationRef<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+  operationName: string;
+}
+export const createNotificationDeliveryRef: CreateNotificationDeliveryRef;
+
+export function createNotificationDelivery(vars: CreateNotificationDeliveryVariables): MutationPromise<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+export function createNotificationDelivery(dc: DataConnect, vars: CreateNotificationDeliveryVariables): MutationPromise<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+
+interface MarkNotificationDeliveryPendingByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+
+export function markNotificationDeliveryPendingById(vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+export function markNotificationDeliveryPendingById(dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+
+interface MarkNotificationDeliverySentByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliverySentByIdVariables): MutationRef<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables): MutationRef<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliverySentByIdRef: MarkNotificationDeliverySentByIdRef;
+
+export function markNotificationDeliverySentById(vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+
+interface MarkNotificationDeliveryFailedByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliveryFailedByIdVariables): MutationRef<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliveryFailedByIdVariables): MutationRef<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliveryFailedByIdRef: MarkNotificationDeliveryFailedByIdRef;
+
+export function markNotificationDeliveryFailedById(vars: MarkNotificationDeliveryFailedByIdVariables): MutationPromise<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+export function markNotificationDeliveryFailedById(dc: DataConnect, vars: MarkNotificationDeliveryFailedByIdVariables): MutationPromise<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
 
 interface MarkTicketOrderPaidFromWebhookRef {
   /* Allow users to create refs without passing in DataConnect */

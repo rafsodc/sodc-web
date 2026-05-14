@@ -31,6 +31,18 @@ export const MembershipStatus = {
   DECEASED: "DECEASED",
 }
 
+export const NotificationChannel = {
+  EMAIL: "EMAIL",
+  SMS: "SMS",
+  PUSH: "PUSH",
+}
+
+export const NotificationDeliveryStatus = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  FAILED: "FAILED",
+}
+
 export const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -228,6 +240,36 @@ export function createPaymentWebhookEvent(dcOrVarsOrOptions, varsOrOptions, opti
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CreatePaymentWebhookEvent', inputVars, inputOpts);
+}
+
+export function getNotificationDeliveryByChannelAndKey(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotificationDeliveryByChannelAndKey', inputVars, inputOpts);
+}
+
+export function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateNotificationDelivery', inputVars, inputOpts);
+}
+
+export function markNotificationDeliveryPendingById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliveryPendingById', inputVars, inputOpts);
+}
+
+export function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliverySentById', inputVars, inputOpts);
+}
+
+export function markNotificationDeliveryFailedById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliveryFailedById', inputVars, inputOpts);
 }
 
 export function markTicketOrderPaidFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {

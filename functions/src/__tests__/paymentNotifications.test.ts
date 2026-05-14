@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as logger from "firebase-functions/logger";
-import type { TicketOrderStatus } from "@dataconnect/admin-generated";
+import { NotificationChannel, type TicketOrderStatus } from "@dataconnect/admin-generated";
 import { emitPaymentLifecycleNotification } from "../paymentNotifications";
 
 describe("paymentNotifications", () => {
@@ -8,8 +8,21 @@ describe("paymentNotifications", () => {
     vi.mocked(logger.error).mockClear();
   });
 
-  it("dispatches notification payloads", async () => {
+  it("routes payment notifications through the idempotent delivery helper", async () => {
     const dispatcher = vi.fn(async () => undefined);
+    const notificationSender = vi.fn(async (request: {
+      channel: NotificationChannel;
+      notificationType: string;
+      deliveryKey: string;
+      send: () => Promise<unknown>;
+    }) => {
+      expect(request.channel).toBe(NotificationChannel.EMAIL);
+      expect(request.notificationType).toBe("PAYMENT_PAID");
+      expect(request.deliveryKey).toBe("payment:00000000-0000-0000-0000-000000000001:PAYMENT_PAID:stripe_evt_1");
+      await request.send();
+      return { outcome: "sent" as const };
+    });
+
     await emitPaymentLifecycleNotification(
       {
         type: "PAYMENT_PAID",
@@ -19,9 +32,11 @@ describe("paymentNotifications", () => {
         status: "PAID" as TicketOrderStatus,
         occurredAt: "2026-04-27T19:00:00.000Z",
       },
-      dispatcher
+      dispatcher,
+      notificationSender
     );
 
+    expect(notificationSender).toHaveBeenCalledTimes(1);
     expect(dispatcher).toHaveBeenCalledTimes(1);
     expect(dispatcher).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -31,9 +46,10 @@ describe("paymentNotifications", () => {
     );
   });
 
-  it("swallows dispatcher failures to keep payment path non-blocking", async () => {
-    const dispatcher = vi.fn(async () => {
-      throw new Error("dispatch failed for buyer@example.com");
+  it("swallows delivery helper failures to keep payment path non-blocking", async () => {
+    const dispatcher = vi.fn(async () => undefined);
+    const notificationSender = vi.fn(async () => {
+      throw new Error("delivery failed for buyer@example.com");
     });
 
     await expect(
@@ -45,12 +61,14 @@ describe("paymentNotifications", () => {
           status: "FAILED" as TicketOrderStatus,
           occurredAt: "2026-04-27T19:00:00.000Z",
         },
-        dispatcher
+        dispatcher,
+        notificationSender
       )
     ).resolves.toBeUndefined();
 
     const loggedMetadata = JSON.stringify(vi.mocked(logger.error).mock.calls[0][1]);
     expect(loggedMetadata).not.toContain("buyer@example.com");
     expect(loggedMetadata).toContain("[redacted-email]");
+    expect(dispatcher).not.toHaveBeenCalled();
   });
 });
