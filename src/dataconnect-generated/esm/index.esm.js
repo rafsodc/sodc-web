@@ -31,6 +31,18 @@ export const MembershipStatus = {
   DECEASED: "DECEASED",
 }
 
+export const NotificationChannel = {
+  EMAIL: "EMAIL",
+  SMS: "SMS",
+  PUSH: "PUSH",
+}
+
+export const NotificationDeliveryStatus = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  FAILED: "FAILED",
+}
+
 export const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -353,6 +365,61 @@ createPaymentWebhookEventRef.operationName = 'CreatePaymentWebhookEvent';
 
 export function createPaymentWebhookEvent(dcOrVars, vars) {
   return executeMutation(createPaymentWebhookEventRef(dcOrVars, vars));
+}
+
+export const getNotificationDeliveryByChannelAndKeyRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotificationDeliveryByChannelAndKey', inputVars);
+}
+getNotificationDeliveryByChannelAndKeyRef.operationName = 'GetNotificationDeliveryByChannelAndKey';
+
+export function getNotificationDeliveryByChannelAndKey(dcOrVars, vars) {
+  return executeQuery(getNotificationDeliveryByChannelAndKeyRef(dcOrVars, vars));
+}
+
+export const createNotificationDeliveryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateNotificationDelivery', inputVars);
+}
+createNotificationDeliveryRef.operationName = 'CreateNotificationDelivery';
+
+export function createNotificationDelivery(dcOrVars, vars) {
+  return executeMutation(createNotificationDeliveryRef(dcOrVars, vars));
+}
+
+export const markNotificationDeliveryPendingByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliveryPendingById', inputVars);
+}
+markNotificationDeliveryPendingByIdRef.operationName = 'MarkNotificationDeliveryPendingById';
+
+export function markNotificationDeliveryPendingById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliveryPendingByIdRef(dcOrVars, vars));
+}
+
+export const markNotificationDeliverySentByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliverySentById', inputVars);
+}
+markNotificationDeliverySentByIdRef.operationName = 'MarkNotificationDeliverySentById';
+
+export function markNotificationDeliverySentById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliverySentByIdRef(dcOrVars, vars));
+}
+
+export const markNotificationDeliveryFailedByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliveryFailedById', inputVars);
+}
+markNotificationDeliveryFailedByIdRef.operationName = 'MarkNotificationDeliveryFailedById';
+
+export function markNotificationDeliveryFailedById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliveryFailedByIdRef(dcOrVars, vars));
 }
 
 export const markTicketOrderPaidFromWebhookRef = (dcOrVars, vars) => {

@@ -35,6 +35,20 @@ const MembershipStatus = {
 }
 exports.MembershipStatus = MembershipStatus;
 
+const NotificationChannel = {
+  EMAIL: "EMAIL",
+  SMS: "SMS",
+  PUSH: "PUSH",
+}
+exports.NotificationChannel = NotificationChannel;
+
+const NotificationDeliveryStatus = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  FAILED: "FAILED",
+}
+exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
+
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -390,6 +404,66 @@ exports.createPaymentWebhookEventRef = createPaymentWebhookEventRef;
 
 exports.createPaymentWebhookEvent = function createPaymentWebhookEvent(dcOrVars, vars) {
   return executeMutation(createPaymentWebhookEventRef(dcOrVars, vars));
+};
+
+const getNotificationDeliveryByChannelAndKeyRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotificationDeliveryByChannelAndKey', inputVars);
+}
+getNotificationDeliveryByChannelAndKeyRef.operationName = 'GetNotificationDeliveryByChannelAndKey';
+exports.getNotificationDeliveryByChannelAndKeyRef = getNotificationDeliveryByChannelAndKeyRef;
+
+exports.getNotificationDeliveryByChannelAndKey = function getNotificationDeliveryByChannelAndKey(dcOrVars, vars) {
+  return executeQuery(getNotificationDeliveryByChannelAndKeyRef(dcOrVars, vars));
+};
+
+const createNotificationDeliveryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateNotificationDelivery', inputVars);
+}
+createNotificationDeliveryRef.operationName = 'CreateNotificationDelivery';
+exports.createNotificationDeliveryRef = createNotificationDeliveryRef;
+
+exports.createNotificationDelivery = function createNotificationDelivery(dcOrVars, vars) {
+  return executeMutation(createNotificationDeliveryRef(dcOrVars, vars));
+};
+
+const markNotificationDeliveryPendingByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliveryPendingById', inputVars);
+}
+markNotificationDeliveryPendingByIdRef.operationName = 'MarkNotificationDeliveryPendingById';
+exports.markNotificationDeliveryPendingByIdRef = markNotificationDeliveryPendingByIdRef;
+
+exports.markNotificationDeliveryPendingById = function markNotificationDeliveryPendingById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliveryPendingByIdRef(dcOrVars, vars));
+};
+
+const markNotificationDeliverySentByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliverySentById', inputVars);
+}
+markNotificationDeliverySentByIdRef.operationName = 'MarkNotificationDeliverySentById';
+exports.markNotificationDeliverySentByIdRef = markNotificationDeliverySentByIdRef;
+
+exports.markNotificationDeliverySentById = function markNotificationDeliverySentById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliverySentByIdRef(dcOrVars, vars));
+};
+
+const markNotificationDeliveryFailedByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliveryFailedById', inputVars);
+}
+markNotificationDeliveryFailedByIdRef.operationName = 'MarkNotificationDeliveryFailedById';
+exports.markNotificationDeliveryFailedByIdRef = markNotificationDeliveryFailedByIdRef;
+
+exports.markNotificationDeliveryFailedById = function markNotificationDeliveryFailedById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliveryFailedByIdRef(dcOrVars, vars));
 };
 
 const markTicketOrderPaidFromWebhookRef = (dcOrVars, vars) => {
