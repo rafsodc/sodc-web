@@ -489,6 +489,132 @@ mutation CreatePaymentWebhookEvent(
   )
 }
 
+query GetNotificationDeliveryByChannelAndKey(
+  $channel: NotificationChannel!
+  $deliveryKey: String!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: {
+      channel: { eq: $channel }
+      deliveryKey: { eq: $deliveryKey }
+    }
+    limit: 1
+  ) {
+    id
+    channel
+    deliveryKey
+    notificationType
+    status
+    provider
+    providerMessageId
+    attemptCount
+    lastAttemptedAt
+    sentAt
+    lastErrorCode
+    lastErrorMessage
+    createdAt
+  }
+}
+
+mutation CreateNotificationDelivery(
+  $channel: NotificationChannel!
+  $notificationType: String!
+  $deliveryKey: String!
+  $status: NotificationDeliveryStatus!
+  $ticketOrderId: UUID
+  $bookingId: UUID
+  $userId: String
+  $provider: String
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_insert(
+    data: {
+      channel: $channel
+      notificationType: $notificationType
+      deliveryKey: $deliveryKey
+      status: $status
+      ticketOrderId: $ticketOrderId
+      bookingId: $bookingId
+      userId: $userId
+      provider: $provider
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotificationDeliveryPendingById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $provider: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_update(
+    id: $id
+    data: {
+      status: PENDING
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      provider: $provider
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotificationDeliverySentById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $sentAt: Timestamp!
+  $provider: String
+  $providerMessageId: String
+  $lastErrorCode: String
+  $lastErrorMessage: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_update(
+    id: $id
+    data: {
+      status: SENT
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      sentAt: $sentAt
+      provider: $provider
+      providerMessageId: $providerMessageId
+      lastErrorCode: $lastErrorCode
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotificationDeliveryFailedById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $provider: String
+  $lastErrorCode: String
+  $lastErrorMessage: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_update(
+    id: $id
+    data: {
+      status: FAILED
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      provider: $provider
+      lastErrorCode: $lastErrorCode
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 mutation MarkTicketOrderPaidFromWebhook(
   $id: UUID!
   $stripeCheckoutSessionId: String

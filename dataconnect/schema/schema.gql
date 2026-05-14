@@ -69,6 +69,18 @@ enum BookingPaymentAdjustmentStatus {
   PENDING_AUTO_CHARGE
 }
 
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -311,6 +323,30 @@ type PaymentReconciliationException @table {
   ownerUserId: String
   lastAttemptedAt: Timestamp
   resolvedAt: Timestamp
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Generic delivery ledger for notification idempotency across channels/providers.
+type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  channel: NotificationChannel!
+  notificationType: String!
+  deliveryKey: String!
+  status: NotificationDeliveryStatus! @default(value: PENDING)
+  ticketOrder: TicketOrder
+  booking: Booking
+  user: User
+  provider: String
+  providerMessageId: String
+  attemptCount: Int! @default(value: 1)
+  lastAttemptedAt: Timestamp
+  sentAt: Timestamp
+  lastErrorCode: String
+  lastErrorMessage: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
