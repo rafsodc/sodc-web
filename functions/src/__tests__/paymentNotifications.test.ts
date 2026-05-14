@@ -1,8 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as logger from "firebase-functions/logger";
 import { NotificationChannel, type TicketOrderStatus } from "@dataconnect/admin-generated";
 import { emitPaymentLifecycleNotification } from "../paymentNotifications";
 
 describe("paymentNotifications", () => {
+  beforeEach(() => {
+    vi.mocked(logger.error).mockClear();
+  });
+
   it("routes payment notifications through the idempotent delivery helper", async () => {
     const dispatcher = vi.fn(async () => undefined);
     const notificationSender = vi.fn(async (request: {
@@ -44,7 +49,7 @@ describe("paymentNotifications", () => {
   it("swallows delivery helper failures to keep payment path non-blocking", async () => {
     const dispatcher = vi.fn(async () => undefined);
     const notificationSender = vi.fn(async () => {
-      throw new Error("delivery failed");
+      throw new Error("delivery failed for buyer@example.com");
     });
 
     await expect(
@@ -60,6 +65,10 @@ describe("paymentNotifications", () => {
         notificationSender
       )
     ).resolves.toBeUndefined();
+
+    const loggedMetadata = JSON.stringify(vi.mocked(logger.error).mock.calls[0][1]);
+    expect(loggedMetadata).not.toContain("buyer@example.com");
+    expect(loggedMetadata).toContain("[redacted-email]");
     expect(dispatcher).not.toHaveBeenCalled();
   });
 });
