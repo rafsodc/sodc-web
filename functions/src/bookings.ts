@@ -29,7 +29,14 @@ import {
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
-import { computeBookingPaymentDelta } from "./bookingPaymentAdjustments";
+import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
+import { govNotifyApiKey } from "./mailer";
+import {
+  notifyBookingConfirmationEmail,
+  notifyBookingRevisionEmail,
+} from "./bookingEmailDispatcher";
+
+const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
 function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   if (
@@ -110,7 +117,7 @@ function isDuplicateKeyError(err: unknown): boolean {
  * Validates booking policy and persists lines as a single SUBMITTED booking for the event.
  * Requires `idempotencyKey` (UUID) per submit attempt; enforced in DB via (event, booker, key) uniqueness.
  */
-export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (request) => {
+export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
 
@@ -353,18 +360,35 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       id: bookingId as UUIDString,
       status: BookingStatus.SUBMITTED,
     });
+    let paymentDelta: BookingPaymentDelta | undefined;
     if (revisionPlan.supersedesBookingId) {
       await markBookingSupersededFromCallable({ id: revisionPlan.supersedesBookingId });
       const refreshed = await fetchBookingsForBookerAndEvent(uid, eventId);
       const previousBooking = refreshed.find((booking) => booking.id === revisionPlan.supersedesBookingId);
       const revisedBooking = refreshed.find((booking) => booking.id === bookingId);
-      const delta = computeBookingPaymentDelta(previousBooking, revisedBooking);
+      paymentDelta = computeBookingPaymentDelta(previousBooking, revisedBooking);
       await createBookingPaymentAdjustmentFromCallable({
         revisionBookingId: bookingId as UUIDString,
         supersededBookingId: revisionPlan.supersedesBookingId,
-        deltaAmountMinor: delta.deltaAmountMinor,
-        status: delta.status,
+        deltaAmountMinor: paymentDelta.deltaAmountMinor,
+        status: paymentDelta.status,
         orchestrationKey: `${bookingId}:${idempotencyKey}`,
+      });
+    }
+
+    const bookingIdUuid = bookingId as UUIDString;
+    if (revisionPlan.supersedesBookingId && paymentDelta) {
+      void notifyBookingRevisionEmail({
+        bookingId: bookingIdUuid,
+        idempotencyKey,
+        appBaseUrl: APP_BASE_URL,
+        paymentDelta,
+      });
+    } else {
+      void notifyBookingConfirmationEmail({
+        bookingId: bookingIdUuid,
+        idempotencyKey,
+        appBaseUrl: APP_BASE_URL,
       });
     }
 
