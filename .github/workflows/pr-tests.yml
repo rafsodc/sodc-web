@@ -73,7 +73,7 @@ jobs:
         run: npm ci --prefix functions
 
       - name: Run functions test suite
-        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions test --run
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test
 
   functions-security-tests:
     name: Functions security tests
