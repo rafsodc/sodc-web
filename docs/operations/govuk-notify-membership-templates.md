@@ -4,6 +4,8 @@ User-facing email when **membership status** changes in ways that affect app acc
 
 **Source of truth:** Personalisation **keys** must match the Notify template placeholders.
 
+**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (membership section).
+
 ## Configuration
 
 | Logical key (code) | Firebase / runtime env var for template UUID |
