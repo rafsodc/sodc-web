@@ -44,6 +44,10 @@ import {
 import { classifyStripeWebhookDomain } from "./stripeWebhookRouting";
 import { govNotifyApiKey, GOV_NOTIFY_PROVIDER } from "./mailer";
 import { sendNotificationOnce } from "./notificationDelivery";
+import {
+  notifyPaymentOpsDisputeSideState,
+  notifyPaymentOpsReconciliationExceptionOpened,
+} from "./paymentOpsInternalAlerts";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
@@ -123,6 +127,8 @@ async function upsertReconciliationSnapshot(args: {
     stripePaymentIntentId?: string | null;
     disputeStatus?: string | null;
   };
+  stripeEventId: string;
+  fromDisputeWebhook?: boolean;
 }): Promise<void> {
   const signals = evaluateReconciliationSignals(args.snapshot);
   const signalMap = new Map(signals.map((signal) => [signal.type, signal]));
@@ -137,6 +143,7 @@ async function upsertReconciliationSnapshot(args: {
       exceptionType: type,
     });
     const existingRow = existing.data?.paymentReconciliationExceptions?.[0];
+    const previousStatus = existingRow?.status;
 
     if (existingRow?.id) {
       await updatePaymentReconciliationExceptionById({
@@ -157,6 +164,25 @@ async function upsertReconciliationSnapshot(args: {
         lastAttemptedAt: nowIso,
         resolvedAt: signal ? null : nowIso,
       });
+    }
+
+    if (status === PaymentReconciliationExceptionStatus.OPEN && signal) {
+      const isNewOpen = !existingRow?.id;
+      const reopenedFromResolved =
+        !!existingRow?.id && previousStatus === PaymentReconciliationExceptionStatus.RESOLVED;
+      if (isNewOpen || reopenedFromResolved) {
+        const skipActiveDisputeDuplicateEmail =
+          type === PaymentReconciliationExceptionType.ACTIVE_DISPUTE && args.fromDisputeWebhook === true;
+        if (!skipActiveDisputeDuplicateEmail) {
+          void notifyPaymentOpsReconciliationExceptionOpened({
+            orderId: args.orderId,
+            exceptionType: type,
+            exceptionNote: note,
+            stripeEventId: args.stripeEventId,
+            appBaseUrl: APP_BASE_URL,
+          });
+        }
+      }
     }
   }
 }
@@ -569,6 +595,18 @@ async function handleStripeWebhookRequest(args: {
           stripePaymentIntentId: order.stripePaymentIntentId ?? null,
           disputeStatus: dispute.status ?? normalized.disputeState ?? null,
         },
+        stripeEventId: event.id,
+        fromDisputeWebhook: true,
+      });
+      void notifyPaymentOpsDisputeSideState({
+        orderId: canonicalOrderId,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        disputeStripeStatus: dispute.status ?? "",
+        disputeReason: dispute.reason ?? "",
+        disputeLocalState: normalized.disputeState ?? "",
+        stripeDisputeId: dispute.id ?? "",
+        appBaseUrl: APP_BASE_URL,
       });
       res.status(200).send("Dispute side-state acknowledged");
       return;
@@ -707,6 +745,7 @@ async function handleStripeWebhookRequest(args: {
         stripePaymentIntentId: paymentIntentIdFromEvent ?? order.stripePaymentIntentId ?? null,
         disputeStatus: order.disputeStatus ?? null,
       },
+      stripeEventId: event.id,
     });
     res.status(200).send("ok");
   } catch (err) {
