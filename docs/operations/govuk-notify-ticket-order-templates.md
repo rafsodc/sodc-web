@@ -4,6 +4,8 @@ These templates send **app-owned transactional email** when a `TicketOrder` is m
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify. If the dashboard placeholder names do not match the API payload, sends fail at runtime.
 
+**Draft copy for Notify dashboard:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (ticket order section). **Test payloads:** [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json).
+
 ## Configuration
 
 | Logical key (code) | Firebase / runtime env var for template UUID |

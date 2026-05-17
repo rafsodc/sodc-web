@@ -12,6 +12,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/environment-and-secrets.md`: environment variables and secrets matrix.
 - `operations/environments-dev-beta-prod.md`: Dev / Beta / Prod Firebase projects, deploy flow, and local setup (cloud-backed dev; no emulators).
 - `operations/transactional-email-workflows.md`: transactional email triggers by domain (payments, bookings, membership, guest tickets, ops alerts) with links to GOV.UK Notify template specs.
+- `operations/govuk-notify-template-copy.md`: draft subject/body for all Notify templates; `govuk-notify-template-registration.md`: per-environment UUID checklist.
 
 ## Domain Guides
 

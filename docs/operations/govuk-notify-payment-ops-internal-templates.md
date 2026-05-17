@@ -6,6 +6,8 @@ Recipients are **`PAYMENT_OPS_ALERT_EMAILS`** (comma-separated). If unset or emp
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify.
 
+**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (payment ops section). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+
 ## Configuration
 
 | Logical key (code) | Firebase / runtime env var for template UUID |
@@ -30,7 +32,7 @@ Functions set short references for Notify logs, e.g. `reconciliation-ops:<orderI
 | `orderId` | Ticket order UUID |
 | `eventTitle` | Event title from order |
 | `customerDisplay` | Booker display, e.g. `Name <email>` |
-| `exceptionType` | Enum string, e.g. `ACTIVE_DISPUTE`, `UNDERPAID`, … |
+| `exceptionType` | Enum string, e.g. `ACTIVE_DISPUTE`, `MISSING_PAYMENT_INTENT`, `REFUND_AMOUNT_MISMATCH` |
 | `exceptionNote` | Stored exception note |
 | `reconciliationDashboardUrl` | `APP_BASE_URL` (normalised) + `/admin/payments/reconciliation` |
 | `stripeEventId` | Stripe webhook event id |

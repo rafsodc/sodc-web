@@ -4,6 +4,8 @@ Emails for **additional guest ticket** moderation: notify moderators/admins when
 
 **Source of truth:** Personalisation **keys** must match Notify template placeholders.
 
+**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (guest ticket section).
+
 ## Configuration
 
 | Logical key (code) | Firebase / runtime env var for template UUID |

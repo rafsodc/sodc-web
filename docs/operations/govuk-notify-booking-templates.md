@@ -4,6 +4,8 @@ User-facing email after a successful **`submitEventBooking`** callable. Implemen
 
 **No email** when the callable returns **`idempotentReplay: true`**.
 
+**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (bookings section).
+
 ## Configuration
 
 | Logical key (code) | Firebase / runtime env var for template UUID |
