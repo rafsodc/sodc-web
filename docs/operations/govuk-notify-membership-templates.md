@@ -46,7 +46,7 @@ No email for restricted→restricted or non-restricted→non-restricted transiti
 | `previousStatusLabel` | Friendly label for previous status |
 | `appUrl` | `APP_BASE_URL` |
 
-Use static template copy for “contact your administrator” — do not include admin-only notes in personalisation.
+Use static template copy for RAF SODC identity and account contact (`admin@sodc.net`) — see standard **Account** footer in [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). Do not include admin-only notes in personalisation.
 
 ## Related docs
 

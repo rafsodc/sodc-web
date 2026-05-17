@@ -11,6 +11,40 @@ Ready-to-paste **subject** and **body** text for all transactional email templat
 
 Placeholder specs (keys only): `govuk-notify-*.md`. Workflow index: [transactional-email-workflows.md](./transactional-email-workflows.md).
 
+## Standard footers (user-facing templates)
+
+Paste the block that matches the email topic. Use static copy only — do not personalise contact addresses.
+
+**Account** (membership, guest-ticket decisions, general account access):
+
+```
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+```
+
+**Payment** (ticket order lifecycle):
+
+```
+---
+This email is about your RAF SODC account.
+
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+```
+
+**Account and payment** (bookings with payment links or adjustments):
+
+```
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+```
+
+Internal ops templates (`paymentReconciliationExceptionAlert`, `paymentDisputeOpsAlert`) and moderator workflow mail do not use these footers.
+
 ---
 
 ## Ticket order lifecycle
@@ -36,7 +70,12 @@ Order reference: ((orderId))
 
 View your payments: ((myPaymentsUrl))
 
-If you did not make this payment, please contact the [SODC Secretary](mailto:secretary@sodc.net).
+If you did not make this payment, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+
+---
+This email is about your RAF SODC account.
+
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 
 **Placeholders used:** `firstName`, `eventTitle`, `ticketTypeTitle`, `quantity`, `totalFormatted`, `currencyDisplay` (optional in body), `orderStatusLabel`, `orderId`, `myPaymentsUrl`
@@ -63,6 +102,11 @@ Status: ((orderStatusLabel))
 Order reference: ((orderId))
 
 You can try again from your payments page: ((myPaymentsUrl))
+
+---
+This email is about your RAF SODC account.
+
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 
 **Placeholders used:** same as `ticketOrderPaid` (status label is sent as `Payment failed`)
@@ -90,6 +134,11 @@ Status: ((orderStatusLabel))
 Order reference: ((orderId))
 
 View your payments: ((myPaymentsUrl))
+
+---
+This email is about your RAF SODC account.
+
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 
 **Placeholders used:** all paid/failed keys plus `refundFormatted`
@@ -173,7 +222,10 @@ Your membership status is now ((membershipStatusLabel)). You can sign in and use
 Open the app: ((appUrl))
 Your profile: ((profileUrl))
 
-If you have questions, contact your section administrator.
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 ```
 
 **Placeholders used:** `firstName`, `membershipStatusLabel`, `appUrl`, `profileUrl`
@@ -193,9 +245,12 @@ Hello ((firstName)),
 
 Your membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)). You may no longer have full access to the application.
 
-If you believe this is a mistake, contact your section administrator.
-
 Application: ((appUrl))
+
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 ```
 
 **Placeholders used:** `firstName`, `membershipStatusLabel`, `previousStatusLabel`, `appUrl`
@@ -224,6 +279,9 @@ Guests requested: ((requestedGuestCount))
 Dietary note: ((dietaryNote))
 
 Review requests (Manage Sections): ((moderationUrl))
+
+---
+RAF SODC — internal moderation notification.
 ```
 
 **Placeholders used:** `eventTitle`, `sectionName`, `bookerDisplay`, `guestDisplayName`, `requestedGuestCount`, `guestTicketTypeTitle`, `dietaryNote`, `moderationUrl`
@@ -248,6 +306,11 @@ Guests requested: ((requestedGuestCount))
 Moderator note: ((moderatorNote))
 
 View your booking: ((myBookingsUrl))
+
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 ```
 
 **Placeholders used:** `customerFirstName`, `eventTitle`, `guestDisplayName`, `requestedGuestCount`, `decisionLabel`, `moderatorNote`, `myBookingsUrl`
@@ -272,6 +335,11 @@ Guests requested: ((requestedGuestCount))
 Moderator note: ((moderatorNote))
 
 View your booking: ((myBookingsUrl))
+
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 ```
 
 **Placeholders used:** same as approved (`decisionLabel` is sent as `Rejected`)
@@ -306,6 +374,12 @@ Booking total: ((bookingTotalFormatted))
 
 View section bookings: ((sectionBookingsUrl))
 Payments: ((myPaymentsUrl))
+
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 
 **Placeholders used:** `customerFirstName`, `eventTitle`, `eventDateTime`, `eventLocation`, `revisionNumber`, `ticketLinesSummary`, `bookerDietaryNote`, `accommodationSummary`, `bookingTotalFormatted`, `sectionBookingsUrl`, `myPaymentsUrl`
@@ -341,6 +415,12 @@ Change: ((deltaAmountFormatted))
 
 View section bookings: ((sectionBookingsUrl))
 Payments: ((myPaymentsUrl))
+
+---
+This email is about your RAF SODC account.
+
+For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 
 **Placeholders used:** all confirmation keys plus `previousRevisionNumber`, `revisedRevisionNumber`, `paymentAdjustmentStatus`, `previousTotalFormatted`, `revisedTotalFormatted`, `deltaAmountFormatted`

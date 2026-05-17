@@ -77,6 +77,10 @@ Includes **all** keys from the paid/failed set, plus:
 
 **Dispute** side-state events (`charge.dispute.*`) update dispute metadata only; they do **not** send customer lifecycle email through this path. Internal ops alerting for disputes and reconciliation exceptions uses [govuk-notify-payment-ops-internal-templates.md](./govuk-notify-payment-ops-internal-templates.md).
 
+## Template copy
+
+User-facing bodies include the standard **Payment** footer (RAF SODC identity; payment contact `secretary@sodc.net`) — see [govuk-notify-template-copy.md](./govuk-notify-template-copy.md).
+
 ## Related docs
 
 - [payment-state-machine.md](../architecture/payment-state-machine.md) — when transitions fire
