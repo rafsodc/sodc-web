@@ -1119,6 +1119,9 @@ export interface GetUserGroupByNameVariables {
 export interface GetUserMembershipStatusData {
   user?: {
     membershipStatus: MembershipStatus;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
 }
 
