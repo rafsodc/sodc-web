@@ -1,25 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "../../../../test-utils";
-import { executeMutation } from "firebase/data-connect";
-import { createGuestTicketRequestRef } from "@dataconnect/generated";
 import AdditionalGuestRequestSection from "../AdditionalGuestRequestSection";
+import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
-vi.mock("firebase/data-connect", () => ({
-  executeMutation: vi.fn().mockResolvedValue({}),
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  submitGuestTicketRequest: vi.fn().mockResolvedValue({ success: true, requestId: "req-new" }),
 }));
-
-vi.mock("../../../../config/firebase", () => ({
-  dataConnect: { __tag: "mock-dc" },
-}));
-
-vi.mock("@dataconnect/generated", async () => {
-  const actual = await vi.importActual<typeof import("@dataconnect/generated")>("@dataconnect/generated");
-  return {
-    ...actual,
-    createGuestTicketRequestRef: vi.fn((dc: unknown, vars: unknown) => ({ dc, vars, op: "createGuestTicketRequest" })),
-  };
-});
 
 describe("AdditionalGuestRequestSection", () => {
   const guestTicketTypes = [
@@ -35,10 +22,13 @@ describe("AdditionalGuestRequestSection", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(executeMutation).mockResolvedValue({} as never);
+    vi.mocked(firebaseFunctions.submitGuestTicketRequest).mockResolvedValue({
+      success: true,
+      requestId: "req-new",
+    });
   });
 
-  it("submits createGuestTicketRequest and refetches when count is valid", async () => {
+  it("submits guest ticket request callable and refetches when count is valid", async () => {
     const user = userEvent.setup();
     render(
       <AdditionalGuestRequestSection {...baseProps} requests={[]} />
@@ -50,10 +40,9 @@ describe("AdditionalGuestRequestSection", () => {
     await user.click(screen.getByRole("button", { name: /submit request/i }));
 
     await vi.waitFor(() => {
-      expect(executeMutation).toHaveBeenCalledTimes(1);
+      expect(firebaseFunctions.submitGuestTicketRequest).toHaveBeenCalledTimes(1);
     });
-    expect(createGuestTicketRequestRef).toHaveBeenCalledWith(
-      { __tag: "mock-dc" },
+    expect(firebaseFunctions.submitGuestTicketRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         bookingId: "550e8400-e29b-41d4-a716-446655440000",
         requestedGuestCount: 2,
