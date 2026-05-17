@@ -37,14 +37,24 @@ import {
 import { runTicketOrderTransition } from "./paymentTransitionEngine";
 import { evaluateReconciliationSignals } from "./paymentReconciliation";
 import { emitPaymentLifecycleNotification } from "./paymentNotifications";
+import {
+  createGovNotifyTicketOrderLifecycleDispatcher,
+  defaultWebhookGovNotifyTicketOrderMailer,
+} from "./paymentLifecycleEmailDispatcher";
 import { classifyStripeWebhookDomain } from "./stripeWebhookRouting";
-import { govNotifyApiKey } from "./mailer";
+import { govNotifyApiKey, GOV_NOTIFY_PROVIDER } from "./mailer";
+import { sendNotificationOnce } from "./notificationDelivery";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
 const CHECKOUT_CURRENCY = "gbp";
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+
+const govNotifyTicketOrderDispatcher = createGovNotifyTicketOrderLifecycleDispatcher({
+  getMailer: defaultWebhookGovNotifyTicketOrderMailer,
+  appBaseUrl: APP_BASE_URL,
+});
 
 function requireStripe(secretValue: string | undefined): InstanceType<typeof Stripe> {
   if (!secretValue) {
@@ -538,6 +548,8 @@ async function handleStripeWebhookRequest(args: {
         eventId: event.id,
         orderId: canonicalOrderId,
         disputeState: normalized.disputeState,
+        disputeStripeStatus: dispute.status ?? null,
+        disputeReason: dispute.reason ?? null,
       });
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
@@ -547,15 +559,6 @@ async function handleStripeWebhookRequest(args: {
         ticketOrderId: canonicalOrderId,
         stripeObjectId,
         livemode: event.livemode,
-      });
-      await emitPaymentLifecycleNotification({
-        type: "PAYMENT_DISPUTE_UPDATED",
-        orderId: canonicalOrderId,
-        eventId: order.event.id,
-        stripeEventId: event.id,
-        status: order.status,
-        disputeState: normalized.disputeState ?? dispute.status ?? null,
-        occurredAt: new Date().toISOString(),
       });
       await upsertReconciliationSnapshot({
         orderId: canonicalOrderId,
@@ -667,14 +670,19 @@ async function handleStripeWebhookRequest(args: {
     });
     const notificationType =
       intent === "MARK_PAID" ? "PAYMENT_PAID" : intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
-    await emitPaymentLifecycleNotification({
-      type: notificationType,
-      orderId: canonicalOrderId,
-      eventId: order.event.id,
-      stripeEventId: event.id,
-      status: transitionResult.targetStatus,
-      occurredAt: new Date().toISOString(),
-    });
+    await emitPaymentLifecycleNotification(
+      {
+        type: notificationType,
+        orderId: canonicalOrderId,
+        eventId: order.event.id,
+        stripeEventId: event.id,
+        status: transitionResult.targetStatus,
+        occurredAt: new Date().toISOString(),
+      },
+      govNotifyTicketOrderDispatcher,
+      sendNotificationOnce,
+      { userId: order.user.id, provider: GOV_NOTIFY_PROVIDER }
+    );
     const nextStatus = transitionResult.action === "applied" ? transitionResult.targetStatus : order.status;
     const paymentIntentIdFromEvent =
       intent === "MARK_PAID"
