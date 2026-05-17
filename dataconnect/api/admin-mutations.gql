@@ -820,6 +820,53 @@ query GetBookingForGuestTicketCallable($bookingId: UUID!) @auth(level: NO_ACCESS
   }
 }
 
+# Booking confirmation / revision emails — full booking context for Notify.
+query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
+  booking(id: $bookingId) {
+    id
+    revisionNumber
+    bookerDietaryNote
+    sitNextToUserIds
+    accommodationRequested
+    accommodationNote
+    booker {
+      id
+      firstName
+      lastName
+      email
+    }
+    event {
+      id
+      title
+      location
+      startDateTime
+      endDateTime
+      section {
+        id
+        name
+      }
+    }
+    lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+      sortOrder
+      guestDisplayName
+      dietaryNote
+      ticketType {
+        title
+        audience
+        price
+      }
+      guestUser {
+        firstName
+        lastName
+      }
+    }
+    supersedesBooking {
+      id
+      revisionNumber
+    }
+  }
+}
+
 # Guest ticket request emails — request + booker/event context after create or review.
 query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
   guestTicketRequest(id: $id) {
