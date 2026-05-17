@@ -73,7 +73,7 @@ Includes **all** keys from the paid/failed set, plus:
 
 ## What does *not* use these templates
 
-**Dispute** side-state events (`charge.dispute.*`) update dispute metadata only; they do **not** send customer lifecycle email through this path. Internal / ops alerting is handled separately (see epic #183 / follow-up issues).
+**Dispute** side-state events (`charge.dispute.*`) update dispute metadata only; they do **not** send customer lifecycle email through this path. Internal ops alerting for disputes and reconciliation exceptions uses [govuk-notify-payment-ops-internal-templates.md](./govuk-notify-payment-ops-internal-templates.md).
 
 ## Related docs
 

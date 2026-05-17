@@ -724,6 +724,7 @@ query GetPaymentReconciliationExceptionByOrderAndType(
     limit: 1
   ) {
     id
+    status
   }
 }
 
