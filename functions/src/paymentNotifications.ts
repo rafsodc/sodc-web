@@ -7,8 +7,7 @@ import { sendNotificationOnce, type NotificationSendResult } from "./notificatio
 export type PaymentLifecycleNotificationType =
   | "PAYMENT_PAID"
   | "PAYMENT_FAILED"
-  | "PAYMENT_REFUNDED"
-  | "PAYMENT_DISPUTE_UPDATED";
+  | "PAYMENT_REFUNDED";
 
 export interface PaymentLifecycleNotification {
   type: PaymentLifecycleNotificationType;
@@ -16,8 +15,12 @@ export interface PaymentLifecycleNotification {
   eventId?: string | null;
   stripeEventId: string;
   status?: TicketOrderStatus;
-  disputeState?: string | null;
   occurredAt: string;
+}
+
+export interface EmitPaymentLifecycleNotificationExtras {
+  userId?: string | null;
+  provider?: string | null;
 }
 
 type NotificationDispatcher = (notification: PaymentLifecycleNotification) => Promise<NotificationSendResult | void>;
@@ -28,16 +31,14 @@ async function defaultDispatcher(notification: PaymentLifecycleNotification): Pr
 }
 
 function paymentLifecycleDeliveryKey(notification: PaymentLifecycleNotification): string {
-  if (notification.type === "PAYMENT_DISPUTE_UPDATED") {
-    return `payment-dispute:${notification.orderId}:${notification.disputeState ?? "UNKNOWN"}:${notification.stripeEventId}`;
-  }
   return `payment:${notification.orderId}:${notification.type}:${notification.stripeEventId}`;
 }
 
 export async function emitPaymentLifecycleNotification(
   notification: PaymentLifecycleNotification,
   dispatcher: NotificationDispatcher = defaultDispatcher,
-  notificationSender: NotificationSender = sendNotificationOnce
+  notificationSender: NotificationSender = sendNotificationOnce,
+  extras?: EmitPaymentLifecycleNotificationExtras
 ): Promise<void> {
   try {
     await notificationSender({
@@ -45,6 +46,8 @@ export async function emitPaymentLifecycleNotification(
       notificationType: notification.type,
       deliveryKey: paymentLifecycleDeliveryKey(notification),
       ticketOrderId: notification.orderId,
+      userId: extras?.userId ?? null,
+      provider: extras?.provider ?? null,
       send: async () => dispatcher(notification),
     });
   } catch (error) {

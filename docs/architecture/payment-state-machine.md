@@ -90,6 +90,10 @@ The payment domain exposes deterministic exception signals for operator triage:
 
 Signals are evaluated from persisted order metadata and upserted to reconciliation exception records with remediation metadata (`status`, `ownerUserId`, `lastAttemptedAt`, `resolvedAt`).
 
+## Customer notification emails (issue #186)
+
+After a successful `TicketOrder` status transition applied from the Stripe payments webhook (`PAID`, `FAILED`, `REFUNDED`), Functions send a Gov.UK Notify email to the purchaser’s registered email, using the idempotent `NotificationDelivery` ledger keyed per Stripe event. Dispute side-state updates do not send customer lifecycle emails from this path; internal dispute alerting is tracked separately (e.g. issue #187).
+
 ## Scope Boundary
 
 - #128 and #131 cover transition contract and execution guards.
