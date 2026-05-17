@@ -166,7 +166,7 @@ Open reconciliation dashboard:
 **Body:**
 
 ```
-Hello ((customerFirstName)),
+Hello ((firstName)),
 
 Your membership status is now ((membershipStatusLabel)). You can sign in and use the application.
 
@@ -176,7 +176,7 @@ Your profile: ((profileUrl))
 If you have questions, contact your section administrator.
 ```
 
-**Placeholders used:** `customerFirstName`, `membershipStatusLabel`, `appUrl`, `profileUrl`
+**Placeholders used:** `firstName`, `membershipStatusLabel`, `appUrl`, `profileUrl`
 
 ---
 
@@ -189,7 +189,7 @@ If you have questions, contact your section administrator.
 **Body:**
 
 ```
-Hello ((customerFirstName)),
+Hello ((firstName)),
 
 Your membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)). You may no longer have full access to the application.
 
@@ -198,7 +198,7 @@ If you believe this is a mistake, contact your section administrator.
 Application: ((appUrl))
 ```
 
-**Placeholders used:** `customerFirstName`, `membershipStatusLabel`, `previousStatusLabel`, `appUrl`
+**Placeholders used:** `firstName`, `membershipStatusLabel`, `previousStatusLabel`, `appUrl`
 
 ---
 

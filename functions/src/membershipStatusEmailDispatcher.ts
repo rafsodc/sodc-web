@@ -14,13 +14,13 @@ export const MEMBERSHIP_MAIL_TEMPLATE_KEYS = ["membershipActivated", "membership
 
 export type MembershipEmailTemplates = {
   membershipActivated: {
-    customerFirstName: string;
+    firstName: string;
     membershipStatusLabel: string;
     appUrl: string;
     profileUrl: string;
   };
   membershipAccessRestricted: {
-    customerFirstName: string;
+    firstName: string;
     membershipStatusLabel: string;
     previousStatusLabel: string;
     appUrl: string;
@@ -122,7 +122,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
 
     const email = user.email.trim().toLowerCase();
     const fn = user.firstName?.trim();
-    const customerFirstName = fn && fn.length > 0 ? fn : "there";
+    const firstName = fn && fn.length > 0 ? fn : "there";
     const base = normaliseAppBaseUrl(args.appBaseUrl);
     const appUrl = base;
     const membershipStatusLabel = membershipStatusCustomerLabel(args.newStatus);
@@ -150,7 +150,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
       send: async () => {
         if (kind === "activation") {
           const personalisation: MembershipEmailTemplates["membershipActivated"] = {
-            customerFirstName,
+            firstName,
             membershipStatusLabel,
             appUrl,
             profileUrl: `${base}/profile`,
@@ -167,7 +167,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
           ? membershipStatusCustomerLabel(args.previousStatus)
           : "Unknown";
         const personalisation: MembershipEmailTemplates["membershipAccessRestricted"] = {
-          customerFirstName,
+          firstName,
           membershipStatusLabel,
           previousStatusLabel,
           appUrl,

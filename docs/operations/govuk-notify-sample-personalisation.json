@@ -55,13 +55,13 @@
     "stripeEventId": "evt_test_dispute"
   },
   "membershipActivated": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "membershipStatusLabel": "Regular",
     "appUrl": "https://app.example",
     "profileUrl": "https://app.example/profile"
   },
   "membershipAccessRestricted": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "membershipStatusLabel": "Resigned",
     "previousStatusLabel": "Regular",
     "appUrl": "https://app.example"

@@ -32,7 +32,7 @@ No email for restricted→restricted or non-restricted→non-restricted transiti
 
 | Key | Semantics |
 |-----|-----------|
-| `customerFirstName` | User first name, or `there` |
+| `firstName` | User first name, or `there` |
 | `membershipStatusLabel` | Friendly label for new status, e.g. `Regular` |
 | `appUrl` | `APP_BASE_URL` (no trailing slash) |
 | `profileUrl` | `appUrl` + `/profile` |
@@ -41,7 +41,7 @@ No email for restricted→restricted or non-restricted→non-restricted transiti
 
 | Key | Semantics |
 |-----|-----------|
-| `customerFirstName` | User first name, or `there` |
+| `firstName` | User first name, or `there` |
 | `membershipStatusLabel` | Friendly label for new restricted status |
 | `previousStatusLabel` | Friendly label for previous status |
 | `appUrl` | `APP_BASE_URL` |
