@@ -94,6 +94,8 @@ Signals are evaluated from persisted order metadata and upserted to reconciliati
 
 After a successful `TicketOrder` status transition applied from the Stripe payments webhook (`PAID`, `FAILED`, `REFUNDED`), Functions send a Gov.UK Notify email to the purchaser’s registered email, using the idempotent `NotificationDelivery` ledger keyed per Stripe event. Dispute side-state updates do not send customer lifecycle emails from this path; internal dispute alerting is tracked separately (e.g. issue #187).
 
+Template IDs and personalisation keys: see [`docs/operations/govuk-notify-ticket-order-templates.md`](../operations/govuk-notify-ticket-order-templates.md).
+
 ## Scope Boundary
 
 - #128 and #131 cover transition contract and execution guards.
