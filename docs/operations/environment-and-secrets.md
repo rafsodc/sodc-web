@@ -41,6 +41,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 
 - **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
 - **Notify template copy and registration** (paste into dashboard, record UUIDs per env): [govuk-notify-template-copy.md](./govuk-notify-template-copy.md), [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+- **Email policy** (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md).
 - Do not commit secret values to repo.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
 - Rotate `GOV_NOTIFY_API_KEY` if compromised and update Firebase secrets before redeploy.

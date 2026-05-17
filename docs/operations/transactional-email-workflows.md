@@ -99,4 +99,4 @@ After templates are provisioned per Firebase environment (see [govuk-notify-temp
 - Epic: [#183](https://github.com/rafsodc/sodc-web/issues/183)
 - Implementation: [#186](https://github.com/rafsodc/sodc-web/issues/186)–[#190](https://github.com/rafsodc/sodc-web/issues/190)
 - Housekeeping: [#216](https://github.com/rafsodc/sodc-web/issues/216)
-- Future policy: [#191](https://github.com/rafsodc/sodc-web/issues/191)
+- Email policy (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md) ([#191](https://github.com/rafsodc/sodc-web/issues/191))
