@@ -799,4 +799,58 @@ mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
   bookingLine_delete(id: $id)
 }
 
+# Guest ticket request callables — load booking context for submit validation.
+query GetBookingForGuestTicketCallable($bookingId: UUID!) @auth(level: NO_ACCESS) {
+  booking(id: $bookingId) {
+    id
+    booker {
+      id
+      firstName
+      lastName
+      email
+    }
+    event {
+      id
+      title
+      section {
+        id
+        name
+      }
+    }
+  }
+}
+
+# Guest ticket request emails — request + booker/event context after create or review.
+query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
+  guestTicketRequest(id: $id) {
+    id
+    status
+    requestedGuestCount
+    guestDisplayName
+    dietaryNote
+    moderatorNote
+    guestTicketType {
+      id
+      title
+    }
+    booking {
+      id
+      booker {
+        id
+        firstName
+        lastName
+        email
+      }
+      event {
+        id
+        title
+        section {
+          id
+          name
+        }
+      }
+    }
+  }
+}
+
 
