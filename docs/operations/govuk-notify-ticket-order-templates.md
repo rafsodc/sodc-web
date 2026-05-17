@@ -79,7 +79,7 @@ Includes **all** keys from the paid/failed set, plus:
 
 ## Template copy
 
-User-facing bodies include the standard **Payment** footer (RAF SODC identity; payment contact `secretary@sodc.net`) — see [govuk-notify-template-copy.md](./govuk-notify-template-copy.md).
+User-facing bodies weave RAF SODC context and payment contact (`secretary@sodc.net`) into the message — see **Voice and structure** in [govuk-notify-template-copy.md](./govuk-notify-template-copy.md).
 
 ## Related docs
 

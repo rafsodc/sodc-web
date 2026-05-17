@@ -5,45 +5,25 @@ Ready-to-paste **subject** and **body** text for all transactional email templat
 **Before publishing**
 
 1. Follow [how to create an email template](https://www.notifications.service.gov.uk/using-notify/how-to-create-email-template) and [personalisation](https://www.notifications.service.gov.uk/using-notify/personalisation).
-2. Placeholder names must match this document **exactly** (`((customerFirstName))`, not `((first_name))`).
+2. Placeholder names must match this document **exactly** (`((firstName))`, not `((first_name))` or `((firstname))`).
 3. Copy the template UUID into the matching `GOV_NOTIFY_TEMPLATE_*` env var — see [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 4. Send a test email using sample values from [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json).
 
 Placeholder specs (keys only): `govuk-notify-*.md`. Workflow index: [transactional-email-workflows.md](./transactional-email-workflows.md).
 
-## Standard footers (user-facing templates)
+## Voice and structure (user-facing templates)
 
-Paste the block that matches the email topic. Use static copy only — do not personalise contact addresses.
+Weave **RAF SODC** / **RAF SODC website** into the opening lines — do not rely on a separate footer. Follow the pattern from the legacy activation email:
 
-**Account** (membership, guest-ticket decisions, general account access):
+1. Greeting with `((firstName))` (or the template’s name key).
+2. What happened, in the context of the **RAF SODC website** or account.
+3. Action links (`((appUrl))`, `((myPaymentsUrl))`, etc.).
+4. Why they received the email; what to do if it is wrong — use static contacts only:
+   - **Account / access:** `admin@sodc.net`
+   - **Payments:** `secretary@sodc.net`
+5. Sign-off: **Kind regards,** then **SODC Admin** (account/access) or **SODC Secretary** (payments). Bookings that cover both may mention both contacts in step 4 and sign off as **SODC Admin**.
 
-```
----
-This email is about your RAF SODC account.
-
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
-```
-
-**Payment** (ticket order lifecycle):
-
-```
----
-This email is about your RAF SODC account.
-
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
-```
-
-**Account and payment** (bookings with payment links or adjustments):
-
-```
----
-This email is about your RAF SODC account.
-
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
-```
-
-Internal ops templates (`paymentReconciliationExceptionAlert`, `paymentDisputeOpsAlert`) and moderator workflow mail do not use these footers.
+Internal ops templates use operational copy only (no member sign-off).
 
 ---
 
@@ -60,7 +40,7 @@ Internal ops templates (`paymentReconciliationExceptionAlert`, `paymentDisputeOp
 ```
 Hello ((firstName)),
 
-Your payment for ((eventTitle)) is confirmed.
+Your payment on the RAF SODC website for ((eventTitle)) is confirmed.
 
 Ticket: ((ticketTypeTitle))
 Quantity: ((quantity))
@@ -70,12 +50,10 @@ Order reference: ((orderId))
 
 View your payments: ((myPaymentsUrl))
 
-If you did not make this payment, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+You are receiving this email because a payment was recorded on your RAF SODC account. If you did not make this payment, contact secretary@sodc.net.
 
----
-This email is about your RAF SODC account.
-
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+Kind regards,
+SODC Secretary
 ```
 
 **Placeholders used:** `firstName`, `eventTitle`, `ticketTypeTitle`, `quantity`, `totalFormatted`, `currencyDisplay` (optional in body), `orderStatusLabel`, `orderId`, `myPaymentsUrl`
@@ -93,7 +71,7 @@ For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 Hello ((firstName)),
 
-We could not complete your payment for ((eventTitle)).
+We could not complete your payment on the RAF SODC website for ((eventTitle)).
 
 Ticket: ((ticketTypeTitle))
 Quantity: ((quantity))
@@ -103,10 +81,10 @@ Order reference: ((orderId))
 
 You can try again from your payments page: ((myPaymentsUrl))
 
----
-This email is about your RAF SODC account.
+You are receiving this email because a payment attempt was recorded on your RAF SODC account. For payment questions, contact secretary@sodc.net.
 
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+Kind regards,
+SODC Secretary
 ```
 
 **Placeholders used:** same as `ticketOrderPaid` (status label is sent as `Payment failed`)
@@ -124,7 +102,7 @@ For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 Hello ((firstName)),
 
-A refund has been processed for your order for ((eventTitle)).
+A refund has been processed on the RAF SODC website for your order for ((eventTitle)).
 
 Ticket: ((ticketTypeTitle))
 Quantity: ((quantity))
@@ -135,10 +113,10 @@ Order reference: ((orderId))
 
 View your payments: ((myPaymentsUrl))
 
----
-This email is about your RAF SODC account.
+You are receiving this email because a refund was recorded on your RAF SODC account. For payment questions, contact secretary@sodc.net.
 
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+Kind regards,
+SODC Secretary
 ```
 
 **Placeholders used:** all paid/failed keys plus `refundFormatted`
@@ -210,22 +188,21 @@ Open reconciliation dashboard:
 
 **Env var:** `GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACTIVATED`
 
-**Subject:** Your account is now active
+**Subject:** Your RAF SODC account is now active
 
 **Body:**
 
 ```
 Hello ((firstName)),
 
-Your membership status is now ((membershipStatusLabel)). You can sign in and use the application.
+Your account on the RAF SODC website has been activated. Your membership status is now ((membershipStatusLabel)).
 
-Open the app: ((appUrl))
-Your profile: ((profileUrl))
+To sign in, visit ((appUrl)). You can view your profile at ((profileUrl)).
 
----
-This email is about your RAF SODC account.
+You are receiving this email because your RAF SODC account status was updated. If you believe this is in error, contact admin@sodc.net.
 
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+Kind regards,
+SODC Admin
 ```
 
 **Placeholders used:** `firstName`, `membershipStatusLabel`, `appUrl`, `profileUrl`
@@ -236,21 +213,21 @@ For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 
 **Env var:** `GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACCESS_RESTRICTED`
 
-**Subject:** Your account access has changed
+**Subject:** Your RAF SODC account access has changed
 
 **Body:**
 
 ```
 Hello ((firstName)),
 
-Your membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)). You may no longer have full access to the application.
+Your access to the RAF SODC website has changed. Your membership status is now ((membershipStatusLabel)) (previously ((previousStatusLabel))).
 
-Application: ((appUrl))
+To sign in, visit ((appUrl)).
 
----
-This email is about your RAF SODC account.
+You are receiving this email because your RAF SODC account status was updated. If you believe this is in error, contact admin@sodc.net.
 
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+Kind regards,
+SODC Admin
 ```
 
 **Placeholders used:** `firstName`, `membershipStatusLabel`, `previousStatusLabel`, `appUrl`
@@ -268,7 +245,7 @@ For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 **Body:**
 
 ```
-A booker has submitted a guest ticket request that needs review.
+A guest ticket request on the RAF SODC website needs review.
 
 Section: ((sectionName))
 Event: ((eventTitle))
@@ -279,9 +256,6 @@ Guests requested: ((requestedGuestCount))
 Dietary note: ((dietaryNote))
 
 Review requests (Manage Sections): ((moderationUrl))
-
----
-RAF SODC — internal moderation notification.
 ```
 
 **Placeholders used:** `eventTitle`, `sectionName`, `bookerDisplay`, `guestDisplayName`, `requestedGuestCount`, `guestTicketTypeTitle`, `dietaryNote`, `moderationUrl`
@@ -299,7 +273,7 @@ RAF SODC — internal moderation notification.
 ```
 Hello ((customerFirstName)),
 
-Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
+Your guest ticket request on the RAF SODC website for ((eventTitle)) has been ((decisionLabel)).
 
 Guest: ((guestDisplayName))
 Guests requested: ((requestedGuestCount))
@@ -307,10 +281,10 @@ Moderator note: ((moderatorNote))
 
 View your booking: ((myBookingsUrl))
 
----
-This email is about your RAF SODC account.
+You are receiving this email because a guest ticket request on your RAF SODC account was reviewed. For account questions, contact admin@sodc.net.
 
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+Kind regards,
+SODC Admin
 ```
 
 **Placeholders used:** `customerFirstName`, `eventTitle`, `guestDisplayName`, `requestedGuestCount`, `decisionLabel`, `moderatorNote`, `myBookingsUrl`
@@ -328,7 +302,7 @@ For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 ```
 Hello ((customerFirstName)),
 
-Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
+Your guest ticket request on the RAF SODC website for ((eventTitle)) has been ((decisionLabel)).
 
 Guest: ((guestDisplayName))
 Guests requested: ((requestedGuestCount))
@@ -336,10 +310,10 @@ Moderator note: ((moderatorNote))
 
 View your booking: ((myBookingsUrl))
 
----
-This email is about your RAF SODC account.
+You are receiving this email because a guest ticket request on your RAF SODC account was reviewed. For account questions, contact admin@sodc.net.
 
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
+Kind regards,
+SODC Admin
 ```
 
 **Placeholders used:** same as approved (`decisionLabel` is sent as `Rejected`)
@@ -359,7 +333,7 @@ For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
 ```
 Hello ((customerFirstName)),
 
-Your booking for ((eventTitle)) has been submitted.
+Your booking on the RAF SODC website for ((eventTitle)) has been submitted.
 
 When: ((eventDateTime))
 Where: ((eventLocation))
@@ -375,11 +349,10 @@ Booking total: ((bookingTotalFormatted))
 View section bookings: ((sectionBookingsUrl))
 Payments: ((myPaymentsUrl))
 
----
-This email is about your RAF SODC account.
+You are receiving this email because a booking was submitted on your RAF SODC account. For account questions, contact admin@sodc.net. For payment questions, contact secretary@sodc.net.
 
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+Kind regards,
+SODC Admin
 ```
 
 **Placeholders used:** `customerFirstName`, `eventTitle`, `eventDateTime`, `eventLocation`, `revisionNumber`, `ticketLinesSummary`, `bookerDietaryNote`, `accommodationSummary`, `bookingTotalFormatted`, `sectionBookingsUrl`, `myPaymentsUrl`
@@ -397,7 +370,7 @@ For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
 ```
 Hello ((customerFirstName)),
 
-Your booking for ((eventTitle)) has been updated (revision ((revisedRevisionNumber)), previously revision ((previousRevisionNumber))).
+Your booking on the RAF SODC website for ((eventTitle)) has been updated (revision ((revisedRevisionNumber)), previously revision ((previousRevisionNumber))).
 
 When: ((eventDateTime))
 Where: ((eventLocation))
@@ -416,11 +389,10 @@ Change: ((deltaAmountFormatted))
 View section bookings: ((sectionBookingsUrl))
 Payments: ((myPaymentsUrl))
 
----
-This email is about your RAF SODC account.
+You are receiving this email because a booking on your RAF SODC account was updated. For account questions, contact admin@sodc.net. For payment questions, contact secretary@sodc.net.
 
-For account questions, contact [admin@sodc.net](mailto:admin@sodc.net).
-For payment questions, contact [secretary@sodc.net](mailto:secretary@sodc.net).
+Kind regards,
+SODC Admin
 ```
 
 **Placeholders used:** all confirmation keys plus `previousRevisionNumber`, `revisedRevisionNumber`, `paymentAdjustmentStatus`, `previousTotalFormatted`, `revisedTotalFormatted`, `deltaAmountFormatted`
