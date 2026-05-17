@@ -92,9 +92,13 @@ Signals are evaluated from persisted order metadata and upserted to reconciliati
 
 ## Customer notification emails (issue #186)
 
-After a successful `TicketOrder` status transition applied from the Stripe payments webhook (`PAID`, `FAILED`, `REFUNDED`), Functions send a Gov.UK Notify email to the purchaser’s registered email, using the idempotent `NotificationDelivery` ledger keyed per Stripe event. Dispute side-state updates do not send customer lifecycle emails from this path; internal dispute alerting is tracked separately (e.g. issue #187).
+After a successful `TicketOrder` status transition applied from the Stripe payments webhook (`PAID`, `FAILED`, `REFUNDED`), Functions send a Gov.UK Notify email to the purchaser’s registered email, using the idempotent `NotificationDelivery` ledger keyed per Stripe event. Dispute side-state updates do not send customer lifecycle emails from this path.
 
-Template IDs and personalisation keys: see [`docs/operations/govuk-notify-ticket-order-templates.md`](../operations/govuk-notify-ticket-order-templates.md).
+## Internal ops notification emails (issue #187)
+
+Reconciliation exceptions that newly open or reopen send internal alerts to `PAYMENT_OPS_ALERT_EMAILS`. Dispute side-state webhooks send a separate internal dispute alert (and skip duplicate `ACTIVE_DISPUTE` reconciliation emails when opened from the dispute path).
+
+Workflow index: [`docs/operations/transactional-email-workflows.md`](../operations/transactional-email-workflows.md). Template specs: [`govuk-notify-ticket-order-templates.md`](../operations/govuk-notify-ticket-order-templates.md), [`govuk-notify-payment-ops-internal-templates.md`](../operations/govuk-notify-payment-ops-internal-templates.md).
 
 ## Scope Boundary
 

@@ -118,6 +118,30 @@ const RECONCILIATION_EXCEPTION_TYPES = [
   PaymentReconciliationExceptionType.ACTIVE_DISPUTE,
 ] as const;
 
+/** Whether to send the internal ops email when a reconciliation exception is open. */
+export function shouldSendReconciliationExceptionOpenedAlert(args: {
+  status: PaymentReconciliationExceptionStatus;
+  hasSignal: boolean;
+  isNewOpen: boolean;
+  reopenedFromResolved: boolean;
+  exceptionType: PaymentReconciliationExceptionType;
+  fromDisputeWebhook: boolean;
+}): boolean {
+  if (args.status !== PaymentReconciliationExceptionStatus.OPEN || !args.hasSignal) {
+    return false;
+  }
+  if (!args.isNewOpen && !args.reopenedFromResolved) {
+    return false;
+  }
+  if (
+    args.exceptionType === PaymentReconciliationExceptionType.ACTIVE_DISPUTE &&
+    args.fromDisputeWebhook === true
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function upsertReconciliationSnapshot(args: {
   orderId: UUIDString;
   snapshot: {
@@ -166,23 +190,26 @@ async function upsertReconciliationSnapshot(args: {
       });
     }
 
-    if (status === PaymentReconciliationExceptionStatus.OPEN && signal) {
-      const isNewOpen = !existingRow?.id;
-      const reopenedFromResolved =
-        !!existingRow?.id && previousStatus === PaymentReconciliationExceptionStatus.RESOLVED;
-      if (isNewOpen || reopenedFromResolved) {
-        const skipActiveDisputeDuplicateEmail =
-          type === PaymentReconciliationExceptionType.ACTIVE_DISPUTE && args.fromDisputeWebhook === true;
-        if (!skipActiveDisputeDuplicateEmail) {
-          void notifyPaymentOpsReconciliationExceptionOpened({
-            orderId: args.orderId,
-            exceptionType: type,
-            exceptionNote: note,
-            stripeEventId: args.stripeEventId,
-            appBaseUrl: APP_BASE_URL,
-          });
-        }
-      }
+    const isNewOpen = !existingRow?.id;
+    const reopenedFromResolved =
+      !!existingRow?.id && previousStatus === PaymentReconciliationExceptionStatus.RESOLVED;
+    if (
+      shouldSendReconciliationExceptionOpenedAlert({
+        status,
+        hasSignal: !!signal,
+        isNewOpen,
+        reopenedFromResolved,
+        exceptionType: type,
+        fromDisputeWebhook: args.fromDisputeWebhook === true,
+      })
+    ) {
+      void notifyPaymentOpsReconciliationExceptionOpened({
+        orderId: args.orderId,
+        exceptionType: type,
+        exceptionNote: note,
+        stripeEventId: args.stripeEventId,
+        appBaseUrl: APP_BASE_URL,
+      });
     }
   }
 }

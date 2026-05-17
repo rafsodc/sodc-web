@@ -14,6 +14,24 @@ import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDisp
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
+/** Sends membership access email when the stored status value changes. */
+export function scheduleMembershipStatusEmailIfChanged(args: {
+  userId: string;
+  previousStatus: MembershipStatus | null;
+  newStatus: MembershipStatus;
+  appBaseUrl: string;
+}): void {
+  if (args.previousStatus === args.newStatus) {
+    return;
+  }
+  void notifyMembershipStatusEmailIfNeeded({
+    userId: args.userId,
+    previousStatus: args.previousStatus,
+    newStatus: args.newStatus,
+    appBaseUrl: args.appBaseUrl,
+  });
+}
+
 // User groups may include membershipStatuses. Status-based membership is inherited (computed in
 // getSectionMembersMerged and in admin UI); users are not written to UserUserGroup for status-only membership.
 
@@ -69,14 +87,12 @@ export const updateMembershipStatus = onCall(
     // Access group membership by status is computed at read time (admin UI and getSectionMembersMerged)
     // — we do not write UserAccessGroup rows when status changes.
 
-    if (currentStatus !== newStatus) {
-      void notifyMembershipStatusEmailIfNeeded({
-        userId,
-        previousStatus: currentStatus,
-        newStatus: newStatus as MembershipStatus,
-        appBaseUrl: APP_BASE_URL,
-      });
-    }
+    scheduleMembershipStatusEmailIfChanged({
+      userId,
+      previousStatus: currentStatus,
+      newStatus: newStatus as MembershipStatus,
+      appBaseUrl: APP_BASE_URL,
+    });
 
     logger.info(`Membership status updated: userId=${userId}, current=${currentStatus || "unknown"}, new=${newStatus}, admin=${isAdmin}`);
     return { success: true, message: "Membership status updated successfully" };

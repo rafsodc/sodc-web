@@ -39,6 +39,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 
 ## Operational notes
 
+- **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
 - Do not commit secret values to repo.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
 - Rotate `GOV_NOTIFY_API_KEY` if compromised and update Firebase secrets before redeploy.

@@ -38,6 +38,30 @@ import {
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
+/** Schedules confirmation or revision email after a successful submit (not on idempotent replay). */
+export function scheduleBookingSubmitNotificationEmails(args: {
+  bookingId: UUIDString;
+  idempotencyKey: string;
+  appBaseUrl: string;
+  supersededBookingId?: string | null;
+  paymentDelta?: BookingPaymentDelta;
+}): void {
+  if (args.supersededBookingId && args.paymentDelta) {
+    void notifyBookingRevisionEmail({
+      bookingId: args.bookingId,
+      idempotencyKey: args.idempotencyKey,
+      appBaseUrl: args.appBaseUrl,
+      paymentDelta: args.paymentDelta,
+    });
+  } else {
+    void notifyBookingConfirmationEmail({
+      bookingId: args.bookingId,
+      idempotencyKey: args.idempotencyKey,
+      appBaseUrl: args.appBaseUrl,
+    });
+  }
+}
+
 function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   if (
     e.code === BOOKING_RULE_ERROR_CODES.NO_SECTION_ACCESS ||
@@ -376,21 +400,13 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [g
       });
     }
 
-    const bookingIdUuid = bookingId as UUIDString;
-    if (revisionPlan.supersedesBookingId && paymentDelta) {
-      void notifyBookingRevisionEmail({
-        bookingId: bookingIdUuid,
-        idempotencyKey,
-        appBaseUrl: APP_BASE_URL,
-        paymentDelta,
-      });
-    } else {
-      void notifyBookingConfirmationEmail({
-        bookingId: bookingIdUuid,
-        idempotencyKey,
-        appBaseUrl: APP_BASE_URL,
-      });
-    }
+    scheduleBookingSubmitNotificationEmails({
+      bookingId: bookingId as UUIDString,
+      idempotencyKey,
+      appBaseUrl: APP_BASE_URL,
+      supersededBookingId: revisionPlan.supersedesBookingId,
+      paymentDelta,
+    });
 
     logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
     return { bookingId, status: BookingStatus.SUBMITTED, idempotentReplay: false };

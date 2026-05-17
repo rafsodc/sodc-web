@@ -55,6 +55,26 @@ jobs:
       - name: Run frontend test suite
         run: node .github/scripts/fail-on-warning-output.mjs -- npm run test:run
 
+  functions-tests:
+    name: Functions full test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Run functions test suite
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test
+
   functions-security-tests:
     name: Functions security tests
     runs-on: ubuntu-latest

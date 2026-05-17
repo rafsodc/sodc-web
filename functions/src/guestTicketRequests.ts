@@ -17,6 +17,28 @@ import {
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
+export function scheduleGuestTicketRequestSubmittedEmails(args: {
+  requestId: string;
+  appBaseUrl: string;
+}): void {
+  void notifyModeratorsGuestTicketRequestSubmitted({
+    requestId: args.requestId,
+    appBaseUrl: args.appBaseUrl,
+  });
+}
+
+export function scheduleGuestTicketRequestReviewedEmails(args: {
+  requestId: string;
+  status: typeof GuestTicketRequestStatus.APPROVED | typeof GuestTicketRequestStatus.REJECTED;
+  appBaseUrl: string;
+}): void {
+  void notifyBookerGuestTicketRequestReviewed({
+    requestId: args.requestId,
+    status: args.status,
+    appBaseUrl: args.appBaseUrl,
+  });
+}
+
 export const submitGuestTicketRequest = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
@@ -61,7 +83,7 @@ export const submitGuestTicketRequest = onCall(
         throw new HttpsError("internal", "Guest ticket request was not created");
       }
 
-      void notifyModeratorsGuestTicketRequestSubmitted({
+      scheduleGuestTicketRequestSubmittedEmails({
         requestId,
         appBaseUrl: APP_BASE_URL,
       });
@@ -104,7 +126,7 @@ export const reviewGuestTicketRequest = onCall(
         moderatorNote,
       });
 
-      void notifyBookerGuestTicketRequestReviewed({
+      scheduleGuestTicketRequestReviewedEmails({
         requestId: id,
         status,
         appBaseUrl: APP_BASE_URL,
