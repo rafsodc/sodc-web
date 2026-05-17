@@ -1,6 +1,6 @@
 {
   "ticketOrderPaid": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
     "ticketTypeTitle": "Member ticket",
     "quantity": 2,
@@ -11,7 +11,7 @@
     "myPaymentsUrl": "https://app.example/payments"
   },
   "ticketOrderFailed": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
     "ticketTypeTitle": "Member ticket",
     "quantity": 1,
@@ -22,7 +22,7 @@
     "myPaymentsUrl": "https://app.example/payments"
   },
   "ticketOrderRefunded": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
     "ticketTypeTitle": "Member ticket",
     "quantity": 1,

@@ -24,7 +24,7 @@ Placeholder specs (keys only): `govuk-notify-*.md`. Workflow index: [transaction
 **Body:**
 
 ```
-Hello ((customerFirstName)),
+Hello ((firstName)),
 
 Your payment for ((eventTitle)) is confirmed.
 
@@ -36,10 +36,10 @@ Order reference: ((orderId))
 
 View your payments: ((myPaymentsUrl))
 
-If you did not make this payment, contact your section administrator.
+If you did not make this payment, please contact the [SODC Secretary](mailto:secretary@sodc.net).
 ```
 
-**Placeholders used:** `customerFirstName`, `eventTitle`, `ticketTypeTitle`, `quantity`, `totalFormatted`, `currencyDisplay` (optional in body), `orderStatusLabel`, `orderId`, `myPaymentsUrl`
+**Placeholders used:** `firstName`, `eventTitle`, `ticketTypeTitle`, `quantity`, `totalFormatted`, `currencyDisplay` (optional in body), `orderStatusLabel`, `orderId`, `myPaymentsUrl`
 
 ---
 
@@ -52,7 +52,7 @@ If you did not make this payment, contact your section administrator.
 **Body:**
 
 ```
-Hello ((customerFirstName)),
+Hello ((firstName)),
 
 We could not complete your payment for ((eventTitle)).
 
@@ -78,7 +78,7 @@ You can try again from your payments page: ((myPaymentsUrl))
 **Body:**
 
 ```
-Hello ((customerFirstName)),
+Hello ((firstName)),
 
 A refund has been processed for your order for ((eventTitle)).
 
