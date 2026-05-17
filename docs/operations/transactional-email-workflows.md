@@ -85,7 +85,7 @@ flowchart LR
 
 ## Manual QA (Beta)
 
-After templates are provisioned per Firebase environment:
+After templates are provisioned per Firebase environment (see [govuk-notify-template-registration.md](./govuk-notify-template-registration.md)):
 
 - [ ] Ticket checkout → paid email; failed/refund paths in test mode
 - [ ] Reconciliation exception opens → internal alert
