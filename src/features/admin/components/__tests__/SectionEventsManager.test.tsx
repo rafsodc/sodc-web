@@ -3,11 +3,11 @@ import { render, screen, waitFor } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
 import * as reactGenerated from "@dataconnect/generated/react";
 import userEvent from "@testing-library/user-event";
-import { executeMutation } from "firebase/data-connect";
 import {
   dataConnectQueryResult,
   type DataConnectQueryResultOverrides,
 } from "../../../../test-utils/dataConnectMocks";
+import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
 vi.mock("@dataconnect/generated/react", () => ({
   useGetEventsForSection: vi.fn(),
@@ -29,6 +29,10 @@ vi.mock("firebase/data-connect", () => ({
 
 vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
+}));
+
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  reviewGuestTicketRequest: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
@@ -69,10 +73,7 @@ function mockTicketOrders(overrides: DataConnectQueryResultOverrides) {
 
 vi.mock("@dataconnect/generated", async () => {
   const actual = await vi.importActual("@dataconnect/generated");
-  return {
-    ...actual,
-    adminReviewGuestTicketRequestRef: vi.fn((_dc: unknown, _vars: unknown) => ({ type: "mutation" })),
-  };
+  return { ...actual };
 });
 
 describe("SectionEventsManager", () => {
@@ -82,6 +83,7 @@ describe("SectionEventsManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(firebaseFunctions.reviewGuestTicketRequest).mockResolvedValue({ success: true });
     mockGetEventsForSection({
       data: { section: { id: sectionId, events: [] } },
       isLoading: false,
@@ -329,7 +331,13 @@ describe("SectionEventsManager", () => {
     expect(screen.getByText(/payment status activity/i)).toBeInTheDocument();
     expect(screen.getByText(/evt_123/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /approve/i }));
-    await waitFor(() => expect(executeMutation).toHaveBeenCalled());
+    await waitFor(() => expect(firebaseFunctions.reviewGuestTicketRequest).toHaveBeenCalled());
+    expect(firebaseFunctions.reviewGuestTicketRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "r-1",
+        status: "APPROVED",
+      })
+    );
   });
 
   it("opens event edit dialog from the event admin details section", async () => {
