@@ -46,10 +46,16 @@ npm run test
 cd functions
 npm run test
 
-# Focused security suites
+# Full functions suite (includes mailers, dispatchers, wiring tests)
+cd functions
+npm run test
+
+# Focused security suites (also run in CI)
 cd functions
 npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
 ```
+
+When changing transactional email (callables, webhooks, dispatchers), run the **full** functions suite and update [`operations/transactional-email-workflows.md`](operations/transactional-email-workflows.md) when triggers or delivery keys change.
 
 ## CI and required checks
 
@@ -60,7 +66,9 @@ npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts 
 
 After CI workflows are in place, configure these as required in branch protection:
 
-- `Frontend targeted tests`
+- `Frontend and functions build checks`
+- `Frontend full test suite`
+- `Functions full test suite`
 - `Functions security tests`
 
 Set in GitHub repository settings:
