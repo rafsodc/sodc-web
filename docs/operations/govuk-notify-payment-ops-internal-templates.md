@@ -31,7 +31,7 @@ Functions set short references for Notify logs, e.g. `reconciliation-ops:<orderI
 |-----|-----------|
 | `orderId` | Ticket order UUID |
 | `eventTitle` | Event title from order |
-| `customerDisplay` | Booker display, e.g. `Name <email>` |
+| `userDisplay` | User display, e.g. `Name <email>` |
 | `exceptionType` | Enum string, e.g. `ACTIVE_DISPUTE`, `MISSING_PAYMENT_INTENT`, `REFUND_AMOUNT_MISMATCH` |
 | `exceptionNote` | Stored exception note |
 | `reconciliationDashboardUrl` | `APP_BASE_URL` (normalised) + `/admin/payments/reconciliation` |
@@ -45,7 +45,7 @@ Functions set short references for Notify logs, e.g. `reconciliation-ops:<orderI
 |-----|-----------|
 | `orderId` | Ticket order UUID |
 | `eventTitle` | Event title |
-| `customerDisplay` | Booker display |
+| `userDisplay` | User display |
 | `disputeStripeStatus` | Stripe dispute `status` |
 | `disputeReason` | Stripe dispute `reason` |
 | `disputeLocalState` | Normalised dispute state label from webhook routing |

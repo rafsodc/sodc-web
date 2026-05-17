@@ -21,7 +21,7 @@ export type PaymentOpsInternalTemplates = {
   paymentReconciliationExceptionAlert: {
     orderId: string;
     eventTitle: string;
-    customerDisplay: string;
+    userDisplay: string;
     exceptionType: string;
     exceptionNote: string;
     reconciliationDashboardUrl: string;
@@ -30,7 +30,7 @@ export type PaymentOpsInternalTemplates = {
   paymentDisputeOpsAlert: {
     orderId: string;
     eventTitle: string;
-    customerDisplay: string;
+    userDisplay: string;
     disputeStripeStatus: string;
     disputeReason: string;
     disputeLocalState: string;
@@ -57,7 +57,7 @@ export function createPaymentOpsInternalMailer(): ReturnType<
 
 async function loadOrderOpsContext(orderId: UUIDString): Promise<{
   eventTitle: string;
-  customerDisplay: string;
+  userDisplay: string;
 } | null> {
   const row = await getTicketOrderForWebhook({ id: orderId });
   const o = row.data?.ticketOrder;
@@ -66,8 +66,8 @@ async function loadOrderOpsContext(orderId: UUIDString): Promise<{
   }
   const u = o.user;
   const name = `${u.firstName} ${u.lastName}`.trim();
-  const customerDisplay = name.length > 0 ? `${name} <${u.email}>` : u.email;
-  return { eventTitle: o.event.title ?? "—", customerDisplay };
+  const userDisplay = name.length > 0 ? `${name} <${u.email}>` : u.email;
+  return { eventTitle: o.event.title ?? "—", userDisplay };
 }
 
 /**
@@ -102,7 +102,7 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
     const personalisation: PaymentOpsInternalTemplates["paymentReconciliationExceptionAlert"] = {
       orderId: args.orderId,
       eventTitle: ctx.eventTitle,
-      customerDisplay: ctx.customerDisplay,
+      userDisplay: ctx.userDisplay,
       exceptionType: args.exceptionType,
       exceptionNote: args.exceptionNote,
       reconciliationDashboardUrl,
@@ -175,7 +175,7 @@ export async function notifyPaymentOpsDisputeSideState(args: {
     const personalisation: PaymentOpsInternalTemplates["paymentDisputeOpsAlert"] = {
       orderId: args.orderId,
       eventTitle: ctx.eventTitle,
-      customerDisplay: ctx.customerDisplay,
+      userDisplay: ctx.userDisplay,
       disputeStripeStatus: args.disputeStripeStatus,
       disputeReason: args.disputeReason,
       disputeLocalState: args.disputeLocalState,

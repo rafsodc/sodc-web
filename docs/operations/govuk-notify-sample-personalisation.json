@@ -36,7 +36,7 @@
   "paymentReconciliationExceptionAlert": {
     "orderId": "00000000-0000-0000-0000-000000000001",
     "eventTitle": "Summer Dinner",
-    "customerDisplay": "Alex Example <alex@example.com>",
+    "userDisplay": "Alex Example <alex@example.com>",
     "exceptionType": "MISSING_PAYMENT_INTENT",
     "exceptionNote": "Paid order has no payment intent id on record",
     "reconciliationDashboardUrl": "https://app.example/admin/payments/reconciliation",
@@ -45,7 +45,7 @@
   "paymentDisputeOpsAlert": {
     "orderId": "00000000-0000-0000-0000-000000000001",
     "eventTitle": "Summer Dinner",
-    "customerDisplay": "Alex Example <alex@example.com>",
+    "userDisplay": "Alex Example <alex@example.com>",
     "disputeStripeStatus": "needs_response",
     "disputeReason": "fraudulent",
     "disputeLocalState": "DISPUTE_OPEN",

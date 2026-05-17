@@ -113,7 +113,7 @@ A payment reconciliation exception is open.
 
 Order: ((orderId))
 Event: ((eventTitle))
-Customer: ((customerDisplay))
+User: ((userDisplay))
 Exception type: ((exceptionType))
 Note: ((exceptionNote))
 Stripe event: ((stripeEventId))
@@ -122,7 +122,7 @@ Open reconciliation dashboard:
 ((reconciliationDashboardUrl))
 ```
 
-**Placeholders used:** `orderId`, `eventTitle`, `customerDisplay`, `exceptionType`, `exceptionNote`, `reconciliationDashboardUrl`, `stripeEventId`
+**Placeholders used:** `orderId`, `eventTitle`, `userDisplay`, `exceptionType`, `exceptionNote`, `reconciliationDashboardUrl`, `stripeEventId`
 
 ---
 
@@ -139,7 +139,7 @@ Stripe dispute side-state received.
 
 Order: ((orderId))
 Event: ((eventTitle))
-Customer: ((customerDisplay))
+User: ((userDisplay))
 Local state: ((disputeLocalState))
 Stripe dispute status: ((disputeStripeStatus))
 Reason: ((disputeReason))
@@ -151,7 +151,7 @@ Open reconciliation dashboard:
 ((reconciliationDashboardUrl))
 ```
 
-**Placeholders used:** `orderId`, `eventTitle`, `customerDisplay`, `disputeStripeStatus`, `disputeReason`, `disputeLocalState`, `stripeDisputeId`, `stripeEventType`, `reconciliationDashboardUrl`, `stripeEventId`
+**Placeholders used:** `orderId`, `eventTitle`, `userDisplay`, `disputeStripeStatus`, `disputeReason`, `disputeLocalState`, `stripeDisputeId`, `stripeEventType`, `reconciliationDashboardUrl`, `stripeEventId`
 
 ---
 
