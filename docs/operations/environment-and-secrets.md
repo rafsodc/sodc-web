@@ -47,4 +47,5 @@ Defined via `.env*` files and read from `import.meta.env`:
 - Template env var names are derived from typed template names in `functions/src/mailer.ts`; for example, `paymentConfirmation` maps to `GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION`.
 - Ticket order lifecycle emails (issue #186): template keys `ticketOrderPaid`, `ticketOrderFailed`, `ticketOrderRefunded` — full placeholder spec and env var mapping in [govuk-notify-ticket-order-templates.md](./govuk-notify-ticket-order-templates.md).
 - Internal payment ops / finance alerts (reconciliation exceptions and dispute side-state): see [govuk-notify-payment-ops-internal-templates.md](./govuk-notify-payment-ops-internal-templates.md).
+- Membership approval / account access emails (#188): template keys `membershipActivated`, `membershipAccessRestricted` — see [govuk-notify-membership-templates.md](./govuk-notify-membership-templates.md).
 - Stripe may send customer receipts/invoices for payment activity when enabled in Stripe. Use GOV.UK Notify for app-owned transactional messages that need application context, links, membership/booking workflow details, or internal operational recipients.
