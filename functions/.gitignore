@@ -7,4 +7,9 @@ typings/
 
 # Node.js dependency directory
 node_modules/
+
+# Local Firebase Functions dotenv/secret overrides
+.env.local
+.env.*.local
+.secret.local
 *.local

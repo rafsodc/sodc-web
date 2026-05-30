@@ -23,10 +23,16 @@ Defined via `.env*` files and read from `import.meta.env`:
 
 ## Functions runtime env / secrets
 
+The committed `functions/.env` file is a comment-only template. For local
+emulator overrides, copy it to `functions/.env.local` and add real non-secret
+values there. Local secret overrides belong in `functions/.secret.local`.
+Both local files are ignored by git.
+
 | Name | Type | Used by | Required |
 |---|---|---|---|
 | `STRIPE_SECRET` | Firebase secret | `createTicketCheckoutSession`, `stripeWebhook` | yes for payments |
 | `STRIPE_WEBHOOK_SECRET` | Firebase secret | `stripeWebhook` | yes for webhook processing |
+| `STRIPE_WEBHOOK_SECRET_PAYMENTS` | Firebase secret | `stripeWebhook` payments endpoint | preferred for payment webhook processing; falls back to `STRIPE_WEBHOOK_SECRET` |
 | `APP_BASE_URL` | env var | Checkout success/cancel URLs | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
@@ -34,5 +40,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 ## Operational notes
 
 - Do not commit secret values to repo.
+- Keep committed dotenv templates comment-only; put developer-specific values in
+  `.env.local` or `.secret.local`.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
 - Keep environment docs and deployment settings aligned when adding new variables.
