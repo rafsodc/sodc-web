@@ -169,6 +169,17 @@ export interface AdminReviewGuestTicketRequestData {
   guestTicketRequest_update?: GuestTicketRequest_Key | null;
 }
 
+export interface AdminReviewGuestTicketRequestFromCallableData {
+  guestTicketRequest_update?: GuestTicketRequest_Key | null;
+}
+
+export interface AdminReviewGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
+  status: GuestTicketRequestStatus;
+  moderatorNote?: string | null;
+  reviewedById: string;
+}
+
 export interface AdminReviewGuestTicketRequestVariables {
   id: UUIDString;
   status: GuestTicketRequestStatus;
@@ -261,6 +272,18 @@ export interface CreateEventVariables {
 
 export interface CreateGuestTicketRequestData {
   guestTicketRequest_insert: GuestTicketRequest_Key;
+}
+
+export interface CreateGuestTicketRequestFromCallableData {
+  guestTicketRequest_insert: GuestTicketRequest_Key;
+}
+
+export interface CreateGuestTicketRequestFromCallableVariables {
+  bookingId: UUIDString;
+  requestedGuestCount: number;
+  guestTicketTypeId: UUIDString;
+  guestDisplayName: string;
+  dietaryNote?: string | null;
 }
 
 export interface CreateGuestTicketRequestVariables {
@@ -470,6 +493,80 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetBookingForGuestTicketCallableData {
+  booking?: {
+    id: UUIDString;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+  } & Booking_Key;
+}
+
+export interface GetBookingForGuestTicketCallableVariables {
+  bookingId: UUIDString;
+}
+
+export interface GetBookingForNotificationData {
+  booking?: {
+    id: UUIDString;
+    revisionNumber: number;
+    bookerDietaryNote?: string | null;
+    sitNextToUserIds?: string[] | null;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        location?: string | null;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+        lines: ({
+          sortOrder: number;
+          guestDisplayName?: string | null;
+          dietaryNote?: string | null;
+          ticketType: {
+            title: string;
+            audience: TicketAudience;
+            price: number;
+          };
+            guestUser?: {
+              firstName: string;
+              lastName: string;
+            };
+        })[];
+          supersedesBooking?: {
+            id: UUIDString;
+            revisionNumber: number;
+          } & Booking_Key;
+  } & Booking_Key;
+}
+
+export interface GetBookingForNotificationVariables {
+  bookingId: UUIDString;
+}
+
 export interface GetBookingsForBookerAndEventData {
   user?: {
     id: string;
@@ -622,6 +719,42 @@ export interface GetEventsForSectionData {
 
 export interface GetEventsForSectionVariables {
   sectionId: UUIDString;
+}
+
+export interface GetGuestTicketRequestForNotificationData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    moderatorNote?: string | null;
+    guestTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
+      booking: {
+        id: UUIDString;
+        booker: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+        } & User_Key;
+          event: {
+            id: UUIDString;
+            title: string;
+            section: {
+              id: UUIDString;
+              name: string;
+            } & Section_Key;
+          } & Event_Key;
+      } & Booking_Key;
+  } & GuestTicketRequest_Key;
+}
+
+export interface GetGuestTicketRequestForNotificationVariables {
+  id: UUIDString;
 }
 
 export interface GetMyBookingPaymentAdjustmentsData {
@@ -785,6 +918,7 @@ export interface GetNotificationDeliveryByChannelAndKeyVariables {
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
+    status: PaymentReconciliationExceptionStatus;
   } & PaymentReconciliationException_Key)[];
 }
 
@@ -934,23 +1068,37 @@ export interface GetTicketOrderForWebhookData {
   ticketOrder?: {
     id: UUIDString;
     status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
     totalAmountMinor: number;
-    event: {
-      id: UUIDString;
-    } & Event_Key;
-      stripeCheckoutSessionId?: string | null;
-      stripePaymentIntentId?: string | null;
-      stripeRefundId?: string | null;
-      refundedAmountMinor?: number | null;
-      refundedAt?: TimestampString | null;
-      stripeDisputeId?: string | null;
-      disputeStatus?: string | null;
-      disputeReason?: string | null;
-      disputeAmountMinor?: number | null;
-      disputeOpenedAt?: TimestampString | null;
-      disputeUpdatedAt?: TimestampString | null;
-      disputeClosedAt?: TimestampString | null;
-      webhookEventId?: string | null;
+    currency: string;
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+          stripeCheckoutSessionId?: string | null;
+          stripePaymentIntentId?: string | null;
+          stripeRefundId?: string | null;
+          refundedAmountMinor?: number | null;
+          refundedAt?: TimestampString | null;
+          stripeDisputeId?: string | null;
+          disputeStatus?: string | null;
+          disputeReason?: string | null;
+          disputeAmountMinor?: number | null;
+          disputeOpenedAt?: TimestampString | null;
+          disputeUpdatedAt?: TimestampString | null;
+          disputeClosedAt?: TimestampString | null;
+          webhookEventId?: string | null;
   } & TicketOrder_Key;
 }
 
@@ -1119,6 +1267,9 @@ export interface GetUserGroupByNameVariables {
 export interface GetUserMembershipStatusData {
   user?: {
     membershipStatus: MembershipStatus;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
 }
 
@@ -2271,6 +2422,66 @@ export const deleteBookingLineFromCallableRef: DeleteBookingLineFromCallableRef;
 
 export function deleteBookingLineFromCallable(vars: DeleteBookingLineFromCallableVariables): MutationPromise<DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables>;
 export function deleteBookingLineFromCallable(dc: DataConnect, vars: DeleteBookingLineFromCallableVariables): MutationPromise<DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables>;
+
+interface CreateGuestTicketRequestFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateGuestTicketRequestFromCallableVariables): MutationRef<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables): MutationRef<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+  operationName: string;
+}
+export const createGuestTicketRequestFromCallableRef: CreateGuestTicketRequestFromCallableRef;
+
+export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+
+interface AdminReviewGuestTicketRequestFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationRef<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationRef<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+  operationName: string;
+}
+export const adminReviewGuestTicketRequestFromCallableRef: AdminReviewGuestTicketRequestFromCallableRef;
+
+export function adminReviewGuestTicketRequestFromCallable(vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationPromise<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+export function adminReviewGuestTicketRequestFromCallable(dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationPromise<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+
+interface GetBookingForGuestTicketCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingForGuestTicketCallableVariables): QueryRef<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables): QueryRef<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+  operationName: string;
+}
+export const getBookingForGuestTicketCallableRef: GetBookingForGuestTicketCallableRef;
+
+export function getBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+export function getBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+
+interface GetBookingForNotificationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingForNotificationVariables): QueryRef<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetBookingForNotificationVariables): QueryRef<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+  operationName: string;
+}
+export const getBookingForNotificationRef: GetBookingForNotificationRef;
+
+export function getBookingForNotification(vars: GetBookingForNotificationVariables): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+export function getBookingForNotification(dc: DataConnect, vars: GetBookingForNotificationVariables): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+
+interface GetGuestTicketRequestForNotificationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetGuestTicketRequestForNotificationVariables): QueryRef<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables): QueryRef<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+  operationName: string;
+}
+export const getGuestTicketRequestForNotificationRef: GetGuestTicketRequestForNotificationRef;
+
+export function getGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+export function getGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
 
 interface CreateBookingDraftRef {
   /* Allow users to create refs without passing in DataConnect */
