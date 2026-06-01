@@ -4,7 +4,7 @@ const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
-}
+};
 exports.BookingPaymentAdjustmentStatus = BookingPaymentAdjustmentStatus;
 
 const BookingStatus = {
