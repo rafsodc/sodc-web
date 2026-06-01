@@ -1,8 +1,8 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
-  adminReviewGuestTicketRequest,
-  createGuestTicketRequest,
+  adminReviewGuestTicketRequestFromCallable,
+  createGuestTicketRequestFromCallable,
   getBookingForGuestTicketCallable,
   GuestTicketRequestStatus,
 } from "@dataconnect/admin-generated";
@@ -71,7 +71,7 @@ export const submitGuestTicketRequest = onCall(
         throw new HttpsError("permission-denied", "You can only submit guest requests for your own booking");
       }
 
-      const insertResult = await createGuestTicketRequest({
+      const insertResult = await createGuestTicketRequestFromCallable({
         bookingId,
         requestedGuestCount,
         guestTicketTypeId,
@@ -120,10 +120,11 @@ export const reviewGuestTicketRequest = onCall(
         : null;
 
     try {
-      await adminReviewGuestTicketRequest({
+      await adminReviewGuestTicketRequestFromCallable({
         id,
         status,
         moderatorNote,
+        reviewedById: request.auth!.uid,
       });
 
       scheduleGuestTicketRequestReviewedEmails({

@@ -574,6 +574,66 @@ exports.deleteBookingLineFromCallable = function deleteBookingLineFromCallable(d
   return executeMutation(deleteBookingLineFromCallableRef(dcOrVars, vars));
 };
 
+const createGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateGuestTicketRequestFromCallable', inputVars);
+}
+createGuestTicketRequestFromCallableRef.operationName = 'CreateGuestTicketRequestFromCallable';
+exports.createGuestTicketRequestFromCallableRef = createGuestTicketRequestFromCallableRef;
+
+exports.createGuestTicketRequestFromCallable = function createGuestTicketRequestFromCallable(dcOrVars, vars) {
+  return executeMutation(createGuestTicketRequestFromCallableRef(dcOrVars, vars));
+};
+
+const adminReviewGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminReviewGuestTicketRequestFromCallable', inputVars);
+}
+adminReviewGuestTicketRequestFromCallableRef.operationName = 'AdminReviewGuestTicketRequestFromCallable';
+exports.adminReviewGuestTicketRequestFromCallableRef = adminReviewGuestTicketRequestFromCallableRef;
+
+exports.adminReviewGuestTicketRequestFromCallable = function adminReviewGuestTicketRequestFromCallable(dcOrVars, vars) {
+  return executeMutation(adminReviewGuestTicketRequestFromCallableRef(dcOrVars, vars));
+};
+
+const getBookingForGuestTicketCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingForGuestTicketCallable', inputVars);
+}
+getBookingForGuestTicketCallableRef.operationName = 'GetBookingForGuestTicketCallable';
+exports.getBookingForGuestTicketCallableRef = getBookingForGuestTicketCallableRef;
+
+exports.getBookingForGuestTicketCallable = function getBookingForGuestTicketCallable(dcOrVars, vars) {
+  return executeQuery(getBookingForGuestTicketCallableRef(dcOrVars, vars));
+};
+
+const getBookingForNotificationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingForNotification', inputVars);
+}
+getBookingForNotificationRef.operationName = 'GetBookingForNotification';
+exports.getBookingForNotificationRef = getBookingForNotificationRef;
+
+exports.getBookingForNotification = function getBookingForNotification(dcOrVars, vars) {
+  return executeQuery(getBookingForNotificationRef(dcOrVars, vars));
+};
+
+const getGuestTicketRequestForNotificationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetGuestTicketRequestForNotification', inputVars);
+}
+getGuestTicketRequestForNotificationRef.operationName = 'GetGuestTicketRequestForNotification';
+exports.getGuestTicketRequestForNotificationRef = getGuestTicketRequestForNotificationRef;
+
+exports.getGuestTicketRequestForNotification = function getGuestTicketRequestForNotification(dcOrVars, vars) {
+  return executeQuery(getGuestTicketRequestForNotificationRef(dcOrVars, vars));
+};
+
 const createBookingDraftRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

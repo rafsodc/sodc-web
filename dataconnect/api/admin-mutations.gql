@@ -799,6 +799,48 @@ mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
   bookingLine_delete(id: $id)
 }
 
+# submitGuestTicketRequest callable — admin SDK has no auth.uid; override HasAudit defaults.
+mutation CreateGuestTicketRequestFromCallable(
+  $bookingId: UUID!
+  $requestedGuestCount: Int!
+  $guestTicketTypeId: UUID!
+  $guestDisplayName: String!
+  $dietaryNote: String
+) @auth(level: NO_ACCESS) {
+  guestTicketRequest_insert(
+    data: {
+      bookingId: $bookingId
+      requestedGuestCount: $requestedGuestCount
+      guestTicketTypeId: $guestTicketTypeId
+      guestDisplayName: $guestDisplayName
+      dietaryNote: $dietaryNote
+      status: PENDING
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+# reviewGuestTicketRequest callable — admin SDK has no auth.uid for reviewedBy / HasAudit.
+mutation AdminReviewGuestTicketRequestFromCallable(
+  $id: UUID!
+  $status: GuestTicketRequestStatus!
+  $moderatorNote: String
+  $reviewedById: String!
+) @auth(level: NO_ACCESS) {
+  guestTicketRequest_update(
+    id: $id
+    data: {
+      status: $status
+      moderatorNote: $moderatorNote
+      reviewedAt_expr: "request.time"
+      reviewedById: $reviewedById
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  )
+}
+
 # Guest ticket request callables — load booking context for submit validation.
 query GetBookingForGuestTicketCallable($bookingId: UUID!) @auth(level: NO_ACCESS) {
   booking(id: $bookingId) {
