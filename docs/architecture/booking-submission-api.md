@@ -83,8 +83,20 @@ Uses HTTPS callable errors. Prefer inspecting **`error.details.code`** (string) 
 
 Other `invalid-argument` / `not-found` errors apply to bad input or missing event/section.
 
+## Post-submit email
+
+After a successful submit (`idempotentReplay: false`), Functions send a GOV.UK Notify email to the booker:
+
+- **`bookingConfirmation`** — first booking for this submit (no superseded booking).
+- **`bookingRevision`** — submit supersedes a prior booking and records a payment adjustment.
+
+**No email** when the callable returns **`idempotentReplay: true`** (terminal booking already exists for the same `idempotencyKey`).
+
+See [`docs/operations/transactional-email-workflows.md`](../operations/transactional-email-workflows.md) and [`govuk-notify-booking-templates.md`](../operations/govuk-notify-booking-templates.md).
+
 ## Implementation
 
 - Rules: `functions/src/bookingRules.ts`
 - Callable: `functions/src/bookings.ts` (`submitEventBooking`)
+- Email: `functions/src/bookingEmailDispatcher.ts`
 - Draft creation for the callable: `CreateBookingDraftForUser` in `dataconnect/api/admin-mutations.gql` (explicit `bookerId`, **not** `auth.uid` from the Data Connect service account)

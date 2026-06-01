@@ -418,9 +418,23 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
   ticketOrder(id: $id) {
     id
     status
+    quantity
+    unitAmountMinor
     totalAmountMinor
+    currency
+    user {
+      id
+      email
+      firstName
+      lastName
+    }
     event {
       id
+      title
+    }
+    ticketType {
+      id
+      title
     }
     stripeCheckoutSessionId
     stripePaymentIntentId
@@ -484,6 +498,132 @@ mutation CreatePaymentWebhookEvent(
       stripeObjectId: $stripeObjectId
       livemode: $livemode
       createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+query GetNotificationDeliveryByChannelAndKey(
+  $channel: NotificationChannel!
+  $deliveryKey: String!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: {
+      channel: { eq: $channel }
+      deliveryKey: { eq: $deliveryKey }
+    }
+    limit: 1
+  ) {
+    id
+    channel
+    deliveryKey
+    notificationType
+    status
+    provider
+    providerMessageId
+    attemptCount
+    lastAttemptedAt
+    sentAt
+    lastErrorCode
+    lastErrorMessage
+    createdAt
+  }
+}
+
+mutation CreateNotificationDelivery(
+  $channel: NotificationChannel!
+  $notificationType: String!
+  $deliveryKey: String!
+  $status: NotificationDeliveryStatus!
+  $ticketOrderId: UUID
+  $bookingId: UUID
+  $userId: String
+  $provider: String
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_insert(
+    data: {
+      channel: $channel
+      notificationType: $notificationType
+      deliveryKey: $deliveryKey
+      status: $status
+      ticketOrderId: $ticketOrderId
+      bookingId: $bookingId
+      userId: $userId
+      provider: $provider
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotificationDeliveryPendingById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $provider: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_update(
+    id: $id
+    data: {
+      status: PENDING
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      provider: $provider
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotificationDeliverySentById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $sentAt: Timestamp!
+  $provider: String
+  $providerMessageId: String
+  $lastErrorCode: String
+  $lastErrorMessage: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_update(
+    id: $id
+    data: {
+      status: SENT
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      sentAt: $sentAt
+      provider: $provider
+      providerMessageId: $providerMessageId
+      lastErrorCode: $lastErrorCode
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotificationDeliveryFailedById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $provider: String
+  $lastErrorCode: String
+  $lastErrorMessage: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_update(
+    id: $id
+    data: {
+      status: FAILED
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      provider: $provider
+      lastErrorCode: $lastErrorCode
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
       updatedBy: "system"
     }
   )
@@ -584,6 +724,7 @@ query GetPaymentReconciliationExceptionByOrderAndType(
     limit: 1
   ) {
     id
+    status
   }
 }
 
@@ -656,6 +797,149 @@ mutation UpdateBookingPreferencesFromCallable(
 
 mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
   bookingLine_delete(id: $id)
+}
+
+# submitGuestTicketRequest callable — admin SDK has no auth.uid; override HasAudit defaults.
+mutation CreateGuestTicketRequestFromCallable(
+  $bookingId: UUID!
+  $requestedGuestCount: Int!
+  $guestTicketTypeId: UUID!
+  $guestDisplayName: String!
+  $dietaryNote: String
+) @auth(level: NO_ACCESS) {
+  guestTicketRequest_insert(
+    data: {
+      bookingId: $bookingId
+      requestedGuestCount: $requestedGuestCount
+      guestTicketTypeId: $guestTicketTypeId
+      guestDisplayName: $guestDisplayName
+      dietaryNote: $dietaryNote
+      status: PENDING
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+# reviewGuestTicketRequest callable — admin SDK has no auth.uid for reviewedBy / HasAudit.
+mutation AdminReviewGuestTicketRequestFromCallable(
+  $id: UUID!
+  $status: GuestTicketRequestStatus!
+  $moderatorNote: String
+  $reviewedById: String!
+) @auth(level: NO_ACCESS) {
+  guestTicketRequest_update(
+    id: $id
+    data: {
+      status: $status
+      moderatorNote: $moderatorNote
+      reviewedAt_expr: "request.time"
+      reviewedById: $reviewedById
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  )
+}
+
+# Guest ticket request callables — load booking context for submit validation.
+query GetBookingForGuestTicketCallable($bookingId: UUID!) @auth(level: NO_ACCESS) {
+  booking(id: $bookingId) {
+    id
+    booker {
+      id
+      firstName
+      lastName
+      email
+    }
+    event {
+      id
+      title
+      section {
+        id
+        name
+      }
+    }
+  }
+}
+
+# Booking confirmation / revision emails — full booking context for Notify.
+query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
+  booking(id: $bookingId) {
+    id
+    revisionNumber
+    bookerDietaryNote
+    sitNextToUserIds
+    accommodationRequested
+    accommodationNote
+    booker {
+      id
+      firstName
+      lastName
+      email
+    }
+    event {
+      id
+      title
+      location
+      startDateTime
+      endDateTime
+      section {
+        id
+        name
+      }
+    }
+    lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+      sortOrder
+      guestDisplayName
+      dietaryNote
+      ticketType {
+        title
+        audience
+        price
+      }
+      guestUser {
+        firstName
+        lastName
+      }
+    }
+    supersedesBooking {
+      id
+      revisionNumber
+    }
+  }
+}
+
+# Guest ticket request emails — request + booker/event context after create or review.
+query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
+  guestTicketRequest(id: $id) {
+    id
+    status
+    requestedGuestCount
+    guestDisplayName
+    dietaryNote
+    moderatorNote
+    guestTicketType {
+      id
+      title
+    }
+    booking {
+      id
+      booker {
+        id
+        firstName
+        lastName
+        email
+      }
+      event {
+        id
+        title
+        section {
+          id
+          name
+        }
+      }
+    }
+  }
 }
 
 

@@ -17,12 +17,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { executeMutation } from "firebase/data-connect";
-import { createGuestTicketRequestRef } from "@dataconnect/generated";
-import type { GetMyBookingsForEventData, UUIDString } from "@dataconnect/generated";
-import { dataConnect } from "../../../config/firebase";
+import type { GetMyBookingsForEventData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
-import { toCanonicalUuid } from "../../../shared/utils/uuid";
+import { submitGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
 
 type BookingList = NonNullable<GetMyBookingsForEventData["user"]>["bookings"];
 export type GuestTicketRequestRow = BookingList[number]["guestTicketRequests"][number];
@@ -115,17 +112,14 @@ export default function AdditionalGuestRequestSection({
     setError(null);
     setSubmitting(true);
     try {
-      const canonicalBookingId = toCanonicalUuid(bookingId) as UUIDString;
       const dietary = dietaryNote.trim();
-      await executeMutation(
-        createGuestTicketRequestRef(dataConnect, {
-          bookingId: canonicalBookingId,
-          requestedGuestCount: n,
-          guestTicketTypeId: toCanonicalUuid(guestTicketTypeId) as UUIDString,
-          guestDisplayName: name,
-          dietaryNote: dietary.length > 0 ? dietary : null,
-        })
-      );
+      await submitGuestTicketRequest({
+        bookingId,
+        requestedGuestCount: n,
+        guestTicketTypeId,
+        guestDisplayName: name,
+        dietaryNote: dietary.length > 0 ? dietary : null,
+      });
       setCountInput("1");
       setGuestDisplayName("");
       setDietaryNote("");

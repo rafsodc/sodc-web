@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Box } from "@mui/material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
+import { reviewGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
 import {
   useGetEventsForSection,
   useGetEventById,
@@ -20,7 +21,6 @@ import {
   listUserGroupsRef,
   getEventByIdRef,
   listEventBookingsForAdminRef,
-  adminReviewGuestTicketRequestRef,
   adminDeleteGuestTicketRequestRef,
   adminDeleteBookingLineRef,
   adminDeleteBookingRef,
@@ -365,13 +365,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setReviewingRequestId(request.id);
     setError(null);
     try {
-      await executeMutation(
-        adminReviewGuestTicketRequestRef(dataConnect, {
-          id: request.id as UUIDString,
-          status,
-          moderatorNote: moderatorNoteDraft[request.id]?.trim() || null,
-        })
-      );
+      await reviewGuestTicketRequest({
+        id: request.id,
+        status,
+        moderatorNote: moderatorNoteDraft[request.id]?.trim() || null,
+      });
       setModeratorNoteDraft((prev) => ({ ...prev, [request.id]: "" }));
       refetchGuestRequests();
     } catch (err: unknown) {

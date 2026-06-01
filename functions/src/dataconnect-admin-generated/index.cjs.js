@@ -4,7 +4,7 @@ const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
-};
+}
 exports.BookingPaymentAdjustmentStatus = BookingPaymentAdjustmentStatus;
 
 const BookingStatus = {
@@ -12,14 +12,14 @@ const BookingStatus = {
   SUBMITTED: "SUBMITTED",
   CONFIRMED: "CONFIRMED",
   CANCELLED: "CANCELLED",
-};
+}
 exports.BookingStatus = BookingStatus;
 
 const GuestTicketRequestStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
   REJECTED: "REJECTED",
-};
+}
 exports.GuestTicketRequestStatus = GuestTicketRequestStatus;
 
 const MembershipStatus = {
@@ -32,20 +32,34 @@ const MembershipStatus = {
   RESIGNED: "RESIGNED",
   LOST: "LOST",
   DECEASED: "DECEASED",
-};
+}
 exports.MembershipStatus = MembershipStatus;
+
+const NotificationChannel = {
+  EMAIL: "EMAIL",
+  SMS: "SMS",
+  PUSH: "PUSH",
+}
+exports.NotificationChannel = NotificationChannel;
+
+const NotificationDeliveryStatus = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  FAILED: "FAILED",
+}
+exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
 
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
-};
+}
 exports.PaymentReconciliationExceptionStatus = PaymentReconciliationExceptionStatus;
 
 const PaymentReconciliationExceptionType = {
   MISSING_PAYMENT_INTENT: "MISSING_PAYMENT_INTENT",
   REFUND_AMOUNT_MISMATCH: "REFUND_AMOUNT_MISMATCH",
   ACTIVE_DISPUTE: "ACTIVE_DISPUTE",
-};
+}
 exports.PaymentReconciliationExceptionType = PaymentReconciliationExceptionType;
 
 const PaymentWebhookEventOutcome = {
@@ -53,13 +67,13 @@ const PaymentWebhookEventOutcome = {
   IGNORED: "IGNORED",
   DUPLICATE: "DUPLICATE",
   FAILED: "FAILED",
-};
+}
 exports.PaymentWebhookEventOutcome = PaymentWebhookEventOutcome;
 
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
-};
+}
 exports.SectionType = SectionType;
 
 const SectionUserGroupPurpose = {
@@ -68,13 +82,13 @@ const SectionUserGroupPurpose = {
   BOOKER: "BOOKER",
   MESSAGE: "MESSAGE",
   MODERATOR: "MODERATOR",
-};
+}
 exports.SectionUserGroupPurpose = SectionUserGroupPurpose;
 
 const TicketAudience = {
   MEMBER: "MEMBER",
   GUEST: "GUEST",
-};
+}
 exports.TicketAudience = TicketAudience;
 
 const TicketOrderStatus = {
@@ -82,7 +96,7 @@ const TicketOrderStatus = {
   PAID: "PAID",
   FAILED: "FAILED",
   REFUNDED: "REFUNDED",
-};
+}
 exports.TicketOrderStatus = TicketOrderStatus;
 
 const connectorConfig = {
@@ -267,6 +281,41 @@ function createPaymentWebhookEvent(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.createPaymentWebhookEvent = createPaymentWebhookEvent;
 
+function getNotificationDeliveryByChannelAndKey(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotificationDeliveryByChannelAndKey', inputVars, inputOpts);
+}
+exports.getNotificationDeliveryByChannelAndKey = getNotificationDeliveryByChannelAndKey;
+
+function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateNotificationDelivery', inputVars, inputOpts);
+}
+exports.createNotificationDelivery = createNotificationDelivery;
+
+function markNotificationDeliveryPendingById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliveryPendingById', inputVars, inputOpts);
+}
+exports.markNotificationDeliveryPendingById = markNotificationDeliveryPendingById;
+
+function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliverySentById', inputVars, inputOpts);
+}
+exports.markNotificationDeliverySentById = markNotificationDeliverySentById;
+
+function markNotificationDeliveryFailedById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliveryFailedById', inputVars, inputOpts);
+}
+exports.markNotificationDeliveryFailedById = markNotificationDeliveryFailedById;
+
 function markTicketOrderPaidFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -329,6 +378,41 @@ function deleteBookingLineFromCallable(dcOrVarsOrOptions, varsOrOptions, options
   return dcInstance.executeMutation('DeleteBookingLineFromCallable', inputVars, inputOpts);
 }
 exports.deleteBookingLineFromCallable = deleteBookingLineFromCallable;
+
+function createGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateGuestTicketRequestFromCallable', inputVars, inputOpts);
+}
+exports.createGuestTicketRequestFromCallable = createGuestTicketRequestFromCallable;
+
+function adminReviewGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AdminReviewGuestTicketRequestFromCallable', inputVars, inputOpts);
+}
+exports.adminReviewGuestTicketRequestFromCallable = adminReviewGuestTicketRequestFromCallable;
+
+function getBookingForGuestTicketCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetBookingForGuestTicketCallable', inputVars, inputOpts);
+}
+exports.getBookingForGuestTicketCallable = getBookingForGuestTicketCallable;
+
+function getBookingForNotification(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetBookingForNotification', inputVars, inputOpts);
+}
+exports.getBookingForNotification = getBookingForNotification;
+
+function getGuestTicketRequestForNotification(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGuestTicketRequestForNotification', inputVars, inputOpts);
+}
+exports.getGuestTicketRequestForNotification = getGuestTicketRequestForNotification;
 
 function createBookingDraft(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

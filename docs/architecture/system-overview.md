@@ -40,6 +40,10 @@ flowchart LR
 4. **Payment fulfillment**
    - Stripe sends webhook to `stripeWebhook`.
    - Function verifies signature and updates order state.
+   - On applied lifecycle transitions, customer transactional email may be sent via GOV.UK Notify (idempotent ledger).
+5. **Transactional email (app-owned)**
+   - Bookings, membership status, guest ticket moderation, and payment ops alerts use the same Notify + `NotificationDelivery` pattern.
+   - See [`docs/operations/transactional-email-workflows.md`](../operations/transactional-email-workflows.md).
 
 ## Security boundaries
 

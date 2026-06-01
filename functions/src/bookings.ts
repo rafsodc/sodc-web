@@ -29,7 +29,38 @@ import {
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
-import { computeBookingPaymentDelta } from "./bookingPaymentAdjustments";
+import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
+import { govNotifyApiKey } from "./mailer";
+import {
+  notifyBookingConfirmationEmail,
+  notifyBookingRevisionEmail,
+} from "./bookingEmailDispatcher";
+
+const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+
+/** Schedules confirmation or revision email after a successful submit (not on idempotent replay). */
+export function scheduleBookingSubmitNotificationEmails(args: {
+  bookingId: UUIDString;
+  idempotencyKey: string;
+  appBaseUrl: string;
+  supersededBookingId?: string | null;
+  paymentDelta?: BookingPaymentDelta;
+}): void {
+  if (args.supersededBookingId && args.paymentDelta) {
+    void notifyBookingRevisionEmail({
+      bookingId: args.bookingId,
+      idempotencyKey: args.idempotencyKey,
+      appBaseUrl: args.appBaseUrl,
+      paymentDelta: args.paymentDelta,
+    });
+  } else {
+    void notifyBookingConfirmationEmail({
+      bookingId: args.bookingId,
+      idempotencyKey: args.idempotencyKey,
+      appBaseUrl: args.appBaseUrl,
+    });
+  }
+}
 
 function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   if (
@@ -110,7 +141,7 @@ function isDuplicateKeyError(err: unknown): boolean {
  * Validates booking policy and persists lines as a single SUBMITTED booking for the event.
  * Requires `idempotencyKey` (UUID) per submit attempt; enforced in DB via (event, booker, key) uniqueness.
  */
-export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (request) => {
+export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
 
@@ -353,20 +384,29 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION }, async (re
       id: bookingId as UUIDString,
       status: BookingStatus.SUBMITTED,
     });
+    let paymentDelta: BookingPaymentDelta | undefined;
     if (revisionPlan.supersedesBookingId) {
       await markBookingSupersededFromCallable({ id: revisionPlan.supersedesBookingId });
       const refreshed = await fetchBookingsForBookerAndEvent(uid, eventId);
       const previousBooking = refreshed.find((booking) => booking.id === revisionPlan.supersedesBookingId);
       const revisedBooking = refreshed.find((booking) => booking.id === bookingId);
-      const delta = computeBookingPaymentDelta(previousBooking, revisedBooking);
+      paymentDelta = computeBookingPaymentDelta(previousBooking, revisedBooking);
       await createBookingPaymentAdjustmentFromCallable({
         revisionBookingId: bookingId as UUIDString,
         supersededBookingId: revisionPlan.supersedesBookingId,
-        deltaAmountMinor: delta.deltaAmountMinor,
-        status: delta.status,
+        deltaAmountMinor: paymentDelta.deltaAmountMinor,
+        status: paymentDelta.status,
         orchestrationKey: `${bookingId}:${idempotencyKey}`,
       });
     }
+
+    scheduleBookingSubmitNotificationEmails({
+      bookingId: bookingId as UUIDString,
+      idempotencyKey,
+      appBaseUrl: APP_BASE_URL,
+      supersededBookingId: revisionPlan.supersedesBookingId,
+      paymentDelta,
+    });
 
     logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
     return { bookingId, status: BookingStatus.SUBMITTED, idempotentReplay: false };

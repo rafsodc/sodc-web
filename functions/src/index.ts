@@ -6,6 +6,7 @@ export * from "./users";
 export * from "./membershipStatus";
 export * from "./sections";
 export * from "./bookings";
+export * from "./guestTicketRequests";
 export * from "./payments";
 
 // Initialize Firebase Admin

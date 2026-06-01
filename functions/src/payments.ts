@@ -37,13 +37,28 @@ import {
 import { runTicketOrderTransition } from "./paymentTransitionEngine";
 import { evaluateReconciliationSignals } from "./paymentReconciliation";
 import { emitPaymentLifecycleNotification } from "./paymentNotifications";
+import {
+  createGovNotifyTicketOrderLifecycleDispatcher,
+  defaultWebhookGovNotifyTicketOrderMailer,
+} from "./paymentLifecycleEmailDispatcher";
 import { classifyStripeWebhookDomain } from "./stripeWebhookRouting";
+import { govNotifyApiKey, GOV_NOTIFY_PROVIDER } from "./mailer";
+import { sendNotificationOnce } from "./notificationDelivery";
+import {
+  notifyPaymentOpsDisputeSideState,
+  notifyPaymentOpsReconciliationExceptionOpened,
+} from "./paymentOpsInternalAlerts";
 
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
 const CHECKOUT_CURRENCY = "gbp";
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+
+const govNotifyTicketOrderDispatcher = createGovNotifyTicketOrderLifecycleDispatcher({
+  getMailer: defaultWebhookGovNotifyTicketOrderMailer,
+  appBaseUrl: APP_BASE_URL,
+});
 
 function requireStripe(secretValue: string | undefined): InstanceType<typeof Stripe> {
   if (!secretValue) {
@@ -103,6 +118,30 @@ const RECONCILIATION_EXCEPTION_TYPES = [
   PaymentReconciliationExceptionType.ACTIVE_DISPUTE,
 ] as const;
 
+/** Whether to send the internal ops email when a reconciliation exception is open. */
+export function shouldSendReconciliationExceptionOpenedAlert(args: {
+  status: PaymentReconciliationExceptionStatus;
+  hasSignal: boolean;
+  isNewOpen: boolean;
+  reopenedFromResolved: boolean;
+  exceptionType: PaymentReconciliationExceptionType;
+  fromDisputeWebhook: boolean;
+}): boolean {
+  if (args.status !== PaymentReconciliationExceptionStatus.OPEN || !args.hasSignal) {
+    return false;
+  }
+  if (!args.isNewOpen && !args.reopenedFromResolved) {
+    return false;
+  }
+  if (
+    args.exceptionType === PaymentReconciliationExceptionType.ACTIVE_DISPUTE &&
+    args.fromDisputeWebhook === true
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function upsertReconciliationSnapshot(args: {
   orderId: UUIDString;
   snapshot: {
@@ -112,6 +151,8 @@ async function upsertReconciliationSnapshot(args: {
     stripePaymentIntentId?: string | null;
     disputeStatus?: string | null;
   };
+  stripeEventId: string;
+  fromDisputeWebhook?: boolean;
 }): Promise<void> {
   const signals = evaluateReconciliationSignals(args.snapshot);
   const signalMap = new Map(signals.map((signal) => [signal.type, signal]));
@@ -126,6 +167,7 @@ async function upsertReconciliationSnapshot(args: {
       exceptionType: type,
     });
     const existingRow = existing.data?.paymentReconciliationExceptions?.[0];
+    const previousStatus = existingRow?.status;
 
     if (existingRow?.id) {
       await updatePaymentReconciliationExceptionById({
@@ -145,6 +187,28 @@ async function upsertReconciliationSnapshot(args: {
         ownerUserId: null,
         lastAttemptedAt: nowIso,
         resolvedAt: signal ? null : nowIso,
+      });
+    }
+
+    const isNewOpen = !existingRow?.id;
+    const reopenedFromResolved =
+      !!existingRow?.id && previousStatus === PaymentReconciliationExceptionStatus.RESOLVED;
+    if (
+      shouldSendReconciliationExceptionOpenedAlert({
+        status,
+        hasSignal: !!signal,
+        isNewOpen,
+        reopenedFromResolved,
+        exceptionType: type,
+        fromDisputeWebhook: args.fromDisputeWebhook === true,
+      })
+    ) {
+      void notifyPaymentOpsReconciliationExceptionOpened({
+        orderId: args.orderId,
+        exceptionType: type,
+        exceptionNote: note,
+        stripeEventId: args.stripeEventId,
+        appBaseUrl: APP_BASE_URL,
       });
     }
   }
@@ -537,6 +601,8 @@ async function handleStripeWebhookRequest(args: {
         eventId: event.id,
         orderId: canonicalOrderId,
         disputeState: normalized.disputeState,
+        disputeStripeStatus: dispute.status ?? null,
+        disputeReason: dispute.reason ?? null,
       });
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
@@ -547,15 +613,6 @@ async function handleStripeWebhookRequest(args: {
         stripeObjectId,
         livemode: event.livemode,
       });
-      await emitPaymentLifecycleNotification({
-        type: "PAYMENT_DISPUTE_UPDATED",
-        orderId: canonicalOrderId,
-        eventId: order.event.id,
-        stripeEventId: event.id,
-        status: order.status,
-        disputeState: normalized.disputeState ?? dispute.status ?? null,
-        occurredAt: new Date().toISOString(),
-      });
       await upsertReconciliationSnapshot({
         orderId: canonicalOrderId,
         snapshot: {
@@ -565,6 +622,18 @@ async function handleStripeWebhookRequest(args: {
           stripePaymentIntentId: order.stripePaymentIntentId ?? null,
           disputeStatus: dispute.status ?? normalized.disputeState ?? null,
         },
+        stripeEventId: event.id,
+        fromDisputeWebhook: true,
+      });
+      void notifyPaymentOpsDisputeSideState({
+        orderId: canonicalOrderId,
+        stripeEventId: event.id,
+        stripeEventType: event.type,
+        disputeStripeStatus: dispute.status ?? "",
+        disputeReason: dispute.reason ?? "",
+        disputeLocalState: normalized.disputeState ?? "",
+        stripeDisputeId: dispute.id ?? "",
+        appBaseUrl: APP_BASE_URL,
       });
       res.status(200).send("Dispute side-state acknowledged");
       return;
@@ -666,14 +735,19 @@ async function handleStripeWebhookRequest(args: {
     });
     const notificationType =
       intent === "MARK_PAID" ? "PAYMENT_PAID" : intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
-    await emitPaymentLifecycleNotification({
-      type: notificationType,
-      orderId: canonicalOrderId,
-      eventId: order.event.id,
-      stripeEventId: event.id,
-      status: transitionResult.targetStatus,
-      occurredAt: new Date().toISOString(),
-    });
+    await emitPaymentLifecycleNotification(
+      {
+        type: notificationType,
+        orderId: canonicalOrderId,
+        eventId: order.event.id,
+        stripeEventId: event.id,
+        status: transitionResult.targetStatus,
+        occurredAt: new Date().toISOString(),
+      },
+      govNotifyTicketOrderDispatcher,
+      sendNotificationOnce,
+      { userId: order.user.id, provider: GOV_NOTIFY_PROVIDER }
+    );
     const nextStatus = transitionResult.action === "applied" ? transitionResult.targetStatus : order.status;
     const paymentIntentIdFromEvent =
       intent === "MARK_PAID"
@@ -698,6 +772,7 @@ async function handleStripeWebhookRequest(args: {
         stripePaymentIntentId: paymentIntentIdFromEvent ?? order.stripePaymentIntentId ?? null,
         disputeStatus: order.disputeStatus ?? null,
       },
+      stripeEventId: event.id,
     });
     res.status(200).send("ok");
   } catch (err) {
@@ -707,14 +782,14 @@ async function handleStripeWebhookRequest(args: {
 }
 
 export const stripeWebhookPayments = onRequest(
-  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret] },
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret, govNotifyApiKey] },
   async (req, res) => {
     await handleStripeWebhookRequest({ domain: "payments", endpointName: "stripeWebhookPayments", req, res });
   }
 );
 
 export const stripeWebhook = onRequest(
-  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret] },
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret, govNotifyApiKey] },
   async (req, res) => {
     logger.warn("stripeWebhook legacy endpoint invoked", {
       migrationTarget: "stripeWebhookPayments",

@@ -1,0 +1,7 @@
+# Used by GitHub Advanced Security default CodeQL setup.
+# Generated Data Connect SDKs are not hand-maintained; see README.md.
+name: "SODC Web CodeQL"
+
+paths-ignore:
+  - "**/dataconnect-generated/**"
+  - "**/dataconnect-admin-generated/**"

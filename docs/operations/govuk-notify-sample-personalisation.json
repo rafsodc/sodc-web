@@ -1,0 +1,129 @@
+{
+  "ticketOrderPaid": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "ticketTypeTitle": "Member ticket",
+    "quantity": 2,
+    "totalFormatted": "50.00 GBP",
+    "currencyDisplay": "GBP",
+    "orderStatusLabel": "Paid",
+    "orderId": "00000000-0000-0000-0000-000000000001",
+    "myPaymentsUrl": "https://app.example/payments"
+  },
+  "ticketOrderFailed": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "ticketTypeTitle": "Member ticket",
+    "quantity": 1,
+    "totalFormatted": "25.00 GBP",
+    "currencyDisplay": "GBP",
+    "orderStatusLabel": "Payment failed",
+    "orderId": "00000000-0000-0000-0000-000000000002",
+    "myPaymentsUrl": "https://app.example/payments"
+  },
+  "ticketOrderRefunded": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "ticketTypeTitle": "Member ticket",
+    "quantity": 1,
+    "totalFormatted": "25.00 GBP",
+    "currencyDisplay": "GBP",
+    "orderStatusLabel": "Refunded",
+    "orderId": "00000000-0000-0000-0000-000000000003",
+    "myPaymentsUrl": "https://app.example/payments",
+    "refundFormatted": "25.00 GBP"
+  },
+  "paymentReconciliationExceptionAlert": {
+    "orderId": "00000000-0000-0000-0000-000000000001",
+    "eventTitle": "Summer Dinner",
+    "customerDisplay": "Alex Example <alex@example.com>",
+    "exceptionType": "MISSING_PAYMENT_INTENT",
+    "exceptionNote": "Paid order has no payment intent id on record",
+    "reconciliationDashboardUrl": "https://app.example/admin/payments/reconciliation",
+    "stripeEventId": "evt_test_reconciliation"
+  },
+  "paymentDisputeOpsAlert": {
+    "orderId": "00000000-0000-0000-0000-000000000001",
+    "eventTitle": "Summer Dinner",
+    "customerDisplay": "Alex Example <alex@example.com>",
+    "disputeStripeStatus": "needs_response",
+    "disputeReason": "fraudulent",
+    "disputeLocalState": "DISPUTE_OPEN",
+    "stripeDisputeId": "dp_test_123",
+    "stripeEventType": "charge.dispute.created",
+    "reconciliationDashboardUrl": "https://app.example/admin/payments/reconciliation",
+    "stripeEventId": "evt_test_dispute"
+  },
+  "membershipActivated": {
+    "customerFirstName": "Alex",
+    "membershipStatusLabel": "Regular",
+    "appUrl": "https://app.example",
+    "profileUrl": "https://app.example/profile"
+  },
+  "membershipAccessRestricted": {
+    "customerFirstName": "Alex",
+    "membershipStatusLabel": "Resigned",
+    "previousStatusLabel": "Regular",
+    "appUrl": "https://app.example"
+  },
+  "guestTicketRequestSubmittedModerator": {
+    "eventTitle": "Summer Dinner",
+    "sectionName": "Example Section",
+    "bookerDisplay": "Alex Example <alex@example.com>",
+    "guestDisplayName": "Guest Name",
+    "requestedGuestCount": 2,
+    "guestTicketTypeTitle": "Additional guest",
+    "dietaryNote": "Vegetarian",
+    "moderationUrl": "https://app.example/admin/sections"
+  },
+  "guestTicketRequestApproved": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "guestDisplayName": "Guest Name",
+    "requestedGuestCount": 2,
+    "decisionLabel": "Approved",
+    "moderatorNote": "Approved for this event.",
+    "myBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010"
+  },
+  "guestTicketRequestRejected": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "guestDisplayName": "Guest Name",
+    "requestedGuestCount": 2,
+    "decisionLabel": "Rejected",
+    "moderatorNote": "Capacity reached.",
+    "myBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010"
+  },
+  "bookingConfirmation": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
+    "revisionNumber": 1,
+    "ticketLinesSummary": "• Member ticket — Alex Example\n• Guest ticket — Guest Name",
+    "bookerDietaryNote": "None",
+    "accommodationSummary": "Not requested",
+    "bookingTotalFormatted": "35.00 GBP",
+    "sectionBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010",
+    "myPaymentsUrl": "https://app.example/payments"
+  },
+  "bookingRevision": {
+    "customerFirstName": "Alex",
+    "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
+    "revisionNumber": 2,
+    "ticketLinesSummary": "• Member ticket — Alex Example\n• Guest ticket — Guest Name",
+    "bookerDietaryNote": "Vegetarian",
+    "accommodationSummary": "Requested — Ground floor if possible",
+    "bookingTotalFormatted": "50.00 GBP",
+    "sectionBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010",
+    "myPaymentsUrl": "https://app.example/payments",
+    "previousRevisionNumber": 1,
+    "revisedRevisionNumber": 2,
+    "paymentAdjustmentStatus": "Additional payment due",
+    "previousTotalFormatted": "35.00 GBP",
+    "revisedTotalFormatted": "50.00 GBP",
+    "deltaAmountFormatted": "+15.00 GBP"
+  }
+}

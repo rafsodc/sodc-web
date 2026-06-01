@@ -173,6 +173,9 @@ query CheckUserProfileExists @auth(level: USER) {
 query GetUserMembershipStatus($id: String!) @auth(level: NO_ACCESS) {
   user(id: $id) {
     membershipStatus
+    firstName
+    lastName
+    email
   }
 }
 

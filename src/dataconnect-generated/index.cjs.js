@@ -35,6 +35,20 @@ const MembershipStatus = {
 }
 exports.MembershipStatus = MembershipStatus;
 
+const NotificationChannel = {
+  EMAIL: "EMAIL",
+  SMS: "SMS",
+  PUSH: "PUSH",
+}
+exports.NotificationChannel = NotificationChannel;
+
+const NotificationDeliveryStatus = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  FAILED: "FAILED",
+}
+exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
+
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -392,6 +406,66 @@ exports.createPaymentWebhookEvent = function createPaymentWebhookEvent(dcOrVars,
   return executeMutation(createPaymentWebhookEventRef(dcOrVars, vars));
 };
 
+const getNotificationDeliveryByChannelAndKeyRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotificationDeliveryByChannelAndKey', inputVars);
+}
+getNotificationDeliveryByChannelAndKeyRef.operationName = 'GetNotificationDeliveryByChannelAndKey';
+exports.getNotificationDeliveryByChannelAndKeyRef = getNotificationDeliveryByChannelAndKeyRef;
+
+exports.getNotificationDeliveryByChannelAndKey = function getNotificationDeliveryByChannelAndKey(dcOrVars, vars) {
+  return executeQuery(getNotificationDeliveryByChannelAndKeyRef(dcOrVars, vars));
+};
+
+const createNotificationDeliveryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateNotificationDelivery', inputVars);
+}
+createNotificationDeliveryRef.operationName = 'CreateNotificationDelivery';
+exports.createNotificationDeliveryRef = createNotificationDeliveryRef;
+
+exports.createNotificationDelivery = function createNotificationDelivery(dcOrVars, vars) {
+  return executeMutation(createNotificationDeliveryRef(dcOrVars, vars));
+};
+
+const markNotificationDeliveryPendingByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliveryPendingById', inputVars);
+}
+markNotificationDeliveryPendingByIdRef.operationName = 'MarkNotificationDeliveryPendingById';
+exports.markNotificationDeliveryPendingByIdRef = markNotificationDeliveryPendingByIdRef;
+
+exports.markNotificationDeliveryPendingById = function markNotificationDeliveryPendingById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliveryPendingByIdRef(dcOrVars, vars));
+};
+
+const markNotificationDeliverySentByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliverySentById', inputVars);
+}
+markNotificationDeliverySentByIdRef.operationName = 'MarkNotificationDeliverySentById';
+exports.markNotificationDeliverySentByIdRef = markNotificationDeliverySentByIdRef;
+
+exports.markNotificationDeliverySentById = function markNotificationDeliverySentById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliverySentByIdRef(dcOrVars, vars));
+};
+
+const markNotificationDeliveryFailedByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliveryFailedById', inputVars);
+}
+markNotificationDeliveryFailedByIdRef.operationName = 'MarkNotificationDeliveryFailedById';
+exports.markNotificationDeliveryFailedByIdRef = markNotificationDeliveryFailedByIdRef;
+
+exports.markNotificationDeliveryFailedById = function markNotificationDeliveryFailedById(dcOrVars, vars) {
+  return executeMutation(markNotificationDeliveryFailedByIdRef(dcOrVars, vars));
+};
+
 const markTicketOrderPaidFromWebhookRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -498,6 +572,66 @@ exports.deleteBookingLineFromCallableRef = deleteBookingLineFromCallableRef;
 
 exports.deleteBookingLineFromCallable = function deleteBookingLineFromCallable(dcOrVars, vars) {
   return executeMutation(deleteBookingLineFromCallableRef(dcOrVars, vars));
+};
+
+const createGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateGuestTicketRequestFromCallable', inputVars);
+}
+createGuestTicketRequestFromCallableRef.operationName = 'CreateGuestTicketRequestFromCallable';
+exports.createGuestTicketRequestFromCallableRef = createGuestTicketRequestFromCallableRef;
+
+exports.createGuestTicketRequestFromCallable = function createGuestTicketRequestFromCallable(dcOrVars, vars) {
+  return executeMutation(createGuestTicketRequestFromCallableRef(dcOrVars, vars));
+};
+
+const adminReviewGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminReviewGuestTicketRequestFromCallable', inputVars);
+}
+adminReviewGuestTicketRequestFromCallableRef.operationName = 'AdminReviewGuestTicketRequestFromCallable';
+exports.adminReviewGuestTicketRequestFromCallableRef = adminReviewGuestTicketRequestFromCallableRef;
+
+exports.adminReviewGuestTicketRequestFromCallable = function adminReviewGuestTicketRequestFromCallable(dcOrVars, vars) {
+  return executeMutation(adminReviewGuestTicketRequestFromCallableRef(dcOrVars, vars));
+};
+
+const getBookingForGuestTicketCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingForGuestTicketCallable', inputVars);
+}
+getBookingForGuestTicketCallableRef.operationName = 'GetBookingForGuestTicketCallable';
+exports.getBookingForGuestTicketCallableRef = getBookingForGuestTicketCallableRef;
+
+exports.getBookingForGuestTicketCallable = function getBookingForGuestTicketCallable(dcOrVars, vars) {
+  return executeQuery(getBookingForGuestTicketCallableRef(dcOrVars, vars));
+};
+
+const getBookingForNotificationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingForNotification', inputVars);
+}
+getBookingForNotificationRef.operationName = 'GetBookingForNotification';
+exports.getBookingForNotificationRef = getBookingForNotificationRef;
+
+exports.getBookingForNotification = function getBookingForNotification(dcOrVars, vars) {
+  return executeQuery(getBookingForNotificationRef(dcOrVars, vars));
+};
+
+const getGuestTicketRequestForNotificationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetGuestTicketRequestForNotification', inputVars);
+}
+getGuestTicketRequestForNotificationRef.operationName = 'GetGuestTicketRequestForNotification';
+exports.getGuestTicketRequestForNotificationRef = getGuestTicketRequestForNotificationRef;
+
+exports.getGuestTicketRequestForNotification = function getGuestTicketRequestForNotification(dcOrVars, vars) {
+  return executeQuery(getGuestTicketRequestForNotificationRef(dcOrVars, vars));
 };
 
 const createBookingDraftRef = (dcOrVars, vars) => {

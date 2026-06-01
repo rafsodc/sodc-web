@@ -39,6 +39,18 @@ export enum MembershipStatus {
   DECEASED = "DECEASED",
 };
 
+export enum NotificationChannel {
+  EMAIL = "EMAIL",
+  SMS = "SMS",
+  PUSH = "PUSH",
+};
+
+export enum NotificationDeliveryStatus {
+  PENDING = "PENDING",
+  SENT = "SENT",
+  FAILED = "FAILED",
+};
+
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -157,6 +169,17 @@ export interface AdminReviewGuestTicketRequestData {
   guestTicketRequest_update?: GuestTicketRequest_Key | null;
 }
 
+export interface AdminReviewGuestTicketRequestFromCallableData {
+  guestTicketRequest_update?: GuestTicketRequest_Key | null;
+}
+
+export interface AdminReviewGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
+  status: GuestTicketRequestStatus;
+  moderatorNote?: string | null;
+  reviewedById: string;
+}
+
 export interface AdminReviewGuestTicketRequestVariables {
   id: UUIDString;
   status: GuestTicketRequestStatus;
@@ -251,12 +274,41 @@ export interface CreateGuestTicketRequestData {
   guestTicketRequest_insert: GuestTicketRequest_Key;
 }
 
+export interface CreateGuestTicketRequestFromCallableData {
+  guestTicketRequest_insert: GuestTicketRequest_Key;
+}
+
+export interface CreateGuestTicketRequestFromCallableVariables {
+  bookingId: UUIDString;
+  requestedGuestCount: number;
+  guestTicketTypeId: UUIDString;
+  guestDisplayName: string;
+  dietaryNote?: string | null;
+}
+
 export interface CreateGuestTicketRequestVariables {
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
   guestDisplayName: string;
   dietaryNote?: string | null;
+}
+
+export interface CreateNotificationDeliveryData {
+  notificationDelivery_insert: NotificationDelivery_Key;
+}
+
+export interface CreateNotificationDeliveryVariables {
+  channel: NotificationChannel;
+  notificationType: string;
+  deliveryKey: string;
+  status: NotificationDeliveryStatus;
+  ticketOrderId?: UUIDString | null;
+  bookingId?: UUIDString | null;
+  userId?: string | null;
+  provider?: string | null;
+  attemptCount: number;
+  lastAttemptedAt?: TimestampString | null;
 }
 
 export interface CreatePaymentReconciliationExceptionData {
@@ -441,6 +493,80 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetBookingForGuestTicketCallableData {
+  booking?: {
+    id: UUIDString;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+  } & Booking_Key;
+}
+
+export interface GetBookingForGuestTicketCallableVariables {
+  bookingId: UUIDString;
+}
+
+export interface GetBookingForNotificationData {
+  booking?: {
+    id: UUIDString;
+    revisionNumber: number;
+    bookerDietaryNote?: string | null;
+    sitNextToUserIds?: string[] | null;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        location?: string | null;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+        lines: ({
+          sortOrder: number;
+          guestDisplayName?: string | null;
+          dietaryNote?: string | null;
+          ticketType: {
+            title: string;
+            audience: TicketAudience;
+            price: number;
+          };
+            guestUser?: {
+              firstName: string;
+              lastName: string;
+            };
+        })[];
+          supersedesBooking?: {
+            id: UUIDString;
+            revisionNumber: number;
+          } & Booking_Key;
+  } & Booking_Key;
+}
+
+export interface GetBookingForNotificationVariables {
+  bookingId: UUIDString;
+}
+
 export interface GetBookingsForBookerAndEventData {
   user?: {
     id: string;
@@ -595,6 +721,42 @@ export interface GetEventsForSectionVariables {
   sectionId: UUIDString;
 }
 
+export interface GetGuestTicketRequestForNotificationData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    moderatorNote?: string | null;
+    guestTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
+      booking: {
+        id: UUIDString;
+        booker: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+        } & User_Key;
+          event: {
+            id: UUIDString;
+            title: string;
+            section: {
+              id: UUIDString;
+              name: string;
+            } & Section_Key;
+          } & Event_Key;
+      } & Booking_Key;
+  } & GuestTicketRequest_Key;
+}
+
+export interface GetGuestTicketRequestForNotificationVariables {
+  id: UUIDString;
+}
+
 export interface GetMyBookingPaymentAdjustmentsData {
   user?: {
     id: string;
@@ -730,9 +892,33 @@ export interface GetMyTicketOrdersData {
   } & User_Key;
 }
 
+export interface GetNotificationDeliveryByChannelAndKeyData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    sentAt?: TimestampString | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface GetNotificationDeliveryByChannelAndKeyVariables {
+  channel: NotificationChannel;
+  deliveryKey: string;
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
+    status: PaymentReconciliationExceptionStatus;
   } & PaymentReconciliationException_Key)[];
 }
 
@@ -882,23 +1068,37 @@ export interface GetTicketOrderForWebhookData {
   ticketOrder?: {
     id: UUIDString;
     status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
     totalAmountMinor: number;
-    event: {
-      id: UUIDString;
-    } & Event_Key;
-      stripeCheckoutSessionId?: string | null;
-      stripePaymentIntentId?: string | null;
-      stripeRefundId?: string | null;
-      refundedAmountMinor?: number | null;
-      refundedAt?: TimestampString | null;
-      stripeDisputeId?: string | null;
-      disputeStatus?: string | null;
-      disputeReason?: string | null;
-      disputeAmountMinor?: number | null;
-      disputeOpenedAt?: TimestampString | null;
-      disputeUpdatedAt?: TimestampString | null;
-      disputeClosedAt?: TimestampString | null;
-      webhookEventId?: string | null;
+    currency: string;
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+          stripeCheckoutSessionId?: string | null;
+          stripePaymentIntentId?: string | null;
+          stripeRefundId?: string | null;
+          refundedAmountMinor?: number | null;
+          refundedAt?: TimestampString | null;
+          stripeDisputeId?: string | null;
+          disputeStatus?: string | null;
+          disputeReason?: string | null;
+          disputeAmountMinor?: number | null;
+          disputeOpenedAt?: TimestampString | null;
+          disputeUpdatedAt?: TimestampString | null;
+          disputeClosedAt?: TimestampString | null;
+          webhookEventId?: string | null;
   } & TicketOrder_Key;
 }
 
@@ -1067,6 +1267,9 @@ export interface GetUserGroupByNameVariables {
 export interface GetUserMembershipStatusData {
   user?: {
     membershipStatus: MembershipStatus;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
 }
 
@@ -1401,6 +1604,45 @@ export interface MarkBookingSupersededFromCallableVariables {
   id: UUIDString;
 }
 
+export interface MarkNotificationDeliveryFailedByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+
+export interface MarkNotificationDeliveryFailedByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+}
+
+export interface MarkNotificationDeliveryPendingByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+
+export interface MarkNotificationDeliveryPendingByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
+export interface MarkNotificationDeliverySentByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+
+export interface MarkNotificationDeliverySentByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  sentAt: TimestampString;
+  provider?: string | null;
+  providerMessageId?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+}
+
 export interface MarkTicketOrderFailedFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -1431,6 +1673,11 @@ export interface MarkTicketOrderRefundedFromWebhookVariables {
   stripeRefundId?: string | null;
   refundedAmountMinor?: number | null;
   refundedAt?: TimestampString | null;
+}
+
+export interface NotificationDelivery_Key {
+  id: UUIDString;
+  __typename?: 'NotificationDelivery_Key';
 }
 
 export interface PaymentReconciliationException_Key {
@@ -2008,6 +2255,66 @@ export const createPaymentWebhookEventRef: CreatePaymentWebhookEventRef;
 export function createPaymentWebhookEvent(vars: CreatePaymentWebhookEventVariables): MutationPromise<CreatePaymentWebhookEventData, CreatePaymentWebhookEventVariables>;
 export function createPaymentWebhookEvent(dc: DataConnect, vars: CreatePaymentWebhookEventVariables): MutationPromise<CreatePaymentWebhookEventData, CreatePaymentWebhookEventVariables>;
 
+interface GetNotificationDeliveryByChannelAndKeyRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryRef<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryRef<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+  operationName: string;
+}
+export const getNotificationDeliveryByChannelAndKeyRef: GetNotificationDeliveryByChannelAndKeyRef;
+
+export function getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+export function getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+
+interface CreateNotificationDeliveryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateNotificationDeliveryVariables): MutationRef<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateNotificationDeliveryVariables): MutationRef<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+  operationName: string;
+}
+export const createNotificationDeliveryRef: CreateNotificationDeliveryRef;
+
+export function createNotificationDelivery(vars: CreateNotificationDeliveryVariables): MutationPromise<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+export function createNotificationDelivery(dc: DataConnect, vars: CreateNotificationDeliveryVariables): MutationPromise<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+
+interface MarkNotificationDeliveryPendingByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+
+export function markNotificationDeliveryPendingById(vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+export function markNotificationDeliveryPendingById(dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+
+interface MarkNotificationDeliverySentByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliverySentByIdVariables): MutationRef<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables): MutationRef<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliverySentByIdRef: MarkNotificationDeliverySentByIdRef;
+
+export function markNotificationDeliverySentById(vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+
+interface MarkNotificationDeliveryFailedByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliveryFailedByIdVariables): MutationRef<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliveryFailedByIdVariables): MutationRef<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliveryFailedByIdRef: MarkNotificationDeliveryFailedByIdRef;
+
+export function markNotificationDeliveryFailedById(vars: MarkNotificationDeliveryFailedByIdVariables): MutationPromise<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+export function markNotificationDeliveryFailedById(dc: DataConnect, vars: MarkNotificationDeliveryFailedByIdVariables): MutationPromise<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+
 interface MarkTicketOrderPaidFromWebhookRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: MarkTicketOrderPaidFromWebhookVariables): MutationRef<MarkTicketOrderPaidFromWebhookData, MarkTicketOrderPaidFromWebhookVariables>;
@@ -2115,6 +2422,66 @@ export const deleteBookingLineFromCallableRef: DeleteBookingLineFromCallableRef;
 
 export function deleteBookingLineFromCallable(vars: DeleteBookingLineFromCallableVariables): MutationPromise<DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables>;
 export function deleteBookingLineFromCallable(dc: DataConnect, vars: DeleteBookingLineFromCallableVariables): MutationPromise<DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables>;
+
+interface CreateGuestTicketRequestFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateGuestTicketRequestFromCallableVariables): MutationRef<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables): MutationRef<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+  operationName: string;
+}
+export const createGuestTicketRequestFromCallableRef: CreateGuestTicketRequestFromCallableRef;
+
+export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+
+interface AdminReviewGuestTicketRequestFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationRef<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationRef<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+  operationName: string;
+}
+export const adminReviewGuestTicketRequestFromCallableRef: AdminReviewGuestTicketRequestFromCallableRef;
+
+export function adminReviewGuestTicketRequestFromCallable(vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationPromise<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+export function adminReviewGuestTicketRequestFromCallable(dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables): MutationPromise<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+
+interface GetBookingForGuestTicketCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingForGuestTicketCallableVariables): QueryRef<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables): QueryRef<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+  operationName: string;
+}
+export const getBookingForGuestTicketCallableRef: GetBookingForGuestTicketCallableRef;
+
+export function getBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+export function getBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+
+interface GetBookingForNotificationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingForNotificationVariables): QueryRef<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetBookingForNotificationVariables): QueryRef<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+  operationName: string;
+}
+export const getBookingForNotificationRef: GetBookingForNotificationRef;
+
+export function getBookingForNotification(vars: GetBookingForNotificationVariables): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+export function getBookingForNotification(dc: DataConnect, vars: GetBookingForNotificationVariables): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+
+interface GetGuestTicketRequestForNotificationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetGuestTicketRequestForNotificationVariables): QueryRef<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables): QueryRef<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+  operationName: string;
+}
+export const getGuestTicketRequestForNotificationRef: GetGuestTicketRequestForNotificationRef;
+
+export function getGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+export function getGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
 
 interface CreateBookingDraftRef {
   /* Allow users to create refs without passing in DataConnect */

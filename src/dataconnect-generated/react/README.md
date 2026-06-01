@@ -27,7 +27,11 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
+  - [*GetNotificationDeliveryByChannelAndKey*](#getnotificationdeliverybychannelandkey)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
+  - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
+  - [*GetBookingForNotification*](#getbookingfornotification)
+  - [*GetGuestTicketRequestForNotification*](#getguestticketrequestfornotification)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -70,6 +74,10 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UpdateBookingStatusFromCallable*](#updatebookingstatusfromcallable)
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
+  - [*CreateNotificationDelivery*](#createnotificationdelivery)
+  - [*MarkNotificationDeliveryPendingById*](#marknotificationdeliverypendingbyid)
+  - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
+  - [*MarkNotificationDeliveryFailedById*](#marknotificationdeliveryfailedbyid)
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
   - [*MarkTicketOrderFailedFromWebhook*](#markticketorderfailedfromwebhook)
   - [*MarkTicketOrderRefundedFromWebhook*](#markticketorderrefundedfromwebhook)
@@ -78,6 +86,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UpdatePaymentReconciliationExceptionById*](#updatepaymentreconciliationexceptionbyid)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
   - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
+  - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
+  - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
   - [*UpdateBookingStatus*](#updatebookingstatus)
@@ -926,23 +936,37 @@ export interface GetTicketOrderForWebhookData {
   ticketOrder?: {
     id: UUIDString;
     status: TicketOrderStatus;
+    quantity: number;
+    unitAmountMinor: number;
     totalAmountMinor: number;
-    event: {
-      id: UUIDString;
-    } & Event_Key;
-      stripeCheckoutSessionId?: string | null;
-      stripePaymentIntentId?: string | null;
-      stripeRefundId?: string | null;
-      refundedAmountMinor?: number | null;
-      refundedAt?: TimestampString | null;
-      stripeDisputeId?: string | null;
-      disputeStatus?: string | null;
-      disputeReason?: string | null;
-      disputeAmountMinor?: number | null;
-      disputeOpenedAt?: TimestampString | null;
-      disputeUpdatedAt?: TimestampString | null;
-      disputeClosedAt?: TimestampString | null;
-      webhookEventId?: string | null;
+    currency: string;
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+      } & Event_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+        } & TicketType_Key;
+          stripeCheckoutSessionId?: string | null;
+          stripePaymentIntentId?: string | null;
+          stripeRefundId?: string | null;
+          refundedAmountMinor?: number | null;
+          refundedAt?: TimestampString | null;
+          stripeDisputeId?: string | null;
+          disputeStatus?: string | null;
+          disputeReason?: string | null;
+          disputeAmountMinor?: number | null;
+          disputeOpenedAt?: TimestampString | null;
+          disputeUpdatedAt?: TimestampString | null;
+          disputeClosedAt?: TimestampString | null;
+          webhookEventId?: string | null;
   } & TicketOrder_Key;
 }
 ```
@@ -1181,6 +1205,104 @@ export default function GetPaymentWebhookEventByStripeEventIdComponent() {
 }
 ```
 
+## GetNotificationDeliveryByChannelAndKey
+You can execute the `GetNotificationDeliveryByChannelAndKey` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: useDataConnectQueryOptions<GetNotificationDeliveryByChannelAndKeyData>): UseDataConnectQueryResult<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: useDataConnectQueryOptions<GetNotificationDeliveryByChannelAndKeyData>): UseDataConnectQueryResult<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+```
+
+### Variables
+The `GetNotificationDeliveryByChannelAndKey` Query requires an argument of type `GetNotificationDeliveryByChannelAndKeyVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetNotificationDeliveryByChannelAndKeyVariables {
+  channel: NotificationChannel;
+  deliveryKey: string;
+}
+```
+### Return Type
+Recall that calling the `GetNotificationDeliveryByChannelAndKey` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotificationDeliveryByChannelAndKey` Query is of type `GetNotificationDeliveryByChannelAndKeyData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotificationDeliveryByChannelAndKeyData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    sentAt?: TimestampString | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotificationDeliveryByChannelAndKey`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetNotificationDeliveryByChannelAndKeyVariables } from '@dataconnect/generated';
+import { useGetNotificationDeliveryByChannelAndKey } from '@dataconnect/generated/react'
+
+export default function GetNotificationDeliveryByChannelAndKeyComponent() {
+  // The `useGetNotificationDeliveryByChannelAndKey` Query hook requires an argument of type `GetNotificationDeliveryByChannelAndKeyVariables`:
+  const getNotificationDeliveryByChannelAndKeyVars: GetNotificationDeliveryByChannelAndKeyVariables = {
+    channel: ..., 
+    deliveryKey: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotificationDeliveryByChannelAndKey(getNotificationDeliveryByChannelAndKeyVars);
+  // Variables can be defined inline as well.
+  const query = useGetNotificationDeliveryByChannelAndKey({ channel: ..., deliveryKey: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotificationDeliveryByChannelAndKey(dataConnect, getNotificationDeliveryByChannelAndKeyVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotificationDeliveryByChannelAndKey(getNotificationDeliveryByChannelAndKeyVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotificationDeliveryByChannelAndKey(dataConnect, getNotificationDeliveryByChannelAndKeyVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notificationDeliveries);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetPaymentReconciliationExceptionByOrderAndType
 You can execute the `GetPaymentReconciliationExceptionByOrderAndType` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -1211,6 +1333,7 @@ To access the data returned by a Query, use the `UseQueryResult.data` field. The
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
+    status: PaymentReconciliationExceptionStatus;
   } & PaymentReconciliationException_Key)[];
 }
 ```
@@ -1262,6 +1385,338 @@ export default function GetPaymentReconciliationExceptionByOrderAndTypeComponent
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.paymentReconciliationExceptions);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetBookingForGuestTicketCallable
+You can execute the `GetBookingForGuestTicketCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables, options?: useDataConnectQueryOptions<GetBookingForGuestTicketCallableData>): UseDataConnectQueryResult<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables, options?: useDataConnectQueryOptions<GetBookingForGuestTicketCallableData>): UseDataConnectQueryResult<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+```
+
+### Variables
+The `GetBookingForGuestTicketCallable` Query requires an argument of type `GetBookingForGuestTicketCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetBookingForGuestTicketCallableVariables {
+  bookingId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetBookingForGuestTicketCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetBookingForGuestTicketCallable` Query is of type `GetBookingForGuestTicketCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetBookingForGuestTicketCallableData {
+  booking?: {
+    id: UUIDString;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+  } & Booking_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetBookingForGuestTicketCallable`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetBookingForGuestTicketCallableVariables } from '@dataconnect/generated';
+import { useGetBookingForGuestTicketCallable } from '@dataconnect/generated/react'
+
+export default function GetBookingForGuestTicketCallableComponent() {
+  // The `useGetBookingForGuestTicketCallable` Query hook requires an argument of type `GetBookingForGuestTicketCallableVariables`:
+  const getBookingForGuestTicketCallableVars: GetBookingForGuestTicketCallableVariables = {
+    bookingId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetBookingForGuestTicketCallable(getBookingForGuestTicketCallableVars);
+  // Variables can be defined inline as well.
+  const query = useGetBookingForGuestTicketCallable({ bookingId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetBookingForGuestTicketCallable(dataConnect, getBookingForGuestTicketCallableVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingForGuestTicketCallable(getBookingForGuestTicketCallableVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingForGuestTicketCallable(dataConnect, getBookingForGuestTicketCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.booking);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetBookingForNotification
+You can execute the `GetBookingForNotification` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetBookingForNotification(dc: DataConnect, vars: GetBookingForNotificationVariables, options?: useDataConnectQueryOptions<GetBookingForNotificationData>): UseDataConnectQueryResult<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetBookingForNotification(vars: GetBookingForNotificationVariables, options?: useDataConnectQueryOptions<GetBookingForNotificationData>): UseDataConnectQueryResult<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+```
+
+### Variables
+The `GetBookingForNotification` Query requires an argument of type `GetBookingForNotificationVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetBookingForNotificationVariables {
+  bookingId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetBookingForNotification` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetBookingForNotification` Query is of type `GetBookingForNotificationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetBookingForNotificationData {
+  booking?: {
+    id: UUIDString;
+    revisionNumber: number;
+    bookerDietaryNote?: string | null;
+    sitNextToUserIds?: string[] | null;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        location?: string | null;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+        lines: ({
+          sortOrder: number;
+          guestDisplayName?: string | null;
+          dietaryNote?: string | null;
+          ticketType: {
+            title: string;
+            audience: TicketAudience;
+            price: number;
+          };
+            guestUser?: {
+              firstName: string;
+              lastName: string;
+            };
+        })[];
+          supersedesBooking?: {
+            id: UUIDString;
+            revisionNumber: number;
+          } & Booking_Key;
+  } & Booking_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetBookingForNotification`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetBookingForNotificationVariables } from '@dataconnect/generated';
+import { useGetBookingForNotification } from '@dataconnect/generated/react'
+
+export default function GetBookingForNotificationComponent() {
+  // The `useGetBookingForNotification` Query hook requires an argument of type `GetBookingForNotificationVariables`:
+  const getBookingForNotificationVars: GetBookingForNotificationVariables = {
+    bookingId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetBookingForNotification(getBookingForNotificationVars);
+  // Variables can be defined inline as well.
+  const query = useGetBookingForNotification({ bookingId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetBookingForNotification(dataConnect, getBookingForNotificationVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingForNotification(getBookingForNotificationVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingForNotification(dataConnect, getBookingForNotificationVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.booking);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetGuestTicketRequestForNotification
+You can execute the `GetGuestTicketRequestForNotification` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestForNotificationData>): UseDataConnectQueryResult<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestForNotificationData>): UseDataConnectQueryResult<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+```
+
+### Variables
+The `GetGuestTicketRequestForNotification` Query requires an argument of type `GetGuestTicketRequestForNotificationVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetGuestTicketRequestForNotificationVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetGuestTicketRequestForNotification` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetGuestTicketRequestForNotification` Query is of type `GetGuestTicketRequestForNotificationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetGuestTicketRequestForNotificationData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    moderatorNote?: string | null;
+    guestTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
+      booking: {
+        id: UUIDString;
+        booker: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+        } & User_Key;
+          event: {
+            id: UUIDString;
+            title: string;
+            section: {
+              id: UUIDString;
+              name: string;
+            } & Section_Key;
+          } & Event_Key;
+      } & Booking_Key;
+  } & GuestTicketRequest_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetGuestTicketRequestForNotification`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetGuestTicketRequestForNotificationVariables } from '@dataconnect/generated';
+import { useGetGuestTicketRequestForNotification } from '@dataconnect/generated/react'
+
+export default function GetGuestTicketRequestForNotificationComponent() {
+  // The `useGetGuestTicketRequestForNotification` Query hook requires an argument of type `GetGuestTicketRequestForNotificationVariables`:
+  const getGuestTicketRequestForNotificationVars: GetGuestTicketRequestForNotificationVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetGuestTicketRequestForNotification(getGuestTicketRequestForNotificationVars);
+  // Variables can be defined inline as well.
+  const query = useGetGuestTicketRequestForNotification({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetGuestTicketRequestForNotification(dataConnect, getGuestTicketRequestForNotificationVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetGuestTicketRequestForNotification(getGuestTicketRequestForNotificationVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetGuestTicketRequestForNotification(dataConnect, getGuestTicketRequestForNotificationVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.guestTicketRequest);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -1974,6 +2429,9 @@ To access the data returned by a Query, use the `UseQueryResult.data` field. The
 export interface GetUserMembershipStatusData {
   user?: {
     membershipStatus: MembershipStatus;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
 }
 ```
@@ -5324,6 +5782,430 @@ export default function CreatePaymentWebhookEventComponent() {
 }
 ```
 
+## CreateNotificationDelivery
+You can execute the `CreateNotificationDelivery` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateNotificationDelivery(options?: useDataConnectMutationOptions<CreateNotificationDeliveryData, FirebaseError, CreateNotificationDeliveryVariables>): UseDataConnectMutationResult<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateNotificationDelivery(dc: DataConnect, options?: useDataConnectMutationOptions<CreateNotificationDeliveryData, FirebaseError, CreateNotificationDeliveryVariables>): UseDataConnectMutationResult<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
+```
+
+### Variables
+The `CreateNotificationDelivery` Mutation requires an argument of type `CreateNotificationDeliveryVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateNotificationDeliveryVariables {
+  channel: NotificationChannel;
+  notificationType: string;
+  deliveryKey: string;
+  status: NotificationDeliveryStatus;
+  ticketOrderId?: UUIDString | null;
+  bookingId?: UUIDString | null;
+  userId?: string | null;
+  provider?: string | null;
+  attemptCount: number;
+  lastAttemptedAt?: TimestampString | null;
+}
+```
+### Return Type
+Recall that calling the `CreateNotificationDelivery` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateNotificationDelivery` Mutation is of type `CreateNotificationDeliveryData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateNotificationDeliveryData {
+  notificationDelivery_insert: NotificationDelivery_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateNotificationDelivery`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateNotificationDeliveryVariables } from '@dataconnect/generated';
+import { useCreateNotificationDelivery } from '@dataconnect/generated/react'
+
+export default function CreateNotificationDeliveryComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateNotificationDelivery();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateNotificationDelivery(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotificationDelivery(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotificationDelivery(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateNotificationDelivery` Mutation requires an argument of type `CreateNotificationDeliveryVariables`:
+  const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
+    channel: ..., 
+    notificationType: ..., 
+    deliveryKey: ..., 
+    status: ..., 
+    ticketOrderId: ..., // optional
+    bookingId: ..., // optional
+    userId: ..., // optional
+    provider: ..., // optional
+    attemptCount: ..., 
+    lastAttemptedAt: ..., // optional
+  };
+  mutation.mutate(createNotificationDeliveryVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ channel: ..., notificationType: ..., deliveryKey: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createNotificationDeliveryVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notificationDelivery_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkNotificationDeliveryPendingById
+You can execute the `MarkNotificationDeliveryPendingById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkNotificationDeliveryPendingById(options?: useDataConnectMutationOptions<MarkNotificationDeliveryPendingByIdData, FirebaseError, MarkNotificationDeliveryPendingByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkNotificationDeliveryPendingById(dc: DataConnect, options?: useDataConnectMutationOptions<MarkNotificationDeliveryPendingByIdData, FirebaseError, MarkNotificationDeliveryPendingByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+```
+
+### Variables
+The `MarkNotificationDeliveryPendingById` Mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkNotificationDeliveryPendingByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+```
+### Return Type
+Recall that calling the `MarkNotificationDeliveryPendingById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotificationDeliveryPendingById` Mutation is of type `MarkNotificationDeliveryPendingByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkNotificationDeliveryPendingByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkNotificationDeliveryPendingById`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkNotificationDeliveryPendingByIdVariables } from '@dataconnect/generated';
+import { useMarkNotificationDeliveryPendingById } from '@dataconnect/generated/react'
+
+export default function MarkNotificationDeliveryPendingByIdComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkNotificationDeliveryPendingById();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkNotificationDeliveryPendingById(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotificationDeliveryPendingById(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotificationDeliveryPendingById(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkNotificationDeliveryPendingById` Mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`:
+  const markNotificationDeliveryPendingByIdVars: MarkNotificationDeliveryPendingByIdVariables = {
+    id: ..., 
+    attemptCount: ..., 
+    lastAttemptedAt: ..., 
+    provider: ..., // optional
+  };
+  mutation.mutate(markNotificationDeliveryPendingByIdVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markNotificationDeliveryPendingByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notificationDelivery_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkNotificationDeliverySentById
+You can execute the `MarkNotificationDeliverySentById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkNotificationDeliverySentById(options?: useDataConnectMutationOptions<MarkNotificationDeliverySentByIdData, FirebaseError, MarkNotificationDeliverySentByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkNotificationDeliverySentById(dc: DataConnect, options?: useDataConnectMutationOptions<MarkNotificationDeliverySentByIdData, FirebaseError, MarkNotificationDeliverySentByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+```
+
+### Variables
+The `MarkNotificationDeliverySentById` Mutation requires an argument of type `MarkNotificationDeliverySentByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkNotificationDeliverySentByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  sentAt: TimestampString;
+  provider?: string | null;
+  providerMessageId?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+}
+```
+### Return Type
+Recall that calling the `MarkNotificationDeliverySentById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotificationDeliverySentById` Mutation is of type `MarkNotificationDeliverySentByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkNotificationDeliverySentByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkNotificationDeliverySentById`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkNotificationDeliverySentByIdVariables } from '@dataconnect/generated';
+import { useMarkNotificationDeliverySentById } from '@dataconnect/generated/react'
+
+export default function MarkNotificationDeliverySentByIdComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkNotificationDeliverySentById();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkNotificationDeliverySentById(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotificationDeliverySentById(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotificationDeliverySentById(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkNotificationDeliverySentById` Mutation requires an argument of type `MarkNotificationDeliverySentByIdVariables`:
+  const markNotificationDeliverySentByIdVars: MarkNotificationDeliverySentByIdVariables = {
+    id: ..., 
+    attemptCount: ..., 
+    lastAttemptedAt: ..., 
+    sentAt: ..., 
+    provider: ..., // optional
+    providerMessageId: ..., // optional
+    lastErrorCode: ..., // optional
+    lastErrorMessage: ..., // optional
+  };
+  mutation.mutate(markNotificationDeliverySentByIdVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markNotificationDeliverySentByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notificationDelivery_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkNotificationDeliveryFailedById
+You can execute the `MarkNotificationDeliveryFailedById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkNotificationDeliveryFailedById(options?: useDataConnectMutationOptions<MarkNotificationDeliveryFailedByIdData, FirebaseError, MarkNotificationDeliveryFailedByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkNotificationDeliveryFailedById(dc: DataConnect, options?: useDataConnectMutationOptions<MarkNotificationDeliveryFailedByIdData, FirebaseError, MarkNotificationDeliveryFailedByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
+```
+
+### Variables
+The `MarkNotificationDeliveryFailedById` Mutation requires an argument of type `MarkNotificationDeliveryFailedByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkNotificationDeliveryFailedByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+}
+```
+### Return Type
+Recall that calling the `MarkNotificationDeliveryFailedById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotificationDeliveryFailedById` Mutation is of type `MarkNotificationDeliveryFailedByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkNotificationDeliveryFailedByIdData {
+  notificationDelivery_update?: NotificationDelivery_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkNotificationDeliveryFailedById`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkNotificationDeliveryFailedByIdVariables } from '@dataconnect/generated';
+import { useMarkNotificationDeliveryFailedById } from '@dataconnect/generated/react'
+
+export default function MarkNotificationDeliveryFailedByIdComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkNotificationDeliveryFailedById();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkNotificationDeliveryFailedById(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotificationDeliveryFailedById(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotificationDeliveryFailedById(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkNotificationDeliveryFailedById` Mutation requires an argument of type `MarkNotificationDeliveryFailedByIdVariables`:
+  const markNotificationDeliveryFailedByIdVars: MarkNotificationDeliveryFailedByIdVariables = {
+    id: ..., 
+    attemptCount: ..., 
+    lastAttemptedAt: ..., 
+    provider: ..., // optional
+    lastErrorCode: ..., // optional
+    lastErrorMessage: ..., // optional
+  };
+  mutation.mutate(markNotificationDeliveryFailedByIdVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markNotificationDeliveryFailedByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notificationDelivery_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## MarkTicketOrderPaidFromWebhook
 You can execute the `MarkTicketOrderPaidFromWebhook` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -6133,6 +7015,208 @@ export default function DeleteBookingLineFromCallableComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.bookingLine_delete);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateGuestTicketRequestFromCallable
+You can execute the `CreateGuestTicketRequestFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateGuestTicketRequestFromCallable(options?: useDataConnectMutationOptions<CreateGuestTicketRequestFromCallableData, FirebaseError, CreateGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateGuestTicketRequestFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<CreateGuestTicketRequestFromCallableData, FirebaseError, CreateGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+```
+
+### Variables
+The `CreateGuestTicketRequestFromCallable` Mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateGuestTicketRequestFromCallableVariables {
+  bookingId: UUIDString;
+  requestedGuestCount: number;
+  guestTicketTypeId: UUIDString;
+  guestDisplayName: string;
+  dietaryNote?: string | null;
+}
+```
+### Return Type
+Recall that calling the `CreateGuestTicketRequestFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateGuestTicketRequestFromCallable` Mutation is of type `CreateGuestTicketRequestFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateGuestTicketRequestFromCallableData {
+  guestTicketRequest_insert: GuestTicketRequest_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateGuestTicketRequestFromCallable`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateGuestTicketRequestFromCallableVariables } from '@dataconnect/generated';
+import { useCreateGuestTicketRequestFromCallable } from '@dataconnect/generated/react'
+
+export default function CreateGuestTicketRequestFromCallableComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateGuestTicketRequestFromCallable();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateGuestTicketRequestFromCallable(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateGuestTicketRequestFromCallable(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateGuestTicketRequestFromCallable(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateGuestTicketRequestFromCallable` Mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
+  const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
+    bookingId: ..., 
+    requestedGuestCount: ..., 
+    guestTicketTypeId: ..., 
+    guestDisplayName: ..., 
+    dietaryNote: ..., // optional
+  };
+  mutation.mutate(createGuestTicketRequestFromCallableVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createGuestTicketRequestFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.guestTicketRequest_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## AdminReviewGuestTicketRequestFromCallable
+You can execute the `AdminReviewGuestTicketRequestFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAdminReviewGuestTicketRequestFromCallable(options?: useDataConnectMutationOptions<AdminReviewGuestTicketRequestFromCallableData, FirebaseError, AdminReviewGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAdminReviewGuestTicketRequestFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<AdminReviewGuestTicketRequestFromCallableData, FirebaseError, AdminReviewGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
+```
+
+### Variables
+The `AdminReviewGuestTicketRequestFromCallable` Mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AdminReviewGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
+  status: GuestTicketRequestStatus;
+  moderatorNote?: string | null;
+  reviewedById: string;
+}
+```
+### Return Type
+Recall that calling the `AdminReviewGuestTicketRequestFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminReviewGuestTicketRequestFromCallable` Mutation is of type `AdminReviewGuestTicketRequestFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AdminReviewGuestTicketRequestFromCallableData {
+  guestTicketRequest_update?: GuestTicketRequest_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AdminReviewGuestTicketRequestFromCallable`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AdminReviewGuestTicketRequestFromCallableVariables } from '@dataconnect/generated';
+import { useAdminReviewGuestTicketRequestFromCallable } from '@dataconnect/generated/react'
+
+export default function AdminReviewGuestTicketRequestFromCallableComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAdminReviewGuestTicketRequestFromCallable();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAdminReviewGuestTicketRequestFromCallable(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAdminReviewGuestTicketRequestFromCallable(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAdminReviewGuestTicketRequestFromCallable(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAdminReviewGuestTicketRequestFromCallable` Mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`:
+  const adminReviewGuestTicketRequestFromCallableVars: AdminReviewGuestTicketRequestFromCallableVariables = {
+    id: ..., 
+    status: ..., 
+    moderatorNote: ..., // optional
+    reviewedById: ..., 
+  };
+  mutation.mutate(adminReviewGuestTicketRequestFromCallableVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., status: ..., moderatorNote: ..., reviewedById: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(adminReviewGuestTicketRequestFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.guestTicketRequest_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
