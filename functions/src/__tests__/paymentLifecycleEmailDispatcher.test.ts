@@ -18,6 +18,8 @@ describe("paymentLifecycleEmailDispatcher helpers", () => {
 
   it("normalises app base URL", () => {
     expect(normaliseAppBaseUrl("https://app.example/")).toBe("https://app.example");
+    expect(normaliseAppBaseUrl("https://app.example///")).toBe("https://app.example");
+    expect(normaliseAppBaseUrl("https://app.example")).toBe("https://app.example");
   });
 
   it("maps status labels", () => {

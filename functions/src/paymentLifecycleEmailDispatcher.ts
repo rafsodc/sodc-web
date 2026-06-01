@@ -40,7 +40,11 @@ export type TicketOrderTransactionalTemplates = {
 type TicketOrderWebhookRow = NonNullable<GetTicketOrderForWebhookData["ticketOrder"]>;
 
 export function normaliseAppBaseUrl(baseUrl: string): string {
-  return baseUrl.replace(/\/+$/, "");
+  let url = baseUrl;
+  while (url.endsWith("/")) {
+    url = url.slice(0, -1);
+  }
+  return url;
 }
 
 export function formatMinorCurrency(amountMinor: number, currency: string): string {
