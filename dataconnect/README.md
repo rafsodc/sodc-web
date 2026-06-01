@@ -119,6 +119,7 @@ After making changes:
 1. Deploy schema changes: `firebase deploy --only dataconnect:schema`
 2. Deploy operations: `firebase deploy --only dataconnect:api`
 3. Regenerate SDK: `firebase dataconnect:sdk:generate`
+4. Fix admin CJS semicolons (CodeQL): `node functions/scripts/fix-dataconnect-admin-cjs-semicolons.mjs`
 
 ## Related Documentation
 

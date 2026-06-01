@@ -1,7 +1,7 @@
-import {defineSecret} from "firebase-functions/params";
+import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
-import {NotifyClient} from "notifications-node-client";
-import {sanitizeMailerError} from "./mailerErrors";
+import { NotifyClient } from "notifications-node-client";
+import { sanitizeMailerError } from "./mailerErrors";
 
 export const govNotifyApiKey = defineSecret("GOV_NOTIFY_API_KEY");
 
@@ -17,7 +17,7 @@ export type TransactionalEmailPayloads<TPayloads> = {
 
 export interface TransactionalEmailRequest<
   TTemplateName extends string,
-  TPayload extends TemplatePersonalisation
+  TPayload extends TemplatePersonalisation,
 > {
   templateName: TTemplateName;
   to: string;
@@ -31,11 +31,9 @@ export interface TransactionalEmailResult {
   reference?: string;
 }
 
-export interface TransactionalMailer<
-  TPayloads extends TransactionalEmailPayloads<TPayloads>
-> {
+export interface TransactionalMailer<TPayloads extends TransactionalEmailPayloads<TPayloads>> {
   sendEmail<TTemplateName extends Extract<keyof TPayloads, string>>(
-    request: TransactionalEmailRequest<TTemplateName, TPayloads[TTemplateName]>
+    request: TransactionalEmailRequest<TTemplateName, TPayloads[TTemplateName]>,
   ): Promise<TransactionalEmailResult>;
 }
 
@@ -47,7 +45,7 @@ export interface NotifyEmailClient {
       personalisation?: TemplatePersonalisation;
       reference?: string;
       emailReplyToId?: string;
-    }
+    },
   ): Promise<{
     data?: {
       id?: string;
@@ -61,9 +59,7 @@ export interface MailerLogger {
   error(message: string, metadata?: Record<string, unknown>): void;
 }
 
-export interface GovNotifyMailerOptions<
-  TPayloads extends TransactionalEmailPayloads<TPayloads>
-> {
+export interface GovNotifyMailerOptions<TPayloads extends TransactionalEmailPayloads<TPayloads>> {
   apiKey?: string;
   templateIds: Partial<Record<Extract<keyof TPayloads, string>, string | undefined>>;
   emailReplyToId?: string;
@@ -104,13 +100,13 @@ export function govNotifyTemplateEnvVarName(templateName: string): string {
 
 export function readGovNotifyTemplateIds<TTemplateName extends string>(
   templateNames: readonly TTemplateName[],
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
 ): Partial<Record<TTemplateName, string>> {
   return Object.fromEntries(
     templateNames.flatMap((templateName) => {
       const value = maybeNonEmpty(env[govNotifyTemplateEnvVarName(templateName)]);
       return value ? [[templateName, value]] : [];
-    })
+    }),
   ) as Partial<Record<TTemplateName, string>>;
 }
 
@@ -118,21 +114,21 @@ export function getGovNotifyEmailReplyToId(env: NodeJS.ProcessEnv = process.env)
   return maybeNonEmpty(env[GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV]);
 }
 
-export function createGovNotifyMailer<
-  TPayloads extends TransactionalEmailPayloads<TPayloads>
->(options: GovNotifyMailerOptions<TPayloads>): TransactionalMailer<TPayloads> {
+export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloads<TPayloads>>(
+  options: GovNotifyMailerOptions<TPayloads>,
+): TransactionalMailer<TPayloads> {
   const activeLogger = options.logger ?? logger;
   const clientFactory = options.clientFactory ?? createNotifyClient;
 
   return {
     async sendEmail<TTemplateName extends Extract<keyof TPayloads, string>>(
-      request: TransactionalEmailRequest<TTemplateName, TPayloads[TTemplateName]>
+      request: TransactionalEmailRequest<TTemplateName, TPayloads[TTemplateName]>,
     ): Promise<TransactionalEmailResult> {
       try {
         const apiKey = requiredConfig(options.apiKey, "GOV_NOTIFY_API_KEY");
         const templateId = requiredConfig(
           options.templateIds[request.templateName],
-          govNotifyTemplateEnvVarName(request.templateName)
+          govNotifyTemplateEnvVarName(request.templateName),
         );
         const client = clientFactory(apiKey);
         const response = await client.sendEmail(templateId, request.to, {
@@ -166,11 +162,9 @@ export function createGovNotifyMailer<
   };
 }
 
-export function createConfiguredGovNotifyMailer<
-  TPayloads extends TransactionalEmailPayloads<TPayloads>
->(
+export function createConfiguredGovNotifyMailer<TPayloads extends TransactionalEmailPayloads<TPayloads>>(
   templateNames: readonly Extract<keyof TPayloads, string>[],
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
 ): TransactionalMailer<TPayloads> {
   return createGovNotifyMailer<TPayloads>({
     apiKey: govNotifyApiKey.value(),
@@ -179,4 +173,4 @@ export function createConfiguredGovNotifyMailer<
   });
 }
 
-export {sanitizeMailerError};
+export { sanitizeMailerError };
