@@ -56,6 +56,7 @@ export const updateMembershipStatus = onCall(
   }
 
   const isAdmin = request.auth!.token.admin === true;
+  const callerEnabled = request.auth!.token.enabled === true;
   if (!isAdmin && request.auth!.uid !== userId) {
     throw new HttpsError("permission-denied", "Users can only update their own profile");
   }
@@ -71,7 +72,8 @@ export const updateMembershipStatus = onCall(
       currentStatus,
       newStatus as MembershipStatus,
       isAdmin,
-      targetUserIsAdmin
+      targetUserIsAdmin,
+      callerEnabled
     );
     
     if (!validation.allowed) {
@@ -129,10 +131,17 @@ async function fetchCurrentStatusFromDataConnect(
 ): Promise<MembershipStatus | null> {
   try {
     const result = await getUserMembershipStatus({ id: userId });
-    return result.data?.user?.membershipStatus as MembershipStatus | null || null;
-  } catch (error: any) {
-    logger.warn(`Could not fetch current status from Data Connect for userId=${userId}:`, error);
-    return null;
+    const status = result.data?.user?.membershipStatus;
+    if (status === undefined || status === null) {
+      return null;
+    }
+    return status as MembershipStatus;
+  } catch (error: unknown) {
+    logger.error(`Could not fetch current status from Data Connect for userId=${userId}:`, error);
+    throw new HttpsError(
+      "internal",
+      "Could not verify membership status"
+    );
   }
 }
 

@@ -12,10 +12,10 @@ This file documents all auth expressions used in queries and mutations. Use thes
 
 ## Auth Expression Constants
 
-### Basic User Access (Any Authenticated User)
-**Expression:** `@auth(level: USER)`
+### Onboarding Profile Access (Verified Email, Not Enabled)
+**Expression:** `"auth.token.email_verified == true"`
 
-**Usage:** Any authenticated user can access these operations. Used for initial profile creation before the `enabled` claim is set.
+**Usage:** Authenticated users who have verified their email but do not yet have `enabled: true`. Used only for initial profile creation and checking whether a profile exists during onboarding.
 
 **Used in:**
 - `CheckUserProfileExists` query

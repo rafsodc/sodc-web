@@ -10,9 +10,8 @@
 # See AUTH_EXPRESSIONS.md for complete documentation and usage.
 
 # Create initial user profile during registration (before enabled claim is set)
-# This allows new users to complete their profile after email verification
-# Users can only create their own profile (id_expr: "auth.uid")
-# NOTE: membershipStatus is set to PENDING by default, requestedMembershipStatus stores user's selection
+# Requires verified email; users can only create their own profile (id_expr: "auth.uid")
+# NOTE: membershipStatus is set to PENDING; requestedMembershipStatus stores user's selection
 mutation CreateUserProfile(
   $firstName: String!
   $lastName: String!
@@ -23,7 +22,7 @@ mutation CreateUserProfile(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
-) @auth(level: USER) {
+) @auth(expr: "auth.token.email_verified == true") {
   user_upsert(
     data: {
       id_expr: "auth.uid"

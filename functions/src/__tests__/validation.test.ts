@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   isRestrictedStatus,
+  isBlankMembershipStatus,
+  isActivationBlockedStatus,
   canUserChangeStatus,
   NON_RESTRICTED_STATUSES,
   RESTRICTED_STATUSES,
@@ -21,6 +23,25 @@ describe('validation', () => {
       expect(isRestrictedStatus('RESERVE')).toBe(false);
       expect(isRestrictedStatus('INDUSTRY')).toBe(false);
       expect(isRestrictedStatus('CIVIL_SERVICE')).toBe(false);
+    });
+  });
+
+  describe('isBlankMembershipStatus', () => {
+    it('treats null, undefined, and blank as blank', () => {
+      expect(isBlankMembershipStatus(null)).toBe(true);
+      expect(isBlankMembershipStatus(undefined)).toBe(true);
+      expect(isBlankMembershipStatus('')).toBe(true);
+      expect(isBlankMembershipStatus('   ')).toBe(true);
+      expect(isBlankMembershipStatus('REGULAR')).toBe(false);
+    });
+  });
+
+  describe('isActivationBlockedStatus', () => {
+    it('blocks PENDING, blank, and null', () => {
+      expect(isActivationBlockedStatus('PENDING')).toBe(true);
+      expect(isActivationBlockedStatus(null)).toBe(true);
+      expect(isActivationBlockedStatus('')).toBe(true);
+      expect(isActivationBlockedStatus('REGULAR')).toBe(false);
     });
   });
 
@@ -50,6 +71,11 @@ describe('validation', () => {
         expect(result.allowed).toBe(true);
       });
 
+      it('should allow admin activation from null without caller enabled', () => {
+        const result = canUserChangeStatus(null, 'REGULAR', true, false, false);
+        expect(result.allowed).toBe(true);
+      });
+
       it('should not allow admin to set another admin to restricted status', () => {
         const result = canUserChangeStatus('REGULAR', 'PENDING', true, true);
         expect(result.allowed).toBe(false);
@@ -58,23 +84,40 @@ describe('validation', () => {
     });
 
     describe('regular user permissions', () => {
-      it('should allow user to change between non-restricted statuses', () => {
-        const result = canUserChangeStatus('REGULAR', 'RETIRED', false);
+      it('should allow enabled user to change between non-restricted statuses', () => {
+        const result = canUserChangeStatus('REGULAR', 'RETIRED', false, false, true);
         expect(result.allowed).toBe(true);
       });
 
-      it('should not allow user to change from restricted status', () => {
-        const result = canUserChangeStatus('PENDING', 'REGULAR', false);
+      it('should reject when caller is not enabled', () => {
+        const result = canUserChangeStatus('REGULAR', 'RETIRED', false, false, false);
+        expect(result.allowed).toBe(false);
+        expect(result.error).toBe('Account must be enabled');
+      });
+
+      it('should not allow user to change from PENDING', () => {
+        const result = canUserChangeStatus('PENDING', 'REGULAR', false, false, true);
+        expect(result.allowed).toBe(false);
+        expect(result.error).toBe('Cannot change from restricted status');
+      });
+
+      it('should not allow user to self-activate from null status', () => {
+        const result = canUserChangeStatus(null, 'REGULAR', false, false, true);
+        expect(result.allowed).toBe(false);
+        expect(result.error).toBe('Cannot change from restricted status');
+      });
+
+      it('should not allow user to self-activate from blank legacy status', () => {
+        const result = canUserChangeStatus('', 'REGULAR', false, false, true);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe('Cannot change from restricted status');
       });
 
       it('should not allow user to change to restricted status', () => {
-        const result = canUserChangeStatus('REGULAR', 'PENDING', false);
+        const result = canUserChangeStatus('REGULAR', 'PENDING', false, false, true);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe('Cannot change to restricted status');
       });
     });
   });
 });
-

@@ -36,6 +36,7 @@ describe("Data Connect auth contracts", () => {
     const groupMutations = readApiFile("user-group-mutations.gql");
 
     assertAuth(queries, [
+      { op: "query CheckUserProfileExists", mustInclude: '@auth(expr: "auth.token.email_verified == true")' },
       { op: "query ListEventBookingsForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
       { op: "query ListGuestTicketRequestsForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
       { op: "query ListTicketOrdersForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
@@ -59,7 +60,7 @@ describe("Data Connect auth contracts", () => {
     ]);
 
     assertAuth(userMutations, [
-      { op: "mutation CreateUserProfile", mustInclude: "@auth(level: USER)" },
+      { op: "mutation CreateUserProfile", mustInclude: '@auth(expr: "auth.token.email_verified == true")' },
       { op: "mutation UpsertUser", mustInclude: '@auth(expr: "auth.token.enabled == true")' },
       { op: "mutation UpdateUser", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
     ]);
