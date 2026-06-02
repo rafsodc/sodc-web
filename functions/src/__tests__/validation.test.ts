@@ -108,7 +108,7 @@ describe('validation', () => {
       });
 
       it('should not allow user to self-activate from blank legacy status', () => {
-        const result = canUserChangeStatus('' as never, 'REGULAR', false, false, true);
+        const result = canUserChangeStatus('', 'REGULAR', false, false, true);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe('Cannot change from restricted status');
       });

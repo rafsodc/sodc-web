@@ -31,6 +31,9 @@ type MembershipStatus =
   | "LOST"
   | "DECEASED";
 
+/** Values from Data Connect or legacy rows (may be blank). */
+export type MembershipStatusInput = MembershipStatus | null | undefined | string;
+
 /**
  * Checks if a membership status is restricted
  */
@@ -47,7 +50,7 @@ export function isNonRestrictedStatus(status: MembershipStatus): boolean {
 
 /** True when status is null, undefined, or whitespace-only (legacy rows). */
 export function isBlankMembershipStatus(
-  status: MembershipStatus | null | undefined
+  status: MembershipStatusInput
 ): boolean {
   if (status == null) {
     return true;
@@ -62,7 +65,7 @@ export function isBlankMembershipStatus(
  * Statuses that block non-admin self-service changes (awaiting admin approval or unknown).
  */
 export function isActivationBlockedStatus(
-  status: MembershipStatus | null | undefined
+  status: MembershipStatusInput
 ): boolean {
   if (isBlankMembershipStatus(status)) {
     return true;
@@ -80,7 +83,7 @@ export function isActivationBlockedStatus(
  * @returns Object with allowed boolean and optional error message
  */
 export function canUserChangeStatus(
-  currentStatus: MembershipStatus | null | undefined,
+  currentStatus: MembershipStatusInput,
   newStatus: MembershipStatus,
   isAdmin: boolean,
   targetUserIsAdmin: boolean = false,
@@ -120,7 +123,10 @@ export function canUserChangeStatus(
     };
   }
 
-  if (!currentStatus || !isNonRestrictedStatus(currentStatus)) {
+  if (
+    typeof currentStatus !== "string" ||
+    !isNonRestrictedStatus(currentStatus as MembershipStatus)
+  ) {
     return {
       allowed: false,
       error: "Cannot change membership status",
