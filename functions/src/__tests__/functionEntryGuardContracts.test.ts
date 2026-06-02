@@ -25,6 +25,9 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(users, "updateDisplayName", "requireAuth(request);");
     assertOnCallGuard(users, "updateUserDisplayName", "requireAdmin(request);");
     assertOnCallGuard(users, "searchUsers", "requireAdmin(request);");
+    assertOnCallGuard(users, "listUsersWithoutDataConnectProfile", "requireAdmin(request);");
+    assertOnCallGuard(users, "listUsersPendingApproval", "requireAdmin(request);");
+    assertOnCallGuard(users, "syncPendingUserClaims", "requireAuth(request);");
 
     const membership = readSource("membershipStatus.ts");
     assertOnCallGuard(membership, "updateMembershipStatus", "requireAuth(request);");

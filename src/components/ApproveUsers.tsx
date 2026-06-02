@@ -14,16 +14,16 @@ import {
   Button,
 } from "@mui/material";
 import { Visibility, CheckCircle } from "@mui/icons-material";
-import { executeQuery } from "firebase/data-connect";
-import { dataConnect } from "../config/firebase";
-import { listUsersRef } from "@dataconnect/generated";
 import { colors } from "../config/colors";
 import PageHeader from "../shared/components/PageHeader";
 import EditUserDialog from "./EditUserDialog";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../constants";
 import { MembershipStatus } from "@dataconnect/generated";
 import type { SearchUser, PendingUser } from "../types";
-import { updateMembershipStatus } from "../shared/utils/firebaseFunctions";
+import {
+  listUsersPendingApproval,
+  updateMembershipStatus,
+} from "../shared/utils/firebaseFunctions";
 import { Snackbar } from "@mui/material";
 import "./ApproveUsers.css";
 
@@ -45,13 +45,11 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
     setLoading(true);
     setError(null);
     try {
-      const ref = listUsersRef(dataConnect);
-      const result = await executeQuery(ref);
-      // Filter for users with PENDING status
-      const pending = (result.data?.users || []).filter(
-        (user) => user.membershipStatus === MembershipStatus.PENDING
-      ) as PendingUser[];
-      setPendingUsers(pending);
+      const result = await listUsersPendingApproval();
+      if (!result.success || !result.users) {
+        throw new Error(result.error || "Failed to fetch users");
+      }
+      setPendingUsers(result.users as PendingUser[]);
     } catch (err: any) {
       setError(err?.message || "Failed to load pending users");
     } finally {

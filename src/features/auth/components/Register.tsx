@@ -11,6 +11,7 @@ import {
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
+import { syncPendingUserClaims } from "../../../shared/utils/firebaseFunctions";
 
 interface RegisterProps {
   onSuccess?: () => void;
@@ -60,6 +61,15 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
         email.trim(),
         password
       );
+
+      const claimsResult = await syncPendingUserClaims();
+      if (!claimsResult.success) {
+        throw new Error(
+          claimsResult.error ||
+            "Account created but status could not be initialized. Please sign in and try again or contact support."
+        );
+      }
+      await userCredential.user.getIdToken(true);
 
       // Send email verification
       await sendEmailVerification(userCredential.user);
