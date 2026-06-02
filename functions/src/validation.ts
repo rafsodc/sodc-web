@@ -45,19 +45,46 @@ export function isNonRestrictedStatus(status: MembershipStatus): boolean {
   return NON_RESTRICTED_STATUSES.includes(status);
 }
 
+/** True when status is null, undefined, or whitespace-only (legacy rows). */
+export function isBlankMembershipStatus(
+  status: MembershipStatus | null | undefined
+): boolean {
+  if (status == null) {
+    return true;
+  }
+  if (typeof status === "string" && status.trim() === "") {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Statuses that block non-admin self-service changes (awaiting admin approval or unknown).
+ */
+export function isActivationBlockedStatus(
+  status: MembershipStatus | null | undefined
+): boolean {
+  if (isBlankMembershipStatus(status)) {
+    return true;
+  }
+  return isRestrictedStatus(status as MembershipStatus);
+}
+
 /**
  * Validates if a user can change from one membership status to another
- * @param currentStatus - The user's current membership status (null if new user)
+ * @param currentStatus - The user's current membership status (null/blank if unknown or no row)
  * @param newStatus - The desired new membership status
  * @param isAdmin - Whether the user making the change is an admin
  * @param targetUserIsAdmin - Whether the target user (whose status is being changed) is an admin
+ * @param callerEnabled - Whether the caller has auth.token.enabled === true
  * @returns Object with allowed boolean and optional error message
  */
 export function canUserChangeStatus(
-  currentStatus: MembershipStatus | null,
+  currentStatus: MembershipStatus | null | undefined,
   newStatus: MembershipStatus,
   isAdmin: boolean,
-  targetUserIsAdmin: boolean = false
+  targetUserIsAdmin: boolean = false,
+  callerEnabled: boolean = false
 ): { allowed: boolean; error?: string } {
   // If target user is an admin, they cannot have a restricted status
   if (targetUserIsAdmin && isRestrictedStatus(newStatus)) {
@@ -72,15 +99,20 @@ export function canUserChangeStatus(
     return { allowed: true };
   }
 
-  // If current status is restricted, user cannot change it
-  if (currentStatus && isRestrictedStatus(currentStatus)) {
+  if (!callerEnabled) {
+    return {
+      allowed: false,
+      error: "Account must be enabled",
+    };
+  }
+
+  if (isActivationBlockedStatus(currentStatus)) {
     return {
       allowed: false,
       error: "Cannot change from restricted status",
     };
   }
 
-  // If new status is restricted, user cannot change to it
   if (isRestrictedStatus(newStatus)) {
     return {
       allowed: false,
@@ -88,10 +120,15 @@ export function canUserChangeStatus(
     };
   }
 
-  // If both are non-restricted (or current is null for new users), allow the change
+  if (!currentStatus || !isNonRestrictedStatus(currentStatus)) {
+    return {
+      allowed: false,
+      error: "Cannot change membership status",
+    };
+  }
+
   return { allowed: true };
 }
 
 export { NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES };
 export type { MembershipStatus };
-

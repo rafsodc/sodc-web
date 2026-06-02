@@ -159,8 +159,8 @@ query GetUserAccessGroups @auth(expr: "auth.token.enabled == true") {
 
 
 # Check if current user's profile exists and get membership status (for users without enabled claim)
-# Allows users to check if they've completed profile registration and see their status
-query CheckUserProfileExists @auth(level: USER) {
+# Requires verified email; used during onboarding before the enabled claim is set
+query CheckUserProfileExists @auth(expr: "auth.token.email_verified == true") {
   user(key: { id_expr: "auth.uid" }) {
     id
     firstName
