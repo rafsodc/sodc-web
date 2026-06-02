@@ -23,7 +23,7 @@ import { validateUserForm } from "../../users/utils/userHelpers";
 import { NON_RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
 import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { auth } from "../../../config/firebase";
-import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
+import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -105,6 +105,15 @@ export default function ProfileCompletion({
           console.warn("Failed to update display name:", displayNameResult.error);
         }
       }
+
+      const claimsResult = await syncPendingUserClaims();
+      if (!claimsResult.success) {
+        throw new Error(
+          claimsResult.error ||
+            "Profile saved but account status could not be updated. Please try again or contact support."
+        );
+      }
+      await currentUser.getIdToken(true);
 
       setSuccess(true);
       if (onComplete) {

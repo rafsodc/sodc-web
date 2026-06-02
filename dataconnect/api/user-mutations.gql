@@ -32,11 +32,11 @@ mutation CreateUserProfile(
       email: $email
       serviceNumber: $serviceNumber
       requestedMembershipStatus: $requestedMembershipStatus
+      membershipStatus: PENDING
       isRegular: $isRegular
       isReserve: $isReserve
       isCivilServant: $isCivilServant
       isIndustry: $isIndustry
-      # membershipStatus defaults to PENDING
       # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
     }
   )

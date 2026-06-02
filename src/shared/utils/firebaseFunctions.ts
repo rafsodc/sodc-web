@@ -151,6 +151,115 @@ export async function updateUserDisplayName(
   }
 }
 
+interface ListUsersPendingApprovalResponse {
+  users: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+}
+
+export interface UserWithoutDataConnectProfileRow {
+  id: string;
+  email: string;
+  displayName: string;
+  emailVerified: boolean;
+  authDisabled: boolean;
+  claimEnabled: string;
+  claimAdmin: string;
+  createdAt: string;
+  lastSignInTime: string | null;
+}
+
+interface ListUsersWithoutDataConnectProfileResponse {
+  users: UserWithoutDataConnectProfileRow[];
+}
+
+/**
+ * Lists Auth users with enabled claim not true and no Data Connect profile.
+ */
+export async function listUsersWithoutDataConnectProfile(): Promise<{
+  success: boolean;
+  users?: UserWithoutDataConnectProfileRow[];
+  error?: string;
+}> {
+  try {
+    const callable = httpsCallable<void, ListUsersWithoutDataConnectProfileResponse>(
+      functions,
+      "listUsersWithoutDataConnectProfile"
+    );
+    const result = await callable();
+    return { success: true, users: result.data.users };
+  } catch (error: unknown) {
+    const message =
+      error && typeof (error as { message?: string }).message === "string"
+        ? (error as { message: string }).message
+        : "Failed to load users without profile";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Lists users awaiting admin approval (profile complete, Auth not enabled).
+ */
+export async function listUsersPendingApproval(): Promise<{
+  success: boolean;
+  users?: ListUsersPendingApprovalResponse["users"];
+  error?: string;
+}> {
+  try {
+    const callable = httpsCallable<void, ListUsersPendingApprovalResponse>(
+      functions,
+      "listUsersPendingApproval"
+    );
+    const result = await callable();
+    return { success: true, users: result.data.users };
+  } catch (error: unknown) {
+    const message =
+      error && typeof (error as { message?: string }).message === "string"
+        ? (error as { message: string }).message
+        : "Failed to load pending users";
+    return { success: false, error: message };
+  }
+}
+
+interface SyncPendingUserClaimsResponse {
+  success: boolean;
+}
+
+/**
+ * Sets enabled: false on the current user after profile submission.
+ */
+export async function syncPendingUserClaims(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const callable = httpsCallable<void, SyncPendingUserClaimsResponse>(
+      functions,
+      "syncPendingUserClaims"
+    );
+    const result = await callable();
+    return { success: result.data.success };
+  } catch (error: unknown) {
+    const message =
+      error && typeof (error as { message?: string }).message === "string"
+        ? (error as { message: string }).message
+        : "Failed to sync account status";
+    return { success: false, error: message };
+  }
+}
+
 // ============================================================================
 // Membership Status Functions
 // ============================================================================
