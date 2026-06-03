@@ -4,6 +4,7 @@ import {
   isBlankMembershipStatus,
   isActivationBlockedStatus,
   canUserChangeStatus,
+  canUserResignMembership,
   NON_RESTRICTED_STATUSES,
   RESTRICTED_STATUSES,
 } from '../validation';
@@ -118,6 +119,31 @@ describe('validation', () => {
         expect(result.allowed).toBe(false);
         expect(result.error).toBe('Cannot change to restricted status');
       });
+    });
+  });
+
+  describe("canUserResignMembership", () => {
+    it("allows enabled non-admin member with non-restricted status to resign", () => {
+      const result = canUserResignMembership("REGULAR", false, true);
+      expect(result.allowed).toBe(true);
+    });
+
+    it("rejects when caller is not enabled", () => {
+      const result = canUserResignMembership("REGULAR", false, false);
+      expect(result.allowed).toBe(false);
+      expect(result.error).toBe("Account must be enabled");
+    });
+
+    it("rejects admin accounts", () => {
+      const result = canUserResignMembership("REGULAR", true, true);
+      expect(result.allowed).toBe(false);
+      expect(result.error).toBe("Admin accounts cannot resign through this flow");
+    });
+
+    it("rejects restricted current statuses", () => {
+      expect(canUserResignMembership("PENDING", false, true).allowed).toBe(false);
+      expect(canUserResignMembership("RESIGNED", false, true).allowed).toBe(false);
+      expect(canUserResignMembership(null, false, true).allowed).toBe(false);
     });
   });
 });

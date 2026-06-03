@@ -35,6 +35,25 @@ describe("Header account menu", () => {
     expect(onMyPaymentsClick).toHaveBeenCalledTimes(1);
   });
 
+  it("shows Account settings for enabled users and invokes callback", async () => {
+    const user = userEvent.setup();
+    const onAccountSettingsClick = vi.fn();
+
+    render(
+      <Header
+        user={enabledUser}
+        userData={null}
+        onAccountClick={vi.fn()}
+        onAccountSettingsClick={onAccountSettingsClick}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "Account" }));
+
+    expect(onAccountSettingsClick).toHaveBeenCalledTimes(1);
+  });
+
   it("does not show My Payments when user is not enabled", async () => {
     const { useEnabledClaim } = await import("../../../features/users/hooks/useEnabledClaim");
     vi.mocked(useEnabledClaim).mockReturnValue(false);

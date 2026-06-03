@@ -4,6 +4,7 @@ import {
   NON_RESTRICTED_STATUSES,
   RESTRICTED_STATUSES,
   canUserChangeStatus,
+  canUserResignMembership,
 } from '../membershipStatusValidation';
 import { MembershipStatus } from '../../../../dataconnect-generated';
 
@@ -217,6 +218,24 @@ describe('membershipStatusValidation', () => {
         expect(result.allowed).toBe(false);
         expect(result.error).toBe('Cannot change to restricted status');
       });
+    });
+  });
+
+  describe('canUserResignMembership', () => {
+    it('allows non-admin member with non-restricted status', () => {
+      expect(canUserResignMembership(MembershipStatus.REGULAR, false).allowed).toBe(true);
+    });
+
+    it('rejects admin accounts', () => {
+      const result = canUserResignMembership(MembershipStatus.REGULAR, true);
+      expect(result.allowed).toBe(false);
+      expect(result.error).toBe('Admin accounts cannot resign through this flow');
+    });
+
+    it('rejects restricted statuses', () => {
+      expect(canUserResignMembership(MembershipStatus.PENDING, false).allowed).toBe(false);
+      expect(canUserResignMembership(MembershipStatus.RESIGNED, false).allowed).toBe(false);
+      expect(canUserResignMembership(null, false).allowed).toBe(false);
     });
   });
 });

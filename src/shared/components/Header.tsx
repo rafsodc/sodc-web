@@ -13,7 +13,7 @@ interface HeaderProps {
   onAccountClick: () => void;
   onJoinClick?: () => void;
   onProfileClick?: () => void;
-  onSecurityClick?: () => void;
+  onAccountSettingsClick?: () => void;
   onMyPaymentsClick?: () => void;
   /** When set, shows a hamburger on small screens that opens the side navigation. */
   onNavMenuOpen?: () => void;
@@ -36,7 +36,7 @@ export default function Header({
   onAccountClick,
   onJoinClick,
   onProfileClick,
-  onSecurityClick,
+  onAccountSettingsClick,
   onMyPaymentsClick,
   onNavMenuOpen,
 }: HeaderProps) {
@@ -61,10 +61,10 @@ export default function Header({
     }
   };
 
-  const handleSecurity = () => {
+  const handleAccountSettings = () => {
     handleMenuClose();
-    if (onSecurityClick) {
-      onSecurityClick();
+    if (onAccountSettingsClick) {
+      onAccountSettingsClick();
     } else {
       onAccountClick();
     }
@@ -218,7 +218,7 @@ export default function Header({
               )}
               {isEnabled && (
                 <MenuItem
-                  onClick={handleSecurity}
+                  onClick={handleAccountSettings}
                   sx={{
                     "&:focus": {
                       outline: "none",
@@ -228,7 +228,7 @@ export default function Header({
                     },
                   }}
                 >
-                  Security
+                  Account
                 </MenuItem>
               )}
               {isEnabled && (

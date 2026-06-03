@@ -31,6 +31,7 @@ describe("function entry guard contracts", () => {
 
     const membership = readSource("membershipStatus.ts");
     assertOnCallGuard(membership, "updateMembershipStatus", "requireAuth(request);");
+    assertOnCallGuard(membership, "resignMembership", "requireAuth(request);");
 
     const sections = readSource("sections.ts");
     assertOnCallGuard(sections, "getSectionMembersMerged", "requireAuth(request);");
