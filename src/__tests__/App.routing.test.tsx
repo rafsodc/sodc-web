@@ -138,6 +138,10 @@ vi.mock("../shared/components/HomePage", () => ({
   default: () => <h1>Home Page</h1>,
 }));
 
+vi.mock("../features/welcome/components/MemberWelcomePage", () => ({
+  default: () => <h1>Welcome Dashboard</h1>,
+}));
+
 vi.mock("../features/auth/components/AuthGate", () => ({
   default: ({ onBack }: { onBack?: () => void }) => (
     <div>
@@ -249,11 +253,29 @@ describe("App routing", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the account page from a direct deep link", async () => {
+  it("renders the account page from a direct deep link when logged out", async () => {
     renderApp([ROUTES.ACCOUNT]);
 
     expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.ACCOUNT);
+  });
+
+  it("renders welcome dashboard for enabled users at home", async () => {
+    signInEnabledUser();
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it("redirects enabled users from account to home", async () => {
+    signInEnabledUser();
+
+    renderApp([ROUTES.ACCOUNT]);
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 
   it("redirects unauthenticated section deep links to account", async () => {
@@ -289,7 +311,7 @@ describe("App routing", () => {
     expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 
@@ -344,7 +366,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Signals" })).toHaveAttribute("href", "/sections/section-1");
     expect(screen.queryByRole("link", { name: "Administer" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
@@ -373,7 +395,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Administer" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
     expect(screen.getByRole("link", { name: "Manage Sections" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
@@ -386,7 +408,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Administer" }));
 
     expect(await screen.findByRole("heading", { name: "Manage Sections Page" })).toBeInTheDocument();
@@ -402,7 +424,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Administer" }));
     await screen.findByRole("heading", { name: "Manage Sections Page" });
     expect(screen.getByTestId("location-state")).toHaveTextContent("section-1");
@@ -430,7 +452,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Access group" }));
 
     expect(await screen.findByRole("heading", { name: "User Groups Page" })).toBeInTheDocument();
@@ -447,7 +469,7 @@ describe("App routing", () => {
     expect(await screen.findByRole("heading", { name: "Manage Users Page" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 
