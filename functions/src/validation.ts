@@ -136,5 +136,47 @@ export function canUserChangeStatus(
   return { allowed: true };
 }
 
+/**
+ * Whether an enabled non-admin member may resign (transition to RESIGNED).
+ */
+export function canUserResignMembership(
+  currentStatus: MembershipStatusInput,
+  targetUserIsAdmin: boolean,
+  callerEnabled: boolean
+): { allowed: boolean; error?: string } {
+  if (targetUserIsAdmin) {
+    return {
+      allowed: false,
+      error: "Admin accounts cannot resign through this flow",
+    };
+  }
+
+  if (!callerEnabled) {
+    return {
+      allowed: false,
+      error: "Account must be enabled",
+    };
+  }
+
+  if (isActivationBlockedStatus(currentStatus)) {
+    return {
+      allowed: false,
+      error: "Cannot resign from current membership status",
+    };
+  }
+
+  if (
+    typeof currentStatus !== "string" ||
+    !isNonRestrictedStatus(currentStatus as MembershipStatus)
+  ) {
+    return {
+      allowed: false,
+      error: "Cannot resign from current membership status",
+    };
+  }
+
+  return { allowed: true };
+}
+
 export { NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES };
 export type { MembershipStatus };

@@ -5,6 +5,7 @@
 export const ROUTES = {
   HOME: "/",
   ACCOUNT: "/account",
+  ACCOUNT_SETTINGS: "/account/settings",
   PROFILE: "/profile",
   PERMISSIONS: "/admin/permissions",
   MANAGE_USERS: "/admin/users",

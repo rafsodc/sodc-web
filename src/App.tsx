@@ -42,6 +42,7 @@ const AccountStatusMessage = lazy(() => import("./features/users/components/Acco
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
 const MemberWelcomePage = lazy(() => import("./features/welcome/components/MemberWelcomePage"));
+const AccountSettingsPage = lazy(() => import("./features/account/components/AccountSettingsPage"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -131,6 +132,7 @@ function AppContent() {
       userData={userData}
       onAccountClick={() => navigate(ROUTES.ACCOUNT)}
       onProfileClick={() => navigate(ROUTES.PROFILE)}
+      onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
       onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
       onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
     />
@@ -398,6 +400,28 @@ function AppContent() {
                         <Suspense fallback={<LoadingFallback />}>
                           <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigateBackOr(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
                         </Suspense>
+                      ) : (
+                        <Navigate to={ROUTES.ACCOUNT} replace />
+                      )}
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.ACCOUNT_SETTINGS}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      {user && isEnabled ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                          <AccountSettingsPage
+                            key={user.uid}
+                            user={user}
+                            userData={userData}
+                            isAdmin={isAdmin}
+                            onBack={() => navigateBackOr(ROUTES.HOME)}
+                          />
+                        </Suspense>
+                      ) : user ? (
+                        <Navigate to={ROUTES.HOME} replace />
                       ) : (
                         <Navigate to={ROUTES.ACCOUNT} replace />
                       )}

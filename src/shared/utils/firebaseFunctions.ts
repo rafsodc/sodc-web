@@ -301,6 +301,31 @@ export async function updateMembershipStatus(
   }
 }
 
+interface ResignMembershipResponse {
+  success: boolean;
+  message?: string;
+}
+
+/**
+ * Resigns the current user's membership (non-restricted status → RESIGNED).
+ */
+export async function resignMembership(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const resignMembershipCallable = httpsCallable<
+      Record<string, never>,
+      ResignMembershipResponse
+    >(functions, "resignMembership");
+
+    const result = await resignMembershipCallable({});
+    return { success: result.data.success };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error?.message || "Failed to resign membership",
+    };
+  }
+}
+
 // ============================================================================
 // Section members (merged: explicit + inherited by status)
 // ============================================================================
