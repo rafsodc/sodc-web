@@ -131,6 +131,7 @@ function AppContent() {
       userData={userData}
       onAccountClick={() => navigate(ROUTES.ACCOUNT)}
       onProfileClick={() => navigate(ROUTES.PROFILE)}
+      onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
       onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
     />
   );

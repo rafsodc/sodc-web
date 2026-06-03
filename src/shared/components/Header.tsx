@@ -14,6 +14,7 @@ interface HeaderProps {
   onJoinClick?: () => void;
   onProfileClick?: () => void;
   onSecurityClick?: () => void;
+  onMyPaymentsClick?: () => void;
   /** When set, shows a hamburger on small screens that opens the side navigation. */
   onNavMenuOpen?: () => void;
 }
@@ -36,6 +37,7 @@ export default function Header({
   onJoinClick,
   onProfileClick,
   onSecurityClick,
+  onMyPaymentsClick,
   onNavMenuOpen,
 }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -65,6 +67,13 @@ export default function Header({
       onSecurityClick();
     } else {
       onAccountClick();
+    }
+  };
+
+  const handleMyPayments = () => {
+    handleMenuClose();
+    if (onMyPaymentsClick) {
+      onMyPaymentsClick();
     }
   };
 
@@ -220,6 +229,21 @@ export default function Header({
                   }}
                 >
                   Security
+                </MenuItem>
+              )}
+              {isEnabled && (
+                <MenuItem
+                  onClick={handleMyPayments}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  My Payments
                 </MenuItem>
               )}
               <MenuItem
