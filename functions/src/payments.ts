@@ -55,6 +55,21 @@ const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS
 const CHECKOUT_CURRENCY = "gbp";
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
+/** Member payments route — must match frontend `ROUTES.MY_PAYMENTS` (`/payments`). */
+export const MEMBER_PAYMENTS_PATH = "/payments";
+
+export function buildStripeCheckoutReturnUrls(
+  appBaseUrl: string,
+  orderId: string
+): { successUrl: string; cancelUrl: string } {
+  const base = appBaseUrl.replace(/\/$/, "");
+  const orderQuery = encodeURIComponent(orderId);
+  return {
+    successUrl: `${base}${MEMBER_PAYMENTS_PATH}?checkout=success&orderId=${orderQuery}`,
+    cancelUrl: `${base}${MEMBER_PAYMENTS_PATH}?checkout=cancel&orderId=${orderQuery}`,
+  };
+}
+
 const govNotifyTicketOrderDispatcher = createGovNotifyTicketOrderLifecycleDispatcher({
   getMailer: defaultWebhookGovNotifyTicketOrderMailer,
   appBaseUrl: APP_BASE_URL,
@@ -289,11 +304,12 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   const orderId = order.data?.ticketOrder_insert?.id;
   if (!orderId) throw new HttpsError("internal", "Failed to create ticket order");
 
+  const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls(APP_BASE_URL, orderId);
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
     customer: customerId ?? undefined,
-    success_url: `${APP_BASE_URL}/my-payments?checkout=success&orderId=${orderId}`,
-    cancel_url: `${APP_BASE_URL}/my-payments?checkout=cancel&orderId=${orderId}`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     line_items: [
       {
         quantity,
