@@ -62,18 +62,6 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
     }
   }
 
-  async function handleSignOut() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      await signOut(auth);
-    } catch (e: any) {
-      setError(e?.message ?? "Sign-out failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (initialising) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
