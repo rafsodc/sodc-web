@@ -41,6 +41,7 @@ const MyPayments = lazy(() => import("./features/sections/components/MyPayments"
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
+const MemberWelcomePage = lazy(() => import("./features/welcome/components/MemberWelcomePage"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -358,15 +359,34 @@ function AppContent() {
                 </Box>
               )}
               <Routes>
-                <Route path={ROUTES.HOME} element={<HomePage />} />
+                <Route
+                  path={ROUTES.HOME}
+                  element={
+                    user && isEnabled ? (
+                      <Suspense fallback={<LoadingFallback />}>
+                        <MemberWelcomePage
+                          userData={userData}
+                          userEmail={user.email}
+                          sectionsData={userSectionsData}
+                        />
+                      </Suspense>
+                    ) : (
+                      <HomePage />
+                    )
+                  }
+                />
                 <Route
                   path={ROUTES.ACCOUNT}
                   element={
-                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <AuthGate userData={userData} onBack={() => navigateBackOr(ROUTES.HOME)} />
-                      </Suspense>
-                    </Box>
+                    user && isEnabled ? (
+                      <Navigate to={ROUTES.HOME} replace />
+                    ) : (
+                      <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                        <Suspense fallback={<LoadingFallback />}>
+                          <AuthGate userData={userData} onBack={() => navigateBackOr(ROUTES.HOME)} />
+                        </Suspense>
+                      </Box>
+                    )
                   }
                 />
                 <Route

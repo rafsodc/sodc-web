@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -9,7 +10,7 @@ import {
   Typography,
   Link,
 } from "@mui/material";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, type User } from "firebase/auth";
 import { auth } from "../../../config/firebase";
 import { useEnabledClaim } from "../../users/hooks/useEnabledClaim";
 import AccountStatusMessage from "../../users/components/AccountStatusMessage";
@@ -17,6 +18,7 @@ import type { UserData } from "../../../types";
 import Register from "./Register";
 import EmailVerificationMessage from "./EmailVerificationMessage";
 import { colors } from "../../../config/colors";
+import { ROUTES } from "../../../constants";
 
 interface AuthGateProps {
   userData?: UserData | null;
@@ -60,18 +62,6 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
     }
   }
 
-  async function handleSignOut() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      await signOut(auth);
-    } catch (e: any) {
-      setError(e?.message ?? "Sign-out failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (initialising) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
@@ -102,29 +92,8 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
       return <AccountStatusMessage userData={userData ?? null} onBack={onBack} />;
     }
 
-    // User is signed in and enabled
-    return (
-      <Stack spacing={2} sx={{ mt: 2 }}>
-        <Alert severity="success">Signed in</Alert>
-        <Typography>
-          <strong>UID:</strong> {user.uid}
-        </Typography>
-        {user.email ? (
-          <Typography>
-            <strong>Email:</strong> {user.email}
-          </Typography>
-        ) : null}
-
-        <Button variant="contained" onClick={handleSignOut} disabled={submitting}>
-          Sign out
-        </Button>
-        {onBack && (
-          <Button variant="outlined" onClick={onBack}>
-            Back to Home
-          </Button>
-        )}
-      </Stack>
-    );
+    // Enabled members use the welcome dashboard at home, not this sign-in surface.
+    return <Navigate to={ROUTES.HOME} replace />;
   }
 
   if (showRegister) {
