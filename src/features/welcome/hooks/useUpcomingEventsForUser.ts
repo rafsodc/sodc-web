@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getEventsForSection } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
@@ -16,36 +16,58 @@ export interface UpcomingEventRow {
   sectionName: string;
 }
 
+/** Stable key so effect does not re-run when parent passes a new array reference with the same sections. */
+export function sectionsFingerprint(sections: AccessibleSection[]): string {
+  return sections
+    .map((s) => `${s.id}:${s.type}:${s.name}`)
+    .sort()
+    .join("|");
+}
+
 export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
-  const eventSectionIds = useMemo(
-    () =>
-      sections
-        .filter((s) => s.type === SectionType.EVENTS)
-        .map((s) => s.id as UUIDString),
-    [sections]
-  );
+  const fingerprint = sectionsFingerprint(sections);
+
+  const { eventSectionIds, sectionNameById } = useMemo(() => {
+    const eventSections = sections.filter((s) => s.type === SectionType.EVENTS);
+    const names: Record<string, string> = {};
+    for (const section of eventSections) {
+      names[section.id] = section.name;
+    }
+    return {
+      eventSectionIds: eventSections.map((s) => s.id as UUIDString).sort(),
+      sectionNameById: names,
+    };
+  }, [fingerprint]);
+
+  const eventSectionIdsKey = eventSectionIds.join(",");
 
   const [events, setEvents] = useState<UpcomingEventRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const lastFetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (eventSectionIds.length === 0) {
       setEvents([]);
       setIsError(false);
       setLoading(false);
+      lastFetchedKeyRef.current = "";
       return;
     }
 
     let alive = true;
-    setLoading(true);
-    setIsError(false);
+    const isNewFetch = lastFetchedKeyRef.current !== eventSectionIdsKey;
+    lastFetchedKeyRef.current = eventSectionIdsKey;
+
+    if (isNewFetch) {
+      setLoading(true);
+      setIsError(false);
+    }
 
     void (async () => {
       try {
         const results = await Promise.all(
           eventSectionIds.map(async (sectionId) => {
-            const sectionMeta = sections.find((s) => s.id === sectionId);
             const result = await getEventsForSection(dataConnect, { sectionId });
             const section = result.data?.section;
             return (section?.events ?? []).map((event) => ({
@@ -56,7 +78,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
               startDateTime: event.startDateTime,
               endDateTime: event.endDateTime,
               sectionId,
-              sectionName: sectionMeta?.name ?? section?.name ?? "Section",
+              sectionName: sectionNameById[sectionId] ?? section?.name ?? "Section",
             }));
           })
         );
@@ -72,6 +94,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
 
         if (alive) {
           setEvents(upcoming);
+          setIsError(false);
         }
       } catch {
         if (alive) {
@@ -88,7 +111,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
     return () => {
       alive = false;
     };
-  }, [eventSectionIds, sections]);
+  }, [eventSectionIdsKey, eventSectionIds, sectionNameById]);
 
   return { events, loading, isError };
 }

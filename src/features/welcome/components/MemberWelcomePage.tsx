@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Alert,
   Box,
@@ -40,7 +41,7 @@ export default function MemberWelcomePage({
   sectionsData,
 }: MemberWelcomePageProps) {
   const displayName = getMemberDisplayName(userData, userEmail);
-  const sections = extractAccessibleSections(sectionsData);
+  const sections = useMemo(() => extractAccessibleSections(sectionsData), [sectionsData]);
   const { events, loading: loadingEvents, isError: errorEvents } = useUpcomingEventsForUser(sections);
 
   return (
