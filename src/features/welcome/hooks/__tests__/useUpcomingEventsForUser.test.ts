@@ -35,7 +35,6 @@ describe("useUpcomingEventsForUser", () => {
       data: {
         section: {
           id: "section-1",
-          name: "Signals",
           events: [
             {
               id: "event-1",
@@ -51,7 +50,7 @@ describe("useUpcomingEventsForUser", () => {
           ],
         },
       },
-    } as Awaited<ReturnType<typeof getEventsForSection>>);
+    } as unknown as Awaited<ReturnType<typeof getEventsForSection>>);
   });
 
   it("does not refetch when the sections array reference changes but content is the same", async () => {

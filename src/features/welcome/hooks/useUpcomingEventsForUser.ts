@@ -37,6 +37,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
       eventSectionIds: eventSections.map((s) => s.id as UUIDString).sort(),
       sectionNameById: names,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fingerprint encodes sections content without unstable array refs
   }, [fingerprint]);
 
   const eventSectionIdsKey = eventSectionIds.join(",");
@@ -47,7 +48,11 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
   const lastFetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (eventSectionIds.length === 0) {
+    const ids = eventSectionIdsKey
+      ? (eventSectionIdsKey.split(",").filter(Boolean) as UUIDString[])
+      : [];
+
+    if (ids.length === 0) {
       setEvents([]);
       setIsError(false);
       setLoading(false);
@@ -67,7 +72,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
     void (async () => {
       try {
         const results = await Promise.all(
-          eventSectionIds.map(async (sectionId) => {
+          ids.map(async (sectionId) => {
             const result = await getEventsForSection(dataConnect, { sectionId });
             const section = result.data?.section;
             return (section?.events ?? []).map((event) => ({
@@ -78,7 +83,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
               startDateTime: event.startDateTime,
               endDateTime: event.endDateTime,
               sectionId,
-              sectionName: sectionNameById[sectionId] ?? section?.name ?? "Section",
+              sectionName: sectionNameById[sectionId] ?? "Section",
             }));
           })
         );
@@ -111,7 +116,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
     return () => {
       alive = false;
     };
-  }, [eventSectionIdsKey, eventSectionIds, sectionNameById]);
+  }, [eventSectionIdsKey, sectionNameById]);
 
   return { events, loading, isError };
 }

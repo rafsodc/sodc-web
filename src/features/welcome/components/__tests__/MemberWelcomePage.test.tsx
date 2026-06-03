@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { SectionType } from "@dataconnect/generated";
+import { SectionType, MembershipStatus } from "@dataconnect/generated";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
 import MemberWelcomePage from "../MemberWelcomePage";
 
@@ -63,7 +63,7 @@ describe("MemberWelcomePage", () => {
             lastName: "Smith",
             email: "alex@example.com",
             serviceNumber: "123",
-            membershipStatus: "REGULAR",
+            membershipStatus: MembershipStatus.REGULAR,
             createdAt: "",
             updatedAt: "",
           }}
