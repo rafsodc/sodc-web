@@ -174,7 +174,7 @@ describe('SectionDetail', () => {
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
-  it('should render section information', async () => {
+  it('should render section information on the About tab', async () => {
     const mockSectionData = {
       section: {
         id: sectionId,
@@ -214,12 +214,17 @@ describe('SectionDetail', () => {
 
     renderSectionDetail();
 
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
     await waitFor(() => {
       expect(screen.getByText('Test Section')).toBeInTheDocument();
     });
 
+    await user.click(screen.getByRole('tab', { name: 'About' }));
+
+    expect(screen.getByRole('tab', { name: 'About', selected: true })).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
-    expect(screen.getByText('Members')).toBeInTheDocument();
   });
 
   it('should render member list for MEMBERS sections', async () => {
@@ -328,6 +333,15 @@ describe('SectionDetail', () => {
 
     renderSectionDetail();
 
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'About' }));
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /subscribe/i })).toBeInTheDocument();
     });
@@ -381,6 +395,15 @@ describe('SectionDetail', () => {
     });
 
     renderSectionDetail();
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'About' }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
@@ -474,7 +497,7 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
     });
   });
@@ -559,7 +582,7 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
     });
 
@@ -650,9 +673,55 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('button', { name: /back to events/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /back to events/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('should switch between About and Members tabs on MEMBERS sections', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        description: 'Test description',
+        purposeLinks: [],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'About' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Test description')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/search members/i)).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Members' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/search members/i)).toBeInTheDocument();
     });
   });
 });

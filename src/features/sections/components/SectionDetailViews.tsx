@@ -55,22 +55,17 @@ export function SectionInformationView({
   onUnsubscribe,
 }: SectionInformationViewProps) {
   return (
-    <Box sx={{ mt: 3, mb: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        Section Information
-      </Typography>
+    <Box sx={{ mt: 1 }}>
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
         <Chip
           label={getSectionTypeLabel(section.type)}
           size="small"
           color={isMembersSectionType(section.type) ? "primary" : "secondary"}
         />
-        {section.description && (
-          <Typography variant="body2" color="text.secondary">
-            {section.description}
-          </Typography>
-        )}
       </Box>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        {section.description?.trim() || "No description provided for this section."}
+      </Typography>
 
       {isMembers && hasCurrentUser && (
         <Box sx={{ mt: 2 }}>
@@ -128,8 +123,8 @@ export function SectionMembersView({
   onPageChange,
 }: SectionMembersViewProps) {
   return (
-    <>
-      <Typography variant="h6" sx={{ mb: 2 }}>
+    <Box sx={{ mt: 1 }}>
+      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
         Members ({allMembersCount})
       </Typography>
       <SearchBar
@@ -183,7 +178,7 @@ export function SectionMembersView({
           <PaginationDisplay page={page} totalPages={totalPages} onChange={onPageChange} />
         </>
       )}
-    </>
+    </Box>
   );
 }
 
@@ -203,10 +198,7 @@ export function SectionEventsListView({
   onSelectEvent,
 }: SectionEventsListViewProps) {
   return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Events
-      </Typography>
+    <Box sx={{ mt: 1 }}>
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />

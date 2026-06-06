@@ -1,10 +1,12 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type SyntheticEvent } from "react";
 import {
   Box,
   Alert,
   CircularProgress,
   Button,
   Snackbar,
+  Tab,
+  Tabs,
 } from "@mui/material";
 import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
@@ -27,6 +29,12 @@ import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generate
 import { ITEMS_PER_PAGE } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
+import {
+  getDefaultSectionDetailTab,
+  getSectionDetailTabs,
+  sectionDetailTabLabel,
+  type SectionDetailTab,
+} from "../utils/sectionDetailTabs";
 import {
   SectionEventDetailView,
   SectionEventsListView,
@@ -54,6 +62,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [errorMembers, setErrorMembers] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [startingCheckoutId, setStartingCheckoutId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<SectionDetailTab>("about");
 
   const currentUser = auth.currentUser;
   const isAdmin = useAdminClaim(currentUser);
@@ -300,6 +309,30 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     }
   };
 
+  const loadedSection = sectionData?.section;
+  const isMembersSectionType = loadedSection ? isMembersSection(loadedSection as any) : false;
+  const sectionTabs = getSectionDetailTabs(isMembersSectionType);
+
+  useEffect(() => {
+    if (!loadedSection) {
+      return;
+    }
+    setActiveTab(getDefaultSectionDetailTab(isMembersSectionType));
+    setSelectedEventId(null);
+  }, [sectionId, isMembersSectionType, loadedSection]);
+
+  const handleTabChange = (_event: SyntheticEvent, newTab: SectionDetailTab) => {
+    setActiveTab(newTab);
+    if (newTab !== "events") {
+      setSelectedEventId(null);
+    }
+  };
+
+  const handleSelectEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setActiveTab("events");
+  };
+
   if (loadingSection || loadingMembers || loadingUserGroups) {
     return (
       <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
@@ -333,7 +366,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   }
 
   const section = sectionData.section;
-  const isMembers = isMembersSection(section as any);
+  const isMembers = isMembersSectionType;
   const hasSubscribableMemberGroup = memberGroups.some((group) => group.subscribable === true);
   const eventRows = eventsData?.section?.events ?? [];
   const sectionAdminAction = {
@@ -348,19 +381,40 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
       <PageHeader title={section.name} onBack={onBack} adminAction={sectionAdminAction} />
 
-      <SectionInformationView
-        section={section}
-        isMembers={isMembers}
-        hasCurrentUser={Boolean(currentUser)}
-        canSubscribe={canSubscribe}
-        userIsMember={userIsMember}
-        hasSubscribableMemberGroup={hasSubscribableMemberGroup}
-        subscribing={subscribing}
-        onSubscribe={handleSubscribe}
-        onUnsubscribe={handleUnsubscribe}
-      />
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        sx={{
+          mt: 2,
+          mb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          "& .MuiTab-root": {
+            "&:focus": { outline: "none" },
+            "&:focus-visible": { outline: "none" },
+          },
+        }}
+      >
+        {sectionTabs.map((tab) => (
+          <Tab key={tab} label={sectionDetailTabLabel(tab)} value={tab} />
+        ))}
+      </Tabs>
 
-      {isMembers ? (
+      {activeTab === "about" && (
+        <SectionInformationView
+          section={section}
+          isMembers={isMembers}
+          hasCurrentUser={Boolean(currentUser)}
+          canSubscribe={canSubscribe}
+          userIsMember={userIsMember}
+          hasSubscribableMemberGroup={hasSubscribableMemberGroup}
+          subscribing={subscribing}
+          onSubscribe={handleSubscribe}
+          onUnsubscribe={handleUnsubscribe}
+        />
+      )}
+
+      {activeTab === "members" && (
         <SectionMembersView
           allMembersCount={allMembers.length}
           filteredMembers={filteredMembers}
@@ -373,30 +427,33 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           onRefresh={() => refetchSection()}
           onPageChange={setPage}
         />
-      ) : selectedEventId ? (
-        <SectionEventDetailView
-          section={section}
-          event={eventDetailData?.event ?? null}
-          loading={loadingEventDetail}
-          isError={errorEventDetail}
-          hasCurrentUser={Boolean(currentUser)}
-          startingCheckoutId={startingCheckoutId}
-          onBackToEvents={() => setSelectedEventId(null)}
-          onRetry={() => refetchEventDetail()}
-          onStartCheckout={(ticketTypeId) => void handleStartCheckout(ticketTypeId)}
-          onBookingComplete={() => {
-            void refetchEventDetail();
-          }}
-        />
-      ) : (
-        <SectionEventsListView
-          events={eventRows}
-          loading={loadingEvents}
-          isError={errorEvents}
-          onRetry={() => refetchEvents()}
-          onSelectEvent={setSelectedEventId}
-        />
       )}
+
+      {activeTab === "events" &&
+        (selectedEventId ? (
+          <SectionEventDetailView
+            section={section}
+            event={eventDetailData?.event ?? null}
+            loading={loadingEventDetail}
+            isError={errorEventDetail}
+            hasCurrentUser={Boolean(currentUser)}
+            startingCheckoutId={startingCheckoutId}
+            onBackToEvents={() => setSelectedEventId(null)}
+            onRetry={() => refetchEventDetail()}
+            onStartCheckout={(ticketTypeId) => void handleStartCheckout(ticketTypeId)}
+            onBookingComplete={() => {
+              void refetchEventDetail();
+            }}
+          />
+        ) : (
+          <SectionEventsListView
+            events={eventRows}
+            loading={loadingEvents}
+            isError={errorEvents}
+            onRetry={() => refetchEvents()}
+            onSelectEvent={handleSelectEvent}
+          />
+        ))}
 
       <Snackbar
         open={snackbar.open}
