@@ -7,6 +7,7 @@ import {
 } from "@dataconnect/generated";
 import {
   getEventBookingNextSteps,
+  hasExpiredDraftHold,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
 } from "../eventBookingStatusSummary";
@@ -108,6 +109,21 @@ describe("summarizeEventBookingPayment", () => {
   });
 });
 
+describe("hasExpiredDraftHold", () => {
+  it("returns true when only cancelled bookings remain for the event", () => {
+    expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }])).toBe(true);
+  });
+
+  it("returns false when an active draft or submitted booking exists", () => {
+    expect(
+      hasExpiredDraftHold([
+        { status: BookingStatus.CANCELLED },
+        { status: BookingStatus.DRAFT },
+      ])
+    ).toBe(false);
+  });
+});
+
 describe("getEventBookingNextSteps", () => {
   it("highlights unpaid and pending guest review states", () => {
     const message = getEventBookingNextSteps({
@@ -125,5 +141,26 @@ describe("getEventBookingNextSteps", () => {
 
     expect(message).toMatch(/complete payment/i);
     expect(message).toMatch(/moderator review/i);
+  });
+
+  it("mentions expired payment holds for failed payment summaries", () => {
+    const message = getEventBookingNextSteps({
+      bookingStatus: BookingStatus.SUBMITTED,
+      paymentSummary: summarizeEventBookingPayment({
+        booking,
+        eventId: "event-1",
+        ticketOrders: [
+          {
+            status: TicketOrderStatus.FAILED,
+            event: { id: "event-1" },
+            ticketType: { id: "ticket-member" },
+          },
+        ],
+        adjustments: [],
+      }),
+      guestSummary: summarizeGuestTicketRequests([]),
+    });
+
+    expect(message).toMatch(/payment hold expired/i);
   });
 });

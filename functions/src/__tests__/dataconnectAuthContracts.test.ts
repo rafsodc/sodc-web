@@ -58,6 +58,8 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetBookingsForBookerAndEvent", mustInclude: "@auth(level: NO_ACCESS)" },
       { op: "mutation UpdateBookingStatusFromCallable", mustInclude: "@auth(level: NO_ACCESS)" },
       { op: "mutation UpdateBookingPreferencesFromCallable", mustInclude: "@auth(level: NO_ACCESS)" },
+      { op: "query ListStaleDraftBookingsForScheduler", mustInclude: "@auth(level: NO_ACCESS)" },
+      { op: "query ListStalePendingTicketOrdersForScheduler", mustInclude: "@auth(level: NO_ACCESS)" },
     ]);
 
     assertAuth(userMutations, [

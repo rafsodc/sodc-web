@@ -28,6 +28,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetAllUserGroupsWithStatuses*](#getallusergroupswithstatuses)
   - [*GetSectionMembers*](#getsectionmembers)
   - [*GetMyBookingsForEvent*](#getmybookingsforevent)
+  - [*GetMyBookings*](#getmybookings)
   - [*GetMyTicketOrderById*](#getmyticketorderbyid)
   - [*GetMyTicketOrders*](#getmyticketorders)
   - [*GetMyBookingPaymentAdjustments*](#getmybookingpaymentadjustments)
@@ -50,6 +51,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
+  - [*ListStaleDraftBookingsForScheduler*](#liststaledraftbookingsforscheduler)
+  - [*ListStalePendingTicketOrdersForScheduler*](#liststalependingticketordersforscheduler)
   - [*GetGuestTicketRequestForNotification*](#getguestticketrequestfornotification)
 - [**Mutations**](#mutations)
   - [*CreateSection*](#createsection)
@@ -162,7 +165,7 @@ Below are examples of how to use the `api` connector's generated functions to ex
 ## GetCurrentUser
 You can execute the `GetCurrentUser` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getCurrentUser(): QueryPromise<GetCurrentUserData, undefined>;
+getCurrentUser(options?: ExecuteQueryOptions): QueryPromise<GetCurrentUserData, undefined>;
 
 interface GetCurrentUserRef {
   ...
@@ -173,7 +176,7 @@ export const getCurrentUserRef: GetCurrentUserRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getCurrentUser(dc: DataConnect): QueryPromise<GetCurrentUserData, undefined>;
+getCurrentUser(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetCurrentUserData, undefined>;
 
 interface GetCurrentUserRef {
   ...
@@ -267,7 +270,7 @@ executeQuery(ref).then((response) => {
 ## GetUserById
 You can execute the `GetUserById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserById(vars: GetUserByIdVariables): QueryPromise<GetUserByIdData, GetUserByIdVariables>;
+getUserById(vars: GetUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserByIdData, GetUserByIdVariables>;
 
 interface GetUserByIdRef {
   ...
@@ -278,7 +281,7 @@ export const getUserByIdRef: GetUserByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserById(dc: DataConnect, vars: GetUserByIdVariables): QueryPromise<GetUserByIdData, GetUserByIdVariables>;
+getUserById(dc: DataConnect, vars: GetUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserByIdData, GetUserByIdVariables>;
 
 interface GetUserByIdRef {
   ...
@@ -392,7 +395,7 @@ executeQuery(ref).then((response) => {
 ## ListUsers
 You can execute the `ListUsers` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listUsers(): QueryPromise<ListUsersData, undefined>;
+listUsers(options?: ExecuteQueryOptions): QueryPromise<ListUsersData, undefined>;
 
 interface ListUsersRef {
   ...
@@ -403,7 +406,7 @@ export const listUsersRef: ListUsersRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listUsers(dc: DataConnect): QueryPromise<ListUsersData, undefined>;
+listUsers(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<ListUsersData, undefined>;
 
 interface ListUsersRef {
   ...
@@ -499,7 +502,7 @@ executeQuery(ref).then((response) => {
 ## ListSections
 You can execute the `ListSections` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listSections(): QueryPromise<ListSectionsData, undefined>;
+listSections(options?: ExecuteQueryOptions): QueryPromise<ListSectionsData, undefined>;
 
 interface ListSectionsRef {
   ...
@@ -510,7 +513,7 @@ export const listSectionsRef: ListSectionsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listSections(dc: DataConnect): QueryPromise<ListSectionsData, undefined>;
+listSections(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<ListSectionsData, undefined>;
 
 interface ListSectionsRef {
   ...
@@ -599,7 +602,7 @@ executeQuery(ref).then((response) => {
 ## GetSectionsForUser
 You can execute the `GetSectionsForUser` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getSectionsForUser(): QueryPromise<GetSectionsForUserData, undefined>;
+getSectionsForUser(options?: ExecuteQueryOptions): QueryPromise<GetSectionsForUserData, undefined>;
 
 interface GetSectionsForUserRef {
   ...
@@ -610,7 +613,7 @@ export const getSectionsForUserRef: GetSectionsForUserRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getSectionsForUser(dc: DataConnect): QueryPromise<GetSectionsForUserData, undefined>;
+getSectionsForUser(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetSectionsForUserData, undefined>;
 
 interface GetSectionsForUserRef {
   ...
@@ -727,7 +730,7 @@ executeQuery(ref).then((response) => {
 ## ListUserGroups
 You can execute the `ListUserGroups` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listUserGroups(): QueryPromise<ListUserGroupsData, undefined>;
+listUserGroups(options?: ExecuteQueryOptions): QueryPromise<ListUserGroupsData, undefined>;
 
 interface ListUserGroupsRef {
   ...
@@ -738,7 +741,7 @@ export const listUserGroupsRef: ListUserGroupsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listUserGroups(dc: DataConnect): QueryPromise<ListUserGroupsData, undefined>;
+listUserGroups(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<ListUserGroupsData, undefined>;
 
 interface ListUserGroupsRef {
   ...
@@ -828,7 +831,7 @@ executeQuery(ref).then((response) => {
 ## GetUserAccessGroups
 You can execute the `GetUserAccessGroups` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserAccessGroups(): QueryPromise<GetUserAccessGroupsData, undefined>;
+getUserAccessGroups(options?: ExecuteQueryOptions): QueryPromise<GetUserAccessGroupsData, undefined>;
 
 interface GetUserAccessGroupsRef {
   ...
@@ -839,7 +842,7 @@ export const getUserAccessGroupsRef: GetUserAccessGroupsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserAccessGroups(dc: DataConnect): QueryPromise<GetUserAccessGroupsData, undefined>;
+getUserAccessGroups(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetUserAccessGroupsData, undefined>;
 
 interface GetUserAccessGroupsRef {
   ...
@@ -928,7 +931,7 @@ executeQuery(ref).then((response) => {
 ## CheckUserProfileExists
 You can execute the `CheckUserProfileExists` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-checkUserProfileExists(): QueryPromise<CheckUserProfileExistsData, undefined>;
+checkUserProfileExists(options?: ExecuteQueryOptions): QueryPromise<CheckUserProfileExistsData, undefined>;
 
 interface CheckUserProfileExistsRef {
   ...
@@ -939,7 +942,7 @@ export const checkUserProfileExistsRef: CheckUserProfileExistsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-checkUserProfileExists(dc: DataConnect): QueryPromise<CheckUserProfileExistsData, undefined>;
+checkUserProfileExists(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<CheckUserProfileExistsData, undefined>;
 
 interface CheckUserProfileExistsRef {
   ...
@@ -1024,7 +1027,7 @@ executeQuery(ref).then((response) => {
 ## GetUserMembershipStatus
 You can execute the `GetUserMembershipStatus` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserMembershipStatus(vars: GetUserMembershipStatusVariables): QueryPromise<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+getUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
 
 interface GetUserMembershipStatusRef {
   ...
@@ -1035,7 +1038,7 @@ export const getUserMembershipStatusRef: GetUserMembershipStatusRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables): QueryPromise<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
+getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserMembershipStatusData, GetUserMembershipStatusVariables>;
 
 interface GetUserMembershipStatusRef {
   ...
@@ -1138,7 +1141,7 @@ executeQuery(ref).then((response) => {
 ## GetUserWithAccessGroups
 You can execute the `GetUserWithAccessGroups` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables): QueryPromise<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
+getUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
 
 interface GetUserWithAccessGroupsRef {
   ...
@@ -1149,7 +1152,7 @@ export const getUserWithAccessGroupsRef: GetUserWithAccessGroupsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables): QueryPromise<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
+getUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserWithAccessGroupsData, GetUserWithAccessGroupsVariables>;
 
 interface GetUserWithAccessGroupsRef {
   ...
@@ -1261,7 +1264,7 @@ executeQuery(ref).then((response) => {
 ## GetUserAccessGroupsById
 You can execute the `GetUserAccessGroupsById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables): QueryPromise<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
+getUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
 
 interface GetUserAccessGroupsByIdRef {
   ...
@@ -1272,7 +1275,7 @@ export const getUserAccessGroupsByIdRef: GetUserAccessGroupsByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables): QueryPromise<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
+getUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserAccessGroupsByIdData, GetUserAccessGroupsByIdVariables>;
 
 interface GetUserAccessGroupsByIdRef {
   ...
@@ -1379,7 +1382,7 @@ executeQuery(ref).then((response) => {
 ## GetEventsForSection
 You can execute the `GetEventsForSection` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getEventsForSection(vars: GetEventsForSectionVariables): QueryPromise<GetEventsForSectionData, GetEventsForSectionVariables>;
+getEventsForSection(vars: GetEventsForSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventsForSectionData, GetEventsForSectionVariables>;
 
 interface GetEventsForSectionRef {
   ...
@@ -1390,7 +1393,7 @@ export const getEventsForSectionRef: GetEventsForSectionRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getEventsForSection(dc: DataConnect, vars: GetEventsForSectionVariables): QueryPromise<GetEventsForSectionData, GetEventsForSectionVariables>;
+getEventsForSection(dc: DataConnect, vars: GetEventsForSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventsForSectionData, GetEventsForSectionVariables>;
 
 interface GetEventsForSectionRef {
   ...
@@ -1501,7 +1504,7 @@ executeQuery(ref).then((response) => {
 ## GetEventById
 You can execute the `GetEventById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getEventById(vars: GetEventByIdVariables): QueryPromise<GetEventByIdData, GetEventByIdVariables>;
+getEventById(vars: GetEventByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventByIdData, GetEventByIdVariables>;
 
 interface GetEventByIdRef {
   ...
@@ -1512,7 +1515,7 @@ export const getEventByIdRef: GetEventByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getEventById(dc: DataConnect, vars: GetEventByIdVariables): QueryPromise<GetEventByIdData, GetEventByIdVariables>;
+getEventById(dc: DataConnect, vars: GetEventByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventByIdData, GetEventByIdVariables>;
 
 interface GetEventByIdRef {
   ...
@@ -1636,7 +1639,7 @@ executeQuery(ref).then((response) => {
 ## GetSectionById
 You can execute the `GetSectionById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getSectionById(vars: GetSectionByIdVariables): QueryPromise<GetSectionByIdData, GetSectionByIdVariables>;
+getSectionById(vars: GetSectionByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionByIdData, GetSectionByIdVariables>;
 
 interface GetSectionByIdRef {
   ...
@@ -1647,7 +1650,7 @@ export const getSectionByIdRef: GetSectionByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getSectionById(dc: DataConnect, vars: GetSectionByIdVariables): QueryPromise<GetSectionByIdData, GetSectionByIdVariables>;
+getSectionById(dc: DataConnect, vars: GetSectionByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionByIdData, GetSectionByIdVariables>;
 
 interface GetSectionByIdRef {
   ...
@@ -1762,7 +1765,7 @@ executeQuery(ref).then((response) => {
 ## GetUserGroupById
 You can execute the `GetUserGroupById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserGroupById(vars: GetUserGroupByIdVariables): QueryPromise<GetUserGroupByIdData, GetUserGroupByIdVariables>;
+getUserGroupById(vars: GetUserGroupByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserGroupByIdData, GetUserGroupByIdVariables>;
 
 interface GetUserGroupByIdRef {
   ...
@@ -1773,7 +1776,7 @@ export const getUserGroupByIdRef: GetUserGroupByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserGroupById(dc: DataConnect, vars: GetUserGroupByIdVariables): QueryPromise<GetUserGroupByIdData, GetUserGroupByIdVariables>;
+getUserGroupById(dc: DataConnect, vars: GetUserGroupByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserGroupByIdData, GetUserGroupByIdVariables>;
 
 interface GetUserGroupByIdRef {
   ...
@@ -1899,7 +1902,7 @@ executeQuery(ref).then((response) => {
 ## GetAllUserGroupsWithStatuses
 You can execute the `GetAllUserGroupsWithStatuses` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getAllUserGroupsWithStatuses(): QueryPromise<GetAllUserGroupsWithStatusesData, undefined>;
+getAllUserGroupsWithStatuses(options?: ExecuteQueryOptions): QueryPromise<GetAllUserGroupsWithStatusesData, undefined>;
 
 interface GetAllUserGroupsWithStatusesRef {
   ...
@@ -1910,7 +1913,7 @@ export const getAllUserGroupsWithStatusesRef: GetAllUserGroupsWithStatusesRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getAllUserGroupsWithStatuses(dc: DataConnect): QueryPromise<GetAllUserGroupsWithStatusesData, undefined>;
+getAllUserGroupsWithStatuses(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetAllUserGroupsWithStatusesData, undefined>;
 
 interface GetAllUserGroupsWithStatusesRef {
   ...
@@ -1994,7 +1997,7 @@ executeQuery(ref).then((response) => {
 ## GetSectionMembers
 You can execute the `GetSectionMembers` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getSectionMembers(vars: GetSectionMembersVariables): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
+getSectionMembers(vars: GetSectionMembersVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
 
 interface GetSectionMembersRef {
   ...
@@ -2005,7 +2008,7 @@ export const getSectionMembersRef: GetSectionMembersRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
+getSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionMembersData, GetSectionMembersVariables>;
 
 interface GetSectionMembersRef {
   ...
@@ -2125,7 +2128,7 @@ executeQuery(ref).then((response) => {
 ## GetMyBookingsForEvent
 You can execute the `GetMyBookingsForEvent` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getMyBookingsForEvent(vars: GetMyBookingsForEventVariables): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+getMyBookingsForEvent(vars: GetMyBookingsForEventVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
 
 interface GetMyBookingsForEventRef {
   ...
@@ -2136,7 +2139,7 @@ export const getMyBookingsForEventRef: GetMyBookingsForEventRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+getMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
 
 interface GetMyBookingsForEventRef {
   ...
@@ -2277,10 +2280,133 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetMyBookings
+You can execute the `GetMyBookings` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getMyBookings(options?: ExecuteQueryOptions): QueryPromise<GetMyBookingsData, undefined>;
+
+interface GetMyBookingsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetMyBookingsData, undefined>;
+}
+export const getMyBookingsRef: GetMyBookingsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getMyBookings(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyBookingsData, undefined>;
+
+interface GetMyBookingsRef {
+  ...
+  (dc: DataConnect): QueryRef<GetMyBookingsData, undefined>;
+}
+export const getMyBookingsRef: GetMyBookingsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getMyBookingsRef:
+```typescript
+const name = getMyBookingsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetMyBookings` query has no variables.
+### Return Type
+Recall that executing the `GetMyBookings` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetMyBookingsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetMyBookingsData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      revisionNumber: number;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+        lines: ({
+          id: UUIDString;
+          ticketType: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            price: number;
+          } & TicketType_Key;
+        } & BookingLine_Key)[];
+          guestTicketRequests: ({
+            id: UUIDString;
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+          } & GuestTicketRequest_Key)[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+```
+### Using `GetMyBookings`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getMyBookings } from '@dataconnect/generated';
+
+
+// Call the `getMyBookings()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getMyBookings();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getMyBookings(dataConnect);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getMyBookings().then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetMyBookings`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getMyBookingsRef } from '@dataconnect/generated';
+
+
+// Call the `getMyBookingsRef()` function to get a reference to the query.
+const ref = getMyBookingsRef();
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getMyBookingsRef(dataConnect);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
 ## GetMyTicketOrderById
 You can execute the `GetMyTicketOrderById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getMyTicketOrderById(vars: GetMyTicketOrderByIdVariables): QueryPromise<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+getMyTicketOrderById(vars: GetMyTicketOrderByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
 
 interface GetMyTicketOrderByIdRef {
   ...
@@ -2291,7 +2417,7 @@ export const getMyTicketOrderByIdRef: GetMyTicketOrderByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables): QueryPromise<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
+getMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetMyTicketOrderByIdData, GetMyTicketOrderByIdVariables>;
 
 interface GetMyTicketOrderByIdRef {
   ...
@@ -2407,7 +2533,7 @@ executeQuery(ref).then((response) => {
 ## GetMyTicketOrders
 You can execute the `GetMyTicketOrders` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getMyTicketOrders(): QueryPromise<GetMyTicketOrdersData, undefined>;
+getMyTicketOrders(options?: ExecuteQueryOptions): QueryPromise<GetMyTicketOrdersData, undefined>;
 
 interface GetMyTicketOrdersRef {
   ...
@@ -2418,7 +2544,7 @@ export const getMyTicketOrdersRef: GetMyTicketOrdersRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getMyTicketOrders(dc: DataConnect): QueryPromise<GetMyTicketOrdersData, undefined>;
+getMyTicketOrders(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyTicketOrdersData, undefined>;
 
 interface GetMyTicketOrdersRef {
   ...
@@ -2523,7 +2649,7 @@ executeQuery(ref).then((response) => {
 ## GetMyBookingPaymentAdjustments
 You can execute the `GetMyBookingPaymentAdjustments` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getMyBookingPaymentAdjustments(): QueryPromise<GetMyBookingPaymentAdjustmentsData, undefined>;
+getMyBookingPaymentAdjustments(options?: ExecuteQueryOptions): QueryPromise<GetMyBookingPaymentAdjustmentsData, undefined>;
 
 interface GetMyBookingPaymentAdjustmentsRef {
   ...
@@ -2534,7 +2660,7 @@ export const getMyBookingPaymentAdjustmentsRef: GetMyBookingPaymentAdjustmentsRe
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getMyBookingPaymentAdjustments(dc: DataConnect): QueryPromise<GetMyBookingPaymentAdjustmentsData, undefined>;
+getMyBookingPaymentAdjustments(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyBookingPaymentAdjustmentsData, undefined>;
 
 interface GetMyBookingPaymentAdjustmentsRef {
   ...
@@ -2636,7 +2762,7 @@ executeQuery(ref).then((response) => {
 ## ListEventBookingsForAdmin
 You can execute the `ListEventBookingsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables): QueryPromise<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+listEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
 
 interface ListEventBookingsForAdminRef {
   ...
@@ -2647,7 +2773,7 @@ export const listEventBookingsForAdminRef: ListEventBookingsForAdminRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables): QueryPromise<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
+listEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListEventBookingsForAdminData, ListEventBookingsForAdminVariables>;
 
 interface ListEventBookingsForAdminRef {
   ...
@@ -2795,7 +2921,7 @@ executeQuery(ref).then((response) => {
 ## ListGuestTicketRequestsForAdmin
 You can execute the `ListGuestTicketRequestsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables): QueryPromise<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
+listGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
 
 interface ListGuestTicketRequestsForAdminRef {
   ...
@@ -2806,7 +2932,7 @@ export const listGuestTicketRequestsForAdminRef: ListGuestTicketRequestsForAdmin
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables): QueryPromise<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
+listGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
 
 interface ListGuestTicketRequestsForAdminRef {
   ...
@@ -2947,7 +3073,7 @@ executeQuery(ref).then((response) => {
 ## ListTicketOrdersForAdmin
 You can execute the `ListTicketOrdersForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables): QueryPromise<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
+listTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
 
 interface ListTicketOrdersForAdminRef {
   ...
@@ -2958,7 +3084,7 @@ export const listTicketOrdersForAdminRef: ListTicketOrdersForAdminRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables): QueryPromise<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
+listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListTicketOrdersForAdminData, ListTicketOrdersForAdminVariables>;
 
 interface ListTicketOrdersForAdminRef {
   ...
@@ -3093,7 +3219,7 @@ executeQuery(ref).then((response) => {
 ## ListBookingPaymentAdjustmentsForAdmin
 You can execute the `ListBookingPaymentAdjustmentsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listBookingPaymentAdjustmentsForAdmin(vars: ListBookingPaymentAdjustmentsForAdminVariables): QueryPromise<ListBookingPaymentAdjustmentsForAdminData, ListBookingPaymentAdjustmentsForAdminVariables>;
+listBookingPaymentAdjustmentsForAdmin(vars: ListBookingPaymentAdjustmentsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListBookingPaymentAdjustmentsForAdminData, ListBookingPaymentAdjustmentsForAdminVariables>;
 
 interface ListBookingPaymentAdjustmentsForAdminRef {
   ...
@@ -3104,7 +3230,7 @@ export const listBookingPaymentAdjustmentsForAdminRef: ListBookingPaymentAdjustm
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listBookingPaymentAdjustmentsForAdmin(dc: DataConnect, vars: ListBookingPaymentAdjustmentsForAdminVariables): QueryPromise<ListBookingPaymentAdjustmentsForAdminData, ListBookingPaymentAdjustmentsForAdminVariables>;
+listBookingPaymentAdjustmentsForAdmin(dc: DataConnect, vars: ListBookingPaymentAdjustmentsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ListBookingPaymentAdjustmentsForAdminData, ListBookingPaymentAdjustmentsForAdminVariables>;
 
 interface ListBookingPaymentAdjustmentsForAdminRef {
   ...
@@ -3226,7 +3352,7 @@ executeQuery(ref).then((response) => {
 ## ListOpenPaymentReconciliationExceptions
 You can execute the `ListOpenPaymentReconciliationExceptions` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-listOpenPaymentReconciliationExceptions(): QueryPromise<ListOpenPaymentReconciliationExceptionsData, undefined>;
+listOpenPaymentReconciliationExceptions(options?: ExecuteQueryOptions): QueryPromise<ListOpenPaymentReconciliationExceptionsData, undefined>;
 
 interface ListOpenPaymentReconciliationExceptionsRef {
   ...
@@ -3237,7 +3363,7 @@ export const listOpenPaymentReconciliationExceptionsRef: ListOpenPaymentReconcil
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-listOpenPaymentReconciliationExceptions(dc: DataConnect): QueryPromise<ListOpenPaymentReconciliationExceptionsData, undefined>;
+listOpenPaymentReconciliationExceptions(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<ListOpenPaymentReconciliationExceptionsData, undefined>;
 
 interface ListOpenPaymentReconciliationExceptionsRef {
   ...
@@ -3345,7 +3471,7 @@ executeQuery(ref).then((response) => {
 ## GetUserGroupByName
 You can execute the `GetUserGroupByName` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserGroupByName(vars: GetUserGroupByNameVariables): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+getUserGroupByName(vars: GetUserGroupByNameVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
 
 interface GetUserGroupByNameRef {
   ...
@@ -3356,7 +3482,7 @@ export const getUserGroupByNameRef: GetUserGroupByNameRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserGroupByName(dc: DataConnect, vars: GetUserGroupByNameVariables): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
+getUserGroupByName(dc: DataConnect, vars: GetUserGroupByNameVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserGroupByNameData, GetUserGroupByNameVariables>;
 
 interface GetUserGroupByNameRef {
   ...
@@ -3458,7 +3584,7 @@ executeQuery(ref).then((response) => {
 ## GetUserUserGroupsForAdmin
 You can execute the `GetUserUserGroupsForAdmin` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+getUserUserGroupsForAdmin(vars: GetUserUserGroupsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
 
 interface GetUserUserGroupsForAdminRef {
   ...
@@ -3469,7 +3595,7 @@ export const getUserUserGroupsForAdminRef: GetUserUserGroupsForAdminRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGroupsForAdminVariables): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
+getUserUserGroupsForAdmin(dc: DataConnect, vars: GetUserUserGroupsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserUserGroupsForAdminData, GetUserUserGroupsForAdminVariables>;
 
 interface GetUserUserGroupsForAdminRef {
   ...
@@ -3576,7 +3702,7 @@ executeQuery(ref).then((response) => {
 ## GetUserForCheckout
 You can execute the `GetUserForCheckout` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getUserForCheckout(vars: GetUserForCheckoutVariables): QueryPromise<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+getUserForCheckout(vars: GetUserForCheckoutVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserForCheckoutData, GetUserForCheckoutVariables>;
 
 interface GetUserForCheckoutRef {
   ...
@@ -3587,7 +3713,7 @@ export const getUserForCheckoutRef: GetUserForCheckoutRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getUserForCheckout(dc: DataConnect, vars: GetUserForCheckoutVariables): QueryPromise<GetUserForCheckoutData, GetUserForCheckoutVariables>;
+getUserForCheckout(dc: DataConnect, vars: GetUserForCheckoutVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserForCheckoutData, GetUserForCheckoutVariables>;
 
 interface GetUserForCheckoutRef {
   ...
@@ -3692,7 +3818,7 @@ executeQuery(ref).then((response) => {
 ## GetTicketTypeForCheckout
 You can execute the `GetTicketTypeForCheckout` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getTicketTypeForCheckout(vars: GetTicketTypeForCheckoutVariables): QueryPromise<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+getTicketTypeForCheckout(vars: GetTicketTypeForCheckoutVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
 
 interface GetTicketTypeForCheckoutRef {
   ...
@@ -3703,7 +3829,7 @@ export const getTicketTypeForCheckoutRef: GetTicketTypeForCheckoutRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getTicketTypeForCheckout(dc: DataConnect, vars: GetTicketTypeForCheckoutVariables): QueryPromise<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
+getTicketTypeForCheckout(dc: DataConnect, vars: GetTicketTypeForCheckoutVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketTypeForCheckoutData, GetTicketTypeForCheckoutVariables>;
 
 interface GetTicketTypeForCheckoutRef {
   ...
@@ -3819,7 +3945,7 @@ executeQuery(ref).then((response) => {
 ## GetEventByIdForCallable
 You can execute the `GetEventByIdForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getEventByIdForCallable(vars: GetEventByIdForCallableVariables): QueryPromise<GetEventByIdForCallableData, GetEventByIdForCallableVariables>;
+getEventByIdForCallable(vars: GetEventByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventByIdForCallableData, GetEventByIdForCallableVariables>;
 
 interface GetEventByIdForCallableRef {
   ...
@@ -3830,7 +3956,7 @@ export const getEventByIdForCallableRef: GetEventByIdForCallableRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getEventByIdForCallable(dc: DataConnect, vars: GetEventByIdForCallableVariables): QueryPromise<GetEventByIdForCallableData, GetEventByIdForCallableVariables>;
+getEventByIdForCallable(dc: DataConnect, vars: GetEventByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventByIdForCallableData, GetEventByIdForCallableVariables>;
 
 interface GetEventByIdForCallableRef {
   ...
@@ -3954,7 +4080,7 @@ executeQuery(ref).then((response) => {
 ## GetSectionByIdForCallable
 You can execute the `GetSectionByIdForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getSectionByIdForCallable(vars: GetSectionByIdForCallableVariables): QueryPromise<GetSectionByIdForCallableData, GetSectionByIdForCallableVariables>;
+getSectionByIdForCallable(vars: GetSectionByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionByIdForCallableData, GetSectionByIdForCallableVariables>;
 
 interface GetSectionByIdForCallableRef {
   ...
@@ -3965,7 +4091,7 @@ export const getSectionByIdForCallableRef: GetSectionByIdForCallableRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getSectionByIdForCallable(dc: DataConnect, vars: GetSectionByIdForCallableVariables): QueryPromise<GetSectionByIdForCallableData, GetSectionByIdForCallableVariables>;
+getSectionByIdForCallable(dc: DataConnect, vars: GetSectionByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionByIdForCallableData, GetSectionByIdForCallableVariables>;
 
 interface GetSectionByIdForCallableRef {
   ...
@@ -4080,7 +4206,7 @@ executeQuery(ref).then((response) => {
 ## GetBookingsForBookerAndEvent
 You can execute the `GetBookingsForBookerAndEvent` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getBookingsForBookerAndEvent(vars: GetBookingsForBookerAndEventVariables): QueryPromise<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
+getBookingsForBookerAndEvent(vars: GetBookingsForBookerAndEventVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
 
 interface GetBookingsForBookerAndEventRef {
   ...
@@ -4091,7 +4217,7 @@ export const getBookingsForBookerAndEventRef: GetBookingsForBookerAndEventRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getBookingsForBookerAndEvent(dc: DataConnect, vars: GetBookingsForBookerAndEventVariables): QueryPromise<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
+getBookingsForBookerAndEvent(dc: DataConnect, vars: GetBookingsForBookerAndEventVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingsForBookerAndEventData, GetBookingsForBookerAndEventVariables>;
 
 interface GetBookingsForBookerAndEventRef {
   ...
@@ -4230,7 +4356,7 @@ executeQuery(ref).then((response) => {
 ## GetTicketOrderForWebhook
 You can execute the `GetTicketOrderForWebhook` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+getTicketOrderForWebhook(vars: GetTicketOrderForWebhookVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
 
 interface GetTicketOrderForWebhookRef {
   ...
@@ -4241,7 +4367,7 @@ export const getTicketOrderForWebhookRef: GetTicketOrderForWebhookRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
+getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketOrderForWebhookData, GetTicketOrderForWebhookVariables>;
 
 interface GetTicketOrderForWebhookRef {
   ...
@@ -4373,7 +4499,7 @@ executeQuery(ref).then((response) => {
 ## GetTicketOrderStripeArtifactsForCallable
 You can execute the `GetTicketOrderStripeArtifactsForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getTicketOrderStripeArtifactsForCallable(vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+getTicketOrderStripeArtifactsForCallable(vars: GetTicketOrderStripeArtifactsForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
 
 interface GetTicketOrderStripeArtifactsForCallableRef {
   ...
@@ -4384,7 +4510,7 @@ export const getTicketOrderStripeArtifactsForCallableRef: GetTicketOrderStripeAr
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getTicketOrderStripeArtifactsForCallable(dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
+getTicketOrderStripeArtifactsForCallable(dc: DataConnect, vars: GetTicketOrderStripeArtifactsForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketOrderStripeArtifactsForCallableData, GetTicketOrderStripeArtifactsForCallableVariables>;
 
 interface GetTicketOrderStripeArtifactsForCallableRef {
   ...
@@ -4489,7 +4615,7 @@ executeQuery(ref).then((response) => {
 ## GetPaymentWebhookEventByStripeEventId
 You can execute the `GetPaymentWebhookEventByStripeEventId` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getPaymentWebhookEventByStripeEventId(vars: GetPaymentWebhookEventByStripeEventIdVariables): QueryPromise<GetPaymentWebhookEventByStripeEventIdData, GetPaymentWebhookEventByStripeEventIdVariables>;
+getPaymentWebhookEventByStripeEventId(vars: GetPaymentWebhookEventByStripeEventIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetPaymentWebhookEventByStripeEventIdData, GetPaymentWebhookEventByStripeEventIdVariables>;
 
 interface GetPaymentWebhookEventByStripeEventIdRef {
   ...
@@ -4500,7 +4626,7 @@ export const getPaymentWebhookEventByStripeEventIdRef: GetPaymentWebhookEventByS
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getPaymentWebhookEventByStripeEventId(dc: DataConnect, vars: GetPaymentWebhookEventByStripeEventIdVariables): QueryPromise<GetPaymentWebhookEventByStripeEventIdData, GetPaymentWebhookEventByStripeEventIdVariables>;
+getPaymentWebhookEventByStripeEventId(dc: DataConnect, vars: GetPaymentWebhookEventByStripeEventIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetPaymentWebhookEventByStripeEventIdData, GetPaymentWebhookEventByStripeEventIdVariables>;
 
 interface GetPaymentWebhookEventByStripeEventIdRef {
   ...
@@ -4610,7 +4736,7 @@ executeQuery(ref).then((response) => {
 ## GetNotificationDeliveryByChannelAndKey
 You can execute the `GetNotificationDeliveryByChannelAndKey` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
 
 interface GetNotificationDeliveryByChannelAndKeyRef {
   ...
@@ -4621,7 +4747,7 @@ export const getNotificationDeliveryByChannelAndKeyRef: GetNotificationDeliveryB
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
 
 interface GetNotificationDeliveryByChannelAndKeyRef {
   ...
@@ -4736,7 +4862,7 @@ executeQuery(ref).then((response) => {
 ## GetPaymentReconciliationExceptionByOrderAndType
 You can execute the `GetPaymentReconciliationExceptionByOrderAndType` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getPaymentReconciliationExceptionByOrderAndType(vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables): QueryPromise<GetPaymentReconciliationExceptionByOrderAndTypeData, GetPaymentReconciliationExceptionByOrderAndTypeVariables>;
+getPaymentReconciliationExceptionByOrderAndType(vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetPaymentReconciliationExceptionByOrderAndTypeData, GetPaymentReconciliationExceptionByOrderAndTypeVariables>;
 
 interface GetPaymentReconciliationExceptionByOrderAndTypeRef {
   ...
@@ -4747,7 +4873,7 @@ export const getPaymentReconciliationExceptionByOrderAndTypeRef: GetPaymentRecon
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getPaymentReconciliationExceptionByOrderAndType(dc: DataConnect, vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables): QueryPromise<GetPaymentReconciliationExceptionByOrderAndTypeData, GetPaymentReconciliationExceptionByOrderAndTypeVariables>;
+getPaymentReconciliationExceptionByOrderAndType(dc: DataConnect, vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetPaymentReconciliationExceptionByOrderAndTypeData, GetPaymentReconciliationExceptionByOrderAndTypeVariables>;
 
 interface GetPaymentReconciliationExceptionByOrderAndTypeRef {
   ...
@@ -4851,7 +4977,7 @@ executeQuery(ref).then((response) => {
 ## GetBookingForGuestTicketCallable
 You can execute the `GetBookingForGuestTicketCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+getBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
 
 interface GetBookingForGuestTicketCallableRef {
   ...
@@ -4862,7 +4988,7 @@ export const getBookingForGuestTicketCallableRef: GetBookingForGuestTicketCallab
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
+getBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
 
 interface GetBookingForGuestTicketCallableRef {
   ...
@@ -4976,7 +5102,7 @@ executeQuery(ref).then((response) => {
 ## GetBookingForNotification
 You can execute the `GetBookingForNotification` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getBookingForNotification(vars: GetBookingForNotificationVariables): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+getBookingForNotification(vars: GetBookingForNotificationVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
 
 interface GetBookingForNotificationRef {
   ...
@@ -4987,7 +5113,7 @@ export const getBookingForNotificationRef: GetBookingForNotificationRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getBookingForNotification(dc: DataConnect, vars: GetBookingForNotificationVariables): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
+getBookingForNotification(dc: DataConnect, vars: GetBookingForNotificationVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingForNotificationData, GetBookingForNotificationVariables>;
 
 interface GetBookingForNotificationRef {
   ...
@@ -5124,10 +5250,242 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## ListStaleDraftBookingsForScheduler
+You can execute the `ListStaleDraftBookingsForScheduler` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStaleDraftBookingsForScheduler(vars: ListStaleDraftBookingsForSchedulerVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+
+interface ListStaleDraftBookingsForSchedulerRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStaleDraftBookingsForSchedulerVariables): QueryRef<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+}
+export const listStaleDraftBookingsForSchedulerRef: ListStaleDraftBookingsForSchedulerRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStaleDraftBookingsForScheduler(dc: DataConnect, vars: ListStaleDraftBookingsForSchedulerVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+
+interface ListStaleDraftBookingsForSchedulerRef {
+  ...
+  (dc: DataConnect, vars: ListStaleDraftBookingsForSchedulerVariables): QueryRef<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+}
+export const listStaleDraftBookingsForSchedulerRef: ListStaleDraftBookingsForSchedulerRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStaleDraftBookingsForSchedulerRef:
+```typescript
+const name = listStaleDraftBookingsForSchedulerRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStaleDraftBookingsForSchedulerVariables {
+  updatedBefore: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStaleDraftBookingsForScheduler` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStaleDraftBookingsForSchedulerData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStaleDraftBookingsForSchedulerData {
+  bookings: ({
+    id: UUIDString;
+    status: BookingStatus;
+    updatedAt: TimestampString;
+  } & Booking_Key)[];
+}
+```
+### Using `ListStaleDraftBookingsForScheduler`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStaleDraftBookingsForScheduler, ListStaleDraftBookingsForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
+const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
+  updatedBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStaleDraftBookingsForScheduler()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStaleDraftBookingsForScheduler(listStaleDraftBookingsForSchedulerVars);
+// Variables can be defined inline as well.
+const { data } = await listStaleDraftBookingsForScheduler({ updatedBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStaleDraftBookingsForScheduler(dataConnect, listStaleDraftBookingsForSchedulerVars);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+listStaleDraftBookingsForScheduler(listStaleDraftBookingsForSchedulerVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+### Using `ListStaleDraftBookingsForScheduler`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStaleDraftBookingsForSchedulerRef, ListStaleDraftBookingsForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
+const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
+  updatedBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStaleDraftBookingsForSchedulerRef()` function to get a reference to the query.
+const ref = listStaleDraftBookingsForSchedulerRef(listStaleDraftBookingsForSchedulerVars);
+// Variables can be defined inline as well.
+const ref = listStaleDraftBookingsForSchedulerRef({ updatedBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStaleDraftBookingsForSchedulerRef(dataConnect, listStaleDraftBookingsForSchedulerVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+## ListStalePendingTicketOrdersForScheduler
+You can execute the `ListStalePendingTicketOrdersForScheduler` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStalePendingTicketOrdersForScheduler(vars: ListStalePendingTicketOrdersForSchedulerVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+
+interface ListStalePendingTicketOrdersForSchedulerRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStalePendingTicketOrdersForSchedulerVariables): QueryRef<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+}
+export const listStalePendingTicketOrdersForSchedulerRef: ListStalePendingTicketOrdersForSchedulerRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStalePendingTicketOrdersForScheduler(dc: DataConnect, vars: ListStalePendingTicketOrdersForSchedulerVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+
+interface ListStalePendingTicketOrdersForSchedulerRef {
+  ...
+  (dc: DataConnect, vars: ListStalePendingTicketOrdersForSchedulerVariables): QueryRef<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+}
+export const listStalePendingTicketOrdersForSchedulerRef: ListStalePendingTicketOrdersForSchedulerRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStalePendingTicketOrdersForSchedulerRef:
+```typescript
+const name = listStalePendingTicketOrdersForSchedulerRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStalePendingTicketOrdersForSchedulerVariables {
+  createdBefore: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStalePendingTicketOrdersForScheduler` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStalePendingTicketOrdersForSchedulerData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStalePendingTicketOrdersForSchedulerData {
+  ticketOrders: ({
+    id: UUIDString;
+    status: TicketOrderStatus;
+    createdAt: TimestampString;
+  } & TicketOrder_Key)[];
+}
+```
+### Using `ListStalePendingTicketOrdersForScheduler`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingTicketOrdersForScheduler, ListStalePendingTicketOrdersForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
+const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
+  createdBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStalePendingTicketOrdersForScheduler()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStalePendingTicketOrdersForScheduler(listStalePendingTicketOrdersForSchedulerVars);
+// Variables can be defined inline as well.
+const { data } = await listStalePendingTicketOrdersForScheduler({ createdBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStalePendingTicketOrdersForScheduler(dataConnect, listStalePendingTicketOrdersForSchedulerVars);
+
+console.log(data.ticketOrders);
+
+// Or, you can use the `Promise` API.
+listStalePendingTicketOrdersForScheduler(listStalePendingTicketOrdersForSchedulerVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrders);
+});
+```
+
+### Using `ListStalePendingTicketOrdersForScheduler`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingTicketOrdersForSchedulerRef, ListStalePendingTicketOrdersForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
+const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
+  createdBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStalePendingTicketOrdersForSchedulerRef()` function to get a reference to the query.
+const ref = listStalePendingTicketOrdersForSchedulerRef(listStalePendingTicketOrdersForSchedulerVars);
+// Variables can be defined inline as well.
+const ref = listStalePendingTicketOrdersForSchedulerRef({ createdBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStalePendingTicketOrdersForSchedulerRef(dataConnect, listStalePendingTicketOrdersForSchedulerVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketOrders);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrders);
+});
+```
+
 ## GetGuestTicketRequestForNotification
 You can execute the `GetGuestTicketRequestForNotification` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+getGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
 
 interface GetGuestTicketRequestForNotificationRef {
   ...
@@ -5138,7 +5496,7 @@ export const getGuestTicketRequestForNotificationRef: GetGuestTicketRequestForNo
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
+getGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
 
 interface GetGuestTicketRequestForNotificationRef {
   ...
