@@ -315,10 +315,11 @@ describe('SectionDetail', () => {
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    expect(screen.getByText('john@example.com')).toBeInTheDocument();
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('john@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('jane@example.com')).not.toBeInTheDocument();
     expect(screen.getByText('Regular')).toBeInTheDocument();
     expect(screen.getByText('Reserve')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Show email' })).toHaveLength(2);
   });
 
   it('should show subscribe button when user can subscribe', async () => {
