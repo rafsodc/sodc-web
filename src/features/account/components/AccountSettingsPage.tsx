@@ -22,12 +22,12 @@ import {
   updatePassword,
   type User,
 } from "firebase/auth";
-import { MembershipStatus } from "@dataconnect/generated";
 import { auth } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
-import { MEMBERSHIP_STATUS_OPTIONS, ROUTES, SUCCESS_MESSAGE_TIMEOUT } from "../../../constants";
+import { ROUTES, SUCCESS_MESSAGE_TIMEOUT } from "../../../constants";
 import type { UserData } from "../../../types";
 import { resignMembership } from "../../../shared/utils/firebaseFunctions";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { canUserResignMembership } from "../../users/utils/membershipStatusValidation";
 
 export interface AccountSettingsPageProps {
@@ -35,14 +35,6 @@ export interface AccountSettingsPageProps {
   userData: UserData | null;
   isAdmin: boolean;
   onBack?: () => void;
-}
-
-function getMembershipStatusLabel(status: MembershipStatus | null | undefined): string {
-  if (!status) {
-    return "Unknown";
-  }
-  const option = MEMBERSHIP_STATUS_OPTIONS.find((entry) => entry.value === status);
-  return option?.label ?? status;
 }
 
 function getAuthErrorMessage(error: unknown): string {

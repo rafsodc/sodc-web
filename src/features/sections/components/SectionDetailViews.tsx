@@ -17,6 +17,12 @@ import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData, ty
 import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
+import {
+  ACCESS_GROUP_COLUMN_LABEL,
+  GUEST_LIMIT_BEFORE_REVIEW_LABEL,
+} from "../../../shared/utils/sectionDisplayLabels";
+import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../shared/utils/ticketAudienceLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
 import EventBookingWizard from "./EventBookingWizard";
@@ -55,9 +61,9 @@ export function SectionInformationView({
       </Typography>
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
         <Chip
-          label={section.type}
+          label={getSectionTypeLabel(section.type)}
           size="small"
-          color={section.type === "MEMBERS" ? "primary" : "secondary"}
+          color={isMembersSectionType(section.type) ? "primary" : "secondary"}
         />
         {section.description && (
           <Typography variant="body2" color="text.secondary">
@@ -167,7 +173,7 @@ export function SectionMembersView({
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip label={member.membershipStatus} size="small" />
+                      <Chip label={getMembershipStatusLabel(member.membershipStatus)} size="small" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -352,7 +358,7 @@ export function SectionEventDetailView({
               {new Date(event.bookingEndDateTime).toLocaleString()}
             </Typography>
             <Typography component="dt" variant="body2">
-              Max guests without moderator approval
+              {GUEST_LIMIT_BEFORE_REVIEW_LABEL}
             </Typography>
             <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {event.maxGuestsWithoutModeratorApproval != null
@@ -376,7 +382,7 @@ export function SectionEventDetailView({
                     <TableCell>Description</TableCell>
                     <TableCell>Price</TableCell>
                     <TableCell>{TICKET_CATEGORY_LABEL}</TableCell>
-                    <TableCell>User group</TableCell>
+                    <TableCell>{ACCESS_GROUP_COLUMN_LABEL}</TableCell>
                     <TableCell align="right">Purchase</TableCell>
                   </TableRow>
                 </TableHead>

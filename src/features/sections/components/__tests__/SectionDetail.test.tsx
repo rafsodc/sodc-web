@@ -219,7 +219,7 @@ describe('SectionDetail', () => {
     });
 
     expect(screen.getByText('Test description')).toBeInTheDocument();
-    expect(screen.getByText('MEMBERS')).toBeInTheDocument();
+    expect(screen.getByText('Members')).toBeInTheDocument();
   });
 
   it('should render member list for MEMBERS sections', async () => {
@@ -276,8 +276,8 @@ describe('SectionDetail', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText('john@example.com')).toBeInTheDocument();
     expect(screen.getByText('jane@example.com')).toBeInTheDocument();
-    expect(screen.getByText('REGULAR')).toBeInTheDocument();
-    expect(screen.getByText('RESERVE')).toBeInTheDocument();
+    expect(screen.getByText('Regular')).toBeInTheDocument();
+    expect(screen.getByText('Reserve')).toBeInTheDocument();
   });
 
   it('should show subscribe button when user can subscribe', async () => {
@@ -474,7 +474,7 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
       expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
     });
   });
@@ -559,7 +559,7 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
     });
 
@@ -650,7 +650,7 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('button', { name: /back to events/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /back to events/i })).not.toBeInTheDocument();
     });

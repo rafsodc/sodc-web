@@ -133,7 +133,7 @@ describe('SectionsList', () => {
       expect(screen.getByText('Test Section')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('MEMBERS')).toBeInTheDocument();
+    expect(screen.getByText('Members')).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
   });
 

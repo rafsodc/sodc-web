@@ -23,6 +23,7 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import type { SectionType, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
+import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionsListProps {
@@ -231,9 +232,9 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={section.type}
+                      label={getSectionTypeLabel(section.type)}
                       size="small"
-                      color={section.type === "MEMBERS" ? "primary" : "secondary"}
+                      color={isMembersSectionType(section.type) ? "primary" : "secondary"}
                     />
                   </TableCell>
                   <TableCell>

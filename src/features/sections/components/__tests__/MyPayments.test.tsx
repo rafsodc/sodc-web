@@ -95,7 +95,7 @@ describe("MyPayments", () => {
 
     render(<MyPayments onBack={() => undefined} />);
 
-    expect(screen.getByText("PENDING AUTO REFUND")).toBeInTheDocument();
+    expect(screen.getByText("Refund pending")).toBeInTheDocument();
     expect(screen.getByText("Rev 2")).toBeInTheDocument();
     expect(screen.getByText("-5.00 GBP")).toBeInTheDocument();
   });

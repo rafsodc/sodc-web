@@ -4,6 +4,10 @@ import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataco
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
+import {
+  getBookingPaymentAdjustmentStatusLabel,
+  getTicketOrderStatusLabel,
+} from "../../../shared/utils/paymentStatusLabels";
 import { getMyTicketOrderStripeArtifactsBatch } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 
@@ -108,7 +112,11 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                 {orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>
-                      <Chip size="small" label={order.status} color={statusChipColor(order.status)} />
+                      <Chip
+                        size="small"
+                        label={getTicketOrderStatusLabel(order.status)}
+                        color={statusChipColor(order.status)}
+                      />
                     </TableCell>
                     <TableCell>{order.event?.title ?? "—"}</TableCell>
                     <TableCell>{order.ticketType?.title ?? "—"}</TableCell>
@@ -163,7 +171,11 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                   {bookingAdjustments.map((adjustment) => (
                     <TableRow key={adjustment.id}>
                       <TableCell>
-                        <Chip size="small" label={adjustment.status.replaceAll("_", " ")} color="warning" />
+                        <Chip
+                          size="small"
+                          label={getBookingPaymentAdjustmentStatusLabel(adjustment.status)}
+                          color="warning"
+                        />
                       </TableCell>
                       <TableCell>{adjustment.eventTitle}</TableCell>
                       <TableCell align="right">{(adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
