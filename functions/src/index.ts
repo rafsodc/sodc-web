@@ -8,6 +8,7 @@ export * from "./sections";
 export * from "./bookings";
 export * from "./guestTicketRequests";
 export * from "./payments";
+export * from "./stagedExpiry";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {

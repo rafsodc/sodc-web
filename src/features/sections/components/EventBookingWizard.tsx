@@ -45,6 +45,8 @@ import {
   guestCountNeedsModerationNotice,
 } from "../utils/eventGuestPolicy";
 import {
+  EXPIRED_DRAFT_HOLD_MESSAGE,
+  hasExpiredDraftHold,
   summarizeEventBookingPayment,
 } from "../utils/eventBookingStatusSummary";
 import EventBookingStatusSummary from "./EventBookingStatusSummary";
@@ -199,6 +201,10 @@ export default function EventBookingWizard({
   const existingDraft = useMemo(() => {
     const list = myBookingsData?.user?.bookings ?? [];
     return list.find((b) => b.status === BookingStatus.DRAFT) ?? null;
+  }, [myBookingsData]);
+
+  const showExpiredDraftHoldNotice = useMemo(() => {
+    return hasExpiredDraftHold(myBookingsData?.user?.bookings);
   }, [myBookingsData]);
 
   useEffect(() => {
@@ -662,6 +668,12 @@ export default function EventBookingWizard({
               Editing revision {existingTerminalBooking.revisionNumber} (
               {getBookingStatusLabel(existingTerminalBooking.status).toLowerCase()}). Saving will create a new
               booking revision.
+            </Alert>
+          ) : null}
+
+          {showExpiredDraftHoldNotice && !editingExistingBooking && !postSubmitFlow ? (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {EXPIRED_DRAFT_HOLD_MESSAGE}
             </Alert>
           ) : null}
 

@@ -50,10 +50,27 @@ export interface EventBookingGuestRequestSummary {
   hasPending: boolean;
 }
 
+export const EXPIRED_DRAFT_HOLD_MESSAGE =
+  "Your previous booking draft expired due to inactivity. Start a new booking below.";
+
 function ticketTypeIdsFromBooking(booking: EventBookingSummaryInput): string[] {
   return (booking.lines ?? [])
     .map((line) => line.ticketType?.id)
     .filter((id): id is string => Boolean(id));
+}
+
+export function hasExpiredDraftHold(
+  bookings: Array<{ status: BookingStatus | string }> | null | undefined
+): boolean {
+  const list = bookings ?? [];
+  const hasCancelled = list.some((booking) => booking.status === BookingStatus.CANCELLED);
+  const hasActive = list.some(
+    (booking) =>
+      booking.status === BookingStatus.DRAFT ||
+      booking.status === BookingStatus.SUBMITTED ||
+      booking.status === BookingStatus.CONFIRMED
+  );
+  return hasCancelled && !hasActive;
 }
 
 export function summarizeGuestTicketRequests(
@@ -198,7 +215,7 @@ export function getEventBookingNextSteps(params: {
   if (paymentSummary.kind === "pending" || paymentSummary.kind === "not_started" || paymentSummary.kind === "partial") {
     steps.push("Complete payment to secure your place.");
   } else if (paymentSummary.kind === "failed") {
-    steps.push("Your last payment attempt failed. Use Pay now to try again.");
+    steps.push("Your payment hold expired or the last attempt failed. Use Pay now to try again.");
   } else if (paymentSummary.kind === "adjustment_charge") {
     steps.push("An additional payment is being processed for your latest booking revision.");
   } else if (paymentSummary.kind === "adjustment_refund") {
