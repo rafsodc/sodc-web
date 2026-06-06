@@ -26,6 +26,7 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
     status: "SUBMITTED",
   }),
   createTicketCheckoutSession: vi.fn(),
+  submitGuestTicketRequest: vi.fn().mockResolvedValue({ success: true, requestId: "req-1" }),
 }));
 
 describe("EventBookingWizard", () => {
@@ -168,6 +169,7 @@ describe("EventBookingWizard", () => {
 
     await user.click(screen.getByRole("button", { name: "Next" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
     await user.click(screen.getByRole("button", { name: "Save booking changes" }));
 
     await waitFor(() => {
@@ -179,5 +181,71 @@ describe("EventBookingWizard", () => {
         })
       );
     });
+  });
+
+  it("shows moderation notice when guest count exceeds policy on review step", async () => {
+    const user = userEvent.setup();
+    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <EventBookingWizard
+          wizardOpen
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+              {
+                id: "ticket-guest",
+                title: "Guest standard",
+                audience: TicketAudience.GUEST,
+                price: 25,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByLabelText(/member standard/i));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    const guestCountInput = screen.getByLabelText(/how many guest tickets in total/i);
+    await user.clear(guestCountInput);
+    await user.type(guestCountInput, "2");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    await user.type(screen.getAllByLabelText("Guest name")[0], "Alex Guest");
+    const extraGuestName = screen.getAllByLabelText("Guest name")[1];
+    if (extraGuestName) {
+      await user.type(extraGuestName, "Alex Guest");
+    }
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByText(/may require organiser review/i)).toBeInTheDocument();
   });
 });

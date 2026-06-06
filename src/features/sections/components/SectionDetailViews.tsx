@@ -5,28 +5,17 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
-import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
+import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
-import {
-  ACCESS_GROUP_COLUMN_LABEL,
-  GUEST_LIMIT_BEFORE_REVIEW_LABEL,
-} from "../../../shared/utils/sectionDisplayLabels";
 import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
-import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../shared/utils/ticketAudienceLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import EventBookingWizard from "./EventBookingWizard";
+import EventDetailHero from "./EventDetailHero";
 import SectionEventCard from "./SectionEventCard";
 import SectionMemberCard from "./SectionMemberCard";
 
@@ -275,10 +264,8 @@ interface SectionEventDetailViewProps {
   loading: boolean;
   isError: boolean;
   hasCurrentUser: boolean;
-  startingCheckoutId: string | null;
   onBackToEvents: () => void;
   onRetry: () => void;
-  onStartCheckout: (ticketTypeId: string) => void;
   onBookingComplete: () => void;
 }
 
@@ -288,12 +275,13 @@ export function SectionEventDetailView({
   loading,
   isError,
   hasCurrentUser,
-  startingCheckoutId,
   onBackToEvents,
   onRetry,
-  onStartCheckout,
   onBookingComplete,
 }: SectionEventDetailViewProps) {
+  const [bookingWizardOpen, setBookingWizardOpen] = useState(false);
+  const [hasExistingBooking, setHasExistingBooking] = useState(false);
+
   return (
     <Box sx={{ mt: 2 }}>
       <Button size="small" onClick={onBackToEvents} sx={{ mb: 2 }}>
@@ -314,101 +302,22 @@ export function SectionEventDetailView({
         <Alert severity="info">Event not found.</Alert>
       ) : (
         <>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            {event.title}
-          </Typography>
-          <Box component="dl" sx={{ "& dd": { m: 0 }, "& dt": { fontWeight: 500, mt: 1 } }}>
-            <Typography component="dt" variant="body2">
-              Date / time
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {new Date(event.startDateTime).toLocaleString()} -{" "}
-              {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Location
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {event.location || "-"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Guest of honour
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {event.guestOfHonour || "-"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Booking window
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {new Date(event.bookingStartDateTime).toLocaleString()} -{" "}
-              {new Date(event.bookingEndDateTime).toLocaleString()}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              {GUEST_LIMIT_BEFORE_REVIEW_LABEL}
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {event.maxGuestsWithoutModeratorApproval != null
-                ? String(event.maxGuestsWithoutModeratorApproval)
-                : "-"}
-            </Typography>
-          </Box>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Ticket types
-          </Typography>
-          {!event.ticketTypes?.length ? (
-            <Typography variant="body2" color="text.secondary">
-              No ticket types.
-            </Typography>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>{TICKET_CATEGORY_LABEL}</TableCell>
-                    <TableCell>{ACCESS_GROUP_COLUMN_LABEL}</TableCell>
-                    <TableCell align="right">Purchase</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {event.ticketTypes.map((ticketType) => (
-                    <TableRow key={ticketType.id}>
-                      <TableCell>{ticketType.title}</TableCell>
-                      <TableCell>{ticketType.description ?? "-"}</TableCell>
-                      <TableCell>{ticketType.price}</TableCell>
-                      <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
-                      <TableCell>{ticketType.userGroup?.name ?? "-"}</TableCell>
-                      <TableCell align="right">
-                        {hasCurrentUser && ticketType.audience === TicketAudience.MEMBER ? (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            disabled={startingCheckoutId === ticketType.id}
-                            onClick={() => onStartCheckout(ticketType.id)}
-                            sx={{ backgroundColor: colors.callToAction }}
-                          >
-                            {startingCheckoutId === ticketType.id ? "Starting..." : "Pay"}
-                          </Button>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-          {hasCurrentUser && (
+          <EventDetailHero
+            event={event}
+            hasCurrentUser={hasCurrentUser}
+            showBookButton={hasCurrentUser && !bookingWizardOpen && !hasExistingBooking}
+            onBookClick={() => setBookingWizardOpen(true)}
+          />
+          {hasCurrentUser ? (
             <EventBookingWizard
               section={section}
               event={event}
+              wizardOpen={bookingWizardOpen}
+              onWizardOpenChange={setBookingWizardOpen}
+              onHasExistingBookingChange={setHasExistingBooking}
               onBookingComplete={onBookingComplete}
             />
-          )}
+          ) : null}
         </>
       )}
     </Box>

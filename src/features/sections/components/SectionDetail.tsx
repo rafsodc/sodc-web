@@ -23,7 +23,7 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate, useLocation } from "react-router-dom";
-import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
+import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
@@ -65,7 +65,6 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [startingCheckoutId, setStartingCheckoutId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SectionDetailTab>("about");
 
   const currentUser = auth.currentUser;
@@ -297,22 +296,6 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleStartCheckout = async (ticketTypeId: string) => {
-    setStartingCheckoutId(ticketTypeId);
-    try {
-      const { url } = await createTicketCheckoutSession({ ticketTypeId, quantity: 1 });
-      window.location.assign(url);
-    } catch (error: unknown) {
-      const message =
-        error && typeof (error as { message?: string }).message === "string"
-          ? (error as { message: string }).message
-          : "Could not start checkout. Please try again.";
-      setSnackbar({ open: true, message, severity: "error" });
-    } finally {
-      setStartingCheckoutId(null);
-    }
-  };
-
   const loadedSection = sectionData?.section;
   const isMembersSectionType = loadedSection ? isMembersSection(loadedSection as any) : false;
   const sectionTabs = getSectionDetailTabs(isMembersSectionType);
@@ -487,10 +470,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
             loading={loadingEventDetail}
             isError={errorEventDetail}
             hasCurrentUser={Boolean(currentUser)}
-            startingCheckoutId={startingCheckoutId}
             onBackToEvents={handleBackToEvents}
             onRetry={() => refetchEventDetail()}
-            onStartCheckout={(ticketTypeId) => void handleStartCheckout(ticketTypeId)}
             onBookingComplete={() => {
               void refetchEventDetail();
             }}
