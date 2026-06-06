@@ -13,13 +13,11 @@ import { colors } from "../../../config/colors";
 interface EmailVerificationMessageProps {
   user: User;
   onVerified?: () => void;
-  onBack?: () => void;
 }
 
 export default function EmailVerificationMessage({
   user,
   onVerified,
-  onBack,
 }: EmailVerificationMessageProps) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -44,23 +42,16 @@ export default function EmailVerificationMessage({
     setChecking(true);
     setError(null);
     try {
-      // Reload the user to get the latest email verification status
       await reload(user);
-      // Force a token refresh to ensure we have the latest claims
       await user.getIdToken(true);
-      
-      // Small delay to ensure the user object is fully updated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Check the emailVerified status after reload
-      // The reload should have updated the user object
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       if (user.emailVerified) {
         if (onVerified) {
-          // Call the callback which should trigger parent to re-check
           await onVerified();
         }
       } else {
-        setError("Email not yet verified. Please check your email and click the verification link.");
+        setError("Email not yet verified. Please check your inbox and click the verification link.");
       }
     } catch (e: any) {
       setError(e?.message || "Failed to check verification status");
@@ -69,9 +60,7 @@ export default function EmailVerificationMessage({
     }
   };
 
-  // Auto-check verification status periodically
   useEffect(() => {
-    // Don't set up auto-check if already verified
     if (user?.emailVerified) {
       return;
     }
@@ -80,7 +69,6 @@ export default function EmailVerificationMessage({
       if (user && !user.emailVerified) {
         try {
           await reload(user);
-          // After reload, check if email is now verified
           if (user.emailVerified && onVerified) {
             onVerified();
           }
@@ -88,43 +76,37 @@ export default function EmailVerificationMessage({
           // Silently fail auto-checks
         }
       }
-    }, 5000); // Check every 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [user, onVerified]);
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "50vh",
-        textAlign: "center",
-        p: 3,
-      }}
-    >
-      <Alert severity="info" sx={{ mb: 3, maxWidth: "600px" }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          Verify Your Email Address
-        </Typography>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
-          We've sent a verification email to <strong>{user.email}</strong>. Please check your inbox and click the verification link to continue.
-        </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {sent && (
-          <Alert severity="success" sx={{ mt: 2 }}>
-            Verification email sent!
-          </Alert>
-        )}
+    <Box sx={{ textAlign: "left" }}>
+      <Typography variant="h5" sx={{ color: colors.titlePrimary, mb: 1 }}>
+        Verify your email
+      </Typography>
+      <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
+        Step 2 of 4 — we sent a verification link to <strong>{user.email}</strong>. Open the email
+        and click the link, then return here and continue.
+      </Typography>
+
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Check your spam folder if the message does not arrive within a few minutes.
       </Alert>
 
-      <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {sent && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Verification email sent!
+        </Alert>
+      )}
+
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
         <Button
           variant="contained"
           onClick={checkVerification}
@@ -138,23 +120,12 @@ export default function EmailVerificationMessage({
             },
           }}
         >
-          {checking ? <CircularProgress size={24} /> : "I've Verified My Email"}
+          {checking ? <CircularProgress size={24} /> : "I've verified my email"}
         </Button>
-        <Button
-          variant="outlined"
-          onClick={handleResend}
-          disabled={sending || sent}
-        >
-          {sending ? <CircularProgress size={24} /> : "Resend Email"}
+        <Button variant="outlined" onClick={handleResend} disabled={sending || sent}>
+          {sending ? <CircularProgress size={24} /> : "Resend email"}
         </Button>
       </Stack>
-
-      {onBack && (
-        <Button variant="outlined" onClick={onBack} sx={{ mt: 2 }}>
-          Back to Home
-        </Button>
-      )}
     </Box>
   );
 }
-

@@ -45,11 +45,12 @@ describe("ProfileCompletion", () => {
     const user = userEvent.setup();
     render(<ProfileCompletion userEmail="new@example.com" />);
 
-    const [firstNameInput, lastNameInput, , serviceNumberInput] = screen.getAllByRole("textbox");
-    await user.type(firstNameInput, "New");
-    await user.type(lastNameInput, "Member");
+    const textboxes = screen.getAllByRole("textbox");
+    await user.type(textboxes[0], "New");
+    await user.type(textboxes[1], "Member");
+    const serviceNumberInput = document.querySelector('input[maxlength="50"]') as HTMLInputElement;
     await user.type(serviceNumberInput, "99999");
-    await user.click(screen.getByRole("button", { name: "Submit Profile" }));
+    await user.click(screen.getByRole("button", { name: /submit profile/i }));
 
     await waitFor(() => {
       expect(mutationRef).toHaveBeenCalledWith(
