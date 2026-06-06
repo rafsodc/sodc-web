@@ -8,7 +8,6 @@ import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
 import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
-import HomePage from "./shared/components/HomePage";
 import AppSideNav from "./shared/components/AppSideNav";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
@@ -44,6 +43,7 @@ const AccountStatusMessage = lazy(() => import("./features/users/components/Acco
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
 const MemberWelcomePage = lazy(() => import("./features/welcome/components/MemberWelcomePage"));
+const PublicHomePage = lazy(() => import("./features/welcome/components/PublicHomePage"));
 const AccountSettingsPage = lazy(() => import("./features/account/components/AccountSettingsPage"));
 const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"));
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
@@ -370,7 +370,12 @@ function AppContent() {
                         />
                       </Suspense>
                     ) : (
-                      <HomePage />
+                      <Suspense fallback={<LoadingFallback />}>
+                        <PublicHomePage
+                          onJoinClick={() => navigate(ROUTES.REGISTER)}
+                          onLogInClick={() => navigate(ROUTES.ACCOUNT)}
+                        />
+                      </Suspense>
                     )
                   }
                 />
