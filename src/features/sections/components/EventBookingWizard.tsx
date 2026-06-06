@@ -19,7 +19,9 @@ import {
 } from "@mui/material";
 import {
   useGetCurrentUser,
+  useGetMyBookingPaymentAdjustments,
   useGetMyBookingsForEvent,
+  useGetMyTicketOrders,
   useGetUserAccessGroups,
 } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
@@ -28,10 +30,15 @@ import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconn
 import { BookingStatus, TicketAudience } from "@dataconnect/generated";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
-import { getSectionMembersMerged, submitEventBooking } from "../../../shared/utils/firebaseFunctions";
+import {
+  createTicketCheckoutSession,
+  getSectionMembersMerged,
+  submitEventBooking,
+} from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
 import AdditionalGuestRequestSection from "./AdditionalGuestRequestSection";
+import EventBookingStatusSummary from "./EventBookingStatusSummary";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
 type SectionDetail = NonNullable<GetSectionByIdData["section"]>;
@@ -67,7 +74,8 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
   const [seatingOptions, setSeatingOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [editingExistingBooking, setEditingExistingBooking] = useState(false);
+  const [isEditingBooking, setIsEditingBooking] = useState(false);
+  const [payingTicketTypeId, setPayingTicketTypeId] = useState<string | null>(null);
 
   const idempotencyKeyRef = useRef<string | null>(null);
   const hydratedBookingIdRef = useRef<string | null>(null);
@@ -128,6 +136,21 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
       }, null);
   }, [myBookingsData]);
 
+  const { data: ticketOrdersData } = useGetMyTicketOrders(dataConnect, {
+    enabled: Boolean(existingTerminalBooking),
+  });
+  const { data: paymentAdjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, {
+    enabled: Boolean(existingTerminalBooking),
+  });
+
+  const bookingPaymentAdjustments = useMemo(() => {
+    if (!existingTerminalBooking) return [];
+    const bookingRow = paymentAdjustmentsData?.user?.bookings?.find(
+      (row) => row.id === existingTerminalBooking.id
+    );
+    return bookingRow?.adjustments ?? [];
+  }, [existingTerminalBooking, paymentAdjustmentsData]);
+
   /** Server draft for this event — reuse its idempotency key after refresh (new random UUID would conflict). */
   const existingDraft = useMemo(() => {
     const list = myBookingsData?.user?.bookings ?? [];
@@ -150,14 +173,14 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     const booking = existingTerminalBooking;
     if (!booking) {
       hydratedBookingIdRef.current = null;
-      setEditingExistingBooking(false);
+      setIsEditingBooking(false);
       return;
     }
     if (hydratedBookingIdRef.current === booking.id) {
       return;
     }
     hydratedBookingIdRef.current = booking.id;
-    setEditingExistingBooking(true);
+    setIsEditingBooking(false);
     const memberLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.MEMBER);
     const guestLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.GUEST);
     setMemberTicketTypeId(memberLine?.ticketType?.id ?? null);
@@ -303,6 +326,7 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
         accommodationNote,
       });
       await refetchMyBookings();
+      setIsEditingBooking(false);
       onBookingComplete?.();
     } catch (err: unknown) {
       const code = extractCallableErrorCode(err);
@@ -344,6 +368,25 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     }
   };
 
+  const handlePayNow = async (ticketTypeId: string) => {
+    setPayingTicketTypeId(ticketTypeId);
+    try {
+      const { url } = await createTicketCheckoutSession({ ticketTypeId, quantity: 1 });
+      window.location.assign(url);
+    } catch (err: unknown) {
+      const message =
+        err && typeof (err as { message?: string }).message === "string"
+          ? (err as { message: string }).message
+          : "Could not start checkout. Please try again.";
+      setSubmitError(message);
+    } finally {
+      setPayingTicketTypeId(null);
+    }
+  };
+
+  const showBookingSummary = Boolean(existingTerminalBooking) && !isEditingBooking;
+  const editingExistingBooking = isEditingBooking && Boolean(existingTerminalBooking);
+
   if (loadingProfile || loadingBookings) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
@@ -378,32 +421,66 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-        {editingExistingBooking ? "Edit your booking" : "Book this event"}
-      </Typography>
-      {editingExistingBooking && existingTerminalBooking ? (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Editing revision {existingTerminalBooking.revisionNumber} (
-          {getBookingStatusLabel(existingTerminalBooking.status).toLowerCase()}).
-          Saving will create a new booking revision.
-        </Alert>
-      ) : null}
+      {showBookingSummary && existingTerminalBooking ? (
+        <>
+          <EventBookingStatusSummary
+            booking={existingTerminalBooking}
+            eventId={event.id}
+            eventTitle={event.title}
+            ticketOrders={ticketOrdersData?.user?.ticketOrders ?? []}
+            paymentAdjustments={bookingPaymentAdjustments}
+            onEditBooking={() => setIsEditingBooking(true)}
+            onPayNow={(ticketTypeId) => void handlePayNow(ticketTypeId)}
+            payingTicketTypeId={payingTicketTypeId}
+          />
+          {submitError ? (
+            <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSubmitError(null)}>
+              {submitError}
+            </Alert>
+          ) : null}
+          <Box sx={{ mt: 2 }}>
+            <AdditionalGuestRequestSection
+              bookingId={existingTerminalBooking.id}
+              eventTitle={event.title}
+              maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
+              guestTicketTypes={guestTicketTypes.map((tt) => ({
+                id: tt.id,
+                title: tt.title,
+                price: tt.price ?? null,
+              }))}
+              requests={existingTerminalBooking.guestTicketRequests ?? []}
+              onRequestCreated={() => void refetchMyBookings()}
+            />
+          </Box>
+        </>
+      ) : (
+        <>
+          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+            {editingExistingBooking ? "Edit your booking" : "Book this event"}
+          </Typography>
+          {editingExistingBooking && existingTerminalBooking ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Editing revision {existingTerminalBooking.revisionNumber} (
+              {getBookingStatusLabel(existingTerminalBooking.status).toLowerCase()}).
+              Saving will create a new booking revision.
+            </Alert>
+          ) : null}
 
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-        {STEPS.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+          <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+            {STEPS.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
 
-      {submitError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSubmitError(null)}>
-          {submitError}
-        </Alert>
-      )}
+          {submitError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSubmitError(null)}>
+              {submitError}
+            </Alert>
+          )}
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         {activeStep === 0 && (
           <FormControl component="fieldset" fullWidth>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -617,22 +694,13 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
           Start over
         </Button>
       )}
-      {existingTerminalBooking ? (
-        <Box sx={{ mt: 2 }}>
-          <AdditionalGuestRequestSection
-            bookingId={existingTerminalBooking.id}
-            eventTitle={event.title}
-            maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
-            guestTicketTypes={guestTicketTypes.map((tt) => ({
-              id: tt.id,
-              title: tt.title,
-              price: tt.price ?? null,
-            }))}
-            requests={existingTerminalBooking.guestTicketRequests ?? []}
-            onRequestCreated={() => void refetchMyBookings()}
-          />
-        </Box>
+      {editingExistingBooking ? (
+        <Button size="small" onClick={() => setIsEditingBooking(false)} disabled={submitting} sx={{ mt: 1, ml: 1 }}>
+          Cancel editing
+        </Button>
       ) : null}
+        </>
+      )}
     </Box>
   );
 }

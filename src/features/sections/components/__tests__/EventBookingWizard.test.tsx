@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "../../../../test-utils";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import EventBookingWizard from "../EventBookingWizard";
 import { BookingStatus, TicketAudience } from "@dataconnect/generated";
@@ -9,6 +10,8 @@ import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 vi.mock("@dataconnect/generated/react", () => ({
   useGetCurrentUser: vi.fn(),
   useGetMyBookingsForEvent: vi.fn(),
+  useGetMyTicketOrders: vi.fn(),
+  useGetMyBookingPaymentAdjustments: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
 }));
 
@@ -22,6 +25,7 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
     bookingId: "booking-new",
     status: "SUBMITTED",
   }),
+  createTicketCheckoutSession: vi.fn(),
 }));
 
 describe("EventBookingWizard", () => {
@@ -69,12 +73,59 @@ describe("EventBookingWizard", () => {
       isLoading: false,
       refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } }),
     } as never);
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
+      data: { user: { ticketOrders: [] } },
+      isLoading: false,
+    } as never);
+    vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+    } as never);
+  });
+
+  it("shows booking summary by default for submitted bookings", () => {
+    render(
+      <MemoryRouter>
+        <EventBookingWizard
+        section={{
+          id: "section-1",
+          name: "Events",
+          type: "EVENTS",
+          description: null,
+          purposeLinks: [
+            { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+          ],
+        } as never}
+        event={{
+          id: "event-1",
+          title: "Annual Dinner",
+          bookingStartDateTime: "2025-01-01T00:00:00Z",
+          bookingEndDateTime: "2030-01-01T00:00:00Z",
+          maxGuestsWithoutModeratorApproval: 1,
+          ticketTypes: [
+            {
+              id: "ticket-member",
+              title: "Member standard",
+              audience: TicketAudience.MEMBER,
+              price: 50,
+              userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+            },
+          ],
+        } as never}
+      />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Your booking")).toBeInTheDocument();
+    expect(screen.getAllByText("Revision 2").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Edit your booking")).not.toBeInTheDocument();
   });
 
   it("submits booking edits with base revision metadata", async () => {
     const user = userEvent.setup();
     render(
-      <EventBookingWizard
+      <MemoryRouter>
+        <EventBookingWizard
         section={{
           id: "section-1",
           name: "Events",
@@ -108,8 +159,10 @@ describe("EventBookingWizard", () => {
           ],
         } as never}
       />
+      </MemoryRouter>
     );
 
+    await user.click(screen.getByRole("button", { name: "Edit booking" }));
     expect(screen.getByText("Edit your booking")).toBeInTheDocument();
     expect(screen.getByText(/editing revision 2/i)).toBeInTheDocument();
 

@@ -18,6 +18,8 @@ vi.mock('@dataconnect/generated/react', () => ({
   useGetEventById: vi.fn(),
   useGetCurrentUser: vi.fn(),
   useGetMyBookingsForEvent: vi.fn(),
+  useGetMyTicketOrders: vi.fn(),
+  useGetMyBookingPaymentAdjustments: vi.fn(),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
@@ -96,6 +98,18 @@ function mockGetMyBookingsForEvent(overrides: DataConnectQueryResultOverrides) {
   );
 }
 
+function mockGetMyTicketOrders(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>(overrides)
+  );
+}
+
+function mockGetMyBookingPaymentAdjustments(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>(overrides)
+  );
+}
+
 describe('SectionDetail', () => {
   const mockOnBack = vi.fn();
   const sectionId = 'section-1';
@@ -138,6 +152,16 @@ describe('SectionDetail', () => {
       isError: false,
     });
     mockGetMyBookingsForEvent({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyTicketOrders({
+      data: { user: { ticketOrders: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyBookingPaymentAdjustments({
       data: { user: { bookings: [] } },
       isLoading: false,
       isError: false,
@@ -544,6 +568,8 @@ describe('SectionDetail', () => {
         id: eventId,
         title: 'Annual Dinner',
         ...upcomingEventTimes,
+        bookingStartDateTime: '2020-01-01T00:00:00Z',
+        bookingEndDateTime: '2030-12-31T23:59:59Z',
         location: 'Main Hall',
         guestOfHonour: 'Jane Doe',
         maxGuestsWithoutModeratorApproval: null,
@@ -608,6 +634,145 @@ describe('SectionDetail', () => {
     });
   });
 
+  it('should show booking status summary when member has a submitted booking', async () => {
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        description: 'Events description',
+        purposeLinks: [
+          {
+            purposes: ['ACCESS', 'BOOKER'],
+            userGroup: { id: 'group-1', membershipStatuses: ['REGULAR'] },
+          },
+        ],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [
+          {
+            id: eventId,
+            title: 'Annual Dinner',
+            ...upcomingEventTimes,
+            location: 'Main Hall',
+            guestOfHonour: 'Jane Doe',
+          },
+        ],
+      },
+    };
+    const mockEventDetailData = {
+      event: {
+        id: eventId,
+        title: 'Annual Dinner',
+        ...upcomingEventTimes,
+        bookingStartDateTime: '2020-01-01T00:00:00Z',
+        bookingEndDateTime: '2030-12-31T23:59:59Z',
+        location: 'Main Hall',
+        guestOfHonour: 'Jane Doe',
+        maxGuestsWithoutModeratorApproval: 1,
+        ticketTypes: [
+          {
+            id: 'tt-1',
+            title: 'Standard',
+            description: 'Standard ticket',
+            price: 25,
+            sortOrder: 0,
+            audience: 'MEMBER',
+            userGroup: { id: 'group-1', name: 'Standard Access', membershipStatuses: ['REGULAR'] },
+          },
+        ],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [{ userGroup: { id: 'group-1' } }] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventsForSection({
+      data: mockEventsData,
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventById({
+      data: mockEventDetailData,
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyBookingsForEvent({
+      data: {
+        user: {
+          bookings: [
+            {
+              id: 'booking-1',
+              status: 'SUBMITTED',
+              revisionNumber: 2,
+              clientSubmissionKey: null,
+              bookerDietaryNote: null,
+              sitNextToUserIds: [],
+              accommodationRequested: false,
+              accommodationNote: null,
+              lines: [
+                {
+                  id: 'line-1',
+                  sortOrder: 0,
+                  guestDisplayName: null,
+                  dietaryNote: null,
+                  ticketType: {
+                    id: 'tt-1',
+                    title: 'Standard',
+                    audience: 'MEMBER',
+                    price: 25,
+                  },
+                },
+              ],
+              guestTicketRequests: [{ id: 'gtr-1', status: 'PENDING', requestedGuestCount: 1 }],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyTicketOrders({
+      data: { user: { ticketOrders: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyBookingPaymentAdjustments({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your booking')).toBeInTheDocument();
+      expect(screen.getByText('Payment not started')).toBeInTheDocument();
+      expect(screen.getByText(/1 pending review/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Pay now' })).toBeInTheDocument();
+      expect(screen.queryByText('Book this event')).not.toBeInTheDocument();
+    });
+  });
+
   it('should show breadcrumbs and return to events list when header Back is clicked from event detail', async () => {
     const eventId = 'event-1';
     const mockSectionData = {
@@ -637,6 +802,8 @@ describe('SectionDetail', () => {
         id: eventId,
         title: 'Annual Dinner',
         ...upcomingEventTimes,
+        bookingStartDateTime: '2020-01-01T00:00:00Z',
+        bookingEndDateTime: '2030-12-31T23:59:59Z',
         location: 'Main Hall',
         guestOfHonour: null,
         maxGuestsWithoutModeratorApproval: null,
