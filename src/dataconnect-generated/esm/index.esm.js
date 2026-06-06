@@ -1,4 +1,4 @@
-import { queryRef, executeQuery, validateArgsWithOptions, mutationRef, executeMutation, validateArgs } from 'firebase/data-connect';
+import { queryRef, executeQuery, mutationRef, executeMutation, validateArgs } from 'firebase/data-connect';
 
 export const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
@@ -91,6 +91,7 @@ export const connectorConfig = {
   service: 'sodc-web-service',
   location: 'europe-west2'
 };
+
 export const getCurrentUserRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
@@ -98,10 +99,8 @@ export const getCurrentUserRef = (dc) => {
 }
 getCurrentUserRef.operationName = 'GetCurrentUser';
 
-export function getCurrentUser(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getCurrentUserRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getCurrentUser(dc) {
+  return executeQuery(getCurrentUserRef(dc));
 }
 
 export const getUserByIdRef = (dcOrVars, vars) => {
@@ -111,10 +110,8 @@ export const getUserByIdRef = (dcOrVars, vars) => {
 }
 getUserByIdRef.operationName = 'GetUserById';
 
-export function getUserById(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserByIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserById(dcOrVars, vars) {
+  return executeQuery(getUserByIdRef(dcOrVars, vars));
 }
 
 export const listUsersRef = (dc) => {
@@ -124,10 +121,8 @@ export const listUsersRef = (dc) => {
 }
 listUsersRef.operationName = 'ListUsers';
 
-export function listUsers(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listUsersRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listUsers(dc) {
+  return executeQuery(listUsersRef(dc));
 }
 
 export const listSectionsRef = (dc) => {
@@ -137,10 +132,8 @@ export const listSectionsRef = (dc) => {
 }
 listSectionsRef.operationName = 'ListSections';
 
-export function listSections(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listSectionsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listSections(dc) {
+  return executeQuery(listSectionsRef(dc));
 }
 
 export const getSectionsForUserRef = (dc) => {
@@ -150,10 +143,8 @@ export const getSectionsForUserRef = (dc) => {
 }
 getSectionsForUserRef.operationName = 'GetSectionsForUser';
 
-export function getSectionsForUser(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getSectionsForUserRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getSectionsForUser(dc) {
+  return executeQuery(getSectionsForUserRef(dc));
 }
 
 export const listUserGroupsRef = (dc) => {
@@ -163,10 +154,8 @@ export const listUserGroupsRef = (dc) => {
 }
 listUserGroupsRef.operationName = 'ListUserGroups';
 
-export function listUserGroups(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listUserGroupsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listUserGroups(dc) {
+  return executeQuery(listUserGroupsRef(dc));
 }
 
 export const getUserAccessGroupsRef = (dc) => {
@@ -176,10 +165,8 @@ export const getUserAccessGroupsRef = (dc) => {
 }
 getUserAccessGroupsRef.operationName = 'GetUserAccessGroups';
 
-export function getUserAccessGroups(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getUserAccessGroupsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserAccessGroups(dc) {
+  return executeQuery(getUserAccessGroupsRef(dc));
 }
 
 export const checkUserProfileExistsRef = (dc) => {
@@ -189,10 +176,8 @@ export const checkUserProfileExistsRef = (dc) => {
 }
 checkUserProfileExistsRef.operationName = 'CheckUserProfileExists';
 
-export function checkUserProfileExists(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(checkUserProfileExistsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function checkUserProfileExists(dc) {
+  return executeQuery(checkUserProfileExistsRef(dc));
 }
 
 export const getUserMembershipStatusRef = (dcOrVars, vars) => {
@@ -202,10 +187,8 @@ export const getUserMembershipStatusRef = (dcOrVars, vars) => {
 }
 getUserMembershipStatusRef.operationName = 'GetUserMembershipStatus';
 
-export function getUserMembershipStatus(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserMembershipStatusRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserMembershipStatus(dcOrVars, vars) {
+  return executeQuery(getUserMembershipStatusRef(dcOrVars, vars));
 }
 
 export const getUserWithAccessGroupsRef = (dcOrVars, vars) => {
@@ -215,10 +198,8 @@ export const getUserWithAccessGroupsRef = (dcOrVars, vars) => {
 }
 getUserWithAccessGroupsRef.operationName = 'GetUserWithAccessGroups';
 
-export function getUserWithAccessGroups(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserWithAccessGroupsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserWithAccessGroups(dcOrVars, vars) {
+  return executeQuery(getUserWithAccessGroupsRef(dcOrVars, vars));
 }
 
 export const getUserAccessGroupsByIdRef = (dcOrVars, vars) => {
@@ -228,10 +209,8 @@ export const getUserAccessGroupsByIdRef = (dcOrVars, vars) => {
 }
 getUserAccessGroupsByIdRef.operationName = 'GetUserAccessGroupsById';
 
-export function getUserAccessGroupsById(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserAccessGroupsByIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserAccessGroupsById(dcOrVars, vars) {
+  return executeQuery(getUserAccessGroupsByIdRef(dcOrVars, vars));
 }
 
 export const getEventsForSectionRef = (dcOrVars, vars) => {
@@ -241,10 +220,8 @@ export const getEventsForSectionRef = (dcOrVars, vars) => {
 }
 getEventsForSectionRef.operationName = 'GetEventsForSection';
 
-export function getEventsForSection(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getEventsForSectionRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getEventsForSection(dcOrVars, vars) {
+  return executeQuery(getEventsForSectionRef(dcOrVars, vars));
 }
 
 export const getEventByIdRef = (dcOrVars, vars) => {
@@ -254,10 +231,8 @@ export const getEventByIdRef = (dcOrVars, vars) => {
 }
 getEventByIdRef.operationName = 'GetEventById';
 
-export function getEventById(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getEventByIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getEventById(dcOrVars, vars) {
+  return executeQuery(getEventByIdRef(dcOrVars, vars));
 }
 
 export const getSectionByIdRef = (dcOrVars, vars) => {
@@ -267,10 +242,8 @@ export const getSectionByIdRef = (dcOrVars, vars) => {
 }
 getSectionByIdRef.operationName = 'GetSectionById';
 
-export function getSectionById(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getSectionByIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getSectionById(dcOrVars, vars) {
+  return executeQuery(getSectionByIdRef(dcOrVars, vars));
 }
 
 export const getUserGroupByIdRef = (dcOrVars, vars) => {
@@ -280,10 +253,8 @@ export const getUserGroupByIdRef = (dcOrVars, vars) => {
 }
 getUserGroupByIdRef.operationName = 'GetUserGroupById';
 
-export function getUserGroupById(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserGroupByIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserGroupById(dcOrVars, vars) {
+  return executeQuery(getUserGroupByIdRef(dcOrVars, vars));
 }
 
 export const getAllUserGroupsWithStatusesRef = (dc) => {
@@ -293,10 +264,8 @@ export const getAllUserGroupsWithStatusesRef = (dc) => {
 }
 getAllUserGroupsWithStatusesRef.operationName = 'GetAllUserGroupsWithStatuses';
 
-export function getAllUserGroupsWithStatuses(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getAllUserGroupsWithStatusesRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getAllUserGroupsWithStatuses(dc) {
+  return executeQuery(getAllUserGroupsWithStatusesRef(dc));
 }
 
 export const getSectionMembersRef = (dcOrVars, vars) => {
@@ -306,10 +275,8 @@ export const getSectionMembersRef = (dcOrVars, vars) => {
 }
 getSectionMembersRef.operationName = 'GetSectionMembers';
 
-export function getSectionMembers(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getSectionMembersRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getSectionMembers(dcOrVars, vars) {
+  return executeQuery(getSectionMembersRef(dcOrVars, vars));
 }
 
 export const getMyBookingsForEventRef = (dcOrVars, vars) => {
@@ -319,10 +286,8 @@ export const getMyBookingsForEventRef = (dcOrVars, vars) => {
 }
 getMyBookingsForEventRef.operationName = 'GetMyBookingsForEvent';
 
-export function getMyBookingsForEvent(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getMyBookingsForEventRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getMyBookingsForEvent(dcOrVars, vars) {
+  return executeQuery(getMyBookingsForEventRef(dcOrVars, vars));
 }
 
 export const getMyBookingsRef = (dc) => {
@@ -332,10 +297,8 @@ export const getMyBookingsRef = (dc) => {
 }
 getMyBookingsRef.operationName = 'GetMyBookings';
 
-export function getMyBookings(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyBookingsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getMyBookings(dc) {
+  return executeQuery(getMyBookingsRef(dc));
 }
 
 export const getMyTicketOrderByIdRef = (dcOrVars, vars) => {
@@ -345,10 +308,8 @@ export const getMyTicketOrderByIdRef = (dcOrVars, vars) => {
 }
 getMyTicketOrderByIdRef.operationName = 'GetMyTicketOrderById';
 
-export function getMyTicketOrderById(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getMyTicketOrderByIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getMyTicketOrderById(dcOrVars, vars) {
+  return executeQuery(getMyTicketOrderByIdRef(dcOrVars, vars));
 }
 
 export const getMyTicketOrdersRef = (dc) => {
@@ -358,10 +319,8 @@ export const getMyTicketOrdersRef = (dc) => {
 }
 getMyTicketOrdersRef.operationName = 'GetMyTicketOrders';
 
-export function getMyTicketOrders(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyTicketOrdersRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getMyTicketOrders(dc) {
+  return executeQuery(getMyTicketOrdersRef(dc));
 }
 
 export const getMyBookingPaymentAdjustmentsRef = (dc) => {
@@ -371,10 +330,8 @@ export const getMyBookingPaymentAdjustmentsRef = (dc) => {
 }
 getMyBookingPaymentAdjustmentsRef.operationName = 'GetMyBookingPaymentAdjustments';
 
-export function getMyBookingPaymentAdjustments(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyBookingPaymentAdjustmentsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getMyBookingPaymentAdjustments(dc) {
+  return executeQuery(getMyBookingPaymentAdjustmentsRef(dc));
 }
 
 export const listEventBookingsForAdminRef = (dcOrVars, vars) => {
@@ -384,10 +341,8 @@ export const listEventBookingsForAdminRef = (dcOrVars, vars) => {
 }
 listEventBookingsForAdminRef.operationName = 'ListEventBookingsForAdmin';
 
-export function listEventBookingsForAdmin(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(listEventBookingsForAdminRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listEventBookingsForAdmin(dcOrVars, vars) {
+  return executeQuery(listEventBookingsForAdminRef(dcOrVars, vars));
 }
 
 export const listGuestTicketRequestsForAdminRef = (dcOrVars, vars) => {
@@ -397,10 +352,8 @@ export const listGuestTicketRequestsForAdminRef = (dcOrVars, vars) => {
 }
 listGuestTicketRequestsForAdminRef.operationName = 'ListGuestTicketRequestsForAdmin';
 
-export function listGuestTicketRequestsForAdmin(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(listGuestTicketRequestsForAdminRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listGuestTicketRequestsForAdmin(dcOrVars, vars) {
+  return executeQuery(listGuestTicketRequestsForAdminRef(dcOrVars, vars));
 }
 
 export const listTicketOrdersForAdminRef = (dcOrVars, vars) => {
@@ -410,10 +363,8 @@ export const listTicketOrdersForAdminRef = (dcOrVars, vars) => {
 }
 listTicketOrdersForAdminRef.operationName = 'ListTicketOrdersForAdmin';
 
-export function listTicketOrdersForAdmin(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(listTicketOrdersForAdminRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listTicketOrdersForAdmin(dcOrVars, vars) {
+  return executeQuery(listTicketOrdersForAdminRef(dcOrVars, vars));
 }
 
 export const listBookingPaymentAdjustmentsForAdminRef = (dcOrVars, vars) => {
@@ -423,10 +374,8 @@ export const listBookingPaymentAdjustmentsForAdminRef = (dcOrVars, vars) => {
 }
 listBookingPaymentAdjustmentsForAdminRef.operationName = 'ListBookingPaymentAdjustmentsForAdmin';
 
-export function listBookingPaymentAdjustmentsForAdmin(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(listBookingPaymentAdjustmentsForAdminRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listBookingPaymentAdjustmentsForAdmin(dcOrVars, vars) {
+  return executeQuery(listBookingPaymentAdjustmentsForAdminRef(dcOrVars, vars));
 }
 
 export const listOpenPaymentReconciliationExceptionsRef = (dc) => {
@@ -436,10 +385,8 @@ export const listOpenPaymentReconciliationExceptionsRef = (dc) => {
 }
 listOpenPaymentReconciliationExceptionsRef.operationName = 'ListOpenPaymentReconciliationExceptions';
 
-export function listOpenPaymentReconciliationExceptions(dcOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function listOpenPaymentReconciliationExceptions(dc) {
+  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dc));
 }
 
 export const createSectionRef = (dcOrVars, vars) => {
@@ -450,8 +397,7 @@ export const createSectionRef = (dcOrVars, vars) => {
 createSectionRef.operationName = 'CreateSection';
 
 export function createSection(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createSectionRef(dcInstance, inputVars));
+  return executeMutation(createSectionRef(dcOrVars, vars));
 }
 
 export const createUserGroupRef = (dcOrVars, vars) => {
@@ -462,8 +408,7 @@ export const createUserGroupRef = (dcOrVars, vars) => {
 createUserGroupRef.operationName = 'CreateUserGroup';
 
 export function createUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createUserGroupRef(dcInstance, inputVars));
+  return executeMutation(createUserGroupRef(dcOrVars, vars));
 }
 
 export const addUserToUserGroupRef = (dcOrVars, vars) => {
@@ -474,8 +419,7 @@ export const addUserToUserGroupRef = (dcOrVars, vars) => {
 addUserToUserGroupRef.operationName = 'AddUserToUserGroup';
 
 export function addUserToUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(addUserToUserGroupRef(dcInstance, inputVars));
+  return executeMutation(addUserToUserGroupRef(dcOrVars, vars));
 }
 
 export const removeUserFromUserGroupRef = (dcOrVars, vars) => {
@@ -486,8 +430,7 @@ export const removeUserFromUserGroupRef = (dcOrVars, vars) => {
 removeUserFromUserGroupRef.operationName = 'RemoveUserFromUserGroup';
 
 export function removeUserFromUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(removeUserFromUserGroupRef(dcInstance, inputVars));
+  return executeMutation(removeUserFromUserGroupRef(dcOrVars, vars));
 }
 
 export const grantUserGroupToSectionForPurposeRef = (dcOrVars, vars) => {
@@ -498,8 +441,7 @@ export const grantUserGroupToSectionForPurposeRef = (dcOrVars, vars) => {
 grantUserGroupToSectionForPurposeRef.operationName = 'GrantUserGroupToSectionForPurpose';
 
 export function grantUserGroupToSectionForPurpose(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(grantUserGroupToSectionForPurposeRef(dcInstance, inputVars));
+  return executeMutation(grantUserGroupToSectionForPurposeRef(dcOrVars, vars));
 }
 
 export const revokeUserGroupFromSectionForPurposeRef = (dcOrVars, vars) => {
@@ -510,8 +452,7 @@ export const revokeUserGroupFromSectionForPurposeRef = (dcOrVars, vars) => {
 revokeUserGroupFromSectionForPurposeRef.operationName = 'RevokeUserGroupFromSectionForPurpose';
 
 export function revokeUserGroupFromSectionForPurpose(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(revokeUserGroupFromSectionForPurposeRef(dcInstance, inputVars));
+  return executeMutation(revokeUserGroupFromSectionForPurposeRef(dcOrVars, vars));
 }
 
 export const updateUserGroupRef = (dcOrVars, vars) => {
@@ -522,8 +463,7 @@ export const updateUserGroupRef = (dcOrVars, vars) => {
 updateUserGroupRef.operationName = 'UpdateUserGroup';
 
 export function updateUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateUserGroupRef(dcInstance, inputVars));
+  return executeMutation(updateUserGroupRef(dcOrVars, vars));
 }
 
 export const deleteUserGroupRef = (dcOrVars, vars) => {
@@ -534,8 +474,7 @@ export const deleteUserGroupRef = (dcOrVars, vars) => {
 deleteUserGroupRef.operationName = 'DeleteUserGroup';
 
 export function deleteUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(deleteUserGroupRef(dcInstance, inputVars));
+  return executeMutation(deleteUserGroupRef(dcOrVars, vars));
 }
 
 export const updateSectionRef = (dcOrVars, vars) => {
@@ -546,8 +485,7 @@ export const updateSectionRef = (dcOrVars, vars) => {
 updateSectionRef.operationName = 'UpdateSection';
 
 export function updateSection(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateSectionRef(dcInstance, inputVars));
+  return executeMutation(updateSectionRef(dcOrVars, vars));
 }
 
 export const deleteSectionRef = (dcOrVars, vars) => {
@@ -558,8 +496,7 @@ export const deleteSectionRef = (dcOrVars, vars) => {
 deleteSectionRef.operationName = 'DeleteSection';
 
 export function deleteSection(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(deleteSectionRef(dcInstance, inputVars));
+  return executeMutation(deleteSectionRef(dcOrVars, vars));
 }
 
 export const createEventRef = (dcOrVars, vars) => {
@@ -570,8 +507,7 @@ export const createEventRef = (dcOrVars, vars) => {
 createEventRef.operationName = 'CreateEvent';
 
 export function createEvent(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createEventRef(dcInstance, inputVars));
+  return executeMutation(createEventRef(dcOrVars, vars));
 }
 
 export const updateEventRef = (dcOrVars, vars) => {
@@ -582,8 +518,7 @@ export const updateEventRef = (dcOrVars, vars) => {
 updateEventRef.operationName = 'UpdateEvent';
 
 export function updateEvent(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateEventRef(dcInstance, inputVars));
+  return executeMutation(updateEventRef(dcOrVars, vars));
 }
 
 export const deleteEventRef = (dcOrVars, vars) => {
@@ -594,8 +529,7 @@ export const deleteEventRef = (dcOrVars, vars) => {
 deleteEventRef.operationName = 'DeleteEvent';
 
 export function deleteEvent(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(deleteEventRef(dcInstance, inputVars));
+  return executeMutation(deleteEventRef(dcOrVars, vars));
 }
 
 export const createTicketTypeRef = (dcOrVars, vars) => {
@@ -606,8 +540,7 @@ export const createTicketTypeRef = (dcOrVars, vars) => {
 createTicketTypeRef.operationName = 'CreateTicketType';
 
 export function createTicketType(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createTicketTypeRef(dcInstance, inputVars));
+  return executeMutation(createTicketTypeRef(dcOrVars, vars));
 }
 
 export const updateTicketTypeRef = (dcOrVars, vars) => {
@@ -618,8 +551,7 @@ export const updateTicketTypeRef = (dcOrVars, vars) => {
 updateTicketTypeRef.operationName = 'UpdateTicketType';
 
 export function updateTicketType(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateTicketTypeRef(dcInstance, inputVars));
+  return executeMutation(updateTicketTypeRef(dcOrVars, vars));
 }
 
 export const deleteTicketTypeRef = (dcOrVars, vars) => {
@@ -630,8 +562,7 @@ export const deleteTicketTypeRef = (dcOrVars, vars) => {
 deleteTicketTypeRef.operationName = 'DeleteTicketType';
 
 export function deleteTicketType(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(deleteTicketTypeRef(dcInstance, inputVars));
+  return executeMutation(deleteTicketTypeRef(dcOrVars, vars));
 }
 
 export const createUserProfileRef = (dcOrVars, vars) => {
@@ -642,8 +573,7 @@ export const createUserProfileRef = (dcOrVars, vars) => {
 createUserProfileRef.operationName = 'CreateUserProfile';
 
 export function createUserProfile(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createUserProfileRef(dcInstance, inputVars));
+  return executeMutation(createUserProfileRef(dcOrVars, vars));
 }
 
 export const upsertUserRef = (dcOrVars, vars) => {
@@ -654,8 +584,7 @@ export const upsertUserRef = (dcOrVars, vars) => {
 upsertUserRef.operationName = 'UpsertUser';
 
 export function upsertUser(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(upsertUserRef(dcInstance, inputVars));
+  return executeMutation(upsertUserRef(dcOrVars, vars));
 }
 
 export const updateUserRef = (dcOrVars, vars) => {
@@ -666,8 +595,7 @@ export const updateUserRef = (dcOrVars, vars) => {
 updateUserRef.operationName = 'UpdateUser';
 
 export function updateUser(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateUserRef(dcInstance, inputVars));
+  return executeMutation(updateUserRef(dcOrVars, vars));
 }
 
 export const registerForSectionRef = (dcOrVars, vars) => {
@@ -678,8 +606,7 @@ export const registerForSectionRef = (dcOrVars, vars) => {
 registerForSectionRef.operationName = 'RegisterForSection';
 
 export function registerForSection(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(registerForSectionRef(dcInstance, inputVars));
+  return executeMutation(registerForSectionRef(dcOrVars, vars));
 }
 
 export const unregisterFromSectionRef = (dcOrVars, vars) => {
@@ -690,8 +617,7 @@ export const unregisterFromSectionRef = (dcOrVars, vars) => {
 unregisterFromSectionRef.operationName = 'UnregisterFromSection';
 
 export function unregisterFromSection(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(unregisterFromSectionRef(dcInstance, inputVars));
+  return executeMutation(unregisterFromSectionRef(dcOrVars, vars));
 }
 
 export const subscribeToUserGroupRef = (dcOrVars, vars) => {
@@ -702,8 +628,7 @@ export const subscribeToUserGroupRef = (dcOrVars, vars) => {
 subscribeToUserGroupRef.operationName = 'SubscribeToUserGroup';
 
 export function subscribeToUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(subscribeToUserGroupRef(dcInstance, inputVars));
+  return executeMutation(subscribeToUserGroupRef(dcOrVars, vars));
 }
 
 export const unsubscribeFromUserGroupRef = (dcOrVars, vars) => {
@@ -714,8 +639,7 @@ export const unsubscribeFromUserGroupRef = (dcOrVars, vars) => {
 unsubscribeFromUserGroupRef.operationName = 'UnsubscribeFromUserGroup';
 
 export function unsubscribeFromUserGroup(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(unsubscribeFromUserGroupRef(dcInstance, inputVars));
+  return executeMutation(unsubscribeFromUserGroupRef(dcOrVars, vars));
 }
 
 export const updateUserMembershipStatusRef = (dcOrVars, vars) => {
@@ -726,8 +650,7 @@ export const updateUserMembershipStatusRef = (dcOrVars, vars) => {
 updateUserMembershipStatusRef.operationName = 'UpdateUserMembershipStatus';
 
 export function updateUserMembershipStatus(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateUserMembershipStatusRef(dcInstance, inputVars));
+  return executeMutation(updateUserMembershipStatusRef(dcOrVars, vars));
 }
 
 export const deleteUserRef = (dcOrVars, vars) => {
@@ -738,8 +661,7 @@ export const deleteUserRef = (dcOrVars, vars) => {
 deleteUserRef.operationName = 'DeleteUser';
 
 export function deleteUser(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(deleteUserRef(dcInstance, inputVars));
+  return executeMutation(deleteUserRef(dcOrVars, vars));
 }
 
 export const createUserRef = (dcOrVars, vars) => {
@@ -750,8 +672,7 @@ export const createUserRef = (dcOrVars, vars) => {
 createUserRef.operationName = 'CreateUser';
 
 export function createUser(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createUserRef(dcInstance, inputVars));
+  return executeMutation(createUserRef(dcOrVars, vars));
 }
 
 export const createUserGroupAdminRef = (dcOrVars, vars) => {
@@ -762,8 +683,7 @@ export const createUserGroupAdminRef = (dcOrVars, vars) => {
 createUserGroupAdminRef.operationName = 'CreateUserGroupAdmin';
 
 export function createUserGroupAdmin(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createUserGroupAdminRef(dcInstance, inputVars));
+  return executeMutation(createUserGroupAdminRef(dcOrVars, vars));
 }
 
 export const addUserToUserGroupAdminRef = (dcOrVars, vars) => {
@@ -774,8 +694,7 @@ export const addUserToUserGroupAdminRef = (dcOrVars, vars) => {
 addUserToUserGroupAdminRef.operationName = 'AddUserToUserGroupAdmin';
 
 export function addUserToUserGroupAdmin(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(addUserToUserGroupAdminRef(dcInstance, inputVars));
+  return executeMutation(addUserToUserGroupAdminRef(dcOrVars, vars));
 }
 
 export const removeUserFromUserGroupAdminRef = (dcOrVars, vars) => {
@@ -786,8 +705,7 @@ export const removeUserFromUserGroupAdminRef = (dcOrVars, vars) => {
 removeUserFromUserGroupAdminRef.operationName = 'RemoveUserFromUserGroupAdmin';
 
 export function removeUserFromUserGroupAdmin(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(removeUserFromUserGroupAdminRef(dcInstance, inputVars));
+  return executeMutation(removeUserFromUserGroupAdminRef(dcOrVars, vars));
 }
 
 export const getUserGroupByNameRef = (dcOrVars, vars) => {
@@ -797,10 +715,8 @@ export const getUserGroupByNameRef = (dcOrVars, vars) => {
 }
 getUserGroupByNameRef.operationName = 'GetUserGroupByName';
 
-export function getUserGroupByName(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserGroupByNameRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserGroupByName(dcOrVars, vars) {
+  return executeQuery(getUserGroupByNameRef(dcOrVars, vars));
 }
 
 export const getUserUserGroupsForAdminRef = (dcOrVars, vars) => {
@@ -810,10 +726,8 @@ export const getUserUserGroupsForAdminRef = (dcOrVars, vars) => {
 }
 getUserUserGroupsForAdminRef.operationName = 'GetUserUserGroupsForAdmin';
 
-export function getUserUserGroupsForAdmin(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserUserGroupsForAdminRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserUserGroupsForAdmin(dcOrVars, vars) {
+  return executeQuery(getUserUserGroupsForAdminRef(dcOrVars, vars));
 }
 
 export const getUserForCheckoutRef = (dcOrVars, vars) => {
@@ -823,10 +737,8 @@ export const getUserForCheckoutRef = (dcOrVars, vars) => {
 }
 getUserForCheckoutRef.operationName = 'GetUserForCheckout';
 
-export function getUserForCheckout(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getUserForCheckoutRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getUserForCheckout(dcOrVars, vars) {
+  return executeQuery(getUserForCheckoutRef(dcOrVars, vars));
 }
 
 export const getTicketTypeForCheckoutRef = (dcOrVars, vars) => {
@@ -836,10 +748,8 @@ export const getTicketTypeForCheckoutRef = (dcOrVars, vars) => {
 }
 getTicketTypeForCheckoutRef.operationName = 'GetTicketTypeForCheckout';
 
-export function getTicketTypeForCheckout(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getTicketTypeForCheckoutRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getTicketTypeForCheckout(dcOrVars, vars) {
+  return executeQuery(getTicketTypeForCheckoutRef(dcOrVars, vars));
 }
 
 export const updateUserStripeCustomerIdRef = (dcOrVars, vars) => {
@@ -850,8 +760,7 @@ export const updateUserStripeCustomerIdRef = (dcOrVars, vars) => {
 updateUserStripeCustomerIdRef.operationName = 'UpdateUserStripeCustomerId';
 
 export function updateUserStripeCustomerId(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateUserStripeCustomerIdRef(dcInstance, inputVars));
+  return executeMutation(updateUserStripeCustomerIdRef(dcOrVars, vars));
 }
 
 export const getEventByIdForCallableRef = (dcOrVars, vars) => {
@@ -861,10 +770,8 @@ export const getEventByIdForCallableRef = (dcOrVars, vars) => {
 }
 getEventByIdForCallableRef.operationName = 'GetEventByIdForCallable';
 
-export function getEventByIdForCallable(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getEventByIdForCallableRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getEventByIdForCallable(dcOrVars, vars) {
+  return executeQuery(getEventByIdForCallableRef(dcOrVars, vars));
 }
 
 export const getSectionByIdForCallableRef = (dcOrVars, vars) => {
@@ -874,10 +781,8 @@ export const getSectionByIdForCallableRef = (dcOrVars, vars) => {
 }
 getSectionByIdForCallableRef.operationName = 'GetSectionByIdForCallable';
 
-export function getSectionByIdForCallable(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getSectionByIdForCallableRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getSectionByIdForCallable(dcOrVars, vars) {
+  return executeQuery(getSectionByIdForCallableRef(dcOrVars, vars));
 }
 
 export const getBookingsForBookerAndEventRef = (dcOrVars, vars) => {
@@ -887,10 +792,8 @@ export const getBookingsForBookerAndEventRef = (dcOrVars, vars) => {
 }
 getBookingsForBookerAndEventRef.operationName = 'GetBookingsForBookerAndEvent';
 
-export function getBookingsForBookerAndEvent(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getBookingsForBookerAndEventRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getBookingsForBookerAndEvent(dcOrVars, vars) {
+  return executeQuery(getBookingsForBookerAndEventRef(dcOrVars, vars));
 }
 
 export const createBookingDraftForUserRef = (dcOrVars, vars) => {
@@ -901,8 +804,7 @@ export const createBookingDraftForUserRef = (dcOrVars, vars) => {
 createBookingDraftForUserRef.operationName = 'CreateBookingDraftForUser';
 
 export function createBookingDraftForUser(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createBookingDraftForUserRef(dcInstance, inputVars));
+  return executeMutation(createBookingDraftForUserRef(dcOrVars, vars));
 }
 
 export const createBookingDraftRevisionForUserRef = (dcOrVars, vars) => {
@@ -913,8 +815,7 @@ export const createBookingDraftRevisionForUserRef = (dcOrVars, vars) => {
 createBookingDraftRevisionForUserRef.operationName = 'CreateBookingDraftRevisionForUser';
 
 export function createBookingDraftRevisionForUser(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createBookingDraftRevisionForUserRef(dcInstance, inputVars));
+  return executeMutation(createBookingDraftRevisionForUserRef(dcOrVars, vars));
 }
 
 export const markBookingSupersededFromCallableRef = (dcOrVars, vars) => {
@@ -925,8 +826,7 @@ export const markBookingSupersededFromCallableRef = (dcOrVars, vars) => {
 markBookingSupersededFromCallableRef.operationName = 'MarkBookingSupersededFromCallable';
 
 export function markBookingSupersededFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markBookingSupersededFromCallableRef(dcInstance, inputVars));
+  return executeMutation(markBookingSupersededFromCallableRef(dcOrVars, vars));
 }
 
 export const createBookingPaymentAdjustmentFromCallableRef = (dcOrVars, vars) => {
@@ -937,8 +837,7 @@ export const createBookingPaymentAdjustmentFromCallableRef = (dcOrVars, vars) =>
 createBookingPaymentAdjustmentFromCallableRef.operationName = 'CreateBookingPaymentAdjustmentFromCallable';
 
 export function createBookingPaymentAdjustmentFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createBookingPaymentAdjustmentFromCallableRef(dcInstance, inputVars));
+  return executeMutation(createBookingPaymentAdjustmentFromCallableRef(dcOrVars, vars));
 }
 
 export const addBookingLineFromCallableRef = (dcOrVars, vars) => {
@@ -949,8 +848,7 @@ export const addBookingLineFromCallableRef = (dcOrVars, vars) => {
 addBookingLineFromCallableRef.operationName = 'AddBookingLineFromCallable';
 
 export function addBookingLineFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(addBookingLineFromCallableRef(dcInstance, inputVars));
+  return executeMutation(addBookingLineFromCallableRef(dcOrVars, vars));
 }
 
 export const updateBookingStatusFromCallableRef = (dcOrVars, vars) => {
@@ -961,8 +859,7 @@ export const updateBookingStatusFromCallableRef = (dcOrVars, vars) => {
 updateBookingStatusFromCallableRef.operationName = 'UpdateBookingStatusFromCallable';
 
 export function updateBookingStatusFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateBookingStatusFromCallableRef(dcInstance, inputVars));
+  return executeMutation(updateBookingStatusFromCallableRef(dcOrVars, vars));
 }
 
 export const createTicketOrderForCheckoutRef = (dcOrVars, vars) => {
@@ -973,8 +870,7 @@ export const createTicketOrderForCheckoutRef = (dcOrVars, vars) => {
 createTicketOrderForCheckoutRef.operationName = 'CreateTicketOrderForCheckout';
 
 export function createTicketOrderForCheckout(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createTicketOrderForCheckoutRef(dcInstance, inputVars));
+  return executeMutation(createTicketOrderForCheckoutRef(dcOrVars, vars));
 }
 
 export const getTicketOrderForWebhookRef = (dcOrVars, vars) => {
@@ -984,10 +880,8 @@ export const getTicketOrderForWebhookRef = (dcOrVars, vars) => {
 }
 getTicketOrderForWebhookRef.operationName = 'GetTicketOrderForWebhook';
 
-export function getTicketOrderForWebhook(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getTicketOrderForWebhookRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getTicketOrderForWebhook(dcOrVars, vars) {
+  return executeQuery(getTicketOrderForWebhookRef(dcOrVars, vars));
 }
 
 export const getTicketOrderStripeArtifactsForCallableRef = (dcOrVars, vars) => {
@@ -997,10 +891,8 @@ export const getTicketOrderStripeArtifactsForCallableRef = (dcOrVars, vars) => {
 }
 getTicketOrderStripeArtifactsForCallableRef.operationName = 'GetTicketOrderStripeArtifactsForCallable';
 
-export function getTicketOrderStripeArtifactsForCallable(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getTicketOrderStripeArtifactsForCallableRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getTicketOrderStripeArtifactsForCallable(dcOrVars, vars) {
+  return executeQuery(getTicketOrderStripeArtifactsForCallableRef(dcOrVars, vars));
 }
 
 export const getPaymentWebhookEventByStripeEventIdRef = (dcOrVars, vars) => {
@@ -1010,10 +902,8 @@ export const getPaymentWebhookEventByStripeEventIdRef = (dcOrVars, vars) => {
 }
 getPaymentWebhookEventByStripeEventIdRef.operationName = 'GetPaymentWebhookEventByStripeEventId';
 
-export function getPaymentWebhookEventByStripeEventId(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getPaymentWebhookEventByStripeEventIdRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getPaymentWebhookEventByStripeEventId(dcOrVars, vars) {
+  return executeQuery(getPaymentWebhookEventByStripeEventIdRef(dcOrVars, vars));
 }
 
 export const createPaymentWebhookEventRef = (dcOrVars, vars) => {
@@ -1024,8 +914,7 @@ export const createPaymentWebhookEventRef = (dcOrVars, vars) => {
 createPaymentWebhookEventRef.operationName = 'CreatePaymentWebhookEvent';
 
 export function createPaymentWebhookEvent(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createPaymentWebhookEventRef(dcInstance, inputVars));
+  return executeMutation(createPaymentWebhookEventRef(dcOrVars, vars));
 }
 
 export const getNotificationDeliveryByChannelAndKeyRef = (dcOrVars, vars) => {
@@ -1035,10 +924,8 @@ export const getNotificationDeliveryByChannelAndKeyRef = (dcOrVars, vars) => {
 }
 getNotificationDeliveryByChannelAndKeyRef.operationName = 'GetNotificationDeliveryByChannelAndKey';
 
-export function getNotificationDeliveryByChannelAndKey(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getNotificationDeliveryByChannelAndKeyRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getNotificationDeliveryByChannelAndKey(dcOrVars, vars) {
+  return executeQuery(getNotificationDeliveryByChannelAndKeyRef(dcOrVars, vars));
 }
 
 export const createNotificationDeliveryRef = (dcOrVars, vars) => {
@@ -1049,8 +936,7 @@ export const createNotificationDeliveryRef = (dcOrVars, vars) => {
 createNotificationDeliveryRef.operationName = 'CreateNotificationDelivery';
 
 export function createNotificationDelivery(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createNotificationDeliveryRef(dcInstance, inputVars));
+  return executeMutation(createNotificationDeliveryRef(dcOrVars, vars));
 }
 
 export const markNotificationDeliveryPendingByIdRef = (dcOrVars, vars) => {
@@ -1061,8 +947,7 @@ export const markNotificationDeliveryPendingByIdRef = (dcOrVars, vars) => {
 markNotificationDeliveryPendingByIdRef.operationName = 'MarkNotificationDeliveryPendingById';
 
 export function markNotificationDeliveryPendingById(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markNotificationDeliveryPendingByIdRef(dcInstance, inputVars));
+  return executeMutation(markNotificationDeliveryPendingByIdRef(dcOrVars, vars));
 }
 
 export const markNotificationDeliverySentByIdRef = (dcOrVars, vars) => {
@@ -1073,8 +958,7 @@ export const markNotificationDeliverySentByIdRef = (dcOrVars, vars) => {
 markNotificationDeliverySentByIdRef.operationName = 'MarkNotificationDeliverySentById';
 
 export function markNotificationDeliverySentById(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markNotificationDeliverySentByIdRef(dcInstance, inputVars));
+  return executeMutation(markNotificationDeliverySentByIdRef(dcOrVars, vars));
 }
 
 export const markNotificationDeliveryFailedByIdRef = (dcOrVars, vars) => {
@@ -1085,8 +969,7 @@ export const markNotificationDeliveryFailedByIdRef = (dcOrVars, vars) => {
 markNotificationDeliveryFailedByIdRef.operationName = 'MarkNotificationDeliveryFailedById';
 
 export function markNotificationDeliveryFailedById(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markNotificationDeliveryFailedByIdRef(dcInstance, inputVars));
+  return executeMutation(markNotificationDeliveryFailedByIdRef(dcOrVars, vars));
 }
 
 export const markTicketOrderPaidFromWebhookRef = (dcOrVars, vars) => {
@@ -1097,8 +980,7 @@ export const markTicketOrderPaidFromWebhookRef = (dcOrVars, vars) => {
 markTicketOrderPaidFromWebhookRef.operationName = 'MarkTicketOrderPaidFromWebhook';
 
 export function markTicketOrderPaidFromWebhook(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markTicketOrderPaidFromWebhookRef(dcInstance, inputVars));
+  return executeMutation(markTicketOrderPaidFromWebhookRef(dcOrVars, vars));
 }
 
 export const markTicketOrderFailedFromWebhookRef = (dcOrVars, vars) => {
@@ -1109,8 +991,7 @@ export const markTicketOrderFailedFromWebhookRef = (dcOrVars, vars) => {
 markTicketOrderFailedFromWebhookRef.operationName = 'MarkTicketOrderFailedFromWebhook';
 
 export function markTicketOrderFailedFromWebhook(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markTicketOrderFailedFromWebhookRef(dcInstance, inputVars));
+  return executeMutation(markTicketOrderFailedFromWebhookRef(dcOrVars, vars));
 }
 
 export const markTicketOrderRefundedFromWebhookRef = (dcOrVars, vars) => {
@@ -1121,8 +1002,7 @@ export const markTicketOrderRefundedFromWebhookRef = (dcOrVars, vars) => {
 markTicketOrderRefundedFromWebhookRef.operationName = 'MarkTicketOrderRefundedFromWebhook';
 
 export function markTicketOrderRefundedFromWebhook(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markTicketOrderRefundedFromWebhookRef(dcInstance, inputVars));
+  return executeMutation(markTicketOrderRefundedFromWebhookRef(dcOrVars, vars));
 }
 
 export const upsertTicketOrderDisputeFromWebhookRef = (dcOrVars, vars) => {
@@ -1133,8 +1013,7 @@ export const upsertTicketOrderDisputeFromWebhookRef = (dcOrVars, vars) => {
 upsertTicketOrderDisputeFromWebhookRef.operationName = 'UpsertTicketOrderDisputeFromWebhook';
 
 export function upsertTicketOrderDisputeFromWebhook(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(upsertTicketOrderDisputeFromWebhookRef(dcInstance, inputVars));
+  return executeMutation(upsertTicketOrderDisputeFromWebhookRef(dcOrVars, vars));
 }
 
 export const getPaymentReconciliationExceptionByOrderAndTypeRef = (dcOrVars, vars) => {
@@ -1144,10 +1023,8 @@ export const getPaymentReconciliationExceptionByOrderAndTypeRef = (dcOrVars, var
 }
 getPaymentReconciliationExceptionByOrderAndTypeRef.operationName = 'GetPaymentReconciliationExceptionByOrderAndType';
 
-export function getPaymentReconciliationExceptionByOrderAndType(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getPaymentReconciliationExceptionByOrderAndTypeRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getPaymentReconciliationExceptionByOrderAndType(dcOrVars, vars) {
+  return executeQuery(getPaymentReconciliationExceptionByOrderAndTypeRef(dcOrVars, vars));
 }
 
 export const createPaymentReconciliationExceptionRef = (dcOrVars, vars) => {
@@ -1158,8 +1035,7 @@ export const createPaymentReconciliationExceptionRef = (dcOrVars, vars) => {
 createPaymentReconciliationExceptionRef.operationName = 'CreatePaymentReconciliationException';
 
 export function createPaymentReconciliationException(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createPaymentReconciliationExceptionRef(dcInstance, inputVars));
+  return executeMutation(createPaymentReconciliationExceptionRef(dcOrVars, vars));
 }
 
 export const updatePaymentReconciliationExceptionByIdRef = (dcOrVars, vars) => {
@@ -1170,8 +1046,7 @@ export const updatePaymentReconciliationExceptionByIdRef = (dcOrVars, vars) => {
 updatePaymentReconciliationExceptionByIdRef.operationName = 'UpdatePaymentReconciliationExceptionById';
 
 export function updatePaymentReconciliationExceptionById(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updatePaymentReconciliationExceptionByIdRef(dcInstance, inputVars));
+  return executeMutation(updatePaymentReconciliationExceptionByIdRef(dcOrVars, vars));
 }
 
 export const updateBookingPreferencesFromCallableRef = (dcOrVars, vars) => {
@@ -1182,8 +1057,7 @@ export const updateBookingPreferencesFromCallableRef = (dcOrVars, vars) => {
 updateBookingPreferencesFromCallableRef.operationName = 'UpdateBookingPreferencesFromCallable';
 
 export function updateBookingPreferencesFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateBookingPreferencesFromCallableRef(dcInstance, inputVars));
+  return executeMutation(updateBookingPreferencesFromCallableRef(dcOrVars, vars));
 }
 
 export const deleteBookingLineFromCallableRef = (dcOrVars, vars) => {
@@ -1194,8 +1068,7 @@ export const deleteBookingLineFromCallableRef = (dcOrVars, vars) => {
 deleteBookingLineFromCallableRef.operationName = 'DeleteBookingLineFromCallable';
 
 export function deleteBookingLineFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(deleteBookingLineFromCallableRef(dcInstance, inputVars));
+  return executeMutation(deleteBookingLineFromCallableRef(dcOrVars, vars));
 }
 
 export const createGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
@@ -1206,8 +1079,7 @@ export const createGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
 createGuestTicketRequestFromCallableRef.operationName = 'CreateGuestTicketRequestFromCallable';
 
 export function createGuestTicketRequestFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createGuestTicketRequestFromCallableRef(dcInstance, inputVars));
+  return executeMutation(createGuestTicketRequestFromCallableRef(dcOrVars, vars));
 }
 
 export const adminReviewGuestTicketRequestFromCallableRef = (dcOrVars, vars) => {
@@ -1218,8 +1090,7 @@ export const adminReviewGuestTicketRequestFromCallableRef = (dcOrVars, vars) => 
 adminReviewGuestTicketRequestFromCallableRef.operationName = 'AdminReviewGuestTicketRequestFromCallable';
 
 export function adminReviewGuestTicketRequestFromCallable(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(adminReviewGuestTicketRequestFromCallableRef(dcInstance, inputVars));
+  return executeMutation(adminReviewGuestTicketRequestFromCallableRef(dcOrVars, vars));
 }
 
 export const getBookingForGuestTicketCallableRef = (dcOrVars, vars) => {
@@ -1229,10 +1100,8 @@ export const getBookingForGuestTicketCallableRef = (dcOrVars, vars) => {
 }
 getBookingForGuestTicketCallableRef.operationName = 'GetBookingForGuestTicketCallable';
 
-export function getBookingForGuestTicketCallable(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getBookingForGuestTicketCallableRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getBookingForGuestTicketCallable(dcOrVars, vars) {
+  return executeQuery(getBookingForGuestTicketCallableRef(dcOrVars, vars));
 }
 
 export const getBookingForNotificationRef = (dcOrVars, vars) => {
@@ -1242,36 +1111,8 @@ export const getBookingForNotificationRef = (dcOrVars, vars) => {
 }
 getBookingForNotificationRef.operationName = 'GetBookingForNotification';
 
-export function getBookingForNotification(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getBookingForNotificationRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
-}
-
-export const listStaleDraftBookingsForSchedulerRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'ListStaleDraftBookingsForScheduler', inputVars);
-}
-listStaleDraftBookingsForSchedulerRef.operationName = 'ListStaleDraftBookingsForScheduler';
-
-export function listStaleDraftBookingsForScheduler(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(listStaleDraftBookingsForSchedulerRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
-}
-
-export const listStalePendingTicketOrdersForSchedulerRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'ListStalePendingTicketOrdersForScheduler', inputVars);
-}
-listStalePendingTicketOrdersForSchedulerRef.operationName = 'ListStalePendingTicketOrdersForScheduler';
-
-export function listStalePendingTicketOrdersForScheduler(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(listStalePendingTicketOrdersForSchedulerRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getBookingForNotification(dcOrVars, vars) {
+  return executeQuery(getBookingForNotificationRef(dcOrVars, vars));
 }
 
 export const getGuestTicketRequestForNotificationRef = (dcOrVars, vars) => {
@@ -1281,10 +1122,8 @@ export const getGuestTicketRequestForNotificationRef = (dcOrVars, vars) => {
 }
 getGuestTicketRequestForNotificationRef.operationName = 'GetGuestTicketRequestForNotification';
 
-export function getGuestTicketRequestForNotification(dcOrVars, varsOrOptions, options) {
-  
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getGuestTicketRequestForNotificationRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+export function getGuestTicketRequestForNotification(dcOrVars, vars) {
+  return executeQuery(getGuestTicketRequestForNotificationRef(dcOrVars, vars));
 }
 
 export const createBookingDraftRef = (dcOrVars, vars) => {
@@ -1295,8 +1134,7 @@ export const createBookingDraftRef = (dcOrVars, vars) => {
 createBookingDraftRef.operationName = 'CreateBookingDraft';
 
 export function createBookingDraft(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createBookingDraftRef(dcInstance, inputVars));
+  return executeMutation(createBookingDraftRef(dcOrVars, vars));
 }
 
 export const addBookingLineRef = (dcOrVars, vars) => {
@@ -1307,8 +1145,7 @@ export const addBookingLineRef = (dcOrVars, vars) => {
 addBookingLineRef.operationName = 'AddBookingLine';
 
 export function addBookingLine(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(addBookingLineRef(dcInstance, inputVars));
+  return executeMutation(addBookingLineRef(dcOrVars, vars));
 }
 
 export const updateBookingStatusRef = (dcOrVars, vars) => {
@@ -1319,8 +1156,7 @@ export const updateBookingStatusRef = (dcOrVars, vars) => {
 updateBookingStatusRef.operationName = 'UpdateBookingStatus';
 
 export function updateBookingStatus(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateBookingStatusRef(dcInstance, inputVars));
+  return executeMutation(updateBookingStatusRef(dcOrVars, vars));
 }
 
 export const createGuestTicketRequestRef = (dcOrVars, vars) => {
@@ -1331,8 +1167,7 @@ export const createGuestTicketRequestRef = (dcOrVars, vars) => {
 createGuestTicketRequestRef.operationName = 'CreateGuestTicketRequest';
 
 export function createGuestTicketRequest(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createGuestTicketRequestRef(dcInstance, inputVars));
+  return executeMutation(createGuestTicketRequestRef(dcOrVars, vars));
 }
 
 export const adminDeleteGuestTicketRequestRef = (dcOrVars, vars) => {
@@ -1343,8 +1178,7 @@ export const adminDeleteGuestTicketRequestRef = (dcOrVars, vars) => {
 adminDeleteGuestTicketRequestRef.operationName = 'AdminDeleteGuestTicketRequest';
 
 export function adminDeleteGuestTicketRequest(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(adminDeleteGuestTicketRequestRef(dcInstance, inputVars));
+  return executeMutation(adminDeleteGuestTicketRequestRef(dcOrVars, vars));
 }
 
 export const adminReviewGuestTicketRequestRef = (dcOrVars, vars) => {
@@ -1355,8 +1189,7 @@ export const adminReviewGuestTicketRequestRef = (dcOrVars, vars) => {
 adminReviewGuestTicketRequestRef.operationName = 'AdminReviewGuestTicketRequest';
 
 export function adminReviewGuestTicketRequest(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(adminReviewGuestTicketRequestRef(dcInstance, inputVars));
+  return executeMutation(adminReviewGuestTicketRequestRef(dcOrVars, vars));
 }
 
 export const adminDeleteBookingLineRef = (dcOrVars, vars) => {
@@ -1367,8 +1200,7 @@ export const adminDeleteBookingLineRef = (dcOrVars, vars) => {
 adminDeleteBookingLineRef.operationName = 'AdminDeleteBookingLine';
 
 export function adminDeleteBookingLine(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(adminDeleteBookingLineRef(dcInstance, inputVars));
+  return executeMutation(adminDeleteBookingLineRef(dcOrVars, vars));
 }
 
 export const adminDeleteBookingRef = (dcOrVars, vars) => {
@@ -1379,8 +1211,7 @@ export const adminDeleteBookingRef = (dcOrVars, vars) => {
 adminDeleteBookingRef.operationName = 'AdminDeleteBooking';
 
 export function adminDeleteBooking(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(adminDeleteBookingRef(dcInstance, inputVars));
+  return executeMutation(adminDeleteBookingRef(dcOrVars, vars));
 }
 
 export const resolvePaymentReconciliationExceptionRef = (dcOrVars, vars) => {
@@ -1391,7 +1222,6 @@ export const resolvePaymentReconciliationExceptionRef = (dcOrVars, vars) => {
 resolvePaymentReconciliationExceptionRef.operationName = 'ResolvePaymentReconciliationException';
 
 export function resolvePaymentReconciliationException(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(resolvePaymentReconciliationExceptionRef(dcInstance, inputVars));
+  return executeMutation(resolvePaymentReconciliationExceptionRef(dcOrVars, vars));
 }
 
