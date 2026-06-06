@@ -144,8 +144,8 @@ vi.mock("../shared/components/Header", () => ({
   ),
 }));
 
-vi.mock("../shared/components/HomePage", () => ({
-  default: () => <h1>Home Page</h1>,
+vi.mock("../features/welcome/components/PublicHomePage", () => ({
+  default: () => <h1>Public Home Page</h1>,
 }));
 
 vi.mock("../features/welcome/components/MemberWelcomePage", () => ({
@@ -274,6 +274,13 @@ describe("App routing", () => {
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
+  });
+
+  it("renders public home content when logged out at home", async () => {
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Public Home Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
   });
 
   it("renders the register page from a direct deep link when logged out", async () => {
