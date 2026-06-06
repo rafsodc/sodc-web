@@ -230,7 +230,7 @@ describe('SectionDetail', () => {
     const user = userEvent.setup();
 
     await waitFor(() => {
-      expect(screen.getByText('Test Section')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Test Section', level: 4 })).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole('tab', { name: 'About' }));
@@ -598,7 +598,7 @@ describe('SectionDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
-      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 4 })).toBeInTheDocument();
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();
       expect(screen.getByText('Ticket types')).toBeInTheDocument();
@@ -606,6 +606,92 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Member ticket')).toBeInTheDocument();
       expect(screen.getByText('Standard Access')).toBeInTheDocument();
     });
+  });
+
+  it('should show breadcrumbs and return to events list when header Back is clicked from event detail', async () => {
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        purposeLinks: [],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [
+          {
+            id: eventId,
+            title: 'Annual Dinner',
+            ...upcomingEventTimes,
+            location: 'Main Hall',
+            guestOfHonour: null,
+          },
+        ],
+      },
+    };
+    const mockEventDetailData = {
+      event: {
+        id: eventId,
+        title: 'Annual Dinner',
+        ...upcomingEventTimes,
+        location: 'Main Hall',
+        guestOfHonour: null,
+        maxGuestsWithoutModeratorApproval: null,
+        ticketTypes: [],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetEventsForSection({
+      data: mockEventsData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetEventById({
+      data: mockEventDetailData,
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 4 })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Events Section', level: 4 })).toBeInTheDocument();
+      expect(screen.queryByText('Back to events')).not.toBeInTheDocument();
+    });
+
+    expect(mockOnBack).not.toHaveBeenCalled();
   });
 
   it('should return to events list when Back to events is clicked', async () => {

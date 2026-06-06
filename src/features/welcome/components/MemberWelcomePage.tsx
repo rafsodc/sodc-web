@@ -15,6 +15,7 @@ import { colors } from "../../../config/colors";
 import { getSectionTypeLabel } from "../../../shared/utils/sectionTypeLabels";
 import { formatSectionEventWhen } from "../../../shared/utils/sectionEventDisplay";
 import { ROUTES } from "../../../constants";
+import { sectionDetailLocationState } from "../../../shared/navigation/sectionNavigationState";
 import type { UserData } from "../../../types";
 import { extractAccessibleSections } from "../../../shared/navigation/extractAccessibleSections";
 import { getMemberDisplayName } from "../../../shared/utils/userDisplayName";
@@ -81,6 +82,7 @@ export default function MemberWelcomePage({
                 <CardActionArea
                   component={RouterLink}
                   to={`/sections/${event.sectionId}`}
+                  state={sectionDetailLocationState(ROUTES.HOME)}
                   sx={{ textAlign: "left" }}
                 >
                   <CardContent>
@@ -127,6 +129,7 @@ export default function MemberWelcomePage({
                 <CardActionArea
                   component={RouterLink}
                   to={`/sections/${section.id}`}
+                  state={sectionDetailLocationState(ROUTES.HOME)}
                   sx={{ height: "100%", textAlign: "left" }}
                 >
                   <CardContent>
