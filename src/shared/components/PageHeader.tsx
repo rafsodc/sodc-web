@@ -17,6 +17,7 @@ interface PageHeaderProps {
   title: string;
   onBack: () => void;
   adminAction?: PageHeaderAdminAction;
+  breadcrumbs?: ReactNode;
 }
 
 interface PageHeaderAdminActionProviderProps {
@@ -32,24 +33,27 @@ export function PageHeaderAdminActionProvider({ value, children }: PageHeaderAdm
   );
 }
 
-export default function PageHeader({ title, onBack, adminAction: adminActionOverride }: PageHeaderProps) {
+export default function PageHeader({ title, onBack, adminAction: adminActionOverride, breadcrumbs }: PageHeaderProps) {
   const contextAdminAction = useContext(PageHeaderAdminActionContext);
   const adminAction = adminActionOverride ?? contextAdminAction;
 
   return (
-    <Box className="page-header">
-      <Typography variant="h4" className="page-header-title">
-        {title}
-      </Typography>
-      <Box className="page-header-actions">
-        {adminAction.visible && (
-          <Button variant="contained" startIcon={<AdminPanelSettings />} onClick={adminAction.onClick}>
-            Admin
+    <Box sx={{ mb: 3 }}>
+      {breadcrumbs}
+      <Box className="page-header" sx={{ mb: 0 }}>
+        <Typography variant="h4" className="page-header-title">
+          {title}
+        </Typography>
+        <Box className="page-header-actions">
+          {adminAction.visible && (
+            <Button variant="contained" startIcon={<AdminPanelSettings />} onClick={adminAction.onClick}>
+              Admin
+            </Button>
+          )}
+          <Button variant="outlined" onClick={onBack}>
+            Back
           </Button>
-        )}
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
+        </Box>
       </Box>
     </Box>
   );

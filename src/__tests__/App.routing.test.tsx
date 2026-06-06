@@ -7,6 +7,7 @@ import type { GetSectionsForUserData } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
 import App from "../App";
 import { ROUTES } from "../constants";
+import { sectionDetailLocationState } from "../shared/navigation/sectionNavigationState";
 import { createMockUser } from "../test-utils/mocks/firebase";
 
 let currentUser: User | null = null;
@@ -351,6 +352,19 @@ describe("App routing", () => {
     const user = userEvent.setup();
 
     renderApp([ROUTES.HOME, "/sections/section-1"]);
+
+    expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
+  });
+
+  it("falls back to home when section detail was opened from welcome", async () => {
+    signInEnabledUser();
+    const user = userEvent.setup();
+
+    renderApp([{ pathname: "/sections/section-1", state: sectionDetailLocationState(ROUTES.HOME) }]);
 
     expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));

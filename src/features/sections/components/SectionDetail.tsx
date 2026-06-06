@@ -26,8 +26,9 @@ import { useNavigate } from "react-router-dom";
 import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
-import { ITEMS_PER_PAGE } from "../../../constants";
+import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
+import NavigationBreadcrumbs from "../../../shared/components/NavigationBreadcrumbs";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
 import {
   getDefaultSectionDetailTab,
@@ -333,6 +334,41 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setActiveTab("events");
   };
 
+  const handleBackToEvents = useCallback(() => {
+    setSelectedEventId(null);
+    setActiveTab("events");
+  }, []);
+
+  const handleHeaderBack = useCallback(() => {
+    if (selectedEventId) {
+      handleBackToEvents();
+      return;
+    }
+    onBack();
+  }, [selectedEventId, handleBackToEvents, onBack]);
+
+  const eventTitle = eventDetailData?.event?.title;
+  const pageTitle =
+    selectedEventId && eventTitle ? eventTitle : loadedSection?.name ?? "Section Details";
+  const headerBreadcrumbs = useMemo(() => {
+    if (!loadedSection) {
+      return null;
+    }
+    const items = [{ label: "Home", to: ROUTES.HOME }];
+    if (selectedEventId) {
+      return (
+        <NavigationBreadcrumbs
+          items={[
+            ...items,
+            { label: loadedSection.name, onClick: handleBackToEvents },
+            { label: eventTitle ?? "Event" },
+          ]}
+        />
+      );
+    }
+    return <NavigationBreadcrumbs items={[...items, { label: loadedSection.name }]} />;
+  }, [loadedSection, selectedEventId, eventTitle, handleBackToEvents]);
+
   if (loadingSection || loadingMembers || loadingUserGroups) {
     return (
       <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
@@ -379,7 +415,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <PageHeader title={section.name} onBack={onBack} adminAction={sectionAdminAction} />
+      <PageHeader
+        title={pageTitle}
+        onBack={handleHeaderBack}
+        adminAction={sectionAdminAction}
+        breadcrumbs={headerBreadcrumbs}
+      />
 
       <Tabs
         value={activeTab}
@@ -438,7 +479,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
             isError={errorEventDetail}
             hasCurrentUser={Boolean(currentUser)}
             startingCheckoutId={startingCheckoutId}
-            onBackToEvents={() => setSelectedEventId(null)}
+            onBackToEvents={handleBackToEvents}
             onRetry={() => refetchEventDetail()}
             onStartCheckout={(ticketTypeId) => void handleStartCheckout(ticketTypeId)}
             onBookingComplete={() => {

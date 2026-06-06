@@ -21,6 +21,7 @@ import {
   selectedAdminSectionId as getSelectedAdminSectionId,
   selectedAdminUserGroupId as getSelectedAdminUserGroupId,
 } from "./shared/appShell/appRoutingHelpers";
+import { getSectionReturnTo, sectionDetailLocationState } from "./shared/navigation/sectionNavigationState";
 import { useAppAuthSession } from "./shared/appShell/useAppAuthSession";
 import { useCheckoutQueryState } from "./shared/appShell/useCheckoutQueryState";
 import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
@@ -62,7 +63,7 @@ function SectionDetailRoute() {
   }
 
   const handleBack = () => {
-    navigateBackOrHelper(ROUTES.SECTIONS, location, navigate);
+    navigateBackOrHelper(getSectionReturnTo(location.state), location, navigate);
   };
 
   return <SectionDetail sectionId={sectionId} onBack={handleBack} />;
@@ -505,7 +506,14 @@ function AppContent() {
                   path={ROUTES.SECTIONS}
                   element={protectedRoute(
                       <Suspense fallback={<LoadingFallback />}>
-                        <SectionsList onBack={() => navigateBackOr(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
+                        <SectionsList
+                          onBack={() => navigateBackOr(ROUTES.HOME)}
+                          onSelectSection={(sectionId) =>
+                            navigate(`/sections/${sectionId}`, {
+                              state: sectionDetailLocationState(ROUTES.SECTIONS),
+                            })
+                          }
+                        />
                       </Suspense>
                   )}
                 />
