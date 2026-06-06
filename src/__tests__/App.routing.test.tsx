@@ -201,6 +201,15 @@ vi.mock("../features/sections/components/MyPayments", () => ({
   ),
 }));
 
+vi.mock("../features/sections/components/MyBookings", () => ({
+  default: ({ onBack }: { onBack: () => void }) => (
+    <div>
+      <h1>My Bookings Page</h1>
+      <button onClick={onBack}>Back</button>
+    </div>
+  ),
+}));
+
 vi.mock("../features/admin/components/ManageUsers", () => ({
   default: ({ onBack }: { onBack: () => void }) => (
     <div>
@@ -345,6 +354,14 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "My Payments Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
+  });
+
+  it("renders member bookings hub from a direct deep link for enabled users", async () => {
+    signInEnabledUser();
+    renderApp([ROUTES.MY_BOOKINGS]);
+
+    expect(await screen.findByRole("heading", { name: "My Bookings Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_BOOKINGS);
   });
 
   it("uses browser history for section detail Back when history exists", async () => {

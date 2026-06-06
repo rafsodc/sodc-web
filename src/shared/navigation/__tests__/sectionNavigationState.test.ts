@@ -13,6 +13,13 @@ describe("sectionNavigationState", () => {
     expect(getSectionReturnTo(sectionDetailLocationState(ROUTES.SECTIONS))).toBe(ROUTES.SECTIONS);
   });
 
+  it("can include a selected event id for deep links", () => {
+    expect(sectionDetailLocationState(ROUTES.HOME, { selectedEventId: "event-1" })).toEqual({
+      sectionReturnTo: ROUTES.HOME,
+      selectedEventId: "event-1",
+    });
+  });
+
   it("ignores unknown return routes", () => {
     expect(getSectionReturnTo({ sectionReturnTo: "/elsewhere" })).toBe(ROUTES.SECTIONS);
   });

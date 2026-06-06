@@ -3,7 +3,6 @@ import {
   BookingStatus,
   GuestTicketRequestStatus,
   TicketOrderStatus,
-  type GetMyBookingsForEventData,
 } from "@dataconnect/generated";
 import {
   getBookingPaymentAdjustmentStatusLabel,
@@ -11,7 +10,12 @@ import {
   getTicketOrderStatusLabel,
 } from "../../../shared/utils/paymentStatusLabels";
 
-type TerminalBooking = NonNullable<GetMyBookingsForEventData["user"]>["bookings"][number];
+export interface EventBookingSummaryInput {
+  status: BookingStatus | string;
+  revisionNumber: number;
+  lines?: Array<{ ticketType?: { id: string } | null }> | null;
+  guestTicketRequests?: Array<{ status: GuestTicketRequestStatus | string }> | null;
+}
 
 export interface EventBookingPaymentOrderInput {
   status: TicketOrderStatus | string;
@@ -46,14 +50,14 @@ export interface EventBookingGuestRequestSummary {
   hasPending: boolean;
 }
 
-function ticketTypeIdsFromBooking(booking: TerminalBooking): string[] {
+function ticketTypeIdsFromBooking(booking: EventBookingSummaryInput): string[] {
   return (booking.lines ?? [])
     .map((line) => line.ticketType?.id)
     .filter((id): id is string => Boolean(id));
 }
 
 export function summarizeGuestTicketRequests(
-  requests: TerminalBooking["guestTicketRequests"]
+  requests: EventBookingSummaryInput["guestTicketRequests"]
 ): EventBookingGuestRequestSummary {
   const list = requests ?? [];
   return {
@@ -65,7 +69,7 @@ export function summarizeGuestTicketRequests(
 }
 
 export function summarizeEventBookingPayment(params: {
-  booking: TerminalBooking;
+  booking: EventBookingSummaryInput;
   eventId: string;
   ticketOrders: EventBookingPaymentOrderInput[];
   adjustments: EventBookingPaymentAdjustmentInput[];
@@ -217,6 +221,6 @@ export function getEventBookingNextSteps(params: {
   return steps.join(" ");
 }
 
-export function getEventBookingStatusHeading(booking: TerminalBooking): string {
+export function getEventBookingStatusHeading(booking: EventBookingSummaryInput): string {
   return `${getBookingStatusLabel(booking.status)} · revision ${booking.revisionNumber}`;
 }

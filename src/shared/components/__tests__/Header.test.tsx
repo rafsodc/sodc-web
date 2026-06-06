@@ -16,8 +16,9 @@ vi.mock("../../../features/users/hooks/useEnabledClaim", () => ({
 }));
 
 describe("Header account menu", () => {
-  it("shows My Payments for enabled users and invokes callback", async () => {
+  it("shows My Bookings and My Payments for enabled users", async () => {
     const user = userEvent.setup();
+    const onMyBookingsClick = vi.fn();
     const onMyPaymentsClick = vi.fn();
 
     render(
@@ -25,13 +26,17 @@ describe("Header account menu", () => {
         user={enabledUser}
         userData={null}
         onAccountClick={vi.fn()}
+        onMyBookingsClick={onMyBookingsClick}
         onMyPaymentsClick={onMyPaymentsClick}
       />
     );
 
     await user.click(screen.getByRole("button", { name: "Account menu" }));
+    await user.click(screen.getByRole("menuitem", { name: "My Bookings" }));
+    await user.click(screen.getByRole("button", { name: "Account menu" }));
     await user.click(screen.getByRole("menuitem", { name: "My Payments" }));
 
+    expect(onMyBookingsClick).toHaveBeenCalledTimes(1);
     expect(onMyPaymentsClick).toHaveBeenCalledTimes(1);
   });
 
@@ -71,6 +76,7 @@ describe("Header account menu", () => {
 
     await user.click(screen.getByRole("button", { name: "Account menu" }));
 
+    expect(screen.queryByRole("menuitem", { name: "My Bookings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "My Payments" })).not.toBeInTheDocument();
   });
 });
