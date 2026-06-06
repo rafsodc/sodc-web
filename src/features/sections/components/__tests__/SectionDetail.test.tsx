@@ -582,7 +582,7 @@ describe('SectionDetail', () => {
             price: 25,
             sortOrder: 0,
             audience: 'MEMBER',
-            userGroup: { id: 'ag-1', name: 'Standard Access' },
+            userGroup: { id: 'ag-1', name: 'Standard Access', membershipStatuses: ['REGULAR'] },
           },
         ],
       },
@@ -625,13 +625,13 @@ describe('SectionDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 4 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-      expect(screen.getByText('Ticket types')).toBeInTheDocument();
-      expect(screen.getByText('Standard')).toBeInTheDocument();
-      expect(screen.getByText('Member ticket')).toBeInTheDocument();
-      expect(screen.getByText('Standard Access')).toBeInTheDocument();
+      expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
+      expect(screen.getByText(/Standard · 25/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
+      expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
   });
 
