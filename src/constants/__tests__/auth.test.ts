@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { AUTH_EXPRESSIONS, type AuthExpression } from '../auth';
+import {
+  AUTH_EXPRESSIONS,
+  FIREBASE_MIN_PASSWORD_LENGTH,
+  REGISTRATION_MIN_PASSWORD_LENGTH,
+  type AuthExpression,
+} from '../auth';
 
 describe('auth constants', () => {
+  it('should export password length constants for onboarding', () => {
+    expect(FIREBASE_MIN_PASSWORD_LENGTH).toBe(6);
+    expect(REGISTRATION_MIN_PASSWORD_LENGTH).toBe(6);
+  });
   it('should export USER_ACCESS expression', () => {
     expect(AUTH_EXPRESSIONS.USER_ACCESS).toBe('auth.token.enabled == true');
   });

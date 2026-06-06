@@ -33,3 +33,12 @@ export const AUTH_EXPRESSIONS = {
  */
 export type AuthExpression = typeof AUTH_EXPRESSIONS[keyof typeof AUTH_EXPRESSIONS];
 
+/** Firebase Auth floor — sign-in accepts this minimum so existing accounts are not locked out. */
+export const FIREBASE_MIN_PASSWORD_LENGTH = 6;
+
+/**
+ * Minimum length for new registrations.
+ * Raise alongside issue #208 when the security policy is finalized.
+ */
+export const REGISTRATION_MIN_PASSWORD_LENGTH = 6;
+

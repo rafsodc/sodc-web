@@ -23,13 +23,11 @@ import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/
 interface ProfileCompletionProps {
   userEmail: string;
   onComplete?: () => void;
-  onBack?: () => void;
 }
 
 export default function ProfileCompletion({
   userEmail,
   onComplete,
-  onBack,
 }: ProfileCompletionProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -130,26 +128,23 @@ export default function ProfileCompletion({
         <Typography variant="body1" sx={{ color: colors.titlePrimary, mb: 2 }}>
           Your profile has been submitted and is pending admin approval.
         </Typography>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
-          An administrator will review your profile and approve your account. You will be notified once your account is activated.
+        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+          Step 4 begins next: an administrator will review your profile and activate your account,
+          usually within a few business days. You can sign out and return later to check status.
         </Typography>
-        {onBack && (
-          <Button variant="outlined" onClick={onBack}>
-            Back to Home
-          </Button>
-        )}
       </Box>
     );
   }
 
   return (
-    <Box sx={{ maxWidth: "600px", mx: "auto" }}>
-      <Typography variant="h4" gutterBottom sx={{ color: colors.titlePrimary, mb: 3 }}>
-        Complete Your Profile
+    <Box>
+      <Typography variant="h5" gutterBottom sx={{ color: colors.titlePrimary, mb: 1 }}>
+        Complete your profile
       </Typography>
 
       <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
-        Please complete your profile to continue. Your account will be pending admin approval.
+        Step 3 of 4 — tell us about your service background. An administrator will assign your
+        membership status during approval.
       </Typography>
 
       {error && (
@@ -275,14 +270,8 @@ export default function ProfileCompletion({
                 },
               }}
             >
-              {submitting ? <CircularProgress size={24} /> : "Submit Profile"}
+              {submitting ? <CircularProgress size={24} /> : "Submit profile"}
             </Button>
-
-            {onBack && (
-              <Button variant="outlined" onClick={onBack} disabled={submitting}>
-                Back
-              </Button>
-            )}
           </Box>
         </Stack>
       </form>

@@ -12,14 +12,18 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/
 import { auth } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import { syncPendingUserClaims } from "../../../shared/utils/firebaseFunctions";
+import {
+  getRegistrationPasswordHelperText,
+  validateRegistrationPassword,
+} from "../utils/passwordValidation";
+import { REGISTRATION_MIN_PASSWORD_LENGTH } from "../../../constants/auth";
 
 interface RegisterProps {
   onSuccess?: () => void;
-  onBack?: () => void;
   onSignInClick?: () => void;
 }
 
-export default function Register({ onSuccess, onBack, onSignInClick }: RegisterProps) {
+export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,8 +38,9 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return { isValid: false, error: "Invalid email format" };
     }
-    if (password.length < 6) {
-      return { isValid: false, error: "Password must be at least 6 characters" };
+    const passwordValidation = validateRegistrationPassword(password);
+    if (!passwordValidation.isValid) {
+      return { isValid: false, error: passwordValidation.error };
     }
     if (password !== confirmPassword) {
       return { isValid: false, error: "Passwords do not match" };
@@ -71,14 +76,12 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
       }
       await userCredential.user.getIdToken(true);
 
-      // Send email verification
       await sendEmailVerification(userCredential.user);
 
       setSuccess(true);
       setPassword("");
       setConfirmPassword("");
 
-      // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
@@ -101,21 +104,18 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
 
   if (success) {
     return (
-      <Stack spacing={2} sx={{ mt: 2 }}>
+      <Stack spacing={2}>
         <Alert severity="success">
-          Registration successful! Please check your email to verify your account.
+          Account created. Check your email to verify your address.
         </Alert>
         <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-          We've sent a verification email to <strong>{email}</strong>. Please click the link in the email to verify your account, then sign in to complete your profile.
+          We sent a verification link to <strong>{email}</strong>. After verifying, return here
+          and sign in to complete your profile. An administrator will then review and activate your
+          membership (usually within a few business days).
         </Typography>
         {onSignInClick && (
           <Button variant="contained" onClick={onSignInClick}>
-            Sign In
-          </Button>
-        )}
-        {onBack && (
-          <Button variant="outlined" onClick={onBack}>
-            Back to Home
+            Continue to sign in
           </Button>
         )}
       </Stack>
@@ -123,9 +123,12 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
   }
 
   return (
-    <Stack spacing={2} sx={{ mt: 2 }}>
+    <Stack spacing={2}>
       <Typography variant="h5" sx={{ color: colors.titlePrimary, mb: 1 }}>
-        Create Account
+        Create account
+      </Typography>
+      <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+        Step 1 of 4 — register with your email, then verify your address and complete your profile.
       </Typography>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -151,7 +154,7 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
             fullWidth
             required
             disabled={submitting}
-            helperText="Must be at least 6 characters"
+            helperText={getRegistrationPasswordHelperText()}
           />
           <TextField
             label="Confirm Password"
@@ -167,7 +170,12 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
           <Button
             type="submit"
             variant="contained"
-            disabled={submitting || !email.trim() || password.length < 6 || password !== confirmPassword}
+            disabled={
+              submitting ||
+              !email.trim() ||
+              password.length < REGISTRATION_MIN_PASSWORD_LENGTH ||
+              password !== confirmPassword
+            }
             sx={{
               backgroundColor: colors.callToAction,
               color: "white",
@@ -177,7 +185,7 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
               },
             }}
           >
-            {submitting ? <CircularProgress size={24} /> : "Register"}
+            {submitting ? <CircularProgress size={24} /> : "Create account"}
           </Button>
         </Stack>
       </form>
@@ -195,13 +203,6 @@ export default function Register({ onSuccess, onBack, onSignInClick }: RegisterP
           </Link>
         </Typography>
       )}
-
-      {onBack && (
-        <Button variant="outlined" onClick={onBack}>
-          Back to Home
-        </Button>
-      )}
     </Stack>
   );
 }
-

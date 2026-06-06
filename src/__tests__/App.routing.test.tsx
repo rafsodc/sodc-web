@@ -125,6 +125,15 @@ vi.mock("@dataconnect/generated/react", () => ({
   })),
 }));
 
+let needsProfileCompletion = false;
+
+vi.mock("../shared/appShell/useUnenabledProfileCheck", () => ({
+  useUnenabledProfileCheck: () => ({
+    membershipStatusForUnenabled: null,
+    needsProfileCompletion,
+  }),
+}));
+
 vi.mock("../shared/components/Header", () => ({
   default: ({ onAccountClick, onProfileClick }: { onAccountClick: () => void; onProfileClick?: () => void }) => (
     <header>
@@ -143,12 +152,15 @@ vi.mock("../features/welcome/components/MemberWelcomePage", () => ({
 }));
 
 vi.mock("../features/auth/components/AuthGate", () => ({
-  default: ({ onBack }: { onBack?: () => void }) => (
-    <div>
-      <h1>Account Page</h1>
-      <button onClick={onBack}>Back</button>
-    </div>
-  ),
+  default: () => <h1>Account Page</h1>,
+}));
+
+vi.mock("../features/auth/components/RegisterPage", () => ({
+  default: () => <h1>Register Page</h1>,
+}));
+
+vi.mock("../features/auth/components/OnboardingShell", () => ({
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../features/profile/components/Profile", () => ({
@@ -249,8 +261,40 @@ describe("App routing", () => {
     currentUser = null;
     enabledClaim = false;
     adminClaim = false;
+    needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
+  });
+
+  it("renders the register page from a direct deep link when logged out", async () => {
+    renderApp([ROUTES.REGISTER]);
+
+    expect(await screen.findByRole("heading", { name: "Register Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.REGISTER);
+  });
+
+  it("redirects users who need profile completion to the profile completion route", async () => {
+    currentUser = createMockUser({ emailVerified: true });
+    enabledClaim = false;
+    needsProfileCompletion = true;
+
+    renderApp([ROUTES.HOME]);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.PROFILE_COMPLETION)
+    );
+    expect(await screen.findByRole("heading", { name: "Profile Completion Page" })).toBeInTheDocument();
+  });
+
+  it("renders profile completion from a direct deep link when required", async () => {
+    currentUser = createMockUser({ emailVerified: true });
+    enabledClaim = false;
+    needsProfileCompletion = true;
+
+    renderApp([ROUTES.PROFILE_COMPLETION]);
+
+    expect(await screen.findByRole("heading", { name: "Profile Completion Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.PROFILE_COMPLETION);
   });
 
   it("renders the account page from a direct deep link when logged out", async () => {
