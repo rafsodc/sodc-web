@@ -26,6 +26,8 @@ import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { BookingStatus, TicketAudience } from "@dataconnect/generated";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
+import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import { getSectionMembersMerged, submitEventBooking } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
@@ -381,7 +383,8 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
       </Typography>
       {editingExistingBooking && existingTerminalBooking ? (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Editing revision {existingTerminalBooking.revisionNumber} ({existingTerminalBooking.status.toLowerCase()}).
+          Editing revision {existingTerminalBooking.revisionNumber} (
+          {getBookingStatusLabel(existingTerminalBooking.status).toLowerCase()}).
           Saving will create a new booking revision.
         </Alert>
       ) : null}
@@ -470,7 +473,8 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
             )}
             {!canRequestAccommodation && (
               <Typography variant="caption" color="text.secondary">
-                Accommodation requests are only available for REGULAR or RESERVE members.
+                Accommodation requests are only available for{" "}
+                {getMembershipStatusLabel("REGULAR")} or {getMembershipStatusLabel("RESERVE")} members.
               </Typography>
             )}
           </FormControl>

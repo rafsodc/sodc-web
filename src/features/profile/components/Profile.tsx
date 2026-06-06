@@ -14,10 +14,11 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
-import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
+import { upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
-import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH, ROUTES } from "../../../constants";
+import { MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH, ROUTES } from "../../../constants";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { auth } from "../../../config/firebase";
 
 interface ProfileProps {
@@ -25,14 +26,6 @@ interface ProfileProps {
   userEmail: string;
   onBack?: () => void;
   onUpdate?: () => void;
-}
-
-function getMembershipStatusLabel(status: MembershipStatus | null | undefined): string {
-  if (!status) {
-    return "Unknown";
-  }
-  const option = MEMBERSHIP_STATUS_OPTIONS.find((entry) => entry.value === status);
-  return option?.label ?? status;
 }
 
 export default function Profile({ userData, userEmail, onBack, onUpdate }: ProfileProps) {

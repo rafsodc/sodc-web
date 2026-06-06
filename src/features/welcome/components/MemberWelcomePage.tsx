@@ -11,8 +11,8 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
-import { SectionType } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
+import { getSectionTypeLabel } from "../../../shared/utils/sectionTypeLabels";
 import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
 import { extractAccessibleSections } from "../../../shared/navigation/extractAccessibleSections";
@@ -23,10 +23,6 @@ export interface MemberWelcomePageProps {
   userData: UserData | null;
   userEmail?: string | null;
   sectionsData?: GetSectionsForUserData;
-}
-
-function formatSectionType(type: SectionType): string {
-  return type === SectionType.EVENTS ? "Events" : "Members";
 }
 
 function formatEventWhen(startDateTime: string, endDateTime: string): string {
@@ -140,7 +136,7 @@ export default function MemberWelcomePage({
                 >
                   <CardContent>
                     <Typography variant="overline" color="text.secondary">
-                      {formatSectionType(section.type)}
+                      {getSectionTypeLabel(section.type)}
                     </Typography>
                     <Typography variant="subtitle1" fontWeight={600}>
                       {section.name}
