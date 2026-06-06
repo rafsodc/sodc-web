@@ -1,4 +1,18 @@
-import { Alert, Box, Button, Chip, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
@@ -10,16 +24,15 @@ import {
 } from "../../../shared/utils/paymentStatusLabels";
 import { getMyTicketOrderStripeArtifactsBatch } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
+import {
+  formatPaymentAmount,
+  getBookingAdjustmentSummary,
+  getTicketOrderOutcomeMessage,
+  ticketOrderStatusChipColor,
+} from "../utils/myPaymentsDisplay";
 
 interface MyPaymentsProps {
   onBack: () => void;
-}
-
-function statusChipColor(status: string): "success" | "error" | "warning" | "default" {
-  if (status === "PAID") return "success";
-  if (status === "FAILED") return "error";
-  if (status === "REFUNDED") return "warning";
-  return "default";
 }
 
 function artifactKey(orderId: string): string {
@@ -33,17 +46,15 @@ function artifactKey(orderId: string): string {
 export default function MyPayments({ onBack }: MyPaymentsProps) {
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
-  const [loadingStripeLinks, setLoadingStripeLinks] = useState(false);
   const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
     Record<string, { receiptUrl: string | null }>
   >({});
   const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
-  const [stripeArtifactError, setStripeArtifactError] = useState<string | null>(null);
   const orders = useMemo(() => data?.user?.ticketOrders ?? [], [data?.user?.ticketOrders]);
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
     (booking.adjustments ?? []).map((adjustment) => ({
       bookingId: booking.id,
-      eventTitle: booking.event?.title ?? "—",
+      eventTitle: booking.event?.title ?? "Event",
       revisionNumber: booking.revisionNumber,
       ...adjustment,
     }))
@@ -63,18 +74,14 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
       attemptedStripeArtifactOrderIds.current.add(artifactKey(orderId));
     }
     const load = async (): Promise<void> => {
-      setLoadingStripeLinks(true);
-      setStripeArtifactError(null);
       try {
         const artifacts = await getMyTicketOrderStripeArtifactsBatch({ orderIds: pendingOrderIds });
         const normalizedArtifacts = Object.fromEntries(
           Object.entries(artifacts.artifactsByOrderId).map(([orderId, value]) => [artifactKey(orderId), value])
         );
         setStripeArtifactsByOrderId((prev) => ({ ...prev, ...normalizedArtifacts }));
-      } catch (error) {
-        setStripeArtifactError(error instanceof Error ? error.message : "Failed to load Stripe links.");
-      } finally {
-        setLoadingStripeLinks(false);
+      } catch {
+        // Receipt links are optional; fail silently on the member UI.
       }
     };
     void load();
@@ -83,111 +90,124 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   return (
     <Box className="page-container">
       <PageHeader title="My Payments" onBack={onBack} />
-      {stripeArtifactError ? <Alert severity="error">{stripeArtifactError}</Alert> : null}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Your ticket payments and receipts across events.
+      </Typography>
+
       {isLoading ? (
-        <CircularProgress size={24} />
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress size={28} aria-label="Loading payments" />
+        </Box>
       ) : isError ? (
-        <Alert severity="error" action={<Chip label="Retry" onClick={() => refetch()} clickable size="small" />}>
-          {error instanceof Error ? error.message : "Failed to load payment history."}
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {error instanceof Error ? error.message : "We could not load your payment history. Please try again."}
         </Alert>
       ) : orders.length === 0 ? (
-        <Alert severity="info">No payment orders found yet.</Alert>
+        <Alert severity="info">
+          You have not made any ticket payments yet. After you pay for an event, your receipts will appear here.
+        </Alert>
       ) : (
-        <Box sx={{ display: "grid", gap: 2 }}>
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Event</TableCell>
-                  <TableCell>Ticket</TableCell>
-                  <TableCell align="right">Qty</TableCell>
-                  <TableCell align="right">Amount</TableCell>
-                  <TableCell>Lifecycle detail</TableCell>
-                  <TableCell>Stripe artifacts</TableCell>
-                  <TableCell>Updated</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <Chip
+        <Stack spacing={2}>
+          {orders.map((order) => {
+            const receiptUrl = stripeArtifactsByOrderId[artifactKey(order.id)]?.receiptUrl ?? null;
+            const eventWhen = order.event?.startDateTime
+              ? new Date(order.event.startDateTime).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })
+              : null;
+
+            return (
+              <Card key={order.id} variant="outlined">
+                <CardContent>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2} sx={{ mb: 1 }}>
+                    <Chip
+                      size="small"
+                      label={getTicketOrderStatusLabel(order.status)}
+                      color={ticketOrderStatusChipColor(order.status)}
+                    />
+                    {receiptUrl ? (
+                      <Button
+                        variant="outlined"
                         size="small"
-                        label={getTicketOrderStatusLabel(order.status)}
-                        color={statusChipColor(order.status)}
-                      />
-                    </TableCell>
-                    <TableCell>{order.event?.title ?? "—"}</TableCell>
-                    <TableCell>{order.ticketType?.title ?? "—"}</TableCell>
-                    <TableCell align="right">{order.quantity}</TableCell>
-                    <TableCell align="right">
-                      {(order.totalAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
-                    </TableCell>
-                    <TableCell>
-                      {order.status === "FAILED"
-                        ? "Payment attempt failed. You can try booking again."
-                        : order.status === "REFUNDED"
-                          ? `Refunded ${((order.refundedAmountMinor ?? 0) / 100).toFixed(2)} ${order.currency.toUpperCase()}`
-                          : order.disputeStatus
-                            ? `Dispute: ${order.disputeStatus}${order.disputeReason ? ` (${order.disputeReason})` : ""}`
-                            : "Payment settled"}
-                    </TableCell>
-                    <TableCell>
-                      {stripeArtifactsByOrderId[artifactKey(order.id)]?.receiptUrl ? (
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={() =>
-                            window.open(stripeArtifactsByOrderId[artifactKey(order.id)].receiptUrl as string, "_blank")
-                          }
-                        >
-                          View receipt
-                        </Button>
-                      ) : null}
-                      {!stripeArtifactsByOrderId[artifactKey(order.id)] && loadingStripeLinks ? (
-                        <Chip size="small" label="Loading links..." />
-                      ) : null}
-                    </TableCell>
-                    <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                        onClick={() => window.open(receiptUrl, "_blank", "noopener,noreferrer")}
+                      >
+                        View receipt
+                      </Button>
+                    ) : null}
+                  </Stack>
+
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    {order.event?.title ?? "Event ticket"}
+                  </Typography>
+
+                  {eventWhen ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Event: {eventWhen}
+                    </Typography>
+                  ) : null}
+
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {order.ticketType?.title ?? "Ticket"}
+                    {order.quantity > 1 ? ` · ${order.quantity} tickets` : ""}
+                    {" · "}
+                    {formatPaymentAmount(order.totalAmountMinor, order.currency)}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    {getTicketOrderOutcomeMessage(order)}
+                  </Typography>
+
+                  <Typography variant="caption" color="text.secondary">
+                    Last updated {new Date(order.updatedAt).toLocaleString()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            );
+          })}
+
           {bookingAdjustments.length > 0 ? (
-            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Adjustment status</TableCell>
-                    <TableCell>Event</TableCell>
-                    <TableCell align="right">Delta</TableCell>
-                    <TableCell>Booking revision</TableCell>
-                    <TableCell>Updated</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <Accordion variant="outlined" disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2">Booking changes ({bookingAdjustments.length})</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1.5}>
                   {bookingAdjustments.map((adjustment) => (
-                    <TableRow key={adjustment.id}>
-                      <TableCell>
+                    <Box key={adjustment.id}>
+                      <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center" sx={{ mb: 0.5 }}>
                         <Chip
                           size="small"
                           label={getBookingPaymentAdjustmentStatusLabel(adjustment.status)}
                           color="warning"
+                          variant="outlined"
                         />
-                      </TableCell>
-                      <TableCell>{adjustment.eventTitle}</TableCell>
-                      <TableCell align="right">{(adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
-                      <TableCell>Rev {adjustment.revisionNumber}</TableCell>
-                      <TableCell>{new Date(adjustment.updatedAt).toLocaleString()}</TableCell>
-                    </TableRow>
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(adjustment.updatedAt).toLocaleString()}
+                        </Typography>
+                      </Stack>
+                      <Typography variant="body2">
+                        {getBookingAdjustmentSummary({
+                          eventTitle: adjustment.eventTitle,
+                          revisionNumber: adjustment.revisionNumber,
+                          deltaAmountMinor: adjustment.deltaAmountMinor,
+                          status: adjustment.status,
+                        })}
+                      </Typography>
+                    </Box>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
           ) : null}
-        </Box>
+        </Stack>
       )}
     </Box>
   );

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "../../../../test-utils";
+import userEvent from "@testing-library/user-event";
 import MyPayments from "../MyPayments";
 import * as reactGenerated from "@dataconnect/generated/react";
 import { dataConnectQueryResult } from "../../../../test-utils/dataConnectMocks";
@@ -24,6 +25,13 @@ describe("MyPayments", () => {
   });
 
   beforeEach(() => {
+    vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>({
+        data: { user: { id: "u-1", bookings: [] } },
+        isLoading: false,
+        isError: false,
+      })
+    );
     vi.mocked(firebaseFunctions.getMyTicketOrderStripeArtifactsBatch).mockResolvedValue({
       artifactsByOrderId: {
         "order-1": {
@@ -36,7 +44,7 @@ describe("MyPayments", () => {
     });
   });
 
-  it("renders booking adjustment statuses alongside payment history", () => {
+  it("renders payment cards without ops-style table headers", () => {
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
       dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
         data: {
@@ -49,11 +57,51 @@ describe("MyPayments", () => {
                 quantity: 1,
                 totalAmountMinor: 2500,
                 currency: "gbp",
+                createdAt: "2026-04-01T12:00:00Z",
                 updatedAt: "2026-04-01T12:00:00Z",
                 refundedAmountMinor: null,
                 disputeStatus: null,
                 disputeReason: null,
-                event: { id: "event-1", title: "Spring Ball" },
+                event: { id: "event-1", title: "Spring Ball", startDateTime: "2026-05-01T18:00:00Z" },
+                ticketType: { id: "ticket-1", title: "Member ticket" },
+              },
+            ],
+          },
+        },
+        isLoading: false,
+        isError: false,
+      })
+    );
+
+    render(<MyPayments onBack={() => undefined} />);
+
+    expect(screen.getByText("Spring Ball")).toBeInTheDocument();
+    expect(screen.getByText(/member ticket/i)).toBeInTheDocument();
+    expect(screen.getByText(/25\.00 GBP/i)).toBeInTheDocument();
+    expect(screen.getByText("Paid")).toBeInTheDocument();
+    expect(screen.queryByText("Lifecycle detail")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stripe artifacts")).not.toBeInTheDocument();
+  });
+
+  it("shows booking changes in a collapsible section", async () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+        data: {
+          user: {
+            id: "u-1",
+            ticketOrders: [
+              {
+                id: "order-1",
+                status: "PAID",
+                quantity: 1,
+                totalAmountMinor: 2500,
+                currency: "gbp",
+                createdAt: "2026-04-01T12:00:00Z",
+                updatedAt: "2026-04-01T12:00:00Z",
+                refundedAmountMinor: null,
+                disputeStatus: null,
+                disputeReason: null,
+                event: { id: "event-1", title: "Spring Ball", startDateTime: "2026-05-01T18:00:00Z" },
                 ticketType: { id: "ticket-1", title: "Member ticket" },
               },
             ],
@@ -93,14 +141,19 @@ describe("MyPayments", () => {
       })
     );
 
+    const user = userEvent.setup();
     render(<MyPayments onBack={() => undefined} />);
 
-    expect(screen.getByText("Refund pending")).toBeInTheDocument();
-    expect(screen.getByText("Rev 2")).toBeInTheDocument();
-    expect(screen.getByText("-5.00 GBP")).toBeInTheDocument();
+    expect(screen.getByText("Booking changes (1)")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /booking changes \(1\)/i }));
+
+    expect(
+      screen.getByText(/Spring Ball \(revision 2\): refund pending — refund of 5\.00 GBP\./i)
+    ).toBeInTheDocument();
   });
 
-  it("auto-loads Stripe links and renders receipt action", async () => {
+  it("auto-loads receipt links and renders View receipt", async () => {
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
       dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
         data: {
@@ -113,23 +166,17 @@ describe("MyPayments", () => {
                 quantity: 1,
                 totalAmountMinor: 2500,
                 currency: "gbp",
+                createdAt: "2026-04-01T12:00:00Z",
                 updatedAt: "2026-04-01T12:00:00Z",
                 refundedAmountMinor: null,
                 disputeStatus: null,
                 disputeReason: null,
-                event: { id: "event-1", title: "Spring Ball" },
+                event: { id: "event-1", title: "Spring Ball", startDateTime: "2026-05-01T18:00:00Z" },
                 ticketType: { id: "ticket-1", title: "Member ticket" },
               },
             ],
           },
         },
-        isLoading: false,
-        isError: false,
-      })
-    );
-    vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
-      dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>({
-        data: { user: { id: "u-1", bookings: [] } },
         isLoading: false,
         isError: false,
       })
@@ -142,5 +189,19 @@ describe("MyPayments", () => {
       });
     });
     expect(await screen.findByRole("button", { name: "View receipt" })).toBeInTheDocument();
+  });
+
+  it("shows a clear empty state", () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+        data: { user: { id: "u-1", ticketOrders: [] } },
+        isLoading: false,
+        isError: false,
+      })
+    );
+
+    render(<MyPayments onBack={() => undefined} />);
+
+    expect(screen.getByText(/you have not made any ticket payments yet/i)).toBeInTheDocument();
   });
 });
