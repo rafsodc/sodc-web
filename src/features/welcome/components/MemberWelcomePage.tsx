@@ -13,6 +13,7 @@ import { Link as RouterLink } from "react-router-dom";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import { getSectionTypeLabel } from "../../../shared/utils/sectionTypeLabels";
+import { formatSectionEventWhen } from "../../../shared/utils/sectionEventDisplay";
 import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
 import { extractAccessibleSections } from "../../../shared/navigation/extractAccessibleSections";
@@ -23,12 +24,6 @@ export interface MemberWelcomePageProps {
   userData: UserData | null;
   userEmail?: string | null;
   sectionsData?: GetSectionsForUserData;
-}
-
-function formatEventWhen(startDateTime: string, endDateTime: string): string {
-  const start = new Date(startDateTime);
-  const end = new Date(endDateTime);
-  return `${start.toLocaleString()} – ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 export default function MemberWelcomePage({
@@ -93,7 +88,7 @@ export default function MemberWelcomePage({
                       {event.title}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {formatEventWhen(event.startDateTime, event.endDateTime)}
+                      {formatSectionEventWhen(event.startDateTime, event.endDateTime)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {event.sectionName}
