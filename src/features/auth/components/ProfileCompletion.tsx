@@ -10,18 +10,13 @@ import {
   FormControlLabel,
   Checkbox,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import { executeMutation, mutationRef } from "firebase/data-connect";
 import { MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
-import { NON_RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
-import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
+import { MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { auth } from "../../../config/firebase";
 import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 
@@ -44,9 +39,6 @@ export default function ProfileCompletion({
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
-  const [requestedMembershipStatus, setRequestedMembershipStatus] = useState<MembershipStatus>(
-    MembershipStatus.REGULAR
-  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -83,7 +75,7 @@ export default function ProfileCompletion({
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
-        requestedMembershipStatus,
+        requestedMembershipStatus: MembershipStatus.REGULAR,
         isRegular,
         isReserve,
         isCivilServant,
@@ -212,26 +204,10 @@ export default function ProfileCompletion({
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
-          <FormControl fullWidth required>
-            <InputLabel>Desired Membership Status</InputLabel>
-            <Select
-              value={requestedMembershipStatus}
-              label="Desired Membership Status"
-              onChange={(e) => setRequestedMembershipStatus(e.target.value as MembershipStatus)}
-              disabled={submitting}
-            >
-              {MEMBERSHIP_STATUS_OPTIONS.filter(option => 
-                NON_RESTRICTED_STATUSES.includes(option.value)
-              ).map((status) => (
-                <MenuItem key={status.value} value={status.value}>
-                  {status.label}
-                </MenuItem>
-              ))}
-            </Select>
-            <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
-              Your account will start as PENDING until an admin approves your requested status.
-            </Typography>
-          </FormControl>
+          <Alert severity="info">
+            An administrator will review your service background and assign your membership status during
+            approval. You do not need to choose a status here.
+          </Alert>
 
           <Divider sx={{ my: 2 }} />
 
