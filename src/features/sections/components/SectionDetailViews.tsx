@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -25,7 +26,9 @@ import {
 import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../shared/utils/ticketAudienceLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
+import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import EventBookingWizard from "./EventBookingWizard";
+import SectionEventCard from "./SectionEventCard";
 
 type SectionDetailSection = NonNullable<GetSectionByIdData["section"]>;
 type SectionEventRow = NonNullable<NonNullable<GetEventsForSectionData["section"]>["events"]>[number];
@@ -190,6 +193,8 @@ interface SectionEventsListViewProps {
   onSelectEvent: (eventId: string) => void;
 }
 
+type SectionEventsListMode = "upcoming" | "past";
+
 export function SectionEventsListView({
   events,
   loading,
@@ -197,8 +202,39 @@ export function SectionEventsListView({
   onRetry,
   onSelectEvent,
 }: SectionEventsListViewProps) {
+  const [listMode, setListMode] = useState<SectionEventsListMode>("upcoming");
+  const { upcoming, past } = useMemo(() => partitionSectionEventsByTiming(events), [events]);
+  const visibleEvents = listMode === "upcoming" ? upcoming : past;
+
   return (
     <Box sx={{ mt: 1 }}>
+      {!loading && !isError && (upcoming.length > 0 || past.length > 0) ? (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 1,
+            mb: 2,
+          }}
+        >
+          <Typography variant="subtitle1" component="h2" fontWeight={600}>
+            {listMode === "upcoming" ? "Upcoming events" : "Past events"}
+          </Typography>
+          {listMode === "upcoming" && past.length > 0 ? (
+            <Button size="small" onClick={() => setListMode("past")}>
+              View past events
+            </Button>
+          ) : null}
+          {listMode === "past" ? (
+            <Button size="small" onClick={() => setListMode("upcoming")}>
+              Back to upcoming events
+            </Button>
+          ) : null}
+        </Box>
+      ) : null}
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
@@ -210,65 +246,36 @@ export function SectionEventsListView({
             Retry
           </Button>
         </Alert>
-      ) : !events.length ? (
-        <Alert severity="info">No events yet.</Alert>
+      ) : listMode === "upcoming" && upcoming.length === 0 ? (
+        <Alert severity="info">
+          {past.length > 0
+            ? "No upcoming events right now. View past events to see what has already happened."
+            : "No upcoming events yet. Check back when new events are published."}
+        </Alert>
+      ) : listMode === "past" && past.length === 0 ? (
+        <Alert severity="info">No past events yet.</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Date / time</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Guest of honour</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {events.map((event) => (
-                <TableRow
-                  key={event.id}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                  onClick={() => onSelectEvent(event.id)}
-                >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
-                      {event.title}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(event.startDateTime).toLocaleString()} -{" "}
-                      {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {event.location || "-"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {event.guestOfHonour || "-"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="small"
-                      onClick={(clickEvent) => {
-                        clickEvent.stopPropagation();
-                        onSelectEvent(event.id);
-                      }}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box
+          component="ul"
+          sx={{
+            listStyle: "none",
+            m: 0,
+            p: 0,
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          }}
+        >
+          {visibleEvents.map((event) => (
+            <Box component="li" key={event.id} sx={{ minWidth: 0 }}>
+              <SectionEventCard
+                event={event}
+                variant={listMode}
+                onSelect={onSelectEvent}
+              />
+            </Box>
+          ))}
+        </Box>
       )}
     </Box>
   );

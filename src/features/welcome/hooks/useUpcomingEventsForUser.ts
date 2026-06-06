@@ -4,6 +4,10 @@ import type { UUIDString } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import type { AccessibleSection } from "../../../shared/navigation/extractAccessibleSections";
+import {
+  isUpcomingSectionEvent,
+  sortUpcomingSectionEvents,
+} from "../../../shared/utils/sectionEventDisplay";
 
 export interface UpcomingEventRow {
   id: string;
@@ -89,13 +93,9 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
         );
 
         const now = Date.now();
-        const upcoming = results
-          .flat()
-          .filter((event) => new Date(event.endDateTime).getTime() >= now)
-          .sort(
-            (a, b) =>
-              new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
-          );
+        const upcoming = sortUpcomingSectionEvents(
+          results.flat().filter((event) => isUpcomingSectionEvent(event, now))
+        );
 
         if (alive) {
           setEvents(upcoming);
