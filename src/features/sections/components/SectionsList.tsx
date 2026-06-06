@@ -1,17 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Box,
-  Typography,
   Alert,
   CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
   Button,
 } from "@mui/material";
 import { useGetSectionsForUser, useListSections } from "@dataconnect/generated/react";
@@ -23,7 +14,7 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import type { SectionType, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
-import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
+import SectionListCard from "./SectionListCard";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionsListProps {
@@ -207,58 +198,24 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
           {searchTerm ? "No sections match your search." : "No sections available."}
         </Alert>
       ) : (
-        <TableContainer component={Paper} sx={{ mt: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredSections.map((section) => (
-                <TableRow
-                  key={section.id}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                  onClick={() => onSelectSection(section.id)}
-                >
-                  <TableCell>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      {section.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getSectionTypeLabel(section.type)}
-                      size="small"
-                      color={isMembersSectionType(section.type) ? "primary" : "secondary"}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {section.description || "—"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectSection(section.id);
-                      }}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box
+          component="ul"
+          sx={{
+            listStyle: "none",
+            m: 0,
+            p: 0,
+            mt: 2,
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+          }}
+        >
+          {filteredSections.map((section) => (
+            <Box component="li" key={section.id} sx={{ minWidth: 0 }}>
+              <SectionListCard section={section} onSelect={onSelectSection} />
+            </Box>
+          ))}
+        </Box>
       )}
     </Box>
   );
