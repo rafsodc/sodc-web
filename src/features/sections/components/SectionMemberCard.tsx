@@ -7,19 +7,16 @@ export interface SectionMemberCardProps {
   member: SectionMember;
 }
 
-export function formatSectionMemberName(member: Pick<SectionMember, "firstName" | "lastName">): string {
-  return `${member.firstName} ${member.lastName}`.trim();
-}
-
 export default function SectionMemberCard({ member }: SectionMemberCardProps) {
   const [showEmail, setShowEmail] = useState(false);
+  const fullName = `${member.firstName} ${member.lastName}`.trim();
 
   return (
     <Card variant="outlined" component="li" sx={{ height: "100%" }}>
       <CardContent>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1} flexWrap="wrap">
           <Typography variant="subtitle1" component="h3" fontWeight={600}>
-            {formatSectionMemberName(member)}
+            {fullName}
           </Typography>
           <Chip label={getMembershipStatusLabel(member.membershipStatus)} size="small" />
         </Stack>
