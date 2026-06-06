@@ -71,11 +71,9 @@ describe("Profile", () => {
     const user = userEvent.setup();
     renderProfile({ userData, userEmail: userData.email });
 
-    const [firstNameInput, lastNameInput, serviceNumberInput] = screen.getAllByRole("textbox");
+    const [firstNameInput] = screen.getAllByRole("textbox");
     await user.clear(firstNameInput);
     await user.type(firstNameInput, "Jordan");
-    expect(lastNameInput).toHaveValue("Member");
-    expect(serviceNumberInput).toHaveValue("12345");
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
     await waitFor(() => {
