@@ -39,6 +39,7 @@ const PaymentReconciliationDashboard = lazy(() => import("./features/admin/compo
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
 const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
 const MyPayments = lazy(() => import("./features/sections/components/MyPayments"));
+const MyBookings = lazy(() => import("./features/sections/components/MyBookings"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
@@ -136,6 +137,7 @@ function AppContent() {
       onAccountClick={() => navigate(ROUTES.ACCOUNT)}
       onProfileClick={() => navigate(ROUTES.PROFILE)}
       onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
+      onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
       onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
       onJoinClick={() => navigate(ROUTES.REGISTER)}
       onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
@@ -492,6 +494,14 @@ function AppContent() {
                         <ManageSections onBack={() => navigateBackOr(ROUTES.HOME)} />
                       </Suspense>
                     </ErrorBoundary>
+                  )}
+                />
+                <Route
+                  path={ROUTES.MY_BOOKINGS}
+                  element={protectedRoute(
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MyBookings onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
                   )}
                 />
                 <Route

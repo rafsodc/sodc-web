@@ -14,6 +14,7 @@ interface HeaderProps {
   onJoinClick?: () => void;
   onProfileClick?: () => void;
   onAccountSettingsClick?: () => void;
+  onMyBookingsClick?: () => void;
   onMyPaymentsClick?: () => void;
   /** When set, shows a hamburger on small screens that opens the side navigation. */
   onNavMenuOpen?: () => void;
@@ -37,6 +38,7 @@ export default function Header({
   onJoinClick,
   onProfileClick,
   onAccountSettingsClick,
+  onMyBookingsClick,
   onMyPaymentsClick,
   onNavMenuOpen,
 }: HeaderProps) {
@@ -68,6 +70,11 @@ export default function Header({
     } else {
       onAccountClick();
     }
+  };
+
+  const handleMyBookings = () => {
+    handleMenuClose();
+    onMyBookingsClick?.();
   };
 
   const handleMyPayments = () => {
@@ -229,6 +236,21 @@ export default function Header({
                   }}
                 >
                   Account
+                </MenuItem>
+              )}
+              {isEnabled && (
+                <MenuItem
+                  onClick={handleMyBookings}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  My Bookings
                 </MenuItem>
               )}
               {isEnabled && (

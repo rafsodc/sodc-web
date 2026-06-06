@@ -404,6 +404,46 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
   }
 }
 
+# All current bookings for the member (non-superseded revisions). Used for My Bookings hub (#240).
+query GetMyBookings @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    id
+    bookings: bookings_on_booker(
+      where: { supersededAt: { isNull: true } }
+      orderBy: { updatedAt: DESC }
+    ) {
+      id
+      status
+      revisionNumber
+      updatedAt
+      event {
+        id
+        title
+        startDateTime
+        endDateTime
+        section {
+          id
+          name
+        }
+      }
+      lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+        id
+        ticketType {
+          id
+          title
+          audience
+          price
+        }
+      }
+      guestTicketRequests: guestTicketRequests_on_booking {
+        id
+        status
+        requestedGuestCount
+      }
+    }
+  }
+}
+
 # Current user's ticket order by id (used for post-checkout status UI).
 query GetMyTicketOrderById($id: UUID!) @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {

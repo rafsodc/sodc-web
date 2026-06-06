@@ -2,6 +2,7 @@ import { ROUTES } from "../../constants";
 
 export interface SectionDetailLocationState {
   sectionReturnTo?: string;
+  selectedEventId?: string;
 }
 
 export function getSectionReturnTo(state: unknown, defaultRoute: string = ROUTES.SECTIONS): string {
@@ -12,6 +13,12 @@ export function getSectionReturnTo(state: unknown, defaultRoute: string = ROUTES
   return defaultRoute;
 }
 
-export function sectionDetailLocationState(returnTo: string): SectionDetailLocationState {
-  return { sectionReturnTo: returnTo };
+export function sectionDetailLocationState(
+  returnTo: string,
+  options?: { selectedEventId?: string }
+): SectionDetailLocationState {
+  return {
+    sectionReturnTo: returnTo,
+    ...(options?.selectedEventId ? { selectedEventId: options.selectedEventId } : {}),
+  };
 }

@@ -175,7 +175,7 @@ export default function EventBookingStatusSummary({
         <Button variant="outlined" onClick={onEditBooking}>
           Edit booking
         </Button>
-        <Button component={RouterLink} to={ROUTES.MY_PAYMENTS} variant="text">
+        <Button component={RouterLink} to={ROUTES.MY_BOOKINGS} variant="text">
           View in My Bookings
         </Button>
       </Box>

@@ -199,6 +199,7 @@ export function buildNavigationLinks({
 
   return {
     sections: [
+      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
       { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       ...sortLinks(sectionMap.values()).map((section) => {
         const sectionId = section.to.replace("/sections/", "");

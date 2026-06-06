@@ -837,6 +837,42 @@ export interface GetMyBookingsForEventVariables {
   eventId: UUIDString;
 }
 
+export interface GetMyBookingsData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      revisionNumber: number;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+      lines: ({
+        id: UUIDString;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+      } & GuestTicketRequest_Key)[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+
 export interface GetMyTicketOrderByIdData {
   user?: {
     id: string;
@@ -2170,6 +2206,18 @@ export const getMyBookingsForEventRef: GetMyBookingsForEventRef;
 
 export function getMyBookingsForEvent(vars: GetMyBookingsForEventVariables): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
 export function getMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables): QueryPromise<GetMyBookingsForEventData, GetMyBookingsForEventVariables>;
+
+interface GetMyBookingsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetMyBookingsData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetMyBookingsData, undefined>;
+  operationName: string;
+}
+export const getMyBookingsRef: GetMyBookingsRef;
+
+export function getMyBookings(): QueryPromise<GetMyBookingsData, undefined>;
+export function getMyBookings(dc: DataConnect): QueryPromise<GetMyBookingsData, undefined>;
 
 interface GetMyTicketOrderByIdRef {
   /* Allow users to create refs without passing in DataConnect */

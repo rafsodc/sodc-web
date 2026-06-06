@@ -290,6 +290,17 @@ export function getMyBookingsForEvent(dcOrVars, vars) {
   return executeQuery(getMyBookingsForEventRef(dcOrVars, vars));
 }
 
+export const getMyBookingsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetMyBookings');
+}
+getMyBookingsRef.operationName = 'GetMyBookings';
+
+export function getMyBookings(dc) {
+  return executeQuery(getMyBookingsRef(dc));
+}
+
 export const getMyTicketOrderByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

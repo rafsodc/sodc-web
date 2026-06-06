@@ -41,6 +41,7 @@ describe("Data Connect auth contracts", () => {
       { op: "query ListGuestTicketRequestsForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
       { op: "query ListTicketOrdersForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
       { op: "query GetMyTicketOrderById", mustInclude: '@auth(expr: "auth.token.enabled == true")' },
+      { op: "query GetMyBookings", mustInclude: '@auth(expr: "auth.token.enabled == true")' },
     ]);
 
     assertAuth(bookingMutations, [

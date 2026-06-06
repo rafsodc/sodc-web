@@ -22,13 +22,14 @@ import {
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 import NavigationBreadcrumbs from "../../../shared/components/NavigationBreadcrumbs";
+import type { SectionDetailLocationState } from "../../../shared/navigation/sectionNavigationState";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
 import {
   getDefaultSectionDetailTab,
@@ -50,6 +51,8 @@ interface SectionDetailProps {
 
 export default function SectionDetail({ sectionId, onBack }: SectionDetailProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as SectionDetailLocationState | null;
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
@@ -318,9 +321,15 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     if (!loadedSection) {
       return;
     }
+    const pendingEventId = locationState?.selectedEventId;
+    if (pendingEventId) {
+      setSelectedEventId(pendingEventId);
+      setActiveTab("events");
+      return;
+    }
     setActiveTab(getDefaultSectionDetailTab(isMembersSectionType));
     setSelectedEventId(null);
-  }, [sectionId, isMembersSectionType, loadedSection]);
+  }, [sectionId, isMembersSectionType, loadedSection, locationState?.selectedEventId]);
 
   const handleTabChange = (_event: SyntheticEvent, newTab: SectionDetailTab) => {
     setActiveTab(newTab);
