@@ -18,7 +18,6 @@ import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData, ty
 import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
-import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import {
   ACCESS_GROUP_COLUMN_LABEL,
   GUEST_LIMIT_BEFORE_REVIEW_LABEL,
@@ -29,6 +28,7 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import EventBookingWizard from "./EventBookingWizard";
 import SectionEventCard from "./SectionEventCard";
+import SectionMemberCard from "./SectionMemberCard";
 
 type SectionDetailSection = NonNullable<GetSectionByIdData["section"]>;
 type SectionEventRow = NonNullable<NonNullable<GetEventsForSectionData["section"]>["events"]>[number];
@@ -127,8 +127,11 @@ export function SectionMembersView({
 }: SectionMembersViewProps) {
   return (
     <Box sx={{ mt: 1 }}>
-      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
         Members ({allMembersCount})
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Names and membership type are shown by default. Email addresses stay hidden until you choose to show them for a member.
       </Typography>
       <SearchBar
         value={searchTerm}
@@ -148,36 +151,21 @@ export function SectionMembersView({
             Showing {paginatedMembers.length} of {filteredMembers.length} {searchTerm ? "filtered " : ""}members
             {totalPages > 1 && ` (page ${page} of ${totalPages})`}
           </Typography>
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Membership Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedMembers.map((member) => (
-                  <TableRow key={member.userId}>
-                    <TableCell>
-                      <Typography variant="body1">
-                        {member.firstName} {member.lastName}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {member.email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={getMembershipStatusLabel(member.membershipStatus)} size="small" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Box
+            component="ul"
+            sx={{
+              listStyle: "none",
+              m: 0,
+              p: 0,
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
+            }}
+          >
+            {paginatedMembers.map((member) => (
+              <SectionMemberCard key={member.userId} member={member} />
+            ))}
+          </Box>
           <PaginationDisplay page={page} totalPages={totalPages} onChange={onPageChange} />
         </>
       )}
