@@ -17,8 +17,13 @@ export default function NavigationBreadcrumbs({ items }: NavigationBreadcrumbsPr
       aria-label="Breadcrumb"
       sx={{
         mb: 1,
+        "& .MuiBreadcrumbs-ol": {
+          alignItems: "center",
+        },
         "& .MuiBreadcrumbs-li": {
           maxWidth: { xs: "8rem", sm: "none" },
+          display: "inline-flex",
+          alignItems: "center",
         },
         "& .MuiBreadcrumbs-li:last-of-type .MuiTypography-root": {
           overflow: "hidden",
@@ -64,14 +69,24 @@ export default function NavigationBreadcrumbs({ items }: NavigationBreadcrumbsPr
             underline="hover"
             color="inherit"
             variant="body2"
-            sx={{
+            noWrap
+            sx={(theme) => ({
               border: 0,
               background: "none",
               cursor: "pointer",
               p: 0,
-              font: "inherit",
+              m: 0,
+              minHeight: "unset",
+              display: "inline-flex",
+              alignItems: "center",
+              verticalAlign: "middle",
               textAlign: "left",
-            }}
+              fontSize: theme.typography.body2.fontSize,
+              lineHeight: theme.typography.body2.lineHeight,
+              fontWeight: theme.typography.body2.fontWeight,
+              letterSpacing: theme.typography.body2.letterSpacing,
+              fontFamily: theme.typography.fontFamily,
+            })}
           >
             {item.label}
           </Link>

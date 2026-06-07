@@ -43,4 +43,22 @@ describe("NavigationBreadcrumbs", () => {
     await user.click(screen.getByRole("button", { name: "Signals" }));
     expect(onSectionClick).toHaveBeenCalledTimes(1);
   });
+
+  it("uses body2 typography for button breadcrumbs (matches router links)", () => {
+    render(
+      <MemoryRouter>
+        <NavigationBreadcrumbs
+          items={[
+            { label: "Home", to: "/" },
+            { label: "Signals", onClick: vi.fn() },
+            { label: "Annual Dinner" },
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("link", { name: "Home" })).toHaveClass("MuiTypography-body2");
+    expect(screen.getByRole("button", { name: "Signals" })).toHaveClass("MuiTypography-body2");
+    expect(screen.getByText("Annual Dinner")).toHaveClass("MuiTypography-body2");
+  });
 });
