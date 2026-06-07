@@ -50,6 +50,80 @@ describe("EventBookingStatusSummary", () => {
     expect(screen.getByRole("link", { name: "View in My Bookings" })).toBeInTheDocument();
   });
 
+  it("shows approved extra guests in the ticket table", () => {
+    renderSummary(
+      <EventBookingStatusSummary
+        booking={{
+          id: "booking-1",
+          status: BookingStatus.SUBMITTED,
+          revisionNumber: 2,
+          lines: [
+            {
+              id: "line-1",
+              guestDisplayName: null,
+              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+            },
+          ],
+          guestTicketRequests: [
+            {
+              id: "gtr-1",
+              status: "APPROVED",
+              requestedGuestCount: 1,
+              guestDisplayName: "Alex Guest",
+              guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+            },
+          ],
+        } as never}
+        eventId="event-1"
+        eventTitle="Annual Dinner"
+        ticketOrders={[]}
+        paymentAdjustments={[]}
+        onEditBooking={onEditBooking}
+      />
+    );
+
+    expect(screen.getByText("Guest standard")).toBeInTheDocument();
+    expect(screen.getByText("Alex Guest")).toBeInTheDocument();
+    expect(screen.getByText(/approved extra guest/i)).toBeInTheDocument();
+  });
+
+  it("shows pending extra guests awaiting approval in the ticket table", () => {
+    renderSummary(
+      <EventBookingStatusSummary
+        booking={{
+          id: "booking-1",
+          status: BookingStatus.SUBMITTED,
+          revisionNumber: 2,
+          lines: [
+            {
+              id: "line-1",
+              guestDisplayName: null,
+              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+            },
+          ],
+          guestTicketRequests: [
+            {
+              id: "gtr-1",
+              status: "PENDING",
+              requestedGuestCount: 1,
+              guestDisplayName: "Sam Extra",
+              guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+            },
+          ],
+        } as never}
+        eventId="event-1"
+        eventTitle="Annual Dinner"
+        ticketOrders={[]}
+        paymentAdjustments={[]}
+        onEditBooking={onEditBooking}
+      />
+    );
+
+    expect(screen.getByText("Guest standard")).toBeInTheDocument();
+    expect(screen.getByText("Sam Extra")).toBeInTheDocument();
+    expect(screen.getByText(/awaiting approval/i)).toBeInTheDocument();
+  });
+
   it("hides Pay now when payment is complete", () => {
     renderSummary(
       <EventBookingStatusSummary

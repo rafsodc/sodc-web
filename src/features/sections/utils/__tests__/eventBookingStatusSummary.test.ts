@@ -8,6 +8,9 @@ import {
 import {
   getEventBookingNextSteps,
   hasExpiredDraftHold,
+  buildBookingTicketDisplayRows,
+  formatBookingTicketDisplayLabel,
+  getPayableBookingTicketRows,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
 } from "../eventBookingStatusSummary";
@@ -27,19 +30,79 @@ const booking = {
 } as never;
 
 describe("summarizeGuestTicketRequests", () => {
-  it("counts pending, approved, and rejected requests", () => {
+  it("counts pending, approved, and rejected guest tickets", () => {
     const summary = summarizeGuestTicketRequests([
-      { status: GuestTicketRequestStatus.PENDING },
-      { status: GuestTicketRequestStatus.APPROVED },
-      { status: GuestTicketRequestStatus.REJECTED },
+      { status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 2 },
+      { status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 },
+      { status: GuestTicketRequestStatus.REJECTED, requestedGuestCount: 1 },
     ] as never);
 
     expect(summary).toEqual({
-      pendingCount: 1,
+      pendingCount: 2,
       approvedCount: 1,
       rejectedCount: 1,
       hasPending: true,
     });
+  });
+});
+
+describe("buildBookingTicketDisplayRows", () => {
+  it("includes approved guest ticket requests alongside booking lines", () => {
+    const rows = buildBookingTicketDisplayRows({
+      lines: [
+        {
+          id: "line-1",
+          guestDisplayName: null,
+          ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+        },
+      ],
+      guestTicketRequests: [
+        {
+          id: "gtr-1",
+          status: GuestTicketRequestStatus.APPROVED,
+          requestedGuestCount: 1,
+          guestDisplayName: "Alex Guest",
+          guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+        },
+      ],
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toMatchObject({
+      ticketTitle: "Guest standard",
+      guestName: "Alex Guest",
+      source: "approved_guest_request",
+    });
+  });
+
+  it("includes pending guest ticket requests awaiting approval", () => {
+    const rows = buildBookingTicketDisplayRows({
+      lines: [
+        {
+          id: "line-1",
+          guestDisplayName: null,
+          ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+        },
+      ],
+      guestTicketRequests: [
+        {
+          id: "gtr-1",
+          status: GuestTicketRequestStatus.PENDING,
+          requestedGuestCount: 1,
+          guestDisplayName: "Sam Extra",
+          guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+        },
+      ],
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toMatchObject({
+      ticketTitle: "Guest standard",
+      guestName: "Sam Extra",
+      source: "pending_guest_request",
+    });
+    expect(formatBookingTicketDisplayLabel(rows[1])).toBe("Guest standard (Sam Extra) — awaiting approval");
+    expect(getPayableBookingTicketRows(rows)).toHaveLength(1);
   });
 });
 

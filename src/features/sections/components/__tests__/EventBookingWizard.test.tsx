@@ -242,10 +242,227 @@ describe("EventBookingWizard", () => {
     await user.type(screen.getAllByLabelText("Guest name")[0], "Alex Guest");
     const extraGuestName = screen.getAllByLabelText("Guest name")[1];
     if (extraGuestName) {
-      await user.type(extraGuestName, "Alex Guest");
+      await user.type(extraGuestName, "Sam Extra");
+    }
+    await user.type(screen.getAllByLabelText("Dietary requirements (optional)")[0], "Vegetarian");
+    const extraGuestDietary = screen.getAllByLabelText("Dietary requirements (optional)")[1];
+    if (extraGuestDietary) {
+      await user.type(extraGuestDietary, "Gluten free");
     }
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByText(/may require organiser review/i)).toBeInTheDocument();
+    expect(screen.getByText(/Alex Guest · Dietary: Vegetarian/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sam Extra · Dietary: Gluten free/i)).toBeInTheDocument();
+  });
+
+  it("submits separate dietary notes for each guest", async () => {
+    const user = userEvent.setup();
+    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+      refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } }),
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <EventBookingWizard
+          wizardOpen
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+              {
+                id: "ticket-guest",
+                title: "Guest standard",
+                audience: TicketAudience.GUEST,
+                price: 25,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByLabelText(/member standard/i));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    const guestCountInput = screen.getByLabelText(/how many guest tickets in total/i);
+    await user.clear(guestCountInput);
+    await user.type(guestCountInput, "2");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    await user.type(screen.getAllByLabelText("Guest name")[0], "Alex Guest");
+    await user.type(screen.getAllByLabelText("Dietary requirements (optional)")[0], "Vegetarian");
+    await user.type(screen.getAllByLabelText("Guest name")[1], "Sam Extra");
+    await user.type(screen.getAllByLabelText("Dietary requirements (optional)")[1], "Gluten free");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lines: expect.arrayContaining([
+            expect.objectContaining({
+              ticketTypeId: "ticket-guest",
+              guestDisplayName: "Alex Guest",
+              dietaryNote: "Vegetarian",
+            }),
+          ]),
+        })
+      );
+    });
+
+    expect(firebaseFunctions.submitGuestTicketRequest).toHaveBeenCalledWith({
+      bookingId: "booking-new",
+      requestedGuestCount: 1,
+      guestTicketTypeId: "ticket-guest",
+      guestDisplayName: "Sam Extra",
+      dietaryNote: "Gluten free",
+    });
+  });
+
+  it("advances to the payment step after confirming a new booking", async () => {
+    const user = userEvent.setup();
+    let bookings: Array<Record<string, unknown>> = [];
+    const submittedBooking = {
+      id: "booking-new",
+      status: BookingStatus.SUBMITTED,
+      revisionNumber: 1,
+      clientSubmissionKey: null,
+      bookerDietaryNote: "",
+      sitNextToUserIds: [],
+      accommodationRequested: false,
+      accommodationNote: null,
+      lines: [
+        {
+          id: "line-1",
+          sortOrder: 0,
+          guestDisplayName: null,
+          dietaryNote: null,
+          ticketType: {
+            id: "ticket-member",
+            title: "Member standard",
+            audience: TicketAudience.MEMBER,
+            price: 50,
+          },
+        },
+      ],
+      guestTicketRequests: [],
+    };
+
+    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockImplementation(
+      () =>
+        ({
+          data: { user: { bookings } },
+          isLoading: false,
+          refetch: vi.fn().mockImplementation(async () => {
+            bookings = [submittedBooking];
+            return { data: { user: { bookings } } };
+          }),
+        }) as never
+    );
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <EventBookingWizard
+          wizardOpen
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByLabelText(/member standard/i));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalled();
+    });
+
+    rerender(
+      <MemoryRouter>
+        <EventBookingWizard
+          wizardOpen
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
+      expect(screen.getByText(/Pay for each ticket type below/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText(/how many guest tickets in total/i)).not.toBeInTheDocument();
   });
 });

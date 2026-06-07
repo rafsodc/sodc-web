@@ -20,6 +20,7 @@ import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels
 import {
   getEventBookingNextSteps,
   getEventBookingStatusHeading,
+  buildBookingTicketDisplayRows,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
   type EventBookingPaymentAdjustmentInput,
@@ -90,6 +91,7 @@ export default function EventBookingStatusSummary({
     adjustments: paymentAdjustments,
   });
   const guestSummary = summarizeGuestTicketRequests(booking.guestTicketRequests);
+  const ticketRows = buildBookingTicketDisplayRows(booking);
   const nextSteps = getEventBookingNextSteps({
     bookingStatus: booking.status,
     paymentSummary,
@@ -127,7 +129,7 @@ export default function EventBookingStatusSummary({
         {getEventBookingStatusHeading(booking)} for <strong>{eventTitle}</strong>.
       </Typography>
 
-      {(booking.lines ?? []).length > 0 ? (
+      {ticketRows.length > 0 ? (
         <Table size="small" sx={{ mb: 2 }}>
           <TableHead>
             <TableRow>
@@ -137,11 +139,23 @@ export default function EventBookingStatusSummary({
             </TableRow>
           </TableHead>
           <TableBody>
-            {(booking.lines ?? []).map((line) => (
-              <TableRow key={line.id}>
-                <TableCell>{line.ticketType?.title ?? "—"}</TableCell>
-                <TableCell>{line.guestDisplayName ?? "—"}</TableCell>
-                <TableCell>{line.ticketType?.price != null ? String(line.ticketType.price) : "—"}</TableCell>
+            {ticketRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  {row.ticketTitle}
+                  {row.source === "approved_guest_request" ? (
+                    <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+                      (approved extra guest)
+                    </Typography>
+                  ) : null}
+                  {row.source === "pending_guest_request" ? (
+                    <Typography component="span" variant="caption" color="warning.main" sx={{ ml: 0.75 }}>
+                      (awaiting approval)
+                    </Typography>
+                  ) : null}
+                </TableCell>
+                <TableCell>{row.guestName ?? "—"}</TableCell>
+                <TableCell>{row.price != null ? String(row.price) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

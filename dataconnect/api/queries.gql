@@ -439,6 +439,12 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
         id
         status
         requestedGuestCount
+        guestDisplayName
+        guestTicketType {
+          id
+          title
+          price
+        }
       }
     }
   }

@@ -799,6 +799,12 @@ export interface GetMyBookingsData {
             id: UUIDString;
             status: GuestTicketRequestStatus;
             requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+              title: string;
+              price: number;
+            } & TicketType_Key;
           } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;

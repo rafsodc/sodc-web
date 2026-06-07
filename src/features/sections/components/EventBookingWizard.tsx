@@ -46,6 +46,8 @@ import {
 } from "../utils/eventGuestPolicy";
 import {
   EXPIRED_DRAFT_HOLD_MESSAGE,
+  buildBookingTicketDisplayRows,
+  getPayableBookingTicketRows,
   hasExpiredDraftHold,
   summarizeEventBookingPayment,
 } from "../utils/eventBookingStatusSummary";
@@ -67,6 +69,13 @@ const ADDITIONAL_GUEST_STEPS = ["Extra guests", "Guest details", "Review"] as co
 
 type WizardMode = "full" | "additionalGuests";
 
+type GuestDetailFields = {
+  guestDisplayName: string;
+  dietaryNote: string;
+};
+
+const EMPTY_GUEST_DETAIL: GuestDetailFields = { guestDisplayName: "", dietaryNote: "" };
+
 function extractCallableErrorCode(err: unknown): string | undefined {
   const e = err as {
     code?: string;
@@ -75,6 +84,27 @@ function extractCallableErrorCode(err: unknown): string | undefined {
     customData?: { code?: string };
   };
   return e?.details?.code ?? e?.customData?.code;
+}
+
+function parseOptionalNonNegativeInt(raw: string): number | null {
+  if (raw === "") {
+    return 0;
+  }
+  if (!/^\d+$/.test(raw)) {
+    return null;
+  }
+  return Number.parseInt(raw, 10);
+}
+
+function parseOptionalPositiveInt(raw: string): number | null {
+  if (raw === "") {
+    return null;
+  }
+  if (!/^\d+$/.test(raw)) {
+    return null;
+  }
+  const n = Number.parseInt(raw, 10);
+  return n >= 1 ? n : null;
 }
 
 export interface EventBookingWizardProps {
@@ -98,16 +128,17 @@ export default function EventBookingWizard({
   const [activeStep, setActiveStep] = useState(0);
   const [memberTicketTypeId, setMemberTicketTypeId] = useState<string | null>(null);
   const [totalGuestCount, setTotalGuestCount] = useState(0);
+  const [totalGuestCountInput, setTotalGuestCountInput] = useState("0");
   const [requestedExtraGuestCount, setRequestedExtraGuestCount] = useState(1);
+  const [requestedExtraGuestCountInput, setRequestedExtraGuestCountInput] = useState("1");
   const [guestTicketTypeId, setGuestTicketTypeId] = useState<string | null>(null);
   const [guestDisplayName, setGuestDisplayName] = useState("");
+  const [guestDietaryNote, setGuestDietaryNote] = useState("");
   const [extraGuestTicketTypeId, setExtraGuestTicketTypeId] = useState<string | null>(null);
-  const [extraGuestDisplayName, setExtraGuestDisplayName] = useState("");
-  const [extraGuestDietaryNote, setExtraGuestDietaryNote] = useState("");
+  const [extraGuestDetails, setExtraGuestDetails] = useState<GuestDetailFields[]>([]);
   const [bookerDietaryNote, setBookerDietaryNote] = useState("");
   const [sitNextToUserIds, setSitNextToUserIds] = useState<string[]>([]);
   const [accommodationRequested, setAccommodationRequested] = useState(false);
-  const [accommodationNote, setAccommodationNote] = useState("");
   const [seatingOptions, setSeatingOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -122,6 +153,22 @@ export default function EventBookingWizard({
   const extraGuestRequestCount =
     wizardMode === "additionalGuests" ? requestedExtraGuestCount : Math.max(0, totalGuestCount - 1);
   const steps = wizardMode === "additionalGuests" ? ADDITIONAL_GUEST_STEPS : FULL_STEPS;
+
+  useEffect(() => {
+    setExtraGuestDetails((prev) => {
+      if (prev.length === extraGuestRequestCount) {
+        return prev;
+      }
+      const next = [...prev];
+      while (next.length < extraGuestRequestCount) {
+        next.push({ ...EMPTY_GUEST_DETAIL });
+      }
+      while (next.length > extraGuestRequestCount) {
+        next.pop();
+      }
+      return next;
+    });
+  }, [extraGuestRequestCount]);
 
   const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
   const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
@@ -223,13 +270,18 @@ export default function EventBookingWizard({
     const booking = existingTerminalBooking;
     if (!booking) {
       hydratedBookingIdRef.current = null;
-      setIsEditingBooking(false);
+      if (!postSubmitFlow) {
+        setIsEditingBooking(false);
+      }
       return;
     }
     if (hydratedBookingIdRef.current === booking.id) {
       return;
     }
     hydratedBookingIdRef.current = booking.id;
+    if (postSubmitFlow) {
+      return;
+    }
     setIsEditingBooking(false);
     const memberLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.MEMBER);
     const guestLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.GUEST);
@@ -239,15 +291,34 @@ export default function EventBookingWizard({
       guestLine ? 1 : 0
     );
     setTotalGuestCount(guestLines);
+    setTotalGuestCountInput(String(guestLines));
     setGuestTicketTypeId(guestLine?.ticketType?.id ?? null);
     setGuestDisplayName(guestLine?.guestDisplayName ?? "");
+    setGuestDietaryNote(guestLine?.dietaryNote ?? "");
+    const includedGuestCount = guestLine ? 1 : 0;
+    const extraCount = Math.max(0, guestLines - includedGuestCount);
+    const flattenedExtraGuests: GuestDetailFields[] = [];
+    for (const request of booking.guestTicketRequests ?? []) {
+      for (let i = 0; i < request.requestedGuestCount; i++) {
+        flattenedExtraGuests.push({
+          guestDisplayName: request.guestDisplayName ?? "",
+          dietaryNote: request.dietaryNote ?? "",
+        });
+      }
+    }
+    setExtraGuestDetails(
+      Array.from({ length: extraCount }, (_, index) => flattenedExtraGuests[index] ?? { ...EMPTY_GUEST_DETAIL })
+    );
+    const firstGuestRequest = booking.guestTicketRequests?.[0];
+    if (firstGuestRequest?.guestTicketType?.id) {
+      setExtraGuestTicketTypeId(firstGuestRequest.guestTicketType.id);
+    }
     setBookerDietaryNote(booking.bookerDietaryNote ?? "");
     setSitNextToUserIds(booking.sitNextToUserIds ?? []);
     setAccommodationRequested(booking.accommodationRequested === true);
-    setAccommodationNote(booking.accommodationNote ?? "");
     setActiveStep(0);
     setSubmitError(null);
-  }, [existingTerminalBooking]);
+  }, [existingTerminalBooking, postSubmitFlow]);
 
   useEffect(() => {
     if (!guestTicketTypes.length) {
@@ -292,15 +363,16 @@ export default function EventBookingWizard({
     setActiveStep(0);
     setMemberTicketTypeId(null);
     setTotalGuestCount(0);
+    setTotalGuestCountInput("0");
     setRequestedExtraGuestCount(1);
+    setRequestedExtraGuestCountInput("1");
     setGuestTicketTypeId(guestTicketTypes[0]?.id ?? null);
     setGuestDisplayName("");
-    setExtraGuestDisplayName("");
-    setExtraGuestDietaryNote("");
+    setGuestDietaryNote("");
+    setExtraGuestDetails([]);
     setBookerDietaryNote("");
     setSitNextToUserIds([]);
     setAccommodationRequested(false);
-    setAccommodationNote("");
     setSubmitError(null);
     setPostSubmitFlow(false);
     if (!existingDraft?.clientSubmissionKey?.trim()) {
@@ -325,6 +397,11 @@ export default function EventBookingWizard({
     });
   }, [existingTerminalBooking, event.id, ticketOrdersData, bookingPaymentAdjustments]);
 
+  const paymentTicketRows = useMemo(() => {
+    if (!existingTerminalBooking) return [];
+    return getPayableBookingTicketRows(buildBookingTicketDisplayRows(existingTerminalBooking));
+  }, [existingTerminalBooking]);
+
   const validateGuestCountStep = (): boolean => {
     if (wizardMode === "additionalGuests") {
       if (extraGuestRequestCount < 1) {
@@ -341,26 +418,34 @@ export default function EventBookingWizard({
   };
 
   const validateGuestDetailsStep = (): boolean => {
-    if (wizardMode === "additionalGuests" || includeGuest) {
-      const typeId = wizardMode === "additionalGuests" ? extraGuestTicketTypeId : guestTicketTypeId;
-      const name = wizardMode === "additionalGuests" ? extraGuestDisplayName : guestDisplayName;
-      if (!typeId) {
+    if (wizardMode === "full" && includeGuest) {
+      if (!guestTicketTypeId) {
         setSubmitError("Choose a guest ticket type.");
         return false;
       }
-      if (!name.trim()) {
+      if (!guestDisplayName.trim()) {
         setSubmitError("Enter a name for your guest.");
         return false;
       }
     }
-    if (wizardMode === "full" && extraGuestRequestCount > 0) {
+    if (extraGuestRequestCount > 0) {
       if (!extraGuestTicketTypeId) {
-        setSubmitError("Choose a ticket type for additional guests.");
+        setSubmitError(
+          wizardMode === "additionalGuests"
+            ? "Choose a guest ticket type."
+            : "Choose a ticket type for additional guests."
+        );
         return false;
       }
-      if (!extraGuestDisplayName.trim()) {
-        setSubmitError("Enter a contact name for the additional guest request.");
-        return false;
+      for (let index = 0; index < extraGuestRequestCount; index++) {
+        if (!extraGuestDetails[index]?.guestDisplayName.trim()) {
+          setSubmitError(
+            extraGuestRequestCount === 1
+              ? "Enter a name for the additional guest."
+              : `Enter a name for additional guest ${index + 1}.`
+          );
+          return false;
+        }
       }
     }
     return true;
@@ -409,13 +494,16 @@ export default function EventBookingWizard({
 
   const submitAdditionalGuestRequest = async (bookingId: string) => {
     if (extraGuestRequestCount < 1 || !extraGuestTicketTypeId) return;
-    await submitGuestTicketRequest({
-      bookingId,
-      requestedGuestCount: extraGuestRequestCount,
-      guestTicketTypeId: extraGuestTicketTypeId,
-      guestDisplayName: extraGuestDisplayName.trim(),
-      dietaryNote: extraGuestDietaryNote.trim() || null,
-    });
+    const guests = extraGuestDetails.slice(0, extraGuestRequestCount);
+    for (const guest of guests) {
+      await submitGuestTicketRequest({
+        bookingId,
+        requestedGuestCount: 1,
+        guestTicketTypeId: extraGuestTicketTypeId,
+        guestDisplayName: guest.guestDisplayName.trim(),
+        dietaryNote: guest.dietaryNote.trim() || null,
+      });
+    }
   };
 
   const handleConfirm = async () => {
@@ -472,7 +560,7 @@ export default function EventBookingWizard({
           sortOrder: 1,
           guestUserId: null,
           guestDisplayName: guestDisplayName.trim(),
-          dietaryNote: null,
+          dietaryNote: guestDietaryNote.trim() || null,
         });
       }
 
@@ -485,13 +573,14 @@ export default function EventBookingWizard({
         bookerDietaryNote,
         sitNextToUserIds,
         accommodationRequested,
-        accommodationNote,
+        accommodationNote: null,
       });
 
       if (extraGuestRequestCount > 0) {
         await submitAdditionalGuestRequest(result.bookingId);
       }
 
+      hydratedBookingIdRef.current = result.bookingId;
       await refetchMyBookings();
       setIsEditingBooking(false);
       setPostSubmitFlow(true);
@@ -637,6 +726,7 @@ export default function EventBookingWizard({
               onClick={() => {
                 setWizardMode("additionalGuests");
                 setRequestedExtraGuestCount(1);
+                setRequestedExtraGuestCountInput("1");
                 setActiveStep(0);
                 onWizardOpenChange?.(true);
               }}
@@ -702,10 +792,24 @@ export default function EventBookingWizard({
                   type="number"
                   size="small"
                   inputProps={{ min: 1, step: 1 }}
-                  value={requestedExtraGuestCount}
+                  value={requestedExtraGuestCountInput}
                   onChange={(e) => {
-                    const n = Number.parseInt(e.target.value, 10);
-                    setRequestedExtraGuestCount(Number.isFinite(n) && n >= 1 ? n : 1);
+                    const raw = e.target.value;
+                    if (!/^\d*$/.test(raw)) {
+                      return;
+                    }
+                    setRequestedExtraGuestCountInput(raw);
+                    const parsed = parseOptionalPositiveInt(raw);
+                    if (parsed !== null) {
+                      setRequestedExtraGuestCount(parsed);
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseOptionalPositiveInt(requestedExtraGuestCountInput);
+                    if (parsed === null) {
+                      setRequestedExtraGuestCountInput("1");
+                      setRequestedExtraGuestCount(1);
+                    }
                   }}
                   helperText="Moderator review may be required depending on event policy."
                   sx={{ minWidth: 260 }}
@@ -776,15 +880,6 @@ export default function EventBookingWizard({
                   label="Request accommodation (booker only)"
                   disabled={!canRequestAccommodation}
                 />
-                {accommodationRequested ? (
-                  <TextField
-                    label="Accommodation details (optional)"
-                    fullWidth
-                    size="small"
-                    value={accommodationNote}
-                    onChange={(e) => setAccommodationNote(e.target.value)}
-                  />
-                ) : null}
                 {!canRequestAccommodation ? (
                   <Typography variant="caption" color="text.secondary">
                     Accommodation requests are only available for{" "}
@@ -810,10 +905,23 @@ export default function EventBookingWizard({
                       type="number"
                       size="small"
                       inputProps={{ min: 0, step: 1 }}
-                      value={totalGuestCount}
+                      value={totalGuestCountInput}
                       onChange={(e) => {
-                        const n = Number.parseInt(e.target.value, 10);
-                        setTotalGuestCount(Number.isFinite(n) && n >= 0 ? n : 0);
+                        const raw = e.target.value;
+                        if (!/^\d*$/.test(raw)) {
+                          return;
+                        }
+                        setTotalGuestCountInput(raw);
+                        const parsed = parseOptionalNonNegativeInt(raw);
+                        if (parsed !== null) {
+                          setTotalGuestCount(parsed);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (totalGuestCountInput === "") {
+                          setTotalGuestCountInput("0");
+                          setTotalGuestCount(0);
+                        }
                       }}
                       helperText="One guest can be included in your booking. Additional guests are submitted for organiser review."
                       sx={{ minWidth: 280 }}
@@ -853,12 +961,22 @@ export default function EventBookingWizard({
                       onChange={(e) => setGuestDisplayName(e.target.value)}
                       helperText="Shown on the guest ticket"
                     />
+                    <TextField
+                      label="Dietary requirements (optional)"
+                      fullWidth
+                      size="small"
+                      value={guestDietaryNote}
+                      onChange={(e) => setGuestDietaryNote(e.target.value)}
+                      sx={{ mt: 1.5 }}
+                    />
                   </Box>
                 ) : null}
                 {(wizardMode === "additionalGuests" || extraGuestRequestCount > 0) ? (
                   <Box sx={{ pl: 1, borderLeft: 2, borderColor: "divider" }}>
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                      {wizardMode === "additionalGuests" ? "Guest request details" : "Additional guest request"}
+                      {wizardMode === "additionalGuests"
+                        ? "Guest request details"
+                        : "Additional guests (organiser review)"}
                     </Typography>
                     <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
                       <RadioGroup
@@ -875,21 +993,47 @@ export default function EventBookingWizard({
                         ))}
                       </RadioGroup>
                     </FormControl>
-                    <TextField
-                      label="Guest name"
-                      fullWidth
-                      size="small"
-                      value={extraGuestDisplayName}
-                      onChange={(e) => setExtraGuestDisplayName(e.target.value)}
-                      sx={{ mb: 2 }}
-                    />
-                    <TextField
-                      label="Dietary requirements (optional)"
-                      fullWidth
-                      size="small"
-                      value={extraGuestDietaryNote}
-                      onChange={(e) => setExtraGuestDietaryNote(e.target.value)}
-                    />
+                    {Array.from({ length: extraGuestRequestCount }, (_, index) => {
+                      const guest = extraGuestDetails[index] ?? EMPTY_GUEST_DETAIL;
+                      return (
+                        <Box key={index} sx={{ mb: index < extraGuestRequestCount - 1 ? 2 : 0 }}>
+                          {extraGuestRequestCount > 1 ? (
+                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Guest {index + 1}
+                            </Typography>
+                          ) : null}
+                          <TextField
+                            label="Guest name"
+                            fullWidth
+                            size="small"
+                            value={guest.guestDisplayName}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setExtraGuestDetails((prev) => {
+                                const next = [...prev];
+                                next[index] = { ...(next[index] ?? EMPTY_GUEST_DETAIL), guestDisplayName: value };
+                                return next;
+                              });
+                            }}
+                          />
+                          <TextField
+                            label="Dietary requirements (optional)"
+                            fullWidth
+                            size="small"
+                            value={guest.dietaryNote}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setExtraGuestDetails((prev) => {
+                                const next = [...prev];
+                                next[index] = { ...(next[index] ?? EMPTY_GUEST_DETAIL), dietaryNote: value };
+                                return next;
+                              });
+                            }}
+                            sx={{ mt: 1.5 }}
+                          />
+                        </Box>
+                      );
+                    })}
                   </Box>
                 ) : null}
                 {wizardMode === "full" && !includeGuest && extraGuestRequestCount === 0 ? (
@@ -934,15 +1078,44 @@ export default function EventBookingWizard({
                         </Typography>
                         <Typography component="dd" variant="body2" color="text.secondary">
                           {selectedGuest?.title ?? "—"} — {guestDisplayName.trim()}
+                          {guestDietaryNote.trim() ? ` · Dietary: ${guestDietaryNote.trim()}` : ""}
                         </Typography>
                       </>
                     ) : null}
+                    {extraGuestRequestCount > 0
+                      ? extraGuestDetails.slice(0, extraGuestRequestCount).map((guest, index) => (
+                          <Box key={index}>
+                            <Typography component="dt" variant="body2">
+                              {extraGuestRequestCount === 1 ? "Additional guest" : `Additional guest ${index + 1}`}
+                            </Typography>
+                            <Typography component="dd" variant="body2" color="text.secondary">
+                              {guest.guestDisplayName.trim() || "—"}
+                              {guest.dietaryNote.trim() ? ` · Dietary: ${guest.dietaryNote.trim()}` : ""}
+                            </Typography>
+                          </Box>
+                        ))
+                      : null}
                   </Box>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Requesting {extraGuestRequestCount} additional guest ticket
-                    {extraGuestRequestCount === 1 ? "" : "s"} for {extraGuestDisplayName.trim() || "your guest"}.
-                  </Typography>
+                  <Box component="dl" sx={{ m: 0, "& dt": { fontWeight: 600, mt: 1.5 }, "& dd": { m: 0 } }}>
+                    <Typography component="dt" variant="body2">
+                      Guest tickets requested
+                    </Typography>
+                    <Typography component="dd" variant="body2" color="text.secondary">
+                      {extraGuestRequestCount}
+                    </Typography>
+                    {extraGuestDetails.slice(0, extraGuestRequestCount).map((guest, index) => (
+                      <Box key={index}>
+                        <Typography component="dt" variant="body2">
+                          {extraGuestRequestCount === 1 ? "Guest" : `Guest ${index + 1}`}
+                        </Typography>
+                        <Typography component="dd" variant="body2" color="text.secondary">
+                          {guest.guestDisplayName.trim() || "—"}
+                          {guest.dietaryNote.trim() ? ` · Dietary: ${guest.dietaryNote.trim()}` : ""}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                 )}
               </Box>
             ) : null}
@@ -953,18 +1126,19 @@ export default function EventBookingWizard({
                   Pay for each ticket type below to secure your place. You can also finish later from your booking
                   summary.
                 </Typography>
-                {(existingTerminalBooking.lines ?? []).map((line) => {
-                  const ticketTypeId = line.ticketType?.id;
+                {(paymentTicketRows).map((row) => {
+                  const ticketTypeId = row.ticketTypeId;
                   if (!ticketTypeId) return null;
                   const isUnpaid = paymentSummaryForBooking.unpaidTicketTypeId === ticketTypeId;
                   return (
                     <Box
-                      key={line.id}
+                      key={row.id}
                       sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}
                     >
                       <Typography variant="body2">
-                        {line.ticketType?.title ?? "Ticket"}
-                        {line.guestDisplayName ? ` — ${line.guestDisplayName}` : ""}
+                        {row.ticketTitle}
+                        {row.guestName ? ` — ${row.guestName}` : ""}
+                        {row.source === "approved_guest_request" ? " (approved extra guest)" : ""}
                       </Typography>
                       {isUnpaid ? (
                         <Button

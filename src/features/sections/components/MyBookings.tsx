@@ -18,6 +18,8 @@ import { ROUTES } from "../../../constants/routes";
 import { sectionDetailLocationState } from "../../../shared/navigation/sectionNavigationState";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import {
+  buildBookingTicketDisplayRows,
+  formatBookingTicketDisplayLabel,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
 } from "../utils/eventBookingStatusSummary";
@@ -86,6 +88,7 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
               adjustments: [],
             });
             const guestSummary = summarizeGuestTicketRequests(booking.guestTicketRequests);
+            const ticketRows = buildBookingTicketDisplayRows(booking);
             const sectionId = booking.event.section.id;
             const eventId = booking.event.id;
 
@@ -128,11 +131,9 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
                     {formatBookingEventWhen(booking.event.startDateTime, booking.event.endDateTime)}
                   </Typography>
 
-                  {(booking.lines ?? []).length > 0 ? (
+                  {ticketRows.length > 0 ? (
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      {(booking.lines ?? [])
-                        .map((line) => line.ticketType?.title ?? "Ticket")
-                        .join(" · ")}
+                      {ticketRows.map((row) => formatBookingTicketDisplayLabel(row)).join(" · ")}
                     </Typography>
                   ) : null}
 

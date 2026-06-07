@@ -14,7 +14,11 @@ export interface EventBookingSummaryInput {
   status: BookingStatus | string;
   revisionNumber: number;
   lines?: Array<{ ticketType?: { id: string } | null }> | null;
-  guestTicketRequests?: Array<{ status: GuestTicketRequestStatus | string }> | null;
+  guestTicketRequests?: Array<{
+    status: GuestTicketRequestStatus | string;
+    requestedGuestCount?: number;
+    guestTicketType?: { id: string } | null;
+  }> | null;
 }
 
 export interface EventBookingPaymentOrderInput {
@@ -50,13 +54,108 @@ export interface EventBookingGuestRequestSummary {
   hasPending: boolean;
 }
 
+export interface BookingTicketDisplayRow {
+  id: string;
+  ticketTypeId: string | null;
+  ticketTitle: string;
+  guestName: string | null;
+  price: number | null;
+  source: "line" | "approved_guest_request" | "pending_guest_request";
+}
+
 export const EXPIRED_DRAFT_HOLD_MESSAGE =
   "Your previous booking draft expired due to inactivity. Start a new booking below.";
 
 function ticketTypeIdsFromBooking(booking: EventBookingSummaryInput): string[] {
-  return (booking.lines ?? [])
+  const fromLines = (booking.lines ?? [])
     .map((line) => line.ticketType?.id)
     .filter((id): id is string => Boolean(id));
+  const fromApprovedGuests = (booking.guestTicketRequests ?? []).flatMap((request) => {
+    if (request.status !== GuestTicketRequestStatus.APPROVED) {
+      return [];
+    }
+    const ticketTypeId = request.guestTicketType?.id;
+    if (!ticketTypeId) {
+      return [];
+    }
+    const count = Math.max(1, request.requestedGuestCount ?? 1);
+    return Array.from({ length: count }, () => ticketTypeId);
+  });
+  return [...fromLines, ...fromApprovedGuests];
+}
+
+function guestTicketCountByStatus(
+  requests: EventBookingSummaryInput["guestTicketRequests"],
+  status: GuestTicketRequestStatus
+): number {
+  return (requests ?? [])
+    .filter((request) => request.status === status)
+    .reduce((sum, request) => sum + Math.max(1, request.requestedGuestCount ?? 1), 0);
+}
+
+export function buildBookingTicketDisplayRows(booking: {
+  lines?: Array<{
+    id: string;
+    guestDisplayName?: string | null;
+    ticketType?: { id?: string; title?: string; price?: number | null } | null;
+  }> | null;
+  guestTicketRequests?: Array<{
+    id: string;
+    status: GuestTicketRequestStatus | string;
+    requestedGuestCount?: number;
+    guestDisplayName?: string | null;
+    guestTicketType?: { id?: string; title?: string; price?: number | null } | null;
+  }> | null;
+}): BookingTicketDisplayRow[] {
+  const rows: BookingTicketDisplayRow[] = [];
+
+  for (const line of booking.lines ?? []) {
+    rows.push({
+      id: line.id,
+      ticketTypeId: line.ticketType?.id ?? null,
+      ticketTitle: line.ticketType?.title ?? "Ticket",
+      guestName: line.guestDisplayName ?? null,
+      price: line.ticketType?.price ?? null,
+      source: "line",
+    });
+  }
+
+  for (const request of booking.guestTicketRequests ?? []) {
+    const source =
+      request.status === GuestTicketRequestStatus.APPROVED
+        ? "approved_guest_request"
+        : request.status === GuestTicketRequestStatus.PENDING
+          ? "pending_guest_request"
+          : null;
+    if (!source) {
+      continue;
+    }
+    const count = Math.max(1, request.requestedGuestCount ?? 1);
+    for (let index = 0; index < count; index++) {
+      rows.push({
+        id: `${request.id}-${index}`,
+        ticketTypeId: request.guestTicketType?.id ?? null,
+        ticketTitle: request.guestTicketType?.title ?? "Guest ticket",
+        guestName: request.guestDisplayName ?? null,
+        price: request.guestTicketType?.price ?? null,
+        source,
+      });
+    }
+  }
+
+  return rows;
+}
+
+export function formatBookingTicketDisplayLabel(row: BookingTicketDisplayRow): string {
+  const guestLabel = row.guestName ? `${row.ticketTitle} (${row.guestName})` : row.ticketTitle;
+  if (row.source === "pending_guest_request") {
+    return `${guestLabel} — awaiting approval`;
+  }
+  return guestLabel;
+}
+
+export function getPayableBookingTicketRows(rows: BookingTicketDisplayRow[]): BookingTicketDisplayRow[] {
+  return rows.filter((row) => row.source !== "pending_guest_request");
 }
 
 export function hasExpiredDraftHold(
@@ -76,12 +175,11 @@ export function hasExpiredDraftHold(
 export function summarizeGuestTicketRequests(
   requests: EventBookingSummaryInput["guestTicketRequests"]
 ): EventBookingGuestRequestSummary {
-  const list = requests ?? [];
   return {
-    pendingCount: list.filter((r) => r.status === GuestTicketRequestStatus.PENDING).length,
-    approvedCount: list.filter((r) => r.status === GuestTicketRequestStatus.APPROVED).length,
-    rejectedCount: list.filter((r) => r.status === GuestTicketRequestStatus.REJECTED).length,
-    hasPending: list.some((r) => r.status === GuestTicketRequestStatus.PENDING),
+    pendingCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.PENDING),
+    approvedCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.APPROVED),
+    rejectedCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.REJECTED),
+    hasPending: (requests ?? []).some((request) => request.status === GuestTicketRequestStatus.PENDING),
   };
 }
 
@@ -224,6 +322,8 @@ export function getEventBookingNextSteps(params: {
 
   if (guestSummary.hasPending) {
     steps.push("Your extra guest ticket request is awaiting moderator review.");
+  } else if (guestSummary.approvedCount > 0) {
+    steps.push("Approved guest tickets are included in your booking below.");
   } else if (guestSummary.rejectedCount > 0 && guestSummary.approvedCount === 0) {
     steps.push("A guest ticket request was declined. You can submit a revised request below.");
   }
