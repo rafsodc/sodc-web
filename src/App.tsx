@@ -86,9 +86,9 @@ function AppContent() {
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { userData, refetch } = useUserData(user);
   const isEnabled = useEnabledClaim(user);
   const isAdmin = useAdminClaim(user);
+  const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const {
     membershipStatusForUnenabled,
     needsProfileCompletion,
@@ -434,7 +434,14 @@ function AppContent() {
                     <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
                       {user ? (
                         <Suspense fallback={<LoadingFallback />}>
-                          <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigateBackOr(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
+                          <Profile
+                            key={user.uid}
+                            userData={userData}
+                            userDataLoading={userDataLoading}
+                            userEmail={user?.email || ""}
+                            onBack={() => navigateBackOr(ROUTES.HOME)}
+                            onUpdate={handleProfileUpdate}
+                          />
                         </Suspense>
                       ) : (
                         <Navigate to={ROUTES.ACCOUNT} replace />
@@ -452,6 +459,7 @@ function AppContent() {
                             key={user.uid}
                             user={user}
                             userData={userData}
+                            userDataLoading={userDataLoading}
                             isAdmin={isAdmin}
                             onBack={() => navigateBackOr(ROUTES.HOME)}
                           />
