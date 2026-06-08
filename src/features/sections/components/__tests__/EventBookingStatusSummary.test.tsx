@@ -45,7 +45,7 @@ describe("EventBookingStatusSummary", () => {
     expect(screen.getByText("Your booking")).toBeInTheDocument();
     expect(screen.getByText("Payment not started")).toBeInTheDocument();
     expect(screen.getByText(/1 pending review/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pay now" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit booking" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View in My Bookings" })).toBeInTheDocument();
   });
@@ -156,7 +156,7 @@ describe("EventBookingStatusSummary", () => {
     );
 
     expect(screen.getByText("Paid")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Pay now" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
   });
 
   it("calls edit handler from action button", async () => {

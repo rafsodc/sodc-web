@@ -33,7 +33,7 @@ import { BookingStatus, TicketAudience } from "@dataconnect/generated";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import {
-  createTicketCheckoutSession,
+  createEventBookingCheckoutSession,
   getSectionMembersMerged,
   submitEventBooking,
   submitGuestTicketRequest,
@@ -46,9 +46,11 @@ import {
 } from "../utils/eventGuestPolicy";
 import {
   EXPIRED_DRAFT_HOLD_MESSAGE,
+  bookingNeedsPayment,
   buildBookingTicketDisplayRows,
   getPayableBookingTicketRows,
   hasExpiredDraftHold,
+  isBookingPaymentComplete,
   summarizeEventBookingPayment,
 } from "../utils/eventBookingStatusSummary";
 import EventBookingStatusSummary from "./EventBookingStatusSummary";
@@ -143,8 +145,9 @@ export default function EventBookingWizard({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isEditingBooking, setIsEditingBooking] = useState(false);
-  const [payingTicketTypeId, setPayingTicketTypeId] = useState<string | null>(null);
   const [postSubmitFlow, setPostSubmitFlow] = useState(false);
+  const [paymentResumeFlow, setPaymentResumeFlow] = useState(false);
+  const [payingAllTickets, setPayingAllTickets] = useState(false);
 
   const idempotencyKeyRef = useRef<string | null>(null);
   const hydratedBookingIdRef = useRef<string | null>(null);
@@ -219,7 +222,11 @@ export default function EventBookingWizard({
   const existingTerminalBooking = useMemo(() => {
     const list = myBookingsData?.user?.bookings ?? [];
     return list
-      .filter((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED)
+      .filter(
+        (b) =>
+          (b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED) &&
+          b.supersededAt == null
+      )
       .reduce<typeof list[number] | null>((latest, booking) => {
         if (!latest) return booking;
         return booking.revisionNumber > latest.revisionNumber ? booking : latest;
@@ -383,6 +390,7 @@ export default function EventBookingWizard({
   const closeWizard = useCallback(() => {
     setWizardMode("full");
     setPostSubmitFlow(false);
+    setPaymentResumeFlow(false);
     setIsEditingBooking(false);
     onWizardOpenChange?.(false);
   }, [onWizardOpenChange]);
@@ -401,6 +409,31 @@ export default function EventBookingWizard({
     if (!existingTerminalBooking) return [];
     return getPayableBookingTicketRows(buildBookingTicketDisplayRows(existingTerminalBooking));
   }, [existingTerminalBooking]);
+
+  useEffect(() => {
+    if (
+      loadingBookings ||
+      wizardOpen ||
+      isEditingBooking ||
+      postSubmitFlow ||
+      wizardMode !== "full" ||
+      !existingTerminalBooking ||
+      !paymentSummaryForBooking ||
+      !bookingNeedsPayment(paymentSummaryForBooking)
+    ) {
+      return;
+    }
+    setPaymentResumeFlow(true);
+    setActiveStep(3);
+  }, [
+    loadingBookings,
+    wizardOpen,
+    isEditingBooking,
+    postSubmitFlow,
+    wizardMode,
+    existingTerminalBooking?.id,
+    paymentSummaryForBooking?.kind,
+  ]);
 
   const validateGuestCountStep = (): boolean => {
     if (wizardMode === "additionalGuests") {
@@ -482,6 +515,14 @@ export default function EventBookingWizard({
     if (activeStep === 2) {
       if (!validateGuestDetailsStep()) return;
       setActiveStep(3);
+      return;
+    }
+    if (activeStep === 3) {
+      setActiveStep(4);
+      return;
+    }
+    if (activeStep === 4) {
+      setActiveStep(5);
     }
   };
 
@@ -525,7 +566,9 @@ export default function EventBookingWizard({
 
       if (!memberTicketTypeId || !membershipStatus || gate.ok !== true) return;
 
-      if (!idempotencyKeyRef.current) {
+      if (isEditingBooking && existingTerminalBooking) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      } else if (!idempotencyKeyRef.current) {
         const fromDraft = existingDraft?.clientSubmissionKey?.trim();
         if (fromDraft) {
           try {
@@ -626,10 +669,11 @@ export default function EventBookingWizard({
     }
   };
 
-  const handlePayNow = async (ticketTypeId: string) => {
-    setPayingTicketTypeId(ticketTypeId);
+  const handlePayAllTickets = async () => {
+    setPayingAllTickets(true);
+    setSubmitError(null);
     try {
-      const { url } = await createTicketCheckoutSession({ ticketTypeId, quantity: 1 });
+      const { url } = await createEventBookingCheckoutSession({ eventId: event.id });
       window.location.assign(url);
     } catch (err: unknown) {
       const message =
@@ -638,7 +682,19 @@ export default function EventBookingWizard({
           : "Could not start checkout. Please try again.";
       setSubmitError(message);
     } finally {
-      setPayingTicketTypeId(null);
+      setPayingAllTickets(false);
+    }
+  };
+
+  const cancelEditing = () => {
+    setIsEditingBooking(false);
+    setSubmitError(null);
+    onWizardOpenChange?.(false);
+    if (existingTerminalBooking && paymentSummaryForBooking && bookingNeedsPayment(paymentSummaryForBooking)) {
+      setPaymentResumeFlow(true);
+      setActiveStep(3);
+    } else {
+      setPaymentResumeFlow(false);
     }
   };
 
@@ -646,13 +702,16 @@ export default function EventBookingWizard({
     Boolean(existingTerminalBooking) &&
     !isEditingBooking &&
     !postSubmitFlow &&
+    !paymentResumeFlow &&
     wizardMode === "full" &&
-    !wizardOpen;
+    !wizardOpen &&
+    !bookingNeedsPayment(paymentSummaryForBooking);
 
   const showWizard =
     wizardOpen ||
     isEditingBooking ||
     postSubmitFlow ||
+    paymentResumeFlow ||
     wizardMode === "additionalGuests";
 
   const editingExistingBooking = isEditingBooking && Boolean(existingTerminalBooking);
@@ -707,12 +766,15 @@ export default function EventBookingWizard({
             ticketOrders={ticketOrdersData?.user?.ticketOrders ?? []}
             paymentAdjustments={bookingPaymentAdjustments}
             onEditBooking={() => {
+              idempotencyKeyRef.current = crypto.randomUUID();
+              setPaymentResumeFlow(false);
               setWizardMode("full");
               setIsEditingBooking(true);
+              setActiveStep(0);
               onWizardOpenChange?.(true);
             }}
-            onPayNow={(ticketTypeId) => void handlePayNow(ticketTypeId)}
-            payingTicketTypeId={payingTicketTypeId}
+            onPayNow={() => void handlePayAllTickets()}
+            payingTicketTypeId={payingAllTickets ? "all" : null}
           />
           {submitError ? (
             <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSubmitError(null)}>
@@ -749,7 +811,7 @@ export default function EventBookingWizard({
               ? "Request additional guest tickets"
               : editingExistingBooking
                 ? "Edit your booking"
-                : postSubmitFlow
+                : postSubmitFlow || paymentResumeFlow
                   ? "Complete your booking"
                   : "Book this event"}
           </Typography>
@@ -1123,41 +1185,34 @@ export default function EventBookingWizard({
             {wizardMode === "full" && activeStep === 4 && existingTerminalBooking && paymentSummaryForBooking ? (
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Pay for each ticket type below to secure your place. You can also finish later from your booking
-                  summary.
+                  Pay for all tickets in one checkout to secure your place. You can also finish later and return from
+                  your booking summary.
                 </Typography>
-                {(paymentTicketRows).map((row) => {
-                  const ticketTypeId = row.ticketTypeId;
-                  if (!ticketTypeId) return null;
-                  const isUnpaid = paymentSummaryForBooking.unpaidTicketTypeId === ticketTypeId;
-                  return (
-                    <Box
-                      key={row.id}
-                      sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}
-                    >
-                      <Typography variant="body2">
-                        {row.ticketTitle}
-                        {row.guestName ? ` — ${row.guestName}` : ""}
-                        {row.source === "approved_guest_request" ? " (approved extra guest)" : ""}
-                      </Typography>
-                      {isUnpaid ? (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          disabled={payingTicketTypeId === ticketTypeId}
-                          onClick={() => void handlePayNow(ticketTypeId)}
-                          sx={{ backgroundColor: colors.callToAction }}
-                        >
-                          {payingTicketTypeId === ticketTypeId ? "Starting checkout…" : "Pay now"}
-                        </Button>
-                      ) : (
-                        <Typography variant="caption" color="success.main">
-                          Paid
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })}
+                {paymentTicketRows.map((row) => (
+                  <Box
+                    key={row.id}
+                    sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}
+                  >
+                    <Typography variant="body2">
+                      {row.ticketTitle}
+                      {row.guestName ? ` — ${row.guestName}` : ""}
+                      {row.source === "approved_guest_request" ? " (approved extra guest)" : ""}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {row.price != null ? String(row.price) : "—"}
+                    </Typography>
+                  </Box>
+                ))}
+                {!isBookingPaymentComplete(paymentSummaryForBooking) ? (
+                  <Button
+                    variant="contained"
+                    disabled={payingAllTickets}
+                    onClick={() => void handlePayAllTickets()}
+                    sx={{ mt: 1, backgroundColor: colors.callToAction }}
+                  >
+                    {payingAllTickets ? "Starting checkout…" : "Pay for all tickets"}
+                  </Button>
+                ) : null}
               </Box>
             ) : null}
 
@@ -1174,29 +1229,22 @@ export default function EventBookingWizard({
             </Button>
             <Box sx={{ display: "flex", gap: 1 }}>
               {wizardMode === "full" && activeStep === 4 ? (
-                <>
-                  <Button variant="outlined" onClick={() => setActiveStep(5)} disabled={submitting}>
-                    Skip for now
-                  </Button>
-                  {paymentSummaryForBooking?.kind === "paid" ? (
-                    <Button variant="contained" onClick={() => setActiveStep(5)} sx={{ backgroundColor: colors.callToAction }}>
-                      Continue
-                    </Button>
-                  ) : null}
-                </>
+                <Button variant="outlined" onClick={() => setActiveStep(5)} disabled={submitting || payingAllTickets}>
+                  Skip for now
+                </Button>
               ) : null}
-              {activeStep < steps.length - 1 &&
-              !(wizardMode === "full" && activeStep === 4) ? (
+              {activeStep < steps.length - 1 ? (
                 <Button
                   variant="contained"
                   onClick={handleNext}
-                  disabled={submitting}
+                  disabled={submitting || payingAllTickets}
                   sx={{ backgroundColor: colors.callToAction }}
                 >
                   Next
                 </Button>
               ) : null}
-              {(wizardMode === "full" && activeStep === 3) || (wizardMode === "additionalGuests" && activeStep === 2) ? (
+              {(wizardMode === "full" && activeStep === 3 && !paymentResumeFlow && !postSubmitFlow) ||
+              (wizardMode === "additionalGuests" && activeStep === 2) ? (
                 <Button
                   variant="contained"
                   onClick={() => void handleConfirm()}
@@ -1226,7 +1274,7 @@ export default function EventBookingWizard({
             </Button>
           ) : null}
           {editingExistingBooking ? (
-            <Button size="small" onClick={() => setIsEditingBooking(false)} disabled={submitting} sx={{ mt: 1, ml: 1 }}>
+            <Button size="small" onClick={cancelEditing} disabled={submitting || payingAllTickets} sx={{ mt: 1, ml: 1 }}>
               Cancel editing
             </Button>
           ) : null}

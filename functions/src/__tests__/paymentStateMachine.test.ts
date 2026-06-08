@@ -32,6 +32,16 @@ describe("paymentStateMachine", () => {
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("payment_intent.succeeded")).toBe(false);
   });
 
+  it("reads comma-separated order ids from checkout metadata", () => {
+    const completed = normalizeStripeEvent(
+      stripeEvent("checkout.session.completed", {
+        orderId: "order-1",
+        orderIds: "order-1,order-2",
+      })
+    );
+    expect(completed.orderIds).toEqual(["order-1", "order-2"]);
+  });
+
   it("exposes supported-event check for webhook router observability", () => {
     expect(isSupportedStripeEventType("checkout.session.completed")).toBe(true);
     expect(isSupportedStripeEventType("payment_intent.succeeded")).toBe(false);

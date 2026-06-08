@@ -21,6 +21,7 @@ import {
   getEventBookingNextSteps,
   getEventBookingStatusHeading,
   buildBookingTicketDisplayRows,
+  isBookingPaymentComplete,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
   type EventBookingPaymentAdjustmentInput,
@@ -100,7 +101,7 @@ export default function EventBookingStatusSummary({
   const showPayNow =
     Boolean(onPayNow) &&
     paymentSummary.unpaidTicketTypeId != null &&
-    paymentSummary.kind !== "paid" &&
+    !isBookingPaymentComplete(paymentSummary) &&
     paymentSummary.kind !== "adjustment_refund";
 
   return (
@@ -183,7 +184,7 @@ export default function EventBookingStatusSummary({
             onClick={() => onPayNow?.(paymentSummary.unpaidTicketTypeId as string)}
             sx={{ backgroundColor: colors.callToAction }}
           >
-            {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay now"}
+            {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay for all tickets"}
           </Button>
         ) : null}
         <Button variant="outlined" onClick={onEditBooking}>

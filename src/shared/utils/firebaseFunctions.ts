@@ -400,6 +400,15 @@ export interface CreateTicketCheckoutSessionResponse {
   orderId: string;
 }
 
+export interface CreateEventBookingCheckoutSessionRequest {
+  eventId: string;
+}
+
+export interface CreateEventBookingCheckoutSessionResponse {
+  url: string;
+  orderIds: string[];
+}
+
 export interface GetMyTicketOrderStripeArtifactsResponse {
   receiptUrl: string | null;
 }
@@ -452,6 +461,19 @@ export async function createTicketCheckoutSession(
     quantity: payload.quantity ?? 1,
   };
   const result = await callable(normalized);
+  return result.data;
+}
+
+export async function createEventBookingCheckoutSession(
+  payload: CreateEventBookingCheckoutSessionRequest
+): Promise<CreateEventBookingCheckoutSessionResponse> {
+  const callable = httpsCallable<
+    CreateEventBookingCheckoutSessionRequest,
+    CreateEventBookingCheckoutSessionResponse
+  >(functions, "createEventBookingCheckoutSession");
+  const result = await callable({
+    eventId: toCanonicalUuid(payload.eventId),
+  });
   return result.data;
 }
 

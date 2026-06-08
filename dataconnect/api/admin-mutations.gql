@@ -270,12 +270,35 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
           id
           audience
           price
+          title
         }
       }
       guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
         id
         status
         requestedGuestCount
+        guestTicketType {
+          id
+          title
+          price
+        }
+      }
+    }
+  }
+}
+
+query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    ticketOrders: ticketOrders_on_user(where: { eventId: { eq: $eventId } }) {
+      id
+      status
+      quantity
+      ticketType {
+        id
+      }
+      event {
+        id
       }
     }
   }

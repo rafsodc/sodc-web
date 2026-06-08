@@ -635,7 +635,7 @@ describe('SectionDetail', () => {
     });
   });
 
-  it('should show booking status summary when member has a submitted booking', async () => {
+  it('should open the booking wizard on the review step when payment is still due', async () => {
     const eventId = 'event-1';
     const mockSectionData = {
       section: {
@@ -717,6 +717,7 @@ describe('SectionDetail', () => {
               id: 'booking-1',
               status: 'SUBMITTED',
               revisionNumber: 2,
+              supersededAt: null,
               clientSubmissionKey: null,
               bookerDietaryNote: null,
               sitNextToUserIds: [],
@@ -766,10 +767,8 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('button', { name: /annual dinner/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Your booking')).toBeInTheDocument();
-      expect(screen.getByText('Payment not started')).toBeInTheDocument();
-      expect(screen.getByText(/1 pending review/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Pay now' })).toBeInTheDocument();
+      expect(screen.getByText('Complete your booking')).toBeInTheDocument();
+      expect(screen.getAllByText('Review').length).toBeGreaterThan(0);
       expect(screen.queryByText('Book this event')).not.toBeInTheDocument();
     });
   });

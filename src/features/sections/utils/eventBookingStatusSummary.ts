@@ -158,6 +158,17 @@ export function getPayableBookingTicketRows(rows: BookingTicketDisplayRow[]): Bo
   return rows.filter((row) => row.source !== "pending_guest_request");
 }
 
+export function isBookingPaymentComplete(summary: EventBookingPaymentSummary): boolean {
+  return summary.kind === "paid" || summary.kind === "adjustment_refund";
+}
+
+export function bookingNeedsPayment(summary: EventBookingPaymentSummary | null | undefined): boolean {
+  if (!summary) {
+    return false;
+  }
+  return !isBookingPaymentComplete(summary) && summary.kind !== "adjustment_charge";
+}
+
 export function hasExpiredDraftHold(
   bookings: Array<{ status: BookingStatus | string }> | null | undefined
 ): boolean {

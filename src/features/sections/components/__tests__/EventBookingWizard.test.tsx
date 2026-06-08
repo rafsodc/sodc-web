@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "../../../../test-utils";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import EventBookingWizard from "../EventBookingWizard";
-import { BookingStatus, TicketAudience } from "@dataconnect/generated";
+import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
@@ -26,6 +26,7 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
     status: "SUBMITTED",
   }),
   createTicketCheckoutSession: vi.fn(),
+  createEventBookingCheckoutSession: vi.fn(),
   submitGuestTicketRequest: vi.fn().mockResolvedValue({ success: true, requestId: "req-1" }),
 }));
 
@@ -47,6 +48,7 @@ describe("EventBookingWizard", () => {
               id: "booking-1",
               status: BookingStatus.SUBMITTED,
               revisionNumber: 2,
+              supersededAt: null,
               clientSubmissionKey: null,
               bookerDietaryNote: "No nuts",
               sitNextToUserIds: [],
@@ -84,7 +86,22 @@ describe("EventBookingWizard", () => {
     } as never);
   });
 
-  it("shows booking summary by default for submitted bookings", () => {
+  it("shows booking summary by default for paid submitted bookings", () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
+      data: {
+        user: {
+          ticketOrders: [
+            {
+              status: TicketOrderStatus.PAID,
+              event: { id: "event-1" },
+              ticketType: { id: "ticket-member" },
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never);
+
     render(
       <MemoryRouter>
         <EventBookingWizard
@@ -122,7 +139,62 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByText("Edit your booking")).not.toBeInTheDocument();
   });
 
+  it("opens the wizard on the review step when payment is still due", async () => {
+    render(
+      <MemoryRouter>
+        <EventBookingWizard
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
+      expect(screen.getByText("Review")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Your booking")).not.toBeInTheDocument();
+  });
+
   it("submits booking edits with base revision metadata", async () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
+      data: {
+        user: {
+          ticketOrders: [
+            {
+              status: TicketOrderStatus.PAID,
+              event: { id: "event-1" },
+              ticketType: { id: "ticket-member" },
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never);
+
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -461,7 +533,7 @@ describe("EventBookingWizard", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Complete your booking")).toBeInTheDocument();
-      expect(screen.getByText(/Pay for each ticket type below/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pay for all tickets in one checkout/i)).toBeInTheDocument();
     });
     expect(screen.queryByLabelText(/how many guest tickets in total/i)).not.toBeInTheDocument();
   });
