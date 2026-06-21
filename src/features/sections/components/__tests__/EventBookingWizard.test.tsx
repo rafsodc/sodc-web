@@ -179,6 +179,56 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByText("Your booking")).not.toBeInTheDocument();
   });
 
+  it("does not allow confirmation until payment is complete", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <EventBookingWizard
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Your booking is confirmed/i)).not.toBeInTheDocument();
+  });
+
   it("submits booking edits with base revision metadata", async () => {
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
       data: {

@@ -411,6 +411,16 @@ export default function EventBookingWizard({
     return getPayableBookingTicketRows(buildBookingTicketDisplayRows(existingTerminalBooking));
   }, [existingTerminalBooking]);
 
+  const canProceedToConfirmation =
+    paymentSummaryForBooking != null && isBookingPaymentComplete(paymentSummaryForBooking);
+
+  useEffect(() => {
+    if (wizardMode !== "full" || activeStep !== 5 || canProceedToConfirmation) {
+      return;
+    }
+    setActiveStep(4);
+  }, [wizardMode, activeStep, canProceedToConfirmation]);
+
   useEffect(() => {
     if (
       loadingBookings ||
@@ -523,6 +533,10 @@ export default function EventBookingWizard({
       return;
     }
     if (activeStep === 4) {
+      if (!canProceedToConfirmation) {
+        setSubmitError("Pay for all tickets before continuing to confirmation.");
+        return;
+      }
       setActiveStep(5);
     }
   };
@@ -1204,7 +1218,7 @@ export default function EventBookingWizard({
                     </Typography>
                   </Box>
                 ))}
-                {!isBookingPaymentComplete(paymentSummaryForBooking) ? (
+                {!canProceedToConfirmation ? (
                   <Button
                     variant="contained"
                     disabled={payingAllTickets}
@@ -1213,13 +1227,17 @@ export default function EventBookingWizard({
                   >
                     {payingAllTickets ? "Starting checkout…" : "Pay for all tickets"}
                   </Button>
-                ) : null}
+                ) : (
+                  <Alert severity="success" sx={{ mt: 1 }}>
+                    Payment complete. Continue to confirmation when you are ready.
+                  </Alert>
+                )}
               </Box>
             ) : null}
 
             {wizardMode === "full" && activeStep === 5 ? (
               <Alert severity="success">
-                Your booking has been submitted. Payment and guest-request updates will appear in your booking summary.
+                Your booking is confirmed. Guest-request updates will appear in your booking summary.
               </Alert>
             ) : null}
           </Paper>
@@ -1229,12 +1247,8 @@ export default function EventBookingWizard({
               Back
             </Button>
             <Box sx={{ display: "flex", gap: 1 }}>
-              {wizardMode === "full" && activeStep === 4 ? (
-                <Button variant="outlined" onClick={() => setActiveStep(5)} disabled={submitting || payingAllTickets}>
-                  Skip for now
-                </Button>
-              ) : null}
-              {activeStep < steps.length - 1 ? (
+              {activeStep < steps.length - 1 &&
+              !(wizardMode === "full" && activeStep === 4 && !canProceedToConfirmation) ? (
                 <Button
                   variant="contained"
                   onClick={handleNext}
