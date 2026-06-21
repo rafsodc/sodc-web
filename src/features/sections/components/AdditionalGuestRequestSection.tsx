@@ -12,6 +12,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -154,36 +155,38 @@ export default function AdditionalGuestRequestSection({
       </Typography>
 
       {requests.length > 0 && (
-        <Table size="small" sx={{ mb: 2 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Qty</TableCell>
-              <TableCell>Ticket</TableCell>
-              <TableCell>Guest name</TableCell>
-              <TableCell>Dietary</TableCell>
-              <TableCell>Reviewed</TableCell>
-              <TableCell>Note</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {requests.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>
-                  <Chip size="small" label={statusLabel(r.status)} color={statusColor(r.status)} variant="outlined" />
-                </TableCell>
-                <TableCell align="right">{r.requestedGuestCount}</TableCell>
-                <TableCell>{r.guestTicketType?.title ?? "—"}</TableCell>
-                <TableCell>{r.guestDisplayName ?? "—"}</TableCell>
-                <TableCell>{r.dietaryNote ?? "—"}</TableCell>
-                <TableCell>
-                  {r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : "—"}
-                </TableCell>
-                <TableCell>{r.moderatorNote ?? "—"}</TableCell>
+        <TableContainer sx={{ width: "100%", maxWidth: "100%", overflowX: "auto", mb: 2 }}>
+          <Table size="small" sx={{ minWidth: 720 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Qty</TableCell>
+                <TableCell>Ticket</TableCell>
+                <TableCell>Guest name</TableCell>
+                <TableCell sx={{ minWidth: 120 }}>Dietary</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>Reviewed</TableCell>
+                <TableCell sx={{ minWidth: 120 }}>Note</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {requests.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <Chip size="small" label={statusLabel(r.status)} color={statusColor(r.status)} variant="outlined" />
+                  </TableCell>
+                  <TableCell align="right">{r.requestedGuestCount}</TableCell>
+                  <TableCell>{r.guestTicketType?.title ?? "—"}</TableCell>
+                  <TableCell>{r.guestDisplayName ?? "—"}</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{r.dietaryNote ?? "—"}</TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    {r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : "—"}
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{r.moderatorNote ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
       {pendingRequest ? (

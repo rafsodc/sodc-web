@@ -21,3 +21,14 @@ export function uuidsEqual(a: string | null | undefined, b: string | null | unde
     return false;
   }
 }
+
+/** UUID-aware id comparison with a plain-string fallback for non-UUID test fixtures. */
+export function idsEqual(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) {
+    return false;
+  }
+  if (uuidsEqual(a, b)) {
+    return true;
+  }
+  return a.trim() === b.trim();
+}

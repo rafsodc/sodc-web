@@ -160,6 +160,13 @@ export default function EventBookingWizard({
 
   useEffect(() => {
     setExtraGuestDetails((prev) => {
+      if (wizardMode === "additionalGuests") {
+        const next = prev.slice(0, extraGuestRequestCount);
+        while (next.length < extraGuestRequestCount) {
+          next.push({ ...EMPTY_GUEST_DETAIL });
+        }
+        return next;
+      }
       if (prev.length === extraGuestRequestCount) {
         return prev;
       }
@@ -172,7 +179,7 @@ export default function EventBookingWizard({
       }
       return next;
     });
-  }, [extraGuestRequestCount]);
+  }, [extraGuestRequestCount, wizardMode]);
 
   const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
   const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
@@ -430,7 +437,8 @@ export default function EventBookingWizard({
       wizardMode !== "full" ||
       !existingTerminalBooking ||
       !paymentSummaryForBooking ||
-      !bookingNeedsPayment(paymentSummaryForBooking)
+      !bookingNeedsPayment(paymentSummaryForBooking) ||
+      (paymentSummaryForBooking.kind !== "failed" && paymentSummaryForBooking.kind !== "pending")
     ) {
       return;
     }
@@ -719,8 +727,7 @@ export default function EventBookingWizard({
     !postSubmitFlow &&
     !paymentResumeFlow &&
     wizardMode === "full" &&
-    !wizardOpen &&
-    !bookingNeedsPayment(paymentSummaryForBooking);
+    !wizardOpen;
 
   const showWizard =
     wizardOpen ||
@@ -804,6 +811,7 @@ export default function EventBookingWizard({
                 setWizardMode("additionalGuests");
                 setRequestedExtraGuestCount(1);
                 setRequestedExtraGuestCountInput("1");
+                setExtraGuestDetails([{ ...EMPTY_GUEST_DETAIL }]);
                 setActiveStep(0);
                 onWizardOpenChange?.(true);
               }}

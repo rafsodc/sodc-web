@@ -124,6 +124,64 @@ describe("EventBookingStatusSummary", () => {
     expect(screen.getByText(/awaiting approval/i)).toBeInTheDocument();
   });
 
+  it("shows partial payment when an approved extra guest still needs paying", () => {
+    renderSummary(
+      <EventBookingStatusSummary
+        booking={{
+          id: "booking-1",
+          status: BookingStatus.SUBMITTED,
+          revisionNumber: 2,
+          lines: [
+            {
+              id: "line-1",
+              guestDisplayName: null,
+              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+            },
+            {
+              id: "line-2",
+              guestDisplayName: "Jamie Guest",
+              ticketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+            },
+          ],
+          guestTicketRequests: [
+            {
+              id: "gtr-1",
+              status: "APPROVED",
+              requestedGuestCount: 1,
+              guestDisplayName: "Alex Extra",
+              guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+            },
+          ],
+        } as never}
+        eventId="event-1"
+        eventTitle="Annual Dinner"
+        ticketOrders={[
+          {
+            status: TicketOrderStatus.PAID,
+            quantity: 1,
+            event: { id: "event-1" },
+            ticketType: { id: "ticket-member" },
+          },
+          {
+            status: TicketOrderStatus.PAID,
+            quantity: 1,
+            event: { id: "event-1" },
+            ticketType: { id: "ticket-guest" },
+          },
+        ]}
+        paymentAdjustments={[]}
+        onEditBooking={onEditBooking}
+        onPayNow={onPayNow}
+      />
+    );
+
+    expect(screen.getByText("Partially paid")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    expect(screen.getByText(/pay for any unpaid tickets/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Paid")).toHaveLength(2);
+    expect(screen.getByText("Unpaid")).toBeInTheDocument();
+  });
+
   it("hides Pay now when payment is complete", () => {
     renderSummary(
       <EventBookingStatusSummary
@@ -155,7 +213,7 @@ describe("EventBookingStatusSummary", () => {
       />
     );
 
-    expect(screen.getByText("Paid")).toBeInTheDocument();
+    expect(screen.getAllByText("Paid").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
   });
 

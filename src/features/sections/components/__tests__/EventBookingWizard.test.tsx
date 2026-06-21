@@ -139,7 +139,7 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByText("Edit your booking")).not.toBeInTheDocument();
   });
 
-  it("opens the wizard on the review step when payment is still due", async () => {
+  it("shows the booking summary with pay actions when payment is still due", async () => {
     render(
       <MemoryRouter>
         <EventBookingWizard
@@ -173,15 +173,14 @@ describe("EventBookingWizard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
-      expect(screen.getByText("Review")).toBeInTheDocument();
+      expect(screen.getByText("Your booking")).toBeInTheDocument();
+      expect(screen.getByText("Payment not started")).toBeInTheDocument();
     });
-    expect(screen.queryByText("Your booking")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    expect(screen.queryByText("Complete your booking")).not.toBeInTheDocument();
   });
 
   it("does not allow confirmation until payment is complete", async () => {
-    const user = userEvent.setup();
-
     render(
       <MemoryRouter>
         <EventBookingWizard
@@ -215,15 +214,10 @@ describe("EventBookingWizard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
+      expect(screen.getByText("Your booking")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
-    });
-
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
     expect(screen.queryByText(/Your booking is confirmed/i)).not.toBeInTheDocument();
@@ -586,5 +580,137 @@ describe("EventBookingWizard", () => {
       expect(screen.getByText(/Pay for all tickets in one checkout/i)).toBeInTheDocument();
     });
     expect(screen.queryByLabelText(/how many guest tickets in total/i)).not.toBeInTheDocument();
+  });
+
+  it("starts additional guest requests with blank guest details when guests are already approved", async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
+      data: {
+        user: {
+          bookings: [
+            {
+              id: "booking-1",
+              status: BookingStatus.SUBMITTED,
+              revisionNumber: 1,
+              supersededAt: null,
+              clientSubmissionKey: null,
+              bookerDietaryNote: "",
+              sitNextToUserIds: [],
+              accommodationRequested: false,
+              accommodationNote: null,
+              lines: [
+                {
+                  id: "line-1",
+                  sortOrder: 0,
+                  guestDisplayName: null,
+                  dietaryNote: null,
+                  ticketType: {
+                    id: "ticket-member",
+                    title: "Member standard",
+                    audience: TicketAudience.MEMBER,
+                    price: 50,
+                  },
+                },
+                {
+                  id: "line-2",
+                  sortOrder: 1,
+                  guestDisplayName: "Jamie Included",
+                  dietaryNote: "Vegetarian",
+                  ticketType: {
+                    id: "ticket-guest",
+                    title: "Guest standard",
+                    audience: TicketAudience.GUEST,
+                    price: 25,
+                  },
+                },
+              ],
+              guestTicketRequests: [
+                {
+                  id: "gtr-1",
+                  status: "APPROVED",
+                  requestedGuestCount: 1,
+                  guestDisplayName: "Alex Approved",
+                  dietaryNote: "Gluten free",
+                  guestTicketType: {
+                    id: "ticket-guest",
+                    title: "Guest standard",
+                    price: 25,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    } as never);
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
+      data: {
+        user: {
+          ticketOrders: [
+            {
+              status: TicketOrderStatus.PAID,
+              event: { id: "event-1" },
+              ticketType: { id: "ticket-member" },
+            },
+            {
+              status: TicketOrderStatus.PAID,
+              event: { id: "event-1" },
+              ticketType: { id: "ticket-guest" },
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <EventBookingWizard
+          section={{
+            id: "section-1",
+            name: "Events",
+            type: "EVENTS",
+            description: null,
+            purposeLinks: [
+              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+            ],
+          } as never}
+          event={{
+            id: "event-1",
+            title: "Annual Dinner",
+            bookingStartDateTime: "2025-01-01T00:00:00Z",
+            bookingEndDateTime: "2030-01-01T00:00:00Z",
+            maxGuestsWithoutModeratorApproval: 1,
+            ticketTypes: [
+              {
+                id: "ticket-member",
+                title: "Member standard",
+                audience: TicketAudience.MEMBER,
+                price: 50,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+              {
+                id: "ticket-guest",
+                title: "Guest standard",
+                audience: TicketAudience.GUEST,
+                price: 25,
+                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+              },
+            ],
+          } as never}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /request additional guests/i }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByLabelText("Guest name")).toHaveValue("");
+    expect(screen.getByLabelText("Dietary requirements (optional)")).toHaveValue("");
+    expect(screen.queryByDisplayValue("Alex Approved")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Jamie Included")).not.toBeInTheDocument();
   });
 });

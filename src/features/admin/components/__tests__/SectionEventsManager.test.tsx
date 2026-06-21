@@ -325,6 +325,8 @@ describe("SectionEventsManager", () => {
     expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
     expect(screen.getAllByText("Rev 2").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Supersedes rev 1/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /^approve$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^reject$/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
     expect(screen.getByText(/booking audit activity/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));

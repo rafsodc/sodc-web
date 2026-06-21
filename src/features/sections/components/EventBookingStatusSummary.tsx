@@ -21,7 +21,8 @@ import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import {
   getEventBookingNextSteps,
   getEventBookingStatusHeading,
-  buildBookingTicketDisplayRows,
+  buildBookingTicketRowsWithPaymentStatus,
+  bookingTicketPaymentChipColor,
   isBookingPaymentComplete,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
@@ -93,7 +94,11 @@ export default function EventBookingStatusSummary({
     adjustments: paymentAdjustments,
   });
   const guestSummary = summarizeGuestTicketRequests(booking.guestTicketRequests);
-  const ticketRows = buildBookingTicketDisplayRows(booking);
+  const ticketRows = buildBookingTicketRowsWithPaymentStatus({
+    booking,
+    eventId,
+    ticketOrders,
+  });
   const nextSteps = getEventBookingNextSteps({
     bookingStatus: booking.status,
     paymentSummary,
@@ -138,6 +143,7 @@ export default function EventBookingStatusSummary({
               <TableCell>Ticket</TableCell>
               <TableCell>Guest</TableCell>
               <TableCell>Price</TableCell>
+              <TableCell>Payment</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -150,14 +156,17 @@ export default function EventBookingStatusSummary({
                       (approved extra guest)
                     </Typography>
                   ) : null}
-                  {row.source === "pending_guest_request" ? (
-                    <Typography component="span" variant="caption" color="warning.main" sx={{ ml: 0.75 }}>
-                      (awaiting approval)
-                    </Typography>
-                  ) : null}
                 </TableCell>
                 <TableCell>{row.guestName ?? "—"}</TableCell>
                 <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={row.paymentStatusLabel}
+                    color={bookingTicketPaymentChipColor(row.paymentStatus)}
+                    variant={row.paymentStatus === "awaiting_approval" ? "outlined" : "filled"}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -168,7 +177,10 @@ export default function EventBookingStatusSummary({
         severity={
           paymentSummary.kind === "failed"
             ? "error"
-            : guestSummary.hasPending || paymentSummary.kind === "pending" || paymentSummary.kind === "not_started"
+            : guestSummary.hasPending ||
+                paymentSummary.kind === "pending" ||
+                paymentSummary.kind === "not_started" ||
+                paymentSummary.kind === "partial"
               ? "warning"
               : "info"
         }
