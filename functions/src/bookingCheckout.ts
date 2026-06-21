@@ -30,11 +30,17 @@ export function selectLatestActiveBooking(bookings: BookingRow[]): BookingRow | 
   }, null);
 }
 
-function requiredTicketTypeCounts(booking: BookingRow): Map<string, number> {
-  const counts = new Map<string, number>();
+function requiredTicketTypeCounts(booking: BookingRow): Map<string, { count: number; ticketTypeId: string }> {
+  const counts = new Map<string, { count: number; ticketTypeId: string }>();
   const add = (ticketTypeId: string | undefined | null) => {
     if (!ticketTypeId) return;
-    counts.set(ticketTypeId, (counts.get(ticketTypeId) ?? 0) + 1);
+    const key = normalizeUuidKey(ticketTypeId);
+    const existing = counts.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      counts.set(key, { count: 1, ticketTypeId });
+    }
   };
 
   for (const line of booking.lines ?? []) {
@@ -62,7 +68,8 @@ function paidTicketTypeCounts(orders: TicketOrderRow[]): Map<string, number> {
     }
     const ticketTypeId = order.ticketType?.id;
     if (!ticketTypeId) continue;
-    counts.set(ticketTypeId, (counts.get(ticketTypeId) ?? 0) + Math.max(1, order.quantity ?? 1));
+    const key = normalizeUuidKey(ticketTypeId);
+    counts.set(key, (counts.get(key) ?? 0) + Math.max(1, order.quantity ?? 1));
   }
   return counts;
 }
@@ -103,8 +110,8 @@ export function computeUnpaidBookingCheckoutItems(args: {
   const paid = paidTicketTypeCounts(args.ticketOrders);
   const items: BookingCheckoutLineItem[] = [];
 
-  for (const [ticketTypeId, requiredCount] of required.entries()) {
-    const paidCount = paid.get(ticketTypeId) ?? 0;
+  for (const [ticketTypeKey, { count: requiredCount, ticketTypeId }] of required.entries()) {
+    const paidCount = paid.get(ticketTypeKey) ?? 0;
     const unpaidCount = requiredCount - paidCount;
     if (unpaidCount <= 0) {
       continue;

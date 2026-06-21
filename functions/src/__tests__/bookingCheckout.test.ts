@@ -99,6 +99,45 @@ describe("bookingCheckout", () => {
     ]);
   });
 
+  it("matches paid orders to booking ticket types regardless of hyphen formatting", () => {
+    const memberIdHyphen = "10000000-0000-0000-0000-000000000001";
+    const memberIdHex = "10000000000000000000000000000001";
+
+    const items = computeUnpaidBookingCheckoutItems({
+      booking: {
+        id: "booking-1",
+        status: "SUBMITTED",
+        revisionNumber: 1,
+        supersededAt: null,
+        lines: [
+          {
+            id: "line-1",
+            ticketType: { id: memberIdHyphen, title: "Member", price: 50, audience: "MEMBER" },
+          },
+          {
+            id: "line-2",
+            guestDisplayName: "Alex",
+            ticketType: { id: "20000000-0000-0000-0000-000000000002", title: "Guest", price: 25, audience: "GUEST" },
+          },
+        ],
+        guestTicketRequests: [],
+      } as never,
+      ticketOrders: [
+        {
+          id: "order-1",
+          status: TicketOrderStatus.PAID,
+          quantity: 1,
+          ticketType: { id: memberIdHex },
+          event: { id: "event-1" },
+        },
+      ],
+    });
+
+    expect(items).toEqual([
+      expect.objectContaining({ ticketTypeId: "20000000-0000-0000-0000-000000000002", quantity: 1 }),
+    ]);
+  });
+
   it("includes approved extra guest ticket types", () => {
     const items = computeUnpaidBookingCheckoutItems({
       booking: {

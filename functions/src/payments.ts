@@ -31,7 +31,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
-import { computeUnpaidBookingCheckoutItems, selectLatestActiveBooking } from "./bookingCheckout";
+import { computeUnpaidBookingCheckoutItems, selectLatestActiveBooking, bookingIdsEqual } from "./bookingCheckout";
 import Stripe from "stripe";
 import {
   isSupportedStripeEventType,
@@ -389,12 +389,13 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   let eventTitle = "Event booking";
 
   for (const item of unpaidItems) {
-    const ttResult = await getTicketTypeForCheckout({ ticketTypeId: item.ticketTypeId as UUIDString });
+    const ticketTypeId = validateUUID(item.ticketTypeId, "ticketTypeId") as UUIDString;
+    const ttResult = await getTicketTypeForCheckout({ ticketTypeId });
     const ticketType = ttResult.data?.ticketType;
     if (!ticketType) {
-      throw new HttpsError("not-found", `Ticket type not found: ${item.ticketTypeId}`);
+      throw new HttpsError("not-found", `Ticket type not found: ${ticketTypeId}`);
     }
-    if (ticketType.event.id !== eventId) {
+    if (!bookingIdsEqual(ticketType.event.id, eventId)) {
       throw new HttpsError("failed-precondition", "Ticket type does not belong to this event");
     }
     await ensureTicketCheckoutEligibility({ uid, ticketType });
@@ -403,7 +404,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     const order = await createTicketOrderForCheckout({
       userId: uid,
       eventId,
-      ticketTypeId: item.ticketTypeId as UUIDString,
+      ticketTypeId,
       quantity: item.quantity,
       unitAmountMinor: item.unitAmountMinor,
       totalAmountMinor: item.unitAmountMinor * item.quantity,
