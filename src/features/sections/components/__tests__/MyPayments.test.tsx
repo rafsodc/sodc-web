@@ -77,7 +77,7 @@ describe("MyPayments", () => {
 
     expect(screen.getByText("Spring Ball")).toBeInTheDocument();
     expect(screen.getByText(/member ticket/i)).toBeInTheDocument();
-    expect(screen.getByText(/25\.00 GBP/i)).toBeInTheDocument();
+    expect(screen.getByText(/£25\.00/)).toBeInTheDocument();
     expect(screen.getByText("Paid")).toBeInTheDocument();
     expect(screen.queryByText("Lifecycle detail")).not.toBeInTheDocument();
     expect(screen.queryByText("Stripe artifacts")).not.toBeInTheDocument();
@@ -149,7 +149,7 @@ describe("MyPayments", () => {
     await user.click(screen.getByRole("button", { name: /booking changes \(1\)/i }));
 
     expect(
-      screen.getByText(/Spring Ball \(revision 2\): refund pending — refund of 5\.00 GBP\./i)
+      screen.getByText(/Spring Ball \(revision 2\): refund pending — refund of £5\.00\./i)
     ).toBeInTheDocument();
   });
 

@@ -17,6 +17,7 @@ import type { GetMyBookingsForEventData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants/routes";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
+import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import {
   getEventBookingNextSteps,
   getEventBookingStatusHeading,
@@ -156,7 +157,7 @@ export default function EventBookingStatusSummary({
                   ) : null}
                 </TableCell>
                 <TableCell>{row.guestName ?? "—"}</TableCell>
-                <TableCell>{row.price != null ? String(row.price) : "—"}</TableCell>
+                <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

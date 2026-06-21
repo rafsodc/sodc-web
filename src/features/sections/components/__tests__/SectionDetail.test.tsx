@@ -628,7 +628,7 @@ describe('SectionDetail', () => {
       expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
       expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
-      expect(screen.getByText(/Standard · 25/)).toBeInTheDocument();
+      expect(screen.getByText(/Standard · £25\.00/)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();

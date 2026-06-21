@@ -20,6 +20,7 @@ import {
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import { submitGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
+import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 
 type BookingList = NonNullable<GetMyBookingsForEventData["user"]>["bookings"];
 export type GuestTicketRequestRow = BookingList[number]["guestTicketRequests"][number];
@@ -216,7 +217,7 @@ export default function AdditionalGuestRequestSection({
                     key={tt.id}
                     value={tt.id}
                     control={<Radio size="small" />}
-                    label={`${tt.title} (${tt.price != null ? String(tt.price) : "—"})`}
+                    label={`${tt.title} (${formatGbpMajorAmount(tt.price)})`}
                     disabled={submitting}
                   />
                 ))}

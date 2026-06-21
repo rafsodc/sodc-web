@@ -3,6 +3,7 @@ import { Alert, AlertTitle, Box, Button, CircularProgress, Stack, Typography } f
 import { dataConnect } from "../../../config/firebase";
 import { useGetMyTicketOrderById } from "@dataconnect/generated/react";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
+import { formatPaymentAmount } from "../../../shared/utils/currencyDisplay";
 
 type CheckoutState = "success" | "cancel";
 
@@ -17,7 +18,7 @@ const MAX_POLLS = 8;
 
 function formatMoney(amountMinor: number | null | undefined, currency: string | null | undefined): string | null {
   if (typeof amountMinor !== "number" || !currency) return null;
-  return `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`;
+  return formatPaymentAmount(amountMinor, currency);
 }
 
 export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss }: CheckoutStatusNoticeProps) {

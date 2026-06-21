@@ -31,6 +31,7 @@ import { ROUTES } from "../../../constants/routes";
 import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
 import { BookingStatus, TicketAudience } from "@dataconnect/generated";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
+import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import {
   createEventBookingCheckoutSession,
@@ -899,7 +900,7 @@ export default function EventBookingWizard({
                             {tt.title}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            {tt.price != null ? String(tt.price) : "—"}
+                            {formatGbpMajorAmount(tt.price)}
                           </Typography>
                         </Box>
                       }
@@ -1010,7 +1011,7 @@ export default function EventBookingWizard({
                             key={tt.id}
                             value={tt.id}
                             control={<Radio size="small" />}
-                            label={`${tt.title} (${tt.price != null ? String(tt.price) : "—"})`}
+                            label={`${tt.title} (${formatGbpMajorAmount(tt.price)})`}
                           />
                         ))}
                       </RadioGroup>
@@ -1050,7 +1051,7 @@ export default function EventBookingWizard({
                             key={tt.id}
                             value={tt.id}
                             control={<Radio size="small" />}
-                            label={`${tt.title} (${tt.price != null ? String(tt.price) : "—"})`}
+                            label={`${tt.title} (${formatGbpMajorAmount(tt.price)})`}
                           />
                         ))}
                       </RadioGroup>
@@ -1123,7 +1124,7 @@ export default function EventBookingWizard({
                     </Typography>
                     <Typography component="dd" variant="body2" color="text.secondary">
                       {selectedMember?.title ?? "—"}
-                      {selectedMember?.price != null ? ` · ${String(selectedMember.price)}` : ""}
+                      {selectedMember?.price != null ? ` · ${formatGbpMajorAmount(selectedMember.price)}` : ""}
                     </Typography>
                     <Typography component="dt" variant="body2">
                       Guest tickets
@@ -1199,7 +1200,7 @@ export default function EventBookingWizard({
                       {row.source === "approved_guest_request" ? " (approved extra guest)" : ""}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {row.price != null ? String(row.price) : "—"}
+                      {formatGbpMajorAmount(row.price)}
                     </Typography>
                   </Box>
                 ))}

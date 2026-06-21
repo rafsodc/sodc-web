@@ -8,7 +8,7 @@ import {
 
 describe("myPaymentsDisplay", () => {
   it("formats payment amounts", () => {
-    expect(formatPaymentAmount(2500, "gbp")).toBe("25.00 GBP");
+    expect(formatPaymentAmount(2500, "gbp")).toBe("£25.00");
   });
 
   it("describes failed payments in plain language", () => {
@@ -29,7 +29,7 @@ describe("myPaymentsDisplay", () => {
         totalAmountMinor: 2500,
         refundedAmountMinor: 500,
       })
-    ).toMatch(/refunded 5\.00 GBP/i);
+    ).toMatch(/refunded £5\.00/i);
   });
 
   it("summarises booking adjustments", () => {

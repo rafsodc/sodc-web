@@ -1,5 +1,8 @@
 import { TicketOrderStatus } from "@dataconnect/generated";
+import { formatPaymentAmount } from "../../../shared/utils/currencyDisplay";
 import { getBookingPaymentAdjustmentStatusLabel } from "../../../shared/utils/paymentStatusLabels";
+
+export { formatPaymentAmount };
 
 export interface TicketOrderDisplayInput {
   status: string;
@@ -8,10 +11,6 @@ export interface TicketOrderDisplayInput {
   refundedAmountMinor?: number | null;
   disputeStatus?: string | null;
   disputeReason?: string | null;
-}
-
-export function formatPaymentAmount(amountMinor: number, currency: string): string {
-  return `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`;
 }
 
 export function getTicketOrderOutcomeMessage(order: TicketOrderDisplayInput): string {
