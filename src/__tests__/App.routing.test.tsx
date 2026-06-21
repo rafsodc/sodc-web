@@ -12,6 +12,7 @@ import { createMockUser } from "../test-utils/mocks/firebase";
 
 let currentUser: User | null = null;
 let enabledClaim = false;
+let enabledClaimResolved = true;
 let adminClaim = false;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
@@ -95,7 +96,10 @@ vi.mock("../features/users/hooks/useUserData", () => ({
 }));
 
 vi.mock("../features/users/hooks/useEnabledClaim", () => ({
-  useEnabledClaim: vi.fn((user: User | null) => Boolean(user && enabledClaim)),
+  useEnabledClaim: vi.fn((user: User | null) => ({
+    isEnabled: Boolean(user && enabledClaim),
+    isEnabledClaimResolved: !user || enabledClaimResolved,
+  })),
 }));
 
 vi.mock("../features/users/hooks/useAdminClaim", () => ({
@@ -270,6 +274,7 @@ describe("App routing", () => {
   beforeEach(() => {
     currentUser = null;
     enabledClaim = false;
+    enabledClaimResolved = true;
     adminClaim = false;
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
@@ -361,6 +366,29 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "My Payments Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
+  });
+
+  it("keeps enabled users on payments after Stripe checkout return", async () => {
+    signInEnabledUser();
+    renderApp([
+      `${ROUTES.MY_PAYMENTS}?checkout=success&orderId=00000000-0000-0000-0000-000000000001`,
+    ]);
+
+    expect(await screen.findByText(/payment confirmed/i)).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
+    expect(screen.getByRole("heading", { name: "My Payments Page" })).toBeInTheDocument();
+  });
+
+  it("waits for enabled claim resolution before redirecting checkout returns away from payments", async () => {
+    signInEnabledUser();
+    enabledClaimResolved = false;
+
+    renderApp([
+      `${ROUTES.MY_PAYMENTS}?checkout=success&orderId=00000000-0000-0000-0000-000000000001`,
+    ]);
+
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
+    expect(screen.queryByRole("heading", { name: "Account Page" })).not.toBeInTheDocument();
   });
 
   it("renders member bookings hub from a direct deep link for enabled users", async () => {

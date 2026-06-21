@@ -16,6 +16,7 @@ import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
 import { useGetSectionsForUser } from "@dataconnect/generated/react";
 import {
+  isCheckoutReturnSearch,
   navigateBackOr as navigateBackOrHelper,
   selectedAdminSectionId as getSelectedAdminSectionId,
   selectedAdminUserGroupId as getSelectedAdminUserGroupId,
@@ -86,7 +87,8 @@ function AppContent() {
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
+  const checkoutReturn = isCheckoutReturnSearch(location.search);
   const isAdmin = useAdminClaim(user);
   const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const {
@@ -198,6 +200,33 @@ function AppContent() {
     );
   }
 
+  if (
+    checkoutReturn &&
+    (!authInitialized || (user && !isEnabledClaimResolved))
+  ) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        {header}
+        <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
+          <LoadingFallback />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user && !isEnabledClaimResolved) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        {header}
+        <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
+          <LoadingFallback />
+        </Box>
+      </Box>
+    );
+  }
+
   if (user && needsProfileCompletion && location.pathname !== ROUTES.PROFILE_COMPLETION) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
@@ -292,7 +321,16 @@ function AppContent() {
     if (!authInitialized) {
       return <LoadingFallback />;
     }
-    return user && isEnabled ? element : <Navigate to={ROUTES.ACCOUNT} replace />;
+    if (user && !isEnabledClaimResolved) {
+      return <LoadingFallback />;
+    }
+    if (user && isEnabled) {
+      return element;
+    }
+    if (checkoutReturn) {
+      return <Navigate to={{ pathname: ROUTES.ACCOUNT, search: location.search }} replace />;
+    }
+    return <Navigate to={ROUTES.ACCOUNT} replace />;
   };
 
   return (
@@ -418,7 +456,11 @@ function AppContent() {
                   path={ROUTES.ACCOUNT}
                   element={
                     user && isEnabled ? (
-                      <Navigate to={ROUTES.HOME} replace />
+                      checkoutReturn ? (
+                        <Navigate to={{ pathname: ROUTES.MY_PAYMENTS, search: location.search }} replace />
+                      ) : (
+                        <Navigate to={ROUTES.HOME} replace />
+                      )
                     ) : (
                       <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
                         <Suspense fallback={<LoadingFallback />}>

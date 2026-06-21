@@ -12,7 +12,10 @@ vi.mock("firebase/auth", () => ({
 }));
 
 vi.mock("../../../features/users/hooks/useEnabledClaim", () => ({
-  useEnabledClaim: vi.fn((user: User | null) => Boolean(user)),
+  useEnabledClaim: vi.fn((user: User | null) => ({
+    isEnabled: Boolean(user),
+    isEnabledClaimResolved: true,
+  })),
 }));
 
 describe("Header account menu", () => {
@@ -61,7 +64,10 @@ describe("Header account menu", () => {
 
   it("does not show My Payments when user is not enabled", async () => {
     const { useEnabledClaim } = await import("../../../features/users/hooks/useEnabledClaim");
-    vi.mocked(useEnabledClaim).mockReturnValue(false);
+    vi.mocked(useEnabledClaim).mockReturnValue({
+      isEnabled: false,
+      isEnabledClaimResolved: true,
+    });
 
     const user = userEvent.setup();
 

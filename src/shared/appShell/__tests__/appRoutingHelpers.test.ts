@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   dismissCheckoutQueryParams,
   getCheckoutQueryState,
+  isCheckoutReturnSearch,
   selectedAdminSectionId,
   selectedAdminUserGroupId,
 } from "../appRoutingHelpers";
@@ -21,6 +22,9 @@ describe("appRoutingHelpers", () => {
   it("ignores URLs without a supported checkout state", () => {
     expect(getCheckoutQueryState("?checkout=pending&orderId=order-1")).toBeNull();
     expect(getCheckoutQueryState("?orderId=order-1")).toBeNull();
+    expect(isCheckoutReturnSearch("?checkout=pending&orderId=order-1")).toBe(false);
+    expect(isCheckoutReturnSearch("?checkout=success&orderId=order-1")).toBe(true);
+    expect(isCheckoutReturnSearch("?checkout=cancel")).toBe(true);
   });
 
   it("removes checkout query params without dropping unrelated URL state", () => {

@@ -37,7 +37,7 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -85,6 +85,14 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
             }}
           />
         </OnboardingShell>
+      );
+    }
+
+    if (!isEnabledClaimResolved) {
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
+          <CircularProgress />
+        </Box>
       );
     }
 
