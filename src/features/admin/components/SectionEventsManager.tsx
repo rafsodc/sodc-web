@@ -37,6 +37,7 @@ import type {
   TicketTypeRow,
 } from "./sectionEventsManagerTypes";
 import { fromDatetimeLocal, toDatetimeLocal } from "../utils/eventDatetime";
+import { flattenGuestTicketRequestsFromLatestBookings } from "../utils/guestTicketRequestsAdmin";
 import {
   EventDialogSurface,
   EventListSurface,
@@ -337,17 +338,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const events: EventRow[] = eventsData?.section?.events ?? [];
   const guestRequests = useMemo<GuestTicketRequestWithBooking[]>(() => {
     const bookings = guestRequestsData?.event?.bookings ?? [];
-    return bookings.flatMap((booking) =>
-      (booking.guestTicketRequests ?? []).map((request) => ({
-        ...request,
-        bookingId: booking.id,
-        bookingStatus: booking.status,
-        bookingRevisionNumber: booking.revisionNumber,
-        supersedesBookingId: booking.supersedesBooking?.id ?? null,
-        supersedesRevisionNumber: booking.supersedesBooking?.revisionNumber ?? null,
-        booker: booking.booker,
-      }))
-    );
+    return flattenGuestTicketRequestsFromLatestBookings(bookings);
   }, [guestRequestsData]);
 
   const filteredGuestRequests = useMemo(() => {

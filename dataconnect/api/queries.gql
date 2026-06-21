@@ -591,10 +591,12 @@ query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.a
   event(id: $eventId) {
     id
     title
-    bookings: bookings_on_event {
+    bookings: bookings_on_event(where: { supersededAt: { isNull: true } }) {
       id
       status
       revisionNumber
+      revisionGroupId
+      supersededAt
       supersedesBooking {
         id
         revisionNumber
