@@ -385,7 +385,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   const stripeClient = requireStripe(stripeSecret.value());
   const customerId = await ensureStripeCustomerId({ uid, stripeClient });
   const createdOrderIds: UUIDString[] = [];
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+  const lineItems = [];
   let eventTitle = "Event booking";
 
   for (const item of unpaidItems) {

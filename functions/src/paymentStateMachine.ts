@@ -64,11 +64,6 @@ function extractMetadataOrderIds(obj: unknown): string[] {
   return orderId ? [orderId] : [];
 }
 
-function extractOrderIdFromStripeEvent(event: StripeEventLike): string | null {
-  const ids = extractMetadataOrderIds(event.data.object);
-  return ids[0] ?? null;
-}
-
 export function extractOrderIdsFromStripeEvent(event: StripeEventLike): string[] {
   return extractMetadataOrderIds(event.data.object);
 }
