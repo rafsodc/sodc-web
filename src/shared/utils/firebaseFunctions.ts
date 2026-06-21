@@ -491,6 +491,28 @@ export async function getMyTicketOrderStripeArtifactsBatch(
   return data.result ?? data;
 }
 
+export interface ReconcileMyCheckoutSessionOrdersRequest {
+  orderId: string;
+}
+
+export interface ReconcileMyCheckoutSessionOrdersResponse {
+  appliedCount: number;
+  reconciledOrderIds: string[];
+  orderIds: string[];
+}
+
+export async function reconcileMyCheckoutSessionOrders(
+  payload: ReconcileMyCheckoutSessionOrdersRequest
+): Promise<ReconcileMyCheckoutSessionOrdersResponse> {
+  const callable = httpsCallable<
+    ReconcileMyCheckoutSessionOrdersRequest,
+    ReconcileMyCheckoutSessionOrdersResponse
+  >(functions, "reconcileMyCheckoutSessionOrders");
+  const result = await callable({ orderId: toCanonicalUuid(payload.orderId) });
+  const data = result.data as { result?: ReconcileMyCheckoutSessionOrdersResponse } & ReconcileMyCheckoutSessionOrdersResponse;
+  return data.result ?? data;
+}
+
 // ============================================================================
 // Guest ticket requests (callable — server email + validation)
 // ============================================================================

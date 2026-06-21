@@ -62,6 +62,13 @@ describe("paymentStateMachine", () => {
     expect(evaluateTransition(TicketOrderStatus.REFUNDED, "MARK_PAID").action).toBe("noop_illegal");
   });
 
+  it("allows failed checkout orders to recover to paid when checkout succeeded", () => {
+    expect(
+      evaluateTransition(TicketOrderStatus.FAILED, "MARK_PAID", { recoverFailedCheckoutPayment: true }).action
+    ).toBe("apply");
+    expect(evaluateTransition(TicketOrderStatus.FAILED, "MARK_PAID").action).toBe("noop_illegal");
+  });
+
   it("treats same-state transitions as replay no-op", () => {
     expect(evaluateTransition(TicketOrderStatus.PAID, "MARK_PAID").action).toBe("noop_replay");
     expect(evaluateTransition(TicketOrderStatus.FAILED, "MARK_FAILED").action).toBe("noop_replay");

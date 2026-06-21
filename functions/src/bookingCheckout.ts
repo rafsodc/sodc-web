@@ -4,6 +4,14 @@ import type { GetBookingsForBookerAndEventData, GetTicketOrdersForBookerAndEvent
 type BookingRow = NonNullable<GetBookingsForBookerAndEventData["user"]>["bookings"][number];
 type TicketOrderRow = NonNullable<GetTicketOrdersForBookerAndEventData["user"]>["ticketOrders"][number];
 
+export interface CheckoutOrderLine {
+  ticketTypeId: string;
+  quantity: number;
+  title: string;
+  unitAmountMinor: number;
+  existingOrderId: string | null;
+}
+
 export interface BookingCheckoutLineItem {
   ticketTypeId: string;
   quantity: number;
@@ -129,4 +137,71 @@ export function computeUnpaidBookingCheckoutItems(args: {
   }
 
   return items;
+}
+
+function pendingOrdersForTicketType(ticketOrders: TicketOrderRow[], ticketTypeId: string): TicketOrderRow[] {
+  return ticketOrders
+    .filter(
+      (order) =>
+        order.status === TicketOrderStatus.PENDING &&
+        order.ticketType?.id &&
+        bookingIdsEqual(order.ticketType.id, ticketTypeId)
+    )
+    .sort((left, right) => {
+      const leftTime = left.createdAt ?? "";
+      const rightTime = right.createdAt ?? "";
+      return rightTime.localeCompare(leftTime);
+    });
+}
+
+/** Reuse in-flight pending orders where possible; only create new orders for the remainder. */
+export function planCheckoutOrderLines(
+  unpaidItems: BookingCheckoutLineItem[],
+  ticketOrders: TicketOrderRow[]
+): CheckoutOrderLine[] {
+  const lines: CheckoutOrderLine[] = [];
+  const usedPendingOrderIds = new Set<string>();
+
+  for (const item of unpaidItems) {
+    let remaining = item.quantity;
+    const pendingOrders = pendingOrdersForTicketType(ticketOrders, item.ticketTypeId).filter(
+      (order) => !usedPendingOrderIds.has(order.id)
+    );
+
+    for (const pendingOrder of pendingOrders) {
+      if (remaining <= 0) {
+        break;
+      }
+      const pendingQuantity = Math.max(1, pendingOrder.quantity ?? 1);
+      const allocatedQuantity = Math.min(remaining, pendingQuantity);
+      lines.push({
+        ticketTypeId: item.ticketTypeId,
+        quantity: allocatedQuantity,
+        title: item.title,
+        unitAmountMinor: item.unitAmountMinor,
+        existingOrderId: pendingOrder.id,
+      });
+      usedPendingOrderIds.add(pendingOrder.id);
+      remaining -= allocatedQuantity;
+    }
+
+    if (remaining > 0) {
+      lines.push({
+        ticketTypeId: item.ticketTypeId,
+        quantity: remaining,
+        title: item.title,
+        unitAmountMinor: item.unitAmountMinor,
+        existingOrderId: null,
+      });
+    }
+  }
+
+  return lines;
+}
+
+export function stalePendingOrderIds(ticketOrders: TicketOrderRow[], reusedOrderIds: Iterable<string>): string[] {
+  const reused = new Set(reusedOrderIds);
+  return ticketOrders
+    .filter((order) => order.status === TicketOrderStatus.PENDING && !reused.has(order.id))
+    .map((order) => order.id);
 }

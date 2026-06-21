@@ -4,6 +4,7 @@ import { dataConnect } from "../../../config/firebase";
 import { useGetMyTicketOrderById } from "@dataconnect/generated/react";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { formatPaymentAmount } from "../../../shared/utils/currencyDisplay";
+import { reconcileMyCheckoutSessionOrders } from "../../../shared/utils/firebaseFunctions";
 
 type CheckoutState = "success" | "cancel";
 
@@ -43,6 +44,13 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
   const order = data?.user?.ticketOrders?.[0];
   const status = order?.status;
   const shouldPoll = shouldQuery && status === "PENDING" && pollCount < MAX_POLLS;
+
+  useEffect(() => {
+    if (!shouldQuery || !canonicalOrderId) {
+      return;
+    }
+    void reconcileMyCheckoutSessionOrders({ orderId: canonicalOrderId }).catch(() => undefined);
+  }, [shouldQuery, canonicalOrderId]);
 
   useEffect(() => {
     if (!shouldPoll) return;

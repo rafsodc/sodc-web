@@ -3,7 +3,9 @@ import { GuestTicketRequestStatus, TicketOrderStatus } from "@dataconnect/admin-
 import {
   bookingIdsEqual,
   computeUnpaidBookingCheckoutItems,
+  planCheckoutOrderLines,
   selectLatestActiveBooking,
+  stalePendingOrderIds,
 } from "../bookingCheckout";
 
 describe("bookingCheckout", () => {
@@ -88,6 +90,7 @@ describe("bookingCheckout", () => {
           id: "order-1",
           status: TicketOrderStatus.PAID,
           quantity: 1,
+          createdAt: "2026-04-01T10:00:00Z",
           ticketType: { id: "ticket-member" },
           event: { id: "event-1" },
         },
@@ -127,6 +130,7 @@ describe("bookingCheckout", () => {
           id: "order-1",
           status: TicketOrderStatus.PAID,
           quantity: 1,
+          createdAt: "2026-04-01T10:00:00Z",
           ticketType: { id: memberIdHex },
           event: { id: "event-1" },
         },
@@ -166,5 +170,57 @@ describe("bookingCheckout", () => {
 
     expect(items).toHaveLength(2);
     expect(items[1]).toMatchObject({ ticketTypeId: "ticket-guest", quantity: 1 });
+  });
+
+  it("reuses pending ticket orders instead of always creating new ones", () => {
+    const lines = planCheckoutOrderLines(
+      [
+        { ticketTypeId: "ticket-member", quantity: 1, title: "Member", unitAmountMinor: 5000 },
+        { ticketTypeId: "ticket-guest", quantity: 2, title: "Guest", unitAmountMinor: 2500 },
+      ],
+      [
+        {
+          id: "pending-member",
+          status: TicketOrderStatus.PENDING,
+          quantity: 1,
+          createdAt: "2026-04-01T10:00:00Z",
+          ticketType: { id: "ticket-member" },
+        },
+        {
+          id: "pending-guest",
+          status: TicketOrderStatus.PENDING,
+          quantity: 2,
+          createdAt: "2026-04-01T10:00:00Z",
+          ticketType: { id: "ticket-guest" },
+        },
+        {
+          id: "stale-pending",
+          status: TicketOrderStatus.PENDING,
+          quantity: 1,
+          createdAt: "2026-04-01T09:00:00Z",
+          ticketType: { id: "ticket-member" },
+        },
+      ] as never
+    );
+
+    expect(lines).toEqual([
+      expect.objectContaining({ ticketTypeId: "ticket-member", existingOrderId: "pending-member" }),
+      expect.objectContaining({ ticketTypeId: "ticket-guest", quantity: 2, existingOrderId: "pending-guest" }),
+    ]);
+    expect(stalePendingOrderIds(
+      [
+        {
+          id: "pending-member",
+          status: TicketOrderStatus.PENDING,
+          ticketType: { id: "ticket-member" },
+        },
+        {
+          id: "stale-pending",
+          status: TicketOrderStatus.PENDING,
+          ticketType: { id: "ticket-member" },
+        },
+      ] as never,
+      ["pending-member"]
+    )).toEqual(["stale-pending"]);
   });
 });

@@ -102,6 +102,8 @@ describe("createGovNotifyTicketOrderLifecycleDispatcher", () => {
         templateName: "ticketOrderPaid",
         to: "buyer@example.com",
         personalisation: expect.objectContaining({
+          customerFirstName: "Sam",
+          firstName: "Sam",
           eventTitle: "Annual dinner",
           ticketTypeTitle: "Member ticket",
           myPaymentsUrl: "https://app.example/payments",

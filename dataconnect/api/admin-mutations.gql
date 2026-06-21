@@ -294,6 +294,7 @@ query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(
       id
       status
       quantity
+      createdAt
       ticketType {
         id
       }

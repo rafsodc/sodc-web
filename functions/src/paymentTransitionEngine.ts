@@ -7,6 +7,7 @@ export interface TicketOrderTransitionRequest {
   currentStatus: TicketOrderStatus;
   intent: PaymentTransitionIntent;
   webhookEventId: string;
+  recoverFailedCheckoutPayment?: boolean;
   paidContext?: {
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
@@ -47,12 +48,31 @@ export interface TicketOrderTransitionMutations {
   }): Promise<unknown>;
 }
 
+/** One Stripe Checkout session can settle multiple ticket orders; only the first may store the session id. */
+export function paidContextForMultiOrderWebhook(
+  orderIndex: number,
+  paidContext: {
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+  }
+): {
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+} {
+  return {
+    stripeCheckoutSessionId: orderIndex === 0 ? paidContext.stripeCheckoutSessionId ?? null : null,
+    stripePaymentIntentId: paidContext.stripePaymentIntentId ?? null,
+  };
+}
+
 export async function runTicketOrderTransition(
   request: TicketOrderTransitionRequest,
   mutations: TicketOrderTransitionMutations
 ): Promise<TicketOrderTransitionResult> {
   const targetStatus = mapIntentToTargetStatus(request.intent);
-  const decision = evaluateTransition(request.currentStatus, request.intent);
+  const decision = evaluateTransition(request.currentStatus, request.intent, {
+    recoverFailedCheckoutPayment: request.recoverFailedCheckoutPayment,
+  });
 
   if (decision.action === "apply") {
     if (request.intent === "MARK_PAID") {

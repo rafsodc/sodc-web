@@ -488,6 +488,7 @@ query GetMyTicketOrders @auth(expr: "auth.token.enabled == true") {
       refundedAt
       disputeStatus
       disputeReason
+      stripeCheckoutSessionId
       stripePaymentIntentId
       createdAt
       updatedAt

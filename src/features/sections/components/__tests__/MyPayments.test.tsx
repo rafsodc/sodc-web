@@ -13,6 +13,11 @@ vi.mock("@dataconnect/generated/react", () => ({
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getMyTicketOrderStripeArtifactsBatch: vi.fn(),
+  reconcileMyCheckoutSessionOrders: vi.fn().mockResolvedValue({
+    appliedCount: 0,
+    reconciledOrderIds: [],
+    orderIds: [],
+  }),
 }));
 
 vi.mock("../../../../config/firebase", () => ({
@@ -81,6 +86,61 @@ describe("MyPayments", () => {
     expect(screen.getByText("Paid")).toBeInTheDocument();
     expect(screen.queryByText("Lifecycle detail")).not.toBeInTheDocument();
     expect(screen.queryByText("Stripe artifacts")).not.toBeInTheDocument();
+  });
+
+  it("groups paid member and guest orders from the same checkout into one card", () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+        data: {
+          user: {
+            id: "u-1",
+            ticketOrders: [
+              {
+                id: "order-member",
+                status: "PAID",
+                quantity: 1,
+                totalAmountMinor: 5000,
+                currency: "gbp",
+                createdAt: "2026-04-01T12:00:00Z",
+                updatedAt: "2026-04-01T12:00:00Z",
+                refundedAmountMinor: null,
+                disputeStatus: null,
+                disputeReason: null,
+                stripeCheckoutSessionId: "cs_test",
+                stripePaymentIntentId: "pi_test",
+                event: { id: "event-1", title: "Spring Ball", startDateTime: "2026-05-01T18:00:00Z" },
+                ticketType: { id: "ticket-1", title: "Member ticket" },
+              },
+              {
+                id: "order-guest",
+                status: "PAID",
+                quantity: 2,
+                totalAmountMinor: 5000,
+                currency: "gbp",
+                createdAt: "2026-04-01T12:00:00Z",
+                updatedAt: "2026-04-01T12:00:00Z",
+                refundedAmountMinor: null,
+                disputeStatus: null,
+                disputeReason: null,
+                stripeCheckoutSessionId: "cs_test",
+                stripePaymentIntentId: "pi_test",
+                event: { id: "event-1", title: "Spring Ball", startDateTime: "2026-05-01T18:00:00Z" },
+                ticketType: { id: "ticket-2", title: "Guest ticket" },
+              },
+            ],
+          },
+        },
+        isLoading: false,
+        isError: false,
+      })
+    );
+
+    render(<MyPayments onBack={() => undefined} />);
+
+    expect(screen.getByText("Spring Ball")).toBeInTheDocument();
+    expect(screen.getByText(/member ticket, guest ticket × 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/£100\.00/)).toBeInTheDocument();
+    expect(screen.getAllByText("Paid")).toHaveLength(1);
   });
 
   it("shows booking changes in a collapsible section", async () => {

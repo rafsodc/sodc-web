@@ -11,6 +11,14 @@ vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
 }));
 
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  reconcileMyCheckoutSessionOrders: vi.fn().mockResolvedValue({
+    appliedCount: 0,
+    reconciledOrderIds: [],
+    orderIds: [],
+  }),
+}));
+
 describe("CheckoutStatusNotice", () => {
   const onDismiss = vi.fn();
 

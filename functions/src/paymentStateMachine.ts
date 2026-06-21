@@ -127,13 +127,26 @@ export function mapIntentToTargetStatus(intent: PaymentTransitionIntent): Ticket
   }
 }
 
+export interface TransitionEvaluationOptions {
+  /** Allows FAILED -> PAID when a combined checkout succeeded but an earlier attempt left stale orders. */
+  recoverFailedCheckoutPayment?: boolean;
+}
+
 export function evaluateTransition(
   current: TicketOrderStatus,
-  intent: PaymentTransitionIntent
+  intent: PaymentTransitionIntent,
+  options?: TransitionEvaluationOptions
 ): TransitionDecision {
   const target = mapIntentToTargetStatus(intent);
   if (current === target) {
     return { action: "noop_replay", reason: "already_in_target_state" };
+  }
+  if (
+    options?.recoverFailedCheckoutPayment &&
+    intent === "MARK_PAID" &&
+    current === TicketOrderStatus.FAILED
+  ) {
+    return { action: "apply", reason: "checkout_recovery_from_failed" };
   }
   if (LEGAL_TRANSITIONS[current].has(target)) {
     return { action: "apply", reason: "legal_transition" };
