@@ -670,7 +670,6 @@ function GuestTicketRequestsSection({
               <TableRow>
                 <TableCell sx={guestRequestActionsCellSx}>Actions</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Revision</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell>Guest</TableCell>
                 <TableCell>Ticket</TableCell>
@@ -712,16 +711,6 @@ function GuestTicketRequestsSection({
                   </TableCell>
                   <TableCell>
                     <Chip size="small" label={request.status} color={requestStatusColor(request.status)} />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                      <Chip size="small" variant="outlined" label={`Rev ${request.bookingRevisionNumber}`} />
-                      {request.supersedesRevisionNumber != null ? (
-                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                          Supersedes rev {request.supersedesRevisionNumber}
-                        </Box>
-                      ) : null}
-                    </Box>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                     {request.booker ? `${request.booker.firstName} ${request.booker.lastName}` : "—"}

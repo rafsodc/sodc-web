@@ -135,7 +135,6 @@ describe("EventBookingWizard", () => {
     );
 
     expect(screen.getByText("Your booking")).toBeInTheDocument();
-    expect(screen.getAllByText("Revision 2").length).toBeGreaterThan(0);
     expect(screen.queryByText("Edit your booking")).not.toBeInTheDocument();
   });
 
@@ -281,7 +280,7 @@ describe("EventBookingWizard", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit booking" }));
     expect(screen.getByText("Edit your booking")).toBeInTheDocument();
-    expect(screen.getByText(/editing revision 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/editing your submitted booking/i)).toBeInTheDocument();
     expect(screen.queryByText("Number of guests")).not.toBeInTheDocument();
     expect(screen.getByText("Guest details")).toBeInTheDocument();
     expect(screen.getByText("Payment")).toBeInTheDocument();

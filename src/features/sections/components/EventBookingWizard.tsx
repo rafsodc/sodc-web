@@ -860,9 +860,8 @@ export default function EventBookingWizard({
           </Typography>
           {editingExistingBooking && existingTerminalBooking ? (
             <Alert severity="info" sx={{ mb: 2 }}>
-              Editing revision {existingTerminalBooking.revisionNumber} (
-              {getBookingStatusLabel(existingTerminalBooking.status).toLowerCase()}). Saving will create a new
-              booking revision.
+              Editing your {getBookingStatusLabel(existingTerminalBooking.status).toLowerCase()} booking. Saving
+              will update your booking details.
             </Alert>
           ) : null}
 

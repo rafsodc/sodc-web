@@ -122,7 +122,6 @@ export default function EventBookingStatusSummary({
           label={getBookingStatusLabel(booking.status)}
           color={booking.status === "CONFIRMED" ? "success" : "default"}
         />
-        <Chip size="small" label={`Revision ${booking.revisionNumber}`} variant="outlined" />
         <Chip size="small" label={paymentSummary.label} color={paymentChipColor(paymentSummary)} />
         <Chip
           size="small"

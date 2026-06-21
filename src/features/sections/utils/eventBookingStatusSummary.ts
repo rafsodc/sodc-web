@@ -530,5 +530,5 @@ export function getEventBookingNextSteps(params: {
 }
 
 export function getEventBookingStatusHeading(booking: EventBookingSummaryInput): string {
-  return `${getBookingStatusLabel(booking.status)} · revision ${booking.revisionNumber}`;
+  return getBookingStatusLabel(booking.status);
 }

@@ -162,7 +162,7 @@ describe("MyBookings", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Guest ticket \(Sam Extra\) — awaiting approval/)).toBeInTheDocument();
+    expect(screen.getByText(/Guest ticket \(Sam Extra\) — pending confirmation/)).toBeInTheDocument();
     expect(screen.getByText(/1 guest request pending/i)).toBeInTheDocument();
   });
 

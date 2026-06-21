@@ -101,7 +101,6 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
                       label={getBookingStatusLabel(booking.status)}
                       color={bookingStatusChipColor(booking.status)}
                     />
-                    <Chip size="small" label={`Revision ${booking.revisionNumber}`} variant="outlined" />
                     <Chip
                       size="small"
                       label={paymentSummary.label}
