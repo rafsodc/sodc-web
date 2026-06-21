@@ -12,8 +12,11 @@ import {
   buildBookingTicketRowsWithPaymentStatus,
   formatBookingTicketDisplayLabel,
   getPayableBookingTicketRows,
+  guestTicketRequestsForBookingEdit,
+  hasPendingGuestTicketsAwaitingApproval,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
+  type EventBookingSummaryInput,
 } from "../eventBookingStatusSummary";
 
 const booking = {
@@ -28,7 +31,7 @@ const booking = {
     },
   ],
   guestTicketRequests: [],
-} as never;
+};
 
 describe("summarizeGuestTicketRequests", () => {
   it("counts pending, approved, and rejected guest tickets", () => {
@@ -44,6 +47,18 @@ describe("summarizeGuestTicketRequests", () => {
       rejectedCount: 1,
       hasPending: true,
     });
+  });
+});
+
+describe("guestTicketRequestsForBookingEdit", () => {
+  it("excludes declined guest ticket requests", () => {
+    expect(
+      guestTicketRequestsForBookingEdit([
+        { status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 },
+        { status: GuestTicketRequestStatus.REJECTED, requestedGuestCount: 1 },
+        { status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 1 },
+      ])
+    ).toHaveLength(2);
   });
 });
 
@@ -102,7 +117,7 @@ describe("buildBookingTicketDisplayRows", () => {
       guestName: "Sam Extra",
       source: "pending_guest_request",
     });
-    expect(formatBookingTicketDisplayLabel(rows[1])).toBe("Guest standard (Sam Extra) — awaiting approval");
+    expect(formatBookingTicketDisplayLabel(rows[1])).toBe("Guest standard (Sam Extra) — pending confirmation");
     expect(getPayableBookingTicketRows(rows)).toHaveLength(1);
   });
 });
@@ -182,7 +197,7 @@ describe("buildBookingTicketRowsWithPaymentStatus", () => {
     });
 
     expect(rows[1]?.paymentStatus).toBe("awaiting_approval");
-    expect(rows[1]?.paymentStatusLabel).toBe("Awaiting approval");
+    expect(rows[1]?.paymentStatusLabel).toBe("Pending confirmation");
   });
 });
 
@@ -235,25 +250,20 @@ describe("summarizeEventBookingPayment", () => {
   });
 
   it("returns partially paid when an approved extra guest shares a ticket type that is already paid once", () => {
+    const bookingWithPaidGuestAndUnpaidExtra: EventBookingSummaryInput = {
+      status: BookingStatus.SUBMITTED,
+      revisionNumber: 2,
+      lines: [{ ticketType: { id: "ticket-member" } }, { ticketType: { id: "ticket-guest" } }],
+      guestTicketRequests: [
+        {
+          status: GuestTicketRequestStatus.APPROVED,
+          requestedGuestCount: 1,
+          guestTicketType: { id: "ticket-guest" },
+        },
+      ],
+    };
     const summary = summarizeEventBookingPayment({
-      booking: {
-        ...booking,
-        lines: [
-          ...booking.lines,
-          {
-            id: "line-2",
-            ticketType: { id: "ticket-guest", title: "Guest", price: 25, audience: "GUEST" },
-            guestDisplayName: "Jamie Guest",
-          },
-        ],
-        guestTicketRequests: [
-          {
-            status: GuestTicketRequestStatus.APPROVED,
-            requestedGuestCount: 1,
-            guestTicketType: { id: "ticket-guest" },
-          },
-        ],
-      },
+      booking: bookingWithPaidGuestAndUnpaidExtra,
       eventId: "event-1",
       ticketOrders: [
         {
@@ -348,5 +358,27 @@ describe("getEventBookingNextSteps", () => {
     });
 
     expect(message).toMatch(/payment hold expired/i);
+  });
+});
+
+describe("hasPendingGuestTicketsAwaitingApproval", () => {
+  it("returns true when a guest ticket request is pending", () => {
+    expect(
+      hasPendingGuestTicketsAwaitingApproval({
+        status: BookingStatus.SUBMITTED,
+        revisionNumber: 1,
+        guestTicketRequests: [{ status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 1 }],
+      })
+    ).toBe(true);
+  });
+
+  it("returns false when no guest requests are pending", () => {
+    expect(
+      hasPendingGuestTicketsAwaitingApproval({
+        status: BookingStatus.SUBMITTED,
+        revisionNumber: 1,
+        guestTicketRequests: [{ status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 }],
+      })
+    ).toBe(false);
   });
 });

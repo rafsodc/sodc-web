@@ -14,6 +14,12 @@ import {
   notifyBookerGuestTicketRequestReviewed,
   notifyModeratorsGuestTicketRequestSubmitted,
 } from "./guestTicketRequestEmails";
+import {
+  buildApprovedGuestTicketRequestPool,
+  buildPendingGuestTicketRequestPool,
+  consumeGuestRequestPoolsForExistingRequests,
+  resolveGuestTicketRequestSubmission,
+} from "./guestTicketRequestCarryForward";
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 
@@ -71,27 +77,53 @@ export const submitGuestTicketRequest = onCall(
         throw new HttpsError("permission-denied", "You can only submit guest requests for your own booking");
       }
 
+      let { approvedPool, pendingPool } = consumeGuestRequestPoolsForExistingRequests(
+        buildApprovedGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
+        buildPendingGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
+        booking.guestTicketRequests
+      );
+      const { decision, remainingApprovedPool, remainingPendingPool } = resolveGuestTicketRequestSubmission({
+        approvedPool,
+        pendingPool,
+        guestDisplayName,
+        guestTicketTypeId,
+      });
+      approvedPool = remainingApprovedPool;
+      pendingPool = remainingPendingPool;
+
+      const status =
+        decision.kind === "carry_forward_approved"
+          ? GuestTicketRequestStatus.APPROVED
+          : GuestTicketRequestStatus.PENDING;
+
       const insertResult = await createGuestTicketRequestFromCallable({
         bookingId,
         requestedGuestCount,
         guestTicketTypeId,
         guestDisplayName,
         dietaryNote,
+        status,
+        reviewedById: decision.kind === "carry_forward_approved" ? decision.reviewedById : null,
+        reviewedAt: decision.kind === "carry_forward_approved" ? decision.reviewedAt : null,
+        moderatorNote: decision.kind === "carry_forward_approved" ? decision.moderatorNote : null,
       });
       const requestId = insertResult.data?.guestTicketRequest_insert?.id;
       if (!requestId) {
         throw new HttpsError("internal", "Guest ticket request was not created");
       }
 
-      scheduleGuestTicketRequestSubmittedEmails({
-        requestId,
-        appBaseUrl: APP_BASE_URL,
-      });
+      if (decision.kind === "create_pending") {
+        scheduleGuestTicketRequestSubmittedEmails({
+          requestId,
+          appBaseUrl: APP_BASE_URL,
+        });
+      }
 
       logger.info("guest ticket request submitted", {
         requestId,
         bookingId,
         bookerId: callerUid,
+        submissionKind: decision.kind,
       });
       return { success: true, requestId };
     } catch (e: unknown) {

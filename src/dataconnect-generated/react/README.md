@@ -1541,6 +1541,29 @@ export interface GetBookingForGuestTicketCallableData {
           name: string;
         } & Section_Key;
       } & Event_Key;
+        supersedesBooking?: {
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+              reviewedBy?: {
+                id: string;
+              } & User_Key;
+                reviewedAt?: TimestampString | null;
+                moderatorNote?: string | null;
+          })[];
+        };
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+          })[];
   } & Booking_Key;
 }
 ```
@@ -9729,6 +9752,10 @@ export interface CreateGuestTicketRequestFromCallableVariables {
   guestTicketTypeId: UUIDString;
   guestDisplayName: string;
   dietaryNote?: string | null;
+  status: GuestTicketRequestStatus;
+  reviewedById?: string | null;
+  reviewedAt?: TimestampString | null;
+  moderatorNote?: string | null;
 }
 ```
 ### Return Type
@@ -9783,10 +9810,14 @@ export default function CreateGuestTicketRequestFromCallableComponent() {
     guestTicketTypeId: ..., 
     guestDisplayName: ..., 
     dietaryNote: ..., // optional
+    status: ..., 
+    reviewedById: ..., // optional
+    reviewedAt: ..., // optional
+    moderatorNote: ..., // optional
   };
   mutation.mutate(createGuestTicketRequestFromCallableVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
+  mutation.mutate({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

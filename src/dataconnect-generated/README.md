@@ -1860,6 +1860,29 @@ export interface GetBookingForGuestTicketCallableData {
           name: string;
         } & Section_Key;
       } & Event_Key;
+        supersedesBooking?: {
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+              reviewedBy?: {
+                id: string;
+              } & User_Key;
+                reviewedAt?: TimestampString | null;
+                moderatorNote?: string | null;
+          })[];
+        };
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+          })[];
   } & Booking_Key;
 }
 ```
@@ -11768,6 +11791,10 @@ export interface CreateGuestTicketRequestFromCallableVariables {
   guestTicketTypeId: UUIDString;
   guestDisplayName: string;
   dietaryNote?: string | null;
+  status: GuestTicketRequestStatus;
+  reviewedById?: string | null;
+  reviewedAt?: TimestampString | null;
+  moderatorNote?: string | null;
 }
 ```
 ### Return Type
@@ -11792,13 +11819,17 @@ const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCall
   guestTicketTypeId: ..., 
   guestDisplayName: ..., 
   dietaryNote: ..., // optional
+  status: ..., 
+  reviewedById: ..., // optional
+  reviewedAt: ..., // optional
+  moderatorNote: ..., // optional
 };
 
 // Call the `createGuestTicketRequestFromCallable()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createGuestTicketRequestFromCallable(createGuestTicketRequestFromCallableVars);
 // Variables can be defined inline as well.
-const { data } = await createGuestTicketRequestFromCallable({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
+const { data } = await createGuestTicketRequestFromCallable({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -11826,12 +11857,16 @@ const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCall
   guestTicketTypeId: ..., 
   guestDisplayName: ..., 
   dietaryNote: ..., // optional
+  status: ..., 
+  reviewedById: ..., // optional
+  reviewedAt: ..., // optional
+  moderatorNote: ..., // optional
 };
 
 // Call the `createGuestTicketRequestFromCallableRef()` function to get a reference to the mutation.
 const ref = createGuestTicketRequestFromCallableRef(createGuestTicketRequestFromCallableVars);
 // Variables can be defined inline as well.
-const ref = createGuestTicketRequestFromCallableRef({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
+const ref = createGuestTicketRequestFromCallableRef({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

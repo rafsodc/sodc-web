@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   CircularProgress,
   FormControl,
   FormControlLabel,
@@ -14,6 +15,11 @@ import {
   Step,
   StepLabel,
   Stepper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -29,7 +35,7 @@ import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants/routes";
 import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
-import { BookingStatus, TicketAudience } from "@dataconnect/generated";
+import { BookingStatus, GuestTicketRequestStatus, TicketAudience } from "@dataconnect/generated";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
@@ -48,8 +54,11 @@ import {
 import {
   EXPIRED_DRAFT_HOLD_MESSAGE,
   bookingNeedsPayment,
-  buildBookingTicketDisplayRows,
-  getPayableBookingTicketRows,
+  bookingTicketPaymentChipColor,
+  buildBookingTicketRowsWithPaymentStatus,
+  guestTicketRequestsForBookingEdit,
+  guestTicketRequestCount,
+  hasPendingGuestTicketsAwaitingApproval,
   hasExpiredDraftHold,
   isBookingPaymentComplete,
   summarizeEventBookingPayment,
@@ -59,9 +68,8 @@ import EventBookingStatusSummary from "./EventBookingStatusSummary";
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
 type SectionDetail = NonNullable<GetSectionByIdData["section"]>;
 
-const FULL_STEPS = [
+const BOOKING_STEPS = [
   "Your ticket",
-  "Number of guests",
   "Guest details",
   "Review",
   "Payment",
@@ -75,6 +83,10 @@ type WizardMode = "full" | "additionalGuests";
 type GuestDetailFields = {
   guestDisplayName: string;
   dietaryNote: string;
+};
+
+type ExtraGuestDetailRow = GuestDetailFields & {
+  guestRequestStatus?: GuestTicketRequestStatus | string | null;
 };
 
 const EMPTY_GUEST_DETAIL: GuestDetailFields = { guestDisplayName: "", dietaryNote: "" };
@@ -138,7 +150,7 @@ export default function EventBookingWizard({
   const [guestDisplayName, setGuestDisplayName] = useState("");
   const [guestDietaryNote, setGuestDietaryNote] = useState("");
   const [extraGuestTicketTypeId, setExtraGuestTicketTypeId] = useState<string | null>(null);
-  const [extraGuestDetails, setExtraGuestDetails] = useState<GuestDetailFields[]>([]);
+  const [extraGuestDetails, setExtraGuestDetails] = useState<ExtraGuestDetailRow[]>([]);
   const [bookerDietaryNote, setBookerDietaryNote] = useState("");
   const [sitNextToUserIds, setSitNextToUserIds] = useState<string[]>([]);
   const [accommodationRequested, setAccommodationRequested] = useState(false);
@@ -156,7 +168,6 @@ export default function EventBookingWizard({
   const includeGuest = wizardMode === "additionalGuests" ? false : totalGuestCount >= 1;
   const extraGuestRequestCount =
     wizardMode === "additionalGuests" ? requestedExtraGuestCount : Math.max(0, totalGuestCount - 1);
-  const steps = wizardMode === "additionalGuests" ? ADDITIONAL_GUEST_STEPS : FULL_STEPS;
 
   useEffect(() => {
     setExtraGuestDetails((prev) => {
@@ -241,6 +252,9 @@ export default function EventBookingWizard({
       }, null);
   }, [myBookingsData]);
 
+  const editingExistingBooking = isEditingBooking && Boolean(existingTerminalBooking);
+  const steps = wizardMode === "additionalGuests" ? ADDITIONAL_GUEST_STEPS : BOOKING_STEPS;
+
   useEffect(() => {
     onHasExistingBookingChange?.(Boolean(existingTerminalBooking));
   }, [existingTerminalBooking, onHasExistingBookingChange]);
@@ -300,9 +314,10 @@ export default function EventBookingWizard({
     setIsEditingBooking(false);
     const memberLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.MEMBER);
     const guestLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.GUEST);
+    const editableGuestRequests = guestTicketRequestsForBookingEdit(booking.guestTicketRequests);
     setMemberTicketTypeId(memberLine?.ticketType?.id ?? null);
-    const guestLines = (booking.guestTicketRequests ?? []).reduce(
-      (sum, request) => sum + request.requestedGuestCount,
+    const guestLines = editableGuestRequests.reduce(
+      (sum, request) => sum + guestTicketRequestCount(request),
       guestLine ? 1 : 0
     );
     setTotalGuestCount(guestLines);
@@ -312,19 +327,20 @@ export default function EventBookingWizard({
     setGuestDietaryNote(guestLine?.dietaryNote ?? "");
     const includedGuestCount = guestLine ? 1 : 0;
     const extraCount = Math.max(0, guestLines - includedGuestCount);
-    const flattenedExtraGuests: GuestDetailFields[] = [];
-    for (const request of booking.guestTicketRequests ?? []) {
-      for (let i = 0; i < request.requestedGuestCount; i++) {
+    const flattenedExtraGuests: ExtraGuestDetailRow[] = [];
+    for (const request of editableGuestRequests) {
+      for (let i = 0; i < guestTicketRequestCount(request); i++) {
         flattenedExtraGuests.push({
           guestDisplayName: request.guestDisplayName ?? "",
           dietaryNote: request.dietaryNote ?? "",
+          guestRequestStatus: request.status,
         });
       }
     }
     setExtraGuestDetails(
       Array.from({ length: extraCount }, (_, index) => flattenedExtraGuests[index] ?? { ...EMPTY_GUEST_DETAIL })
     );
-    const firstGuestRequest = booking.guestTicketRequests?.[0];
+    const firstGuestRequest = editableGuestRequests[0];
     if (firstGuestRequest?.guestTicketType?.id) {
       setExtraGuestTicketTypeId(firstGuestRequest.guestTicketType.id);
     }
@@ -415,17 +431,26 @@ export default function EventBookingWizard({
 
   const paymentTicketRows = useMemo(() => {
     if (!existingTerminalBooking) return [];
-    return getPayableBookingTicketRows(buildBookingTicketDisplayRows(existingTerminalBooking));
+    return buildBookingTicketRowsWithPaymentStatus({
+      booking: existingTerminalBooking,
+      eventId: event.id,
+      ticketOrders: ticketOrdersData?.user?.ticketOrders ?? [],
+    });
+  }, [existingTerminalBooking, event.id, ticketOrdersData]);
+
+  const pendingGuestTicketsAwaitingApproval = useMemo(() => {
+    if (!existingTerminalBooking) return false;
+    return hasPendingGuestTicketsAwaitingApproval(existingTerminalBooking);
   }, [existingTerminalBooking]);
 
   const canProceedToConfirmation =
     paymentSummaryForBooking != null && isBookingPaymentComplete(paymentSummaryForBooking);
 
   useEffect(() => {
-    if (wizardMode !== "full" || activeStep !== 5 || canProceedToConfirmation) {
+    if (wizardMode !== "full" || activeStep !== 4 || canProceedToConfirmation) {
       return;
     }
-    setActiveStep(4);
+    setActiveStep(3);
   }, [wizardMode, activeStep, canProceedToConfirmation]);
 
   useEffect(() => {
@@ -527,25 +552,21 @@ export default function EventBookingWizard({
       return;
     }
     if (activeStep === 1) {
-      if (!validateGuestCountStep()) return;
+      if (!editingExistingBooking && !validateGuestCountStep()) return;
+      if (!validateGuestDetailsStep()) return;
       setActiveStep(2);
       return;
     }
     if (activeStep === 2) {
-      if (!validateGuestDetailsStep()) return;
       setActiveStep(3);
       return;
     }
     if (activeStep === 3) {
-      setActiveStep(4);
-      return;
-    }
-    if (activeStep === 4) {
       if (!canProceedToConfirmation) {
         setSubmitError("Pay for all tickets before continuing to confirmation.");
         return;
       }
-      setActiveStep(5);
+      setActiveStep(4);
     }
   };
 
@@ -650,7 +671,7 @@ export default function EventBookingWizard({
       await refetchMyBookings();
       setIsEditingBooking(false);
       setPostSubmitFlow(true);
-      setActiveStep(4);
+      setActiveStep(3);
       onBookingComplete?.();
     } catch (err: unknown) {
       const code = extractCallableErrorCode(err);
@@ -736,7 +757,6 @@ export default function EventBookingWizard({
     paymentResumeFlow ||
     wizardMode === "additionalGuests";
 
-  const editingExistingBooking = isEditingBooking && Boolean(existingTerminalBooking);
   const pendingAdditionalGuestRequest = (existingTerminalBooking?.guestTicketRequests ?? []).some(
     (request) => request.status === "PENDING"
   );
@@ -974,50 +994,55 @@ export default function EventBookingWizard({
               </FormControl>
             ) : null}
 
-            {wizardMode === "full" && activeStep === 1 ? (
+            {(wizardMode === "full" && activeStep === 1) || (wizardMode === "additionalGuests" && activeStep === 1) ? (
               <Box>
-                {!guestTicketTypes.length ? (
-                  <Typography variant="body2" color="text.secondary">
-                    No guest ticket types are available. Continue with just your ticket.
-                  </Typography>
-                ) : (
-                  <>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {formatEventGuestPolicy(event.maxGuestsWithoutModeratorApproval)}
-                    </Typography>
-                    <TextField
-                      label="How many guest tickets in total?"
-                      type="number"
-                      size="small"
-                      inputProps={{ min: 0, step: 1 }}
-                      value={totalGuestCountInput}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        if (!/^\d*$/.test(raw)) {
-                          return;
-                        }
-                        setTotalGuestCountInput(raw);
-                        const parsed = parseOptionalNonNegativeInt(raw);
-                        if (parsed !== null) {
-                          setTotalGuestCount(parsed);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (totalGuestCountInput === "") {
-                          setTotalGuestCountInput("0");
-                          setTotalGuestCount(0);
-                        }
-                      }}
-                      helperText="One guest can be included in your booking. Additional guests are submitted for organiser review."
-                      sx={{ minWidth: 280 }}
-                    />
-                  </>
-                )}
-              </Box>
-            ) : null}
-
-            {(wizardMode === "full" && activeStep === 2) || (wizardMode === "additionalGuests" && activeStep === 1) ? (
-              <Box>
+                {wizardMode === "full" && !editingExistingBooking ? (
+                  <Box sx={{ mb: 2 }}>
+                    {!guestTicketTypes.length ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No guest ticket types are available. Continue with just your ticket.
+                      </Typography>
+                    ) : (
+                      <>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {formatEventGuestPolicy(event.maxGuestsWithoutModeratorApproval)}
+                        </Typography>
+                        <TextField
+                          label="How many guest tickets in total?"
+                          type="number"
+                          size="small"
+                          inputProps={{ min: 0, step: 1 }}
+                          value={totalGuestCountInput}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (!(/^\d*$/).test(raw)) {
+                              return;
+                            }
+                            setTotalGuestCountInput(raw);
+                            const parsed = parseOptionalNonNegativeInt(raw);
+                            if (parsed !== null) {
+                              setTotalGuestCount(parsed);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (totalGuestCountInput === "") {
+                              setTotalGuestCountInput("0");
+                              setTotalGuestCount(0);
+                            }
+                          }}
+                          helperText="One guest can be included in your booking. Additional guests are submitted for organiser review."
+                          sx={{ minWidth: 280 }}
+                        />
+                      </>
+                    )}
+                  </Box>
+                ) : null}
+                {editingExistingBooking ? (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Your guest ticket count cannot be changed here. After saving, use{" "}
+                    <strong>Request additional guests</strong> on your booking summary to add more.
+                  </Alert>
+                ) : null}
                 {wizardMode === "full" && includeGuest ? (
                   <Box sx={{ mb: 2, pl: 1, borderLeft: 2, borderColor: "divider" }}>
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -1087,6 +1112,9 @@ export default function EventBookingWizard({
                               Guest {index + 1}
                             </Typography>
                           ) : null}
+                          {guest.guestRequestStatus === GuestTicketRequestStatus.PENDING ? (
+                            <Chip label="Pending confirmation" color="warning" size="small" sx={{ mb: 1 }} />
+                          ) : null}
                           <TextField
                             label="Guest name"
                             fullWidth
@@ -1129,7 +1157,7 @@ export default function EventBookingWizard({
               </Box>
             ) : null}
 
-            {(wizardMode === "full" && activeStep === 3) || (wizardMode === "additionalGuests" && activeStep === 2) ? (
+            {(wizardMode === "full" && activeStep === 2) || (wizardMode === "additionalGuests" && activeStep === 2) ? (
               <Box>
                 {guestCountNeedsModerationNotice(
                   wizardMode === "additionalGuests" ? extraGuestRequestCount : totalGuestCount,
@@ -1205,27 +1233,48 @@ export default function EventBookingWizard({
               </Box>
             ) : null}
 
-            {wizardMode === "full" && activeStep === 4 && existingTerminalBooking && paymentSummaryForBooking ? (
+            {wizardMode === "full" && activeStep === 3 && existingTerminalBooking && paymentSummaryForBooking ? (
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   Pay for all tickets in one checkout to secure your place. You can also finish later and return from
                   your booking summary.
                 </Typography>
-                {paymentTicketRows.map((row) => (
-                  <Box
-                    key={row.id}
-                    sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}
-                  >
-                    <Typography variant="body2">
-                      {row.ticketTitle}
-                      {row.guestName ? ` — ${row.guestName}` : ""}
-                      {row.source === "approved_guest_request" ? " (approved extra guest)" : ""}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatGbpMajorAmount(row.price)}
-                    </Typography>
-                  </Box>
-                ))}
+                {paymentTicketRows.length > 0 ? (
+                  <Table size="small" sx={{ mb: 2 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Ticket</TableCell>
+                        <TableCell>Guest</TableCell>
+                        <TableCell>Price</TableCell>
+                        <TableCell>Payment</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {paymentTicketRows.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell>
+                            {row.ticketTitle}
+                            {row.source === "approved_guest_request" ? (
+                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+                                (approved extra guest)
+                              </Typography>
+                            ) : null}
+                          </TableCell>
+                          <TableCell>{row.guestName ?? "—"}</TableCell>
+                          <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={row.paymentStatusLabel}
+                              color={bookingTicketPaymentChipColor(row.paymentStatus)}
+                              variant={row.paymentStatus === "awaiting_approval" ? "outlined" : "filled"}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : null}
                 {!canProceedToConfirmation ? (
                   <Button
                     variant="contained"
@@ -1235,6 +1284,11 @@ export default function EventBookingWizard({
                   >
                     {payingAllTickets ? "Starting checkout…" : "Pay for all tickets"}
                   </Button>
+                ) : pendingGuestTicketsAwaitingApproval ? (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    All tickets due now are paid. When your additional guest request is approved, return here to pay for
+                    their ticket.
+                  </Alert>
                 ) : (
                   <Alert severity="success" sx={{ mt: 1 }}>
                     Payment complete. Continue to confirmation when you are ready.
@@ -1243,7 +1297,7 @@ export default function EventBookingWizard({
               </Box>
             ) : null}
 
-            {wizardMode === "full" && activeStep === 5 ? (
+            {wizardMode === "full" && activeStep === 4 ? (
               <Alert severity="success">
                 Your booking is confirmed. Guest-request updates will appear in your booking summary.
               </Alert>
@@ -1256,7 +1310,8 @@ export default function EventBookingWizard({
             </Button>
             <Box sx={{ display: "flex", gap: 1 }}>
               {activeStep < steps.length - 1 &&
-              !(wizardMode === "full" && activeStep === 4 && !canProceedToConfirmation) ? (
+              !(wizardMode === "full" && activeStep === 2) &&
+              !(wizardMode === "full" && activeStep === 3 && !canProceedToConfirmation) ? (
                 <Button
                   variant="contained"
                   onClick={handleNext}
@@ -1266,8 +1321,8 @@ export default function EventBookingWizard({
                   Next
                 </Button>
               ) : null}
-              {(wizardMode === "full" && activeStep === 3 && !paymentResumeFlow && !postSubmitFlow) ||
-              (wizardMode === "additionalGuests" && activeStep === 2) ? (
+              {((wizardMode === "full" && activeStep === 2 && !paymentResumeFlow && !postSubmitFlow) ||
+                (wizardMode === "additionalGuests" && activeStep === 2)) ? (
                 <Button
                   variant="contained"
                   onClick={() => void handleConfirm()}
@@ -1283,7 +1338,7 @@ export default function EventBookingWizard({
                         : "Confirm booking"}
                 </Button>
               ) : null}
-              {wizardMode === "full" && activeStep === 5 ? (
+              {wizardMode === "full" && activeStep === 4 ? (
                 <Button variant="contained" onClick={closeWizard} sx={{ backgroundColor: colors.callToAction }}>
                   Done
                 </Button>
@@ -1291,7 +1346,7 @@ export default function EventBookingWizard({
             </Box>
           </Box>
 
-          {activeStep > 0 && wizardMode === "full" && !postSubmitFlow ? (
+          {activeStep > 0 && wizardMode === "full" && !postSubmitFlow && !editingExistingBooking ? (
             <Button size="small" onClick={resetWizardState} disabled={submitting} sx={{ mt: 1 }}>
               Start over
             </Button>
@@ -1306,7 +1361,7 @@ export default function EventBookingWizard({
               Cancel
             </Button>
           ) : null}
-          {wizardMode === "full" && activeStep === 5 ? (
+          {wizardMode === "full" && activeStep === 4 ? (
             <Button component={RouterLink} to={ROUTES.MY_BOOKINGS} size="small" sx={{ mt: 1, ml: 1 }}>
               View in My Bookings
             </Button>

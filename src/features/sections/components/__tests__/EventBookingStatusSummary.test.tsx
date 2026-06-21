@@ -121,7 +121,7 @@ describe("EventBookingStatusSummary", () => {
 
     expect(screen.getByText("Guest standard")).toBeInTheDocument();
     expect(screen.getByText("Sam Extra")).toBeInTheDocument();
-    expect(screen.getByText(/awaiting approval/i)).toBeInTheDocument();
+    expect(screen.getByText(/pending confirmation/i)).toBeInTheDocument();
   });
 
   it("shows partial payment when an approved extra guest still needs paying", () => {

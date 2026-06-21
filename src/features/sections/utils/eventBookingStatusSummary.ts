@@ -9,7 +9,7 @@ import {
   getBookingStatusLabel,
   getTicketOrderStatusLabel,
 } from "../../../shared/utils/paymentStatusLabels";
-import { uuidsEqual, idsEqual } from "../../../shared/utils/uuid";
+import { idsEqual } from "../../../shared/utils/uuid";
 
 export interface EventBookingSummaryInput {
   status: BookingStatus | string;
@@ -18,6 +18,8 @@ export interface EventBookingSummaryInput {
   guestTicketRequests?: Array<{
     status: GuestTicketRequestStatus | string;
     requestedGuestCount?: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
     guestTicketType?: { id: string } | null;
   }> | null;
 }
@@ -223,7 +225,7 @@ export function buildBookingTicketDisplayRows(booking: {
 export function formatBookingTicketDisplayLabel(row: BookingTicketDisplayRow): string {
   const guestLabel = row.guestName ? `${row.ticketTitle} (${row.guestName})` : row.ticketTitle;
   if (row.source === "pending_guest_request") {
-    return `${guestLabel} — awaiting approval`;
+    return `${guestLabel} — pending confirmation`;
   }
   return guestLabel;
 }
@@ -262,7 +264,7 @@ export function buildBookingTicketRowsWithPaymentStatus(params: {
       return {
         ...row,
         paymentStatus: "awaiting_approval",
-        paymentStatusLabel: "Awaiting approval",
+        paymentStatusLabel: "Pending confirmation",
       };
     }
     if (takePaymentSlot(paidPool, row.ticketTypeId)) {
@@ -343,6 +345,18 @@ export function summarizeGuestTicketRequests(
     rejectedCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.REJECTED),
     hasPending: (requests ?? []).some((request) => request.status === GuestTicketRequestStatus.PENDING),
   };
+}
+
+export function guestTicketRequestsForBookingEdit(
+  requests: EventBookingSummaryInput["guestTicketRequests"]
+): NonNullable<EventBookingSummaryInput["guestTicketRequests"]> {
+  return (requests ?? []).filter((request) => request.status !== GuestTicketRequestStatus.REJECTED);
+}
+
+export function guestTicketRequestCount(request: {
+  requestedGuestCount?: number;
+}): number {
+  return Math.max(1, request.requestedGuestCount ?? 1);
 }
 
 export function summarizeEventBookingPayment(params: {
@@ -460,6 +474,14 @@ export function summarizeEventBookingPayment(params: {
     severity: "warning",
     unpaidTicketTypeId: firstUnpaidTicketTypeId,
   };
+}
+
+export function hasPendingGuestTicketsAwaitingApproval(
+  booking: EventBookingSummaryInput
+): boolean {
+  return (booking.guestTicketRequests ?? []).some(
+    (request) => request.status === GuestTicketRequestStatus.PENDING
+  );
 }
 
 export function getEventBookingNextSteps(params: {

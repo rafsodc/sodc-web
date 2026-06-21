@@ -284,6 +284,10 @@ export interface CreateGuestTicketRequestFromCallableVariables {
   guestTicketTypeId: UUIDString;
   guestDisplayName: string;
   dietaryNote?: string | null;
+  status: GuestTicketRequestStatus;
+  reviewedById?: string | null;
+  reviewedAt?: TimestampString | null;
+  moderatorNote?: string | null;
 }
 
 export interface CreateGuestTicketRequestVariables {
@@ -510,6 +514,29 @@ export interface GetBookingForGuestTicketCallableData {
           name: string;
         } & Section_Key;
       } & Event_Key;
+        supersedesBooking?: {
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+              reviewedBy?: {
+                id: string;
+              } & User_Key;
+                reviewedAt?: TimestampString | null;
+                moderatorNote?: string | null;
+          })[];
+        };
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+          })[];
   } & Booking_Key;
 }
 
