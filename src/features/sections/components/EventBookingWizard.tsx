@@ -475,8 +475,8 @@ export default function EventBookingWizard({
     isEditingBooking,
     postSubmitFlow,
     wizardMode,
-    existingTerminalBooking?.id,
-    paymentSummaryForBooking?.kind,
+    existingTerminalBooking,
+    paymentSummaryForBooking,
   ]);
 
   const validateGuestCountStep = (): boolean => {
