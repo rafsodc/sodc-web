@@ -533,11 +533,11 @@ describe("EventBookingWizard", () => {
           },
         ],
       },
-    };
+    } as any;
 
     const { rerender } = render(
       <MemoryRouter>
-        <EventBookingWizard {...(wizardProps as never)} />
+        <EventBookingWizard {...wizardProps} />
       </MemoryRouter>
     );
 
@@ -563,7 +563,7 @@ describe("EventBookingWizard", () => {
 
     rerender(
       <MemoryRouter>
-        <EventBookingWizard {...(wizardProps as never)} />
+        <EventBookingWizard {...wizardProps} />
       </MemoryRouter>
     );
 

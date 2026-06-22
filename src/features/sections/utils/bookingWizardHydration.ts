@@ -45,7 +45,13 @@ export function hydrateFormFromExistingBooking(booking: BookingRow): WizardFormS
   const guestLine = (booking.lines ?? []).find(
     (line) => line.ticketType?.audience === TicketAudience.GUEST
   );
-  const editableGuestRequests = guestTicketRequestsForBookingEdit(booking.guestTicketRequests);
+  const editableGuestRequests = guestTicketRequestsForBookingEdit(
+    (booking.guestTicketRequests ?? []).map((request) => ({
+      ...request,
+      requestedGuestCount: request.requestedGuestCount ?? undefined,
+      guestTicketType: request.guestTicketType?.id ? { id: request.guestTicketType.id } : null,
+    }))
+  );
 
   const guestLines =
     editableGuestRequests.reduce((sum, request) => sum + guestTicketRequestCount(request), 0) +

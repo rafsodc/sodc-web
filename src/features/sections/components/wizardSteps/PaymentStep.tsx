@@ -1,20 +1,13 @@
 import { Alert, Box, Button, Chip, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import { colors } from "../../../../config/colors";
 import { formatGbpMajorAmount } from "../../../../shared/utils/currencyDisplay";
-import { bookingTicketPaymentChipColor } from "../../utils/eventBookingStatusSummary";
-
-interface PaymentTicketRow {
-  id: string;
-  ticketTitle: string;
-  guestName?: string | null;
-  price: number;
-  paymentStatusLabel: string;
-  paymentStatus: string;
-  source: string;
-}
+import {
+  bookingTicketPaymentChipColor,
+  type BookingTicketDisplayRowWithPayment,
+} from "../../utils/eventBookingStatusSummary";
 
 interface PaymentStepProps {
-  paymentTicketRows: PaymentTicketRow[];
+  paymentTicketRows: BookingTicketDisplayRowWithPayment[];
   canProceedToConfirmation: boolean;
   pendingGuestTicketsAwaitingApproval: boolean;
   payingAllTickets: boolean;
@@ -57,7 +50,7 @@ export default function PaymentStep({
                   ) : null}
                 </TableCell>
                 <TableCell>{row.guestName ?? "—"}</TableCell>
-                <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
+                <TableCell>{formatGbpMajorAmount(row.price ?? 0)}</TableCell>
                 <TableCell>
                   <Chip
                     size="small"
