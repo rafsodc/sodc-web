@@ -5,7 +5,7 @@ import { dataConnect } from "../../../config/firebase";
 import { getCurrentUserRef } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 
-export function useUserData(firebaseUser: User | null) {
+export function useUserData(firebaseUser: User | null, accountEnabled?: boolean) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -116,16 +116,28 @@ export function useUserData(firebaseUser: User | null) {
   }, [firebaseUser]);
 
   useEffect(() => {
-    // Reset tracking when user changes
     if (!firebaseUser) {
       hasFetchedRef.current = null;
       authErrorRef.current = false;
-    } else if (hasFetchedRef.current !== firebaseUser.uid) {
-      // Only fetch if we haven't fetched for this user yet
-      authErrorRef.current = false;
-      fetchUserData();
+      return;
     }
-  }, [firebaseUser, fetchUserData]);
+
+    // GetCurrentUser requires enabled; wait until the account is active again.
+    if (accountEnabled === false) {
+      return;
+    }
+
+    const needsRefetch =
+      hasFetchedRef.current !== firebaseUser.uid || authErrorRef.current;
+
+    if (needsRefetch) {
+      const force = hasFetchedRef.current === firebaseUser.uid && authErrorRef.current;
+      if (force) {
+        authErrorRef.current = false;
+      }
+      fetchUserData(force);
+    }
+  }, [firebaseUser, accountEnabled, fetchUserData]);
 
   return { userData, loading, error, refetch: () => fetchUserData(true) };
 }

@@ -15,6 +15,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
+import { TicketOrderStatus } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
@@ -22,12 +23,13 @@ import {
   getBookingPaymentAdjustmentStatusLabel,
   getTicketOrderStatusLabel,
 } from "../../../shared/utils/paymentStatusLabels";
-import { getMyTicketOrderStripeArtifactsBatch } from "../../../shared/utils/firebaseFunctions";
-import { toCanonicalUuid } from "../../../shared/utils/uuid";
+import { getMyTicketOrderStripeArtifactsBatch, reconcileMyCheckoutSessionOrders } from "../../../shared/utils/firebaseFunctions";
+import { toCanonicalUuid, uuidsEqual } from "../../../shared/utils/uuid";
 import {
   formatPaymentAmount,
   getBookingAdjustmentSummary,
   getTicketOrderOutcomeMessage,
+  groupTicketOrdersForDisplay,
   ticketOrderStatusChipColor,
 } from "../utils/myPaymentsDisplay";
 
@@ -50,7 +52,9 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     Record<string, { receiptUrl: string | null }>
   >({});
   const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
+  const attemptedReconcileSessions = useRef<Set<string>>(new Set());
   const orders = useMemo(() => data?.user?.ticketOrders ?? [], [data?.user?.ticketOrders]);
+  const paymentGroups = useMemo(() => groupTicketOrdersForDisplay(orders), [orders]);
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
     (booking.adjustments ?? []).map((adjustment) => ({
       bookingId: booking.id,
@@ -61,11 +65,11 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   );
 
   useEffect(() => {
-    if (isLoading || orders.length === 0) {
+    if (isLoading || paymentGroups.length === 0) {
       return;
     }
-    const pendingOrderIds = orders
-      .map((order) => order.id)
+    const pendingOrderIds = paymentGroups
+      .map((group) => group.receiptOrderId)
       .filter((orderId) => !attemptedStripeArtifactOrderIds.current.has(artifactKey(orderId)));
     if (pendingOrderIds.length === 0) {
       return;
@@ -85,7 +89,38 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
       }
     };
     void load();
-  }, [isLoading, orders]);
+  }, [isLoading, paymentGroups]);
+
+  useEffect(() => {
+    if (isLoading || orders.length === 0) {
+      return;
+    }
+    const reconcileAnchor = orders.find(
+      (order) =>
+        order.status === TicketOrderStatus.PAID &&
+        (order.stripeCheckoutSessionId || order.stripePaymentIntentId) &&
+        orders.some(
+          (candidate) =>
+            candidate.id !== order.id &&
+            uuidsEqual(candidate.event?.id, order.event?.id) &&
+            candidate.status !== TicketOrderStatus.PAID
+        )
+    );
+    if (!reconcileAnchor) {
+      return;
+    }
+    const sessionKey =
+      reconcileAnchor.stripeCheckoutSessionId ?? reconcileAnchor.stripePaymentIntentId ?? reconcileAnchor.id;
+    if (attemptedReconcileSessions.current.has(sessionKey)) {
+      return;
+    }
+    attemptedReconcileSessions.current.add(sessionKey);
+    void reconcileMyCheckoutSessionOrders({ orderId: reconcileAnchor.id })
+      .then(() => refetch())
+      .catch(() => {
+        attemptedReconcileSessions.current.delete(sessionKey);
+      });
+  }, [isLoading, orders, refetch]);
 
   return (
     <Box className="page-container">
@@ -109,29 +144,30 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
         >
           {error instanceof Error ? error.message : "We could not load your payment history. Please try again."}
         </Alert>
-      ) : orders.length === 0 ? (
+      ) : paymentGroups.length === 0 ? (
         <Alert severity="info">
           You have not made any ticket payments yet. After you pay for an event, your receipts will appear here.
         </Alert>
       ) : (
         <Stack spacing={2}>
-          {orders.map((order) => {
-            const receiptUrl = stripeArtifactsByOrderId[artifactKey(order.id)]?.receiptUrl ?? null;
-            const eventWhen = order.event?.startDateTime
-              ? new Date(order.event.startDateTime).toLocaleString(undefined, {
+          {paymentGroups.map((group) => {
+            const receiptUrl = stripeArtifactsByOrderId[artifactKey(group.receiptOrderId)]?.receiptUrl ?? null;
+            const eventWhen = group.eventWhen
+              ? new Date(group.eventWhen).toLocaleString(undefined, {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })
               : null;
+            const outcomeMessage = getTicketOrderOutcomeMessage(group.orders[0]);
 
             return (
-              <Card key={order.id} variant="outlined">
+              <Card key={group.key} variant="outlined">
                 <CardContent>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2} sx={{ mb: 1 }}>
                     <Chip
                       size="small"
-                      label={getTicketOrderStatusLabel(order.status)}
-                      color={ticketOrderStatusChipColor(order.status)}
+                      label={getTicketOrderStatusLabel(group.status)}
+                      color={ticketOrderStatusChipColor(group.status)}
                     />
                     {receiptUrl ? (
                       <Button
@@ -145,7 +181,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                   </Stack>
 
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                    {order.event?.title ?? "Event ticket"}
+                    {group.eventTitle}
                   </Typography>
 
                   {eventWhen ? (
@@ -155,18 +191,17 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
                   ) : null}
 
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {order.ticketType?.title ?? "Ticket"}
-                    {order.quantity > 1 ? ` · ${order.quantity} tickets` : ""}
+                    {group.ticketSummary}
                     {" · "}
-                    {formatPaymentAmount(order.totalAmountMinor, order.currency)}
+                    {formatPaymentAmount(group.totalAmountMinor, group.currency)}
                   </Typography>
 
                   <Typography variant="body2" sx={{ mb: 1 }}>
-                    {getTicketOrderOutcomeMessage(order)}
+                    {outcomeMessage}
                   </Typography>
 
                   <Typography variant="caption" color="text.secondary">
-                    Last updated {new Date(order.updatedAt).toLocaleString()}
+                    Last updated {new Date(group.orders[0].updatedAt).toLocaleString()}
                   </Typography>
                 </CardContent>
               </Card>

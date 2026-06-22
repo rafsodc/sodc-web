@@ -400,6 +400,15 @@ export interface CreateTicketCheckoutSessionResponse {
   orderId: string;
 }
 
+export interface CreateEventBookingCheckoutSessionRequest {
+  eventId: string;
+}
+
+export interface CreateEventBookingCheckoutSessionResponse {
+  url: string;
+  orderIds: string[];
+}
+
 export interface GetMyTicketOrderStripeArtifactsResponse {
   receiptUrl: string | null;
 }
@@ -455,6 +464,19 @@ export async function createTicketCheckoutSession(
   return result.data;
 }
 
+export async function createEventBookingCheckoutSession(
+  payload: CreateEventBookingCheckoutSessionRequest
+): Promise<CreateEventBookingCheckoutSessionResponse> {
+  const callable = httpsCallable<
+    CreateEventBookingCheckoutSessionRequest,
+    CreateEventBookingCheckoutSessionResponse
+  >(functions, "createEventBookingCheckoutSession");
+  const result = await callable({
+    eventId: toCanonicalUuid(payload.eventId),
+  });
+  return result.data;
+}
+
 export async function getMyTicketOrderStripeArtifactsBatch(
   payload: GetMyTicketOrderStripeArtifactsBatchRequest
 ): Promise<GetMyTicketOrderStripeArtifactsBatchResponse> {
@@ -466,6 +488,28 @@ export async function getMyTicketOrderStripeArtifactsBatch(
     orderIds: payload.orderIds.map((orderId) => toCanonicalUuid(orderId)),
   });
   const data = result.data as { result?: GetMyTicketOrderStripeArtifactsBatchResponse } & GetMyTicketOrderStripeArtifactsBatchResponse;
+  return data.result ?? data;
+}
+
+export interface ReconcileMyCheckoutSessionOrdersRequest {
+  orderId: string;
+}
+
+export interface ReconcileMyCheckoutSessionOrdersResponse {
+  appliedCount: number;
+  reconciledOrderIds: string[];
+  orderIds: string[];
+}
+
+export async function reconcileMyCheckoutSessionOrders(
+  payload: ReconcileMyCheckoutSessionOrdersRequest
+): Promise<ReconcileMyCheckoutSessionOrdersResponse> {
+  const callable = httpsCallable<
+    ReconcileMyCheckoutSessionOrdersRequest,
+    ReconcileMyCheckoutSessionOrdersResponse
+  >(functions, "reconcileMyCheckoutSessionOrders");
+  const result = await callable({ orderId: toCanonicalUuid(payload.orderId) });
+  const data = result.data as { result?: ReconcileMyCheckoutSessionOrdersResponse } & ReconcileMyCheckoutSessionOrdersResponse;
   return data.result ?? data;
 }
 

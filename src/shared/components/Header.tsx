@@ -44,7 +44,7 @@ export default function Header({
 }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled } = useEnabledClaim(user);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);

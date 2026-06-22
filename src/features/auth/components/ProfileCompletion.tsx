@@ -201,7 +201,7 @@ export default function ProfileCompletion({
 
           <Alert severity="info">
             An administrator will review your service background and assign your membership status during
-            approval. You do not need to choose a status here.
+            approval.
           </Alert>
 
           <Divider sx={{ my: 2 }} />

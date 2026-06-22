@@ -18,6 +18,10 @@ export function getCheckoutQueryState(search: string): CheckoutQueryState | null
   };
 }
 
+export function isCheckoutReturnSearch(search: string): boolean {
+  return getCheckoutQueryState(search) !== null;
+}
+
 export function dismissCheckoutQueryParams(location: Location, navigate: NavigateFunction) {
   const params = new URLSearchParams(location.search);
   params.delete("checkout");

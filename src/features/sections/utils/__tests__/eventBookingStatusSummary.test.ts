@@ -8,8 +8,15 @@ import {
 import {
   getEventBookingNextSteps,
   hasExpiredDraftHold,
+  buildBookingTicketDisplayRows,
+  buildBookingTicketRowsWithPaymentStatus,
+  formatBookingTicketDisplayLabel,
+  getPayableBookingTicketRows,
+  guestTicketRequestsForBookingEdit,
+  hasPendingGuestTicketsAwaitingApproval,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
+  type EventBookingSummaryInput,
 } from "../eventBookingStatusSummary";
 
 const booking = {
@@ -24,22 +31,173 @@ const booking = {
     },
   ],
   guestTicketRequests: [],
-} as never;
+};
 
 describe("summarizeGuestTicketRequests", () => {
-  it("counts pending, approved, and rejected requests", () => {
+  it("counts pending, approved, and rejected guest tickets", () => {
     const summary = summarizeGuestTicketRequests([
-      { status: GuestTicketRequestStatus.PENDING },
-      { status: GuestTicketRequestStatus.APPROVED },
-      { status: GuestTicketRequestStatus.REJECTED },
+      { status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 2 },
+      { status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 },
+      { status: GuestTicketRequestStatus.REJECTED, requestedGuestCount: 1 },
     ] as never);
 
     expect(summary).toEqual({
-      pendingCount: 1,
+      pendingCount: 2,
       approvedCount: 1,
       rejectedCount: 1,
       hasPending: true,
     });
+  });
+});
+
+describe("guestTicketRequestsForBookingEdit", () => {
+  it("excludes declined guest ticket requests", () => {
+    expect(
+      guestTicketRequestsForBookingEdit([
+        { status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 },
+        { status: GuestTicketRequestStatus.REJECTED, requestedGuestCount: 1 },
+        { status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 1 },
+      ])
+    ).toHaveLength(2);
+  });
+});
+
+describe("buildBookingTicketDisplayRows", () => {
+  it("includes approved guest ticket requests alongside booking lines", () => {
+    const rows = buildBookingTicketDisplayRows({
+      lines: [
+        {
+          id: "line-1",
+          guestDisplayName: null,
+          ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+        },
+      ],
+      guestTicketRequests: [
+        {
+          id: "gtr-1",
+          status: GuestTicketRequestStatus.APPROVED,
+          requestedGuestCount: 1,
+          guestDisplayName: "Alex Guest",
+          guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+        },
+      ],
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toMatchObject({
+      ticketTitle: "Guest standard",
+      guestName: "Alex Guest",
+      source: "approved_guest_request",
+    });
+  });
+
+  it("includes pending guest ticket requests awaiting approval", () => {
+    const rows = buildBookingTicketDisplayRows({
+      lines: [
+        {
+          id: "line-1",
+          guestDisplayName: null,
+          ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+        },
+      ],
+      guestTicketRequests: [
+        {
+          id: "gtr-1",
+          status: GuestTicketRequestStatus.PENDING,
+          requestedGuestCount: 1,
+          guestDisplayName: "Sam Extra",
+          guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+        },
+      ],
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toMatchObject({
+      ticketTitle: "Guest standard",
+      guestName: "Sam Extra",
+      source: "pending_guest_request",
+    });
+    expect(formatBookingTicketDisplayLabel(rows[1])).toBe("Guest standard (Sam Extra) — pending confirmation");
+    expect(getPayableBookingTicketRows(rows)).toHaveLength(1);
+  });
+});
+
+describe("buildBookingTicketRowsWithPaymentStatus", () => {
+  it("assigns paid and unpaid status per ticket row", () => {
+    const rows = buildBookingTicketRowsWithPaymentStatus({
+      booking: {
+        lines: [
+          {
+            id: "line-1",
+            guestDisplayName: null,
+            ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+          },
+          {
+            id: "line-2",
+            guestDisplayName: "Jamie Guest",
+            ticketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+          },
+        ],
+        guestTicketRequests: [
+          {
+            id: "gtr-1",
+            status: GuestTicketRequestStatus.APPROVED,
+            requestedGuestCount: 1,
+            guestDisplayName: "Alex Extra",
+            guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+          },
+        ],
+      },
+      eventId: "event-1",
+      ticketOrders: [
+        {
+          status: TicketOrderStatus.PAID,
+          quantity: 1,
+          event: { id: "event-1" },
+          ticketType: { id: "ticket-member" },
+        },
+        {
+          status: TicketOrderStatus.PAID,
+          quantity: 1,
+          event: { id: "event-1" },
+          ticketType: { id: "ticket-guest" },
+        },
+      ],
+    });
+
+    expect(rows.map((row) => ({ guest: row.guestName, paymentStatus: row.paymentStatus }))).toEqual([
+      { guest: null, paymentStatus: "paid" },
+      { guest: "Jamie Guest", paymentStatus: "paid" },
+      { guest: "Alex Extra", paymentStatus: "unpaid" },
+    ]);
+  });
+
+  it("marks pending guest requests as awaiting approval", () => {
+    const rows = buildBookingTicketRowsWithPaymentStatus({
+      booking: {
+        lines: [
+          {
+            id: "line-1",
+            guestDisplayName: null,
+            ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
+          },
+        ],
+        guestTicketRequests: [
+          {
+            id: "gtr-1",
+            status: GuestTicketRequestStatus.PENDING,
+            requestedGuestCount: 1,
+            guestDisplayName: "Sam Extra",
+            guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
+          },
+        ],
+      },
+      eventId: "event-1",
+      ticketOrders: [],
+    });
+
+    expect(rows[1]?.paymentStatus).toBe("awaiting_approval");
+    expect(rows[1]?.paymentStatusLabel).toBe("Pending confirmation");
   });
 });
 
@@ -89,6 +247,44 @@ describe("summarizeEventBookingPayment", () => {
     });
 
     expect(summary.kind).toBe("paid");
+  });
+
+  it("returns partially paid when an approved extra guest shares a ticket type that is already paid once", () => {
+    const bookingWithPaidGuestAndUnpaidExtra: EventBookingSummaryInput = {
+      status: BookingStatus.SUBMITTED,
+      revisionNumber: 2,
+      lines: [{ ticketType: { id: "ticket-member" } }, { ticketType: { id: "ticket-guest" } }],
+      guestTicketRequests: [
+        {
+          status: GuestTicketRequestStatus.APPROVED,
+          requestedGuestCount: 1,
+          guestTicketType: { id: "ticket-guest" },
+        },
+      ],
+    };
+    const summary = summarizeEventBookingPayment({
+      booking: bookingWithPaidGuestAndUnpaidExtra,
+      eventId: "event-1",
+      ticketOrders: [
+        {
+          status: TicketOrderStatus.PAID,
+          quantity: 1,
+          event: { id: "event-1" },
+          ticketType: { id: "ticket-member" },
+        },
+        {
+          status: TicketOrderStatus.PAID,
+          quantity: 1,
+          event: { id: "event-1" },
+          ticketType: { id: "ticket-guest" },
+        },
+      ],
+      adjustments: [],
+    });
+
+    expect(summary.kind).toBe("partial");
+    expect(summary.label).toBe("Partially paid");
+    expect(summary.unpaidTicketTypeId).toBe("ticket-guest");
   });
 
   it("prioritizes pending booking payment adjustments", () => {
@@ -162,5 +358,27 @@ describe("getEventBookingNextSteps", () => {
     });
 
     expect(message).toMatch(/payment hold expired/i);
+  });
+});
+
+describe("hasPendingGuestTicketsAwaitingApproval", () => {
+  it("returns true when a guest ticket request is pending", () => {
+    expect(
+      hasPendingGuestTicketsAwaitingApproval({
+        status: BookingStatus.SUBMITTED,
+        revisionNumber: 1,
+        guestTicketRequests: [{ status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 1 }],
+      })
+    ).toBe(true);
+  });
+
+  it("returns false when no guest requests are pending", () => {
+    expect(
+      hasPendingGuestTicketsAwaitingApproval({
+        status: BookingStatus.SUBMITTED,
+        revisionNumber: 1,
+        guestTicketRequests: [{ status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 }],
+      })
+    ).toBe(false);
   });
 });

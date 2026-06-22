@@ -28,6 +28,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetAllUserGroupsWithStatuses*](#getallusergroupswithstatuses)
   - [*GetSectionMembers*](#getsectionmembers)
   - [*GetMyBookingsForEvent*](#getmybookingsforevent)
+  - [*GetMyBookings*](#getmybookings)
   - [*GetMyTicketOrderById*](#getmyticketorderbyid)
   - [*GetMyTicketOrders*](#getmyticketorders)
   - [*GetMyBookingPaymentAdjustments*](#getmybookingpaymentadjustments)
@@ -43,6 +44,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
+  - [*GetTicketOrdersForBookerAndEvent*](#getticketordersforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
@@ -50,6 +52,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
+  - [*ListStaleDraftBookingsForScheduler*](#liststaledraftbookingsforscheduler)
+  - [*ListStalePendingTicketOrdersForScheduler*](#liststalependingticketordersforscheduler)
   - [*GetGuestTicketRequestForNotification*](#getguestticketrequestfornotification)
 - [**Mutations**](#mutations)
   - [*CreateSection*](#createsection)
@@ -2171,6 +2175,7 @@ export interface GetMyBookingsForEventData {
       id: UUIDString;
       status: BookingStatus;
       revisionNumber: number;
+      supersededAt?: TimestampString | null;
       clientSubmissionKey?: string | null;
       bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
@@ -2263,6 +2268,135 @@ const ref = getMyBookingsForEventRef({ eventId: ..., });
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getMyBookingsForEventRef(dataConnect, getMyBookingsForEventVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+## GetMyBookings
+You can execute the `GetMyBookings` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getMyBookings(): QueryPromise<GetMyBookingsData, undefined>;
+
+interface GetMyBookingsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetMyBookingsData, undefined>;
+}
+export const getMyBookingsRef: GetMyBookingsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getMyBookings(dc: DataConnect): QueryPromise<GetMyBookingsData, undefined>;
+
+interface GetMyBookingsRef {
+  ...
+  (dc: DataConnect): QueryRef<GetMyBookingsData, undefined>;
+}
+export const getMyBookingsRef: GetMyBookingsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getMyBookingsRef:
+```typescript
+const name = getMyBookingsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetMyBookings` query has no variables.
+### Return Type
+Recall that executing the `GetMyBookings` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetMyBookingsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetMyBookingsData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      revisionNumber: number;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+        lines: ({
+          id: UUIDString;
+          ticketType: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            price: number;
+          } & TicketType_Key;
+        } & BookingLine_Key)[];
+          guestTicketRequests: ({
+            id: UUIDString;
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+              title: string;
+              price: number;
+            } & TicketType_Key;
+          } & GuestTicketRequest_Key)[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+```
+### Using `GetMyBookings`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getMyBookings } from '@dataconnect/generated';
+
+
+// Call the `getMyBookings()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getMyBookings();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getMyBookings(dataConnect);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getMyBookings().then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetMyBookings`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getMyBookingsRef } from '@dataconnect/generated';
+
+
+// Call the `getMyBookingsRef()` function to get a reference to the query.
+const ref = getMyBookingsRef();
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getMyBookingsRef(dataConnect);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -2453,6 +2587,7 @@ export interface GetMyTicketOrdersData {
       refundedAt?: TimestampString | null;
       disputeStatus?: string | null;
       disputeReason?: string | null;
+      stripeCheckoutSessionId?: string | null;
       stripePaymentIntentId?: string | null;
       createdAt: TimestampString;
       updatedAt: TimestampString;
@@ -2842,6 +2977,8 @@ export interface ListGuestTicketRequestsForAdminData {
       id: UUIDString;
       status: BookingStatus;
       revisionNumber: number;
+      revisionGroupId: UUIDString;
+      supersededAt?: TimestampString | null;
       supersedesBooking?: {
         id: UUIDString;
         revisionNumber: number;
@@ -4151,12 +4288,18 @@ export interface GetBookingsForBookerAndEventData {
               id: UUIDString;
               audience: TicketAudience;
               price: number;
+              title: string;
             } & TicketType_Key;
         } & BookingLine_Key)[];
           guestTicketRequests: ({
             id: UUIDString;
             status: GuestTicketRequestStatus;
             requestedGuestCount: number;
+            guestTicketType?: {
+              id: UUIDString;
+              title: string;
+              price: number;
+            } & TicketType_Key;
           } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
@@ -4213,6 +4356,132 @@ const ref = getBookingsForBookerAndEventRef({ bookerId: ..., eventId: ..., });
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getBookingsForBookerAndEventRef(dataConnect, getBookingsForBookerAndEventVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+## GetTicketOrdersForBookerAndEvent
+You can execute the `GetTicketOrdersForBookerAndEvent` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getTicketOrdersForBookerAndEvent(vars: GetTicketOrdersForBookerAndEventVariables): QueryPromise<GetTicketOrdersForBookerAndEventData, GetTicketOrdersForBookerAndEventVariables>;
+
+interface GetTicketOrdersForBookerAndEventRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketOrdersForBookerAndEventVariables): QueryRef<GetTicketOrdersForBookerAndEventData, GetTicketOrdersForBookerAndEventVariables>;
+}
+export const getTicketOrdersForBookerAndEventRef: GetTicketOrdersForBookerAndEventRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getTicketOrdersForBookerAndEvent(dc: DataConnect, vars: GetTicketOrdersForBookerAndEventVariables): QueryPromise<GetTicketOrdersForBookerAndEventData, GetTicketOrdersForBookerAndEventVariables>;
+
+interface GetTicketOrdersForBookerAndEventRef {
+  ...
+  (dc: DataConnect, vars: GetTicketOrdersForBookerAndEventVariables): QueryRef<GetTicketOrdersForBookerAndEventData, GetTicketOrdersForBookerAndEventVariables>;
+}
+export const getTicketOrdersForBookerAndEventRef: GetTicketOrdersForBookerAndEventRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getTicketOrdersForBookerAndEventRef:
+```typescript
+const name = getTicketOrdersForBookerAndEventRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetTicketOrdersForBookerAndEvent` query requires an argument of type `GetTicketOrdersForBookerAndEventVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetTicketOrdersForBookerAndEventVariables {
+  userId: string;
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetTicketOrdersForBookerAndEvent` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetTicketOrdersForBookerAndEventData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetTicketOrdersForBookerAndEventData {
+  user?: {
+    id: string;
+    ticketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+      quantity: number;
+      createdAt: TimestampString;
+      ticketType: {
+        id: UUIDString;
+      } & TicketType_Key;
+        event: {
+          id: UUIDString;
+        } & Event_Key;
+    } & TicketOrder_Key)[];
+  } & User_Key;
+}
+```
+### Using `GetTicketOrdersForBookerAndEvent`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrdersForBookerAndEvent, GetTicketOrdersForBookerAndEventVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrdersForBookerAndEvent` query requires an argument of type `GetTicketOrdersForBookerAndEventVariables`:
+const getTicketOrdersForBookerAndEventVars: GetTicketOrdersForBookerAndEventVariables = {
+  userId: ..., 
+  eventId: ..., 
+};
+
+// Call the `getTicketOrdersForBookerAndEvent()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getTicketOrdersForBookerAndEvent(getTicketOrdersForBookerAndEventVars);
+// Variables can be defined inline as well.
+const { data } = await getTicketOrdersForBookerAndEvent({ userId: ..., eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getTicketOrdersForBookerAndEvent(dataConnect, getTicketOrdersForBookerAndEventVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getTicketOrdersForBookerAndEvent(getTicketOrdersForBookerAndEventVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetTicketOrdersForBookerAndEvent`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getTicketOrdersForBookerAndEventRef, GetTicketOrdersForBookerAndEventVariables } from '@dataconnect/generated';
+
+// The `GetTicketOrdersForBookerAndEvent` query requires an argument of type `GetTicketOrdersForBookerAndEventVariables`:
+const getTicketOrdersForBookerAndEventVars: GetTicketOrdersForBookerAndEventVariables = {
+  userId: ..., 
+  eventId: ..., 
+};
+
+// Call the `getTicketOrdersForBookerAndEventRef()` function to get a reference to the query.
+const ref = getTicketOrdersForBookerAndEventRef(getTicketOrdersForBookerAndEventVars);
+// Variables can be defined inline as well.
+const ref = getTicketOrdersForBookerAndEventRef({ userId: ..., eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getTicketOrdersForBookerAndEventRef(dataConnect, getTicketOrdersForBookerAndEventVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -4907,6 +5176,29 @@ export interface GetBookingForGuestTicketCallableData {
           name: string;
         } & Section_Key;
       } & Event_Key;
+        supersedesBooking?: {
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+              reviewedBy?: {
+                id: string;
+              } & User_Key;
+                reviewedAt?: TimestampString | null;
+                moderatorNote?: string | null;
+          })[];
+        };
+          guestTicketRequests: ({
+            status: GuestTicketRequestStatus;
+            requestedGuestCount: number;
+            guestDisplayName?: string | null;
+            guestTicketType?: {
+              id: UUIDString;
+            } & TicketType_Key;
+          })[];
   } & Booking_Key;
 }
 ```
@@ -5121,6 +5413,238 @@ console.log(data.booking);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.booking);
+});
+```
+
+## ListStaleDraftBookingsForScheduler
+You can execute the `ListStaleDraftBookingsForScheduler` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStaleDraftBookingsForScheduler(vars: ListStaleDraftBookingsForSchedulerVariables): QueryPromise<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+
+interface ListStaleDraftBookingsForSchedulerRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStaleDraftBookingsForSchedulerVariables): QueryRef<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+}
+export const listStaleDraftBookingsForSchedulerRef: ListStaleDraftBookingsForSchedulerRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStaleDraftBookingsForScheduler(dc: DataConnect, vars: ListStaleDraftBookingsForSchedulerVariables): QueryPromise<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+
+interface ListStaleDraftBookingsForSchedulerRef {
+  ...
+  (dc: DataConnect, vars: ListStaleDraftBookingsForSchedulerVariables): QueryRef<ListStaleDraftBookingsForSchedulerData, ListStaleDraftBookingsForSchedulerVariables>;
+}
+export const listStaleDraftBookingsForSchedulerRef: ListStaleDraftBookingsForSchedulerRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStaleDraftBookingsForSchedulerRef:
+```typescript
+const name = listStaleDraftBookingsForSchedulerRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStaleDraftBookingsForSchedulerVariables {
+  updatedBefore: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStaleDraftBookingsForScheduler` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStaleDraftBookingsForSchedulerData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStaleDraftBookingsForSchedulerData {
+  bookings: ({
+    id: UUIDString;
+    status: BookingStatus;
+    updatedAt: TimestampString;
+  } & Booking_Key)[];
+}
+```
+### Using `ListStaleDraftBookingsForScheduler`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStaleDraftBookingsForScheduler, ListStaleDraftBookingsForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
+const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
+  updatedBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStaleDraftBookingsForScheduler()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStaleDraftBookingsForScheduler(listStaleDraftBookingsForSchedulerVars);
+// Variables can be defined inline as well.
+const { data } = await listStaleDraftBookingsForScheduler({ updatedBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStaleDraftBookingsForScheduler(dataConnect, listStaleDraftBookingsForSchedulerVars);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+listStaleDraftBookingsForScheduler(listStaleDraftBookingsForSchedulerVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+### Using `ListStaleDraftBookingsForScheduler`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStaleDraftBookingsForSchedulerRef, ListStaleDraftBookingsForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
+const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
+  updatedBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStaleDraftBookingsForSchedulerRef()` function to get a reference to the query.
+const ref = listStaleDraftBookingsForSchedulerRef(listStaleDraftBookingsForSchedulerVars);
+// Variables can be defined inline as well.
+const ref = listStaleDraftBookingsForSchedulerRef({ updatedBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStaleDraftBookingsForSchedulerRef(dataConnect, listStaleDraftBookingsForSchedulerVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+## ListStalePendingTicketOrdersForScheduler
+You can execute the `ListStalePendingTicketOrdersForScheduler` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStalePendingTicketOrdersForScheduler(vars: ListStalePendingTicketOrdersForSchedulerVariables): QueryPromise<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+
+interface ListStalePendingTicketOrdersForSchedulerRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStalePendingTicketOrdersForSchedulerVariables): QueryRef<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+}
+export const listStalePendingTicketOrdersForSchedulerRef: ListStalePendingTicketOrdersForSchedulerRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStalePendingTicketOrdersForScheduler(dc: DataConnect, vars: ListStalePendingTicketOrdersForSchedulerVariables): QueryPromise<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+
+interface ListStalePendingTicketOrdersForSchedulerRef {
+  ...
+  (dc: DataConnect, vars: ListStalePendingTicketOrdersForSchedulerVariables): QueryRef<ListStalePendingTicketOrdersForSchedulerData, ListStalePendingTicketOrdersForSchedulerVariables>;
+}
+export const listStalePendingTicketOrdersForSchedulerRef: ListStalePendingTicketOrdersForSchedulerRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStalePendingTicketOrdersForSchedulerRef:
+```typescript
+const name = listStalePendingTicketOrdersForSchedulerRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStalePendingTicketOrdersForSchedulerVariables {
+  createdBefore: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStalePendingTicketOrdersForScheduler` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStalePendingTicketOrdersForSchedulerData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStalePendingTicketOrdersForSchedulerData {
+  ticketOrders: ({
+    id: UUIDString;
+    status: TicketOrderStatus;
+    createdAt: TimestampString;
+  } & TicketOrder_Key)[];
+}
+```
+### Using `ListStalePendingTicketOrdersForScheduler`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingTicketOrdersForScheduler, ListStalePendingTicketOrdersForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
+const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
+  createdBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStalePendingTicketOrdersForScheduler()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStalePendingTicketOrdersForScheduler(listStalePendingTicketOrdersForSchedulerVars);
+// Variables can be defined inline as well.
+const { data } = await listStalePendingTicketOrdersForScheduler({ createdBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStalePendingTicketOrdersForScheduler(dataConnect, listStalePendingTicketOrdersForSchedulerVars);
+
+console.log(data.ticketOrders);
+
+// Or, you can use the `Promise` API.
+listStalePendingTicketOrdersForScheduler(listStalePendingTicketOrdersForSchedulerVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrders);
+});
+```
+
+### Using `ListStalePendingTicketOrdersForScheduler`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingTicketOrdersForSchedulerRef, ListStalePendingTicketOrdersForSchedulerVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
+const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
+  createdBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStalePendingTicketOrdersForSchedulerRef()` function to get a reference to the query.
+const ref = listStalePendingTicketOrdersForSchedulerRef(listStalePendingTicketOrdersForSchedulerVars);
+// Variables can be defined inline as well.
+const ref = listStalePendingTicketOrdersForSchedulerRef({ createdBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStalePendingTicketOrdersForSchedulerRef(dataConnect, listStalePendingTicketOrdersForSchedulerVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketOrders);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrders);
 });
 ```
 
@@ -11269,6 +11793,10 @@ export interface CreateGuestTicketRequestFromCallableVariables {
   guestTicketTypeId: UUIDString;
   guestDisplayName: string;
   dietaryNote?: string | null;
+  status: GuestTicketRequestStatus;
+  reviewedById?: string | null;
+  reviewedAt?: TimestampString | null;
+  moderatorNote?: string | null;
 }
 ```
 ### Return Type
@@ -11293,13 +11821,17 @@ const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCall
   guestTicketTypeId: ..., 
   guestDisplayName: ..., 
   dietaryNote: ..., // optional
+  status: ..., 
+  reviewedById: ..., // optional
+  reviewedAt: ..., // optional
+  moderatorNote: ..., // optional
 };
 
 // Call the `createGuestTicketRequestFromCallable()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createGuestTicketRequestFromCallable(createGuestTicketRequestFromCallableVars);
 // Variables can be defined inline as well.
-const { data } = await createGuestTicketRequestFromCallable({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
+const { data } = await createGuestTicketRequestFromCallable({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -11327,12 +11859,16 @@ const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCall
   guestTicketTypeId: ..., 
   guestDisplayName: ..., 
   dietaryNote: ..., // optional
+  status: ..., 
+  reviewedById: ..., // optional
+  reviewedAt: ..., // optional
+  moderatorNote: ..., // optional
 };
 
 // Call the `createGuestTicketRequestFromCallableRef()` function to get a reference to the mutation.
 const ref = createGuestTicketRequestFromCallableRef(createGuestTicketRequestFromCallableVars);
 // Variables can be defined inline as well.
-const ref = createGuestTicketRequestFromCallableRef({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
+const ref = createGuestTicketRequestFromCallableRef({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

@@ -17,9 +17,13 @@ import type { GetMyBookingsForEventData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants/routes";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
+import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import {
   getEventBookingNextSteps,
   getEventBookingStatusHeading,
+  buildBookingTicketRowsWithPaymentStatus,
+  bookingTicketPaymentChipColor,
+  isBookingPaymentComplete,
   summarizeEventBookingPayment,
   summarizeGuestTicketRequests,
   type EventBookingPaymentAdjustmentInput,
@@ -90,6 +94,11 @@ export default function EventBookingStatusSummary({
     adjustments: paymentAdjustments,
   });
   const guestSummary = summarizeGuestTicketRequests(booking.guestTicketRequests);
+  const ticketRows = buildBookingTicketRowsWithPaymentStatus({
+    booking,
+    eventId,
+    ticketOrders,
+  });
   const nextSteps = getEventBookingNextSteps({
     bookingStatus: booking.status,
     paymentSummary,
@@ -98,7 +107,7 @@ export default function EventBookingStatusSummary({
   const showPayNow =
     Boolean(onPayNow) &&
     paymentSummary.unpaidTicketTypeId != null &&
-    paymentSummary.kind !== "paid" &&
+    !isBookingPaymentComplete(paymentSummary) &&
     paymentSummary.kind !== "adjustment_refund";
 
   return (
@@ -113,7 +122,6 @@ export default function EventBookingStatusSummary({
           label={getBookingStatusLabel(booking.status)}
           color={booking.status === "CONFIRMED" ? "success" : "default"}
         />
-        <Chip size="small" label={`Revision ${booking.revisionNumber}`} variant="outlined" />
         <Chip size="small" label={paymentSummary.label} color={paymentChipColor(paymentSummary)} />
         <Chip
           size="small"
@@ -127,21 +135,37 @@ export default function EventBookingStatusSummary({
         {getEventBookingStatusHeading(booking)} for <strong>{eventTitle}</strong>.
       </Typography>
 
-      {(booking.lines ?? []).length > 0 ? (
+      {ticketRows.length > 0 ? (
         <Table size="small" sx={{ mb: 2 }}>
           <TableHead>
             <TableRow>
               <TableCell>Ticket</TableCell>
               <TableCell>Guest</TableCell>
               <TableCell>Price</TableCell>
+              <TableCell>Payment</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {(booking.lines ?? []).map((line) => (
-              <TableRow key={line.id}>
-                <TableCell>{line.ticketType?.title ?? "—"}</TableCell>
-                <TableCell>{line.guestDisplayName ?? "—"}</TableCell>
-                <TableCell>{line.ticketType?.price != null ? String(line.ticketType.price) : "—"}</TableCell>
+            {ticketRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  {row.ticketTitle}
+                  {row.source === "approved_guest_request" ? (
+                    <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+                      (approved extra guest)
+                    </Typography>
+                  ) : null}
+                </TableCell>
+                <TableCell>{row.guestName ?? "—"}</TableCell>
+                <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={row.paymentStatusLabel}
+                    color={bookingTicketPaymentChipColor(row.paymentStatus)}
+                    variant={row.paymentStatus === "awaiting_approval" ? "outlined" : "filled"}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -152,7 +176,10 @@ export default function EventBookingStatusSummary({
         severity={
           paymentSummary.kind === "failed"
             ? "error"
-            : guestSummary.hasPending || paymentSummary.kind === "pending" || paymentSummary.kind === "not_started"
+            : guestSummary.hasPending ||
+                paymentSummary.kind === "pending" ||
+                paymentSummary.kind === "not_started" ||
+                paymentSummary.kind === "partial"
               ? "warning"
               : "info"
         }
@@ -169,7 +196,7 @@ export default function EventBookingStatusSummary({
             onClick={() => onPayNow?.(paymentSummary.unpaidTicketTypeId as string)}
             sx={{ backgroundColor: colors.callToAction }}
           >
-            {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay now"}
+            {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay for all tickets"}
           </Button>
         ) : null}
         <Button variant="outlined" onClick={onEditBooking}>

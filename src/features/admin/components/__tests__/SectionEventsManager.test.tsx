@@ -323,8 +323,8 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
     expect(screen.getByText(/additional guest ticket requests/i)).toBeInTheDocument();
     expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
-    expect(screen.getAllByText("Rev 2").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Supersedes rev 1/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /^approve$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^reject$/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
     expect(screen.getByText(/booking audit activity/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
@@ -445,5 +445,112 @@ describe("SectionEventsManager", () => {
     expect(screen.getByText(/no guest ticket requests for this filter/i)).toBeInTheDocument();
     expect(screen.getByText(/no bookings found for this event/i)).toBeInTheDocument();
     expect(screen.getByText(/no payment orders found for this event/i)).toBeInTheDocument();
+  });
+
+  it("shows guest ticket requests only from the latest booking revision", async () => {
+    const user = userEvent.setup();
+    mockGetEventsForSection({
+      data: {
+        section: {
+          id: sectionId,
+          events: [
+            {
+              id: "ev-1",
+              title: "Annual Dinner",
+              startDateTime: "2025-03-01T18:00:00Z",
+              endDateTime: "2025-03-01T22:00:00Z",
+              bookingStartDateTime: "2025-02-01T00:00:00Z",
+              bookingEndDateTime: "2025-02-28T23:59:59Z",
+              location: "Main Hall",
+              guestOfHonour: "Jane Doe",
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventById({
+      data: {
+        event: {
+          id: "ev-1",
+          title: "Annual Dinner",
+          startDateTime: "2025-03-01T18:00:00Z",
+          endDateTime: "2025-03-01T22:00:00Z",
+          bookingStartDateTime: "2025-02-01T00:00:00Z",
+          bookingEndDateTime: "2025-02-28T23:59:59Z",
+          location: "Main Hall",
+          guestOfHonour: "Jane Doe",
+          maxGuestsWithoutModeratorApproval: 1,
+          ticketTypes: [],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockGuestTicketRequests({
+      data: {
+        event: {
+          id: "ev-1",
+          bookings: [
+            {
+              id: "b-0",
+              status: "SUBMITTED",
+              revisionNumber: 1,
+              revisionGroupId: "rev-group-1",
+              supersededAt: "2026-02-01T01:00:00Z",
+              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+              guestTicketRequests: [
+                {
+                  id: "r-old",
+                  status: "PENDING",
+                  requestedGuestCount: 1,
+                  guestDisplayName: "Superseded Guest",
+                  dietaryNote: null,
+                  moderatorNote: null,
+                  createdAt: "2026-02-01T00:00:00Z",
+                  reviewedAt: null,
+                  guestTicketType: { id: "tt-1", title: "Guest standard", audience: "GUEST", price: 10 },
+                },
+              ],
+            },
+            {
+              id: "b-1",
+              status: "SUBMITTED",
+              revisionNumber: 2,
+              revisionGroupId: "rev-group-1",
+              supersededAt: null,
+              supersedesBooking: { id: "b-0", revisionNumber: 1 },
+              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+              guestTicketRequests: [
+                {
+                  id: "r-new",
+                  status: "PENDING",
+                  requestedGuestCount: 1,
+                  guestDisplayName: "Current Guest",
+                  dietaryNote: null,
+                  moderatorNote: null,
+                  createdAt: "2026-02-01T02:00:00Z",
+                  reviewedAt: null,
+                  guestTicketType: { id: "tt-1", title: "Guest standard", audience: "GUEST", price: 10 },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockEventBookings({ data: { event: { id: "ev-1", bookings: [] } }, isLoading: false, isError: false });
+    mockTicketOrders({ data: { event: { id: "ev-1", ticketOrders: [] } }, isLoading: false, isError: false });
+    mockBookingPaymentAdjustments({ data: { event: { id: "ev-1", bookings: [] } }, isLoading: false, isError: false });
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
+
+    expect(screen.getByText("Current Guest")).toBeInTheDocument();
+    expect(screen.queryByText("Superseded Guest")).not.toBeInTheDocument();
   });
 });

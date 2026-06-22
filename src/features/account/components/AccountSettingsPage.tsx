@@ -33,6 +33,7 @@ import { canUserResignMembership } from "../../users/utils/membershipStatusValid
 export interface AccountSettingsPageProps {
   user: User;
   userData: UserData | null;
+  userDataLoading?: boolean;
   isAdmin: boolean;
   onBack?: () => void;
 }
@@ -59,6 +60,7 @@ function usesEmailPassword(user: User): boolean {
 export default function AccountSettingsPage({
   user,
   userData,
+  userDataLoading = false,
   isAdmin,
   onBack,
 }: AccountSettingsPageProps) {
@@ -75,7 +77,9 @@ export default function AccountSettingsPage({
 
   const canChangePassword = usesEmailPassword(user);
   const membershipStatus = userData?.membershipStatus ?? null;
-  const membershipLabel = getMembershipStatusLabel(membershipStatus);
+  const membershipLabel = userDataLoading && !userData
+    ? "Loading…"
+    : getMembershipStatusLabel(membershipStatus);
 
   const canResign = useMemo(
     () => canUserResignMembership(membershipStatus, isAdmin).allowed,
@@ -150,7 +154,7 @@ export default function AccountSettingsPage({
             Status: <strong>{membershipLabel}</strong>
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Contact an administrator if your status needs to be updated.
+            You can update your membership status on your profile page.
           </Typography>
           <Button component={RouterLink} to={ROUTES.PROFILE} variant="outlined">
             Edit profile details

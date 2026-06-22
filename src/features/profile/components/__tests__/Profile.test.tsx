@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ComponentProps } from "react";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { render, screen, waitFor, fireEvent } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import Profile from "../Profile";
@@ -13,7 +13,14 @@ vi.mock("@dataconnect/generated", () => ({
   upsertUser: vi.fn().mockResolvedValue({ data: {} }),
   MembershipStatus: {
     REGULAR: "REGULAR",
+    RESERVE: "RESERVE",
+    RETIRED: "RETIRED",
+    INDUSTRY: "INDUSTRY",
+    CIVIL_SERVICE: "CIVIL_SERVICE",
     PENDING: "PENDING",
+    RESIGNED: "RESIGNED",
+    LOST: "LOST",
+    DECEASED: "DECEASED",
   },
 }));
 
@@ -24,7 +31,7 @@ vi.mock("../../../../config/firebase", () => ({
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   updateDisplayName: vi.fn().mockResolvedValue({ success: true }),
-  updateMembershipStatus: vi.fn(),
+  updateMembershipStatus: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 const userData: UserData = {
@@ -55,19 +62,17 @@ describe("Profile", () => {
     vi.clearAllMocks();
   });
 
-  it("shows read-only membership status and account settings link", () => {
+  it("shows membership status picker and account settings link", () => {
     renderProfile({ userData, userEmail: userData.email });
 
-    expect(screen.getByText(/Membership status:/)).toHaveTextContent("Regular");
+    expect(screen.getByTestId("membership-status-select")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute(
       "href",
       "/account/settings"
     );
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Membership Status/i)).not.toBeInTheDocument();
   });
 
-  it("saves identity fields without updating membership status", async () => {
+  it("saves identity fields without updating membership status when unchanged", async () => {
     const user = userEvent.setup();
     renderProfile({ userData, userEmail: userData.email });
 
@@ -88,5 +93,37 @@ describe("Profile", () => {
 
     expect(firebaseFunctions.updateMembershipStatus).not.toHaveBeenCalled();
     expect(screen.getByText("Profile updated successfully!")).toBeInTheDocument();
+  });
+
+  it("updates membership status when user selects another non-restricted status", async () => {
+    const user = userEvent.setup();
+    renderProfile({ userData, userEmail: userData.email });
+
+    const selectRoot = screen.getByTestId("membership-status-select");
+    const trigger =
+      selectRoot.querySelector('[role="combobox"]') ??
+      selectRoot.querySelector(".MuiSelect-select") ??
+      selectRoot;
+    fireEvent.mouseDown(trigger);
+    await user.click(await screen.findByRole("option", { name: "Reserve" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.updateMembershipStatus).toHaveBeenCalledWith(
+        "user-1",
+        MembershipStatus.RESERVE
+      );
+    });
+  });
+
+  it("locks membership status when current status is restricted", () => {
+    renderProfile({
+      userData: { ...userData, membershipStatus: MembershipStatus.PENDING },
+      userEmail: userData.email,
+    });
+
+    const statusSelect = screen.getByTestId("membership-status-select");
+    expect(statusSelect.className).toMatch(/Mui-disabled/);
+    expect(screen.getByText(/Cannot change from restricted status/i)).toBeInTheDocument();
   });
 });

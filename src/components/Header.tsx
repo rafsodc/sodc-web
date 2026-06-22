@@ -33,7 +33,7 @@ export default function Header({ user, userData, onAccountClick, onJoinClick, on
   const open = Boolean(anchorEl);
   const adminMenuOpen = Boolean(adminAnchorEl);
   const isAdmin = useAdminClaim(user);
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled } = useEnabledClaim(user);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);

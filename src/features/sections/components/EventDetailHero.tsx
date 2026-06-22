@@ -2,6 +2,7 @@ import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { GetEventByIdData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import { formatSectionEventWhen } from "../../../shared/utils/sectionEventDisplay";
+import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import { formatEventGuestPolicy } from "../utils/eventGuestPolicy";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
@@ -55,7 +56,7 @@ export default function EventDetailHero({
               key={ticketType.id}
               size="small"
               variant="outlined"
-              label={`${ticketType.title}${ticketType.price != null ? ` · ${String(ticketType.price)}` : ""}`}
+              label={`${ticketType.title}${ticketType.price != null ? ` · ${formatGbpMajorAmount(ticketType.price)}` : ""}`}
             />
           ))}
         </Box>

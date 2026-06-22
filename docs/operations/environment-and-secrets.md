@@ -4,6 +4,8 @@ This reference covers runtime configuration for frontend and functions.
 
 For **how we use Dev, Beta, and Prod Firebase projects** (no emulators), promotion flow, and developer setup, see [environments-dev-beta-prod.md](./environments-dev-beta-prod.md).
 
+Before merging epic **#231** (`231-epic-ui-improvements` → `main`), run the manual checklist in [epic-231-member-ux-uat.md](./epic-231-member-ux-uat.md) ([#250](https://github.com/rafsodc/sodc-web/issues/250)).
+
 Each environment should have its **own** values for the variables below (typically three Firebase web apps and three sets of secrets).
 
 ## Frontend (Vite) variables

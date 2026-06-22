@@ -64,8 +64,6 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       { label: "Signals", to: "/sections/section-1", state: homeSectionState },
     ]);
     expect(links.admin).toEqual([]);
@@ -94,8 +92,6 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Signals",
         to: "/sections/section-1",
@@ -142,8 +138,6 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Events",
         to: "/sections/section-2",
@@ -233,13 +227,9 @@ describe("buildNavigationLinks", () => {
 
     expect(nonAdmin.admin).toEqual([]);
     expect(nonAdmin.sections).toEqual([
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       { label: "Signals", to: "/sections/section-1", state: homeSectionState },
     ]);
     expect(admin.sections).toEqual([
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Signals",
         to: "/sections/section-1",
@@ -312,8 +302,6 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Alpha",
         to: "/sections/section-1",

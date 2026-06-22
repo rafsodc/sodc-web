@@ -32,6 +32,16 @@ describe("paymentStateMachine", () => {
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("payment_intent.succeeded")).toBe(false);
   });
 
+  it("reads comma-separated order ids from checkout metadata", () => {
+    const completed = normalizeStripeEvent(
+      stripeEvent("checkout.session.completed", {
+        orderId: "order-1",
+        orderIds: "order-1,order-2",
+      })
+    );
+    expect(completed.orderIds).toEqual(["order-1", "order-2"]);
+  });
+
   it("exposes supported-event check for webhook router observability", () => {
     expect(isSupportedStripeEventType("checkout.session.completed")).toBe(true);
     expect(isSupportedStripeEventType("payment_intent.succeeded")).toBe(false);
@@ -50,6 +60,13 @@ describe("paymentStateMachine", () => {
 
     expect(evaluateTransition(TicketOrderStatus.PAID, "MARK_FAILED").action).toBe("noop_illegal");
     expect(evaluateTransition(TicketOrderStatus.REFUNDED, "MARK_PAID").action).toBe("noop_illegal");
+  });
+
+  it("allows failed checkout orders to recover to paid when checkout succeeded", () => {
+    expect(
+      evaluateTransition(TicketOrderStatus.FAILED, "MARK_PAID", { recoverFailedCheckoutPayment: true }).action
+    ).toBe("apply");
+    expect(evaluateTransition(TicketOrderStatus.FAILED, "MARK_PAID").action).toBe("noop_illegal");
   });
 
   it("treats same-state transitions as replay no-op", () => {

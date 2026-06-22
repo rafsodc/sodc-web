@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { TicketOrderStatus } from "@dataconnect/admin-generated";
-import { runTicketOrderTransition, type TicketOrderTransitionMutations } from "../paymentTransitionEngine";
+import { runTicketOrderTransition, paidContextForMultiOrderWebhook, type TicketOrderTransitionMutations } from "../paymentTransitionEngine";
 
 function buildMutations(): TicketOrderTransitionMutations {
   return {
@@ -78,6 +78,32 @@ describe("paymentTransitionEngine", () => {
     expect(mutations.markRefunded).not.toHaveBeenCalled();
   });
 
+  it("recovers failed checkout orders to paid when checkout succeeded", async () => {
+    const mutations = buildMutations();
+    const result = await runTicketOrderTransition(
+      {
+        orderId: "00000000-0000-0000-0000-000000000005",
+        currentStatus: TicketOrderStatus.FAILED,
+        intent: "MARK_PAID",
+        webhookEventId: "evt_recover",
+        recoverFailedCheckoutPayment: true,
+        paidContext: {
+          stripeCheckoutSessionId: null,
+          stripePaymentIntentId: "pi_recover",
+        },
+      },
+      mutations
+    );
+
+    expect(result.action).toBe("applied");
+    expect(mutations.markPaid).toHaveBeenCalledWith({
+      id: "00000000-0000-0000-0000-000000000005",
+      stripeCheckoutSessionId: null,
+      stripePaymentIntentId: "pi_recover",
+      webhookEventId: "evt_recover",
+    });
+  });
+
   it("applies legal refunded transition and forwards refund metadata", async () => {
     const mutations = buildMutations();
     const result = await runTicketOrderTransition(
@@ -103,6 +129,23 @@ describe("paymentTransitionEngine", () => {
       stripeRefundId: "re_123",
       refundedAmountMinor: 1599,
       refundedAt: "2026-04-27T18:00:00.000Z",
+    });
+  });
+});
+
+describe("paidContextForMultiOrderWebhook", () => {
+  it("stores checkout session id on the first order only", () => {
+    const shared = {
+      stripeCheckoutSessionId: "cs_test_multi",
+      stripePaymentIntentId: "pi_test_multi",
+    };
+    expect(paidContextForMultiOrderWebhook(0, shared)).toEqual({
+      stripeCheckoutSessionId: "cs_test_multi",
+      stripePaymentIntentId: "pi_test_multi",
+    });
+    expect(paidContextForMultiOrderWebhook(1, shared)).toEqual({
+      stripeCheckoutSessionId: null,
+      stripePaymentIntentId: "pi_test_multi",
     });
   });
 });

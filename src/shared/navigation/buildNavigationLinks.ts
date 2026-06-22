@@ -198,10 +198,7 @@ export function buildNavigationLinks({
   }
 
   return {
-    sections: [
-      { label: "My Bookings", to: ROUTES.MY_BOOKINGS },
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
-      ...sortLinks(sectionMap.values()).map((section) => {
+    sections: sortLinks(sectionMap.values()).map((section) => {
         const sectionId = section.to.replace("/sections/", "");
         if (!administerableSectionIds.has(sectionId)) {
           return section;
@@ -217,7 +214,6 @@ export function buildNavigationLinks({
           ],
         };
       }),
-    ],
     admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionsData }),
   };
 }

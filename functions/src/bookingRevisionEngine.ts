@@ -1,6 +1,7 @@
 import { BookingStatus } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { HttpsError } from "firebase-functions/v2/https";
+import { bookingIdsEqual } from "./bookingCheckout";
 
 interface BookingSnapshot {
   id: UUIDString;
@@ -51,7 +52,7 @@ export function computeRevisionPlan(bookings: BookingSnapshot[], request: Revisi
     );
   }
 
-  const base = terminalBookings.find((booking) => booking.id === request.baseBookingId);
+  const base = terminalBookings.find((booking) => bookingIdsEqual(booking.id, request.baseBookingId!));
   if (!base) {
     throw new HttpsError("failed-precondition", "Base booking revision not found", {
       code: "BOOKING_REVISION_BASE_NOT_FOUND",
@@ -67,7 +68,7 @@ export function computeRevisionPlan(bookings: BookingSnapshot[], request: Revisi
     .filter((booking) => booking.revisionGroupId === base.revisionGroupId)
     .reduce((acc, booking) => (booking.revisionNumber > acc.revisionNumber ? booking : acc), base);
 
-  if (latestInGroup.id !== base.id) {
+  if (latestInGroup.id !== base.id && !bookingIdsEqual(latestInGroup.id, base.id)) {
     throw new HttpsError("aborted", "Booking revision conflict: a newer revision already exists", {
       code: "BOOKING_REVISION_CONFLICT",
     });

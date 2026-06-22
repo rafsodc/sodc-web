@@ -628,14 +628,14 @@ describe('SectionDetail', () => {
       expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
       expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
-      expect(screen.getByText(/Standard · 25/)).toBeInTheDocument();
+      expect(screen.getByText(/Standard · £25\.00/)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
   });
 
-  it('should show booking status summary when member has a submitted booking', async () => {
+  it('should show the booking summary with pay action when payment is still due', async () => {
     const eventId = 'event-1';
     const mockSectionData = {
       section: {
@@ -717,6 +717,7 @@ describe('SectionDetail', () => {
               id: 'booking-1',
               status: 'SUBMITTED',
               revisionNumber: 2,
+              supersededAt: null,
               clientSubmissionKey: null,
               bookerDietaryNote: null,
               sitNextToUserIds: [],
@@ -768,8 +769,7 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByText('Your booking')).toBeInTheDocument();
       expect(screen.getByText('Payment not started')).toBeInTheDocument();
-      expect(screen.getByText(/1 pending review/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Pay now' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /pay for all tickets/i })).toBeInTheDocument();
       expect(screen.queryByText('Book this event')).not.toBeInTheDocument();
     });
   });

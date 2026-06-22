@@ -1,5 +1,9 @@
 import { TicketOrderStatus } from "@dataconnect/generated";
+import { formatPaymentAmount } from "../../../shared/utils/currencyDisplay";
+import { uuidsEqual } from "../../../shared/utils/uuid";
 import { getBookingPaymentAdjustmentStatusLabel } from "../../../shared/utils/paymentStatusLabels";
+
+export { formatPaymentAmount };
 
 export interface TicketOrderDisplayInput {
   status: string;
@@ -10,8 +14,109 @@ export interface TicketOrderDisplayInput {
   disputeReason?: string | null;
 }
 
-export function formatPaymentAmount(amountMinor: number, currency: string): string {
-  return `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`;
+export interface TicketOrderListRow extends TicketOrderDisplayInput {
+  id: string;
+  quantity: number;
+  updatedAt: string;
+  stripePaymentIntentId?: string | null;
+  stripeCheckoutSessionId?: string | null;
+  ticketType?: { id?: string; title?: string | null } | null;
+  event?: { id?: string; title?: string | null; startDateTime?: string | null } | null;
+}
+
+export interface TicketOrderDisplayGroup {
+  key: string;
+  orders: TicketOrderListRow[];
+  status: string;
+  currency: string;
+  totalAmountMinor: number;
+  eventTitle: string;
+  eventWhen: string | null;
+  receiptOrderId: string;
+  ticketSummary: string;
+}
+
+export function isSupersededFailedTicketOrder(order: TicketOrderListRow, orders: TicketOrderListRow[]): boolean {
+  if (order.status !== TicketOrderStatus.FAILED) {
+    return false;
+  }
+  const ticketTypeId = order.ticketType?.id;
+  const eventId = order.event?.id;
+  if (!ticketTypeId || !eventId) {
+    return false;
+  }
+  const failedAt = Date.parse(order.updatedAt);
+  return orders.some((candidate) => {
+    if (candidate.status !== TicketOrderStatus.PAID) {
+      return false;
+    }
+    if (!uuidsEqual(candidate.event?.id, eventId) || !uuidsEqual(candidate.ticketType?.id, ticketTypeId)) {
+      return false;
+    }
+    return Date.parse(candidate.updatedAt) >= failedAt || !order.stripePaymentIntentId;
+  });
+}
+
+function paymentGroupKey(order: TicketOrderListRow): string {
+  if (order.stripePaymentIntentId) {
+    return `pi:${order.stripePaymentIntentId}`;
+  }
+  if (order.stripeCheckoutSessionId) {
+    return `cs:${order.stripeCheckoutSessionId}`;
+  }
+  return `order:${order.id}`;
+}
+
+function summarizeTicketLines(orders: TicketOrderListRow[]): string {
+  return orders
+    .map((order) => {
+      const title = order.ticketType?.title ?? "Ticket";
+      return order.quantity > 1 ? `${title} × ${order.quantity}` : title;
+    })
+    .join(", ");
+}
+
+export function groupTicketOrdersForDisplay(orders: TicketOrderListRow[]): TicketOrderDisplayGroup[] {
+  const visibleOrders = orders.filter((order) => !isSupersededFailedTicketOrder(order, orders));
+  const groups = new Map<string, TicketOrderListRow[]>();
+
+  for (const order of visibleOrders) {
+    const sharedStripeKey =
+      order.stripePaymentIntentId || order.stripeCheckoutSessionId ? paymentGroupKey(order) : null;
+    const key = sharedStripeKey ?? `order:${order.id}`;
+    const existing = groups.get(key) ?? [];
+    existing.push(order);
+    groups.set(key, existing);
+  }
+
+  return [...groups.values()].map((groupOrders) => {
+    const sorted = [...groupOrders].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    const primary = sorted[0];
+    const totalAmountMinor = sorted.reduce((sum, order) => sum + order.totalAmountMinor, 0);
+    const allPaid = sorted.every((order) => order.status === TicketOrderStatus.PAID);
+    const anyFailed = sorted.some((order) => order.status === TicketOrderStatus.FAILED);
+    const status = allPaid
+      ? TicketOrderStatus.PAID
+      : anyFailed
+        ? TicketOrderStatus.FAILED
+        : primary.status;
+    const receiptOrderId =
+      sorted.find((order) => order.stripeCheckoutSessionId)?.id ??
+      sorted.find((order) => order.stripePaymentIntentId)?.id ??
+      primary.id;
+
+    return {
+      key: paymentGroupKey(primary),
+      orders: sorted,
+      status,
+      currency: primary.currency,
+      totalAmountMinor,
+      eventTitle: primary.event?.title ?? "Event ticket",
+      eventWhen: primary.event?.startDateTime ?? null,
+      receiptOrderId,
+      ticketSummary: summarizeTicketLines(sorted),
+    };
+  });
 }
 
 export function getTicketOrderOutcomeMessage(order: TicketOrderDisplayInput): string {

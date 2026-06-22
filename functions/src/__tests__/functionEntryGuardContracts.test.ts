@@ -41,6 +41,7 @@ describe("function entry guard contracts", () => {
 
     const payments = readSource("payments.ts");
     assertOnCallGuard(payments, "createTicketCheckoutSession", "requireEnabled(request);");
+    assertOnCallGuard(payments, "createEventBookingCheckoutSession", "requireEnabled(request);");
     assertOnCallGuard(payments, "getMyTicketOrderStripeArtifactsBatch", "requireEnabled(request);");
   });
 
