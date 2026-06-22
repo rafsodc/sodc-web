@@ -568,6 +568,9 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     if (!bookingIdsEqual(ticketType.event.id, eventId)) {
       throw new HttpsError("failed-precondition", "Ticket type does not belong to this event");
     }
+    if (ticketType.audience !== TicketAudience.MEMBER && ticketType.audience !== TicketAudience.GUEST) {
+      throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
+    }
     await ensureTicketCheckoutEligibility({ uid, ticketType });
     eventTitle = ticketType.event.title;
 
@@ -602,7 +605,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     });
   }
 
-  const primaryOrderId = createdOrderIds[0];
+  const primaryOrderId = createdOrderIds[0]!;
   const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls(APP_BASE_URL, primaryOrderId);
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
