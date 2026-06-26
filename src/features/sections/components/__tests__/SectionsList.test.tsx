@@ -133,7 +133,7 @@ describe('SectionsList', () => {
       expect(screen.getByText('Test Section')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('MEMBERS')).toBeInTheDocument();
+    expect(screen.getByText('Members')).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
   });
 
@@ -373,7 +373,7 @@ describe('SectionsList', () => {
       expect(screen.getByText('Test Section')).toBeInTheDocument();
     });
 
-    const viewButton = screen.getByRole('button', { name: /view/i });
+    const viewButton = screen.getByRole('button', { name: /test section/i });
     await user.click(viewButton);
 
     expect(mockOnSelectSection).toHaveBeenCalledWith('section-1');

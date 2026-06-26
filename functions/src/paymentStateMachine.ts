@@ -15,6 +15,7 @@ export interface StripeEventNormalization {
   intent?: PaymentTransitionIntent;
   disputeState?: DisputeSideState;
   orderId?: string;
+  orderIds?: string[];
   reason: string;
 }
 
@@ -48,9 +49,23 @@ function extractMetadataOrderId(obj: unknown): string | null {
   return typeof orderId === "string" && orderId.trim() ? orderId.trim() : null;
 }
 
-function extractOrderIdFromStripeEvent(event: StripeEventLike): string | null {
-  const objectWithMetadata = event.data.object as { metadata?: unknown };
-  return extractMetadataOrderId(objectWithMetadata);
+function extractMetadataOrderIds(obj: unknown): string[] {
+  if (!obj || typeof obj !== "object") return [];
+  const metadata = (obj as { metadata?: unknown }).metadata;
+  if (!metadata || typeof metadata !== "object") return [];
+  const rawOrderIds = (metadata as { orderIds?: unknown }).orderIds;
+  if (typeof rawOrderIds === "string" && rawOrderIds.trim()) {
+    return rawOrderIds
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
+  const orderId = extractMetadataOrderId(obj);
+  return orderId ? [orderId] : [];
+}
+
+export function extractOrderIdsFromStripeEvent(event: StripeEventLike): string[] {
+  return extractMetadataOrderIds(event.data.object);
 }
 
 export function isSupportedStripeEventType(eventType: string): boolean {
@@ -58,7 +73,8 @@ export function isSupportedStripeEventType(eventType: string): boolean {
 }
 
 export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormalization {
-  const orderId = extractOrderIdFromStripeEvent(event) ?? undefined;
+  const orderIds = extractOrderIdsFromStripeEvent(event);
+  const orderId = orderIds[0];
   if (!isSupportedStripeEventType(event.type)) {
     return { kind: "ignore", reason: "unsupported_event_type" };
   }
@@ -68,6 +84,7 @@ export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormali
         kind: "payment_transition",
         intent: "MARK_PAID",
         orderId,
+        orderIds,
         reason: "checkout_completed",
       };
     case "checkout.session.expired":
@@ -76,6 +93,7 @@ export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormali
         kind: "payment_transition",
         intent: "MARK_FAILED",
         orderId,
+        orderIds,
         reason: "checkout_failed_or_expired",
       };
     case "charge.refunded":
@@ -83,14 +101,15 @@ export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormali
         kind: "payment_transition",
         intent: "MARK_REFUNDED",
         orderId,
+        orderIds,
         reason: "charge_refunded",
       };
     case "charge.dispute.created":
-      return { kind: "dispute_side_state", disputeState: "DISPUTE_OPEN", orderId, reason: "dispute_created" };
+      return { kind: "dispute_side_state", disputeState: "DISPUTE_OPEN", orderId, orderIds, reason: "dispute_created" };
     case "charge.dispute.updated":
-      return { kind: "dispute_side_state", disputeState: "DISPUTE_UPDATED", orderId, reason: "dispute_updated" };
+      return { kind: "dispute_side_state", disputeState: "DISPUTE_UPDATED", orderId, orderIds, reason: "dispute_updated" };
     case "charge.dispute.closed":
-      return { kind: "dispute_side_state", disputeState: "DISPUTE_CLOSED", orderId, reason: "dispute_closed" };
+      return { kind: "dispute_side_state", disputeState: "DISPUTE_CLOSED", orderId, orderIds, reason: "dispute_closed" };
     default:
       // Defensive fallback if a supported-event list and switch ever drift.
       return { kind: "ignore", reason: "unmapped_supported_event_type" };
@@ -108,13 +127,26 @@ export function mapIntentToTargetStatus(intent: PaymentTransitionIntent): Ticket
   }
 }
 
+export interface TransitionEvaluationOptions {
+  /** Allows FAILED -> PAID when a combined checkout succeeded but an earlier attempt left stale orders. */
+  recoverFailedCheckoutPayment?: boolean;
+}
+
 export function evaluateTransition(
   current: TicketOrderStatus,
-  intent: PaymentTransitionIntent
+  intent: PaymentTransitionIntent,
+  options?: TransitionEvaluationOptions
 ): TransitionDecision {
   const target = mapIntentToTargetStatus(intent);
   if (current === target) {
     return { action: "noop_replay", reason: "already_in_target_state" };
+  }
+  if (
+    options?.recoverFailedCheckoutPayment &&
+    intent === "MARK_PAID" &&
+    current === TicketOrderStatus.FAILED
+  ) {
+    return { action: "apply", reason: "checkout_recovery_from_failed" };
   }
   if (LEGAL_TRANSITIONS[current].has(target)) {
     return { action: "apply", reason: "legal_transition" };

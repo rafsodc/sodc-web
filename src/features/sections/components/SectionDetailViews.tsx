@@ -1,25 +1,23 @@
+import { useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
-import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
+import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
-import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../shared/utils/ticketAudienceLabels";
+import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
+import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import EventBookingWizard from "./EventBookingWizard";
+import EventDetailHero from "./EventDetailHero";
+import SectionEventCard from "./SectionEventCard";
+import SectionMemberCard from "./SectionMemberCard";
 
 type SectionDetailSection = NonNullable<GetSectionByIdData["section"]>;
 type SectionEventRow = NonNullable<NonNullable<GetEventsForSectionData["section"]>["events"]>[number];
@@ -49,22 +47,17 @@ export function SectionInformationView({
   onUnsubscribe,
 }: SectionInformationViewProps) {
   return (
-    <Box sx={{ mt: 3, mb: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        Section Information
-      </Typography>
+    <Box sx={{ mt: 1 }}>
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
         <Chip
-          label={section.type}
+          label={getSectionTypeLabel(section.type)}
           size="small"
-          color={section.type === "MEMBERS" ? "primary" : "secondary"}
+          color={isMembersSectionType(section.type) ? "primary" : "secondary"}
         />
-        {section.description && (
-          <Typography variant="body2" color="text.secondary">
-            {section.description}
-          </Typography>
-        )}
       </Box>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        {section.description?.trim() || "No description provided for this section."}
+      </Typography>
 
       {isMembers && hasCurrentUser && (
         <Box sx={{ mt: 2 }}>
@@ -122,9 +115,12 @@ export function SectionMembersView({
   onPageChange,
 }: SectionMembersViewProps) {
   return (
-    <>
-      <Typography variant="h6" sx={{ mb: 2 }}>
+    <Box sx={{ mt: 1 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
         Members ({allMembersCount})
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Names and membership type are shown by default. Email addresses stay hidden until you choose to show them for a member.
       </Typography>
       <SearchBar
         value={searchTerm}
@@ -144,40 +140,25 @@ export function SectionMembersView({
             Showing {paginatedMembers.length} of {filteredMembers.length} {searchTerm ? "filtered " : ""}members
             {totalPages > 1 && ` (page ${page} of ${totalPages})`}
           </Typography>
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Membership Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedMembers.map((member) => (
-                  <TableRow key={member.userId}>
-                    <TableCell>
-                      <Typography variant="body1">
-                        {member.firstName} {member.lastName}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {member.email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={member.membershipStatus} size="small" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Box
+            component="ul"
+            sx={{
+              listStyle: "none",
+              m: 0,
+              p: 0,
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
+            }}
+          >
+            {paginatedMembers.map((member) => (
+              <SectionMemberCard key={member.userId} member={member} />
+            ))}
+          </Box>
           <PaginationDisplay page={page} totalPages={totalPages} onChange={onPageChange} />
         </>
       )}
-    </>
+    </Box>
   );
 }
 
@@ -189,6 +170,8 @@ interface SectionEventsListViewProps {
   onSelectEvent: (eventId: string) => void;
 }
 
+type SectionEventsListMode = "upcoming" | "past";
+
 export function SectionEventsListView({
   events,
   loading,
@@ -196,11 +179,39 @@ export function SectionEventsListView({
   onRetry,
   onSelectEvent,
 }: SectionEventsListViewProps) {
+  const [listMode, setListMode] = useState<SectionEventsListMode>("upcoming");
+  const { upcoming, past } = useMemo(() => partitionSectionEventsByTiming(events), [events]);
+  const visibleEvents = listMode === "upcoming" ? upcoming : past;
+
   return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Events
-      </Typography>
+    <Box sx={{ mt: 1 }}>
+      {!loading && !isError && (upcoming.length > 0 || past.length > 0) ? (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 1,
+            mb: 2,
+          }}
+        >
+          <Typography variant="subtitle1" component="h2" fontWeight={600}>
+            {listMode === "upcoming" ? "Upcoming events" : "Past events"}
+          </Typography>
+          {listMode === "upcoming" && past.length > 0 ? (
+            <Button size="small" onClick={() => setListMode("past")}>
+              View past events
+            </Button>
+          ) : null}
+          {listMode === "past" ? (
+            <Button size="small" onClick={() => setListMode("upcoming")}>
+              Back to upcoming events
+            </Button>
+          ) : null}
+        </Box>
+      ) : null}
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress />
@@ -212,65 +223,36 @@ export function SectionEventsListView({
             Retry
           </Button>
         </Alert>
-      ) : !events.length ? (
-        <Alert severity="info">No events yet.</Alert>
+      ) : listMode === "upcoming" && upcoming.length === 0 ? (
+        <Alert severity="info">
+          {past.length > 0
+            ? "No upcoming events right now. View past events to see what has already happened."
+            : "No upcoming events yet. Check back when new events are published."}
+        </Alert>
+      ) : listMode === "past" && past.length === 0 ? (
+        <Alert severity="info">No past events yet.</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Date / time</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Guest of honour</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {events.map((event) => (
-                <TableRow
-                  key={event.id}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                  onClick={() => onSelectEvent(event.id)}
-                >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
-                      {event.title}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(event.startDateTime).toLocaleString()} -{" "}
-                      {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {event.location || "-"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {event.guestOfHonour || "-"}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="small"
-                      onClick={(clickEvent) => {
-                        clickEvent.stopPropagation();
-                        onSelectEvent(event.id);
-                      }}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box
+          component="ul"
+          sx={{
+            listStyle: "none",
+            m: 0,
+            p: 0,
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          }}
+        >
+          {visibleEvents.map((event) => (
+            <Box component="li" key={event.id} sx={{ minWidth: 0 }}>
+              <SectionEventCard
+                event={event}
+                variant={listMode}
+                onSelect={onSelectEvent}
+              />
+            </Box>
+          ))}
+        </Box>
       )}
     </Box>
   );
@@ -282,10 +264,8 @@ interface SectionEventDetailViewProps {
   loading: boolean;
   isError: boolean;
   hasCurrentUser: boolean;
-  startingCheckoutId: string | null;
   onBackToEvents: () => void;
   onRetry: () => void;
-  onStartCheckout: (ticketTypeId: string) => void;
   onBookingComplete: () => void;
 }
 
@@ -295,12 +275,13 @@ export function SectionEventDetailView({
   loading,
   isError,
   hasCurrentUser,
-  startingCheckoutId,
   onBackToEvents,
   onRetry,
-  onStartCheckout,
   onBookingComplete,
 }: SectionEventDetailViewProps) {
+  const [bookingWizardOpen, setBookingWizardOpen] = useState(false);
+  const [hasExistingBooking, setHasExistingBooking] = useState(false);
+
   return (
     <Box sx={{ mt: 2 }}>
       <Button size="small" onClick={onBackToEvents} sx={{ mb: 2 }}>
@@ -321,101 +302,22 @@ export function SectionEventDetailView({
         <Alert severity="info">Event not found.</Alert>
       ) : (
         <>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            {event.title}
-          </Typography>
-          <Box component="dl" sx={{ "& dd": { m: 0 }, "& dt": { fontWeight: 500, mt: 1 } }}>
-            <Typography component="dt" variant="body2">
-              Date / time
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {new Date(event.startDateTime).toLocaleString()} -{" "}
-              {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Location
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {event.location || "-"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Guest of honour
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {event.guestOfHonour || "-"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Booking window
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {new Date(event.bookingStartDateTime).toLocaleString()} -{" "}
-              {new Date(event.bookingEndDateTime).toLocaleString()}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Max guests without moderator approval
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {event.maxGuestsWithoutModeratorApproval != null
-                ? String(event.maxGuestsWithoutModeratorApproval)
-                : "-"}
-            </Typography>
-          </Box>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Ticket types
-          </Typography>
-          {!event.ticketTypes?.length ? (
-            <Typography variant="body2" color="text.secondary">
-              No ticket types.
-            </Typography>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>{TICKET_CATEGORY_LABEL}</TableCell>
-                    <TableCell>User group</TableCell>
-                    <TableCell align="right">Purchase</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {event.ticketTypes.map((ticketType) => (
-                    <TableRow key={ticketType.id}>
-                      <TableCell>{ticketType.title}</TableCell>
-                      <TableCell>{ticketType.description ?? "-"}</TableCell>
-                      <TableCell>{ticketType.price}</TableCell>
-                      <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
-                      <TableCell>{ticketType.userGroup?.name ?? "-"}</TableCell>
-                      <TableCell align="right">
-                        {hasCurrentUser && ticketType.audience === TicketAudience.MEMBER ? (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            disabled={startingCheckoutId === ticketType.id}
-                            onClick={() => onStartCheckout(ticketType.id)}
-                            sx={{ backgroundColor: colors.callToAction }}
-                          >
-                            {startingCheckoutId === ticketType.id ? "Starting..." : "Pay"}
-                          </Button>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-          {hasCurrentUser && (
+          <EventDetailHero
+            event={event}
+            hasCurrentUser={hasCurrentUser}
+            showBookButton={hasCurrentUser && !bookingWizardOpen && !hasExistingBooking}
+            onBookClick={() => setBookingWizardOpen(true)}
+          />
+          {hasCurrentUser ? (
             <EventBookingWizard
               section={section}
               event={event}
+              wizardOpen={bookingWizardOpen}
+              onWizardOpenChange={setBookingWizardOpen}
+              onHasExistingBookingChange={setHasExistingBooking}
               onBookingComplete={onBookingComplete}
             />
-          )}
+          ) : null}
         </>
       )}
     </Box>

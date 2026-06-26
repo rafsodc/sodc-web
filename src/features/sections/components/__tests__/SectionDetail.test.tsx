@@ -18,6 +18,8 @@ vi.mock('@dataconnect/generated/react', () => ({
   useGetEventById: vi.fn(),
   useGetCurrentUser: vi.fn(),
   useGetMyBookingsForEvent: vi.fn(),
+  useGetMyTicketOrders: vi.fn(),
+  useGetMyBookingPaymentAdjustments: vi.fn(),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
@@ -96,9 +98,33 @@ function mockGetMyBookingsForEvent(overrides: DataConnectQueryResultOverrides) {
   );
 }
 
+function mockGetMyTicketOrders(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>(overrides)
+  );
+}
+
+function mockGetMyBookingPaymentAdjustments(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>(overrides)
+  );
+}
+
 describe('SectionDetail', () => {
   const mockOnBack = vi.fn();
   const sectionId = 'section-1';
+  const upcomingEventTimes = {
+    startDateTime: '2030-03-01T18:00:00Z',
+    endDateTime: '2030-03-01T22:00:00Z',
+    bookingStartDateTime: '2030-02-01T00:00:00Z',
+    bookingEndDateTime: '2030-02-28T23:59:59Z',
+  };
+  const pastEventTimes = {
+    startDateTime: '2024-03-01T18:00:00Z',
+    endDateTime: '2024-03-01T22:00:00Z',
+    bookingStartDateTime: '2024-02-01T00:00:00Z',
+    bookingEndDateTime: '2024-02-28T23:59:59Z',
+  };
 
   const renderSectionDetail = () =>
     render(
@@ -126,6 +152,16 @@ describe('SectionDetail', () => {
       isError: false,
     });
     mockGetMyBookingsForEvent({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyTicketOrders({
+      data: { user: { ticketOrders: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyBookingPaymentAdjustments({
       data: { user: { bookings: [] } },
       isLoading: false,
       isError: false,
@@ -174,7 +210,7 @@ describe('SectionDetail', () => {
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
-  it('should render section information', async () => {
+  it('should render section information on the About tab', async () => {
     const mockSectionData = {
       section: {
         id: sectionId,
@@ -214,12 +250,17 @@ describe('SectionDetail', () => {
 
     renderSectionDetail();
 
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
     await waitFor(() => {
-      expect(screen.getByText('Test Section')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Test Section', level: 4 })).toBeInTheDocument();
     });
 
+    await user.click(screen.getByRole('tab', { name: 'About' }));
+
+    expect(screen.getByRole('tab', { name: 'About', selected: true })).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
-    expect(screen.getByText('MEMBERS')).toBeInTheDocument();
   });
 
   it('should render member list for MEMBERS sections', async () => {
@@ -274,10 +315,11 @@ describe('SectionDetail', () => {
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    expect(screen.getByText('john@example.com')).toBeInTheDocument();
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
-    expect(screen.getByText('REGULAR')).toBeInTheDocument();
-    expect(screen.getByText('RESERVE')).toBeInTheDocument();
+    expect(screen.queryByText('john@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('jane@example.com')).not.toBeInTheDocument();
+    expect(screen.getByText('Regular')).toBeInTheDocument();
+    expect(screen.getByText('Reserve')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Show email' })).toHaveLength(2);
   });
 
   it('should show subscribe button when user can subscribe', async () => {
@@ -327,6 +369,15 @@ describe('SectionDetail', () => {
     });
 
     renderSectionDetail();
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'About' }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /subscribe/i })).toBeInTheDocument();
@@ -381,6 +432,15 @@ describe('SectionDetail', () => {
     });
 
     renderSectionDetail();
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'About' }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
@@ -474,8 +534,8 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByText('Events')).toBeInTheDocument();
-      expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
+      expect(screen.getByText(/no upcoming events yet/i)).toBeInTheDocument();
     });
   });
 
@@ -497,10 +557,7 @@ describe('SectionDetail', () => {
           {
             id: eventId,
             title: 'Annual Dinner',
-            startDateTime: '2025-03-01T18:00:00Z',
-            endDateTime: '2025-03-01T22:00:00Z',
-            bookingStartDateTime: '2025-02-01T00:00:00Z',
-            bookingEndDateTime: '2025-02-28T23:59:59Z',
+            ...upcomingEventTimes,
             location: 'Main Hall',
             guestOfHonour: 'Jane Doe',
           },
@@ -511,10 +568,9 @@ describe('SectionDetail', () => {
       event: {
         id: eventId,
         title: 'Annual Dinner',
-        startDateTime: '2025-03-01T18:00:00Z',
-        endDateTime: '2025-03-01T22:00:00Z',
-        bookingStartDateTime: '2025-02-01T00:00:00Z',
-        bookingEndDateTime: '2025-02-28T23:59:59Z',
+        ...upcomingEventTimes,
+        bookingStartDateTime: '2020-01-01T00:00:00Z',
+        bookingEndDateTime: '2030-12-31T23:59:59Z',
         location: 'Main Hall',
         guestOfHonour: 'Jane Doe',
         maxGuestsWithoutModeratorApproval: null,
@@ -526,7 +582,7 @@ describe('SectionDetail', () => {
             price: 25,
             sortOrder: 0,
             audience: 'MEMBER',
-            userGroup: { id: 'ag-1', name: 'Standard Access' },
+            userGroup: { id: 'ag-1', name: 'Standard Access', membershipStatuses: ['REGULAR'] },
           },
         ],
       },
@@ -559,24 +615,251 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
     });
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /view/i }));
+    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
-      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-      expect(screen.getByText('Ticket types')).toBeInTheDocument();
-      expect(screen.getByText('Standard')).toBeInTheDocument();
-      expect(screen.getByText('Member ticket')).toBeInTheDocument();
-      expect(screen.getByText('Standard Access')).toBeInTheDocument();
+      expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
+      expect(screen.getByText(/Standard · £25\.00/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
+      expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
+  });
+
+  it('should show the booking summary with pay action when payment is still due', async () => {
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        description: 'Events description',
+        purposeLinks: [
+          {
+            purposes: ['ACCESS', 'BOOKER'],
+            userGroup: { id: 'group-1', membershipStatuses: ['REGULAR'] },
+          },
+        ],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [
+          {
+            id: eventId,
+            title: 'Annual Dinner',
+            ...upcomingEventTimes,
+            location: 'Main Hall',
+            guestOfHonour: 'Jane Doe',
+          },
+        ],
+      },
+    };
+    const mockEventDetailData = {
+      event: {
+        id: eventId,
+        title: 'Annual Dinner',
+        ...upcomingEventTimes,
+        bookingStartDateTime: '2020-01-01T00:00:00Z',
+        bookingEndDateTime: '2030-12-31T23:59:59Z',
+        location: 'Main Hall',
+        guestOfHonour: 'Jane Doe',
+        maxGuestsWithoutModeratorApproval: 1,
+        ticketTypes: [
+          {
+            id: 'tt-1',
+            title: 'Standard',
+            description: 'Standard ticket',
+            price: 25,
+            sortOrder: 0,
+            audience: 'MEMBER',
+            userGroup: { id: 'group-1', name: 'Standard Access', membershipStatuses: ['REGULAR'] },
+          },
+        ],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [{ userGroup: { id: 'group-1' } }] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventsForSection({
+      data: mockEventsData,
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventById({
+      data: mockEventDetailData,
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyBookingsForEvent({
+      data: {
+        user: {
+          bookings: [
+            {
+              id: 'booking-1',
+              status: 'SUBMITTED',
+              revisionNumber: 2,
+              supersededAt: null,
+              clientSubmissionKey: null,
+              bookerDietaryNote: null,
+              sitNextToUserIds: [],
+              accommodationRequested: false,
+              accommodationNote: null,
+              lines: [
+                {
+                  id: 'line-1',
+                  sortOrder: 0,
+                  guestDisplayName: null,
+                  dietaryNote: null,
+                  ticketType: {
+                    id: 'tt-1',
+                    title: 'Standard',
+                    audience: 'MEMBER',
+                    price: 25,
+                  },
+                },
+              ],
+              guestTicketRequests: [{ id: 'gtr-1', status: 'PENDING', requestedGuestCount: 1 }],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyTicketOrders({
+      data: { user: { ticketOrders: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetMyBookingPaymentAdjustments({
+      data: { user: { bookings: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your booking')).toBeInTheDocument();
+      expect(screen.getByText('Payment not started')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /pay for all tickets/i })).toBeInTheDocument();
+      expect(screen.queryByText('Book this event')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show breadcrumbs and return to events list when header Back is clicked from event detail', async () => {
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        purposeLinks: [],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [
+          {
+            id: eventId,
+            title: 'Annual Dinner',
+            ...upcomingEventTimes,
+            location: 'Main Hall',
+            guestOfHonour: null,
+          },
+        ],
+      },
+    };
+    const mockEventDetailData = {
+      event: {
+        id: eventId,
+        title: 'Annual Dinner',
+        ...upcomingEventTimes,
+        bookingStartDateTime: '2020-01-01T00:00:00Z',
+        bookingEndDateTime: '2030-12-31T23:59:59Z',
+        location: 'Main Hall',
+        guestOfHonour: null,
+        maxGuestsWithoutModeratorApproval: null,
+        ticketTypes: [],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetEventsForSection({
+      data: mockEventsData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetEventById({
+      data: mockEventDetailData,
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 4 })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Events Section', level: 4 })).toBeInTheDocument();
+      expect(screen.queryByText('Back to events')).not.toBeInTheDocument();
+    });
+
+    expect(mockOnBack).not.toHaveBeenCalled();
   });
 
   it('should return to events list when Back to events is clicked', async () => {
@@ -592,17 +875,14 @@ describe('SectionDetail', () => {
     const mockEventsData = {
       section: {
         id: sectionId,
-        events: [{ id: eventId, title: 'Annual Dinner', startDateTime: '2025-03-01T18:00:00Z', endDateTime: '2025-03-01T22:00:00Z', bookingStartDateTime: '2025-02-01T00:00:00Z', bookingEndDateTime: '2025-02-28T23:59:59Z', location: null, guestOfHonour: null }],
+        events: [{ id: eventId, title: 'Annual Dinner', ...upcomingEventTimes, location: null, guestOfHonour: null }],
       },
     };
     const mockEventDetailData = {
       event: {
         id: eventId,
         title: 'Annual Dinner',
-        startDateTime: '2025-03-01T18:00:00Z',
-        endDateTime: '2025-03-01T22:00:00Z',
-        bookingStartDateTime: '2025-02-01T00:00:00Z',
-        bookingEndDateTime: '2025-02-28T23:59:59Z',
+        ...upcomingEventTimes,
         location: null,
         guestOfHonour: null,
         ticketTypes: [],
@@ -641,7 +921,7 @@ describe('SectionDetail', () => {
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /view/i }));
+    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
@@ -650,9 +930,171 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('button', { name: /back to events/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Events')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /back to events/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('should hide past events from the default upcoming list', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        purposeLinks: [],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetEventsForSection({
+      data: {
+        section: {
+          id: sectionId,
+          events: [
+            {
+              id: 'past-1',
+              title: 'Old Dinner',
+              ...pastEventTimes,
+              location: 'Hall',
+              guestOfHonour: null,
+            },
+            {
+              id: 'upcoming-1',
+              title: 'Spring Dinner',
+              ...upcomingEventTimes,
+              location: 'Hall',
+              guestOfHonour: null,
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('Spring Dinner')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Old Dinner')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /view past events/i })).toBeInTheDocument();
+  });
+
+  it('should show past events when View past events is clicked', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        purposeLinks: [],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetEventsForSection({
+      data: {
+        section: {
+          id: sectionId,
+          events: [
+            {
+              id: 'past-1',
+              title: 'Old Dinner',
+              ...pastEventTimes,
+              location: 'Hall',
+              guestOfHonour: 'Guest',
+            },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText(/no upcoming events right now/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /view past events/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Old Dinner')).toBeInTheDocument();
+      expect(screen.getByText('Guest of honour: Guest')).toBeInTheDocument();
+    });
+  });
+
+  it('should switch between About and Members tabs on MEMBERS sections', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        description: 'Test description',
+        purposeLinks: [],
+      },
+    };
+
+    mockGetSectionById({
+      data: mockSectionData,
+      isLoading: false,
+      isError: false,
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'About' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Test description')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/search members/i)).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Members' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/search members/i)).toBeInTheDocument();
     });
   });
 });

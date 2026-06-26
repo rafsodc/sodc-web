@@ -4,6 +4,8 @@ This reference covers runtime configuration for frontend and functions.
 
 For **how we use Dev, Beta, and Prod Firebase projects** (no emulators), promotion flow, and developer setup, see [environments-dev-beta-prod.md](./environments-dev-beta-prod.md).
 
+Before merging epic **#231** (`231-epic-ui-improvements` → `main`), run the manual checklist in [epic-231-member-ux-uat.md](./epic-231-member-ux-uat.md) ([#250](https://github.com/rafsodc/sodc-web/issues/250)).
+
 Each environment should have its **own** values for the variables below (typically three Firebase web apps and three sets of secrets).
 
 ## Frontend (Vite) variables
@@ -36,6 +38,9 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `PAYMENT_OPS_ALERT_EMAILS` | env var | Comma-separated internal recipient emails for payment reconciliation / dispute ops alerts (Stripe webhook path); unset disables sends | optional |
 | `GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT` | env var | Notify template UUID for internal reconciliation-exception alerts | required when `PAYMENT_OPS_ALERT_EMAILS` is set |
 | `GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT` | env var | Notify template UUID for internal dispute side-state alerts | required when `PAYMENT_OPS_ALERT_EMAILS` is set |
+| `BOOKING_DRAFT_EXPIRY_MINUTES` | env var | TTL for abandoned `DRAFT` bookings before scheduled cleanup cancels them (`expireUnpaidStagedBookings`) | optional (default `60`) |
+| `TICKET_ORDER_PENDING_EXPIRY_MINUTES` | env var | TTL for unpaid `PENDING` ticket orders before scheduled cleanup marks them `FAILED` | optional (default `60`) |
+| `STAGED_EXPIRY_BATCH_LIMIT` | env var | Max rows processed per category per scheduled run | optional (default `100`) |
 
 ## Operational notes
 
@@ -53,4 +58,5 @@ Defined via `.env*` files and read from `import.meta.env`:
 - Membership approval / account access emails (#188): template keys `membershipActivated`, `membershipAccessRestricted` — see [govuk-notify-membership-templates.md](./govuk-notify-membership-templates.md).
 - Guest ticket request workflow (#189): template keys `guestTicketRequestSubmittedModerator`, `guestTicketRequestApproved`, `guestTicketRequestRejected` — moderator recipient rules in [govuk-notify-guest-ticket-request-templates.md](./govuk-notify-guest-ticket-request-templates.md).
 - Booking confirmation / revision emails (#190): template keys `bookingConfirmation`, `bookingRevision` — see [govuk-notify-booking-templates.md](./govuk-notify-booking-templates.md).
+- **Staged booking / payment hold expiry (#235):** scheduled Cloud Function `expireUnpaidStagedBookings` runs every 15 minutes. It cancels stale `DRAFT` bookings and marks stale unpaid `PENDING` ticket orders as `FAILED`. Tune TTLs with `BOOKING_DRAFT_EXPIRY_MINUTES` and `TICKET_ORDER_PENDING_EXPIRY_MINUTES`. Check function logs for `staged expiry job completed` and the per-run `summary` counts (`applied`, `skipped`, `failed`). If `failed` is non-zero, inspect Data Connect connectivity and mutation errors. Increasing `STAGED_EXPIRY_BATCH_LIMIT` raises per-run throughput when backlogs build up.
 - Stripe may send customer receipts/invoices for payment activity when enabled in Stripe. Use GOV.UK Notify for app-owned transactional messages that need application context, links, membership/booking workflow details, or internal operational recipients.

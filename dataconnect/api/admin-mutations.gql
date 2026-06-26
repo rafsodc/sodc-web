@@ -270,12 +270,36 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
           id
           audience
           price
+          title
         }
       }
       guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
         id
         status
         requestedGuestCount
+        guestTicketType {
+          id
+          title
+          price
+        }
+      }
+    }
+  }
+}
+
+query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    ticketOrders: ticketOrders_on_user(where: { eventId: { eq: $eventId } }) {
+      id
+      status
+      quantity
+      createdAt
+      ticketType {
+        id
+      }
+      event {
+        id
       }
     }
   }
@@ -806,6 +830,10 @@ mutation CreateGuestTicketRequestFromCallable(
   $guestTicketTypeId: UUID!
   $guestDisplayName: String!
   $dietaryNote: String
+  $status: GuestTicketRequestStatus!
+  $reviewedById: String
+  $reviewedAt: Timestamp
+  $moderatorNote: String
 ) @auth(level: NO_ACCESS) {
   guestTicketRequest_insert(
     data: {
@@ -814,7 +842,10 @@ mutation CreateGuestTicketRequestFromCallable(
       guestTicketTypeId: $guestTicketTypeId
       guestDisplayName: $guestDisplayName
       dietaryNote: $dietaryNote
-      status: PENDING
+      status: $status
+      reviewedById: $reviewedById
+      reviewedAt: $reviewedAt
+      moderatorNote: $moderatorNote
       createdBy: "system"
       updatedBy: "system"
     }
@@ -857,6 +888,29 @@ query GetBookingForGuestTicketCallable($bookingId: UUID!) @auth(level: NO_ACCESS
       section {
         id
         name
+      }
+    }
+    supersedesBooking {
+      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: ASC }) {
+        status
+        requestedGuestCount
+        guestDisplayName
+        guestTicketType {
+          id
+        }
+        reviewedBy {
+          id
+        }
+        reviewedAt
+        moderatorNote
+      }
+    }
+    guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: ASC }) {
+      status
+      requestedGuestCount
+      guestDisplayName
+      guestTicketType {
+        id
       }
     }
   }
@@ -910,6 +964,44 @@ query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
 }
 
 # Guest ticket request emails — request + booker/event context after create or review.
+# Scheduled cleanup: stale DRAFT bookings past TTL (issue #235).
+query ListStaleDraftBookingsForScheduler(
+  $updatedBefore: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  bookings(
+    where: {
+      status: { eq: DRAFT }
+      updatedAt: { lt: $updatedBefore }
+    }
+    orderBy: { updatedAt: ASC }
+    limit: $limit
+  ) {
+    id
+    status
+    updatedAt
+  }
+}
+
+# Scheduled cleanup: unpaid PENDING ticket orders past TTL (issue #235).
+query ListStalePendingTicketOrdersForScheduler(
+  $createdBefore: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  ticketOrders(
+    where: {
+      status: { eq: PENDING }
+      createdAt: { lt: $createdBefore }
+    }
+    orderBy: { createdAt: ASC }
+    limit: $limit
+  ) {
+    id
+    status
+    createdAt
+  }
+}
+
 query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
   guestTicketRequest(id: $id) {
     id

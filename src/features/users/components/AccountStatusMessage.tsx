@@ -13,10 +13,9 @@ import type { UserData } from "../../../types";
 
 interface AccountStatusMessageProps {
   userData: UserData | null;
-  onBack?: () => void;
 }
 
-export default function AccountStatusMessage({ userData, onBack }: AccountStatusMessageProps) {
+export default function AccountStatusMessage({ userData }: AccountStatusMessageProps) {
   const [submitting, setSubmitting] = useState(false);
 
   const getStatusMessage = () => {
@@ -26,8 +25,9 @@ export default function AccountStatusMessage({ userData, onBack }: AccountStatus
       case "PENDING":
         return {
           severity: "info" as const,
-          title: "Account Pending Activation",
-          message: "Your account is pending activation. Please contact an administrator to activate your account should you have not heard back within 3 days.",
+          title: "Account pending activation",
+          message:
+            "Your profile is under review. Administrators typically respond within a few business days. You'll get access once your account is activated.",
         };
       case "RESIGNED":
         return {
@@ -95,13 +95,8 @@ export default function AccountStatusMessage({ userData, onBack }: AccountStatus
             disabled={submitting}
             sx={{ backgroundColor: colors.callToAction }}
           >
-            Sign Out
+            Sign out
           </Button>
-          {onBack && (
-            <Button variant="outlined" onClick={onBack}>
-              Back to Home
-            </Button>
-          )}
         </Stack>
       </Stack>
     </Box>

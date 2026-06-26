@@ -2,7 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { requireAuth, handleFunctionError } from "./helpers";
-import { canUserChangeStatus, isNonRestrictedStatus, type MembershipStatus } from "./validation";
+import { canUserChangeStatus, canUserResignMembership, isNonRestrictedStatus, type MembershipStatus } from "./validation";
 import { FUNCTIONS_REGION } from "./constants";
 import {
   updateUserMembershipStatus,
@@ -101,6 +101,54 @@ export const updateMembershipStatus = onCall(
   } catch (e: any) {
     handleFunctionError(e, "updating membership status");
   }
+  }
+);
+
+/**
+ * Self-service resignation: transitions the caller from a non-restricted status to RESIGNED.
+ */
+export const resignMembership = onCall(
+  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  async (request) => {
+    requireAuth(request);
+
+    const userId = request.auth!.uid;
+    const callerEnabled = request.auth!.token.enabled === true;
+
+    try {
+      const targetUser = await admin.auth().getUser(userId);
+      const targetUserIsAdmin = targetUser.customClaims?.admin === true;
+      const currentStatus = await fetchCurrentStatusFromDataConnect(userId);
+      const newStatus = "RESIGNED" as MembershipStatus;
+
+      const validation = canUserResignMembership(
+        currentStatus,
+        targetUserIsAdmin,
+        callerEnabled
+      );
+
+      if (!validation.allowed) {
+        logger.warn(
+          `Resign membership rejected: userId=${userId}, current=${currentStatus || "unknown"}, targetIsAdmin=${targetUserIsAdmin}`
+        );
+        throw new HttpsError("permission-denied", validation.error || "Cannot resign membership");
+      }
+
+      await updateMembershipStatusInDataConnect(userId, newStatus);
+      await updateEnabledClaim(userId, newStatus);
+
+      scheduleMembershipStatusEmailIfChanged({
+        userId,
+        previousStatus: currentStatus,
+        newStatus,
+        appBaseUrl: APP_BASE_URL,
+      });
+
+      logger.info(`Membership resigned: userId=${userId}, previous=${currentStatus || "unknown"}`);
+      return { success: true, message: "Membership resigned successfully" };
+    } catch (e: any) {
+      handleFunctionError(e, "resigning membership");
+    }
   }
 );
 

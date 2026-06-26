@@ -445,10 +445,12 @@ function AdminTable({ children, minWidth = 650 }: { children: ReactNode; minWidt
       component={Paper}
       variant="outlined"
       sx={{
+        width: "100%",
+        maxWidth: "100%",
         borderColor: "divider",
         borderRadius: 2,
         boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-        overflow: "hidden",
+        overflowX: "auto",
       }}
     >
       <Table
@@ -610,6 +612,13 @@ function TicketTypesTable({
   );
 }
 
+const guestRequestActionsCellSx = {
+  whiteSpace: "nowrap",
+  verticalAlign: "top",
+  minWidth: 168,
+  width: 168,
+} as const;
+
 function GuestTicketRequestsSection({
   filter,
   onFilterChange,
@@ -656,63 +665,27 @@ function GuestTicketRequestsSection({
       ) : requests.length === 0 ? (
         <Alert severity="info">No guest ticket requests for this filter.</Alert>
       ) : (
-        <AdminTable>
+        <AdminTable minWidth={1040}>
             <TableHead>
               <TableRow>
+                <TableCell sx={guestRequestActionsCellSx}>Actions</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Revision</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell>Guest</TableCell>
                 <TableCell>Ticket</TableCell>
                 <TableCell align="right">Qty</TableCell>
-                <TableCell>Dietary</TableCell>
-                <TableCell>Moderator note</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Reviewed</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell sx={{ minWidth: 120, maxWidth: 180 }}>Dietary</TableCell>
+                <TableCell sx={{ minWidth: 180, maxWidth: 220 }}>Moderator note</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>Created</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>Reviewed</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {requests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    <Chip size="small" label={request.status} color={requestStatusColor(request.status)} />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                      <Chip size="small" variant="outlined" label={`Rev ${request.bookingRevisionNumber}`} />
-                      {request.supersedesRevisionNumber != null ? (
-                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                          Supersedes rev {request.supersedesRevisionNumber}
-                        </Box>
-                      ) : null}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    {request.booker ? `${request.booker.firstName} ${request.booker.lastName}` : "—"}
-                  </TableCell>
-                  <TableCell>{request.guestDisplayName ?? "—"}</TableCell>
-                  <TableCell>{request.guestTicketType?.title ?? "—"}</TableCell>
-                  <TableCell align="right">{request.requestedGuestCount}</TableCell>
-                  <TableCell>{request.dietaryNote ?? "—"}</TableCell>
-                  <TableCell sx={{ minWidth: 240 }}>
+                <TableRow key={request.id} sx={{ verticalAlign: "top" }}>
+                  <TableCell sx={guestRequestActionsCellSx}>
                     {request.status === "PENDING" ? (
-                      <TextField
-                        size="small"
-                        fullWidth
-                        placeholder="Optional note"
-                        value={moderatorNoteDraft[request.id] ?? ""}
-                        onChange={(event) => onModeratorNoteChange(request.id, event.target.value)}
-                      />
-                    ) : (
-                      request.moderatorNote ?? "—"
-                    )}
-                  </TableCell>
-                  <TableCell>{new Date(request.createdAt).toLocaleString()}</TableCell>
-                  <TableCell>{request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : "—"}</TableCell>
-                  <TableCell align="right">
-                    {request.status === "PENDING" ? (
-                      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "stretch" }}>
                         <Button
                           size="small"
                           variant="outlined"
@@ -735,6 +708,33 @@ function GuestTicketRequestsSection({
                     ) : (
                       "—"
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" label={request.status} color={requestStatusColor(request.status)} />
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    {request.booker ? `${request.booker.firstName} ${request.booker.lastName}` : "—"}
+                  </TableCell>
+                  <TableCell>{request.guestDisplayName ?? "—"}</TableCell>
+                  <TableCell>{request.guestTicketType?.title ?? "—"}</TableCell>
+                  <TableCell align="right">{request.requestedGuestCount}</TableCell>
+                  <TableCell sx={{ minWidth: 120, maxWidth: 180 }}>{request.dietaryNote ?? "—"}</TableCell>
+                  <TableCell sx={{ minWidth: 180, maxWidth: 220, overflow: "hidden" }}>
+                    {request.status === "PENDING" ? (
+                      <TextField
+                        size="small"
+                        fullWidth
+                        placeholder="Optional note"
+                        value={moderatorNoteDraft[request.id] ?? ""}
+                        onChange={(event) => onModeratorNoteChange(request.id, event.target.value)}
+                      />
+                    ) : (
+                      request.moderatorNote ?? "—"
+                    )}
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(request.createdAt).toLocaleString()}</TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : "—"}
                   </TableCell>
                 </TableRow>
               ))}

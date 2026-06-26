@@ -13,7 +13,9 @@ interface HeaderProps {
   onAccountClick: () => void;
   onJoinClick?: () => void;
   onProfileClick?: () => void;
-  onSecurityClick?: () => void;
+  onAccountSettingsClick?: () => void;
+  onMyBookingsClick?: () => void;
+  onMyPaymentsClick?: () => void;
   /** When set, shows a hamburger on small screens that opens the side navigation. */
   onNavMenuOpen?: () => void;
 }
@@ -35,12 +37,14 @@ export default function Header({
   onAccountClick,
   onJoinClick,
   onProfileClick,
-  onSecurityClick,
+  onAccountSettingsClick,
+  onMyBookingsClick,
+  onMyPaymentsClick,
   onNavMenuOpen,
 }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled } = useEnabledClaim(user);
 
   const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -59,12 +63,24 @@ export default function Header({
     }
   };
 
-  const handleSecurity = () => {
+  const handleAccountSettings = () => {
     handleMenuClose();
-    if (onSecurityClick) {
-      onSecurityClick();
+    if (onAccountSettingsClick) {
+      onAccountSettingsClick();
     } else {
       onAccountClick();
+    }
+  };
+
+  const handleMyBookings = () => {
+    handleMenuClose();
+    onMyBookingsClick?.();
+  };
+
+  const handleMyPayments = () => {
+    handleMenuClose();
+    if (onMyPaymentsClick) {
+      onMyPaymentsClick();
     }
   };
 
@@ -209,7 +225,7 @@ export default function Header({
               )}
               {isEnabled && (
                 <MenuItem
-                  onClick={handleSecurity}
+                  onClick={handleAccountSettings}
                   sx={{
                     "&:focus": {
                       outline: "none",
@@ -219,7 +235,37 @@ export default function Header({
                     },
                   }}
                 >
-                  Security
+                  Account
+                </MenuItem>
+              )}
+              {isEnabled && (
+                <MenuItem
+                  onClick={handleMyBookings}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  My Bookings
+                </MenuItem>
+              )}
+              {isEnabled && (
+                <MenuItem
+                  onClick={handleMyPayments}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                  }}
+                >
+                  My Payments
                 </MenuItem>
               )}
               <MenuItem

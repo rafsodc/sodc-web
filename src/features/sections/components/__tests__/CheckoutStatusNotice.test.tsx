@@ -11,6 +11,14 @@ vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
 }));
 
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  reconcileMyCheckoutSessionOrders: vi.fn().mockResolvedValue({
+    appliedCount: 0,
+    reconciledOrderIds: [],
+    orderIds: [],
+  }),
+}));
+
 describe("CheckoutStatusNotice", () => {
   const onDismiss = vi.fn();
 
@@ -75,7 +83,7 @@ describe("CheckoutStatusNotice", () => {
     expect(screen.getByText(/member ticket purchase is complete/i)).toBeInTheDocument();
     expect(screen.getByText(/event: spring gala/i)).toBeInTheDocument();
     expect(screen.getByText(/quantity: 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/amount: 25.00 GBP/i)).toBeInTheDocument();
+    expect(screen.getByText(/amount: £25\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/reference: abc/i)).toBeInTheDocument();
   });
 

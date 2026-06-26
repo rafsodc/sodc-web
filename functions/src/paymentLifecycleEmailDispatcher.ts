@@ -15,6 +15,7 @@ export const TICKET_ORDER_MAIL_TEMPLATE_KEYS = ["ticketOrderPaid", "ticketOrderF
 
 export type TicketOrderPaidPersonalisation = {
   customerFirstName: string;
+  firstName: string;
   eventTitle: string;
   ticketTypeTitle: string;
   quantity: number;
@@ -76,8 +77,10 @@ function buildPaidLikePersonalisation(args: {
   const { row, statusForEmail, appBaseUrl } = args;
   const base = normaliseAppBaseUrl(appBaseUrl);
   const fn = row.user.firstName?.trim();
+  const customerFirstName = fn && fn.length > 0 ? fn : "there";
   return {
-    customerFirstName: fn && fn.length > 0 ? fn : "there",
+    customerFirstName,
+    firstName: customerFirstName,
     eventTitle: row.event.title ?? "",
     ticketTypeTitle: row.ticketType.title ?? "",
     quantity: row.quantity,

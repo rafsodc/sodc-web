@@ -15,23 +15,25 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
-import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
+import { MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH, ROUTES, MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
 
 interface ProfileProps {
   userData: UserData | null;
+  userDataLoading?: boolean;
   userEmail: string;
   onBack?: () => void;
   onUpdate?: () => void;
 }
 
-export default function Profile({ userData, userEmail, onBack, onUpdate }: ProfileProps) {
+export default function Profile({ userData, userDataLoading = false, userEmail, onBack, onUpdate }: ProfileProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,7 +42,9 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
-  const [membershipStatus, setMembershipStatus] = useState<MembershipStatus>(MembershipStatus.PENDING);
+  const [membershipStatus, setMembershipStatus] = useState<MembershipStatus | "">(
+    () => userData?.membershipStatus ?? ""
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -55,11 +59,10 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
       setIsReserve(userData.isReserve ?? false);
       setIsCivilServant(userData.isCivilServant ?? false);
       setIsIndustry(userData.isIndustry ?? false);
-      setMembershipStatus(userData.membershipStatus || MembershipStatus.PENDING);
+      setMembershipStatus(userData.membershipStatus || "");
     } else {
-      // New user - populate with email from Firebase Auth
       setEmail(userEmail);
-      setMembershipStatus(MembershipStatus.PENDING);
+      setMembershipStatus("");
     }
   }, [userData, userEmail]);
 
@@ -77,7 +80,6 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
         return;
       }
 
-      // Update profile fields (excluding membershipStatus)
       const vars: UpsertUserVariables = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -90,28 +92,27 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
       };
       await upsertUser(dataConnect, vars);
 
-      // Update membership status separately via Firebase Function (validates and enforces rules)
-      // Only call if the status has actually changed
       const currentStatus = userData?.membershipStatus || null;
       if (membershipStatus && membershipStatus !== currentStatus) {
-        const statusResult = await updateMembershipStatus(currentUser.uid, membershipStatus);
+        const statusResult = await updateMembershipStatus(
+          currentUser.uid,
+          membershipStatus as MembershipStatus
+        );
         if (!statusResult.success) {
           setError(statusResult.error || "Failed to update membership status");
           setSubmitting(false);
           return;
         }
       }
-      
-      // Update displayName in Firebase Auth
+
       const displayName = `${lastName.trim()}, ${firstName.trim()}`.trim();
       if (displayName) {
         const displayNameResult = await updateDisplayName(displayName);
         if (!displayNameResult.success) {
-          // Log error but don't fail the whole operation
           console.warn("Failed to update display name:", displayNameResult.error);
         }
       }
-      
+
       setSuccess(true);
       if (onUpdate) {
         onUpdate();
@@ -122,6 +123,17 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
       setSubmitting(false);
     }
   };
+
+  const statusLocked =
+    userData?.membershipStatus != null && isRestrictedStatus(userData.membershipStatus);
+
+  if (userDataLoading && !userData) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto" }}>
@@ -140,6 +152,17 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
           {error}
         </Alert>
       )}
+
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Password, resignation, and other account actions are managed in Account settings.
+        </Typography>
+        <Button component={RouterLink} to={ROUTES.ACCOUNT_SETTINGS} variant="outlined" size="small">
+          Account settings
+        </Button>
+      </Box>
+
+      <Divider sx={{ mb: 3 }} />
 
       <form onSubmit={handleSubmit}>
         <Stack spacing={3}>
@@ -194,29 +217,28 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
               value={membershipStatus}
               label="Membership Status"
               onChange={(e) => setMembershipStatus(e.target.value as MembershipStatus)}
-              disabled={submitting || (userData?.membershipStatus && isRestrictedStatus(userData.membershipStatus))}
+              disabled={submitting || statusLocked}
+              data-testid="membership-status-select"
             >
-              {(() => {
-                // If current status is restricted, show only the current status (disabled)
-                // Otherwise, show all non-restricted statuses
-                const currentStatus = userData?.membershipStatus;
-                if (currentStatus && isRestrictedStatus(currentStatus)) {
-                  const currentOption = MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === currentStatus);
-                  return currentOption ? (
-                    <MenuItem key={currentOption.value} value={currentOption.value}>
-                      {currentOption.label}
+              {statusLocked ? (
+                MEMBERSHIP_STATUS_OPTIONS.filter((option) => option.value === userData?.membershipStatus).map(
+                  (status) => (
+                    <MenuItem key={status.value} value={status.value}>
+                      {status.label}
                     </MenuItem>
-                  ) : null;
-                }
-                // Show non-restricted options
-                return MEMBERSHIP_STATUS_OPTIONS.filter(option => NON_RESTRICTED_STATUSES.includes(option.value)).map((status) => (
+                  )
+                )
+              ) : (
+                MEMBERSHIP_STATUS_OPTIONS.filter((option) =>
+                  NON_RESTRICTED_STATUSES.includes(option.value)
+                ).map((status) => (
                   <MenuItem key={status.value} value={status.value}>
                     {status.label}
                   </MenuItem>
-                ));
-              })()}
+                ))
+              )}
             </Select>
-            {userData?.membershipStatus && isRestrictedStatus(userData.membershipStatus) && (
+            {statusLocked && (
               <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
                 Cannot change from restricted status
               </Typography>
@@ -303,4 +325,3 @@ export default function Profile({ userData, userEmail, onBack, onUpdate }: Profi
     </Box>
   );
 }
-

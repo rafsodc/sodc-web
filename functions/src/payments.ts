@@ -4,10 +4,12 @@ import * as logger from "firebase-functions/logger";
 import {
   createPaymentWebhookEvent,
   createTicketOrderForCheckout,
+  getBookingsForBookerAndEvent,
   getPaymentWebhookEventByStripeEventId,
   getSectionByIdForCallable,
   getPaymentReconciliationExceptionByOrderAndType,
   getTicketOrderForWebhook,
+  getTicketOrdersForBookerAndEvent,
   getTicketOrderStripeArtifactsForCallable,
   getTicketTypeForCheckout,
   getUserForCheckout,
@@ -29,12 +31,15 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
+import { computeUnpaidBookingCheckoutItems, planCheckoutOrderLines, selectLatestActiveBooking, stalePendingOrderIds, bookingIdsEqual } from "./bookingCheckout";
 import Stripe from "stripe";
 import {
+  extractOrderIdsFromStripeEvent,
   isSupportedStripeEventType,
   normalizeStripeEvent,
+  type PaymentTransitionIntent,
 } from "./paymentStateMachine";
-import { runTicketOrderTransition } from "./paymentTransitionEngine";
+import { runTicketOrderTransition, paidContextForMultiOrderWebhook } from "./paymentTransitionEngine";
 import { evaluateReconciliationSignals } from "./paymentReconciliation";
 import { emitPaymentLifecycleNotification } from "./paymentNotifications";
 import {
@@ -54,6 +59,21 @@ const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
 const CHECKOUT_CURRENCY = "gbp";
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+
+/** Member payments route — must match frontend `ROUTES.MY_PAYMENTS` (`/payments`). */
+export const MEMBER_PAYMENTS_PATH = "/payments";
+
+export function buildStripeCheckoutReturnUrls(
+  appBaseUrl: string,
+  orderId: string
+): { successUrl: string; cancelUrl: string } {
+  const base = appBaseUrl.replace(/\/$/, "");
+  const orderQuery = encodeURIComponent(orderId);
+  return {
+    successUrl: `${base}${MEMBER_PAYMENTS_PATH}?checkout=success&orderId=${orderQuery}`,
+    cancelUrl: `${base}${MEMBER_PAYMENTS_PATH}?checkout=cancel&orderId=${orderQuery}`,
+  };
+}
 
 const govNotifyTicketOrderDispatcher = createGovNotifyTicketOrderLifecycleDispatcher({
   getMailer: defaultWebhookGovNotifyTicketOrderMailer,
@@ -78,6 +98,66 @@ function ensureBookingWindow(start: string, end: string): void {
 
 function toMinorUnits(price: number): number {
   return Math.round(price * 100);
+}
+
+async function ensureTicketCheckoutEligibility(args: {
+  uid: string;
+  ticketType: NonNullable<Awaited<ReturnType<typeof getTicketTypeForCheckout>>["data"]["ticketType"]>;
+}): Promise<{ membershipStatus: string; explicitGroupIds: Set<string> }> {
+  const { uid, ticketType } = args;
+  ensureBookingWindow(ticketType.event.bookingStartDateTime, ticketType.event.bookingEndDateTime);
+
+  const section = await getSectionByIdForCallable({ id: ticketType.event.section.id as UUIDString });
+  const sectionData = section.data?.section;
+  if (!sectionData) throw new HttpsError("not-found", "Section not found");
+  const userGroups = await getUserUserGroupsForAdmin({ userId: uid });
+  const explicitGroupIds = new Set((userGroups.data?.user?.userGroups ?? []).map((x) => validateUUID(x.userGroup.id)));
+  const dcUser = await getUserForCheckout({ userId: uid });
+  const user = dcUser.data?.user;
+  if (!user) throw new HttpsError("failed-precondition", "User profile is required");
+  const membershipStatus = user.membershipStatus;
+  if (
+    !userHasBookerPurpose(
+      (sectionData.purposeLinks ?? []).map((l) => ({
+        purposes: l.purposes ?? [],
+        userGroup: { id: validateUUID(l.userGroup.id), membershipStatuses: l.userGroup.membershipStatuses ?? null },
+      })),
+      explicitGroupIds,
+      membershipStatus
+    )
+  ) {
+    throw new HttpsError("permission-denied", "You are not eligible to purchase this ticket");
+  }
+  if (
+    !userMatchesUserGroup(
+      membershipStatus,
+      { id: validateUUID(ticketType.userGroup.id), membershipStatuses: ticketType.userGroup.membershipStatuses ?? null },
+      explicitGroupIds
+    )
+  ) {
+    throw new HttpsError("permission-denied", "You are not eligible for this ticket type");
+  }
+  return { membershipStatus, explicitGroupIds };
+}
+
+async function ensureStripeCustomerId(args: {
+  uid: string;
+  stripeClient: InstanceType<typeof Stripe>;
+}): Promise<string> {
+  const dcUser = await getUserForCheckout({ userId: args.uid });
+  const user = dcUser.data?.user;
+  if (!user) throw new HttpsError("failed-precondition", "User profile is required");
+  let customerId = user.stripeCustomerId ?? null;
+  if (!customerId) {
+    const created = await args.stripeClient.customers.create({
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      metadata: { firebaseUid: args.uid },
+    });
+    customerId = created.id;
+    await updateUserStripeCustomerId({ userId: args.uid, stripeCustomerId: customerId });
+  }
+  return customerId;
 }
 
 function stripeObjectIdFromEvent(event: { data: { object: unknown } }): string | null {
@@ -214,6 +294,164 @@ async function upsertReconciliationSnapshot(args: {
   }
 }
 
+function paidContextFromCheckoutSessionObject(session: {
+  id?: string;
+  payment_intent?: string | { id?: string } | null;
+}): {
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+} {
+  return {
+    stripeCheckoutSessionId: session.id ?? null,
+    stripePaymentIntentId:
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+  };
+}
+
+async function applyPaymentTransitionToOrders(args: {
+  orderIds: UUIDString[];
+  intent: PaymentTransitionIntent;
+  webhookEventId: string;
+  paidContext?: {
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+  };
+  refundContext?: {
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: string | null;
+  };
+  recoverFailedCheckoutPayment?: boolean;
+  paymentIntentIdFromEvent?: string | null;
+  refundAmountFromEvent?: number | null;
+}): Promise<{ appliedCount: number; reconciledOrderIds: UUIDString[] }> {
+  let appliedCount = 0;
+  const reconciledOrderIds: UUIDString[] = [];
+
+  for (const [orderIndex, orderId] of args.orderIds.entries()) {
+    const orderRow = await getTicketOrderForWebhook({ id: orderId });
+    const currentOrder = orderRow.data?.ticketOrder;
+    if (!currentOrder) {
+      continue;
+    }
+    const transitionResult = await runTicketOrderTransition(
+      {
+        orderId,
+        currentStatus: currentOrder.status,
+        intent: args.intent,
+        webhookEventId: args.webhookEventId,
+        recoverFailedCheckoutPayment: args.recoverFailedCheckoutPayment,
+        paidContext:
+          args.intent === "MARK_PAID" && args.paidContext
+            ? paidContextForMultiOrderWebhook(orderIndex, args.paidContext)
+            : undefined,
+        refundContext: args.refundContext,
+      },
+      {
+        markPaid: markTicketOrderPaidFromWebhook,
+        markFailed: markTicketOrderFailedFromWebhook,
+        markRefunded: markTicketOrderRefundedFromWebhook,
+      }
+    );
+    if (transitionResult.action !== "applied") {
+      continue;
+    }
+    appliedCount += 1;
+    reconciledOrderIds.push(orderId);
+    const notificationType =
+      args.intent === "MARK_PAID" ? "PAYMENT_PAID" : args.intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
+    await emitPaymentLifecycleNotification(
+      {
+        type: notificationType,
+        orderId,
+        eventId: currentOrder.event.id,
+        stripeEventId: args.webhookEventId,
+        status: transitionResult.targetStatus,
+        occurredAt: new Date().toISOString(),
+      },
+      govNotifyTicketOrderDispatcher,
+      sendNotificationOnce,
+      { userId: currentOrder.user.id, provider: GOV_NOTIFY_PROVIDER }
+    );
+    await upsertReconciliationSnapshot({
+      orderId,
+      snapshot: {
+        status: transitionResult.targetStatus,
+        totalAmountMinor: currentOrder.totalAmountMinor,
+        refundedAmountMinor: args.refundAmountFromEvent ?? currentOrder.refundedAmountMinor ?? null,
+        stripePaymentIntentId: args.paymentIntentIdFromEvent ?? currentOrder.stripePaymentIntentId ?? null,
+        disputeStatus: currentOrder.disputeStatus ?? null,
+      },
+      stripeEventId: args.webhookEventId,
+    });
+  }
+
+  return { appliedCount, reconciledOrderIds };
+}
+
+async function reconcilePaidCheckoutSessionOrders(args: {
+  uid: string;
+  anchorOrderId: UUIDString;
+  webhookEventId: string;
+}): Promise<{ appliedCount: number; reconciledOrderIds: UUIDString[]; orderIds: UUIDString[] }> {
+  const orderRow = await getTicketOrderForWebhook({ id: args.anchorOrderId });
+  const anchorOrder = orderRow.data?.ticketOrder;
+  if (!anchorOrder || anchorOrder.user.id !== args.uid) {
+    throw new HttpsError("not-found", "Order not found");
+  }
+
+  const stripeClient = requireStripe(stripeSecret.value());
+  let session: Awaited<ReturnType<typeof stripeClient.checkout.sessions.retrieve>> | null = null;
+
+  if (anchorOrder.stripeCheckoutSessionId) {
+    session = await stripeClient.checkout.sessions.retrieve(anchorOrder.stripeCheckoutSessionId);
+  } else if (anchorOrder.stripePaymentIntentId) {
+    const paymentIntent = await stripeClient.paymentIntents.retrieve(anchorOrder.stripePaymentIntentId);
+    const sessionId =
+      typeof paymentIntent.metadata?.checkoutSessionId === "string"
+        ? paymentIntent.metadata.checkoutSessionId
+        : null;
+    if (sessionId) {
+      session = await stripeClient.checkout.sessions.retrieve(sessionId);
+    }
+  }
+
+  if (!session?.id) {
+    throw new HttpsError("failed-precondition", "Unable to resolve checkout session for this order");
+  }
+  if (session.payment_status !== "paid") {
+    throw new HttpsError("failed-precondition", "Checkout session is not paid");
+  }
+
+  const orderIds = extractOrderIdsFromStripeEvent({
+    type: "checkout.session.completed",
+    data: { object: session },
+  }).map((id) => validateUUID(id, "orderId") as UUIDString);
+  if (orderIds.length === 0) {
+    throw new HttpsError("failed-precondition", "Checkout session is missing order metadata");
+  }
+
+  for (const orderId of orderIds) {
+    const sibling = await getTicketOrderForWebhook({ id: orderId });
+    const siblingOrder = sibling.data?.ticketOrder;
+    if (!siblingOrder || siblingOrder.user.id !== args.uid) {
+      throw new HttpsError("permission-denied", "Checkout session includes an order you do not own");
+    }
+  }
+
+  const paidContext = paidContextFromCheckoutSessionObject(session);
+  const { appliedCount, reconciledOrderIds } = await applyPaymentTransitionToOrders({
+    orderIds,
+    intent: "MARK_PAID",
+    webhookEventId: args.webhookEventId,
+    paidContext,
+    recoverFailedCheckoutPayment: true,
+    paymentIntentIdFromEvent: paidContext.stripePaymentIntentId,
+  });
+
+  return { appliedCount, reconciledOrderIds, orderIds };
+}
+
 export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
@@ -230,50 +468,13 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   const ttResult = await getTicketTypeForCheckout({ ticketTypeId });
   const ticketType = ttResult.data?.ticketType;
   if (!ticketType) throw new HttpsError("not-found", "Ticket type not found");
-  if (ticketType.audience !== TicketAudience.MEMBER) {
-    throw new HttpsError("failed-precondition", "Only member tickets are supported in Checkout v1");
+  if (ticketType.audience !== TicketAudience.MEMBER && ticketType.audience !== TicketAudience.GUEST) {
+    throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
   }
-  ensureBookingWindow(ticketType.event.bookingStartDateTime, ticketType.event.bookingEndDateTime);
-
-  const section = await getSectionByIdForCallable({ id: ticketType.event.section.id as UUIDString });
-  const sectionData = section.data?.section;
-  if (!sectionData) throw new HttpsError("not-found", "Section not found");
-  const userGroups = await getUserUserGroupsForAdmin({ userId: uid });
-  const explicitGroupIds = new Set((userGroups.data?.user?.userGroups ?? []).map((x) => validateUUID(x.userGroup.id)));
-  const membershipStatus = user.membershipStatus;
-  if (
-    !userHasBookerPurpose(
-      (sectionData.purposeLinks ?? []).map((l) => ({
-        purposes: l.purposes ?? [],
-        userGroup: { id: validateUUID(l.userGroup.id), membershipStatuses: l.userGroup.membershipStatuses ?? null },
-      })),
-      explicitGroupIds,
-      membershipStatus
-    )
-  ) {
-    throw new HttpsError("permission-denied", "You are not eligible to purchase this ticket");
-  }
-  if (
-    !userMatchesUserGroup(
-      membershipStatus,
-      { id: validateUUID(ticketType.userGroup.id), membershipStatuses: ticketType.userGroup.membershipStatuses ?? null },
-      explicitGroupIds
-    )
-  ) {
-    throw new HttpsError("permission-denied", "You are not eligible for this ticket type");
-  }
+  await ensureTicketCheckoutEligibility({ uid, ticketType });
 
   const stripeClient = requireStripe(stripeSecret.value());
-  let customerId = user.stripeCustomerId ?? null;
-  if (!customerId) {
-    const created = await stripeClient.customers.create({
-      email: user.email,
-      name: `${user.firstName} ${user.lastName}`.trim(),
-      metadata: { firebaseUid: uid },
-    });
-    customerId = created.id;
-    await updateUserStripeCustomerId({ userId: uid, stripeCustomerId: customerId });
-  }
+  const customerId = await ensureStripeCustomerId({ uid, stripeClient });
 
   const unitAmountMinor = toMinorUnits(ticketType.price);
   const totalAmountMinor = unitAmountMinor * quantity;
@@ -289,11 +490,12 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   const orderId = order.data?.ticketOrder_insert?.id;
   if (!orderId) throw new HttpsError("internal", "Failed to create ticket order");
 
+  const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls(APP_BASE_URL, orderId);
   const session = await stripeClient.checkout.sessions.create({
     mode: "payment",
-    customer: customerId ?? undefined,
-    success_url: `${APP_BASE_URL}/my-payments?checkout=success&orderId=${orderId}`,
-    cancel_url: `${APP_BASE_URL}/my-payments?checkout=cancel&orderId=${orderId}`,
+    customer: customerId,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     line_items: [
       {
         quantity,
@@ -312,11 +514,113 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
       ticketTypeId: ticketType.id,
       eventId: ticketType.event.id,
       orderId,
+      orderIds: orderId,
     },
   });
 
   if (!session.url) throw new HttpsError("internal", "Failed to create Stripe Checkout session");
   return { url: session.url, orderId };
+});
+
+export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
+  requireEnabled(request);
+  const uid = request.auth!.uid;
+  const eventId = validateUUID(String(request.data?.eventId), "eventId") as UUIDString;
+
+  const bookingsResult = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
+  const booking = selectLatestActiveBooking(bookingsResult.data?.user?.bookings ?? []);
+  if (!booking) {
+    throw new HttpsError("failed-precondition", "No active booking found for this event");
+  }
+
+  const ordersResult = await getTicketOrdersForBookerAndEvent({ userId: uid, eventId });
+  const eventTicketOrders = ordersResult.data?.user?.ticketOrders ?? [];
+  const unpaidItems = computeUnpaidBookingCheckoutItems({
+    booking,
+    ticketOrders: eventTicketOrders,
+  });
+  if (unpaidItems.length === 0) {
+    throw new HttpsError("failed-precondition", "All tickets for this booking are already paid");
+  }
+
+  const checkoutLines = planCheckoutOrderLines(unpaidItems, eventTicketOrders);
+  const reusedOrderIds = checkoutLines.flatMap((line) => (line.existingOrderId ? [line.existingOrderId] : []));
+  for (const staleOrderId of stalePendingOrderIds(eventTicketOrders, reusedOrderIds)) {
+    await markTicketOrderFailedFromWebhook({
+      id: staleOrderId as UUIDString,
+      webhookEventId: `checkout-supersede:${staleOrderId}`,
+    });
+  }
+
+  const stripeClient = requireStripe(stripeSecret.value());
+  const customerId = await ensureStripeCustomerId({ uid, stripeClient });
+  const createdOrderIds: UUIDString[] = [];
+  const lineItems = [];
+
+  for (const line of checkoutLines) {
+    const ticketTypeId = validateUUID(line.ticketTypeId, "ticketTypeId") as UUIDString;
+    const ttResult = await getTicketTypeForCheckout({ ticketTypeId });
+    const ticketType = ttResult.data?.ticketType;
+    if (!ticketType) {
+      throw new HttpsError("not-found", `Ticket type not found: ${ticketTypeId}`);
+    }
+    if (!bookingIdsEqual(ticketType.event.id, eventId)) {
+      throw new HttpsError("failed-precondition", "Ticket type does not belong to this event");
+    }
+    if (ticketType.audience !== TicketAudience.MEMBER && ticketType.audience !== TicketAudience.GUEST) {
+      throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
+    }
+    await ensureTicketCheckoutEligibility({ uid, ticketType });
+
+    let orderId = line.existingOrderId as UUIDString | null;
+    if (!orderId) {
+      const order = await createTicketOrderForCheckout({
+        userId: uid,
+        eventId,
+        ticketTypeId,
+        quantity: line.quantity,
+        unitAmountMinor: line.unitAmountMinor,
+        totalAmountMinor: line.unitAmountMinor * line.quantity,
+        currency: CHECKOUT_CURRENCY,
+      });
+      orderId = (order.data?.ticketOrder_insert?.id as UUIDString | undefined) ?? null;
+      if (!orderId) {
+        throw new HttpsError("internal", "Failed to create ticket order");
+      }
+    }
+
+    createdOrderIds.push(orderId);
+    lineItems.push({
+      quantity: line.quantity,
+      price_data: {
+        currency: CHECKOUT_CURRENCY,
+        unit_amount: line.unitAmountMinor,
+        product_data: {
+          name: line.title,
+          description: `Event: ${ticketType.event.title}`,
+        },
+      },
+    });
+  }
+
+  const primaryOrderId = createdOrderIds[0]!;
+  const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls(APP_BASE_URL, primaryOrderId);
+  const session = await stripeClient.checkout.sessions.create({
+    mode: "payment",
+    customer: customerId,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    line_items: lineItems,
+    metadata: {
+      firebaseUid: uid,
+      eventId,
+      orderId: primaryOrderId,
+      orderIds: createdOrderIds.join(","),
+    },
+  });
+
+  if (!session.url) throw new HttpsError("internal", "Failed to create Stripe Checkout session");
+  return { url: session.url, orderIds: createdOrderIds };
 });
 
 async function fetchStripeArtifactsForOrder(args: {
@@ -450,6 +754,25 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
   }
 );
 
+export const reconcileMyCheckoutSessionOrders = onCall(
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
+  async (request) => {
+    requireEnabled(request);
+    const uid = request.auth!.uid;
+    const orderId = validateUUID(String(request.data?.orderId), "orderId") as UUIDString;
+    const result = await reconcilePaidCheckoutSessionOrders({
+      uid,
+      anchorOrderId: orderId,
+      webhookEventId: `member-reconcile:${orderId}`,
+    });
+    return {
+      appliedCount: result.appliedCount,
+      reconciledOrderIds: result.reconciledOrderIds,
+      orderIds: result.orderIds,
+    };
+  }
+);
+
 function webhookSecretCandidates(endpointName: "stripeWebhookPayments" | "stripeWebhook"): string[] {
   const payments = stripeWebhookPaymentsSecret.value();
   const legacy = stripeWebhookSecret.value();
@@ -515,18 +838,39 @@ async function handleStripeWebhookRequest(args: {
       return;
     }
     const stripeObjectId = stripeObjectIdFromEvent(event);
+    const normalized = normalizeStripeEvent(event);
     const existingWebhookEvent = await getPaymentWebhookEventByStripeEventId({ stripeEventId: event.id });
     if ((existingWebhookEvent.data?.paymentWebhookEvents?.length ?? 0) > 0) {
-      logger.info(`${endpointName} duplicate delivery`, {
-        eventType: event.type,
-        eventId: event.id,
-        stripeObjectId,
-      });
+      if (event.type === "checkout.session.completed" && normalized.orderIds?.length) {
+        const paidContext = paidContextFromCheckoutSessionObject(
+          event.data.object as { id?: string; payment_intent?: string | { id?: string } }
+        );
+        const duplicateOrderIds = normalized.orderIds.map((id) => validateUUID(id, "orderId") as UUIDString);
+        const { appliedCount: duplicateAppliedCount } = await applyPaymentTransitionToOrders({
+          orderIds: duplicateOrderIds,
+          intent: "MARK_PAID",
+          webhookEventId: `${event.id}:reconcile`,
+          paidContext,
+          recoverFailedCheckoutPayment: true,
+          paymentIntentIdFromEvent: paidContext.stripePaymentIntentId,
+        });
+        logger.info(`${endpointName} duplicate delivery reconciliation`, {
+          eventType: event.type,
+          eventId: event.id,
+          stripeObjectId,
+          duplicateAppliedCount,
+        });
+      } else {
+        logger.info(`${endpointName} duplicate delivery`, {
+          eventType: event.type,
+          eventId: event.id,
+          stripeObjectId,
+        });
+      }
       res.status(200).send("Duplicate event");
       return;
     }
 
-    const normalized = normalizeStripeEvent(event);
     if (normalized.kind === "ignore") {
       logger.info(`${endpointName} ignored event`, {
         eventType: event.type,
@@ -545,7 +889,7 @@ async function handleStripeWebhookRequest(args: {
       res.status(200).send("Ignored event");
       return;
     }
-    if (!normalized.orderId) {
+    if (!normalized.orderIds?.length) {
       logger.info(`${endpointName} missing order metadata`, { eventType: event.type, reason: normalized.reason, eventId: event.id });
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
@@ -559,7 +903,8 @@ async function handleStripeWebhookRequest(args: {
       return;
     }
 
-    const canonicalOrderId = validateUUID(normalized.orderId, "orderId") as UUIDString;
+    const orderIds = (normalized.orderIds ?? []).map((id) => validateUUID(id, "orderId") as UUIDString);
+    const canonicalOrderId = orderIds[0];
     const existing = await getTicketOrderForWebhook({ id: canonicalOrderId });
     const order = existing.data?.ticketOrder;
     if (!order) {
@@ -658,103 +1003,33 @@ async function handleStripeWebhookRequest(args: {
       res.status(200).send("Missing transition intent");
       return;
     }
-    const transitionResult = await runTicketOrderTransition(
-      {
-        orderId: canonicalOrderId,
-        currentStatus: order.status,
-        intent,
-        webhookEventId: event.id,
-        paidContext:
-          intent === "MARK_PAID"
-            ? (() => {
-                const session = event.data.object as {
-                  id?: string;
-                  payment_intent?: string | { id?: string };
-                };
-                return {
-                  stripeCheckoutSessionId: session.id ?? null,
-                  stripePaymentIntentId:
-                    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
-                };
-              })()
-            : undefined,
-        refundContext:
-          intent === "MARK_REFUNDED"
-            ? (() => {
-                const charge = event.data.object as {
-                  id?: string;
-                  amount_refunded?: number;
-                  refunds?: { data?: Array<{ id?: string }> };
-                };
-                const latestRefundId = charge.refunds?.data?.[0]?.id ?? null;
-                return {
-                  stripeRefundId: latestRefundId,
-                  refundedAmountMinor: typeof charge.amount_refunded === "number" ? charge.amount_refunded : null,
-                  refundedAt: isoTimestampFromStripeEpochSeconds((event as { created?: unknown }).created),
-                };
-              })()
-            : undefined,
-      },
-      {
-        markPaid: markTicketOrderPaidFromWebhook,
-        markFailed: markTicketOrderFailedFromWebhook,
-        markRefunded: markTicketOrderRefundedFromWebhook,
-      }
-    );
-    if (transitionResult.action !== "applied") {
-      logger.info(`${endpointName} transition skipped`, {
-        eventType: event.type,
-        eventId: event.id,
-        orderId: canonicalOrderId,
-        fromStatus: transitionResult.fromStatus,
-        targetStatus: transitionResult.targetStatus,
-        decision: transitionResult.action,
-        reason: transitionResult.reason,
-        intent: transitionResult.intent,
-      });
-      await appendWebhookLedgerEvent({
-        stripeEventId: event.id,
-        eventType: event.type,
-        outcome: PaymentWebhookEventOutcome.IGNORED,
-        reason: `transition_${transitionResult.action}:${transitionResult.reason}:${transitionResult.fromStatus}->${transitionResult.targetStatus}:${transitionResult.intent}`,
-        ticketOrderId: canonicalOrderId,
-        stripeObjectId,
-        livemode: event.livemode,
-      });
-      res.status(200).send(transitionResult.action === "noop_replay" ? "Already processed" : "Illegal transition skipped");
-      return;
-    }
-    await appendWebhookLedgerEvent({
-      stripeEventId: event.id,
-      eventType: event.type,
-      outcome: PaymentWebhookEventOutcome.PROCESSED,
-      reason: `transition_applied:${transitionResult.reason}:${transitionResult.fromStatus}->${transitionResult.targetStatus}:${transitionResult.intent}`,
-      ticketOrderId: canonicalOrderId,
-      stripeObjectId,
-      livemode: event.livemode,
-    });
-    const notificationType =
-      intent === "MARK_PAID" ? "PAYMENT_PAID" : intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
-    await emitPaymentLifecycleNotification(
-      {
-        type: notificationType,
-        orderId: canonicalOrderId,
-        eventId: order.event.id,
-        stripeEventId: event.id,
-        status: transitionResult.targetStatus,
-        occurredAt: new Date().toISOString(),
-      },
-      govNotifyTicketOrderDispatcher,
-      sendNotificationOnce,
-      { userId: order.user.id, provider: GOV_NOTIFY_PROVIDER }
-    );
-    const nextStatus = transitionResult.action === "applied" ? transitionResult.targetStatus : order.status;
+
+    const paidContext =
+      intent === "MARK_PAID"
+        ? paidContextFromCheckoutSessionObject(
+            event.data.object as { id?: string; payment_intent?: string | { id?: string } }
+          )
+        : undefined;
+    const refundContext =
+      intent === "MARK_REFUNDED"
+        ? (() => {
+            const charge = event.data.object as {
+              id?: string;
+              amount_refunded?: number;
+              refunds?: { data?: Array<{ id?: string }> };
+            };
+            const latestRefundId = charge.refunds?.data?.[0]?.id ?? null;
+            return {
+              stripeRefundId: latestRefundId,
+              refundedAmountMinor: typeof charge.amount_refunded === "number" ? charge.amount_refunded : null,
+              refundedAt: isoTimestampFromStripeEpochSeconds((event as { created?: unknown }).created),
+            };
+          })()
+        : undefined;
+
     const paymentIntentIdFromEvent =
       intent === "MARK_PAID"
-        ? (() => {
-            const session = event.data.object as { payment_intent?: string | { id?: string } };
-            return typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
-          })()
+        ? paidContext?.stripePaymentIntentId ?? null
         : null;
     const refundAmountFromEvent =
       intent === "MARK_REFUNDED"
@@ -763,16 +1038,40 @@ async function handleStripeWebhookRequest(args: {
             return typeof charge.amount_refunded === "number" ? charge.amount_refunded : null;
           })()
         : null;
-    await upsertReconciliationSnapshot({
-      orderId: canonicalOrderId,
-      snapshot: {
-        status: nextStatus,
-        totalAmountMinor: order.totalAmountMinor,
-        refundedAmountMinor: refundAmountFromEvent ?? order.refundedAmountMinor ?? null,
-        stripePaymentIntentId: paymentIntentIdFromEvent ?? order.stripePaymentIntentId ?? null,
-        disputeStatus: order.disputeStatus ?? null,
-      },
+
+    const { appliedCount } = await applyPaymentTransitionToOrders({
+      orderIds,
+      intent,
+      webhookEventId: event.id,
+      paidContext,
+      refundContext,
+      recoverFailedCheckoutPayment: intent === "MARK_PAID" && event.type === "checkout.session.completed",
+      paymentIntentIdFromEvent,
+      refundAmountFromEvent,
+    });
+
+    if (appliedCount === 0) {
+      await appendWebhookLedgerEvent({
+        stripeEventId: event.id,
+        eventType: event.type,
+        outcome: PaymentWebhookEventOutcome.IGNORED,
+        reason: "transition_noop_for_all_orders",
+        ticketOrderId: canonicalOrderId,
+        stripeObjectId,
+        livemode: event.livemode,
+      });
+      res.status(200).send("No transitions applied");
+      return;
+    }
+
+    await appendWebhookLedgerEvent({
       stripeEventId: event.id,
+      eventType: event.type,
+      outcome: PaymentWebhookEventOutcome.PROCESSED,
+      reason: `transition_applied:${intent}:${appliedCount}_orders`,
+      ticketOrderId: canonicalOrderId,
+      stripeObjectId,
+      livemode: event.livemode,
     });
     res.status(200).send("ok");
   } catch (err) {

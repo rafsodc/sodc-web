@@ -41,6 +41,7 @@ describe("Data Connect auth contracts", () => {
       { op: "query ListGuestTicketRequestsForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
       { op: "query ListTicketOrdersForAdmin", mustInclude: '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")' },
       { op: "query GetMyTicketOrderById", mustInclude: '@auth(expr: "auth.token.enabled == true")' },
+      { op: "query GetMyBookings", mustInclude: '@auth(expr: "auth.token.enabled == true")' },
     ]);
 
     assertAuth(bookingMutations, [
@@ -57,6 +58,8 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetBookingsForBookerAndEvent", mustInclude: "@auth(level: NO_ACCESS)" },
       { op: "mutation UpdateBookingStatusFromCallable", mustInclude: "@auth(level: NO_ACCESS)" },
       { op: "mutation UpdateBookingPreferencesFromCallable", mustInclude: "@auth(level: NO_ACCESS)" },
+      { op: "query ListStaleDraftBookingsForScheduler", mustInclude: "@auth(level: NO_ACCESS)" },
+      { op: "query ListStalePendingTicketOrdersForScheduler", mustInclude: "@auth(level: NO_ACCESS)" },
     ]);
 
     assertAuth(userMutations, [

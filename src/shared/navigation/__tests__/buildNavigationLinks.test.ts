@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
 import { ROUTES } from "../../../constants";
 import { buildNavigationLinks } from "../buildNavigationLinks";
+import { sectionDetailLocationState } from "../sectionNavigationState";
+
+const homeSectionState = sectionDetailLocationState(ROUTES.HOME);
 
 function sectionsData(overrides: Partial<GetSectionsForUserData> = {}): GetSectionsForUserData {
   return {
@@ -60,7 +63,9 @@ describe("buildNavigationLinks", () => {
       } as Partial<GetSectionsForUserData>),
     });
 
-    expect(links.sections).toEqual([{ label: "My Payments", to: ROUTES.MY_PAYMENTS }, { label: "Signals", to: "/sections/section-1" }]);
+    expect(links.sections).toEqual([
+      { label: "Signals", to: "/sections/section-1", state: homeSectionState },
+    ]);
     expect(links.admin).toEqual([]);
   });
 
@@ -87,10 +92,10 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Signals",
         to: "/sections/section-1",
+        state: homeSectionState,
         children: [
           {
             label: "Administer",
@@ -133,10 +138,10 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Events",
         to: "/sections/section-2",
+        state: homeSectionState,
         children: [
           {
             label: "Administer",
@@ -221,12 +226,14 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(nonAdmin.admin).toEqual([]);
-    expect(nonAdmin.sections).toEqual([{ label: "My Payments", to: ROUTES.MY_PAYMENTS }, { label: "Signals", to: "/sections/section-1" }]);
+    expect(nonAdmin.sections).toEqual([
+      { label: "Signals", to: "/sections/section-1", state: homeSectionState },
+    ]);
     expect(admin.sections).toEqual([
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Signals",
         to: "/sections/section-1",
+        state: homeSectionState,
         children: [
           {
             label: "Administer",
@@ -295,10 +302,10 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
       {
         label: "Alpha",
         to: "/sections/section-1",
+        state: homeSectionState,
         children: [
           {
             label: "Administer",
@@ -310,6 +317,7 @@ describe("buildNavigationLinks", () => {
       {
         label: "Zulu",
         to: "/sections/section-2",
+        state: homeSectionState,
         children: [
           {
             label: "Administer",

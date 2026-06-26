@@ -8,7 +8,6 @@ import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
 import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
-import HomePage from "./shared/components/HomePage";
 import AppSideNav from "./shared/components/AppSideNav";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
@@ -17,10 +16,12 @@ import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
 import { useGetSectionsForUser } from "@dataconnect/generated/react";
 import {
+  isCheckoutReturnSearch,
   navigateBackOr as navigateBackOrHelper,
   selectedAdminSectionId as getSelectedAdminSectionId,
   selectedAdminUserGroupId as getSelectedAdminUserGroupId,
 } from "./shared/appShell/appRoutingHelpers";
+import { getSectionReturnTo, sectionDetailLocationState } from "./shared/navigation/sectionNavigationState";
 import { useAppAuthSession } from "./shared/appShell/useAppAuthSession";
 import { useCheckoutQueryState } from "./shared/appShell/useCheckoutQueryState";
 import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
@@ -38,9 +39,15 @@ const PaymentReconciliationDashboard = lazy(() => import("./features/admin/compo
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
 const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
 const MyPayments = lazy(() => import("./features/sections/components/MyPayments"));
+const MyBookings = lazy(() => import("./features/sections/components/MyBookings"));
 const AccountStatusMessage = lazy(() => import("./features/users/components/AccountStatusMessage"));
 const ProfileCompletion = lazy(() => import("./features/auth/components/ProfileCompletion"));
 const EmailVerificationMessage = lazy(() => import("./features/auth/components/EmailVerificationMessage"));
+const MemberWelcomePage = lazy(() => import("./features/welcome/components/MemberWelcomePage"));
+const PublicHomePage = lazy(() => import("./features/welcome/components/PublicHomePage"));
+const AccountSettingsPage = lazy(() => import("./features/account/components/AccountSettingsPage"));
+const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"));
+const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -58,7 +65,7 @@ function SectionDetailRoute() {
   }
 
   const handleBack = () => {
-    navigateBackOrHelper(ROUTES.SECTIONS, location, navigate);
+    navigateBackOrHelper(getSectionReturnTo(location.state), location, navigate);
   };
 
   return <SectionDetail sectionId={sectionId} onBack={handleBack} />;
@@ -80,9 +87,10 @@ function AppContent() {
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { userData, refetch } = useUserData(user);
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
+  const checkoutReturn = isCheckoutReturnSearch(location.search);
   const isAdmin = useAdminClaim(user);
+  const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const {
     membershipStatusForUnenabled,
     needsProfileCompletion,
@@ -130,6 +138,10 @@ function AppContent() {
       userData={userData}
       onAccountClick={() => navigate(ROUTES.ACCOUNT)}
       onProfileClick={() => navigate(ROUTES.PROFILE)}
+      onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
+      onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
+      onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
+      onJoinClick={() => navigate(ROUTES.REGISTER)}
       onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
     />
   );
@@ -175,11 +187,12 @@ function AppContent() {
             }}
           >
             <Suspense fallback={<LoadingFallback />}>
-              <EmailVerificationMessage
-                user={user}
-                onVerified={async () => triggerEmailCheck()}
-                onBack={() => navigate(ROUTES.HOME)}
-              />
+              <OnboardingShell activeStep="verify">
+                <EmailVerificationMessage
+                  user={user}
+                  onVerified={async () => triggerEmailCheck()}
+                />
+              </OnboardingShell>
             </Suspense>
           </Box>
         </Box>
@@ -187,7 +200,60 @@ function AppContent() {
     );
   }
 
-  if (needsProfileCompletion) {
+  if (
+    checkoutReturn &&
+    (!authInitialized || (user && !isEnabledClaimResolved))
+  ) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        {header}
+        <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
+          <LoadingFallback />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user && !isEnabledClaimResolved) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        {header}
+        <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
+          <LoadingFallback />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user && needsProfileCompletion && location.pathname !== ROUTES.PROFILE_COMPLETION) {
+    return (
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
+        <CssBaseline />
+        {header}
+        <Navigate to={ROUTES.PROFILE_COMPLETION} replace />
+      </Box>
+    );
+  }
+
+  if (user && !isEnabled && !needsProfileCompletion) {
+    const inactiveUserData =
+      userData ||
+      (membershipStatusForUnenabled
+        ? {
+            id: user.uid,
+            firstName: "",
+            lastName: "",
+            email: user.email || "",
+            serviceNumber: "",
+            membershipStatus: membershipStatusForUnenabled as UserData["membershipStatus"],
+            createdAt: "",
+            updatedAt: "",
+          }
+        : null);
+    const showApprovalStep = inactiveUserData?.membershipStatus === "PENDING";
+
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
         <CssBaseline />
@@ -201,54 +267,17 @@ function AppContent() {
             pb: 4,
           }}
         >
-          <Box 
-            sx={{ 
-              maxWidth: { sm: "600px" },
-              mx: "auto",
-              px: { xs: 3, sm: 4 },
-            }}
-          >
+          <Box sx={{ maxWidth: { sm: "640px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
             <Suspense fallback={<LoadingFallback />}>
-              <ProfileCompletion
-                userEmail={user?.email || ""}
-                onComplete={() => refetch?.()}
-                onBack={() => navigate(ROUTES.HOME)}
-              />
+              {showApprovalStep ? (
+                <OnboardingShell activeStep="approval">
+                  <AccountStatusMessage userData={inactiveUserData} />
+                </OnboardingShell>
+              ) : (
+                <AccountStatusMessage userData={inactiveUserData} />
+              )}
             </Suspense>
           </Box>
-        </Box>
-      </Box>
-    );
-  }
-
-  if (user && !isEnabled) {
-    return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
-        {header}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            width: "100%",
-            pt: 12,
-            pb: 4,
-          }}
-        >
-          <Suspense fallback={<LoadingFallback />}>
-            <AccountStatusMessage 
-              userData={userData || (membershipStatusForUnenabled ? {
-                id: user.uid,
-                firstName: "",
-                lastName: "",
-                email: user.email || "",
-                serviceNumber: "",
-                membershipStatus: membershipStatusForUnenabled as UserData["membershipStatus"],
-                createdAt: "",
-                updatedAt: "",
-              } : null)} 
-            />
-          </Suspense>
         </Box>
       </Box>
     );
@@ -292,7 +321,16 @@ function AppContent() {
     if (!authInitialized) {
       return <LoadingFallback />;
     }
-    return user && isEnabled ? element : <Navigate to={ROUTES.ACCOUNT} replace />;
+    if (user && !isEnabledClaimResolved) {
+      return <LoadingFallback />;
+    }
+    if (user && isEnabled) {
+      return element;
+    }
+    if (checkoutReturn) {
+      return <Navigate to={{ pathname: ROUTES.ACCOUNT, search: location.search }} replace />;
+    }
+    return <Navigate to={ROUTES.ACCOUNT} replace />;
   };
 
   return (
@@ -358,15 +396,78 @@ function AppContent() {
                 </Box>
               )}
               <Routes>
-                <Route path={ROUTES.HOME} element={<HomePage />} />
+                <Route
+                  path={ROUTES.HOME}
+                  element={
+                    user && isEnabled ? (
+                      <Suspense fallback={<LoadingFallback />}>
+                        <MemberWelcomePage
+                          userData={userData}
+                          userEmail={user.email}
+                          sectionsData={userSectionsData}
+                        />
+                      </Suspense>
+                    ) : (
+                      <Suspense fallback={<LoadingFallback />}>
+                        <PublicHomePage
+                          onJoinClick={() => navigate(ROUTES.REGISTER)}
+                          onLogInClick={() => navigate(ROUTES.ACCOUNT)}
+                        />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path={ROUTES.REGISTER}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "640px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      {user ? (
+                        <Navigate to={ROUTES.HOME} replace />
+                      ) : (
+                        <Suspense fallback={<LoadingFallback />}>
+                          <RegisterPage />
+                        </Suspense>
+                      )}
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.PROFILE_COMPLETION}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "640px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      {user && needsProfileCompletion ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                          <OnboardingShell activeStep="profile">
+                            <ProfileCompletion
+                              userEmail={user.email || ""}
+                              onComplete={() => refetch?.()}
+                            />
+                          </OnboardingShell>
+                        </Suspense>
+                      ) : user && isEnabled ? (
+                        <Navigate to={ROUTES.HOME} replace />
+                      ) : (
+                        <Navigate to={ROUTES.ACCOUNT} replace />
+                      )}
+                    </Box>
+                  }
+                />
                 <Route
                   path={ROUTES.ACCOUNT}
                   element={
-                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <AuthGate userData={userData} onBack={() => navigateBackOr(ROUTES.HOME)} />
-                      </Suspense>
-                    </Box>
+                    user && isEnabled ? (
+                      checkoutReturn ? (
+                        <Navigate to={{ pathname: ROUTES.MY_PAYMENTS, search: location.search }} replace />
+                      ) : (
+                        <Navigate to={ROUTES.HOME} replace />
+                      )
+                    ) : (
+                      <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                        <Suspense fallback={<LoadingFallback />}>
+                          <AuthGate userData={userData} />
+                        </Suspense>
+                      </Box>
+                    )
                   }
                 />
                 <Route
@@ -375,8 +476,38 @@ function AppContent() {
                     <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
                       {user ? (
                         <Suspense fallback={<LoadingFallback />}>
-                          <Profile key={user.uid} userData={userData} userEmail={user?.email || ""} onBack={() => navigateBackOr(ROUTES.HOME)} onUpdate={handleProfileUpdate} />
+                          <Profile
+                            key={user.uid}
+                            userData={userData}
+                            userDataLoading={userDataLoading}
+                            userEmail={user?.email || ""}
+                            onBack={() => navigateBackOr(ROUTES.HOME)}
+                            onUpdate={handleProfileUpdate}
+                          />
                         </Suspense>
+                      ) : (
+                        <Navigate to={ROUTES.ACCOUNT} replace />
+                      )}
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.ACCOUNT_SETTINGS}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      {user && isEnabled ? (
+                        <Suspense fallback={<LoadingFallback />}>
+                          <AccountSettingsPage
+                            key={user.uid}
+                            user={user}
+                            userData={userData}
+                            userDataLoading={userDataLoading}
+                            isAdmin={isAdmin}
+                            onBack={() => navigateBackOr(ROUTES.HOME)}
+                          />
+                        </Suspense>
+                      ) : user ? (
+                        <Navigate to={ROUTES.HOME} replace />
                       ) : (
                         <Navigate to={ROUTES.ACCOUNT} replace />
                       )}
@@ -421,6 +552,14 @@ function AppContent() {
                   )}
                 />
                 <Route
+                  path={ROUTES.MY_BOOKINGS}
+                  element={protectedRoute(
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MyBookings onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
+                  )}
+                />
+                <Route
                   path={ROUTES.MY_PAYMENTS}
                   element={protectedRoute(
                     <Suspense fallback={<LoadingFallback />}>
@@ -432,7 +571,14 @@ function AppContent() {
                   path={ROUTES.SECTIONS}
                   element={protectedRoute(
                       <Suspense fallback={<LoadingFallback />}>
-                        <SectionsList onBack={() => navigateBackOr(ROUTES.HOME)} onSelectSection={(sectionId) => navigate(`/sections/${sectionId}`)} />
+                        <SectionsList
+                          onBack={() => navigateBackOr(ROUTES.HOME)}
+                          onSelectSection={(sectionId) =>
+                            navigate(`/sections/${sectionId}`, {
+                              state: sectionDetailLocationState(ROUTES.SECTIONS),
+                            })
+                          }
+                        />
                       </Suspense>
                   )}
                 />

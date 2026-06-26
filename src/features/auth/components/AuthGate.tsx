@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link as RouterLink, Navigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -9,33 +10,34 @@ import {
   Typography,
   Link,
 } from "@mui/material";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, type User } from "firebase/auth";
 import { auth } from "../../../config/firebase";
 import { useEnabledClaim } from "../../users/hooks/useEnabledClaim";
 import AccountStatusMessage from "../../users/components/AccountStatusMessage";
 import type { UserData } from "../../../types";
-import Register from "./Register";
 import EmailVerificationMessage from "./EmailVerificationMessage";
+import OnboardingShell from "./OnboardingShell";
 import { colors } from "../../../config/colors";
+import { ROUTES } from "../../../constants";
+import { canAttemptSignIn } from "../utils/passwordValidation";
+import { FIREBASE_MIN_PASSWORD_LENGTH } from "../../../constants/auth";
 
 interface AuthGateProps {
   userData?: UserData | null;
-  onBack?: () => void;
   onRegisterComplete?: () => void;
   onProfileComplete?: () => void;
 }
 
-export default function AuthGate({ userData, onBack, onRegisterComplete, onProfileComplete }: AuthGateProps) {
+export default function AuthGate({ userData, onRegisterComplete, onProfileComplete }: AuthGateProps) {
   const [user, setUser] = useState<User | null>(null);
   const [initialising, setInitialising] = useState(true);
-  const [showRegister, setShowRegister] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isEnabled = useEnabledClaim(user);
+  const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -50,23 +52,13 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
     setSubmitting(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      // Force token refresh to ensure claims are up-to-date
       await userCredential.user.getIdToken(true);
       setPassword("");
+      if (onRegisterComplete) {
+        onRegisterComplete();
+      }
     } catch (e: any) {
       setError(e?.message ?? "Sign-in failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSignOut() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      await signOut(auth);
-    } catch (e: any) {
-      setError(e?.message ?? "Sign-out failed");
     } finally {
       setSubmitting(false);
     }
@@ -81,77 +73,55 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
   }
 
   if (user) {
-    // Check if email is verified
     if (!user.emailVerified) {
       return (
-        <EmailVerificationMessage
-          user={user}
-          onVerified={() => {
-            // After verification, check if profile needs completion
-            if (onProfileComplete) {
-              onProfileComplete();
-            }
-          }}
-          onBack={onBack}
-        />
+        <OnboardingShell activeStep="verify">
+          <EmailVerificationMessage
+            user={user}
+            onVerified={() => {
+              if (onProfileComplete) {
+                onProfileComplete();
+              }
+            }}
+          />
+        </OnboardingShell>
       );
     }
 
-    // If user is signed in but not enabled, show account status message
-    if (!isEnabled) {
-      return <AccountStatusMessage userData={userData ?? null} onBack={onBack} />;
+    if (!isEnabledClaimResolved) {
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
+          <CircularProgress />
+        </Box>
+      );
     }
 
-    // User is signed in and enabled
-    return (
-      <Stack spacing={2} sx={{ mt: 2 }}>
-        <Alert severity="success">Signed in</Alert>
-        <Typography>
-          <strong>UID:</strong> {user.uid}
-        </Typography>
-        {user.email ? (
-          <Typography>
-            <strong>Email:</strong> {user.email}
-          </Typography>
-        ) : null}
+    if (!isEnabled) {
+      return <AccountStatusMessage userData={userData ?? null} />;
+    }
 
-        <Button variant="contained" onClick={handleSignOut} disabled={submitting}>
-          Sign out
-        </Button>
-        {onBack && (
-          <Button variant="outlined" onClick={onBack}>
-            Back to Home
-          </Button>
-        )}
-      </Stack>
-    );
-  }
-
-  if (showRegister) {
-    return (
-      <Register
-        onSuccess={() => {
-          setShowRegister(false);
-          if (onRegisterComplete) {
-            onRegisterComplete();
-          }
-        }}
-        onBack={() => setShowRegister(false)}
-        onSignInClick={() => setShowRegister(false)}
-      />
-    );
+    return <Navigate to={ROUTES.HOME} replace />;
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!submitting && email.trim() && password.length >= 6) {
+    if (!submitting && email.trim() && canAttemptSignIn(password)) {
       handleSignIn();
     }
   };
 
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
-      <Alert severity="info">Not signed in</Alert>
+      <Typography variant="h5" sx={{ color: colors.titlePrimary }}>
+        Sign in
+      </Typography>
+      <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+        New to SODC?{" "}
+        <Link component={RouterLink} to={ROUTES.REGISTER}>
+          Create an account
+        </Link>{" "}
+        — verify your email, complete your profile, then wait for admin approval.
+      </Typography>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
@@ -177,31 +147,16 @@ export default function AuthGate({ userData, onBack, onRegisterComplete, onProfi
           <Button
             type="submit"
             variant="contained"
-            disabled={submitting || !email.trim() || password.length < 6}
+            disabled={submitting || !email.trim() || !canAttemptSignIn(password)}
           >
             Sign in
           </Button>
         </Stack>
       </form>
 
-      {onBack && (
-        <Button variant="outlined" onClick={onBack}>
-          Back to Home
-        </Button>
-      )}
-
-      <Typography variant="body2" sx={{ textAlign: "center", color: colors.titleSecondary, mt: 2 }}>
-        Don't have an account?{" "}
-        <Link
-          component="button"
-          variant="body2"
-          onClick={() => setShowRegister(true)}
-          sx={{ cursor: "pointer" }}
-        >
-          Register
-        </Link>
+      <Typography variant="caption" color="text.secondary">
+        Sign-in requires at least {FIREBASE_MIN_PASSWORD_LENGTH} characters (Firebase minimum).
       </Typography>
     </Stack>
   );
 }
-

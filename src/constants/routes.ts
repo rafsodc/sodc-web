@@ -5,6 +5,7 @@
 export const ROUTES = {
   HOME: "/",
   ACCOUNT: "/account",
+  ACCOUNT_SETTINGS: "/account/settings",
   PROFILE: "/profile",
   PERMISSIONS: "/admin/permissions",
   MANAGE_USERS: "/admin/users",
@@ -13,6 +14,7 @@ export const ROUTES = {
   AUDIT_LOGS: "/admin/audit-logs",
   PAYMENT_RECONCILIATION: "/admin/payments/reconciliation",
   MY_PAYMENTS: "/payments",
+  MY_BOOKINGS: "/bookings",
   SECTIONS: "/sections",
   SECTION_DETAIL: "/sections/:sectionId",
   MANAGE_SECTIONS: "/admin/sections",

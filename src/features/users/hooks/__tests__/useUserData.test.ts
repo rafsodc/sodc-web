@@ -56,7 +56,7 @@ describe('useUserData', () => {
       data: { user: mockUserData },
     } as any);
 
-    const { result } = renderHook(() => useUserData(mockUser));
+    const { result } = renderHook(() => useUserData(mockUser, true));
 
     await waitFor(() => {
       expect(result.current.userData).not.toBeNull();
@@ -75,7 +75,7 @@ describe('useUserData', () => {
       }),
     });
 
-    const { result } = renderHook(() => useUserData(mockUser));
+    const { result } = renderHook(() => useUserData(mockUser, false));
 
     await waitFor(() => {
       expect(result.current.userData).toBeNull();
@@ -83,6 +83,49 @@ describe('useUserData', () => {
 
     expect(dataConnect.executeQuery).not.toHaveBeenCalled();
     expect(result.current.loading).toBe(false);
+  });
+
+  it('should refetch user data when account becomes enabled again', async () => {
+    const mockUser = createMockUser({
+      uid: 'test-uid',
+      getIdTokenResult: vi.fn().mockResolvedValue({
+        claims: { enabled: true },
+      }),
+    });
+
+    const mockUserData = {
+      id: 'test-uid',
+      firstName: 'Alex',
+      lastName: 'Member',
+      email: 'member@example.com',
+      serviceNumber: 'SN123',
+      membershipStatus: 'REGULAR',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+    };
+
+    const mockRef = {};
+    vi.mocked(getCurrentUserRef).mockReturnValue(mockRef as any);
+    vi.mocked(dataConnect.executeQuery).mockResolvedValue({
+      data: { user: mockUserData },
+    } as any);
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useUserData(mockUser, enabled),
+      { initialProps: { enabled: false } }
+    );
+
+    await waitFor(() => {
+      expect(result.current.userData).toBeNull();
+    });
+    expect(dataConnect.executeQuery).not.toHaveBeenCalled();
+
+    rerender({ enabled: true });
+
+    await waitFor(() => {
+      expect(result.current.userData).toEqual(mockUserData);
+    });
+    expect(dataConnect.executeQuery).toHaveBeenCalledTimes(1);
   });
 
   it.skip('should handle errors gracefully', async () => {
@@ -99,7 +142,7 @@ describe('useUserData', () => {
       new Error('Query failed')
     );
 
-    const { result } = renderHook(() => useUserData(mockUser));
+    const { result } = renderHook(() => useUserData(mockUser, true));
 
     await waitFor(() => {
       expect(result.current.userData).toBeNull();

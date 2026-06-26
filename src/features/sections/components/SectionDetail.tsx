@@ -1,10 +1,12 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type SyntheticEvent } from "react";
 import {
   Box,
   Alert,
   CircularProgress,
   Button,
   Snackbar,
+  Tab,
+  Tabs,
 } from "@mui/material";
 import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
@@ -20,13 +22,21 @@ import {
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
-import { useNavigate } from "react-router-dom";
-import { createTicketCheckoutSession, getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
-import { ITEMS_PER_PAGE } from "../../../constants";
+import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
+import NavigationBreadcrumbs from "../../../shared/components/NavigationBreadcrumbs";
+import type { SectionDetailLocationState } from "../../../shared/navigation/sectionNavigationState";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
+import {
+  getDefaultSectionDetailTab,
+  getSectionDetailTabs,
+  sectionDetailTabLabel,
+  type SectionDetailTab,
+} from "../utils/sectionDetailTabs";
 import {
   SectionEventDetailView,
   SectionEventsListView,
@@ -41,6 +51,8 @@ interface SectionDetailProps {
 
 export default function SectionDetail({ sectionId, onBack }: SectionDetailProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as SectionDetailLocationState | null;
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
@@ -53,7 +65,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [startingCheckoutId, setStartingCheckoutId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<SectionDetailTab>("about");
 
   const currentUser = auth.currentUser;
   const isAdmin = useAdminClaim(currentUser);
@@ -284,21 +296,70 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleStartCheckout = async (ticketTypeId: string) => {
-    setStartingCheckoutId(ticketTypeId);
-    try {
-      const { url } = await createTicketCheckoutSession({ ticketTypeId, quantity: 1 });
-      window.location.assign(url);
-    } catch (error: unknown) {
-      const message =
-        error && typeof (error as { message?: string }).message === "string"
-          ? (error as { message: string }).message
-          : "Could not start checkout. Please try again.";
-      setSnackbar({ open: true, message, severity: "error" });
-    } finally {
-      setStartingCheckoutId(null);
+  const loadedSection = sectionData?.section;
+  const isMembersSectionType = loadedSection ? isMembersSection(loadedSection as any) : false;
+  const sectionTabs = getSectionDetailTabs(isMembersSectionType);
+
+  useEffect(() => {
+    if (!loadedSection) {
+      return;
+    }
+    const pendingEventId = locationState?.selectedEventId;
+    if (pendingEventId) {
+      setSelectedEventId(pendingEventId);
+      setActiveTab("events");
+      return;
+    }
+    setActiveTab(getDefaultSectionDetailTab(isMembersSectionType));
+    setSelectedEventId(null);
+  }, [sectionId, isMembersSectionType, loadedSection, locationState?.selectedEventId]);
+
+  const handleTabChange = (_event: SyntheticEvent, newTab: SectionDetailTab) => {
+    setActiveTab(newTab);
+    if (newTab !== "events") {
+      setSelectedEventId(null);
     }
   };
+
+  const handleSelectEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setActiveTab("events");
+  };
+
+  const handleBackToEvents = useCallback(() => {
+    setSelectedEventId(null);
+    setActiveTab("events");
+  }, []);
+
+  const handleHeaderBack = useCallback(() => {
+    if (selectedEventId) {
+      handleBackToEvents();
+      return;
+    }
+    onBack();
+  }, [selectedEventId, handleBackToEvents, onBack]);
+
+  const eventTitle = eventDetailData?.event?.title;
+  const pageTitle =
+    selectedEventId && eventTitle ? eventTitle : loadedSection?.name ?? "Section Details";
+  const headerBreadcrumbs = useMemo(() => {
+    if (!loadedSection) {
+      return null;
+    }
+    const items = [{ label: "Home", to: ROUTES.HOME }];
+    if (selectedEventId) {
+      return (
+        <NavigationBreadcrumbs
+          items={[
+            ...items,
+            { label: loadedSection.name, onClick: handleBackToEvents },
+            { label: eventTitle ?? "Event" },
+          ]}
+        />
+      );
+    }
+    return <NavigationBreadcrumbs items={[...items, { label: loadedSection.name }]} />;
+  }, [loadedSection, selectedEventId, eventTitle, handleBackToEvents]);
 
   if (loadingSection || loadingMembers || loadingUserGroups) {
     return (
@@ -333,7 +394,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   }
 
   const section = sectionData.section;
-  const isMembers = isMembersSection(section as any);
+  const isMembers = isMembersSectionType;
   const hasSubscribableMemberGroup = memberGroups.some((group) => group.subscribable === true);
   const eventRows = eventsData?.section?.events ?? [];
   const sectionAdminAction = {
@@ -346,21 +407,47 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   return (
     <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
-      <PageHeader title={section.name} onBack={onBack} adminAction={sectionAdminAction} />
-
-      <SectionInformationView
-        section={section}
-        isMembers={isMembers}
-        hasCurrentUser={Boolean(currentUser)}
-        canSubscribe={canSubscribe}
-        userIsMember={userIsMember}
-        hasSubscribableMemberGroup={hasSubscribableMemberGroup}
-        subscribing={subscribing}
-        onSubscribe={handleSubscribe}
-        onUnsubscribe={handleUnsubscribe}
+      <PageHeader
+        title={pageTitle}
+        onBack={handleHeaderBack}
+        adminAction={sectionAdminAction}
+        breadcrumbs={headerBreadcrumbs}
       />
 
-      {isMembers ? (
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        sx={{
+          mt: 2,
+          mb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          "& .MuiTab-root": {
+            "&:focus": { outline: "none" },
+            "&:focus-visible": { outline: "none" },
+          },
+        }}
+      >
+        {sectionTabs.map((tab) => (
+          <Tab key={tab} label={sectionDetailTabLabel(tab)} value={tab} />
+        ))}
+      </Tabs>
+
+      {activeTab === "about" && (
+        <SectionInformationView
+          section={section}
+          isMembers={isMembers}
+          hasCurrentUser={Boolean(currentUser)}
+          canSubscribe={canSubscribe}
+          userIsMember={userIsMember}
+          hasSubscribableMemberGroup={hasSubscribableMemberGroup}
+          subscribing={subscribing}
+          onSubscribe={handleSubscribe}
+          onUnsubscribe={handleUnsubscribe}
+        />
+      )}
+
+      {activeTab === "members" && (
         <SectionMembersView
           allMembersCount={allMembers.length}
           filteredMembers={filteredMembers}
@@ -373,30 +460,31 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           onRefresh={() => refetchSection()}
           onPageChange={setPage}
         />
-      ) : selectedEventId ? (
-        <SectionEventDetailView
-          section={section}
-          event={eventDetailData?.event ?? null}
-          loading={loadingEventDetail}
-          isError={errorEventDetail}
-          hasCurrentUser={Boolean(currentUser)}
-          startingCheckoutId={startingCheckoutId}
-          onBackToEvents={() => setSelectedEventId(null)}
-          onRetry={() => refetchEventDetail()}
-          onStartCheckout={(ticketTypeId) => void handleStartCheckout(ticketTypeId)}
-          onBookingComplete={() => {
-            void refetchEventDetail();
-          }}
-        />
-      ) : (
-        <SectionEventsListView
-          events={eventRows}
-          loading={loadingEvents}
-          isError={errorEvents}
-          onRetry={() => refetchEvents()}
-          onSelectEvent={setSelectedEventId}
-        />
       )}
+
+      {activeTab === "events" &&
+        (selectedEventId ? (
+          <SectionEventDetailView
+            section={section}
+            event={eventDetailData?.event ?? null}
+            loading={loadingEventDetail}
+            isError={errorEventDetail}
+            hasCurrentUser={Boolean(currentUser)}
+            onBackToEvents={handleBackToEvents}
+            onRetry={() => refetchEventDetail()}
+            onBookingComplete={() => {
+              void refetchEventDetail();
+            }}
+          />
+        ) : (
+          <SectionEventsListView
+            events={eventRows}
+            loading={loadingEvents}
+            isError={errorEvents}
+            onRetry={() => refetchEvents()}
+            onSelectEvent={handleSelectEvent}
+          />
+        ))}
 
       <Snackbar
         open={snackbar.open}

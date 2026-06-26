@@ -82,3 +82,34 @@ export function canUserChangeStatus(
   return { allowed: true };
 }
 
+/**
+ * Whether a non-admin member may self-resign from their current status.
+ */
+export function canUserResignMembership(
+  currentStatus: MembershipStatus | null,
+  targetUserIsAdmin: boolean
+): { allowed: boolean; error?: string } {
+  if (targetUserIsAdmin) {
+    return {
+      allowed: false,
+      error: "Admin accounts cannot resign through this flow",
+    };
+  }
+
+  if (!currentStatus || isRestrictedStatus(currentStatus)) {
+    return {
+      allowed: false,
+      error: "Cannot resign from current membership status",
+    };
+  }
+
+  if (!isNonRestrictedStatus(currentStatus)) {
+    return {
+      allowed: false,
+      error: "Cannot resign from current membership status",
+    };
+  }
+
+  return { allowed: true };
+}
+

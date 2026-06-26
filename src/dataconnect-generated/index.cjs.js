@@ -322,6 +322,18 @@ exports.getMyBookingsForEvent = function getMyBookingsForEvent(dcOrVars, vars) {
   return executeQuery(getMyBookingsForEventRef(dcOrVars, vars));
 };
 
+const getMyBookingsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetMyBookings');
+}
+getMyBookingsRef.operationName = 'GetMyBookings';
+exports.getMyBookingsRef = getMyBookingsRef;
+
+exports.getMyBookings = function getMyBookings(dc) {
+  return executeQuery(getMyBookingsRef(dc));
+};
+
 const getMyTicketOrderByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -862,6 +874,18 @@ exports.getBookingsForBookerAndEvent = function getBookingsForBookerAndEvent(dcO
   return executeQuery(getBookingsForBookerAndEventRef(dcOrVars, vars));
 };
 
+const getTicketOrdersForBookerAndEventRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetTicketOrdersForBookerAndEvent', inputVars);
+}
+getTicketOrdersForBookerAndEventRef.operationName = 'GetTicketOrdersForBookerAndEvent';
+exports.getTicketOrdersForBookerAndEventRef = getTicketOrdersForBookerAndEventRef;
+
+exports.getTicketOrdersForBookerAndEvent = function getTicketOrdersForBookerAndEvent(dcOrVars, vars) {
+  return executeQuery(getTicketOrdersForBookerAndEventRef(dcOrVars, vars));
+};
+
 const createBookingDraftForUserRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -1208,6 +1232,30 @@ exports.getBookingForNotificationRef = getBookingForNotificationRef;
 
 exports.getBookingForNotification = function getBookingForNotification(dcOrVars, vars) {
   return executeQuery(getBookingForNotificationRef(dcOrVars, vars));
+};
+
+const listStaleDraftBookingsForSchedulerRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListStaleDraftBookingsForScheduler', inputVars);
+}
+listStaleDraftBookingsForSchedulerRef.operationName = 'ListStaleDraftBookingsForScheduler';
+exports.listStaleDraftBookingsForSchedulerRef = listStaleDraftBookingsForSchedulerRef;
+
+exports.listStaleDraftBookingsForScheduler = function listStaleDraftBookingsForScheduler(dcOrVars, vars) {
+  return executeQuery(listStaleDraftBookingsForSchedulerRef(dcOrVars, vars));
+};
+
+const listStalePendingTicketOrdersForSchedulerRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListStalePendingTicketOrdersForScheduler', inputVars);
+}
+listStalePendingTicketOrdersForSchedulerRef.operationName = 'ListStalePendingTicketOrdersForScheduler';
+exports.listStalePendingTicketOrdersForSchedulerRef = listStalePendingTicketOrdersForSchedulerRef;
+
+exports.listStalePendingTicketOrdersForScheduler = function listStalePendingTicketOrdersForScheduler(dcOrVars, vars) {
+  return executeQuery(listStalePendingTicketOrdersForSchedulerRef(dcOrVars, vars));
 };
 
 const getGuestTicketRequestForNotificationRef = (dcOrVars, vars) => {

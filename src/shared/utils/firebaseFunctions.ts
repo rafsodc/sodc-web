@@ -301,6 +301,31 @@ export async function updateMembershipStatus(
   }
 }
 
+interface ResignMembershipResponse {
+  success: boolean;
+  message?: string;
+}
+
+/**
+ * Resigns the current user's membership (non-restricted status → RESIGNED).
+ */
+export async function resignMembership(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const resignMembershipCallable = httpsCallable<
+      Record<string, never>,
+      ResignMembershipResponse
+    >(functions, "resignMembership");
+
+    const result = await resignMembershipCallable({});
+    return { success: result.data.success };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error?.message || "Failed to resign membership",
+    };
+  }
+}
+
 // ============================================================================
 // Section members (merged: explicit + inherited by status)
 // ============================================================================
@@ -375,6 +400,15 @@ export interface CreateTicketCheckoutSessionResponse {
   orderId: string;
 }
 
+export interface CreateEventBookingCheckoutSessionRequest {
+  eventId: string;
+}
+
+export interface CreateEventBookingCheckoutSessionResponse {
+  url: string;
+  orderIds: string[];
+}
+
 export interface GetMyTicketOrderStripeArtifactsResponse {
   receiptUrl: string | null;
 }
@@ -430,6 +464,19 @@ export async function createTicketCheckoutSession(
   return result.data;
 }
 
+export async function createEventBookingCheckoutSession(
+  payload: CreateEventBookingCheckoutSessionRequest
+): Promise<CreateEventBookingCheckoutSessionResponse> {
+  const callable = httpsCallable<
+    CreateEventBookingCheckoutSessionRequest,
+    CreateEventBookingCheckoutSessionResponse
+  >(functions, "createEventBookingCheckoutSession");
+  const result = await callable({
+    eventId: toCanonicalUuid(payload.eventId),
+  });
+  return result.data;
+}
+
 export async function getMyTicketOrderStripeArtifactsBatch(
   payload: GetMyTicketOrderStripeArtifactsBatchRequest
 ): Promise<GetMyTicketOrderStripeArtifactsBatchResponse> {
@@ -441,6 +488,28 @@ export async function getMyTicketOrderStripeArtifactsBatch(
     orderIds: payload.orderIds.map((orderId) => toCanonicalUuid(orderId)),
   });
   const data = result.data as { result?: GetMyTicketOrderStripeArtifactsBatchResponse } & GetMyTicketOrderStripeArtifactsBatchResponse;
+  return data.result ?? data;
+}
+
+export interface ReconcileMyCheckoutSessionOrdersRequest {
+  orderId: string;
+}
+
+export interface ReconcileMyCheckoutSessionOrdersResponse {
+  appliedCount: number;
+  reconciledOrderIds: string[];
+  orderIds: string[];
+}
+
+export async function reconcileMyCheckoutSessionOrders(
+  payload: ReconcileMyCheckoutSessionOrdersRequest
+): Promise<ReconcileMyCheckoutSessionOrdersResponse> {
+  const callable = httpsCallable<
+    ReconcileMyCheckoutSessionOrdersRequest,
+    ReconcileMyCheckoutSessionOrdersResponse
+  >(functions, "reconcileMyCheckoutSessionOrders");
+  const result = await callable({ orderId: toCanonicalUuid(payload.orderId) });
+  const data = result.data as { result?: ReconcileMyCheckoutSessionOrdersResponse } & ReconcileMyCheckoutSessionOrdersResponse;
   return data.result ?? data;
 }
 

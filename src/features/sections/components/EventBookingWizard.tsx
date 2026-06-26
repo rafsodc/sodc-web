@@ -1,348 +1,47 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Autocomplete,
-  Box,
-  Button,
-  Checkbox,
-  CircularProgress,
-  FormControl,
-  FormControlLabel,
-  Paper,
-  Radio,
-  RadioGroup,
-  Step,
-  StepLabel,
-  Stepper,
-  TextField,
-  Typography,
-} from "@mui/material";
-import {
-  useGetCurrentUser,
-  useGetMyBookingsForEvent,
-  useGetUserAccessGroups,
-} from "@dataconnect/generated/react";
-import { dataConnect } from "../../../config/firebase";
+import { Alert, Box, Button, CircularProgress, Paper, Step, StepLabel, Stepper, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
+import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
-import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
-import { BookingStatus, TicketAudience } from "@dataconnect/generated";
-import { getSectionMembersMerged, submitEventBooking } from "../../../shared/utils/firebaseFunctions";
-import { toCanonicalUuid } from "../../../shared/utils/uuid";
-import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
-import AdditionalGuestRequestSection from "./AdditionalGuestRequestSection";
+import { ROUTES } from "../../../constants/routes";
+import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
+import { useBookingWizardState } from "../hooks/useBookingWizardState";
+import EventBookingStatusSummary from "./EventBookingStatusSummary";
+import AdditionalGuestCountStep from "./wizardSteps/AdditionalGuestCountStep";
+import TicketSelectionStep from "./wizardSteps/TicketSelectionStep";
+import GuestDetailsStep from "./wizardSteps/GuestDetailsStep";
+import ReviewStep from "./wizardSteps/ReviewStep";
+import PaymentStep from "./wizardSteps/PaymentStep";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
 type SectionDetail = NonNullable<GetSectionByIdData["section"]>;
 
-const STEPS = ["Your ticket", "Guest (optional)", "Summary"];
-
-function extractCallableErrorCode(err: unknown): string | undefined {
-  const e = err as {
-    code?: string;
-    message?: string;
-    details?: { code?: string };
-    customData?: { code?: string };
-  };
-  return e?.details?.code ?? e?.customData?.code;
-}
-
 export interface EventBookingWizardProps {
   section: SectionDetail;
   event: EventDetail;
+  wizardOpen?: boolean;
+  onWizardOpenChange?: (open: boolean) => void;
   onBookingComplete?: () => void;
+  onHasExistingBookingChange?: (hasBooking: boolean) => void;
 }
 
-export default function EventBookingWizard({ section, event, onBookingComplete }: EventBookingWizardProps) {
-  const [activeStep, setActiveStep] = useState(0);
-  const [memberTicketTypeId, setMemberTicketTypeId] = useState<string | null>(null);
-  const [includeGuest, setIncludeGuest] = useState(false);
-  const [guestTicketTypeId, setGuestTicketTypeId] = useState<string | null>(null);
-  const [guestDisplayName, setGuestDisplayName] = useState("");
-  const [bookerDietaryNote, setBookerDietaryNote] = useState("");
-  const [sitNextToUserIds, setSitNextToUserIds] = useState<string[]>([]);
-  const [accommodationRequested, setAccommodationRequested] = useState(false);
-  const [accommodationNote, setAccommodationNote] = useState("");
-  const [seatingOptions, setSeatingOptions] = useState<Array<{ id: string; label: string }>>([]);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [editingExistingBooking, setEditingExistingBooking] = useState(false);
+export default function EventBookingWizard({
+  section,
+  event,
+  wizardOpen = false,
+  onWizardOpenChange,
+  onBookingComplete,
+  onHasExistingBookingChange,
+}: EventBookingWizardProps) {
+  const w = useBookingWizardState({
+    section,
+    event,
+    wizardOpen,
+    onWizardOpenChange,
+    onBookingComplete,
+    onHasExistingBookingChange,
+  });
 
-  const idempotencyKeyRef = useRef<string | null>(null);
-  const hydratedBookingIdRef = useRef<string | null>(null);
-
-  const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
-  const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
-  const {
-    data: myBookingsData,
-    isLoading: loadingBookings,
-    refetch: refetchMyBookings,
-  } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString });
-
-  const membershipStatus = currentUserData?.user?.membershipStatus;
-
-  const explicitGroupIds = useMemo(() => {
-    const ids = accessData?.user?.userGroups?.map((g) => g.userGroup.id) ?? [];
-    return new Set(ids);
-  }, [accessData]);
-
-  const gate = useMemo(() => {
-    if (!membershipStatus) {
-      return { ok: false as const, message: "Your profile must include a membership status before booking." };
-    }
-    return evaluateBookingGatePreview({
-      purposeLinks: section.purposeLinks ?? [],
-      membershipStatus,
-      explicitGroupIds,
-      bookingStartDateTime: event.bookingStartDateTime,
-      bookingEndDateTime: event.bookingEndDateTime,
-    });
-  }, [membershipStatus, section.purposeLinks, explicitGroupIds, event]);
-
-  const memberTicketTypes = useMemo(() => {
-    if (!membershipStatus || gate.ok !== true) return [];
-    return (event.ticketTypes ?? []).filter(
-      (tt) =>
-        tt.audience === TicketAudience.MEMBER &&
-        userMatchesUserGroup(membershipStatus, tt.userGroup, explicitGroupIds)
-    );
-  }, [event.ticketTypes, membershipStatus, explicitGroupIds, gate]);
-
-  const guestTicketTypes = useMemo(() => {
-    if (!membershipStatus || gate.ok !== true) return [];
-    return (event.ticketTypes ?? []).filter(
-      (tt) =>
-        tt.audience === TicketAudience.GUEST &&
-        userMatchesUserGroup(membershipStatus, tt.userGroup, explicitGroupIds)
-    );
-  }, [event.ticketTypes, membershipStatus, explicitGroupIds, gate]);
-
-  const existingTerminalBooking = useMemo(() => {
-    const list = myBookingsData?.user?.bookings ?? [];
-    return list
-      .filter((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED)
-      .reduce<typeof list[number] | null>((latest, booking) => {
-        if (!latest) return booking;
-        return booking.revisionNumber > latest.revisionNumber ? booking : latest;
-      }, null);
-  }, [myBookingsData]);
-
-  /** Server draft for this event — reuse its idempotency key after refresh (new random UUID would conflict). */
-  const existingDraft = useMemo(() => {
-    const list = myBookingsData?.user?.bookings ?? [];
-    return list.find((b) => b.status === BookingStatus.DRAFT) ?? null;
-  }, [myBookingsData]);
-
-  useEffect(() => {
-    const raw = existingDraft?.clientSubmissionKey;
-    if (!raw || typeof raw !== "string" || !raw.trim()) {
-      return;
-    }
-    try {
-      idempotencyKeyRef.current = toCanonicalUuid(raw.trim());
-    } catch {
-      // leave ref unchanged if stored value is malformed
-    }
-  }, [existingDraft?.id, existingDraft?.clientSubmissionKey]);
-
-  useEffect(() => {
-    const booking = existingTerminalBooking;
-    if (!booking) {
-      hydratedBookingIdRef.current = null;
-      setEditingExistingBooking(false);
-      return;
-    }
-    if (hydratedBookingIdRef.current === booking.id) {
-      return;
-    }
-    hydratedBookingIdRef.current = booking.id;
-    setEditingExistingBooking(true);
-    const memberLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.MEMBER);
-    const guestLine = (booking.lines ?? []).find((line) => line.ticketType?.audience === TicketAudience.GUEST);
-    setMemberTicketTypeId(memberLine?.ticketType?.id ?? null);
-    setIncludeGuest(Boolean(guestLine?.ticketType?.id));
-    setGuestTicketTypeId(guestLine?.ticketType?.id ?? null);
-    setGuestDisplayName(guestLine?.guestDisplayName ?? "");
-    setBookerDietaryNote(booking.bookerDietaryNote ?? "");
-    setSitNextToUserIds(booking.sitNextToUserIds ?? []);
-    setAccommodationRequested(booking.accommodationRequested === true);
-    setAccommodationNote(booking.accommodationNote ?? "");
-    setActiveStep(0);
-    setSubmitError(null);
-  }, [existingTerminalBooking]);
-
-  const selectedMember = memberTicketTypes.find((t) => t.id === memberTicketTypeId);
-  const selectedGuest = guestTicketTypes.find((t) => t.id === guestTicketTypeId);
-  const canRequestAccommodation = membershipStatus === "REGULAR" || membershipStatus === "RESERVE";
-
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      try {
-        const merged = await getSectionMembersMerged(section.id);
-        if (!alive) return;
-        const options = (merged.members ?? [])
-          .filter((m) => m.id !== currentUserData?.user?.id)
-          .map((m) => ({ id: m.id, label: `${m.firstName} ${m.lastName}` }));
-        setSeatingOptions(options);
-      } catch {
-        if (alive) setSeatingOptions([]);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [section.id, currentUserData?.user?.id]);
-
-  const resetWizardState = useCallback(() => {
-    setActiveStep(0);
-    setMemberTicketTypeId(null);
-    setIncludeGuest(false);
-    setGuestTicketTypeId(null);
-    setGuestDisplayName("");
-    setBookerDietaryNote("");
-    setSitNextToUserIds([]);
-    setAccommodationRequested(false);
-    setAccommodationNote("");
-    setSubmitError(null);
-    // Keep idempotency key when a server draft exists; otherwise clear so the next submit starts fresh.
-    if (!existingDraft?.clientSubmissionKey?.trim()) {
-      idempotencyKeyRef.current = null;
-    }
-  }, [existingDraft?.clientSubmissionKey]);
-
-  const handleNext = () => {
-    setSubmitError(null);
-    if (activeStep === 0) {
-      if (!memberTicketTypeId) {
-        setSubmitError("Choose a ticket for yourself.");
-        return;
-      }
-      setActiveStep(1);
-      return;
-    }
-    if (activeStep === 1) {
-      if (includeGuest) {
-        if (!guestTicketTypeId) {
-          setSubmitError("Choose a guest ticket type, or turn off the guest option.");
-          return;
-        }
-        if (!guestDisplayName.trim()) {
-          setSubmitError("Enter a name for your guest.");
-          return;
-        }
-      }
-      setActiveStep(2);
-    }
-  };
-
-  const handleBack = () => {
-    setSubmitError(null);
-    if (activeStep > 0) {
-      setActiveStep((s) => s - 1);
-    }
-  };
-
-  const handleConfirm = async () => {
-    if (!memberTicketTypeId || !membershipStatus || gate.ok !== true) return;
-
-    setSubmitting(true);
-    setSubmitError(null);
-
-    if (!idempotencyKeyRef.current) {
-      const fromDraft = existingDraft?.clientSubmissionKey?.trim();
-      if (fromDraft) {
-        try {
-          idempotencyKeyRef.current = toCanonicalUuid(fromDraft);
-        } catch {
-          idempotencyKeyRef.current = crypto.randomUUID();
-        }
-      } else {
-        idempotencyKeyRef.current = crypto.randomUUID();
-      }
-    }
-    const idempotencyKey = idempotencyKeyRef.current;
-
-    const lines: {
-      ticketTypeId: string;
-      sortOrder: number;
-      guestUserId: string | null;
-      guestDisplayName: string | null;
-      dietaryNote: string | null;
-    }[] = [
-      {
-        ticketTypeId: memberTicketTypeId,
-        sortOrder: 0,
-        guestUserId: null,
-        guestDisplayName: null,
-        dietaryNote: null,
-      },
-    ];
-
-    if (includeGuest && guestTicketTypeId) {
-      lines.push({
-        ticketTypeId: guestTicketTypeId,
-        sortOrder: 1,
-        guestUserId: null,
-        guestDisplayName: guestDisplayName.trim(),
-        dietaryNote: null,
-      });
-    }
-
-    try {
-      await submitEventBooking({
-        idempotencyKey,
-        eventId: event.id,
-        baseBookingId: existingTerminalBooking?.id,
-        baseRevisionNumber: existingTerminalBooking?.revisionNumber,
-        lines,
-        bookerDietaryNote,
-        sitNextToUserIds,
-        accommodationRequested,
-        accommodationNote,
-      });
-      await refetchMyBookings();
-      onBookingComplete?.();
-    } catch (err: unknown) {
-      const code = extractCallableErrorCode(err);
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Booking failed. Please try again.";
-      if (code === "BOOKING_ALREADY_SUBMITTED") {
-        setSubmitError("You already have a submitted booking for this event.");
-        await refetchMyBookings();
-      } else if (code === "OUTSIDE_BOOKING_WINDOW") {
-        setSubmitError("The booking window is closed.");
-      } else if (code === "IDEMPOTENCY_DRAFT_CONFLICT") {
-        const refreshed = await refetchMyBookings();
-        const bookings = refreshed.data?.user?.bookings ?? [];
-        const draft = bookings.find((b) => b.status === BookingStatus.DRAFT);
-        const raw = draft?.clientSubmissionKey?.trim();
-        if (raw) {
-          try {
-            idempotencyKeyRef.current = toCanonicalUuid(raw);
-            setSubmitError(
-              "Your in-progress booking was found. Review your choices and press Confirm booking again."
-            );
-          } catch {
-            setSubmitError(
-              "A draft booking is in progress but could not be resumed. Please contact support if this continues."
-            );
-          }
-        } else {
-          setSubmitError(
-            "A draft booking exists without a resume key. Please contact a moderator to clear it, or try again later."
-          );
-        }
-      } else {
-        setSubmitError(message);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loadingProfile || loadingBookings) {
+  if (w.loadingProfile || w.loadingBookings) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
         <CircularProgress size={28} />
@@ -350,7 +49,7 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     );
   }
 
-  if (!membershipStatus) {
+  if (!w.membershipStatus) {
     return (
       <Alert severity="warning" sx={{ mt: 2 }}>
         Complete your membership profile before booking events.
@@ -358,15 +57,15 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     );
   }
 
-  if (gate.ok !== true) {
+  if (w.gate.ok !== true) {
     return (
       <Alert severity="info" sx={{ mt: 2 }}>
-        {gate.message}
+        {w.gate.message}
       </Alert>
     );
   }
 
-  if (!memberTicketTypes.length) {
+  if (!w.memberTicketTypes.length && w.wizardMode === "full") {
     return (
       <Alert severity="warning" sx={{ mt: 2 }}>
         There are no member ticket types you are eligible for. If you believe this is wrong, contact a moderator.
@@ -374,260 +73,244 @@ export default function EventBookingWizard({ section, event, onBookingComplete }
     );
   }
 
+  if (!w.showWizard && !w.showBookingSummary) {
+    return null;
+  }
+
   return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-        {editingExistingBooking ? "Edit your booking" : "Book this event"}
-      </Typography>
-      {editingExistingBooking && existingTerminalBooking ? (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Editing revision {existingTerminalBooking.revisionNumber} ({existingTerminalBooking.status.toLowerCase()}).
-          Saving will create a new booking revision.
-        </Alert>
+    <Box sx={{ mt: 1 }}>
+      {w.showBookingSummary && w.existingTerminalBooking ? (
+        <>
+          <EventBookingStatusSummary
+            booking={w.existingTerminalBooking}
+            eventId={event.id}
+            eventTitle={event.title}
+            ticketOrders={w.ticketOrdersData?.user?.ticketOrders ?? []}
+            paymentAdjustments={w.bookingPaymentAdjustments}
+            onEditBooking={w.beginEditingBooking}
+            onPayNow={() => void w.handlePayAllTickets()}
+            payingTicketTypeId={w.payingAllTickets ? "all" : null}
+          />
+          {w.submitError ? (
+            <Alert severity="error" sx={{ mt: 2 }} onClose={() => w.setSubmitError(null)}>
+              {w.submitError}
+            </Alert>
+          ) : null}
+          <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
+            <Button
+              variant="outlined"
+              disabled={w.pendingAdditionalGuestRequest || !w.guestTicketTypes.length}
+              onClick={() => {
+                w.setWizardModeToAdditionalGuests();
+                onWizardOpenChange?.(true);
+              }}
+            >
+              Request additional guests
+            </Button>
+            {w.pendingAdditionalGuestRequest ? (
+              <Typography variant="body2" color="text.secondary" sx={{ alignSelf: "center" }}>
+                You already have a pending guest request awaiting review.
+              </Typography>
+            ) : null}
+          </Box>
+        </>
       ) : null}
 
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-        {STEPS.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+      {w.showWizard ? (
+        <>
+          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+            {w.wizardMode === "additionalGuests"
+              ? "Request additional guest tickets"
+              : w.editingExistingBooking
+                ? "Edit your booking"
+                : w.postSubmitFlow || w.paymentResumeFlow
+                  ? "Complete your booking"
+                  : "Book this event"}
+          </Typography>
 
-      {submitError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSubmitError(null)}>
-          {submitError}
-        </Alert>
-      )}
+          {w.editingExistingBooking && w.existingTerminalBooking ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Editing your {getBookingStatusLabel(w.existingTerminalBooking.status).toLowerCase()} booking. Saving
+              will update your booking details.
+            </Alert>
+          ) : null}
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-        {activeStep === 0 && (
-          <FormControl component="fieldset" fullWidth>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Select your member ticket category.
-            </Typography>
-            <RadioGroup
-              value={memberTicketTypeId ?? ""}
-              onChange={(_, v) => setMemberTicketTypeId(v || null)}
-            >
-              {memberTicketTypes.map((tt) => (
-                <FormControlLabel
-                  key={tt.id}
-                  value={tt.id}
-                  control={<Radio />}
-                  label={
-                    <Box>
-                      <Typography variant="body2" component="span">
-                        {tt.title}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                        {tt.price != null ? String(tt.price) : "—"}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              ))}
-            </RadioGroup>
-            <TextField
-              label="Dietary requirements (you)"
-              fullWidth
-              size="small"
-              value={bookerDietaryNote}
-              onChange={(e) => setBookerDietaryNote(e.target.value)}
-              sx={{ mt: 2 }}
-            />
-            <Autocomplete
-              multiple
-              options={seatingOptions}
-              value={seatingOptions.filter((o) => sitNextToUserIds.includes(o.id))}
-              onChange={(_, next) => setSitNextToUserIds(next.map((n) => n.id))}
-              getOptionLabel={(o) => o.label}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Sit next to (optional)"
-                  helperText="Member picker sourced from section member list."
-                  size="small"
-                  sx={{ mt: 2 }}
-                />
-              )}
-            />
-            <FormControlLabel
-              sx={{ mt: 1 }}
-              control={<Checkbox checked={accommodationRequested} onChange={(_, checked) => setAccommodationRequested(checked)} />}
-              label="Request accommodation (booker only)"
-              disabled={!canRequestAccommodation}
-            />
-            {accommodationRequested && (
-              <TextField
-                label="Accommodation details (optional)"
-                fullWidth
-                size="small"
-                value={accommodationNote}
-                onChange={(e) => setAccommodationNote(e.target.value)}
+          {w.showExpiredDraftHoldNotice && !w.editingExistingBooking && !w.postSubmitFlow ? (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Your draft booking hold has expired. You can still complete your booking, but your seat
+              is no longer reserved.
+            </Alert>
+          ) : null}
+
+          <Stepper activeStep={w.activeStep} sx={{ mb: 3 }}>
+            {w.steps.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+
+          {w.submitError ? (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => w.setSubmitError(null)}>
+              {w.submitError}
+            </Alert>
+          ) : null}
+
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            {w.wizardMode === "additionalGuests" && w.activeStep === 0 ? (
+              <AdditionalGuestCountStep
+                requestedExtraGuestCountInput={w.requestedExtraGuestCountInput}
+                onInputChange={w.setRequestedExtraGuestCountInput}
+                onCountChange={w.setRequestedExtraGuestCount}
+                maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
               />
-            )}
-            {!canRequestAccommodation && (
-              <Typography variant="caption" color="text.secondary">
-                Accommodation requests are only available for REGULAR or RESERVE members.
-              </Typography>
-            )}
-          </FormControl>
-        )}
+            ) : null}
 
-        {activeStep === 1 && (
-          <Box>
-            {!guestTicketTypes.length ? (
-              <Typography variant="body2" color="text.secondary">
-                No guest ticket types are available for this event. Continue to review your booking.
-              </Typography>
-            ) : (
-              <>
-                <RadioGroup
-                  value={includeGuest ? "guest" : "self"}
-                  onChange={(_, v) => {
-                    const next = v === "guest";
-                    setIncludeGuest(next);
-                    if (!next) {
-                      setGuestTicketTypeId(null);
-                      setGuestDisplayName("");
-                    } else if (!guestTicketTypeId && guestTicketTypes[0]) {
-                      setGuestTicketTypeId(guestTicketTypes[0].id);
-                    }
-                  }}
+            {w.wizardMode === "full" && w.activeStep === 0 ? (
+              <TicketSelectionStep
+                memberTicketTypes={w.memberTicketTypes}
+                memberTicketTypeId={w.memberTicketTypeId}
+                onMemberTicketTypeChange={w.setMemberTicketTypeId}
+                bookerDietaryNote={w.bookerDietaryNote}
+                onBookerDietaryNoteChange={w.setBookerDietaryNote}
+                seatingOptions={w.seatingOptions}
+                sitNextToUserIds={w.sitNextToUserIds}
+                onSitNextToUserIdsChange={w.setSitNextToUserIds}
+                accommodationRequested={w.accommodationRequested}
+                onAccommodationRequestedChange={w.setAccommodationRequested}
+                canRequestAccommodation={w.canRequestAccommodation}
+              />
+            ) : null}
+
+            {w.activeStep === 1 ? (
+              <GuestDetailsStep
+                wizardMode={w.wizardMode}
+                editingExistingBooking={w.editingExistingBooking}
+                includeGuest={w.includeGuest}
+                extraGuestRequestCount={w.extraGuestRequestCount}
+                guestTicketTypes={w.guestTicketTypes}
+                guestTicketTypeId={w.guestTicketTypeId}
+                onGuestTicketTypeChange={w.setGuestTicketTypeId}
+                guestDisplayName={w.guestDisplayName}
+                onGuestDisplayNameChange={w.setGuestDisplayName}
+                guestDietaryNote={w.guestDietaryNote}
+                onGuestDietaryNoteChange={w.setGuestDietaryNote}
+                extraGuestTicketTypeId={w.extraGuestTicketTypeId}
+                onExtraGuestTicketTypeChange={w.setExtraGuestTicketTypeId}
+                extraGuestDetails={w.extraGuestDetails}
+                onExtraGuestDetailsChange={w.setExtraGuestDetails}
+                maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
+                totalGuestCountInput={w.totalGuestCountInput}
+                onTotalGuestCountInputChange={w.setTotalGuestCountInput}
+                onTotalGuestCountChange={w.setTotalGuestCount}
+              />
+            ) : null}
+
+            {w.activeStep === 2 ? (
+              <ReviewStep
+                wizardMode={w.wizardMode}
+                totalGuestCount={w.totalGuestCount}
+                extraGuestRequestCount={w.extraGuestRequestCount}
+                includeGuest={w.includeGuest}
+                selectedMember={w.selectedMember}
+                selectedGuest={w.selectedGuest}
+                guestDisplayName={w.guestDisplayName}
+                guestDietaryNote={w.guestDietaryNote}
+                extraGuestDetails={w.extraGuestDetails}
+                maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
+              />
+            ) : null}
+
+            {w.wizardMode === "full" && w.activeStep === 3 && w.existingTerminalBooking && w.paymentSummaryForBooking ? (
+              <PaymentStep
+                paymentTicketRows={w.paymentTicketRows}
+                canProceedToConfirmation={w.canProceedToConfirmation}
+                pendingGuestTicketsAwaitingApproval={w.pendingGuestTicketsAwaitingApproval}
+                payingAllTickets={w.payingAllTickets}
+                onPayAllTickets={() => void w.handlePayAllTickets()}
+              />
+            ) : null}
+
+            {w.wizardMode === "full" && w.activeStep === 4 ? (
+              <Alert severity="success">
+                Your booking is confirmed. Guest-request updates will appear in your booking summary.
+              </Alert>
+            ) : null}
+          </Paper>
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+            <Button onClick={w.handleBack} disabled={w.activeStep === 0 || w.submitting}>
+              Back
+            </Button>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              {w.activeStep < w.steps.length - 1 &&
+              !(
+                w.wizardMode === "full" &&
+                w.activeStep === 2 &&
+                !w.postSubmitFlow &&
+                !w.paymentResumeFlow
+              ) &&
+              !(w.wizardMode === "full" && w.activeStep === 3 && !w.canProceedToConfirmation) ? (
+                <Button
+                  variant="contained"
+                  onClick={w.handleNext}
+                  disabled={w.submitting || w.payingAllTickets}
+                  sx={{ backgroundColor: colors.callToAction }}
                 >
-                  <FormControlLabel value="self" control={<Radio />} label="No guest — just my ticket" />
-                  <FormControlLabel value="guest" control={<Radio />} label="Add one guest ticket" />
-                </RadioGroup>
-                {includeGuest && (
-                  <Box sx={{ mt: 2, pl: 1, borderLeft: 2, borderColor: "divider" }}>
-                    <FormControl component="fieldset" fullWidth sx={{ mb: 2 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
-                        Guest ticket category
-                      </Typography>
-                      <RadioGroup
-                        value={guestTicketTypeId ?? ""}
-                        onChange={(_, v) => setGuestTicketTypeId(v || null)}
-                      >
-                        {guestTicketTypes.map((tt) => (
-                          <FormControlLabel
-                            key={tt.id}
-                            value={tt.id}
-                            control={<Radio size="small" />}
-                            label={`${tt.title} (${tt.price != null ? String(tt.price) : "—"})`}
-                          />
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <TextField
-                      label="Guest name"
-                      fullWidth
-                      size="small"
-                      value={guestDisplayName}
-                      onChange={(e) => setGuestDisplayName(e.target.value)}
-                      helperText="Shown on the guest ticket"
-                    />
-                  </Box>
-                )}
-              </>
-            )}
+                  Next
+                </Button>
+              ) : null}
+              {((w.wizardMode === "full" && w.activeStep === 2 && !w.paymentResumeFlow && !w.postSubmitFlow) ||
+                (w.wizardMode === "additionalGuests" && w.activeStep === 2)) ? (
+                <Button
+                  variant="contained"
+                  onClick={() => void w.handleConfirm()}
+                  disabled={w.submitting}
+                  sx={{ backgroundColor: colors.callToAction }}
+                >
+                  {w.submitting
+                    ? "Submitting…"
+                    : w.wizardMode === "additionalGuests"
+                      ? "Submit request"
+                      : w.editingExistingBooking
+                        ? "Save booking changes"
+                        : "Confirm booking"}
+                </Button>
+              ) : null}
+              {w.wizardMode === "full" && w.activeStep === 4 ? (
+                <Button variant="contained" onClick={w.closeWizard} sx={{ backgroundColor: colors.callToAction }}>
+                  Done
+                </Button>
+              ) : null}
+            </Box>
           </Box>
-        )}
 
-        {activeStep === 2 && (
-          <Box component="dl" sx={{ m: 0, "& dt": { fontWeight: 600, mt: 1.5 }, "& dd": { m: 0 } }}>
-            <Typography component="dt" variant="body2">
-              Your ticket
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary">
-              {selectedMember?.title ?? "—"}
-              {selectedMember?.price != null ? ` · ${String(selectedMember.price)}` : ""}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Guest
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary">
-              {includeGuest && selectedGuest
-                ? `${selectedGuest.title} (${String(selectedGuest.price ?? "—")}) — ${guestDisplayName.trim()}`
-                : "None"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Event
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary">
-              {event.title}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Dietary (you)
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary">
-              {bookerDietaryNote.trim() || "None"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Sit next to
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary">
-              {sitNextToUserIds.length > 0
-                ? seatingOptions
-                    .filter((o) => sitNextToUserIds.includes(o.id))
-                    .map((o) => o.label)
-                    .join(", ")
-                : "No preference"}
-            </Typography>
-            <Typography component="dt" variant="body2">
-              Accommodation
-            </Typography>
-            <Typography component="dd" variant="body2" color="text.secondary">
-              {accommodationRequested ? accommodationNote.trim() || "Requested" : "Not requested"}
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
-        <Button onClick={handleBack} disabled={activeStep === 0 || submitting}>
-          Back
-        </Button>
-        <Box sx={{ display: "flex", gap: 1 }}>
-          {activeStep < 2 && (
-            <Button variant="contained" onClick={handleNext} disabled={submitting} sx={{ backgroundColor: colors.callToAction }}>
-              Next
+          {w.activeStep > 0 && w.wizardMode === "full" && !w.postSubmitFlow && !w.editingExistingBooking ? (
+            <Button size="small" onClick={w.resetWizardState} disabled={w.submitting} sx={{ mt: 1 }}>
+              Start over
             </Button>
-          )}
-          {activeStep === 2 && (
+          ) : null}
+          {w.editingExistingBooking ? (
             <Button
-              variant="contained"
-              onClick={handleConfirm}
-              disabled={submitting}
-              sx={{ backgroundColor: colors.callToAction }}
+              size="small"
+              onClick={w.cancelEditing}
+              disabled={w.submitting || w.payingAllTickets}
+              sx={{ mt: 1, ml: 1 }}
             >
-              {submitting ? "Submitting…" : editingExistingBooking ? "Save booking changes" : "Confirm booking"}
+              Cancel editing
             </Button>
-          )}
-        </Box>
-      </Box>
-
-      {activeStep > 0 && (
-        <Button size="small" onClick={resetWizardState} disabled={submitting} sx={{ mt: 1 }}>
-          Start over
-        </Button>
-      )}
-      {existingTerminalBooking ? (
-        <Box sx={{ mt: 2 }}>
-          <AdditionalGuestRequestSection
-            bookingId={existingTerminalBooking.id}
-            eventTitle={event.title}
-            maxGuestsWithoutModeratorApproval={event.maxGuestsWithoutModeratorApproval}
-            guestTicketTypes={guestTicketTypes.map((tt) => ({
-              id: tt.id,
-              title: tt.title,
-              price: tt.price ?? null,
-            }))}
-            requests={existingTerminalBooking.guestTicketRequests ?? []}
-            onRequestCreated={() => void refetchMyBookings()}
-          />
-        </Box>
+          ) : null}
+          {w.wizardMode === "additionalGuests" ? (
+            <Button size="small" onClick={w.closeWizard} disabled={w.submitting} sx={{ mt: 1, ml: 1 }}>
+              Cancel
+            </Button>
+          ) : null}
+          {w.wizardMode === "full" && w.activeStep === 4 ? (
+            <Button component={RouterLink} to={ROUTES.MY_BOOKINGS} size="small" sx={{ mt: 1, ml: 1 }}>
+              View in My Bookings
+            </Button>
+          ) : null}
+        </>
       ) : null}
     </Box>
   );

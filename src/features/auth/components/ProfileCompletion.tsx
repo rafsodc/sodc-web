@@ -10,31 +10,24 @@ import {
   FormControlLabel,
   Checkbox,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import { executeMutation, mutationRef } from "firebase/data-connect";
 import { MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
-import { NON_RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
-import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
+import { MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { auth } from "../../../config/firebase";
 import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 
 interface ProfileCompletionProps {
   userEmail: string;
   onComplete?: () => void;
-  onBack?: () => void;
 }
 
 export default function ProfileCompletion({
   userEmail,
   onComplete,
-  onBack,
 }: ProfileCompletionProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -44,9 +37,6 @@ export default function ProfileCompletion({
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
-  const [requestedMembershipStatus, setRequestedMembershipStatus] = useState<MembershipStatus>(
-    MembershipStatus.REGULAR
-  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -83,7 +73,7 @@ export default function ProfileCompletion({
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
-        requestedMembershipStatus,
+        requestedMembershipStatus: MembershipStatus.REGULAR,
         isRegular,
         isReserve,
         isCivilServant,
@@ -138,26 +128,23 @@ export default function ProfileCompletion({
         <Typography variant="body1" sx={{ color: colors.titlePrimary, mb: 2 }}>
           Your profile has been submitted and is pending admin approval.
         </Typography>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
-          An administrator will review your profile and approve your account. You will be notified once your account is activated.
+        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+          Step 4 begins next: an administrator will review your profile and activate your account,
+          usually within a few business days. You can sign out and return later to check status.
         </Typography>
-        {onBack && (
-          <Button variant="outlined" onClick={onBack}>
-            Back to Home
-          </Button>
-        )}
       </Box>
     );
   }
 
   return (
-    <Box sx={{ maxWidth: "600px", mx: "auto" }}>
-      <Typography variant="h4" gutterBottom sx={{ color: colors.titlePrimary, mb: 3 }}>
-        Complete Your Profile
+    <Box>
+      <Typography variant="h5" gutterBottom sx={{ color: colors.titlePrimary, mb: 1 }}>
+        Complete your profile
       </Typography>
 
       <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
-        Please complete your profile to continue. Your account will be pending admin approval.
+        Step 3 of 4 — tell us about your service background. An administrator will assign your
+        membership status during approval.
       </Typography>
 
       {error && (
@@ -212,26 +199,10 @@ export default function ProfileCompletion({
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
-          <FormControl fullWidth required>
-            <InputLabel>Desired Membership Status</InputLabel>
-            <Select
-              value={requestedMembershipStatus}
-              label="Desired Membership Status"
-              onChange={(e) => setRequestedMembershipStatus(e.target.value as MembershipStatus)}
-              disabled={submitting}
-            >
-              {MEMBERSHIP_STATUS_OPTIONS.filter(option => 
-                NON_RESTRICTED_STATUSES.includes(option.value)
-              ).map((status) => (
-                <MenuItem key={status.value} value={status.value}>
-                  {status.label}
-                </MenuItem>
-              ))}
-            </Select>
-            <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
-              Your account will start as PENDING until an admin approves your requested status.
-            </Typography>
-          </FormControl>
+          <Alert severity="info">
+            An administrator will review your service background and assign your membership status during
+            approval.
+          </Alert>
 
           <Divider sx={{ my: 2 }} />
 
@@ -299,14 +270,8 @@ export default function ProfileCompletion({
                 },
               }}
             >
-              {submitting ? <CircularProgress size={24} /> : "Submit Profile"}
+              {submitting ? <CircularProgress size={24} /> : "Submit profile"}
             </Button>
-
-            {onBack && (
-              <Button variant="outlined" onClick={onBack} disabled={submitting}>
-                Back
-              </Button>
-            )}
           </Box>
         </Stack>
       </form>

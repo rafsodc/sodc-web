@@ -1,6 +1,7 @@
 import type { GetSectionsForUserData, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ROUTES } from "../../constants";
+import { sectionDetailLocationState } from "./sectionNavigationState";
 
 export interface NavigationLink {
   label: string;
@@ -38,7 +39,11 @@ function addSectionLink(map: Map<string, NavigationLink>, link: SectionLinkSourc
     return;
   }
   const label = section.name || "Untitled section";
-  map.set(section.id, { label, to: `/sections/${section.id}` });
+  map.set(section.id, {
+    label,
+    to: `/sections/${section.id}`,
+    state: sectionDetailLocationState(ROUTES.HOME),
+  });
 }
 
 function markSectionAdministerable(map: Map<string, boolean>, link: SectionLinkSource) {
@@ -193,9 +198,7 @@ export function buildNavigationLinks({
   }
 
   return {
-    sections: [
-      { label: "My Payments", to: ROUTES.MY_PAYMENTS },
-      ...sortLinks(sectionMap.values()).map((section) => {
+    sections: sortLinks(sectionMap.values()).map((section) => {
         const sectionId = section.to.replace("/sections/", "");
         if (!administerableSectionIds.has(sectionId)) {
           return section;
@@ -211,7 +214,6 @@ export function buildNavigationLinks({
           ],
         };
       }),
-    ],
     admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionsData }),
   };
 }

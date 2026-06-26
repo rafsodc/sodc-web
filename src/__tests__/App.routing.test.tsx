@@ -7,10 +7,12 @@ import type { GetSectionsForUserData } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
 import App from "../App";
 import { ROUTES } from "../constants";
+import { sectionDetailLocationState } from "../shared/navigation/sectionNavigationState";
 import { createMockUser } from "../test-utils/mocks/firebase";
 
 let currentUser: User | null = null;
 let enabledClaim = false;
+let enabledClaimResolved = true;
 let adminClaim = false;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
@@ -94,7 +96,10 @@ vi.mock("../features/users/hooks/useUserData", () => ({
 }));
 
 vi.mock("../features/users/hooks/useEnabledClaim", () => ({
-  useEnabledClaim: vi.fn((user: User | null) => Boolean(user && enabledClaim)),
+  useEnabledClaim: vi.fn((user: User | null) => ({
+    isEnabled: Boolean(user && enabledClaim),
+    isEnabledClaimResolved: !user || enabledClaimResolved,
+  })),
 }));
 
 vi.mock("../features/users/hooks/useAdminClaim", () => ({
@@ -125,6 +130,15 @@ vi.mock("@dataconnect/generated/react", () => ({
   })),
 }));
 
+let needsProfileCompletion = false;
+
+vi.mock("../shared/appShell/useUnenabledProfileCheck", () => ({
+  useUnenabledProfileCheck: () => ({
+    membershipStatusForUnenabled: null,
+    needsProfileCompletion,
+  }),
+}));
+
 vi.mock("../shared/components/Header", () => ({
   default: ({ onAccountClick, onProfileClick }: { onAccountClick: () => void; onProfileClick?: () => void }) => (
     <header>
@@ -134,17 +148,24 @@ vi.mock("../shared/components/Header", () => ({
   ),
 }));
 
-vi.mock("../shared/components/HomePage", () => ({
-  default: () => <h1>Home Page</h1>,
+vi.mock("../features/welcome/components/PublicHomePage", () => ({
+  default: () => <h1>Public Home Page</h1>,
+}));
+
+vi.mock("../features/welcome/components/MemberWelcomePage", () => ({
+  default: () => <h1>Welcome Dashboard</h1>,
 }));
 
 vi.mock("../features/auth/components/AuthGate", () => ({
-  default: ({ onBack }: { onBack?: () => void }) => (
-    <div>
-      <h1>Account Page</h1>
-      <button onClick={onBack}>Back</button>
-    </div>
-  ),
+  default: () => <h1>Account Page</h1>,
+}));
+
+vi.mock("../features/auth/components/RegisterPage", () => ({
+  default: () => <h1>Register Page</h1>,
+}));
+
+vi.mock("../features/auth/components/OnboardingShell", () => ({
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../features/profile/components/Profile", () => ({
@@ -179,6 +200,15 @@ vi.mock("../features/sections/components/MyPayments", () => ({
   default: ({ onBack }: { onBack: () => void }) => (
     <div>
       <h1>My Payments Page</h1>
+      <button onClick={onBack}>Back</button>
+    </div>
+  ),
+}));
+
+vi.mock("../features/sections/components/MyBookings", () => ({
+  default: ({ onBack }: { onBack: () => void }) => (
+    <div>
+      <h1>My Bookings Page</h1>
       <button onClick={onBack}>Back</button>
     </div>
   ),
@@ -244,16 +274,74 @@ describe("App routing", () => {
   beforeEach(() => {
     currentUser = null;
     enabledClaim = false;
+    enabledClaimResolved = true;
     adminClaim = false;
+    needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
   });
 
-  it("renders the account page from a direct deep link", async () => {
+  it("renders public home content when logged out at home", async () => {
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Public Home Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it("renders the register page from a direct deep link when logged out", async () => {
+    renderApp([ROUTES.REGISTER]);
+
+    expect(await screen.findByRole("heading", { name: "Register Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.REGISTER);
+  });
+
+  it("redirects users who need profile completion to the profile completion route", async () => {
+    currentUser = createMockUser({ emailVerified: true });
+    enabledClaim = false;
+    needsProfileCompletion = true;
+
+    renderApp([ROUTES.HOME]);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.PROFILE_COMPLETION)
+    );
+    expect(await screen.findByRole("heading", { name: "Profile Completion Page" })).toBeInTheDocument();
+  });
+
+  it("renders profile completion from a direct deep link when required", async () => {
+    currentUser = createMockUser({ emailVerified: true });
+    enabledClaim = false;
+    needsProfileCompletion = true;
+
+    renderApp([ROUTES.PROFILE_COMPLETION]);
+
+    expect(await screen.findByRole("heading", { name: "Profile Completion Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.PROFILE_COMPLETION);
+  });
+
+  it("renders the account page from a direct deep link when logged out", async () => {
     renderApp([ROUTES.ACCOUNT]);
 
     expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.ACCOUNT);
+  });
+
+  it("renders welcome dashboard for enabled users at home", async () => {
+    signInEnabledUser();
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it("redirects enabled users from account to home", async () => {
+    signInEnabledUser();
+
+    renderApp([ROUTES.ACCOUNT]);
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 
   it("redirects unauthenticated section deep links to account", async () => {
@@ -280,6 +368,37 @@ describe("App routing", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
   });
 
+  it("keeps enabled users on payments after Stripe checkout return", async () => {
+    signInEnabledUser();
+    renderApp([
+      `${ROUTES.MY_PAYMENTS}?checkout=success&orderId=00000000-0000-0000-0000-000000000001`,
+    ]);
+
+    expect(await screen.findByText(/payment confirmed/i)).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
+    expect(screen.getByRole("heading", { name: "My Payments Page" })).toBeInTheDocument();
+  });
+
+  it("waits for enabled claim resolution before redirecting checkout returns away from payments", async () => {
+    signInEnabledUser();
+    enabledClaimResolved = false;
+
+    renderApp([
+      `${ROUTES.MY_PAYMENTS}?checkout=success&orderId=00000000-0000-0000-0000-000000000001`,
+    ]);
+
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_PAYMENTS);
+    expect(screen.queryByRole("heading", { name: "Account Page" })).not.toBeInTheDocument();
+  });
+
+  it("renders member bookings hub from a direct deep link for enabled users", async () => {
+    signInEnabledUser();
+    renderApp([ROUTES.MY_BOOKINGS]);
+
+    expect(await screen.findByRole("heading", { name: "My Bookings Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_BOOKINGS);
+  });
+
   it("uses browser history for section detail Back when history exists", async () => {
     signInEnabledUser();
     const user = userEvent.setup();
@@ -289,7 +408,20 @@ describe("App routing", () => {
     expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
+  });
+
+  it("falls back to home when section detail was opened from welcome", async () => {
+    signInEnabledUser();
+    const user = userEvent.setup();
+
+    renderApp([{ pathname: "/sections/section-1", state: sectionDetailLocationState(ROUTES.HOME) }]);
+
+    expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 
@@ -344,7 +476,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Signals" })).toHaveAttribute("href", "/sections/section-1");
     expect(screen.queryByRole("link", { name: "Administer" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
@@ -373,7 +505,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Administer" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
     expect(screen.getByRole("link", { name: "Manage Sections" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
@@ -386,7 +518,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Administer" }));
 
     expect(await screen.findByRole("heading", { name: "Manage Sections Page" })).toBeInTheDocument();
@@ -402,7 +534,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Administer" }));
     await screen.findByRole("heading", { name: "Manage Sections Page" });
     expect(screen.getByTestId("location-state")).toHaveTextContent("section-1");
@@ -430,7 +562,7 @@ describe("App routing", () => {
 
     renderApp([ROUTES.HOME]);
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Access group" }));
 
     expect(await screen.findByRole("heading", { name: "User Groups Page" })).toBeInTheDocument();
@@ -447,7 +579,7 @@ describe("App routing", () => {
     expect(await screen.findByRole("heading", { name: "Manage Users Page" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(await screen.findByRole("heading", { name: "Home Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
 

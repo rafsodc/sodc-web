@@ -232,6 +232,13 @@ function getMyBookingsForEvent(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getMyBookingsForEvent = getMyBookingsForEvent;
 
+function getMyBookings(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetMyBookings', undefined, inputOpts);
+}
+exports.getMyBookings = getMyBookings;
+
 function getMyTicketOrderById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -547,6 +554,13 @@ function getBookingsForBookerAndEvent(dcOrVarsOrOptions, varsOrOptions, options)
 }
 exports.getBookingsForBookerAndEvent = getBookingsForBookerAndEvent;
 
+function getTicketOrdersForBookerAndEvent(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketOrdersForBookerAndEvent', inputVars, inputOpts);
+}
+exports.getTicketOrdersForBookerAndEvent = getTicketOrdersForBookerAndEvent;
+
 function createBookingDraftForUser(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -749,6 +763,20 @@ function getBookingForNotification(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('GetBookingForNotification', inputVars, inputOpts);
 }
 exports.getBookingForNotification = getBookingForNotification;
+
+function listStaleDraftBookingsForScheduler(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStaleDraftBookingsForScheduler', inputVars, inputOpts);
+}
+exports.listStaleDraftBookingsForScheduler = listStaleDraftBookingsForScheduler;
+
+function listStalePendingTicketOrdersForScheduler(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStalePendingTicketOrdersForScheduler', inputVars, inputOpts);
+}
+exports.listStalePendingTicketOrdersForScheduler = listStalePendingTicketOrdersForScheduler;
 
 function getGuestTicketRequestForNotification(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

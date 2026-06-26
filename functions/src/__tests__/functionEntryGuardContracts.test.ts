@@ -31,6 +31,7 @@ describe("function entry guard contracts", () => {
 
     const membership = readSource("membershipStatus.ts");
     assertOnCallGuard(membership, "updateMembershipStatus", "requireAuth(request);");
+    assertOnCallGuard(membership, "resignMembership", "requireAuth(request);");
 
     const sections = readSource("sections.ts");
     assertOnCallGuard(sections, "getSectionMembersMerged", "requireAuth(request);");
@@ -40,6 +41,7 @@ describe("function entry guard contracts", () => {
 
     const payments = readSource("payments.ts");
     assertOnCallGuard(payments, "createTicketCheckoutSession", "requireEnabled(request);");
+    assertOnCallGuard(payments, "createEventBookingCheckoutSession", "requireEnabled(request);");
     assertOnCallGuard(payments, "getMyTicketOrderStripeArtifactsBatch", "requireEnabled(request);");
   });
 
