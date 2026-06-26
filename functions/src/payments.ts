@@ -556,7 +556,6 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   const customerId = await ensureStripeCustomerId({ uid, stripeClient });
   const createdOrderIds: UUIDString[] = [];
   const lineItems = [];
-  let eventTitle = "Event booking";
 
   for (const line of checkoutLines) {
     const ticketTypeId = validateUUID(line.ticketTypeId, "ticketTypeId") as UUIDString;
@@ -572,7 +571,6 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
       throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
     }
     await ensureTicketCheckoutEligibility({ uid, ticketType });
-    eventTitle = ticketType.event.title;
 
     let orderId = line.existingOrderId as UUIDString | null;
     if (!orderId) {
@@ -599,7 +597,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
         unit_amount: line.unitAmountMinor,
         product_data: {
           name: line.title,
-          description: `Event: ${eventTitle}`,
+          description: `Event: ${ticketType.event.title}`,
         },
       },
     });

@@ -77,19 +77,17 @@ export const submitGuestTicketRequest = onCall(
         throw new HttpsError("permission-denied", "You can only submit guest requests for your own booking");
       }
 
-      let { approvedPool, pendingPool } = consumeGuestRequestPoolsForExistingRequests(
+      const { approvedPool, pendingPool } = consumeGuestRequestPoolsForExistingRequests(
         buildApprovedGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
         buildPendingGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
         booking.guestTicketRequests
       );
-      const { decision, remainingApprovedPool, remainingPendingPool } = resolveGuestTicketRequestSubmission({
+      const { decision } = resolveGuestTicketRequestSubmission({
         approvedPool,
         pendingPool,
         guestDisplayName,
         guestTicketTypeId,
       });
-      approvedPool = remainingApprovedPool;
-      pendingPool = remainingPendingPool;
 
       const status =
         decision.kind === "carry_forward_approved"
