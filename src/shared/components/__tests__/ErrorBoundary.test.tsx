@@ -9,8 +9,12 @@ beforeEach(() => {
   consoleError.mockClear();
 });
 
-function Boom({ message }: { message: string }) {
+function Boom({ message }: { message: string }): never {
   throw new Error(message);
+}
+
+function BoomNoMessage(): never {
+  throw new Error();
 }
 
 function Fine() {
@@ -52,10 +56,6 @@ describe("ErrorBoundary", () => {
   });
 
   it("shows fallback message when error has no message", () => {
-    function BoomNoMessage() {
-      throw new Error();
-    }
-
     render(
       <ErrorBoundary title="Test" onBack={vi.fn()}>
         <BoomNoMessage />

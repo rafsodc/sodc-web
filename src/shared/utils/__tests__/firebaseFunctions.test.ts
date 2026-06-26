@@ -13,6 +13,7 @@ vi.mock("../uuid", () => ({
   toCanonicalUuid: (id: string) => id.toLowerCase().replace(/[^a-f0-9-]/g, ""),
 }));
 
+import type { MembershipStatus } from "@dataconnect/generated";
 import {
   grantAdminClaim,
   revokeAdminClaim,
@@ -162,7 +163,7 @@ describe("listUsersWithoutDataConnectProfile", () => {
 
 describe("listUsersPendingApproval", () => {
   it("calls the function and returns pending users", async () => {
-    const users = [{ id: "u2", firstName: "John", lastName: "Doe", email: "j@d.com", serviceNumber: "SN1", membershipStatus: "PENDING", requestedMembershipStatus: "REGULAR", createdAt: "", updatedAt: "" }];
+    const users = [{ id: "u2", firstName: "John", lastName: "Doe", email: "j@d.com", serviceNumber: "SN1", membershipStatus: "PENDING", requestedMembershipStatus: "REGULAR" as MembershipStatus, createdAt: "", updatedAt: "" }];
     makeCallable({ data: { users } });
 
     const result = await listUsersPendingApproval();
@@ -205,16 +206,16 @@ describe("syncPendingUserClaims", () => {
 describe("updateMembershipStatus", () => {
   it("calls updateMembershipStatus with userId and newStatus", async () => {
     const callable = makeCallable({ data: { success: true } });
-    const result = await updateMembershipStatus("user-789", "REGULAR");
+    const result = await updateMembershipStatus("user-789", "REGULAR" as MembershipStatus);
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "updateMembershipStatus");
-    expect(callable).toHaveBeenCalledWith({ userId: "user-789", newStatus: "REGULAR" });
+    expect(callable).toHaveBeenCalledWith({ userId: "user-789", newStatus: "REGULAR" as MembershipStatus });
     expect(result).toEqual({ success: true });
   });
 
   it("returns success: false on error", async () => {
     makeFailingCallable("Invalid status transition");
-    const result = await updateMembershipStatus("user-789", "REGULAR");
+    const result = await updateMembershipStatus("user-789", "REGULAR" as MembershipStatus);
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Invalid status transition");
@@ -246,7 +247,7 @@ describe("resignMembership", () => {
 
 describe("getSectionMembersMerged", () => {
   it("calls getSectionMembersMerged with sectionId and returns members", async () => {
-    const members = [{ id: "u1", firstName: "A", lastName: "B", email: "a@b.com", membershipStatus: "REGULAR" }];
+    const members = [{ id: "u1", firstName: "A", lastName: "B", email: "a@b.com", membershipStatus: "REGULAR" as MembershipStatus }];
     const callable = makeCallable({ data: { members } });
 
     const result = await getSectionMembersMerged("section-abc");
