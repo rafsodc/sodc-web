@@ -26,10 +26,10 @@ export default defineConfig({
         'src/dataconnect-generated/**',  // auto-generated SDK — not hand-authored
       ],
       thresholds: {
-        lines: 60,
-        functions: 60,
-        branches: 60,
-        statements: 60,
+        lines: 75,
+        functions: 75,
+        branches: 70,
+        statements: 75,
       },
     },
   },
