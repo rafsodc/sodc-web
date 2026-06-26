@@ -23,6 +23,7 @@ export default defineConfig({
         '**/__tests__/',
         '**/*.test.*',
         '**/*.spec.*',
+        'src/dataconnect-generated/**',  // auto-generated SDK — not hand-authored
       ],
       thresholds: {
         lines: 60,

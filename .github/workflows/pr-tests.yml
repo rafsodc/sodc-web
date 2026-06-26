@@ -75,6 +75,25 @@ jobs:
       - name: Run functions test suite
         run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test
 
+  frontend-coverage:
+    name: Frontend coverage gate (≥ 60%)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run frontend coverage (enforces thresholds)
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm run test:coverage
+
   functions-security-tests:
     name: Functions security tests
     runs-on: ubuntu-latest
