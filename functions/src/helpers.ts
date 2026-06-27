@@ -113,14 +113,26 @@ export function mapUserRecord(userRecord: admin.auth.UserRecord) {
 }
 
 /**
+ * Pages through all Firebase Auth users, returning every record.
+ * listUsers() caps at 1000 per call; this handles arbitrarily large tenants.
+ */
+export async function listAllAuthUsers(): Promise<admin.auth.UserRecord[]> {
+  const users: admin.auth.UserRecord[] = [];
+  let nextPageToken: string | undefined;
+  do {
+    const result = await admin.auth().listUsers(1000, nextPageToken);
+    users.push(...result.users);
+    nextPageToken = result.pageToken;
+  } while (nextPageToken);
+  return users;
+}
+
+/**
  * Gets all admin users from Firebase Auth
  */
 export async function getAdminUsers(): Promise<admin.auth.UserRecord[]> {
-  const listUsersResult = await admin.auth().listUsers();
-  return listUsersResult.users.filter((userRecord) => {
-    const customClaims = userRecord.customClaims || {};
-    return customClaims.admin === true;
-  });
+  const users = await listAllAuthUsers();
+  return users.filter((u) => (u.customClaims || {}).admin === true);
 }
 
 /**
@@ -136,6 +148,6 @@ export function handleFunctionError(error: any, context: string): never {
     throw error;
   }
   logger.error(`Error ${context}:`, error);
-  throw new HttpsError("internal", error?.message ?? `Error ${context}`);
+  throw new HttpsError("internal", "Internal server error");
 }
 

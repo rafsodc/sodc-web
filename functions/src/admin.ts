@@ -70,7 +70,8 @@ export const revokeAdmin = onCall(
       throw new HttpsError("failed-precondition", "User is not an admin");
     }
 
-    await admin.auth().setCustomUserClaims(uid, { admin: false });
+    const { admin: _removed, ...remainingClaims } = targetUserClaims;
+    await admin.auth().setCustomUserClaims(uid, { ...remainingClaims, admin: false });
     logger.info(`Admin claim removed for uid=${uid} by caller=${request.auth!.uid}`);
     return { success: true, message: `Admin claim removed for uid=${uid}` };
   } catch (e: any) {

@@ -12,7 +12,11 @@ import {
 import { govNotifyApiKey } from "./mailer";
 import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDispatcher";
 
-const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+const APP_BASE_URL = (() => {
+  const url = process.env.APP_BASE_URL || "http://localhost:5173";
+  try { new URL(url); } catch { throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`); }
+  return url;
+})();
 
 /** Sends membership access email when the stored status value changes. */
 export function scheduleMembershipStatusEmailIfChanged(args: {

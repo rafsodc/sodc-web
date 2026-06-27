@@ -58,7 +58,18 @@ const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
 const CHECKOUT_CURRENCY = "gbp";
-const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+const APP_BASE_URL = (() => {
+  const url = process.env.APP_BASE_URL || "http://localhost:5173";
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      throw new Error(`APP_BASE_URL must use http or https, got: ${parsed.protocol}`);
+    }
+  } catch {
+    throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`);
+  }
+  return url;
+})();
 
 /** Member payments route — must match frontend `ROUTES.MY_PAYMENTS` (`/payments`). */
 export const MEMBER_PAYMENTS_PATH = "/payments";

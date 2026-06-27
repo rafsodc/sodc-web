@@ -8,7 +8,7 @@ import {
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
-import { requireAdmin, requireEnabled, validateUUID, handleFunctionError } from "./helpers";
+import { requireAdmin, requireEnabled, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
 import {
   notifyBookerGuestTicketRequestReviewed,
@@ -21,7 +21,11 @@ import {
   resolveGuestTicketRequestSubmission,
 } from "./guestTicketRequestCarryForward";
 
-const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+const APP_BASE_URL = (() => {
+  const url = process.env.APP_BASE_URL || "http://localhost:5173";
+  try { new URL(url); } catch { throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`); }
+  return url;
+})();
 
 export function scheduleGuestTicketRequestSubmittedEmails(args: {
   requestId: string;
@@ -62,10 +66,14 @@ export const submitGuestTicketRequest = onCall(
     if (!guestDisplayName) {
       throw new HttpsError("invalid-argument", "guestDisplayName is required");
     }
-    const dietaryNote =
-      typeof request.data?.dietaryNote === "string" && request.data.dietaryNote.trim().length > 0
-        ? request.data.dietaryNote.trim()
-        : null;
+    if (guestDisplayName.length > MAX_NAME_LENGTH) {
+      throw new HttpsError("invalid-argument", `guestDisplayName must be no more than ${MAX_NAME_LENGTH} characters`);
+    }
+    const rawDietaryNote = typeof request.data?.dietaryNote === "string" ? request.data.dietaryNote.trim() : null;
+    if (rawDietaryNote && rawDietaryNote.length > MAX_DESCRIPTION_LENGTH) {
+      throw new HttpsError("invalid-argument", `dietaryNote must be no more than ${MAX_DESCRIPTION_LENGTH} characters`);
+    }
+    const dietaryNote = rawDietaryNote || null;
 
     try {
       const bookingRow = await getBookingForGuestTicketCallable({ bookingId });
@@ -144,10 +152,11 @@ export const reviewGuestTicketRequest = onCall(
     if (status !== GuestTicketRequestStatus.APPROVED && status !== GuestTicketRequestStatus.REJECTED) {
       throw new HttpsError("invalid-argument", "status must be APPROVED or REJECTED");
     }
-    const moderatorNote =
-      typeof request.data?.moderatorNote === "string" && request.data.moderatorNote.trim().length > 0
-        ? request.data.moderatorNote.trim()
-        : null;
+    const rawModeratorNote = typeof request.data?.moderatorNote === "string" ? request.data.moderatorNote.trim() : null;
+    if (rawModeratorNote && rawModeratorNote.length > MAX_DESCRIPTION_LENGTH) {
+      throw new HttpsError("invalid-argument", `moderatorNote must be no more than ${MAX_DESCRIPTION_LENGTH} characters`);
+    }
+    const moderatorNote = rawModeratorNote || null;
 
     try {
       await adminReviewGuestTicketRequestFromCallable({
