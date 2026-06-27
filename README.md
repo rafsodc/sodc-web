@@ -1,43 +1,57 @@
 # SODC Web
 
-SODC Web is a React + Firebase application for section membership, event booking, moderation, and payments.
+The SODC members' site — section membership, event booking, guest ticket management, and payments.
+
+**Beta site:** [https://sodc-web.web.app/](https://sodc-web.web.app/)
+
+---
+
+## For members
+
+- [Getting started](docs/user-guide/member-getting-started.md) — registering, completing your profile, and getting approved
+- [Booking an event](docs/user-guide/booking-an-event.md) — finding events, booking tickets, and guest ticket requests
+
+## For administrators
+
+- [Admin guide](docs/user-guide/admin-guide.md) — approving members, managing sections, events, and bookings
+
+---
+
+## Technical documentation
+
+Full documentation index: [docs/README.md](docs/README.md)
+
+---
 
 ## Repository layout
 
-- `src/`: frontend application code (features, shared components, hooks, utilities)
-- `functions/src/`: Firebase Functions backend (callables, webhooks, server-side rules)
-- `dataconnect/`: Data Connect schema and GraphQL operations
-- `docs/`: architecture and operational documentation
+| Path | Contents |
+|------|----------|
+| `src/` | Frontend application (React, features, shared components, hooks, utilities) |
+| `functions/src/` | Firebase Functions backend (callables, webhooks, server-side validation) |
+| `dataconnect/` | Data Connect schema and GraphQL operations |
+| `docs/` | Architecture, operations, and user documentation |
+| `src/dataconnect-generated/` | Generated — do not hand-edit |
+| `functions/src/dataconnect-admin-generated/` | Generated — do not hand-edit |
 
-Detailed structure conventions live in:
-- `docs/architecture/repo-structure.md`
-
-Documentation index:
-- `docs/README.md`
-
-## Generated code
-
-These folders are generated from Data Connect operations and should not be hand-edited in normal flow:
-
-- `src/dataconnect-generated/`
-- `functions/src/dataconnect-admin-generated/`
-
-After `.gql` changes, regenerate SDKs with:
+After changing `.gql` files, regenerate SDKs with:
 
 ```sh
 npx firebase dataconnect:sdk:generate
 ```
 
+---
+
 ## Local development
 
-Frontend:
+**Frontend:**
 
 ```sh
 npm install
 npm run dev
 ```
 
-Functions:
+**Functions:**
 
 ```sh
 cd functions
@@ -45,41 +59,42 @@ npm install
 npm run build
 ```
 
-## Test commands
+See [docs/operations/environments-dev-beta-prod.md](docs/operations/environments-dev-beta-prod.md) for environment setup (cloud-backed dev; no emulators required).
 
-Frontend tests:
+---
+
+## Tests
+
+**Frontend:**
 
 ```sh
 npm run test
 ```
 
-Functions tests:
+**Functions:**
 
 ```sh
 cd functions
 npm run test
 ```
 
-Focused security/permission regression suites (functions):
+**Security/permission regression suites:**
 
 ```sh
 cd functions
 npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
 ```
 
-## Dev-only reset helper (emulator)
+---
 
-When running the Firebase emulators you can wipe auth users, soft-reset DataConnect user rows, and seed a verified/enabled admin account.
+## Dev-only reset helper
 
-- Callable: `devResetAndSeed`
-- Payload: `{ email: "<desired-admin-email>" }`
-- Password: `password`
-- Guard:
-  - `ENV_NAME` must be `dev` or `stage` (fails otherwise).
-  - Active `projectId` (from `FIREBASE_CONFIG`/`GCLOUD_PROJECT`) must be in `PERMITTED_PROJECT_IDS` (comma-separated). If not, it fails and instructs you to add it.
+When running against the `dev` Firebase project you can wipe auth users, reset Data Connect user rows, and seed a verified admin account via the `devResetAndSeed` callable:
 
-Example (with emulators running):
 ```sh
 firebase functions:shell
 firebase > devResetAndSeed({ email: "admin@example.com" })
+# password: password
 ```
+
+Guards: `ENV_NAME` must be `dev` or `stage`; the active project must be in `PERMITTED_PROJECT_IDS`.
