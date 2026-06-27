@@ -23,7 +23,7 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getSectionMembersMerged } from "../../../shared/utils/firebaseFunctions";
+import { getSectionMembersMerged, subscribeToUserGroup } from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
@@ -226,10 +226,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
     setSubscribing(true);
     try {
-      const { subscribeToUserGroupRef } = await import("@dataconnect/generated");
-      await executeMutation(subscribeToUserGroupRef(dataConnect, {
-        userGroupId: subscribableGroup.id as UUIDString,
-      }));
+      await subscribeToUserGroup(subscribableGroup.id);
 
       setSnackbar({
         open: true,

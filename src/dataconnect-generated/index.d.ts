@@ -413,7 +413,6 @@ export interface CreateUserProfileData {
 export interface CreateUserProfileVariables {
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   requestedMembershipStatus: MembershipStatus;
   isRegular?: boolean | null;
@@ -2059,7 +2058,6 @@ export interface UpsertUserData {
 export interface UpsertUserVariables {
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   isRegular?: boolean | null;
   isReserve?: boolean | null;

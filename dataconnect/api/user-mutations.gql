@@ -15,7 +15,6 @@
 mutation CreateUserProfile(
   $firstName: String!
   $lastName: String!
-  $email: String!
   $serviceNumber: String!
   $requestedMembershipStatus: MembershipStatus!
   $isRegular: Boolean
@@ -28,7 +27,7 @@ mutation CreateUserProfile(
       id_expr: "auth.uid"
       firstName: $firstName
       lastName: $lastName
-      email: $email
+      email_expr: "auth.token.email"
       serviceNumber: $serviceNumber
       requestedMembershipStatus: $requestedMembershipStatus
       membershipStatus: PENDING
@@ -50,7 +49,6 @@ mutation CreateUserProfile(
 mutation UpsertUser(
   $firstName: String!
   $lastName: String!
-  $email: String!
   $serviceNumber: String!
   $isRegular: Boolean
   $isReserve: Boolean
@@ -62,7 +60,7 @@ mutation UpsertUser(
       id_expr: "auth.uid"
       firstName: $firstName
       lastName: $lastName
-      email: $email
+      email_expr: "auth.token.email"
       serviceNumber: $serviceNumber
       isRegular: $isRegular
       isReserve: $isReserve
@@ -113,7 +111,7 @@ mutation UpdateUser(
 # Requires enabled claim (admins must also be enabled)
 mutation RegisterForSection(
   $userGroupId: UUID!
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(level: NO_ACCESS) {
   userUserGroup_upsert(
     data: {
       userId_expr: "auth.uid"
@@ -136,12 +134,11 @@ mutation UnregisterFromSection(
 }
 
 # Subscribe to a subscribable user group (self-subscription)
-# Requires enabled claim (admins must also be enabled)
-# Note: The user group must be marked as subscribable. This should be validated
-# in the frontend before calling this mutation (by checking the user group's subscribable field).
+# Server-only: client must call the subscribeToUserGroup Firebase callable which
+# verifies UserGroup.subscribable == true before writing.
 mutation SubscribeToUserGroup(
   $userGroupId: UUID!
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(level: NO_ACCESS) {
   userUserGroup_upsert(
     data: {
       userId_expr: "auth.uid"
