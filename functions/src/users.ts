@@ -2,7 +2,7 @@ import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { listUsers as dcListUsers } from "@dataconnect/admin-generated";
-import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAME_LENGTH, mapUserRecord, handleFunctionError } from "./helpers";
+import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAME_LENGTH, mapUserRecord, handleFunctionError, listAllAuthUsers } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { isUserAwaitingProfile, isUserPendingApproval } from "./pendingUserApproval";
 
@@ -66,9 +66,9 @@ export const searchUsers = onCall(
 
   try {
     const searchLower = searchTerm.toLowerCase();
-    const listUsersResult = await admin.auth().listUsers();
+    const allUsers = await listAllAuthUsers();
     
-    const matchingUsers = listUsersResult.users
+    const matchingUsers = allUsers
       .map((userRecord) => {
         const email = (userRecord.email || "").toLowerCase();
         const displayName = (userRecord.displayName || "").toLowerCase();
@@ -116,14 +116,14 @@ export const listUsersWithoutDataConnectProfile = onCall(
     try {
       const [dcResult, authResult] = await Promise.all([
         dcListUsers(),
-        admin.auth().listUsers(),
+        listAllAuthUsers(),
       ]);
 
       const dcById = new Map(
         (dcResult.data?.users ?? []).map((user) => [user.id, user])
       );
 
-      const users = authResult.users
+      const users = authResult
         .map((authUser) => {
           const hasDataConnectProfile = dcById.has(authUser.uid);
           const authEnabled = authUser.customClaims?.enabled === true;
@@ -172,14 +172,14 @@ export const listUsersPendingApproval = onCall(
     try {
       const [dcResult, authResult] = await Promise.all([
         dcListUsers(),
-        admin.auth().listUsers(),
+        listAllAuthUsers(),
       ]);
 
       const dcById = new Map(
         (dcResult.data?.users ?? []).map((user) => [user.id, user])
       );
 
-      const users = authResult.users
+      const users = authResult
         .map((authUser) => {
           const profile = dcById.get(authUser.uid);
           if (!profile) {

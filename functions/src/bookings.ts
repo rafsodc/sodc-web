@@ -26,7 +26,7 @@ import {
   type LineInputForRules,
   type TicketTypeForRules,
 } from "./bookingRules";
-import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
+import { requireEnabled, requireString, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
@@ -36,7 +36,11 @@ import {
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
 
-const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+const APP_BASE_URL = (() => {
+  const url = process.env.APP_BASE_URL || "http://localhost:5173";
+  try { new URL(url); } catch { throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`); }
+  return url;
+})();
 
 /** Schedules confirmation or revision email after a successful submit (not on idempotent replay). */
 export function scheduleBookingSubmitNotificationEmails(args: {
@@ -92,12 +96,20 @@ function parseBookingLines(raw: unknown): LineInputForRules[] {
     if (!Number.isInteger(sortOrder)) {
       throw new HttpsError("invalid-argument", `lines[${i}].sortOrder must be an integer`);
     }
+    const rawGuestName = typeof o.guestDisplayName === "string" ? o.guestDisplayName.trim() : null;
+    if (rawGuestName && rawGuestName.length > MAX_NAME_LENGTH) {
+      throw new HttpsError("invalid-argument", `lines[${i}].guestDisplayName must be no more than ${MAX_NAME_LENGTH} characters`);
+    }
+    const rawDietaryNote = typeof o.dietaryNote === "string" ? o.dietaryNote.trim() : null;
+    if (rawDietaryNote && rawDietaryNote.length > MAX_DESCRIPTION_LENGTH) {
+      throw new HttpsError("invalid-argument", `lines[${i}].dietaryNote must be no more than ${MAX_DESCRIPTION_LENGTH} characters`);
+    }
     out.push({
       ticketTypeId,
       sortOrder,
       guestUserId: typeof o.guestUserId === "string" ? o.guestUserId : null,
-      guestDisplayName: typeof o.guestDisplayName === "string" ? o.guestDisplayName : null,
-      dietaryNote: typeof o.dietaryNote === "string" ? o.dietaryNote : null,
+      guestDisplayName: rawGuestName || null,
+      dietaryNote: rawDietaryNote || null,
     });
   }
   return out;
@@ -117,8 +129,7 @@ function parseSitNextTo(raw: unknown, uid: string): string[] {
     if (typeof v !== "string") {
       throw new HttpsError("invalid-argument", "sitNextToUserIds must be an array of user ids");
     }
-    const id = v.trim();
-    if (!id) continue;
+    const id = validateUUID(v.trim(), "sitNextToUserIds");
     if (id === uid) {
       throw new HttpsError("invalid-argument", "You cannot select yourself in sit-next-to preferences");
     }
