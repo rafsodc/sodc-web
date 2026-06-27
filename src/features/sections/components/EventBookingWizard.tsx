@@ -285,11 +285,6 @@ export default function EventBookingWizard({
             </Box>
           </Box>
 
-          {w.activeStep > 0 && w.wizardMode === "full" && !w.postSubmitFlow && !w.editingExistingBooking ? (
-            <Button size="small" onClick={w.resetWizardState} disabled={w.submitting} sx={{ mt: 1 }}>
-              Start over
-            </Button>
-          ) : null}
           {w.editingExistingBooking ? (
             <Button
               size="small"
