@@ -15,6 +15,12 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/govuk-notify-template-copy.md`: draft subject/body for all Notify templates; `govuk-notify-template-registration.md`: per-environment UUID checklist.
 - `operations/transactional-email-policy.md`: operational vs optional/marketing email policy (#191).
 
+## User Guides
+
+- `user-guide/member-getting-started.md`: registration, profile completion, and approval flow.
+- `user-guide/booking-an-event.md`: finding events, booking tickets, guest tickets, and payments.
+- `user-guide/admin-guide.md`: approving members, managing sections, events, bookings, and user groups.
+
 ## Domain Guides
 
 - `user-groups-architecture.md`: user group and section access architecture.
