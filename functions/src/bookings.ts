@@ -129,7 +129,9 @@ function parseSitNextTo(raw: unknown, uid: string): string[] {
     if (typeof v !== "string") {
       throw new HttpsError("invalid-argument", "sitNextToUserIds must be an array of user ids");
     }
-    const id = validateUUID(v.trim(), "sitNextToUserIds");
+    const trimmed = v.trim();
+    if (!trimmed) continue;
+    const id = validateUUID(trimmed, "sitNextToUserIds");
     if (id === uid) {
       throw new HttpsError("invalid-argument", "You cannot select yourself in sit-next-to preferences");
     }
