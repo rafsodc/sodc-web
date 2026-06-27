@@ -9,8 +9,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     // Disable source maps for smaller production builds
     sourcemap: false,
-    // Use Vite 8's default Oxc minifier.
-    minify: 'oxc',
+    minify: 'esbuild',
     // Manual chunking strategy for better code splitting
     rollupOptions: {
       output: {
