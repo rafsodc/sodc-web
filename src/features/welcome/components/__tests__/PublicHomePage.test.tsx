@@ -9,9 +9,9 @@ describe("PublicHomePage", () => {
 
     expect(screen.getByRole("heading", { name: /royal air force \| sodc/i })).toBeInTheDocument();
     expect(screen.getByText(/signal officers' dinner club/i)).toBeInTheDocument();
-    expect(screen.getByText(/browse upcoming events/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Join" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
+    expect(screen.getByText(/come together/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Join SODC" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("calls join and log in handlers from CTAs", async () => {
@@ -21,8 +21,8 @@ describe("PublicHomePage", () => {
 
     render(<PublicHomePage onJoinClick={onJoinClick} onLogInClick={onLogInClick} />);
 
-    await user.click(screen.getByRole("button", { name: "Join" }));
-    await user.click(screen.getByRole("button", { name: "Log in" }));
+    await user.click(screen.getByRole("button", { name: "Join SODC" }));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(onJoinClick).toHaveBeenCalledOnce();
     expect(onLogInClick).toHaveBeenCalledOnce();

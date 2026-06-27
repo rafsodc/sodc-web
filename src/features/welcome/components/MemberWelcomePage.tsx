@@ -46,7 +46,7 @@ export default function MemberWelcomePage({
         Welcome, {displayName}
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Here are your upcoming events and sections you can access.
+        Good to see you. Here&apos;s what&apos;s coming up.
       </Typography>
 
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
@@ -61,9 +61,9 @@ export default function MemberWelcomePage({
           Failed to load upcoming events. Please try again later.
         </Alert>
       ) : events.length === 0 ? (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          No upcoming events right now. Open a section below to browse when new events are published.
-        </Alert>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Nothing in the diary yet — check back soon or browse your sections below.
+        </Typography>
       ) : (
         <Box
           component="ul"
@@ -108,9 +108,9 @@ export default function MemberWelcomePage({
         Your sections
       </Typography>
       {sections.length === 0 ? (
-        <Alert severity="info">
-          You do not have access to any sections yet. Contact an administrator if this looks wrong.
-        </Alert>
+        <Typography variant="body2" color="text.secondary">
+          Sections will appear here once an administrator has set up your membership.
+        </Typography>
       ) : (
         <Box
           component="ul"

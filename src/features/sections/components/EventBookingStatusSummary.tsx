@@ -123,12 +123,14 @@ export default function EventBookingStatusSummary({
           color={booking.status === "CONFIRMED" ? "success" : "default"}
         />
         <Chip size="small" label={paymentSummary.label} color={paymentChipColor(paymentSummary)} />
-        <Chip
-          size="small"
-          label={`Guest requests: ${guestStatusLabel(guestSummary)}`}
-          color={guestSummary.hasPending ? "warning" : "default"}
-          variant={guestSummary.hasPending ? "filled" : "outlined"}
-        />
+        {(guestSummary.approvedCount > 0 || guestSummary.pendingCount > 0 || guestSummary.rejectedCount > 0) ? (
+          <Chip
+            size="small"
+            label={`Guests: ${guestStatusLabel(guestSummary)}`}
+            color={guestSummary.hasPending ? "warning" : "default"}
+            variant={guestSummary.hasPending ? "filled" : "outlined"}
+          />
+        ) : null}
       </Stack>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

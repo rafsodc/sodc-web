@@ -629,7 +629,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
       expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
       expect(screen.getByText(/Standard · £25\.00/)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Book' })).toBeInTheDocument();
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
@@ -770,7 +770,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Your booking')).toBeInTheDocument();
       expect(screen.getByText('Payment not started')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /pay for all tickets/i })).toBeInTheDocument();
-      expect(screen.queryByText('Book this event')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Book' })).not.toBeInTheDocument();
     });
   });
 

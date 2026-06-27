@@ -279,7 +279,7 @@ export default function Header({
                   },
                 }}
               >
-                Log Out
+                Sign out
               </MenuItem>
             </Menu>
           </>
@@ -305,7 +305,7 @@ export default function Header({
                 },
               }}
             >
-              Log In
+              Sign in
             </Button>
             <Button
               onClick={onJoinClick || onAccountClick}

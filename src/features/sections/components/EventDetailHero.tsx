@@ -14,6 +14,13 @@ export interface EventDetailHeroProps {
   onBookClick: () => void;
 }
 
+function formatBookingWindow(start: string, end: string): string {
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric" };
+  const s = new Date(start).toLocaleDateString(undefined, opts);
+  const e = new Date(end).toLocaleDateString(undefined, opts);
+  return `Bookings open ${s} – ${e}`;
+}
+
 export default function EventDetailHero({
   event,
   hasCurrentUser,
@@ -22,11 +29,22 @@ export default function EventDetailHero({
 }: EventDetailHeroProps) {
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-      <Typography variant="h5" component="h2" fontWeight={600} gutterBottom>
-        {event.title}
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+        <Typography variant="h5" component="h2" fontWeight={600}>
+          {event.title}
+        </Typography>
+        {showBookButton && hasCurrentUser ? (
+          <Button
+            variant="contained"
+            onClick={onBookClick}
+            sx={{ ml: 2, flexShrink: 0, backgroundColor: colors.callToAction }}
+          >
+            Book
+          </Button>
+        ) : null}
+      </Stack>
 
-      <Stack spacing={1} sx={{ mb: 2 }}>
+      <Stack spacing={0.75} sx={{ mb: 2 }}>
         <Typography variant="body2" color="text.secondary">
           {formatSectionEventWhen(event.startDateTime, event.endDateTime)}
         </Typography>
@@ -36,13 +54,12 @@ export default function EventDetailHero({
           </Typography>
         ) : null}
         {event.guestOfHonour ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" fontWeight={500}>
             Guest of honour: {event.guestOfHonour}
           </Typography>
         ) : null}
         <Typography variant="body2" color="text.secondary">
-          Booking window: {new Date(event.bookingStartDateTime).toLocaleString()} –{" "}
-          {new Date(event.bookingEndDateTime).toLocaleString()}
+          {formatBookingWindow(event.bookingStartDateTime, event.bookingEndDateTime)}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           {formatEventGuestPolicy(event.maxGuestsWithoutModeratorApproval)}
@@ -50,7 +67,7 @@ export default function EventDetailHero({
       </Stack>
 
       {(event.ticketTypes ?? []).length > 0 ? (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: showBookButton ? 2 : 0 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           {(event.ticketTypes ?? []).map((ticketType) => (
             <Chip
               key={ticketType.id}
@@ -61,16 +78,10 @@ export default function EventDetailHero({
           ))}
         </Box>
       ) : (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: showBookButton ? 2 : 0 }}>
+        <Typography variant="body2" color="text.secondary">
           Ticket types will be published soon.
         </Typography>
       )}
-
-      {showBookButton && hasCurrentUser ? (
-        <Button variant="contained" onClick={onBookClick} sx={{ backgroundColor: colors.callToAction }}>
-          Book this event
-        </Button>
-      ) : null}
     </Paper>
   );
 }
