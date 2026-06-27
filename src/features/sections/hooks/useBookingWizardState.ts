@@ -591,28 +591,6 @@ export function useBookingWizardState({
     }
   };
 
-  const resetWizardState = useCallback(() => {
-    setActiveStep(0);
-    setMemberTicketTypeId(null);
-    setTotalGuestCount(0);
-    setTotalGuestCountInput("0");
-    setRequestedExtraGuestCount(1);
-    setRequestedExtraGuestCountInput("1");
-    setGuestTicketTypeId(guestTicketTypes[0]?.id ?? null);
-    setGuestDisplayName("");
-    setGuestDietaryNote("");
-    setExtraGuestDetails([]);
-    setBookerDietaryNote("");
-    setSitNextToUserIds([]);
-    setAccommodationRequested(false);
-    setSubmitError(null);
-    setPostSubmitFlow(false);
-    setPaymentResumeFlow(false);
-    if (!existingDraft?.clientSubmissionKey?.trim()) {
-      idempotencyKeyRef.current = null;
-    }
-  }, [existingDraft?.clientSubmissionKey, guestTicketTypes]);
-
   const closeWizard = useCallback(() => {
     setWizardMode("full");
     setPostSubmitFlow(false);
@@ -728,7 +706,6 @@ export function useBookingWizardState({
     handleBack,
     handleConfirm,
     handlePayAllTickets,
-    resetWizardState,
     closeWizard,
     cancelEditing,
     beginEditingBooking,
