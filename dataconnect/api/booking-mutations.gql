@@ -1,7 +1,9 @@
 # Booking mutations (member flow and admin cascade deletes).
-# Booking rules / audience validation live in issue #46; keep mutations permissive until then.
+# CreateBookingDraft, AddBookingLine, UpdateBookingStatus, and CreateGuestTicketRequest
+# are server-only: all client paths go through the submitEventBooking / submitGuestTicketRequest
+# callables which enforce ownership and booking rules before writing.
 
-mutation CreateBookingDraft($eventId: UUID!) @auth(expr: "auth.token.enabled == true") {
+mutation CreateBookingDraft($eventId: UUID!) @auth(level: NO_ACCESS) {
   booking_insert(
     data: {
       eventId: $eventId
@@ -18,7 +20,7 @@ mutation AddBookingLine(
   $guestDisplayName: String
   $dietaryNote: String
   $sortOrder: Int!
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(level: NO_ACCESS) {
   bookingLine_insert(
     data: {
       bookingId: $bookingId
@@ -31,7 +33,7 @@ mutation AddBookingLine(
   )
 }
 
-mutation UpdateBookingStatus($id: UUID!, $status: BookingStatus!) @auth(expr: "auth.token.enabled == true") {
+mutation UpdateBookingStatus($id: UUID!, $status: BookingStatus!) @auth(level: NO_ACCESS) {
   booking_update(
     id: $id
     data: {
@@ -48,7 +50,7 @@ mutation CreateGuestTicketRequest(
   $guestTicketTypeId: UUID!
   $guestDisplayName: String!
   $dietaryNote: String
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(level: NO_ACCESS) {
   guestTicketRequest_insert(
     data: {
       bookingId: $bookingId

@@ -9,6 +9,7 @@ export * from "./bookings";
 export * from "./guestTicketRequests";
 export * from "./payments";
 export * from "./stagedExpiry";
+export * from "./userGroups";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {

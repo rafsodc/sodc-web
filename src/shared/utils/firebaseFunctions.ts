@@ -572,3 +572,21 @@ export async function reviewGuestTicketRequest(
   return result.data;
 }
 
+export async function subscribeToUserGroup(userGroupId: string): Promise<{ success: boolean }> {
+  const callable = httpsCallable<{ userGroupId: string }, { success: boolean }>(
+    functions,
+    "subscribeToUserGroup"
+  );
+  const result = await callable({ userGroupId: toCanonicalUuid(userGroupId) });
+  return result.data;
+}
+
+export async function registerForSectionCallable(userGroupId: string): Promise<{ success: boolean }> {
+  const callable = httpsCallable<{ userGroupId: string }, { success: boolean }>(
+    functions,
+    "registerForSectionCallable"
+  );
+  const result = await callable({ userGroupId: toCanonicalUuid(userGroupId) });
+  return result.data;
+}
+

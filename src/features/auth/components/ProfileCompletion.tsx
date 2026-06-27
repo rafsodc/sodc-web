@@ -71,7 +71,6 @@ export default function ProfileCompletion({
       const mutation = mutationRef(dataConnect, "CreateUserProfile", {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: email.trim(),
         serviceNumber: serviceNumber.trim(),
         requestedMembershipStatus: MembershipStatus.REGULAR,
         isRegular,

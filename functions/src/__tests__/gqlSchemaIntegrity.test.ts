@@ -25,9 +25,20 @@ function extractAllOperationHeaders(source: string): Array<{ name: string; heade
 }
 
 describe("GQL schema integrity", () => {
-  it("user-facing mutation files must not use NO_ACCESS", () => {
-    // These files are callable from the client SDK. NO_ACCESS would make them
-    // unreachable from the frontend while silently appearing in the generated SDK.
+  it("user-facing mutation files only use NO_ACCESS for explicitly server-migrated operations", () => {
+    // Operations listed here have been deliberately moved to server-only callable
+    // paths and must NOT appear as client-callable in future.
+    const serverOnlyOps = new Set([
+      // booking-mutations.gql: all now routed through submitEventBooking callable
+      "CreateBookingDraft",
+      "AddBookingLine",
+      "UpdateBookingStatus",
+      "CreateGuestTicketRequest",
+      // user-mutations.gql: routed through subscribeToUserGroup / registerForSectionCallable
+      "RegisterForSection",
+      "SubscribeToUserGroup",
+    ]);
+
     const userFacingFiles = [
       "user-mutations.gql",
       "user-group-mutations.gql",
@@ -38,10 +49,17 @@ describe("GQL schema integrity", () => {
       const source = readApiFile(fileName);
       const ops = extractAllOperationHeaders(source);
       for (const { name, header } of ops) {
-        expect(
-          header,
-          `${fileName}: ${name} must not use NO_ACCESS — it is client-callable`,
-        ).not.toContain("NO_ACCESS");
+        if (serverOnlyOps.has(name)) {
+          expect(
+            header,
+            `${fileName}: ${name} was migrated to server-only and must use NO_ACCESS`,
+          ).toContain("NO_ACCESS");
+        } else {
+          expect(
+            header,
+            `${fileName}: ${name} must not use NO_ACCESS — it is client-callable`,
+          ).not.toContain("NO_ACCESS");
+        }
       }
     }
   });

@@ -83,7 +83,6 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
       const vars: UpsertUserVariables = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: email.trim(),
         serviceNumber: serviceNumber.trim(),
         isRegular,
         isReserve,

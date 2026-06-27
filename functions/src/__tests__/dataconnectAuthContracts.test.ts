@@ -50,7 +50,7 @@ describe("Data Connect auth contracts", () => {
     ]);
 
     assertAuth(bookingMutations, [
-      { op: "mutation CreateGuestTicketRequest", mustInclude: USER_EXPR },
+      { op: "mutation CreateGuestTicketRequest", mustInclude: NO_ACCESS },
       { op: "mutation AdminReviewGuestTicketRequest", mustInclude: ADMIN_EXPR },
     ]);
 
@@ -244,16 +244,12 @@ describe("Data Connect auth contracts", () => {
   it("Phase F: all booking-mutations.gql operations have correct auth level", () => {
     const bookingMutations = readApiFile("booking-mutations.gql");
 
-    // Member-facing booking operations (enabled user)
-    // NOTE: CreateBookingDraft, AddBookingLine, and UpdateBookingStatus operate on
-    // booking IDs supplied by the client without row-level ownership enforcement at
-    // the Data Connect layer. Business-logic ownership is enforced in the
-    // submitEventBooking callable; these direct mutations exist for the draft flow.
-    // Tracked for row-level auth hardening in issue #46.
+    // Legacy booking operations now server-only — all client paths go through
+    // submitEventBooking callable which enforces ownership and rules.
     assertAuth(bookingMutations, [
-      { op: "mutation CreateBookingDraft", mustInclude: USER_EXPR },
-      { op: "mutation AddBookingLine", mustInclude: USER_EXPR },
-      { op: "mutation UpdateBookingStatus", mustInclude: USER_EXPR },
+      { op: "mutation CreateBookingDraft", mustInclude: NO_ACCESS },
+      { op: "mutation AddBookingLine", mustInclude: NO_ACCESS },
+      { op: "mutation UpdateBookingStatus", mustInclude: NO_ACCESS },
     ]);
 
     // Admin-only booking operations
@@ -268,12 +264,17 @@ describe("Data Connect auth contracts", () => {
   it("Phase G: all user-mutations.gql operations have correct auth level", () => {
     const userMutations = readApiFile("user-mutations.gql");
 
-    // Self-service section/group operations (enabled user)
+    // Self-removal operations remain client-callable (no privilege escalation risk)
     assertAuth(userMutations, [
-      { op: "mutation RegisterForSection", mustInclude: USER_EXPR },
       { op: "mutation UnregisterFromSection", mustInclude: USER_EXPR },
-      { op: "mutation SubscribeToUserGroup", mustInclude: USER_EXPR },
       { op: "mutation UnsubscribeFromUserGroup", mustInclude: USER_EXPR },
+    ]);
+
+    // Server-only: RegisterForSection and SubscribeToUserGroup now go through
+    // Firebase callables that verify UserGroup.subscribable == true.
+    assertAuth(userMutations, [
+      { op: "mutation RegisterForSection", mustInclude: NO_ACCESS },
+      { op: "mutation SubscribeToUserGroup", mustInclude: NO_ACCESS },
     ]);
   });
 });
