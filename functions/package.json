@@ -3,6 +3,7 @@
   "scripts": {
     "lint": "eslint .",
     "generate:templates": "ts-node --project tsconfig.scripts.json scripts/generate-template-manifest.ts",
+    "check:template-sync": "ts-node --project tsconfig.scripts.json scripts/check-template-sync.ts",
     "prebuild": "npm run generate:templates",
     "build": "tsc",
     "build:watch": "tsc --watch",
