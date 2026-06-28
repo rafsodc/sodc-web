@@ -95,7 +95,7 @@ describe("AccountSettingsPage", () => {
       expect(reauthenticateWithCredential).toHaveBeenCalled();
       expect(updatePassword).toHaveBeenCalledWith(mockUser, "new-pass");
     });
-    expect(screen.getByText("Password updated successfully.")).toBeInTheDocument();
+    expect(screen.getByText("Password updated successfully")).toBeInTheDocument();
   });
 
   it("resigns membership and signs out", async () => {
