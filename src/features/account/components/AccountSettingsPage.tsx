@@ -10,6 +10,7 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
+  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -24,7 +25,7 @@ import {
 } from "firebase/auth";
 import { auth } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
-import { ROUTES, SUCCESS_MESSAGE_TIMEOUT } from "../../../constants";
+import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
 import { resignMembership } from "../../../shared/utils/firebaseFunctions";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
@@ -113,7 +114,6 @@ export default function AccountSettingsPage({
       setNewPassword("");
       setConfirmPassword("");
       setPasswordSuccess(true);
-      window.setTimeout(() => setPasswordSuccess(false), SUCCESS_MESSAGE_TIMEOUT);
     } catch (error) {
       setPasswordError(getAuthErrorMessage(error));
     } finally {
@@ -173,11 +173,6 @@ export default function AccountSettingsPage({
             </Alert>
           ) : (
             <>
-              {passwordSuccess && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  Password updated successfully.
-                </Alert>
-              )}
               {passwordError && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {passwordError}
@@ -279,6 +274,14 @@ export default function AccountSettingsPage({
           Back
         </Button>
       )}
+
+      <Snackbar
+        open={passwordSuccess}
+        autoHideDuration={4000}
+        onClose={() => setPasswordSuccess(false)}
+        message="Password updated successfully"
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
 
       <Dialog open={resignDialogOpen} onClose={() => !resignSubmitting && setResignDialogOpen(false)}>
         <DialogTitle>Resign membership?</DialogTitle>

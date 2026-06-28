@@ -2,7 +2,7 @@ import { BookingStatus } from "@dataconnect/generated";
 
 export function getMyBookingActionLabel(status: BookingStatus | string): string {
   if (status === BookingStatus.DRAFT) {
-    return "Continue booking";
+    return "Complete booking";
   }
   return "View booking";
 }

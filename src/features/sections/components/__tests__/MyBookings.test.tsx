@@ -202,7 +202,7 @@ describe("MyBookings", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("link", { name: "Continue booking" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Complete booking" })).toBeInTheDocument();
   });
 
   it("shows empty state when there are no bookings", () => {
@@ -220,6 +220,6 @@ describe("MyBookings", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/you do not have any bookings yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no bookings yet/i)).toBeInTheDocument();
   });
 });

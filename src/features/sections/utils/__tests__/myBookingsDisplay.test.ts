@@ -4,7 +4,7 @@ import { bookingStatusChipColor, getMyBookingActionLabel } from "../myBookingsDi
 
 describe("myBookingsDisplay", () => {
   it("returns action labels by booking status", () => {
-    expect(getMyBookingActionLabel(BookingStatus.DRAFT)).toBe("Continue booking");
+    expect(getMyBookingActionLabel(BookingStatus.DRAFT)).toBe("Complete booking");
     expect(getMyBookingActionLabel(BookingStatus.SUBMITTED)).toBe("View booking");
   });
 

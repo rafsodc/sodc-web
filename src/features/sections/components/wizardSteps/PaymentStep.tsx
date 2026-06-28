@@ -24,8 +24,8 @@ export default function PaymentStep({
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Pay for all tickets in one checkout to secure your place. You can also finish later and return
-        from your booking summary.
+        Pay now to secure your place. If you'd rather come back to it, you'll find the payment link
+        in your booking summary.
       </Typography>
 
       {paymentTicketRows.length > 0 ? (

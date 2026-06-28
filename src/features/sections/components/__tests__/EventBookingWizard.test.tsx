@@ -282,8 +282,8 @@ describe("EventBookingWizard", () => {
     expect(screen.getByText("Edit your booking")).toBeInTheDocument();
     expect(screen.getByText(/editing your submitted booking/i)).toBeInTheDocument();
     expect(screen.queryByText("Number of guests")).not.toBeInTheDocument();
-    expect(screen.getByText("Guest details")).toBeInTheDocument();
-    expect(screen.getByText("Payment")).toBeInTheDocument();
+    expect(screen.getByText("Guest")).toBeInTheDocument();
+    expect(screen.getByText("Pay")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Next" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
@@ -568,7 +568,7 @@ describe("EventBookingWizard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Pay for all tickets in one checkout/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pay now to secure your place/i)).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: "Back" }));
@@ -579,7 +579,7 @@ describe("EventBookingWizard", () => {
 
     await user.click(screen.getByRole("button", { name: "Next" }));
 
-    expect(screen.getByText(/Pay for all tickets in one checkout/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pay now to secure your place/i)).toBeInTheDocument();
   });
 
   it("submits separate dietary notes for each guest", async () => {
@@ -786,7 +786,7 @@ describe("EventBookingWizard", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Complete your booking")).toBeInTheDocument();
-      expect(screen.getByText(/Pay for all tickets in one checkout/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pay now to secure your place/i)).toBeInTheDocument();
     });
     expect(screen.queryByLabelText(/how many guest tickets in total/i)).not.toBeInTheDocument();
   });

@@ -45,13 +45,13 @@ export const EMPTY_GUEST_DETAIL: GuestDetailFields = { guestDisplayName: "", die
 
 export const BOOKING_STEPS = [
   "Your ticket",
-  "Guest details",
+  "Guest",
   "Review",
-  "Payment",
+  "Pay",
   "Confirmation",
 ] as const;
 
-export const ADDITIONAL_GUEST_STEPS = ["Extra guests", "Guest details", "Review"] as const;
+export const ADDITIONAL_GUEST_STEPS = ["Extra guests", "Guest", "Review"] as const;
 
 function extractCallableErrorCode(err: unknown): string | undefined {
   const e = err as {
