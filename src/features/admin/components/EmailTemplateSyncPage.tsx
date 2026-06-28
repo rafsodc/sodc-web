@@ -91,9 +91,9 @@ function DiffBlock({ label, expected, live }: { label: string; expected: string;
             sx={{
               bgcolor:
                 l.kind === "removed"
-                  ? "error.light"
+                  ? "#fde8e8"
                   : l.kind === "added"
-                    ? "success.light"
+                    ? "#e8f5e9"
                     : "transparent",
               px: 0.5,
               borderRadius: 0.5,
