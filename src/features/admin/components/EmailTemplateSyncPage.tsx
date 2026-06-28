@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Collapse,
   Divider,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -14,9 +15,10 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { CheckCircle, Error, Warning, ExpandMore, ExpandLess } from "@mui/icons-material";
+import { CheckCircle, ContentCopy, Error, ExpandLess, ExpandMore, OpenInNew, Warning } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import {
   getTemplateSyncStatus,
@@ -67,6 +69,23 @@ function lineDiff(expected: string, live: string): { line: string; kind: "same" 
   return result;
 }
 
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <Tooltip title={copied ? "Copied!" : `Copy ${label}`}>
+      <IconButton size="small" onClick={handleCopy} aria-label={`Copy ${label}`}>
+        <ContentCopy fontSize="inherit" color={copied ? "success" : "inherit"} />
+      </IconButton>
+    </Tooltip>
+  );
+}
+
 function DiffBlock({ label, expected, live }: { label: string; expected: string; live: string }) {
   const lines = lineDiff(expected, live);
   return (
@@ -110,10 +129,69 @@ function DiffBlock({ label, expected, live }: { label: string; expected: string;
   );
 }
 
+function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        How to update
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Open the template in GOV Notify and update the fields below. The{" "}
+        <strong>Template name</strong> field does not need to change.
+      </Typography>
+
+      <Stack spacing={1}>
+        <Stack direction="row" alignItems="center" gap={1}>
+          <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Subject</Typography>
+          <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>
+            {result.expectedSubject}
+          </Typography>
+          <CopyButton value={result.expectedSubject} label="subject" />
+        </Stack>
+
+        <Stack direction="row" alignItems="flex-start" gap={1}>
+          <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600, pt: 0.5 }}>Message</Typography>
+          <Typography
+            variant="body2"
+            fontFamily="monospace"
+            sx={{
+              flex: 1,
+              bgcolor: "grey.100",
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              whiteSpace: "pre-wrap",
+              maxHeight: 120,
+              overflow: "hidden",
+              WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%)",
+            }}
+          >
+            {result.expectedBody}
+          </Typography>
+          <CopyButton value={result.expectedBody} label="message body" />
+        </Stack>
+      </Stack>
+
+      {result.notifyEditUrl && (
+        <Button
+          href={result.notifyEditUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="outlined"
+          size="small"
+          endIcon={<OpenInNew fontSize="small" />}
+          sx={{ mt: 2 }}
+        >
+          Edit in GOV Notify
+        </Button>
+      )}
+    </Box>
+  );
+}
+
 function TemplateRow({ result }: { result: TemplateSyncResult }) {
   const [expanded, setExpanded] = useState(false);
-  const hasDiff = result.status === "drift";
-  const showToggle = hasDiff || result.status === "fetch_error";
+  const showToggle = result.status === "drift" || result.status === "fetch_error";
 
   return (
     <>
@@ -147,6 +225,19 @@ function TemplateRow({ result }: { result: TemplateSyncResult }) {
         <TableCell align="right">
           {showToggle ? (
             expanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />
+          ) : result.notifyEditUrl ? (
+            <Tooltip title="Edit in GOV Notify">
+              <IconButton
+                size="small"
+                href={result.notifyEditUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Edit in GOV Notify"
+              >
+                <OpenInNew fontSize="small" />
+              </IconButton>
+            </Tooltip>
           ) : null}
         </TableCell>
       </TableRow>
@@ -156,9 +247,14 @@ function TemplateRow({ result }: { result: TemplateSyncResult }) {
             <Collapse in={expanded} unmountOnExit>
               <Box sx={{ py: 2, px: 1 }}>
                 {result.status === "fetch_error" ? (
-                  <Alert severity="error">{result.errorMessage ?? "Unknown error fetching template from GOV Notify."}</Alert>
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {result.errorMessage ?? "Unknown error fetching template from GOV Notify."}
+                  </Alert>
                 ) : (
                   <>
+                    <UpdateInstructions result={result} />
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle2" gutterBottom>Diff</Typography>
                     {!result.subjectMatch && (
                       <DiffBlock
                         label="Subject"
@@ -197,7 +293,6 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
       setResults(data.results);
     } catch {
       setError("Failed to fetch template sync status");
-
     } finally {
       setLoading(false);
     }
@@ -216,7 +311,7 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
           functions/email-templates/
         </Typography>{" "}
         files in the codebase. Drift means the dashboard was updated without updating the code, or
-        vice versa. Update the GOV Notify dashboard manually to resolve.
+        vice versa. Click a drifted template to see the diff and copy the correct values.
       </Typography>
 
       <Button variant="contained" onClick={runCheck} disabled={loading} sx={{ mb: 3 }}>

@@ -9,12 +9,24 @@ import { FUNCTIONS_REGION } from "./constants";
 
 const REGISTRY_PATH = path.resolve(__dirname, "../email-templates/template-registry.json");
 
-type TemplateRegistry = Record<string, { dev?: string; beta?: string; production?: string }>;
+type Environment = "dev" | "beta" | "production";
+
+interface RegistryEntry {
+  dev?: string;
+  beta?: string;
+  production?: string;
+}
+
+type TemplateRegistry = Record<string, RegistryEntry> & {
+  _serviceIds?: RegistryEntry;
+};
 
 export type TemplateSyncStatus = "in_sync" | "drift" | "not_configured" | "fetch_error";
 
 export interface TemplateSyncResult {
   templateKey: string;
+  templateUuid?: string;
+  notifyEditUrl?: string;
   status: TemplateSyncStatus;
   liveSubject?: string;
   liveBody?: string;
@@ -38,11 +50,15 @@ function loadRegistry(): TemplateRegistry {
   }
 }
 
-function resolveEnvironment(): "dev" | "beta" | "production" {
+function resolveEnvironment(): Environment {
   const project = process.env.GCLOUD_PROJECT ?? process.env.APP_ENV ?? "";
   if (project.includes("production")) return "production";
   if (project.includes("beta")) return "beta";
   return "dev";
+}
+
+function buildEditUrl(serviceId: string, templateUuid: string): string {
+  return `https://www.notifications.service.gov.uk/services/${serviceId}/templates/${templateUuid}/edit`;
 }
 
 interface NotifyTemplate {
@@ -69,6 +85,7 @@ export const getTemplateSyncStatus = onCall(
 
     const registry = loadRegistry();
     const environment = resolveEnvironment();
+    const serviceId = registry._serviceIds?.[environment]?.trim() ?? "";
 
     try {
       const results: TemplateSyncResult[] = await Promise.all(
@@ -76,6 +93,7 @@ export const getTemplateSyncStatus = onCall(
           const uuid = registry[templateKey]?.[environment]?.trim();
           const expectedSubject = definition.subject;
           const expectedBody = normaliseBody(definition.body);
+          const notifyEditUrl = uuid && serviceId ? buildEditUrl(serviceId, uuid) : undefined;
 
           if (!uuid) {
             return {
@@ -94,6 +112,8 @@ export const getTemplateSyncStatus = onCall(
             const bodyMatch = liveBody === expectedBody;
             return {
               templateKey,
+              templateUuid: uuid,
+              notifyEditUrl,
               status: (subjectMatch && bodyMatch ? "in_sync" : "drift") as TemplateSyncStatus,
               liveSubject,
               liveBody,
@@ -105,6 +125,8 @@ export const getTemplateSyncStatus = onCall(
           } catch (err) {
             return {
               templateKey,
+              templateUuid: uuid,
+              notifyEditUrl,
               status: "fetch_error" as TemplateSyncStatus,
               expectedSubject,
               expectedBody,

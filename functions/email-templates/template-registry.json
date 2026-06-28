@@ -1,4 +1,9 @@
 {
+  "_serviceIds": {
+    "dev": "d67fd89c-5cb0-4767-be1d-e745fc71dd36",
+    "beta": "",
+    "production": ""
+  },
   "bookingConfirmation": {
     "dev": "7eba3d20-5ab1-4834-b8a9-9d72baffe76a",
     "beta": "",
