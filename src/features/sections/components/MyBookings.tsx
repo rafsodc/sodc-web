@@ -75,9 +75,9 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
           {error instanceof Error ? error.message : "We could not load your bookings. Please try again."}
         </Alert>
       ) : bookings.length === 0 ? (
-        <Alert severity="info">
-          You do not have any bookings yet. Open a section&apos;s events tab to book an upcoming event.
-        </Alert>
+        <Typography variant="body1" color="text.secondary">
+          No bookings yet — head to a section to find an upcoming event.
+        </Typography>
       ) : (
         <Stack spacing={2}>
           {bookings.map((booking) => {
