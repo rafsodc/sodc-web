@@ -25,16 +25,19 @@ Email body in GOV Notify Markdown.
 
 `template-registry.json` maps each `templateKey` to its GOV Notify template UUID per environment. UUIDs are not secrets — they are safe to commit.
 
+Environments match the Firebase project aliases in `.firebaserc`:
+
 ```json
 {
   "bookingConfirmation": {
-    "staging": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "production": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+    "dev": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "beta": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+    "production": "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
   }
 }
 ```
 
-Fill in UUIDs after creating/locating each template in the GOV Notify dashboard.
+Fill in UUIDs after creating/locating each template in the GOV Notify dashboard for that environment.
 
 ## Workflow: updating a template
 

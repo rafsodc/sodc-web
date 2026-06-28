@@ -9,7 +9,7 @@ import { FUNCTIONS_REGION } from "./constants";
 
 const REGISTRY_PATH = path.resolve(__dirname, "../../email-templates/template-registry.json");
 
-type TemplateRegistry = Record<string, { staging?: string; production?: string }>;
+type TemplateRegistry = Record<string, { dev?: string; beta?: string; production?: string }>;
 
 export type TemplateSyncStatus = "in_sync" | "drift" | "not_configured" | "fetch_error";
 
@@ -38,9 +38,11 @@ function loadRegistry(): TemplateRegistry {
   }
 }
 
-function resolveEnvironment(): "staging" | "production" {
-  const env = process.env.APP_ENV ?? process.env.GCLOUD_PROJECT ?? "";
-  return env.includes("prod") ? "production" : "staging";
+function resolveEnvironment(): "dev" | "beta" | "production" {
+  const project = process.env.GCLOUD_PROJECT ?? process.env.APP_ENV ?? "";
+  if (project.includes("production")) return "production";
+  if (project.includes("beta")) return "beta";
+  return "dev";
 }
 
 interface NotifyTemplate {
