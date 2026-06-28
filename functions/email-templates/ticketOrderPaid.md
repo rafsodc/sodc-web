@@ -15,17 +15,17 @@ variables:
 ---
 Dear ((customerFirstName)),
 
-Your payment for **((eventTitle))** has been confirmed.
+Your payment for ((eventTitle)) has been confirmed.
 
-**Ticket:** ((ticketTypeTitle))
+Ticket: ((ticketTypeTitle))
 
-**Quantity:** ((quantity))
+Quantity: ((quantity))
 
-**Total paid:** ((totalFormatted)) ((currencyDisplay))
+Total paid: ((totalFormatted)) ((currencyDisplay))
 
-**Status:** ((orderStatusLabel))
+Status: ((orderStatusLabel))
 
-**Order reference:** ((orderId))
+Order reference: ((orderId))
 
 You can view your payment history at any time:
 

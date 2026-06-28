@@ -12,13 +12,13 @@ variables:
 ---
 Dear ((customerFirstName)),
 
-Your guest ticket request for **((eventTitle))** has been **((decisionLabel))**.
+Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
 
-**Guest:** ((guestDisplayName))
+Guest: ((guestDisplayName))
 
-**Guest tickets:** ((requestedGuestCount))
+Guest tickets: ((requestedGuestCount))
 
-**Note from organiser:** ((moderatorNote))
+Note from organiser: ((moderatorNote))
 
 You can now complete payment for your guest tickets. Visit your booking to continue:
 

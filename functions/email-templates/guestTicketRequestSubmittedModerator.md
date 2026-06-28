@@ -13,19 +13,19 @@ variables:
 ---
 A guest ticket request has been submitted for your review.
 
-**Event:** ((eventTitle))
+Event: ((eventTitle))
 
-**Section:** ((sectionName))
+Section: ((sectionName))
 
-**Requested by:** ((bookerDisplay))
+Requested by: ((bookerDisplay))
 
-**Guest name:** ((guestDisplayName))
+Guest name: ((guestDisplayName))
 
-**Guest count:** ((requestedGuestCount))
+Guest count: ((requestedGuestCount))
 
-**Ticket type:** ((guestTicketTypeTitle))
+Ticket type: ((guestTicketTypeTitle))
 
-**Dietary note:** ((dietaryNote))
+Dietary note: ((dietaryNote))
 
 ---
 

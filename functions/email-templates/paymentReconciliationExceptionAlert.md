@@ -12,17 +12,17 @@ variables:
 ---
 A payment reconciliation exception requires your attention.
 
-**Order ID:** ((orderId))
+Order ID: ((orderId))
 
-**Event:** ((eventTitle))
+Event: ((eventTitle))
 
-**Customer:** ((customerDisplay))
+Customer: ((customerDisplay))
 
-**Exception type:** ((exceptionType))
+Exception type: ((exceptionType))
 
-**Note:** ((exceptionNote))
+Note: ((exceptionNote))
 
-**Stripe event ID:** ((stripeEventId))
+Stripe event ID: ((stripeEventId))
 
 ---
 

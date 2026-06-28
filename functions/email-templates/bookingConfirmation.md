@@ -16,27 +16,27 @@ variables:
 ---
 Dear ((customerFirstName)),
 
-Your booking for **((eventTitle))** has been confirmed.
+Your booking for ((eventTitle)) has been confirmed.
 
 ---
 
-^**Event details**
+# Event details
 
-**When:** ((eventDateTime))
+When: ((eventDateTime))
 
-**Where:** ((eventLocation))
+Where: ((eventLocation))
 
 ---
 
-^**Your booking (revision ((revisionNumber)))**
+# Your booking (revision ((revisionNumber)))
 
 ((ticketLinesSummary))
 
-**Your dietary note:** ((bookerDietaryNote))
+Your dietary note: ((bookerDietaryNote))
 
-**Accommodation:** ((accommodationSummary))
+Accommodation: ((accommodationSummary))
 
-**Total:** ((bookingTotalFormatted))
+Total: ((bookingTotalFormatted))
 
 ---
 

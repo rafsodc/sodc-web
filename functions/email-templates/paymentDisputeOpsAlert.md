@@ -15,23 +15,23 @@ variables:
 ---
 A payment dispute event has been received.
 
-**Order ID:** ((orderId))
+Order ID: ((orderId))
 
-**Event:** ((eventTitle))
+Event: ((eventTitle))
 
-**Customer:** ((customerDisplay))
+Customer: ((customerDisplay))
 
-**Dispute ID:** ((stripeDisputeId))
+Dispute ID: ((stripeDisputeId))
 
-**Stripe status:** ((disputeStripeStatus))
+Stripe status: ((disputeStripeStatus))
 
-**Reason:** ((disputeReason))
+Reason: ((disputeReason))
 
-**Local state:** ((disputeLocalState))
+Local state: ((disputeLocalState))
 
-**Stripe event type:** ((stripeEventType))
+Stripe event type: ((stripeEventType))
 
-**Stripe event ID:** ((stripeEventId))
+Stripe event ID: ((stripeEventId))
 
 ---
 

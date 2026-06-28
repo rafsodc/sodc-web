@@ -15,17 +15,17 @@ variables:
 ---
 Dear ((customerFirstName)),
 
-Unfortunately your payment for **((eventTitle))** was unsuccessful.
+Unfortunately your payment for ((eventTitle)) was unsuccessful.
 
-**Ticket:** ((ticketTypeTitle))
+Ticket: ((ticketTypeTitle))
 
-**Quantity:** ((quantity))
+Quantity: ((quantity))
 
-**Amount:** ((totalFormatted)) ((currencyDisplay))
+Amount: ((totalFormatted)) ((currencyDisplay))
 
-**Status:** ((orderStatusLabel))
+Status: ((orderStatusLabel))
 
-**Order reference:** ((orderId))
+Order reference: ((orderId))
 
 Your booking is still in place. You can return to My Payments to try again:
 

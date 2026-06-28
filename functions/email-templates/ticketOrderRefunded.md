@@ -16,19 +16,19 @@ variables:
 ---
 Dear ((customerFirstName)),
 
-A refund of **((refundFormatted))** has been processed for your payment on **((eventTitle))**.
+A refund of ((refundFormatted)) has been processed for your payment on ((eventTitle)).
 
-**Ticket:** ((ticketTypeTitle))
+Ticket: ((ticketTypeTitle))
 
-**Quantity:** ((quantity))
+Quantity: ((quantity))
 
-**Original total:** ((totalFormatted)) ((currencyDisplay))
+Original total: ((totalFormatted)) ((currencyDisplay))
 
-**Status:** ((orderStatusLabel))
+Status: ((orderStatusLabel))
 
-**Order reference:** ((orderId))
+Order reference: ((orderId))
 
-Refunds typically appear in your account within 5–10 working days depending on your bank.
+Refunds typically appear in your account within 5 to 10 working days depending on your bank.
 
 You can view your payment history at:
 

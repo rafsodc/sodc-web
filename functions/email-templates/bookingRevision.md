@@ -22,33 +22,33 @@ variables:
 ---
 Dear ((customerFirstName)),
 
-Your booking for **((eventTitle))** has been updated (revision ((previousRevisionNumber)) → ((revisedRevisionNumber))).
+Your booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).
 
 ---
 
-^**Event details**
+# Event details
 
-**When:** ((eventDateTime))
+When: ((eventDateTime))
 
-**Where:** ((eventLocation))
+Where: ((eventLocation))
 
 ---
 
-^**Updated booking (revision ((revisedRevisionNumber)))**
+# Updated booking (revision ((revisedRevisionNumber)))
 
 ((ticketLinesSummary))
 
-**Your dietary note:** ((bookerDietaryNote))
+Your dietary note: ((bookerDietaryNote))
 
-**Accommodation:** ((accommodationSummary))
+Accommodation: ((accommodationSummary))
 
-**Previous total:** ((previousTotalFormatted))
+Previous total: ((previousTotalFormatted))
 
-**Revised total:** ((revisedTotalFormatted))
+Revised total: ((revisedTotalFormatted))
 
-**Difference:** ((deltaAmountFormatted))
+Difference: ((deltaAmountFormatted))
 
-**Payment status:** ((paymentAdjustmentStatus))
+Payment status: ((paymentAdjustmentStatus))
 
 ---
 
