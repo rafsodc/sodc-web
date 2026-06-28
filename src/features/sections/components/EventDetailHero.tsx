@@ -48,7 +48,7 @@ export default function EventDetailHero({ event }: EventDetailHeroProps) {
 
       {(event.ticketTypes ?? []).length > 0 ? (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-          {(event.ticketTypes ?? []).map((ticketType) => (
+          {event.ticketTypes!.map((ticketType) => (
             <Chip
               key={ticketType.id}
               size="small"
