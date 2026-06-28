@@ -590,3 +590,32 @@ export async function registerForSectionCallable(userGroupId: string): Promise<{
   return result.data;
 }
 
+// ============================================================================
+// Email Template Sync
+// ============================================================================
+
+export type TemplateSyncStatus = "in_sync" | "drift" | "not_configured" | "fetch_error";
+
+export interface TemplateSyncResult {
+  templateKey: string;
+  templateUuid?: string;
+  notifyEditUrl?: string;
+  status: TemplateSyncStatus;
+  liveSubject?: string;
+  liveBody?: string;
+  expectedSubject: string;
+  expectedBody: string;
+  subjectMatch?: boolean;
+  bodyMatch?: boolean;
+  errorMessage?: string;
+}
+
+export async function getTemplateSyncStatus(): Promise<{ results: TemplateSyncResult[] }> {
+  const callable = httpsCallable<void, { results: TemplateSyncResult[] }>(
+    functions,
+    "getTemplateSyncStatus"
+  );
+  const result = await callable();
+  return result.data;
+}
+

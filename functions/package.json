@@ -2,6 +2,8 @@
   "name": "functions",
   "scripts": {
     "lint": "eslint .",
+    "generate:templates": "ts-node --project tsconfig.scripts.json scripts/generate-template-manifest.ts",
+    "prebuild": "npm run generate:templates",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
@@ -32,6 +34,7 @@
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.25.4",
     "firebase-functions-test": "^0.3.3",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "vitest": "^4.1.9"
   },

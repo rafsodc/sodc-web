@@ -1,0 +1,67 @@
+{
+  "_serviceIds": {
+    "dev": "d67fd89c-5cb0-4767-be1d-e745fc71dd36",
+    "beta": "",
+    "production": ""
+  },
+  "bookingConfirmation": {
+    "dev": "7eba3d20-5ab1-4834-b8a9-9d72baffe76a",
+    "beta": "",
+    "production": ""
+  },
+  "bookingRevision": {
+    "dev": "8f8549ec-0945-4ad9-9200-f507ada226bb",
+    "beta": "",
+    "production": ""
+  },
+  "membershipActivated": {
+    "dev": "640e51e0-d4cf-413c-a829-07f0f7cdca7d",
+    "beta": "",
+    "production": ""
+  },
+  "membershipAccessRestricted": {
+    "dev": "30457d61-4809-41db-9ebe-94690462a18e",
+    "beta": "",
+    "production": ""
+  },
+  "ticketOrderPaid": {
+    "dev": "b6816c5c-d742-4852-ba6d-88035581c538",
+    "beta": "",
+    "production": ""
+  },
+  "ticketOrderFailed": {
+    "dev": "a6f07564-b669-42c6-8380-1d474c7269eb",
+    "beta": "",
+    "production": ""
+  },
+  "ticketOrderRefunded": {
+    "dev": "b431d092-934a-42cb-9c04-562f3b088d9b",
+    "beta": "",
+    "production": ""
+  },
+  "guestTicketRequestSubmittedModerator": {
+    "dev": "cf9a8a7c-860f-43da-98b4-718c93fe92e6",
+    "beta": "",
+    "production": ""
+  },
+  "guestTicketRequestApproved": {
+    "dev": "651a5577-11c7-48c7-a1aa-42193cb223c7",
+    "beta": "",
+    "production": ""
+  },
+  "guestTicketRequestRejected": {
+    "dev": "132479c9-d8df-4a93-aff7-bf290ae7f543",
+    "beta": "",
+    "production": ""
+  },
+  "paymentReconciliationExceptionAlert": {
+    "dev": "b62197b8-1416-4918-b0e6-5129844f869d",
+    "beta": "",
+    "production": ""
+  },
+  "paymentDisputeOpsAlert": {
+    "dev": "da2fccf1-d5e2-44c4-a730-dabaafc95d60",
+    "beta": "",
+    "production": ""
+  }
+}

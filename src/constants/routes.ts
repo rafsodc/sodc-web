@@ -18,6 +18,7 @@ export const ROUTES = {
   SECTIONS: "/sections",
   SECTION_DETAIL: "/sections/:sectionId",
   MANAGE_SECTIONS: "/admin/sections",
+  EMAIL_TEMPLATES: "/admin/email-templates",
   REGISTER: "/register",
   PROFILE_COMPLETION: "/profile-completion",
 } as const;
