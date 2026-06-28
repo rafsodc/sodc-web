@@ -37,7 +37,7 @@ describe("ProfileCompletion", () => {
 
     expect(screen.queryByLabelText(/Desired Membership Status/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/An administrator will review your service background/i)
+      screen.getByText(/Tick all that apply/i)
     ).toBeInTheDocument();
   });
 

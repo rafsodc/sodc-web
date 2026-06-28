@@ -87,8 +87,8 @@ export default function EmailVerificationMessage({
         Verify your email
       </Typography>
       <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
-        Step 2 of 4 — we sent a verification link to <strong>{user.email}</strong>. Open the email
-        and click the link, then return here and continue.
+        We sent a link to <strong>{user.email}</strong>. Click the link in that email, then come
+        back here to continue.
       </Typography>
 
       <Alert severity="info" sx={{ mb: 2 }}>
@@ -120,7 +120,7 @@ export default function EmailVerificationMessage({
             },
           }}
         >
-          {checking ? <CircularProgress size={24} /> : "I've verified my email"}
+          {checking ? <CircularProgress size={24} /> : "I've clicked the link"}
         </Button>
         <Button variant="outlined" onClick={handleResend} disabled={sending || sent}>
           {sending ? <CircularProgress size={24} /> : "Resend email"}

@@ -35,13 +35,12 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
       </Typography>
 
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-        SODC brings together serving and retired RAF signal officers for dinners, events, and
-        section-based membership. Members can browse upcoming events, book places, manage guest
-        tickets, and pay securely online.
+        A place for serving and retired RAF Signal Officers to come together — for dinners, events,
+        and the company of fellow members.
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        New members create an account, verify their email, complete a short profile, and wait for
-        admin approval before accessing member areas.
+        Membership is open to those with a connection to RAF Signals. If you&apos;d like to join,
+        create an account and we&apos;ll be in touch.
       </Typography>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -51,10 +50,10 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
           onClick={onJoinClick}
           sx={{ backgroundColor: colors.callToAction, "&:hover": { backgroundColor: colors.callToAction } }}
         >
-          Join
+          Join SODC
         </Button>
         <Button variant="outlined" size="large" onClick={onLogInClick}>
-          Log in
+          Sign in
         </Button>
       </Stack>
     </Box>

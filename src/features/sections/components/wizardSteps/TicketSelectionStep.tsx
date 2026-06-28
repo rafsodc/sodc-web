@@ -78,7 +78,8 @@ export default function TicketSelectionStep({
         ))}
       </RadioGroup>
       <TextField
-        label="Dietary requirements (you)"
+        label="Dietary requirements"
+        placeholder="e.g. vegetarian, nut allergy, gluten free"
         fullWidth
         size="small"
         value={bookerDietaryNote}
@@ -96,7 +97,7 @@ export default function TicketSelectionStep({
           <TextField
             {...params}
             label="Sit next to (optional)"
-            helperText="Choose members you would like to sit near."
+            helperText="We'll do our best to seat you together."
             size="small"
             sx={{ mt: 2 }}
           />
@@ -110,15 +111,14 @@ export default function TicketSelectionStep({
             onChange={(_, checked) => onAccommodationRequestedChange(checked)}
           />
         }
-        label="Request accommodation (booker only)"
+        label="Request accommodation"
         disabled={!canRequestAccommodation}
       />
-      {!canRequestAccommodation ? (
-        <Typography variant="caption" color="text.secondary">
-          Accommodation requests are only available for{" "}
-          {getMembershipStatusLabel("REGULAR")} or {getMembershipStatusLabel("RESERVE")} members.
-        </Typography>
-      ) : null}
+      <Typography variant="caption" color="text.secondary">
+        {canRequestAccommodation
+          ? "Overnight accommodation at the venue, where available."
+          : `Accommodation requests are available for ${getMembershipStatusLabel("REGULAR")} or ${getMembershipStatusLabel("RESERVE")} members only.`}
+      </Typography>
     </FormControl>
   );
 }
