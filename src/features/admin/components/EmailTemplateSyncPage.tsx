@@ -136,11 +136,21 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
         How to update
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Open the template in GOV Notify and update the fields below. The{" "}
-        <strong>Template name</strong> field does not need to change.
+        Open the template in GOV Notify and update the fields below.
       </Typography>
 
       <Stack spacing={1}>
+        {result.liveTemplateName && (
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Template name</Typography>
+            <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>
+              {result.liveTemplateName}
+            </Typography>
+            <CopyButton value={result.liveTemplateName} label="template name" />
+            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>no change needed</Typography>
+          </Stack>
+        )}
+
         <Stack direction="row" alignItems="center" gap={1}>
           <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Subject</Typography>
           <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>

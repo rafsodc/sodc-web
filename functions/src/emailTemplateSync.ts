@@ -28,6 +28,7 @@ export interface TemplateSyncResult {
   templateUuid?: string;
   notifyEditUrl?: string;
   status: TemplateSyncStatus;
+  liveTemplateName?: string;
   liveSubject?: string;
   liveBody?: string;
   expectedSubject: string;
@@ -62,6 +63,7 @@ function buildEditUrl(serviceId: string, templateUuid: string): string {
 }
 
 interface NotifyTemplate {
+  name: string;
   subject: string;
   body: string;
 }
@@ -69,8 +71,8 @@ interface NotifyTemplate {
 async function fetchNotifyTemplate(apiKey: string, uuid: string): Promise<NotifyTemplate> {
   const client = new NotifyClient(apiKey);
   const response = await client.getTemplateById(uuid);
-  const data = response.data as { subject: string; body: string };
-  return { subject: data.subject ?? "", body: data.body ?? "" };
+  const data = response.data as { name: string; subject: string; body: string };
+  return { name: data.name ?? "", subject: data.subject ?? "", body: data.body ?? "" };
 }
 
 export const getTemplateSyncStatus = onCall(
@@ -106,6 +108,7 @@ export const getTemplateSyncStatus = onCall(
 
           try {
             const live = await fetchNotifyTemplate(apiKey, uuid);
+            const liveTemplateName = live.name;
             const liveSubject = live.subject;
             const liveBody = normaliseBody(live.body);
             const subjectMatch = liveSubject === expectedSubject;
@@ -115,6 +118,7 @@ export const getTemplateSyncStatus = onCall(
               templateUuid: uuid,
               notifyEditUrl,
               status: (subjectMatch && bodyMatch ? "in_sync" : "drift") as TemplateSyncStatus,
+              liveTemplateName,
               liveSubject,
               liveBody,
               expectedSubject,
