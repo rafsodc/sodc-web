@@ -122,14 +122,11 @@ export default function ProfileCompletion({
     return (
       <Box sx={{ maxWidth: "600px", mx: "auto" }}>
         <Alert severity="success" sx={{ mb: 2 }}>
-          Profile submitted successfully!
+          Welcome to SODC — your profile has been submitted.
         </Alert>
-        <Typography variant="body1" sx={{ color: colors.titlePrimary, mb: 2 }}>
-          Your profile has been submitted and is pending admin approval.
-        </Typography>
         <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-          Step 4 begins next: an administrator will review your profile and activate your account,
-          usually within a few business days. You can sign out and return later to check status.
+          Your profile is with us and we&apos;ll be in touch once your membership has been
+          activated. You can sign out and return here to check your status.
         </Typography>
       </Box>
     );
@@ -142,8 +139,7 @@ export default function ProfileCompletion({
       </Typography>
 
       <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
-        Step 3 of 4 — tell us about your service background. An administrator will assign your
-        membership status during approval.
+        Tell us about yourself so we can set up your membership correctly.
       </Typography>
 
       {error && (
@@ -198,19 +194,15 @@ export default function ProfileCompletion({
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
-          <Alert severity="info">
-            An administrator will review your service background and assign your membership status during
-            approval.
-          </Alert>
-
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6" sx={{ color: colors.titlePrimary, mb: 1 }}>
-            Service Background
+            Service background
           </Typography>
 
           <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
-            Please indicate whether you are or have been a regular, reserve, civil servant, or worked in industry.
+            Tick all that apply — past or present. This helps us assign the right membership
+            category when we activate your account.
           </Typography>
 
           <Stack spacing={1}>

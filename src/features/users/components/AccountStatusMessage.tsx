@@ -25,32 +25,23 @@ export default function AccountStatusMessage({ userData }: AccountStatusMessageP
       case "PENDING":
         return {
           severity: "info" as const,
-          title: "Account pending activation",
+          title: "Your application is with us",
           message:
-            "Your profile is under review. Administrators typically respond within a few business days. You'll get access once your account is activated.",
+            "We'll be in touch once your membership has been activated. Thank you for your patience.",
         };
       case "RESIGNED":
-        return {
-          severity: "warning" as const,
-          title: "Account Deactivated",
-          message: "Your account has been deactivated.",
-        };
       case "LOST":
-        return {
-          severity: "warning" as const,
-          title: "Account Deactivated",
-          message: "Your account has been deactivated.",
-        };
       case "DECEASED":
         return {
           severity: "warning" as const,
-          title: "Account Deactivated",
-          message: "Your account has been deactivated.",
+          title: "Account no longer active",
+          message:
+            "Your account is no longer active. If you think this is a mistake, please get in touch with an administrator.",
         };
       default:
         return {
           severity: "warning" as const,
-          title: "Account Not Active",
+          title: "Account not active",
           message: "Your account is not currently active. Please contact an administrator for assistance.",
         };
     }

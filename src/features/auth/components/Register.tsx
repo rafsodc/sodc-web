@@ -106,16 +106,15 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
     return (
       <Stack spacing={2}>
         <Alert severity="success">
-          Account created. Check your email to verify your address.
+          You&apos;re in — now check your inbox.
         </Alert>
         <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-          We sent a verification link to <strong>{email}</strong>. After verifying, return here
-          and sign in to complete your profile. An administrator will then review and activate your
-          membership (usually within a few business days).
+          We sent a verification link to <strong>{email}</strong>. Click the link in that email,
+          then come back here to complete your profile. We look forward to welcoming you to SODC.
         </Typography>
         {onSignInClick && (
           <Button variant="contained" onClick={onSignInClick}>
-            Continue to sign in
+            Continue
           </Button>
         )}
       </Stack>
@@ -128,7 +127,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
         Create account
       </Typography>
       <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
-        Step 1 of 4 — register with your email, then verify your address and complete your profile.
+        Register with your email address to get started.
       </Typography>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -192,7 +191,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
 
       {onSignInClick && (
         <Typography variant="body2" sx={{ textAlign: "center", color: colors.titleSecondary }}>
-          Already have an account?{" "}
+          Already a member?{" "}
           <Link
             component="button"
             variant="body2"
