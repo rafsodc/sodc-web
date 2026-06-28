@@ -210,7 +210,7 @@ describe('SectionDetail', () => {
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 
-  it('should render section information on the About tab', async () => {
+  it('should render section description above the members list', async () => {
     const mockSectionData = {
       section: {
         id: sectionId,
@@ -250,16 +250,10 @@ describe('SectionDetail', () => {
 
     renderSectionDetail();
 
-    const userEvent = (await import('@testing-library/user-event')).userEvent;
-    const user = userEvent.setup();
-
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Test Section', level: 4 })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('tab', { name: 'About' }));
-
-    expect(screen.getByRole('tab', { name: 'About', selected: true })).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
   });
 
@@ -370,15 +364,6 @@ describe('SectionDetail', () => {
 
     renderSectionDetail();
 
-    const userEvent = (await import('@testing-library/user-event')).userEvent;
-    const user = userEvent.setup();
-
-    await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'About' }));
-
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /subscribe/i })).toBeInTheDocument();
     });
@@ -432,15 +417,6 @@ describe('SectionDetail', () => {
     });
 
     renderSectionDetail();
-
-    const userEvent = (await import('@testing-library/user-event')).userEvent;
-    const user = userEvent.setup();
-
-    await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'About' }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
@@ -534,7 +510,6 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText(/no upcoming events yet/i)).toBeInTheDocument();
     });
   });
@@ -615,7 +590,6 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
     });
 
@@ -629,7 +603,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
       expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
       expect(screen.getByText(/Standard · £25\.00/)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Book' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
@@ -767,10 +741,15 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('button', { name: /annual dinner/i }));
 
     await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Book' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Book' }));
+
+    await waitFor(() => {
       expect(screen.getByText('Your booking')).toBeInTheDocument();
       expect(screen.getByText('Payment not started')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /pay for all tickets/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Book' })).not.toBeInTheDocument();
     });
   });
 
@@ -930,7 +909,6 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('button', { name: /back to events/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Events', selected: true })).toBeInTheDocument();
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /back to events/i })).not.toBeInTheDocument();
     });
@@ -1052,7 +1030,7 @@ describe('SectionDetail', () => {
     });
   });
 
-  it('should switch between About and Members tabs on MEMBERS sections', async () => {
+  it('should show description and members list together on MEMBERS sections', async () => {
     const mockSectionData = {
       section: {
         id: sectionId,
@@ -1075,25 +1053,10 @@ describe('SectionDetail', () => {
       isError: false,
     });
 
-    const userEvent = (await import('@testing-library/user-event')).userEvent;
-    const user = userEvent.setup();
-
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Members', selected: true })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'About' }));
-
-    await waitFor(() => {
       expect(screen.getByText('Test description')).toBeInTheDocument();
-      expect(screen.queryByLabelText(/search members/i)).not.toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'Members' }));
-
-    await waitFor(() => {
       expect(screen.getByLabelText(/search members/i)).toBeInTheDocument();
     });
   });

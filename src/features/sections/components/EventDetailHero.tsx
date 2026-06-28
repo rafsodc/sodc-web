@@ -1,6 +1,5 @@
-import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { GetEventByIdData } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import { formatSectionEventWhen } from "../../../shared/utils/sectionEventDisplay";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import { formatEventGuestPolicy } from "../utils/eventGuestPolicy";
@@ -9,9 +8,6 @@ type EventDetail = NonNullable<GetEventByIdData["event"]>;
 
 export interface EventDetailHeroProps {
   event: EventDetail;
-  hasCurrentUser: boolean;
-  showBookButton: boolean;
-  onBookClick: () => void;
 }
 
 function formatBookingWindow(start: string, end: string): string {
@@ -21,28 +17,12 @@ function formatBookingWindow(start: string, end: string): string {
   return `Bookings open ${s} – ${e}`;
 }
 
-export default function EventDetailHero({
-  event,
-  hasCurrentUser,
-  showBookButton,
-  onBookClick,
-}: EventDetailHeroProps) {
+export default function EventDetailHero({ event }: EventDetailHeroProps) {
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
-        <Typography variant="h5" component="h2" fontWeight={600}>
-          {event.title}
-        </Typography>
-        {showBookButton && hasCurrentUser ? (
-          <Button
-            variant="contained"
-            onClick={onBookClick}
-            sx={{ ml: 2, flexShrink: 0, backgroundColor: colors.callToAction }}
-          >
-            Book
-          </Button>
-        ) : null}
-      </Stack>
+      <Typography variant="h5" component="h2" fontWeight={600} sx={{ mb: 1 }}>
+        {event.title}
+      </Typography>
 
       <Stack spacing={0.75} sx={{ mb: 2 }}>
         <Typography variant="body2" color="text.secondary">

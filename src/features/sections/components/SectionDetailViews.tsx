@@ -5,6 +5,8 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
@@ -14,6 +16,7 @@ import SearchBar from "../../../shared/components/SearchBar";
 import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
+import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetailTabs";
 import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
 import SectionEventCard from "./SectionEventCard";
@@ -23,7 +26,7 @@ type SectionDetailSection = NonNullable<GetSectionByIdData["section"]>;
 type SectionEventRow = NonNullable<NonNullable<GetEventsForSectionData["section"]>["events"]>[number];
 type SectionEventDetail = NonNullable<GetEventByIdData["event"]>;
 
-interface SectionInformationViewProps {
+interface SectionDescriptionHeaderProps {
   section: SectionDetailSection;
   isMembers: boolean;
   hasCurrentUser: boolean;
@@ -35,7 +38,7 @@ interface SectionInformationViewProps {
   onUnsubscribe: () => void;
 }
 
-export function SectionInformationView({
+export function SectionDescriptionHeader({
   section,
   isMembers,
   hasCurrentUser,
@@ -45,17 +48,17 @@ export function SectionInformationView({
   subscribing,
   onSubscribe,
   onUnsubscribe,
-}: SectionInformationViewProps) {
+}: SectionDescriptionHeaderProps) {
   return (
-    <Box sx={{ mt: 1 }}>
-      <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
+    <Box sx={{ mb: 3 }}>
+      <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
         <Chip
           label={getSectionTypeLabel(section.type)}
           size="small"
           color={isMembersSectionType(section.type) ? "primary" : "secondary"}
         />
       </Box>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body1" color="text.secondary">
         {section.description?.trim() || "No description provided for this section."}
       </Typography>
 
@@ -88,6 +91,9 @@ export function SectionInformationView({
     </Box>
   );
 }
+
+// Keep old export name for backward-compat with existing tests/imports
+export const SectionInformationView = SectionDescriptionHeader;
 
 interface SectionMembersViewProps {
   allMembersCount: number;
@@ -279,8 +285,10 @@ export function SectionEventDetailView({
   onRetry,
   onBookingComplete,
 }: SectionEventDetailViewProps) {
-  const [bookingWizardOpen, setBookingWizardOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<EventDetailTab>("about");
   const [hasExistingBooking, setHasExistingBooking] = useState(false);
+
+  const handleGoToBook = () => setActiveTab("book");
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -302,18 +310,50 @@ export function SectionEventDetailView({
         <Alert severity="info">Event not found.</Alert>
       ) : (
         <>
-          <EventDetailHero
-            event={event}
-            hasCurrentUser={hasCurrentUser}
-            showBookButton={hasCurrentUser && !bookingWizardOpen && !hasExistingBooking}
-            onBookClick={() => setBookingWizardOpen(true)}
-          />
           {hasCurrentUser ? (
+            <Tabs
+              value={activeTab}
+              onChange={(_, v: EventDetailTab) => setActiveTab(v)}
+              sx={{
+                mb: 2,
+                borderBottom: 1,
+                borderColor: "divider",
+                "& .MuiTab-root": {
+                  "&:focus": { outline: "none" },
+                  "&:focus-visible": { outline: "none" },
+                },
+              }}
+            >
+              <Tab label={eventDetailTabLabel("about")} value="about" />
+              <Tab label={eventDetailTabLabel("book")} value="book" />
+            </Tabs>
+          ) : null}
+
+          {activeTab === "about" || !hasCurrentUser ? (
+            <>
+              <EventDetailHero event={event} />
+              {hasCurrentUser ? (
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleGoToBook}
+                    sx={{ backgroundColor: colors.callToAction }}
+                  >
+                    {hasExistingBooking ? "View my booking" : "Book this event"}
+                  </Button>
+                </Box>
+              ) : null}
+            </>
+          ) : null}
+
+          {activeTab === "book" && hasCurrentUser ? (
             <EventBookingWizard
               section={section}
               event={event}
-              wizardOpen={bookingWizardOpen}
-              onWizardOpenChange={setBookingWizardOpen}
+              wizardOpen={!hasExistingBooking}
+              onWizardOpenChange={(open) => {
+                if (!open) setActiveTab("about");
+              }}
               onHasExistingBookingChange={setHasExistingBooking}
               onBookingComplete={onBookingComplete}
             />
@@ -323,4 +363,3 @@ export function SectionEventDetailView({
     </Box>
   );
 }
-

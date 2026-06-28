@@ -1,12 +1,10 @@
-import { useState, useMemo, useEffect, useCallback, type SyntheticEvent } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
   Alert,
   CircularProgress,
   Button,
   Snackbar,
-  Tab,
-  Tabs,
 } from "@mui/material";
 import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
@@ -32,15 +30,9 @@ import NavigationBreadcrumbs from "../../../shared/components/NavigationBreadcru
 import type { SectionDetailLocationState } from "../../../shared/navigation/sectionNavigationState";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
 import {
-  getDefaultSectionDetailTab,
-  getSectionDetailTabs,
-  sectionDetailTabLabel,
-  type SectionDetailTab,
-} from "../utils/sectionDetailTabs";
-import {
+  SectionDescriptionHeader,
   SectionEventDetailView,
   SectionEventsListView,
-  SectionInformationView,
   SectionMembersView,
 } from "./SectionDetailViews";
 
@@ -65,7 +57,6 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SectionDetailTab>("about");
 
   const currentUser = auth.currentUser;
   const isAdmin = useAdminClaim(currentUser);
@@ -295,7 +286,6 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   const loadedSection = sectionData?.section;
   const isMembersSectionType = loadedSection ? isMembersSection(loadedSection as any) : false;
-  const sectionTabs = getSectionDetailTabs(isMembersSectionType);
 
   useEffect(() => {
     if (!loadedSection) {
@@ -304,28 +294,17 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     const pendingEventId = locationState?.selectedEventId;
     if (pendingEventId) {
       setSelectedEventId(pendingEventId);
-      setActiveTab("events");
       return;
     }
-    setActiveTab(getDefaultSectionDetailTab(isMembersSectionType));
     setSelectedEventId(null);
-  }, [sectionId, isMembersSectionType, loadedSection, locationState?.selectedEventId]);
-
-  const handleTabChange = (_event: SyntheticEvent, newTab: SectionDetailTab) => {
-    setActiveTab(newTab);
-    if (newTab !== "events") {
-      setSelectedEventId(null);
-    }
-  };
+  }, [sectionId, loadedSection, locationState?.selectedEventId]);
 
   const handleSelectEvent = (eventId: string) => {
     setSelectedEventId(eventId);
-    setActiveTab("events");
   };
 
   const handleBackToEvents = useCallback(() => {
     setSelectedEventId(null);
-    setActiveTab("events");
   }, []);
 
   const handleHeaderBack = useCallback(() => {
@@ -411,27 +390,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         breadcrumbs={headerBreadcrumbs}
       />
 
-      <Tabs
-        value={activeTab}
-        onChange={handleTabChange}
-        sx={{
-          mt: 2,
-          mb: 2,
-          borderBottom: 1,
-          borderColor: "divider",
-          "& .MuiTab-root": {
-            "&:focus": { outline: "none" },
-            "&:focus-visible": { outline: "none" },
-          },
-        }}
-      >
-        {sectionTabs.map((tab) => (
-          <Tab key={tab} label={sectionDetailTabLabel(tab)} value={tab} />
-        ))}
-      </Tabs>
-
-      {activeTab === "about" && (
-        <SectionInformationView
+      {!selectedEventId && (
+        <SectionDescriptionHeader
           section={section}
           isMembers={isMembers}
           hasCurrentUser={Boolean(currentUser)}
@@ -444,7 +404,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         />
       )}
 
-      {activeTab === "members" && (
+      {isMembers ? (
         <SectionMembersView
           allMembersCount={allMembers.length}
           filteredMembers={filteredMembers}
@@ -457,31 +417,28 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           onRefresh={() => refetchSection()}
           onPageChange={setPage}
         />
+      ) : selectedEventId ? (
+        <SectionEventDetailView
+          section={section}
+          event={eventDetailData?.event ?? null}
+          loading={loadingEventDetail}
+          isError={errorEventDetail}
+          hasCurrentUser={Boolean(currentUser)}
+          onBackToEvents={handleBackToEvents}
+          onRetry={() => refetchEventDetail()}
+          onBookingComplete={() => {
+            void refetchEventDetail();
+          }}
+        />
+      ) : (
+        <SectionEventsListView
+          events={eventRows}
+          loading={loadingEvents}
+          isError={errorEvents}
+          onRetry={() => refetchEvents()}
+          onSelectEvent={handleSelectEvent}
+        />
       )}
-
-      {activeTab === "events" &&
-        (selectedEventId ? (
-          <SectionEventDetailView
-            section={section}
-            event={eventDetailData?.event ?? null}
-            loading={loadingEventDetail}
-            isError={errorEventDetail}
-            hasCurrentUser={Boolean(currentUser)}
-            onBackToEvents={handleBackToEvents}
-            onRetry={() => refetchEventDetail()}
-            onBookingComplete={() => {
-              void refetchEventDetail();
-            }}
-          />
-        ) : (
-          <SectionEventsListView
-            events={eventRows}
-            loading={loadingEvents}
-            isError={errorEvents}
-            onRetry={() => refetchEvents()}
-            onSelectEvent={handleSelectEvent}
-          />
-        ))}
 
       <Snackbar
         open={snackbar.open}
