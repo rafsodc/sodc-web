@@ -601,7 +601,6 @@ export interface TemplateSyncResult {
   templateUuid?: string;
   notifyEditUrl?: string;
   status: TemplateSyncStatus;
-  liveTemplateName?: string;
   liveSubject?: string;
   liveBody?: string;
   expectedSubject: string;

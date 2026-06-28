@@ -140,16 +140,14 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
       </Typography>
 
       <Stack spacing={1}>
-        {result.liveTemplateName && (
-          <Stack direction="row" alignItems="center" gap={1}>
-            <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Template name</Typography>
-            <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>
-              {result.liveTemplateName}
-            </Typography>
-            <CopyButton value={result.liveTemplateName} label="template name" />
-            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>no change needed</Typography>
-          </Stack>
-        )}
+        <Stack direction="row" alignItems="center" gap={1}>
+          <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Template name</Typography>
+          <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>
+            {result.templateKey}
+          </Typography>
+          <CopyButton value={result.templateKey} label="template name" />
+          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>no change needed</Typography>
+        </Stack>
 
         <Stack direction="row" alignItems="center" gap={1}>
           <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Subject</Typography>
