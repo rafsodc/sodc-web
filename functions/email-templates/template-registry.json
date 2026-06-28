@@ -1,0 +1,50 @@
+{
+  "bookingConfirmation": {
+    "staging": "",
+    "production": ""
+  },
+  "bookingRevision": {
+    "staging": "",
+    "production": ""
+  },
+  "membershipActivated": {
+    "staging": "",
+    "production": ""
+  },
+  "membershipAccessRestricted": {
+    "staging": "",
+    "production": ""
+  },
+  "ticketOrderPaid": {
+    "staging": "",
+    "production": ""
+  },
+  "ticketOrderFailed": {
+    "staging": "",
+    "production": ""
+  },
+  "ticketOrderRefunded": {
+    "staging": "",
+    "production": ""
+  },
+  "guestTicketRequestSubmittedModerator": {
+    "staging": "",
+    "production": ""
+  },
+  "guestTicketRequestApproved": {
+    "staging": "",
+    "production": ""
+  },
+  "guestTicketRequestRejected": {
+    "staging": "",
+    "production": ""
+  },
+  "paymentReconciliationExceptionAlert": {
+    "staging": "",
+    "production": ""
+  },
+  "paymentDisputeOpsAlert": {
+    "staging": "",
+    "production": ""
+  }
+}
