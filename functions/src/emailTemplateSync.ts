@@ -7,7 +7,7 @@ import { govNotifyApiKey } from "./mailer";
 import { EMAIL_TEMPLATE_MANIFEST } from "./generatedEmailTemplateManifest";
 import { FUNCTIONS_REGION } from "./constants";
 
-const REGISTRY_PATH = path.resolve(__dirname, "../../email-templates/template-registry.json");
+const REGISTRY_PATH = path.resolve(__dirname, "../email-templates/template-registry.json");
 
 type TemplateRegistry = Record<string, { dev?: string; beta?: string; production?: string }>;
 
