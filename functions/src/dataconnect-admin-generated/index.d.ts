@@ -398,7 +398,6 @@ export interface CreateUserProfileData {
 export interface CreateUserProfileVariables {
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   requestedMembershipStatus: MembershipStatus;
   isRegular?: boolean | null;
@@ -491,37 +490,37 @@ export interface GetBookingForGuestTicketCallableData {
       lastName: string;
       email: string;
     } & User_Key;
-      event: {
+    event: {
+      id: UUIDString;
+      title: string;
+      section: {
         id: UUIDString;
-        title: string;
-        section: {
+        name: string;
+      } & Section_Key;
+    } & Event_Key;
+    supersedesBooking?: {
+      guestTicketRequests: ({
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        guestDisplayName?: string | null;
+        guestTicketType?: {
           id: UUIDString;
-          name: string;
-        } & Section_Key;
-      } & Event_Key;
-        supersedesBooking?: {
-          guestTicketRequests: ({
-            status: GuestTicketRequestStatus;
-            requestedGuestCount: number;
-            guestDisplayName?: string | null;
-            guestTicketType?: {
-              id: UUIDString;
-            } & TicketType_Key;
-              reviewedBy?: {
-                id: string;
-              } & User_Key;
-                reviewedAt?: TimestampString | null;
-                moderatorNote?: string | null;
-          })[];
-        };
-          guestTicketRequests: ({
-            status: GuestTicketRequestStatus;
-            requestedGuestCount: number;
-            guestDisplayName?: string | null;
-            guestTicketType?: {
-              id: UUIDString;
-            } & TicketType_Key;
-          })[];
+        } & TicketType_Key;
+        reviewedBy?: {
+          id: string;
+        } & User_Key;
+        reviewedAt?: TimestampString | null;
+        moderatorNote?: string | null;
+      })[];
+    };
+    guestTicketRequests: ({
+      status: GuestTicketRequestStatus;
+      requestedGuestCount: number;
+      guestDisplayName?: string | null;
+      guestTicketType?: {
+        id: UUIDString;
+      } & TicketType_Key;
+    })[];
   } & Booking_Key;
 }
 
@@ -543,35 +542,35 @@ export interface GetBookingForNotificationData {
       lastName: string;
       email: string;
     } & User_Key;
-      event: {
+    event: {
+      id: UUIDString;
+      title: string;
+      location?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      section: {
         id: UUIDString;
+        name: string;
+      } & Section_Key;
+    } & Event_Key;
+    lines: ({
+      sortOrder: number;
+      guestDisplayName?: string | null;
+      dietaryNote?: string | null;
+      ticketType: {
         title: string;
-        location?: string | null;
-        startDateTime: TimestampString;
-        endDateTime: TimestampString;
-        section: {
-          id: UUIDString;
-          name: string;
-        } & Section_Key;
-      } & Event_Key;
-        lines: ({
-          sortOrder: number;
-          guestDisplayName?: string | null;
-          dietaryNote?: string | null;
-          ticketType: {
-            title: string;
-            audience: TicketAudience;
-            price: number;
-          };
-            guestUser?: {
-              firstName: string;
-              lastName: string;
-            };
-        })[];
-          supersedesBooking?: {
-            id: UUIDString;
-            revisionNumber: number;
-          } & Booking_Key;
+        audience: TicketAudience;
+        price: number;
+      };
+      guestUser?: {
+        firstName: string;
+        lastName: string;
+      };
+    })[];
+    supersedesBooking?: {
+      id: UUIDString;
+      revisionNumber: number;
+    } & Booking_Key;
   } & Booking_Key;
 }
 
@@ -591,38 +590,38 @@ export interface GetBookingsForBookerAndEventData {
       supersedesBooking?: {
         id: UUIDString;
       } & Booking_Key;
-        clientSubmissionKey?: string | null;
-        bookerDietaryNote?: string | null;
-        sitNextToUserIds?: string[] | null;
-        accommodationRequested: boolean;
-        accommodationNote?: string | null;
-        createdAt: TimestampString;
-        updatedAt: TimestampString;
-        lines: ({
+      clientSubmissionKey?: string | null;
+      bookerDietaryNote?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+        } & User_Key;
+        ticketType: {
           id: UUIDString;
-          sortOrder: number;
-          guestDisplayName?: string | null;
-          dietaryNote?: string | null;
-          guestUser?: {
-            id: string;
-          } & User_Key;
-            ticketType: {
-              id: UUIDString;
-              audience: TicketAudience;
-              price: number;
-              title: string;
-            } & TicketType_Key;
-        } & BookingLine_Key)[];
-          guestTicketRequests: ({
-            id: UUIDString;
-            status: GuestTicketRequestStatus;
-            requestedGuestCount: number;
-            guestTicketType?: {
-              id: UUIDString;
-              title: string;
-              price: number;
-            } & TicketType_Key;
-          } & GuestTicketRequest_Key)[];
+          audience: TicketAudience;
+          price: number;
+          title: string;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        guestTicketType?: {
+          id: UUIDString;
+          title: string;
+          price: number;
+        } & TicketType_Key;
+      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -630,6 +629,12 @@ export interface GetBookingsForBookerAndEventData {
 export interface GetBookingsForBookerAndEventVariables {
   bookerId: string;
   eventId: UUIDString;
+}
+
+export interface GetCurrentUserAnnouncementOptOutData {
+  user?: {
+    announcementEmailsOptOut?: boolean | null;
+  };
 }
 
 export interface GetCurrentUserData {
@@ -656,27 +661,27 @@ export interface GetEventByIdData {
     section: {
       id: UUIDString;
     } & Section_Key;
+    title: string;
+    location?: string | null;
+    guestOfHonour?: string | null;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    bookingStartDateTime: TimestampString;
+    bookingEndDateTime: TimestampString;
+    maxGuestsWithoutModeratorApproval?: number | null;
+    ticketTypes: ({
+      id: UUIDString;
       title: string;
-      location?: string | null;
-      guestOfHonour?: string | null;
-      startDateTime: TimestampString;
-      endDateTime: TimestampString;
-      bookingStartDateTime: TimestampString;
-      bookingEndDateTime: TimestampString;
-      maxGuestsWithoutModeratorApproval?: number | null;
-      ticketTypes: ({
+      description?: string | null;
+      audience: TicketAudience;
+      price: number;
+      sortOrder: number;
+      userGroup: {
         id: UUIDString;
-        title: string;
-        description?: string | null;
-        audience: TicketAudience;
-        price: number;
-        sortOrder: number;
-        userGroup: {
-          id: UUIDString;
-          name: string;
-          membershipStatuses?: MembershipStatus[] | null;
-        } & UserGroup_Key;
-      } & TicketType_Key)[];
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    } & TicketType_Key)[];
   } & Event_Key;
 }
 
@@ -686,27 +691,27 @@ export interface GetEventByIdForCallableData {
     section: {
       id: UUIDString;
     } & Section_Key;
+    title: string;
+    location?: string | null;
+    guestOfHonour?: string | null;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    bookingStartDateTime: TimestampString;
+    bookingEndDateTime: TimestampString;
+    maxGuestsWithoutModeratorApproval?: number | null;
+    ticketTypes: ({
+      id: UUIDString;
       title: string;
-      location?: string | null;
-      guestOfHonour?: string | null;
-      startDateTime: TimestampString;
-      endDateTime: TimestampString;
-      bookingStartDateTime: TimestampString;
-      bookingEndDateTime: TimestampString;
-      maxGuestsWithoutModeratorApproval?: number | null;
-      ticketTypes: ({
+      description?: string | null;
+      audience: TicketAudience;
+      price: number;
+      sortOrder: number;
+      userGroup: {
         id: UUIDString;
-        title: string;
-        description?: string | null;
-        audience: TicketAudience;
-        price: number;
-        sortOrder: number;
-        userGroup: {
-          id: UUIDString;
-          name: string;
-          membershipStatuses?: MembershipStatus[] | null;
-        } & UserGroup_Key;
-      } & TicketType_Key)[];
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    } & TicketType_Key)[];
   } & Event_Key;
 }
 
@@ -751,23 +756,23 @@ export interface GetGuestTicketRequestForNotificationData {
       id: UUIDString;
       title: string;
     } & TicketType_Key;
-      booking: {
+    booking: {
+      id: UUIDString;
+      booker: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      } & User_Key;
+      event: {
         id: UUIDString;
-        booker: {
-          id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
-        } & User_Key;
-          event: {
-            id: UUIDString;
-            title: string;
-            section: {
-              id: UUIDString;
-              name: string;
-            } & Section_Key;
-          } & Event_Key;
-      } & Booking_Key;
+        title: string;
+        section: {
+          id: UUIDString;
+          name: string;
+        } & Section_Key;
+      } & Event_Key;
+    } & Booking_Key;
   } & GuestTicketRequest_Key;
 }
 
@@ -785,18 +790,18 @@ export interface GetMyBookingPaymentAdjustmentsData {
         id: UUIDString;
         title: string;
       } & Event_Key;
-        adjustments: ({
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+        orchestrationKey: string;
+        createdAt: TimestampString;
+        updatedAt: TimestampString;
+        supersededBooking: {
           id: UUIDString;
-          deltaAmountMinor: number;
-          status: BookingPaymentAdjustmentStatus;
-          orchestrationKey: string;
-          createdAt: TimestampString;
-          updatedAt: TimestampString;
-          supersededBooking: {
-            id: UUIDString;
-            revisionNumber: number;
-          } & Booking_Key;
-        })[];
+          revisionNumber: number;
+        } & Booking_Key;
+      })[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -819,26 +824,26 @@ export interface GetMyBookingsData {
           name: string;
         } & Section_Key;
       } & Event_Key;
-        lines: ({
+      lines: ({
+        id: UUIDString;
+        ticketType: {
           id: UUIDString;
-          ticketType: {
-            id: UUIDString;
-            title: string;
-            audience: TicketAudience;
-            price: number;
-          } & TicketType_Key;
-        } & BookingLine_Key)[];
-          guestTicketRequests: ({
-            id: UUIDString;
-            status: GuestTicketRequestStatus;
-            requestedGuestCount: number;
-            guestDisplayName?: string | null;
-            guestTicketType?: {
-              id: UUIDString;
-              title: string;
-              price: number;
-            } & TicketType_Key;
-          } & GuestTicketRequest_Key)[];
+          title: string;
+          audience: TicketAudience;
+          price: number;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        guestDisplayName?: string | null;
+        guestTicketType?: {
+          id: UUIDString;
+          title: string;
+          price: number;
+        } & TicketType_Key;
+      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -869,27 +874,27 @@ export interface GetMyBookingsForEventData {
           audience: TicketAudience;
           price: number;
         } & TicketType_Key;
-          guestUser?: {
-            id: string;
-            firstName: string;
-            lastName: string;
-          } & User_Key;
+        guestUser?: {
+          id: string;
+          firstName: string;
+          lastName: string;
+        } & User_Key;
       } & BookingLine_Key)[];
-        guestTicketRequests: ({
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestTicketType?: {
           id: UUIDString;
-          status: GuestTicketRequestStatus;
-          requestedGuestCount: number;
-          guestDisplayName?: string | null;
-          dietaryNote?: string | null;
-          guestTicketType?: {
-            id: UUIDString;
-            title: string;
-            audience: TicketAudience;
-            price: number;
-          } & TicketType_Key;
-            reviewedAt?: TimestampString | null;
-            moderatorNote?: string | null;
-        } & GuestTicketRequest_Key)[];
+          title: string;
+          audience: TicketAudience;
+          price: number;
+        } & TicketType_Key;
+        reviewedAt?: TimestampString | null;
+        moderatorNote?: string | null;
+      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -912,10 +917,10 @@ export interface GetMyTicketOrderByIdData {
         id: UUIDString;
         title: string;
       } & TicketType_Key;
-        event: {
-          id: UUIDString;
-          title: string;
-        } & Event_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+      } & Event_Key;
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -945,11 +950,11 @@ export interface GetMyTicketOrdersData {
         id: UUIDString;
         title: string;
       } & TicketType_Key;
-        event: {
-          id: UUIDString;
-          title: string;
-          startDateTime: TimestampString;
-        } & Event_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+        startDateTime: TimestampString;
+      } & Event_Key;
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -999,14 +1004,36 @@ export interface GetPaymentWebhookEventByStripeEventIdData {
     ticketOrder?: {
       id: UUIDString;
     } & TicketOrder_Key;
-      stripeObjectId?: string | null;
-      livemode: boolean;
-      createdAt: TimestampString;
+    stripeObjectId?: string | null;
+    livemode: boolean;
+    createdAt: TimestampString;
   } & PaymentWebhookEvent_Key)[];
 }
 
 export interface GetPaymentWebhookEventByStripeEventIdVariables {
   stripeEventId: string;
+}
+
+export interface GetSectionAnnouncementOptOutData {
+  sectionAnnouncementOptOut?: {
+    createdAt: TimestampString;
+  };
+}
+
+export interface GetSectionAnnouncementOptOutVariables {
+  sectionId: UUIDString;
+}
+
+export interface GetSectionAnnouncementOptOutsData {
+  sectionAnnouncementOptOuts: ({
+    user: {
+      id: string;
+    } & User_Key;
+  })[];
+}
+
+export interface GetSectionAnnouncementOptOutsVariables {
+  sectionId: UUIDString;
 }
 
 export interface GetSectionByIdData {
@@ -1110,20 +1137,20 @@ export interface GetSectionsForUserData {
       } & UserGroup_Key;
     })[];
   } & User_Key;
-    allUserGroups: ({
-      id: UUIDString;
-      name: string;
-      membershipStatuses?: MembershipStatus[] | null;
-      purposeLinks: ({
-        purposes?: SectionUserGroupPurpose[] | null;
-        section: {
-          id: UUIDString;
-          name: string;
-          type: SectionType;
-          description?: string | null;
-        } & Section_Key;
-      })[];
-    } & UserGroup_Key)[];
+  allUserGroups: ({
+    id: UUIDString;
+    name: string;
+    membershipStatuses?: MembershipStatus[] | null;
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+        type: SectionType;
+        description?: string | null;
+      } & Section_Key;
+    })[];
+  } & UserGroup_Key)[];
 }
 
 export interface GetTicketOrderForWebhookData {
@@ -1140,27 +1167,27 @@ export interface GetTicketOrderForWebhookData {
       firstName: string;
       lastName: string;
     } & User_Key;
-      event: {
-        id: UUIDString;
-        title: string;
-      } & Event_Key;
-        ticketType: {
-          id: UUIDString;
-          title: string;
-        } & TicketType_Key;
-          stripeCheckoutSessionId?: string | null;
-          stripePaymentIntentId?: string | null;
-          stripeRefundId?: string | null;
-          refundedAmountMinor?: number | null;
-          refundedAt?: TimestampString | null;
-          stripeDisputeId?: string | null;
-          disputeStatus?: string | null;
-          disputeReason?: string | null;
-          disputeAmountMinor?: number | null;
-          disputeOpenedAt?: TimestampString | null;
-          disputeUpdatedAt?: TimestampString | null;
-          disputeClosedAt?: TimestampString | null;
-          webhookEventId?: string | null;
+    event: {
+      id: UUIDString;
+      title: string;
+    } & Event_Key;
+    ticketType: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    stripeRefundId?: string | null;
+    refundedAmountMinor?: number | null;
+    refundedAt?: TimestampString | null;
+    stripeDisputeId?: string | null;
+    disputeStatus?: string | null;
+    disputeReason?: string | null;
+    disputeAmountMinor?: number | null;
+    disputeOpenedAt?: TimestampString | null;
+    disputeUpdatedAt?: TimestampString | null;
+    disputeClosedAt?: TimestampString | null;
+    webhookEventId?: string | null;
   } & TicketOrder_Key;
 }
 
@@ -1194,9 +1221,9 @@ export interface GetTicketOrdersForBookerAndEventData {
       ticketType: {
         id: UUIDString;
       } & TicketType_Key;
-        event: {
-          id: UUIDString;
-        } & Event_Key;
+      event: {
+        id: UUIDString;
+      } & Event_Key;
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -1216,15 +1243,15 @@ export interface GetTicketTypeForCheckoutData {
       id: UUIDString;
       membershipStatuses?: MembershipStatus[] | null;
     } & UserGroup_Key;
-      event: {
+    event: {
+      id: UUIDString;
+      title: string;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      section: {
         id: UUIDString;
-        title: string;
-        bookingStartDateTime: TimestampString;
-        bookingEndDateTime: TimestampString;
-        section: {
-          id: UUIDString;
-        } & Section_Key;
-      } & Event_Key;
+      } & Section_Key;
+    } & Event_Key;
   } & TicketType_Key;
 }
 
@@ -1321,15 +1348,15 @@ export interface GetUserGroupByIdData {
         membershipStatus: MembershipStatus;
       } & User_Key;
     })[];
-      purposeLinks: ({
-        purposes?: SectionUserGroupPurpose[] | null;
-        section: {
-          id: UUIDString;
-          name: string;
-          type: SectionType;
-          description?: string | null;
-        } & Section_Key;
-      })[];
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+        type: SectionType;
+        description?: string | null;
+      } & Section_Key;
+    })[];
   } & UserGroup_Key;
 }
 
@@ -1428,18 +1455,18 @@ export interface ListBookingPaymentAdjustmentsForAdminData {
         firstName: string;
         lastName: string;
       } & User_Key;
-        adjustments: ({
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+        orchestrationKey: string;
+        createdAt: TimestampString;
+        updatedAt: TimestampString;
+        supersededBooking: {
           id: UUIDString;
-          deltaAmountMinor: number;
-          status: BookingPaymentAdjustmentStatus;
-          orchestrationKey: string;
-          createdAt: TimestampString;
-          updatedAt: TimestampString;
-          supersededBooking: {
-            id: UUIDString;
-            revisionNumber: number;
-          } & Booking_Key;
-        })[];
+          revisionNumber: number;
+        } & Booking_Key;
+      })[];
     } & Booking_Key)[];
   } & Event_Key;
 }
@@ -1459,45 +1486,45 @@ export interface ListEventBookingsForAdminData {
         id: UUIDString;
         revisionNumber: number;
       } & Booking_Key;
-        clientSubmissionKey?: string | null;
-        bookerDietaryNote?: string | null;
-        sitNextToUserIds?: string[] | null;
-        accommodationRequested: boolean;
-        accommodationNote?: string | null;
+      clientSubmissionKey?: string | null;
+      bookerDietaryNote?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy?: string | null;
+      updatedBy?: string | null;
+      booker: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      } & User_Key;
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        reviewedAt?: TimestampString | null;
+        moderatorNote?: string | null;
         createdAt: TimestampString;
         updatedAt: TimestampString;
         createdBy?: string | null;
         updatedBy?: string | null;
-        booker: {
+        reviewedBy?: {
           id: string;
           firstName: string;
           lastName: string;
-          email: string;
         } & User_Key;
-          guestTicketRequests: ({
-            id: UUIDString;
-            status: GuestTicketRequestStatus;
-            requestedGuestCount: number;
-            reviewedAt?: TimestampString | null;
-            moderatorNote?: string | null;
-            createdAt: TimestampString;
-            updatedAt: TimestampString;
-            createdBy?: string | null;
-            updatedBy?: string | null;
-            reviewedBy?: {
-              id: string;
-              firstName: string;
-              lastName: string;
-            } & User_Key;
-          } & GuestTicketRequest_Key)[];
-            lines: ({
-              id: UUIDString;
-              ticketType: {
-                id: UUIDString;
-                title: string;
-                audience: TicketAudience;
-              } & TicketType_Key;
-            } & BookingLine_Key)[];
+      } & GuestTicketRequest_Key)[];
+      lines: ({
+        id: UUIDString;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
     } & Booking_Key)[];
   } & Event_Key;
 }
@@ -1520,37 +1547,37 @@ export interface ListGuestTicketRequestsForAdminData {
         id: UUIDString;
         revisionNumber: number;
       } & Booking_Key;
-        booker: {
+      booker: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      } & User_Key;
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        moderatorNote?: string | null;
+        createdAt: TimestampString;
+        reviewedAt?: TimestampString | null;
+        createdBy?: string | null;
+        updatedAt: TimestampString;
+        updatedBy?: string | null;
+        reviewedBy?: {
           id: string;
           firstName: string;
           lastName: string;
           email: string;
         } & User_Key;
-          guestTicketRequests: ({
-            id: UUIDString;
-            status: GuestTicketRequestStatus;
-            requestedGuestCount: number;
-            guestDisplayName?: string | null;
-            dietaryNote?: string | null;
-            moderatorNote?: string | null;
-            createdAt: TimestampString;
-            reviewedAt?: TimestampString | null;
-            createdBy?: string | null;
-            updatedAt: TimestampString;
-            updatedBy?: string | null;
-            reviewedBy?: {
-              id: string;
-              firstName: string;
-              lastName: string;
-              email: string;
-            } & User_Key;
-              guestTicketType?: {
-                id: UUIDString;
-                title: string;
-                audience: TicketAudience;
-                price: number;
-              } & TicketType_Key;
-          } & GuestTicketRequest_Key)[];
+        guestTicketType?: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+        } & TicketType_Key;
+      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & Event_Key;
 }
@@ -1583,10 +1610,10 @@ export interface ListOpenPaymentReconciliationExceptionsData {
         lastName: string;
         email: string;
       } & User_Key;
-        event: {
-          id: UUIDString;
-          title: string;
-        } & Event_Key;
+      event: {
+        id: UUIDString;
+        title: string;
+      } & Event_Key;
     } & TicketOrder_Key;
   } & PaymentReconciliationException_Key)[];
 }
@@ -1663,10 +1690,10 @@ export interface ListTicketOrdersForAdminData {
         lastName: string;
         email: string;
       } & User_Key;
-        ticketType: {
-          id: UUIDString;
-          title: string;
-        } & TicketType_Key;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+      } & TicketType_Key;
     } & TicketOrder_Key)[];
   } & Event_Key;
 }
@@ -1793,6 +1820,22 @@ export interface NotificationDelivery_Key {
   __typename?: 'NotificationDelivery_Key';
 }
 
+export interface OptInSectionAnnouncementData {
+  sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
+}
+
+export interface OptInSectionAnnouncementVariables {
+  sectionId: UUIDString;
+}
+
+export interface OptOutSectionAnnouncementData {
+  sectionAnnouncementOptOut_upsert: SectionAnnouncementOptOut_Key;
+}
+
+export interface OptOutSectionAnnouncementVariables {
+  sectionId: UUIDString;
+}
+
 export interface PaymentReconciliationException_Key {
   id: UUIDString;
   __typename?: 'PaymentReconciliationException_Key';
@@ -1847,6 +1890,12 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
   userGroupId: UUIDString;
 }
 
+export interface SectionAnnouncementOptOut_Key {
+  userId: string;
+  sectionId: UUIDString;
+  __typename?: 'SectionAnnouncementOptOut_Key';
+}
+
 export interface SectionUserGroupPurposeLink_Key {
   sectionId: UUIDString;
   userGroupId: UUIDString;
@@ -1890,6 +1939,14 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
+}
+
+export interface UpdateAnnouncementEmailsOptOutData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateAnnouncementEmailsOptOutVariables {
+  optOut: boolean;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -2044,7 +2101,6 @@ export interface UpsertUserData {
 export interface UpsertUserVariables {
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
@@ -2067,256 +2123,6 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
-
-/** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
-export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
-/** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to pass in custom DataConnect instances. */
-export function getCurrentUser(options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetUserById' Query. Allow users to execute without passing in DataConnect. */
-export function getUserById(dc: DataConnect, vars: GetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserById' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserById(vars: GetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByIdData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to execute without passing in DataConnect. */
-export function listUsers(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
-/** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to pass in custom DataConnect instances. */
-export function listUsers(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListSections' Query. Allow users to execute without passing in DataConnect. */
-export function listSections(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionsData>>;
-/** Generated Node Admin SDK operation action function for the 'ListSections' Query. Allow users to pass in custom DataConnect instances. */
-export function listSections(options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetSectionsForUser' Query. Allow users to execute without passing in DataConnect. */
-export function getSectionsForUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionsForUserData>>;
-/** Generated Node Admin SDK operation action function for the 'GetSectionsForUser' Query. Allow users to pass in custom DataConnect instances. */
-export function getSectionsForUser(options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionsForUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListUserGroups' Query. Allow users to execute without passing in DataConnect. */
-export function listUserGroups(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserGroupsData>>;
-/** Generated Node Admin SDK operation action function for the 'ListUserGroups' Query. Allow users to pass in custom DataConnect instances. */
-export function listUserGroups(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserGroupsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroups' Query. Allow users to execute without passing in DataConnect. */
-export function getUserAccessGroups(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroups' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserAccessGroups(options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CheckUserProfileExists' Query. Allow users to execute without passing in DataConnect. */
-export function checkUserProfileExists(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<CheckUserProfileExistsData>>;
-/** Generated Node Admin SDK operation action function for the 'CheckUserProfileExists' Query. Allow users to pass in custom DataConnect instances. */
-export function checkUserProfileExists(options?: OperationOptions): Promise<ExecuteOperationResponse<CheckUserProfileExistsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetUserMembershipStatus' Query. Allow users to execute without passing in DataConnect. */
-export function getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserMembershipStatus' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetUserWithAccessGroups' Query. Allow users to execute without passing in DataConnect. */
-export function getUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserWithAccessGroupsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserWithAccessGroups' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserWithAccessGroupsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsById' Query. Allow users to execute without passing in DataConnect. */
-export function getUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsById' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsByIdData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetEventsForSection' Query. Allow users to execute without passing in DataConnect. */
-export function getEventsForSection(dc: DataConnect, vars: GetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventsForSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'GetEventsForSection' Query. Allow users to pass in custom DataConnect instances. */
-export function getEventsForSection(vars: GetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventsForSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetEventById' Query. Allow users to execute without passing in DataConnect. */
-export function getEventById(dc: DataConnect, vars: GetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'GetEventById' Query. Allow users to pass in custom DataConnect instances. */
-export function getEventById(vars: GetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventByIdData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetSectionById' Query. Allow users to execute without passing in DataConnect. */
-export function getSectionById(dc: DataConnect, vars: GetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'GetSectionById' Query. Allow users to pass in custom DataConnect instances. */
-export function getSectionById(vars: GetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetUserGroupById' Query. Allow users to execute without passing in DataConnect. */
-export function getUserGroupById(dc: DataConnect, vars: GetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserGroupByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserGroupById' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserGroupById(vars: GetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserGroupByIdData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetAllUserGroupsWithStatuses' Query. Allow users to execute without passing in DataConnect. */
-export function getAllUserGroupsWithStatuses(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAllUserGroupsWithStatusesData>>;
-/** Generated Node Admin SDK operation action function for the 'GetAllUserGroupsWithStatuses' Query. Allow users to pass in custom DataConnect instances. */
-export function getAllUserGroupsWithStatuses(options?: OperationOptions): Promise<ExecuteOperationResponse<GetAllUserGroupsWithStatusesData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetSectionMembers' Query. Allow users to execute without passing in DataConnect. */
-export function getSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionMembersData>>;
-/** Generated Node Admin SDK operation action function for the 'GetSectionMembers' Query. Allow users to pass in custom DataConnect instances. */
-export function getSectionMembers(vars: GetSectionMembersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionMembersData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetMyBookingsForEvent' Query. Allow users to execute without passing in DataConnect. */
-export function getMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsForEventData>>;
-/** Generated Node Admin SDK operation action function for the 'GetMyBookingsForEvent' Query. Allow users to pass in custom DataConnect instances. */
-export function getMyBookingsForEvent(vars: GetMyBookingsForEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsForEventData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetMyBookings' Query. Allow users to execute without passing in DataConnect. */
-export function getMyBookings(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetMyBookings' Query. Allow users to pass in custom DataConnect instances. */
-export function getMyBookings(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrderById' Query. Allow users to execute without passing in DataConnect. */
-export function getMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrderByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrderById' Query. Allow users to pass in custom DataConnect instances. */
-export function getMyTicketOrderById(vars: GetMyTicketOrderByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrderByIdData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrders' Query. Allow users to execute without passing in DataConnect. */
-export function getMyTicketOrders(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrdersData>>;
-/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrders' Query. Allow users to pass in custom DataConnect instances. */
-export function getMyTicketOrders(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrdersData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetMyBookingPaymentAdjustments' Query. Allow users to execute without passing in DataConnect. */
-export function getMyBookingPaymentAdjustments(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingPaymentAdjustmentsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetMyBookingPaymentAdjustments' Query. Allow users to pass in custom DataConnect instances. */
-export function getMyBookingPaymentAdjustments(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingPaymentAdjustmentsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListEventBookingsForAdmin' Query. Allow users to execute without passing in DataConnect. */
-export function listEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListEventBookingsForAdminData>>;
-/** Generated Node Admin SDK operation action function for the 'ListEventBookingsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
-export function listEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListEventBookingsForAdminData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListGuestTicketRequestsForAdmin' Query. Allow users to execute without passing in DataConnect. */
-export function listGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGuestTicketRequestsForAdminData>>;
-/** Generated Node Admin SDK operation action function for the 'ListGuestTicketRequestsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
-export function listGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGuestTicketRequestsForAdminData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListTicketOrdersForAdmin' Query. Allow users to execute without passing in DataConnect. */
-export function listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;
-/** Generated Node Admin SDK operation action function for the 'ListTicketOrdersForAdmin' Query. Allow users to pass in custom DataConnect instances. */
-export function listTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListBookingPaymentAdjustmentsForAdmin' Query. Allow users to execute without passing in DataConnect. */
-export function listBookingPaymentAdjustmentsForAdmin(dc: DataConnect, vars: ListBookingPaymentAdjustmentsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListBookingPaymentAdjustmentsForAdminData>>;
-/** Generated Node Admin SDK operation action function for the 'ListBookingPaymentAdjustmentsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
-export function listBookingPaymentAdjustmentsForAdmin(vars: ListBookingPaymentAdjustmentsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListBookingPaymentAdjustmentsForAdminData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListOpenPaymentReconciliationExceptions' Query. Allow users to execute without passing in DataConnect. */
-export function listOpenPaymentReconciliationExceptions(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOpenPaymentReconciliationExceptionsData>>;
-/** Generated Node Admin SDK operation action function for the 'ListOpenPaymentReconciliationExceptions' Query. Allow users to pass in custom DataConnect instances. */
-export function listOpenPaymentReconciliationExceptions(options?: OperationOptions): Promise<ExecuteOperationResponse<ListOpenPaymentReconciliationExceptionsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createSection(vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function createUserGroup(dc: DataConnect, vars: CreateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createUserGroup(vars: CreateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AddUserToUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function addUserToUserGroup(dc: DataConnect, vars: AddUserToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'AddUserToUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addUserToUserGroup(vars: AddUserToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToUserGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'RemoveUserFromUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function removeUserFromUserGroup(dc: DataConnect, vars: RemoveUserFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'RemoveUserFromUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function removeUserFromUserGroup(vars: RemoveUserFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromUserGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GrantUserGroupToSectionForPurpose' Mutation. Allow users to execute without passing in DataConnect. */
-export function grantUserGroupToSectionForPurpose(dc: DataConnect, vars: GrantUserGroupToSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantUserGroupToSectionForPurposeData>>;
-/** Generated Node Admin SDK operation action function for the 'GrantUserGroupToSectionForPurpose' Mutation. Allow users to pass in custom DataConnect instances. */
-export function grantUserGroupToSectionForPurpose(vars: GrantUserGroupToSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantUserGroupToSectionForPurposeData>>;
-
-/** Generated Node Admin SDK operation action function for the 'RevokeUserGroupFromSectionForPurpose' Mutation. Allow users to execute without passing in DataConnect. */
-export function revokeUserGroupFromSectionForPurpose(dc: DataConnect, vars: RevokeUserGroupFromSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeUserGroupFromSectionForPurposeData>>;
-/** Generated Node Admin SDK operation action function for the 'RevokeUserGroupFromSectionForPurpose' Mutation. Allow users to pass in custom DataConnect instances. */
-export function revokeUserGroupFromSectionForPurpose(vars: RevokeUserGroupFromSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeUserGroupFromSectionForPurposeData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateUserGroup(dc: DataConnect, vars: UpdateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateUserGroup(vars: UpdateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteUserGroup(dc: DataConnect, vars: DeleteUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteUserGroup(vars: DeleteUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateSection(dc: DataConnect, vars: UpdateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateSection(vars: UpdateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteSection(dc: DataConnect, vars: DeleteSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteSection(vars: DeleteSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateEvent' Mutation. Allow users to execute without passing in DataConnect. */
-export function createEvent(dc: DataConnect, vars: CreateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateEventData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateEvent' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createEvent(vars: CreateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateEventData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateEvent' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateEvent(dc: DataConnect, vars: UpdateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEventData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateEvent' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateEvent(vars: UpdateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEventData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteEvent' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteEvent(dc: DataConnect, vars: DeleteEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteEventData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteEvent' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteEvent(vars: DeleteEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteEventData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateTicketType' Mutation. Allow users to execute without passing in DataConnect. */
-export function createTicketType(dc: DataConnect, vars: CreateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketTypeData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateTicketType' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createTicketType(vars: CreateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketTypeData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateTicketType' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateTicketType(dc: DataConnect, vars: UpdateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateTicketTypeData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateTicketType' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateTicketType(vars: UpdateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateTicketTypeData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteTicketType' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteTicketType(dc: DataConnect, vars: DeleteTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteTicketTypeData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteTicketType' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteTicketType(vars: DeleteTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteTicketTypeData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to execute without passing in DataConnect. */
-export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserProfileData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createUserProfile(vars: CreateUserProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserProfileData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function upsertUser(dc: DataConnect, vars: UpsertUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserData>>;
-/** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function upsertUser(vars: UpsertUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateUser(dc: DataConnect, vars: UpdateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateUser(vars: UpdateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'RegisterForSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function registerForSection(dc: DataConnect, vars: RegisterForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RegisterForSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'RegisterForSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function registerForSection(vars: RegisterForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RegisterForSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to execute without passing in DataConnect. */
-export function unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
-/** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
-export function unregisterFromSection(vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'SubscribeToUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function subscribeToUserGroup(dc: DataConnect, vars: SubscribeToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SubscribeToUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'SubscribeToUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function subscribeToUserGroup(vars: SubscribeToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SubscribeToUserGroupData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UnsubscribeFromUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
-export function unsubscribeFromUserGroup(dc: DataConnect, vars: UnsubscribeFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnsubscribeFromUserGroupData>>;
-/** Generated Node Admin SDK operation action function for the 'UnsubscribeFromUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
-export function unsubscribeFromUserGroup(vars: UnsubscribeFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnsubscribeFromUserGroupData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
@@ -2553,6 +2359,11 @@ export function getGuestTicketRequestForNotification(dc: DataConnect, vars: GetG
 /** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestForNotification' Query. Allow users to pass in custom DataConnect instances. */
 export function getGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestForNotificationData>>;
 
+/** Generated Node Admin SDK operation action function for the 'GetSectionAnnouncementOptOuts' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionAnnouncementOptOuts(dc: DataConnect, vars: GetSectionAnnouncementOptOutsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionAnnouncementOptOutsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionAnnouncementOptOuts' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionAnnouncementOptOuts(vars: GetSectionAnnouncementOptOutsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionAnnouncementOptOutsData>>;
+
 /** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to execute without passing in DataConnect. */
 export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
 /** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -2597,4 +2408,279 @@ export function adminDeleteBooking(vars: AdminDeleteBookingVariables, options?: 
 export function resolvePaymentReconciliationException(dc: DataConnect, vars: ResolvePaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ResolvePaymentReconciliationExceptionData>>;
 /** Generated Node Admin SDK operation action function for the 'ResolvePaymentReconciliationException' Mutation. Allow users to pass in custom DataConnect instances. */
 export function resolvePaymentReconciliationException(vars: ResolvePaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ResolvePaymentReconciliationExceptionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
+export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
+/** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to pass in custom DataConnect instances. */
+export function getCurrentUser(options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserById' Query. Allow users to execute without passing in DataConnect. */
+export function getUserById(dc: DataConnect, vars: GetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserById' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserById(vars: GetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to execute without passing in DataConnect. */
+export function listUsers(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to pass in custom DataConnect instances. */
+export function listUsers(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSections' Query. Allow users to execute without passing in DataConnect. */
+export function listSections(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSections' Query. Allow users to pass in custom DataConnect instances. */
+export function listSections(options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionsForUser' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionsForUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionsForUserData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionsForUser' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionsForUser(options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionsForUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListUserGroups' Query. Allow users to execute without passing in DataConnect. */
+export function listUserGroups(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserGroupsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUserGroups' Query. Allow users to pass in custom DataConnect instances. */
+export function listUserGroups(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserGroupsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroups' Query. Allow users to execute without passing in DataConnect. */
+export function getUserAccessGroups(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroups' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserAccessGroups(options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CheckUserProfileExists' Query. Allow users to execute without passing in DataConnect. */
+export function checkUserProfileExists(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<CheckUserProfileExistsData>>;
+/** Generated Node Admin SDK operation action function for the 'CheckUserProfileExists' Query. Allow users to pass in custom DataConnect instances. */
+export function checkUserProfileExists(options?: OperationOptions): Promise<ExecuteOperationResponse<CheckUserProfileExistsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserMembershipStatus' Query. Allow users to execute without passing in DataConnect. */
+export function getUserMembershipStatus(dc: DataConnect, vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserMembershipStatus' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserMembershipStatus(vars: GetUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserMembershipStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserWithAccessGroups' Query. Allow users to execute without passing in DataConnect. */
+export function getUserWithAccessGroups(dc: DataConnect, vars: GetUserWithAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserWithAccessGroupsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserWithAccessGroups' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserWithAccessGroups(vars: GetUserWithAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserWithAccessGroupsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsById' Query. Allow users to execute without passing in DataConnect. */
+export function getUserAccessGroupsById(dc: DataConnect, vars: GetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserAccessGroupsById' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserAccessGroupsById(vars: GetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserAccessGroupsByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetEventsForSection' Query. Allow users to execute without passing in DataConnect. */
+export function getEventsForSection(dc: DataConnect, vars: GetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventsForSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'GetEventsForSection' Query. Allow users to pass in custom DataConnect instances. */
+export function getEventsForSection(vars: GetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventsForSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetEventById' Query. Allow users to execute without passing in DataConnect. */
+export function getEventById(dc: DataConnect, vars: GetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetEventById' Query. Allow users to pass in custom DataConnect instances. */
+export function getEventById(vars: GetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionById' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionById(dc: DataConnect, vars: GetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionById' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionById(vars: GetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetUserGroupById' Query. Allow users to execute without passing in DataConnect. */
+export function getUserGroupById(dc: DataConnect, vars: GetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserGroupByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserGroupById' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserGroupById(vars: GetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserGroupByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAllUserGroupsWithStatuses' Query. Allow users to execute without passing in DataConnect. */
+export function getAllUserGroupsWithStatuses(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAllUserGroupsWithStatusesData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAllUserGroupsWithStatuses' Query. Allow users to pass in custom DataConnect instances. */
+export function getAllUserGroupsWithStatuses(options?: OperationOptions): Promise<ExecuteOperationResponse<GetAllUserGroupsWithStatusesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionMembers' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionMembers(dc: DataConnect, vars: GetSectionMembersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionMembersData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionMembers' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionMembers(vars: GetSectionMembersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionMembersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetMyBookingsForEvent' Query. Allow users to execute without passing in DataConnect. */
+export function getMyBookingsForEvent(dc: DataConnect, vars: GetMyBookingsForEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsForEventData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMyBookingsForEvent' Query. Allow users to pass in custom DataConnect instances. */
+export function getMyBookingsForEvent(vars: GetMyBookingsForEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsForEventData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetMyBookings' Query. Allow users to execute without passing in DataConnect. */
+export function getMyBookings(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMyBookings' Query. Allow users to pass in custom DataConnect instances. */
+export function getMyBookings(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrderById' Query. Allow users to execute without passing in DataConnect. */
+export function getMyTicketOrderById(dc: DataConnect, vars: GetMyTicketOrderByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrderByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrderById' Query. Allow users to pass in custom DataConnect instances. */
+export function getMyTicketOrderById(vars: GetMyTicketOrderByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrderByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrders' Query. Allow users to execute without passing in DataConnect. */
+export function getMyTicketOrders(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrdersData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMyTicketOrders' Query. Allow users to pass in custom DataConnect instances. */
+export function getMyTicketOrders(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyTicketOrdersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetMyBookingPaymentAdjustments' Query. Allow users to execute without passing in DataConnect. */
+export function getMyBookingPaymentAdjustments(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingPaymentAdjustmentsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMyBookingPaymentAdjustments' Query. Allow users to pass in custom DataConnect instances. */
+export function getMyBookingPaymentAdjustments(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyBookingPaymentAdjustmentsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListEventBookingsForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function listEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListEventBookingsForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'ListEventBookingsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function listEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListEventBookingsForAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListGuestTicketRequestsForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function listGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGuestTicketRequestsForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'ListGuestTicketRequestsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function listGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGuestTicketRequestsForAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListTicketOrdersForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'ListTicketOrdersForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function listTicketOrdersForAdmin(vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListBookingPaymentAdjustmentsForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function listBookingPaymentAdjustmentsForAdmin(dc: DataConnect, vars: ListBookingPaymentAdjustmentsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListBookingPaymentAdjustmentsForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'ListBookingPaymentAdjustmentsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function listBookingPaymentAdjustmentsForAdmin(vars: ListBookingPaymentAdjustmentsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListBookingPaymentAdjustmentsForAdminData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListOpenPaymentReconciliationExceptions' Query. Allow users to execute without passing in DataConnect. */
+export function listOpenPaymentReconciliationExceptions(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOpenPaymentReconciliationExceptionsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListOpenPaymentReconciliationExceptions' Query. Allow users to pass in custom DataConnect instances. */
+export function listOpenPaymentReconciliationExceptions(options?: OperationOptions): Promise<ExecuteOperationResponse<ListOpenPaymentReconciliationExceptionsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionAnnouncementOptOut' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionAnnouncementOptOut(dc: DataConnect, vars: GetSectionAnnouncementOptOutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionAnnouncementOptOutData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionAnnouncementOptOut' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionAnnouncementOptOut(vars: GetSectionAnnouncementOptOutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionAnnouncementOptOutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetCurrentUserAnnouncementOptOut' Query. Allow users to execute without passing in DataConnect. */
+export function getCurrentUserAnnouncementOptOut(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserAnnouncementOptOutData>>;
+/** Generated Node Admin SDK operation action function for the 'GetCurrentUserAnnouncementOptOut' Query. Allow users to pass in custom DataConnect instances. */
+export function getCurrentUserAnnouncementOptOut(options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserAnnouncementOptOutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createSection(vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function createUserGroup(dc: DataConnect, vars: CreateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createUserGroup(vars: CreateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AddUserToUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function addUserToUserGroup(dc: DataConnect, vars: AddUserToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'AddUserToUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function addUserToUserGroup(vars: AddUserToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddUserToUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RemoveUserFromUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function removeUserFromUserGroup(dc: DataConnect, vars: RemoveUserFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'RemoveUserFromUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function removeUserFromUserGroup(vars: RemoveUserFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveUserFromUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GrantUserGroupToSectionForPurpose' Mutation. Allow users to execute without passing in DataConnect. */
+export function grantUserGroupToSectionForPurpose(dc: DataConnect, vars: GrantUserGroupToSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantUserGroupToSectionForPurposeData>>;
+/** Generated Node Admin SDK operation action function for the 'GrantUserGroupToSectionForPurpose' Mutation. Allow users to pass in custom DataConnect instances. */
+export function grantUserGroupToSectionForPurpose(vars: GrantUserGroupToSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GrantUserGroupToSectionForPurposeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RevokeUserGroupFromSectionForPurpose' Mutation. Allow users to execute without passing in DataConnect. */
+export function revokeUserGroupFromSectionForPurpose(dc: DataConnect, vars: RevokeUserGroupFromSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeUserGroupFromSectionForPurposeData>>;
+/** Generated Node Admin SDK operation action function for the 'RevokeUserGroupFromSectionForPurpose' Mutation. Allow users to pass in custom DataConnect instances. */
+export function revokeUserGroupFromSectionForPurpose(vars: RevokeUserGroupFromSectionForPurposeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RevokeUserGroupFromSectionForPurposeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateUserGroup(dc: DataConnect, vars: UpdateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateUserGroup(vars: UpdateUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteUserGroup(dc: DataConnect, vars: DeleteUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteUserGroup(vars: DeleteUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateSection(dc: DataConnect, vars: UpdateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateSection(vars: UpdateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteSection(dc: DataConnect, vars: DeleteSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteSection(vars: DeleteSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateEvent' Mutation. Allow users to execute without passing in DataConnect. */
+export function createEvent(dc: DataConnect, vars: CreateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateEventData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateEvent' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createEvent(vars: CreateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateEventData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateEvent' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateEvent(dc: DataConnect, vars: UpdateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEventData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateEvent' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateEvent(vars: UpdateEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEventData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteEvent' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteEvent(dc: DataConnect, vars: DeleteEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteEventData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteEvent' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteEvent(vars: DeleteEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteEventData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateTicketType' Mutation. Allow users to execute without passing in DataConnect. */
+export function createTicketType(dc: DataConnect, vars: CreateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateTicketType' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createTicketType(vars: CreateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateTicketType' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateTicketType(dc: DataConnect, vars: UpdateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateTicketTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateTicketType' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateTicketType(vars: UpdateTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateTicketTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteTicketType' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteTicketType(dc: DataConnect, vars: DeleteTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteTicketTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteTicketType' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteTicketType(vars: DeleteTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteTicketTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to execute without passing in DataConnect. */
+export function createUserProfile(dc: DataConnect, vars: CreateUserProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserProfileData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateUserProfile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createUserProfile(vars: CreateUserProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserProfileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to execute without passing in DataConnect. */
+export function upsertUser(dc: DataConnect, vars: UpsertUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to pass in custom DataConnect instances. */
+export function upsertUser(vars: UpsertUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateUser' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateUser(dc: DataConnect, vars: UpdateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateUser' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateUser(vars: UpdateUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RegisterForSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function registerForSection(dc: DataConnect, vars: RegisterForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RegisterForSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'RegisterForSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function registerForSection(vars: RegisterForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RegisterForSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to execute without passing in DataConnect. */
+export function unregisterFromSection(dc: DataConnect, vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'UnregisterFromSection' Mutation. Allow users to pass in custom DataConnect instances. */
+export function unregisterFromSection(vars: UnregisterFromSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnregisterFromSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'SubscribeToUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function subscribeToUserGroup(dc: DataConnect, vars: SubscribeToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SubscribeToUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'SubscribeToUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function subscribeToUserGroup(vars: SubscribeToUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SubscribeToUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UnsubscribeFromUserGroup' Mutation. Allow users to execute without passing in DataConnect. */
+export function unsubscribeFromUserGroup(dc: DataConnect, vars: UnsubscribeFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnsubscribeFromUserGroupData>>;
+/** Generated Node Admin SDK operation action function for the 'UnsubscribeFromUserGroup' Mutation. Allow users to pass in custom DataConnect instances. */
+export function unsubscribeFromUserGroup(vars: UnsubscribeFromUserGroupVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UnsubscribeFromUserGroupData>>;
+
+/** Generated Node Admin SDK operation action function for the 'OptOutSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */
+export function optOutSectionAnnouncement(dc: DataConnect, vars: OptOutSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<OptOutSectionAnnouncementData>>;
+/** Generated Node Admin SDK operation action function for the 'OptOutSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function optOutSectionAnnouncement(vars: OptOutSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<OptOutSectionAnnouncementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'OptInSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */
+export function optInSectionAnnouncement(dc: DataConnect, vars: OptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<OptInSectionAnnouncementData>>;
+/** Generated Node Admin SDK operation action function for the 'OptInSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function optInSectionAnnouncement(vars: OptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<OptInSectionAnnouncementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementEmailsOptOut' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateAnnouncementEmailsOptOut(dc: DataConnect, vars: UpdateAnnouncementEmailsOptOutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementEmailsOptOutData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementEmailsOptOut' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateAnnouncementEmailsOptOut(vars: UpdateAnnouncementEmailsOptOutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementEmailsOptOutData>>;
 

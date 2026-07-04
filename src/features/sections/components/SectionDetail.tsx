@@ -401,6 +401,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           subscribing={subscribing}
           onSubscribe={handleSubscribe}
           onUnsubscribe={handleUnsubscribe}
+          sectionId={sectionId}
         />
       )}
 

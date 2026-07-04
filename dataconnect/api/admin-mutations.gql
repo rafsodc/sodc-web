@@ -1035,3 +1035,12 @@ query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
 }
 
 
+
+# Get all users who have opted out of announcements for a section (used by sendSectionAnnouncement)
+query GetSectionAnnouncementOptOuts($sectionId: UUID!) @auth(level: NO_ACCESS) {
+  sectionAnnouncementOptOuts(where: { sectionId: { eq: $sectionId } }) {
+    user {
+      id
+    }
+  }
+}

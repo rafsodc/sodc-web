@@ -10,11 +10,17 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
+  FormControlLabel,
   Snackbar,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
+import {
+  useGetCurrentUserAnnouncementOptOut,
+  useUpdateAnnouncementEmailsOptOut,
+} from "@dataconnect/generated/react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   EmailAuthProvider,
@@ -56,6 +62,50 @@ function getAuthErrorMessage(error: unknown): string {
 
 function usesEmailPassword(user: User): boolean {
   return user.providerData.some((provider) => provider.providerId === "password");
+}
+
+function AnnouncementEmailPreference() {
+  const { data, loading, refetch } = useGetCurrentUserAnnouncementOptOut();
+  const [updateOptOut] = useUpdateAnnouncementEmailsOptOut();
+  const [busy, setBusy] = useState(false);
+
+  const optedOut = data?.user?.announcementEmailsOptOut ?? false;
+
+  const handleChange = async () => {
+    setBusy(true);
+    try {
+      await updateOptOut({ optOut: !optedOut });
+      await refetch();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Box component="section" aria-labelledby="email-preferences-heading">
+      <Typography id="email-preferences-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
+        Email preferences
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Manage which emails you receive from SODC. System emails (booking confirmations, payment
+        receipts) are always sent regardless of this setting.
+      </Typography>
+      {loading ? (
+        <CircularProgress size={20} />
+      ) : (
+        <FormControlLabel
+          control={
+            busy ? (
+              <CircularProgress size={20} sx={{ mx: 1.5 }} />
+            ) : (
+              <Switch checked={!optedOut} onChange={handleChange} />
+            )
+          }
+          label="Receive section announcement emails"
+        />
+      )}
+    </Box>
+  );
 }
 
 export default function AccountSettingsPage({
@@ -237,6 +287,9 @@ export default function AccountSettingsPage({
             </>
           )}
         </Box>
+
+        <Divider />
+        <AnnouncementEmailPreference />
 
         {canResign && (
           <>

@@ -11,6 +11,7 @@ export * from "./payments";
 export * from "./stagedExpiry";
 export * from "./userGroups";
 export * from "./emailTemplateSync";
+export * from "./announcements";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {

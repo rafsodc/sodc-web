@@ -20,6 +20,13 @@ vi.mock('@dataconnect/generated/react', () => ({
   useGetMyBookingsForEvent: vi.fn(),
   useGetMyTicketOrders: vi.fn(),
   useGetMyBookingPaymentAdjustments: vi.fn(),
+  useGetSectionAnnouncementOptOut: vi.fn(() => ({
+    data: null,
+    loading: false,
+    refetch: vi.fn(),
+  })),
+  useOptOutSectionAnnouncement: vi.fn(() => [vi.fn()]),
+  useOptInSectionAnnouncement: vi.fn(() => [vi.fn()]),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({

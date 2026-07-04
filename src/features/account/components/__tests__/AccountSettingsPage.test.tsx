@@ -22,6 +22,15 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   resignMembership: vi.fn(),
 }));
 
+vi.mock("@dataconnect/generated/react", () => ({
+  useGetCurrentUserAnnouncementOptOut: vi.fn(() => ({
+    data: { user: { announcementEmailsOptOut: false } },
+    loading: false,
+    refetch: vi.fn(),
+  })),
+  useUpdateAnnouncementEmailsOptOut: vi.fn(() => [vi.fn()]),
+}));
+
 const mockUser = createMockUser({
   uid: "user-1",
   email: "member@example.com",
