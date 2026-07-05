@@ -44,6 +44,7 @@ import {
   TicketAdminSurface,
   TicketTypeDialogSurface,
 } from "./SectionEventsManagerSurfaces";
+import SendAnnouncementPage from "./SendAnnouncementPage";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionEventsManagerProps {
@@ -93,6 +94,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState<string | null>(null);
   const [requestStatusFilter, setRequestStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [moderatorNoteDraft, setModeratorNoteDraft] = useState<Record<string, string>>({});
   const {
     data: guestRequestsData,
@@ -370,6 +372,16 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
   };
 
+  if (sendingAnnouncement) {
+    return (
+      <SendAnnouncementPage
+        sectionId={sectionId}
+        sectionName={sectionName}
+        onBack={() => setSendingAnnouncement(false)}
+      />
+    );
+  }
+
   if (ticketTypesEventId) {
     const event = events.find((e) => e.id === ticketTypesEventId);
     const eventForAdmin: EventRow | null = eventDetailData?.event
@@ -476,6 +488,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         error={error}
         onDismissError={() => setError(null)}
         onAddEvent={() => openEventDialog()}
+        onSendAnnouncement={() => setSendingAnnouncement(true)}
         loadingEvents={loadingEvents}
         errorEvents={errorEvents}
         events={events}

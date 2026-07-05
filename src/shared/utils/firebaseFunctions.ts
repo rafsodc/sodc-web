@@ -619,3 +619,53 @@ export async function getTemplateSyncStatus(): Promise<{ results: TemplateSyncRe
   return result.data;
 }
 
+// ============================================================================
+// Announcements
+// ============================================================================
+
+export interface AnnouncementTemplate {
+  id: string;
+  name: string;
+  updatedAt: string;
+}
+
+export async function getAnnouncementTemplates(
+  sectionId: string
+): Promise<AnnouncementTemplate[]> {
+  const callable = httpsCallable<{ sectionId: string }, { templates: AnnouncementTemplate[] }>(
+    functions,
+    "getAnnouncementTemplates"
+  );
+  const result = await callable({ sectionId });
+  return result.data.templates;
+}
+
+export async function previewAnnouncementTemplate(
+  templateUuid: string
+): Promise<{ html: string; subject: string }> {
+  const callable = httpsCallable<{ templateUuid: string }, { html: string; subject: string }>(
+    functions,
+    "previewAnnouncementTemplate"
+  );
+  const result = await callable({ templateUuid });
+  return result.data;
+}
+
+export interface SendAnnouncementResult {
+  sentCount: number;
+  skippedCount: number;
+  failureCount: number;
+}
+
+export async function sendSectionAnnouncement(
+  sectionId: string,
+  templateUuid: string
+): Promise<SendAnnouncementResult> {
+  const callable = httpsCallable<
+    { sectionId: string; templateUuid: string },
+    SendAnnouncementResult
+  >(functions, "sendSectionAnnouncement");
+  const result = await callable({ sectionId, templateUuid });
+  return result.data;
+}
+
