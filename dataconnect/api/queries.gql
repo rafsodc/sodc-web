@@ -747,9 +747,28 @@ query GetSectionAnnouncementOptOut($sectionId: UUID!) @auth(expr: "auth.token.en
   }
 }
 
-# Get the current user's global announcement opt-out flag
-query GetCurrentUserAnnouncementOptOut @auth(expr: "auth.token.enabled == true") {
+# Get all sections the current user has access to (explicit + status-based), with opt-out status
+query GetMyAnnouncementPreferences @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
-    announcementEmailsOptOut
+    membershipStatus
+    userGroups: userUserGroups_on_user {
+      userGroup {
+        membershipStatuses
+        purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+          purposes
+          section { id name }
+        }
+      }
+    }
+    optOuts: sectionAnnouncementOptOuts_on_user {
+      section { id }
+    }
+  }
+  allUserGroups: userGroups {
+    membershipStatuses
+    purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+      purposes
+      section { id name }
+    }
   }
 }

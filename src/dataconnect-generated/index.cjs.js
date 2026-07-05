@@ -1343,18 +1343,18 @@ exports.getSectionAnnouncementOptOut = function getSectionAnnouncementOptOut(dcO
 }
 ;
 
-const getCurrentUserAnnouncementOptOutRef = (dc) => {
+const getMyAnnouncementPreferencesRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetCurrentUserAnnouncementOptOut');
+  return queryRef(dcInstance, 'GetMyAnnouncementPreferences');
 }
-getCurrentUserAnnouncementOptOutRef.operationName = 'GetCurrentUserAnnouncementOptOut';
-exports.getCurrentUserAnnouncementOptOutRef = getCurrentUserAnnouncementOptOutRef;
+getMyAnnouncementPreferencesRef.operationName = 'GetMyAnnouncementPreferences';
+exports.getMyAnnouncementPreferencesRef = getMyAnnouncementPreferencesRef;
 
-exports.getCurrentUserAnnouncementOptOut = function getCurrentUserAnnouncementOptOut(dcOrOptions, options) {
+exports.getMyAnnouncementPreferences = function getMyAnnouncementPreferences(dcOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getCurrentUserAnnouncementOptOutRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  return executeQuery(getMyAnnouncementPreferencesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -1705,19 +1705,5 @@ exports.optInSectionAnnouncementRef = optInSectionAnnouncementRef;
 exports.optInSectionAnnouncement = function optInSectionAnnouncement(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(optInSectionAnnouncementRef(dcInstance, inputVars));
-}
-;
-
-const updateAnnouncementEmailsOptOutRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateAnnouncementEmailsOptOut', inputVars);
-}
-updateAnnouncementEmailsOptOutRef.operationName = 'UpdateAnnouncementEmailsOptOut';
-exports.updateAnnouncementEmailsOptOutRef = updateAnnouncementEmailsOptOutRef;
-
-exports.updateAnnouncementEmailsOptOut = function updateAnnouncementEmailsOptOut(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateAnnouncementEmailsOptOutRef(dcInstance, inputVars));
 }
 ;

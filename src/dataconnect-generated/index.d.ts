@@ -646,12 +646,6 @@ export interface GetBookingsForBookerAndEventVariables {
   eventId: UUIDString;
 }
 
-export interface GetCurrentUserAnnouncementOptOutData {
-  user?: {
-    announcementEmailsOptOut?: boolean | null;
-  };
-}
-
 export interface GetCurrentUserData {
   user?: {
     id: string;
@@ -793,6 +787,39 @@ export interface GetGuestTicketRequestForNotificationData {
 
 export interface GetGuestTicketRequestForNotificationVariables {
   id: UUIDString;
+}
+
+export interface GetMyAnnouncementPreferencesData {
+  user?: {
+    membershipStatus: MembershipStatus;
+    userGroups: ({
+      userGroup: {
+        membershipStatuses?: MembershipStatus[] | null;
+        purposeLinks: ({
+          purposes?: SectionUserGroupPurpose[] | null;
+          section: {
+            id: UUIDString;
+            name: string;
+          } & Section_Key;
+        })[];
+      };
+    })[];
+    optOuts: ({
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+    })[];
+  };
+  allUserGroups: ({
+    membershipStatuses?: MembershipStatus[] | null;
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+      } & Section_Key;
+    })[];
+  })[];
 }
 
 export interface GetMyBookingPaymentAdjustmentsData {
@@ -1954,14 +1981,6 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
-}
-
-export interface UpdateAnnouncementEmailsOptOutData {
-  user_update?: User_Key | null;
-}
-
-export interface UpdateAnnouncementEmailsOptOutVariables {
-  optOut: boolean;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -3159,17 +3178,17 @@ export const getSectionAnnouncementOptOutRef: GetSectionAnnouncementOptOutRef;
 export function getSectionAnnouncementOptOut(vars: GetSectionAnnouncementOptOutVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutData, GetSectionAnnouncementOptOutVariables>;
 export function getSectionAnnouncementOptOut(dc: DataConnect, vars: GetSectionAnnouncementOptOutVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutData, GetSectionAnnouncementOptOutVariables>;
 
-interface GetCurrentUserAnnouncementOptOutRef {
+interface GetMyAnnouncementPreferencesRef {
   /* Allow users to create refs without passing in DataConnect */
-  (): QueryRef<GetCurrentUserAnnouncementOptOutData, undefined>;
+  (): QueryRef<GetMyAnnouncementPreferencesData, undefined>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect): QueryRef<GetCurrentUserAnnouncementOptOutData, undefined>;
+  (dc: DataConnect): QueryRef<GetMyAnnouncementPreferencesData, undefined>;
   operationName: string;
 }
-export const getCurrentUserAnnouncementOptOutRef: GetCurrentUserAnnouncementOptOutRef;
+export const getMyAnnouncementPreferencesRef: GetMyAnnouncementPreferencesRef;
 
-export function getCurrentUserAnnouncementOptOut(options?: ExecuteQueryOptions): QueryPromise<GetCurrentUserAnnouncementOptOutData, undefined>;
-export function getCurrentUserAnnouncementOptOut(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetCurrentUserAnnouncementOptOutData, undefined>;
+export function getMyAnnouncementPreferences(options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
+export function getMyAnnouncementPreferences(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
 
 interface CreateSectionRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -3470,16 +3489,4 @@ export const optInSectionAnnouncementRef: OptInSectionAnnouncementRef;
 
 export function optInSectionAnnouncement(vars: OptInSectionAnnouncementVariables): MutationPromise<OptInSectionAnnouncementData, OptInSectionAnnouncementVariables>;
 export function optInSectionAnnouncement(dc: DataConnect, vars: OptInSectionAnnouncementVariables): MutationPromise<OptInSectionAnnouncementData, OptInSectionAnnouncementVariables>;
-
-interface UpdateAnnouncementEmailsOptOutRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateAnnouncementEmailsOptOutVariables): MutationRef<UpdateAnnouncementEmailsOptOutData, UpdateAnnouncementEmailsOptOutVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdateAnnouncementEmailsOptOutVariables): MutationRef<UpdateAnnouncementEmailsOptOutData, UpdateAnnouncementEmailsOptOutVariables>;
-  operationName: string;
-}
-export const updateAnnouncementEmailsOptOutRef: UpdateAnnouncementEmailsOptOutRef;
-
-export function updateAnnouncementEmailsOptOut(vars: UpdateAnnouncementEmailsOptOutVariables): MutationPromise<UpdateAnnouncementEmailsOptOutData, UpdateAnnouncementEmailsOptOutVariables>;
-export function updateAnnouncementEmailsOptOut(dc: DataConnect, vars: UpdateAnnouncementEmailsOptOutVariables): MutationPromise<UpdateAnnouncementEmailsOptOutData, UpdateAnnouncementEmailsOptOutVariables>;
 

@@ -172,8 +172,3 @@ mutation OptOutSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.en
 mutation OptInSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
   sectionAnnouncementOptOut_delete(key: { userId_expr: "auth.uid", sectionId: $sectionId })
 }
-
-# Update the current user's global announcement email opt-out flag
-mutation UpdateAnnouncementEmailsOptOut($optOut: Boolean!) @auth(expr: "auth.token.enabled == true") {
-  user_update(key: { id_expr: "auth.uid" }, data: { announcementEmailsOptOut: $optOut })
-}

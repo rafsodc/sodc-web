@@ -33,6 +33,7 @@ interface SectionDescriptionHeaderProps {
   hasCurrentUser: boolean;
   canSubscribe: boolean;
   userIsMember: boolean;
+  userHasSectionAccess: boolean;
   hasSubscribableMemberGroup: boolean;
   subscribing: boolean;
   onSubscribe: () => void;
@@ -46,6 +47,7 @@ export function SectionDescriptionHeader({
   hasCurrentUser,
   canSubscribe,
   userIsMember,
+  userHasSectionAccess,
   hasSubscribableMemberGroup,
   subscribing,
   onSubscribe,
@@ -89,11 +91,11 @@ export function SectionDescriptionHeader({
               {subscribing ? "Unsubscribing..." : "Unsubscribe"}
             </Button>
           )}
-          {userIsMember && (
-            <Box sx={{ mt: 2 }}>
-              <AnnouncementOptOutToggle sectionId={sectionId} />
-            </Box>
-          )}
+        </Box>
+      )}
+      {hasCurrentUser && userHasSectionAccess && (
+        <Box sx={{ mt: 2 }}>
+          <AnnouncementOptOutToggle sectionId={sectionId} />
         </Box>
       )}
     </Box>

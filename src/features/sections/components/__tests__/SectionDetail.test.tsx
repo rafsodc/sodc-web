@@ -14,6 +14,10 @@ import {
 vi.mock('@dataconnect/generated/react', () => ({
   useGetSectionById: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
+  useGetSectionsForUser: vi.fn(() => ({
+    data: { user: { membershipStatus: null, userGroups: [] }, allUserGroups: [] },
+    isLoading: false,
+  })),
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
   useGetCurrentUser: vi.fn(),
@@ -22,11 +26,19 @@ vi.mock('@dataconnect/generated/react', () => ({
   useGetMyBookingPaymentAdjustments: vi.fn(),
   useGetSectionAnnouncementOptOut: vi.fn(() => ({
     data: null,
-    loading: false,
+    isLoading: false,
     refetch: vi.fn(),
   })),
-  useOptOutSectionAnnouncement: vi.fn(() => [vi.fn()]),
-  useOptInSectionAnnouncement: vi.fn(() => [vi.fn()]),
+  useOptOutSectionAnnouncement: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
+    mutate: vi.fn(),
+    isPending: false,
+  })),
+  useOptInSectionAnnouncement: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
+    mutate: vi.fn(),
+    isPending: false,
+  })),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({

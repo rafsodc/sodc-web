@@ -64,7 +64,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListBookingPaymentAdjustmentsForAdmin*](#listbookingpaymentadjustmentsforadmin)
   - [*ListOpenPaymentReconciliationExceptions*](#listopenpaymentreconciliationexceptions)
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
-  - [*GetCurrentUserAnnouncementOptOut*](#getcurrentuserannouncementoptout)
+  - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
 - [**Mutations**](#mutations)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
   - [*DeleteUser*](#deleteuser)
@@ -129,7 +129,6 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UnsubscribeFromUserGroup*](#unsubscribefromusergroup)
   - [*OptOutSectionAnnouncement*](#optoutsectionannouncement)
   - [*OptInSectionAnnouncement*](#optinsectionannouncement)
-  - [*UpdateAnnouncementEmailsOptOut*](#updateannouncementemailsoptout)
 
 # TanStack Query Firebase & TanStack React Query
 This SDK provides [React](https://react.dev/) hooks generated specific to your application, for the operations found in the connector `api`. These hooks are generated using [TanStack Query Firebase](https://react-query-firebase.invertase.dev/) by our partners at Invertase, a library built on top of [TanStack React Query v5](https://tanstack.com/query/v5/docs/framework/react/overview).
@@ -4849,59 +4848,86 @@ export default function GetSectionAnnouncementOptOutComponent() {
 }
 ```
 
-## GetCurrentUserAnnouncementOptOut
-You can execute the `GetCurrentUserAnnouncementOptOut` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+## GetMyAnnouncementPreferences
+You can execute the `GetMyAnnouncementPreferences` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
 ```javascript
-useGetCurrentUserAnnouncementOptOut(dc: DataConnect, options?: useDataConnectQueryOptions<GetCurrentUserAnnouncementOptOutData>): UseDataConnectQueryResult<GetCurrentUserAnnouncementOptOutData, undefined>;
+useGetMyAnnouncementPreferences(dc: DataConnect, options?: useDataConnectQueryOptions<GetMyAnnouncementPreferencesData>): UseDataConnectQueryResult<GetMyAnnouncementPreferencesData, undefined>;
 ```
 You can also pass in a `DataConnect` instance to the Query hook function.
 ```javascript
-useGetCurrentUserAnnouncementOptOut(options?: useDataConnectQueryOptions<GetCurrentUserAnnouncementOptOutData>): UseDataConnectQueryResult<GetCurrentUserAnnouncementOptOutData, undefined>;
+useGetMyAnnouncementPreferences(options?: useDataConnectQueryOptions<GetMyAnnouncementPreferencesData>): UseDataConnectQueryResult<GetMyAnnouncementPreferencesData, undefined>;
 ```
 
 ### Variables
-The `GetCurrentUserAnnouncementOptOut` Query has no variables.
+The `GetMyAnnouncementPreferences` Query has no variables.
 ### Return Type
-Recall that calling the `GetCurrentUserAnnouncementOptOut` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+Recall that calling the `GetMyAnnouncementPreferences` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
 
 To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
 
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetCurrentUserAnnouncementOptOut` Query is of type `GetCurrentUserAnnouncementOptOutData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetMyAnnouncementPreferences` Query is of type `GetMyAnnouncementPreferencesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface GetCurrentUserAnnouncementOptOutData {
+export interface GetMyAnnouncementPreferencesData {
   user?: {
-    announcementEmailsOptOut?: boolean | null;
+    membershipStatus: MembershipStatus;
+    userGroups: ({
+      userGroup: {
+        membershipStatuses?: MembershipStatus[] | null;
+        purposeLinks: ({
+          purposes?: SectionUserGroupPurpose[] | null;
+          section: {
+            id: UUIDString;
+            name: string;
+          } & Section_Key;
+        })[];
+      };
+    })[];
+    optOuts: ({
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+    })[];
   };
+  allUserGroups: ({
+    membershipStatuses?: MembershipStatus[] | null;
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+      } & Section_Key;
+    })[];
+  })[];
 }
 ```
 
 To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
 
-### Using `GetCurrentUserAnnouncementOptOut`'s Query hook function
+### Using `GetMyAnnouncementPreferences`'s Query hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
 import { connectorConfig } from '@dataconnect/generated';
-import { useGetCurrentUserAnnouncementOptOut } from '@dataconnect/generated/react'
+import { useGetMyAnnouncementPreferences } from '@dataconnect/generated/react'
 
-export default function GetCurrentUserAnnouncementOptOutComponent() {
+export default function GetMyAnnouncementPreferencesComponent() {
   // You don't have to do anything to "execute" the Query.
   // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useGetCurrentUserAnnouncementOptOut();
+  const query = useGetMyAnnouncementPreferences();
 
   // You can also pass in a `DataConnect` instance to the Query hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const query = useGetCurrentUserAnnouncementOptOut(dataConnect);
+  const query = useGetMyAnnouncementPreferences(dataConnect);
 
   // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
   const options = { staleTime: 5 * 1000 };
-  const query = useGetCurrentUserAnnouncementOptOut(options);
+  const query = useGetMyAnnouncementPreferences(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
-  const query = useGetCurrentUserAnnouncementOptOut(dataConnect, options);
+  const query = useGetMyAnnouncementPreferences(dataConnect, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -4915,6 +4941,7 @@ export default function GetCurrentUserAnnouncementOptOutComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.user);
+    console.log(query.data.allUserGroups);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -11242,100 +11269,6 @@ export default function OptInSectionAnnouncementComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.sectionAnnouncementOptOut_delete);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## UpdateAnnouncementEmailsOptOut
-You can execute the `UpdateAnnouncementEmailsOptOut` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useUpdateAnnouncementEmailsOptOut(options?: useDataConnectMutationOptions<UpdateAnnouncementEmailsOptOutData, FirebaseError, UpdateAnnouncementEmailsOptOutVariables>): UseDataConnectMutationResult<UpdateAnnouncementEmailsOptOutData, UpdateAnnouncementEmailsOptOutVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useUpdateAnnouncementEmailsOptOut(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateAnnouncementEmailsOptOutData, FirebaseError, UpdateAnnouncementEmailsOptOutVariables>): UseDataConnectMutationResult<UpdateAnnouncementEmailsOptOutData, UpdateAnnouncementEmailsOptOutVariables>;
-```
-
-### Variables
-The `UpdateAnnouncementEmailsOptOut` Mutation requires an argument of type `UpdateAnnouncementEmailsOptOutVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface UpdateAnnouncementEmailsOptOutVariables {
-  optOut: boolean;
-}
-```
-### Return Type
-Recall that calling the `UpdateAnnouncementEmailsOptOut` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateAnnouncementEmailsOptOut` Mutation is of type `UpdateAnnouncementEmailsOptOutData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface UpdateAnnouncementEmailsOptOutData {
-  user_update?: User_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `UpdateAnnouncementEmailsOptOut`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateAnnouncementEmailsOptOutVariables } from '@dataconnect/generated';
-import { useUpdateAnnouncementEmailsOptOut } from '@dataconnect/generated/react'
-
-export default function UpdateAnnouncementEmailsOptOutComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateAnnouncementEmailsOptOut();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateAnnouncementEmailsOptOut(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateAnnouncementEmailsOptOut(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateAnnouncementEmailsOptOut(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateAnnouncementEmailsOptOut` Mutation requires an argument of type `UpdateAnnouncementEmailsOptOutVariables`:
-  const updateAnnouncementEmailsOptOutVars: UpdateAnnouncementEmailsOptOutVariables = {
-    optOut: ..., 
-  };
-  mutation.mutate(updateAnnouncementEmailsOptOutVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ optOut: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(updateAnnouncementEmailsOptOutVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.user_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

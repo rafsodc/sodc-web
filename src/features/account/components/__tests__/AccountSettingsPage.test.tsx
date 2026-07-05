@@ -23,13 +23,23 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
 }));
 
 vi.mock("@dataconnect/generated/react", () => ({
-  useGetCurrentUserAnnouncementOptOut: vi.fn(() => ({
-    data: { user: { announcementEmailsOptOut: false } },
-    loading: false,
+  useGetMyAnnouncementPreferences: vi.fn(() => ({
+    data: { user: { userGroups: [], optOuts: [] } },
+    isLoading: false,
     refetch: vi.fn(),
   })),
-  useUpdateAnnouncementEmailsOptOut: vi.fn(() => [vi.fn()]),
+  useOptOutSectionAnnouncement: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
+    mutate: vi.fn(),
+    isPending: false,
+  })),
+  useOptInSectionAnnouncement: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
+    mutate: vi.fn(),
+    isPending: false,
+  })),
 }));
+
 
 const mockUser = createMockUser({
   uid: "user-1",

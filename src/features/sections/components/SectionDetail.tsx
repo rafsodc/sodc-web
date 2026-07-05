@@ -6,7 +6,7 @@ import {
   Button,
   Snackbar,
 } from "@mui/material";
-import { useGetSectionById, useGetUserAccessGroups, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
+import { useGetSectionById, useGetUserAccessGroups, useGetSectionsForUser, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
@@ -104,6 +104,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     isLoading: loadingUserGroups,
   } = useGetUserAccessGroups(dataConnect, {});
 
+  // Used to check access including status-based group memberships (result is cached from App.tsx)
+  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, {});
+
   // Get events for this section (used when section.type === EVENTS)
   const {
     data: eventsData,
@@ -149,6 +152,26 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const userIsMember = useMemo(() => {
     return isUserMember(userUserGroupIds, memberGroups);
   }, [userUserGroupIds, memberGroups]);
+
+  // Check if user has access to this section (explicit or status-based group membership)
+  const userHasSectionAccess = useMemo(() => {
+    if (!userSectionsData?.user) return false;
+    const userStatus = userSectionsData.user.membershipStatus;
+    const grantsAccess = (purposes?: string[] | null) =>
+      purposes?.includes(SectionPurpose.ACCESS) || purposes?.includes(SectionPurpose.MODERATOR);
+    for (const ug of userSectionsData.user.userGroups ?? []) {
+      for (const pl of ug.userGroup.purposeLinks ?? []) {
+        if (grantsAccess(pl.purposes) && pl.section?.id === sectionId) return true;
+      }
+    }
+    for (const ug of userSectionsData.allUserGroups ?? []) {
+      if (!ug.membershipStatuses?.includes(userStatus as string)) continue;
+      for (const pl of ug.purposeLinks ?? []) {
+        if (grantsAccess(pl.purposes) && pl.section?.id === sectionId) return true;
+      }
+    }
+    return false;
+  }, [userSectionsData, sectionId]);
 
   // Check if user can subscribe
   const canSubscribe = useMemo(() => {
@@ -397,6 +420,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           hasCurrentUser={Boolean(currentUser)}
           canSubscribe={canSubscribe}
           userIsMember={userIsMember}
+          userHasSectionAccess={userHasSectionAccess}
           hasSubscribableMemberGroup={hasSubscribableMemberGroup}
           subscribing={subscribing}
           onSubscribe={handleSubscribe}

@@ -701,12 +701,12 @@ function getSectionAnnouncementOptOut(dcOrVarsOrOptions, varsOrOptions, options)
 }
 exports.getSectionAnnouncementOptOut = getSectionAnnouncementOptOut;
 
-function getCurrentUserAnnouncementOptOut(dcOrOptions, options) {
+function getMyAnnouncementPreferences(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetCurrentUserAnnouncementOptOut', undefined, inputOpts);
+  return dcInstance.executeQuery('GetMyAnnouncementPreferences', undefined, inputOpts);
 }
-exports.getCurrentUserAnnouncementOptOut = getCurrentUserAnnouncementOptOut;
+exports.getMyAnnouncementPreferences = getMyAnnouncementPreferences;
 
 function createSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -882,11 +882,4 @@ function optInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeMutation('OptInSectionAnnouncement', inputVars, inputOpts);
 }
 exports.optInSectionAnnouncement = optInSectionAnnouncement;
-
-function updateAnnouncementEmailsOptOut(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateAnnouncementEmailsOptOut', inputVars, inputOpts);
-}
-exports.updateAnnouncementEmailsOptOut = updateAnnouncementEmailsOptOut;
 

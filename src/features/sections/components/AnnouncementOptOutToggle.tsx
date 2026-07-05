@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FormControlLabel, Switch, Typography, CircularProgress, Box } from "@mui/material";
+import { FormControlLabel, Switch, Typography, Box, Snackbar } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetSectionAnnouncementOptOut,
   useOptOutSectionAnnouncement,
@@ -11,45 +12,73 @@ interface AnnouncementOptOutToggleProps {
 }
 
 export default function AnnouncementOptOutToggle({ sectionId }: AnnouncementOptOutToggleProps) {
-  const { data, loading, refetch } = useGetSectionAnnouncementOptOut({ sectionId });
-  const [optOut] = useOptOutSectionAnnouncement();
-  const [optIn] = useOptInSectionAnnouncement();
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useGetSectionAnnouncementOptOut(
+    { sectionId },
+    { staleTime: Infinity }
+  );
+  const optOut = useOptOutSectionAnnouncement();
+  const optIn = useOptInSectionAnnouncement();
   const [busy, setBusy] = useState(false);
+  const [localOptedOut, setLocalOptedOut] = useState<boolean | null>(null);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
 
-  const isOptedOut = !!data?.sectionAnnouncementOptOut;
-  const checked = !isOptedOut;
+  const isOptedOut = localOptedOut !== null ? localOptedOut : !!data?.sectionAnnouncementOptOut;
 
   const handleChange = async () => {
+    const newOptedOut = !isOptedOut;
+    setLocalOptedOut(newOptedOut);
     setBusy(true);
     try {
       if (isOptedOut) {
-        await optIn({ sectionId });
+        await optIn.mutateAsync({ sectionId });
       } else {
-        await optOut({ sectionId });
+        await optOut.mutateAsync({ sectionId });
       }
-      await refetch();
+      queryClient.setQueryData(
+        ["GetSectionAnnouncementOptOut", { sectionId }],
+        newOptedOut
+          ? { sectionAnnouncementOptOut: { createdAt: new Date().toISOString() } }
+          : { sectionAnnouncementOptOut: null }
+      );
+      setLocalOptedOut(null);
+      setSnackbar(
+        newOptedOut
+          ? "You will no longer receive announcements from this section"
+          : "You will now receive announcements from this section"
+      );
+    } catch {
+      setLocalOptedOut(null);
     } finally {
       setBusy(false);
     }
   };
 
-  if (loading) return null;
+  if (isLoading) return null;
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <Box>
       <FormControlLabel
         control={
-          busy ? (
-            <CircularProgress size={20} sx={{ mx: 1.5 }} />
-          ) : (
-            <Switch checked={checked} onChange={handleChange} size="small" />
-          )
+          <Switch
+            checked={!isOptedOut}
+            onChange={() => void handleChange()}
+            size="small"
+            disabled={busy}
+          />
         }
         label={
           <Typography variant="body2" color="text.secondary">
             Receive announcements from this section
           </Typography>
         }
+      />
+      <Snackbar
+        open={!!snackbar}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(null)}
+        message={snackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
     </Box>
   );

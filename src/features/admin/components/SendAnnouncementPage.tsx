@@ -101,8 +101,6 @@ export default function SendAnnouncementPage({
     }
   };
 
-  const selectedTemplate = templates.find((t) => t.id === selectedId);
-
   return (
     <Box className="page-container">
       <PageHeader
