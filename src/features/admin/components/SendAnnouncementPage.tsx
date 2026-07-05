@@ -21,6 +21,7 @@ import {
   sendSectionAnnouncement,
   type AnnouncementTemplate,
 } from "../../../shared/utils/firebaseFunctions";
+import TemplateEditor from "./TemplateEditor";
 
 interface SendAnnouncementPageProps {
   sectionId: string;
@@ -198,6 +199,8 @@ export default function SendAnnouncementPage({
           )}
         </>
       )}
+
+      <TemplateEditor sectionName={sectionName} />
     </Box>
   );
 }
