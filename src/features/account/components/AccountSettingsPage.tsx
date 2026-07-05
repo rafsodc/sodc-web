@@ -22,7 +22,7 @@ import {
   useOptOutSectionAnnouncement,
   useOptInSectionAnnouncement,
 } from "@dataconnect/generated/react";
-import { SectionUserGroupPurpose } from "@dataconnect/generated";
+import { MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 import {
@@ -96,7 +96,7 @@ function AnnouncementPreferencesList() {
     // Status-based group memberships
     const userStatus = data?.user?.membershipStatus;
     for (const ug of data?.allUserGroups ?? []) {
-      if (!ug.membershipStatuses?.includes(userStatus as string)) continue;
+      if (!ug.membershipStatuses?.includes(userStatus as MembershipStatus)) continue;
       for (const pl of ug.purposeLinks) {
         if (grantsAccess(pl.purposes) && pl.section) addSection(pl.section);
       }

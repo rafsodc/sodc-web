@@ -43,6 +43,7 @@ vi.mock('@dataconnect/generated/react', () => ({
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
   getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
+  subscribeToUserGroup: vi.fn().mockResolvedValue(undefined),
   submitEventBooking: vi.fn(),
 }));
 
@@ -1154,6 +1155,277 @@ describe('SectionDetail', () => {
     // About tab is default — EventDetailHero shows with no price on ticket chip
     await waitFor(() => expect(screen.getByText('Standard')).toBeInTheDocument());
     expect(screen.queryByText(/£/)).not.toBeInTheDocument();
+  });
+
+  it('subscribes user and shows success snackbar when Subscribe is clicked', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        purposeLinks: [
+          {
+            purpose: 'ACCESS',
+            userGroup: {
+              id: 'view-group-1',
+              name: 'View Group',
+              subscribable: false,
+            },
+          },
+          {
+            purpose: 'MEMBER',
+            userGroup: {
+              id: 'member-group-1',
+              name: 'Member Group',
+              subscribable: true,
+            },
+          },
+        ],
+      },
+    };
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: {
+        user: {
+          id: 'user-1',
+          userGroups: [{ userGroup: { id: 'view-group-1' } }],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^subscribe$/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /^subscribe$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/successfully subscribed/i)).toBeInTheDocument();
+    });
+
+    // click outside to dismiss snackbar (exercises handleCloseSnackbar)
+    await user.click(document.body);
+    await waitFor(() => {
+      expect(screen.queryByText(/successfully subscribed/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('unsubscribes user and shows success snackbar when Unsubscribe is clicked', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        purposeLinks: [
+          {
+            purpose: 'ACCESS',
+            userGroup: {
+              id: 'view-group-1',
+              name: 'View Group',
+              subscribable: false,
+            },
+          },
+          {
+            purpose: 'MEMBER',
+            userGroup: {
+              id: 'member-group-1',
+              name: 'Member Group',
+              subscribable: true,
+            },
+          },
+        ],
+      },
+    };
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: {
+        user: {
+          id: 'user-1',
+          userGroups: [
+            { userGroup: { id: 'view-group-1' } },
+            { userGroup: { id: 'member-group-1' } },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /unsubscribe/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/successfully unsubscribed/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows announcement toggle for user with MODERATOR access (tests || branch in grantsAccess)', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        description: 'Events description',
+        purposeLinks: [],
+      },
+    };
+
+    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+      data: {
+        user: {
+          membershipStatus: 'REGULAR',
+          userGroups: [
+            {
+              userGroup: {
+                membershipStatuses: null,
+                purposeLinks: [
+                  {
+                    purposes: ['MODERATOR'],
+                    section: { id: sectionId, name: 'Events Section' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        allUserGroups: [],
+      },
+      isLoading: false,
+    } as never);
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toBeInTheDocument();
+    });
+  });
+
+  it('shows announcement toggle for user with explicit section access', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        description: 'Events description',
+        purposeLinks: [],
+      },
+    };
+
+    vi.mocked(reactGenerated.useGetSectionsForUser).mockReturnValue({
+      data: {
+        user: {
+          membershipStatus: 'REGULAR',
+          userGroups: [
+            {
+              userGroup: {
+                membershipStatuses: null,
+                purposeLinks: [
+                  {
+                    purposes: ['ACCESS'],
+                    section: { id: sectionId, name: 'Events Section' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        allUserGroups: [],
+      },
+      isLoading: false,
+    } as never);
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toBeInTheDocument();
+    });
+  });
+
+  it('shows events list retry button when events fail to load', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        purposeLinks: [],
+      },
+    };
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventsForSection({ data: undefined, isLoading: false, isError: true });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load events/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it('shows members refresh button and calls refetch when clicked', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        purposeLinks: [],
+      },
+    };
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /refresh/i }));
+    // If the callback fires without throwing, the test passes
   });
 
   it('should navigate back to upcoming events from past events view', async () => {

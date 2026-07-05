@@ -23,7 +23,7 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getSectionMembersMerged, subscribeToUserGroup } from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
-import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
+import { MembershipStatus, SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 import NavigationBreadcrumbs from "../../../shared/components/NavigationBreadcrumbs";
@@ -165,7 +165,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       }
     }
     for (const ug of userSectionsData.allUserGroups ?? []) {
-      if (!ug.membershipStatuses?.includes(userStatus as string)) continue;
+      if (!ug.membershipStatuses?.includes(userStatus as MembershipStatus)) continue;
       for (const pl of ug.purposeLinks ?? []) {
         if (grantsAccess(pl.purposes) && pl.section?.id === sectionId) return true;
       }
