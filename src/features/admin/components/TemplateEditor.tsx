@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -6,7 +6,6 @@ import {
   Collapse,
   Divider,
   IconButton,
-  InputAdornment,
   Stack,
   TextField,
   Tooltip,
@@ -27,6 +26,26 @@ import {
 interface TemplateEditorProps {
   sectionName: string;
 }
+
+interface ToolbarItem {
+  label: string;
+  tooltip: string;
+  prefix: string;
+  suffix: string;
+  placeholder: string;
+  block: boolean;
+}
+
+const TOOLBAR_ITEMS: ToolbarItem[] = [
+  { label: "# H1",        tooltip: "Heading 1",            prefix: "# ",          suffix: "",       placeholder: "Heading",        block: true  },
+  { label: "## H2",       tooltip: "Heading 2",            prefix: "## ",         suffix: "",       placeholder: "Heading",        block: true  },
+  { label: "• Bullet",    tooltip: "Bullet point",         prefix: "* ",          suffix: "",       placeholder: "item",           block: true  },
+  { label: "1. List",     tooltip: "Numbered list",        prefix: "1. ",         suffix: "",       placeholder: "item",           block: true  },
+  { label: "^ Inset",     tooltip: "Inset text",           prefix: "^ ",          suffix: "",       placeholder: "note",           block: true  },
+  { label: "Link",        tooltip: "Link [text](url)",     prefix: "[",           suffix: "](url)", placeholder: "link text",      block: false },
+  { label: "((var))",     tooltip: "Personalisation var",  prefix: "((",          suffix: "))",     placeholder: "firstName",      block: false },
+  { label: "((opt??…))",  tooltip: "Optional content",     prefix: "((condition??", suffix: "))",   placeholder: "optional text",  block: false },
+];
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -51,9 +70,10 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
   const [guideOpen, setGuideOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const bodyInputRef = useRef<HTMLTextAreaElement>(null);
 
   const suggestedName = `BULK: ${sectionName} — `;
-  const fullSubject = subject ? `BULK: ${subject}` : "";
+  const templateName = `BULK: ${sectionName} — ${subject || "…"}`;
 
   const bodyWithFooter = body.trim()
     ? `${body.trim()}\n\n${STANDARD_FOOTER}`
@@ -62,17 +82,42 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
   const warnings = useMemo(() => {
     const found: string[] = [];
     for (const { name, pattern } of UNSUPPORTED_PATTERNS) {
-      if (pattern.test(bodyWithFooter) || pattern.test(fullSubject)) {
+      if (pattern.test(bodyWithFooter) || pattern.test(subject)) {
         found.push(name);
       }
     }
     return found;
-  }, [fullSubject, bodyWithFooter]);
+  }, [subject, bodyWithFooter]);
 
   const previewHtml = useMemo(
     () => renderGovNotifyMarkdown(bodyWithFooter),
     [bodyWithFooter]
   );
+
+  const insertAtCursor = (item: ToolbarItem) => {
+    const el = bodyInputRef.current;
+    if (!el) return;
+
+    const { selectionStart: start, selectionEnd: end } = el;
+    const selected = body.slice(start, end) || item.placeholder;
+
+    let linePrefix = "";
+    if (item.block) {
+      const isAtLineStart = start === 0 || body[start - 1] === "\n";
+      linePrefix = isAtLineStart ? "" : "\n";
+    }
+
+    const insertion = linePrefix + item.prefix + selected + item.suffix;
+    const newBody = body.slice(0, start) + insertion + body.slice(end);
+    setBody(newBody);
+
+    requestAnimationFrame(() => {
+      el.focus();
+      const selStart = start + linePrefix.length + item.prefix.length;
+      const selEnd = selStart + selected.length;
+      el.setSelectionRange(selStart, selEnd);
+    });
+  };
 
   return (
     <Box>
@@ -113,12 +158,8 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
             <li>
               Add these required personalisation variables in the body:
               <ul style={{ marginTop: 4 }}>
-                <li>
-                  <code>((firstName))</code> — used in the salutation
-                </li>
-                <li>
-                  <code>((unsubscribeUrl))</code> — required in the footer unsubscribe link
-                </li>
+                <li><code>((firstName))</code> — used in the salutation</li>
+                <li><code>((unsubscribeUrl))</code> — required in the footer unsubscribe link</li>
               </ul>
             </li>
           </Typography>
@@ -146,8 +187,8 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
         Template editor
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Compose your template here, then copy the subject and body into GOV Notify. The standard
-        SODC unsubscribe footer is added automatically.
+        Compose your template here, then copy each field into GOV Notify. The standard SODC
+        unsubscribe footer is added to the body automatically.
       </Typography>
 
       {warnings.length > 0 && (
@@ -165,67 +206,130 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
         {/* Subject */}
         <Box>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-            <Typography variant="body2" fontWeight={500}>
-              Subject
-            </Typography>
-            {subject && <CopyButton text={fullSubject} label="subject" />}
+            <Typography variant="body2" fontWeight={500}>Subject</Typography>
+            {subject && <CopyButton text={subject} label="subject" />}
           </Stack>
           <TextField
             fullWidth
             size="small"
-            placeholder="e.g. Spring Dinner announcement"
+            placeholder="e.g. SODC — Spring Dinner announcement"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "text.disabled", userSelect: "none", whiteSpace: "nowrap" }}
-                  >
-                    BULK:
-                  </Typography>
-                </InputAdornment>
-              ),
-            }}
             inputProps={{ "aria-label": "Template subject" }}
           />
+        </Box>
+
+        {/* Template name (auto-derived, read-only) */}
+        <Box>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+            <Typography variant="body2" fontWeight={500}>Template name</Typography>
+            <CopyButton text={templateName} label="template name" />
+          </Stack>
+          <Box
+            sx={{
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              px: 1.5,
+              py: 0.875,
+              bgcolor: "action.hover",
+              borderRadius: 1,
+              border: "1px solid",
+              borderColor: "divider",
+              color: subject ? "text.primary" : "text.disabled",
+            }}
+            aria-label="Template name"
+          >
+            {templateName}
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Auto-generated from the section and subject — use this as the name in GOV Notify.
+          </Typography>
         </Box>
 
         {/* Body */}
         <Box>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-            <Typography variant="body2" fontWeight={500}>
-              Body
-            </Typography>
+            <Typography variant="body2" fontWeight={500}>Body</Typography>
             {body && <CopyButton text={bodyWithFooter} label="body" />}
           </Stack>
+
+          {/* Markdown toolbar */}
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 0.5,
+              mb: 0.5,
+              p: 0.75,
+              bgcolor: "action.hover",
+              borderRadius: "4px 4px 0 0",
+              border: "1px solid",
+              borderColor: "divider",
+              borderBottom: "none",
+            }}
+          >
+            {TOOLBAR_ITEMS.map((item) => (
+              <Tooltip key={item.label} title={item.tooltip}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => insertAtCursor(item)}
+                  sx={{
+                    minWidth: 0,
+                    px: 1,
+                    py: 0.25,
+                    fontSize: "0.75rem",
+                    fontFamily: item.label.startsWith("#") || item.label.startsWith("((") ? "monospace" : "inherit",
+                    lineHeight: 1.5,
+                  }}
+                  aria-label={item.tooltip}
+                >
+                  {item.label}
+                </Button>
+              </Tooltip>
+            ))}
+          </Box>
+
           <TextField
             fullWidth
             multiline
             minRows={8}
             size="small"
-            placeholder={`Dear ((firstName)),\n\nYour announcement text here...\n\nTip: use # for headings, * for bullets, [text](url) for links`}
+            placeholder={`Dear ((firstName)),\n\nYour announcement text here...\n\nUse the toolbar above to insert Markdown.`}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            inputProps={{ "aria-label": "Template body", style: { fontFamily: "monospace", fontSize: "0.85rem" } }}
+            inputRef={bodyInputRef}
+            inputProps={{
+              "aria-label": "Template body",
+              style: { fontFamily: "monospace", fontSize: "0.85rem" },
+            }}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "0 0 4px 4px" } }}
           />
           <Typography variant="caption" color="text.secondary">
             The standard footer (SODC + unsubscribe link) will be appended automatically.
           </Typography>
         </Box>
 
-        {/* Copy buttons (full-width) */}
+        {/* Full-width copy buttons */}
         {(subject || body) && (
           <Stack direction="row" spacing={1}>
             <Button
               size="small"
               variant="outlined"
               startIcon={<ContentCopy />}
-              onClick={() => void navigator.clipboard.writeText(fullSubject)}
+              onClick={() => void navigator.clipboard.writeText(subject)}
               disabled={!subject}
             >
               Copy subject
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ContentCopy />}
+              onClick={() => void navigator.clipboard.writeText(templateName)}
+              disabled={!subject}
+            >
+              Copy template name
             </Button>
             <Button
               size="small"
@@ -248,7 +352,7 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
           </Typography>
           {subject && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Subject: <strong>{fullSubject}</strong>
+              Subject: <strong>{subject}</strong>
             </Typography>
           )}
           <Box
