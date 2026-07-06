@@ -97,7 +97,7 @@ describe("TemplateEditor", () => {
       expect(screen.queryByText("Preview")).not.toBeInTheDocument();
     });
 
-    it("shows warning for unsupported bold syntax", async () => {
+    it("flags unsupported bold syntax", async () => {
       const user = await expand();
 
       await user.type(screen.getByLabelText("Template body"), "This is **bold**");
@@ -105,7 +105,7 @@ describe("TemplateEditor", () => {
       expect(screen.getByText(/Unsupported GOV Notify syntax detected/i)).toBeInTheDocument();
     });
 
-    it("shows warning for H3+ headings", async () => {
+    it("flags H3+ headings as unsupported", async () => {
       const user = await expand();
 
       await user.type(screen.getByLabelText("Template body"), "### Too deep");
