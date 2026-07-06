@@ -15,7 +15,14 @@ export const UNSUPPORTED_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: "heading H3 or deeper (### text)", pattern: /^#{3,}\s/m },
 ];
 
-export const STANDARD_FOOTER = "---\nSODC\n\n[Unsubscribe](((unsubscribeUrl)))";
+export const STANDARD_FOOTER =
+  "---\n" +
+  "This email is being sent as part of the RAF SODC. " +
+  "It has been sent to you as you are a member of the ((section)) section. " +
+  "To unsubscribe from this section, please click the link below. " +
+  "Your communication preferences can be updated from your user account.\n\n" +
+  "[Unsubscribe](((unsubscribeUrl)))\n\n" +
+  "SODC";
 
 function escapeHtml(s: string): string {
   return s

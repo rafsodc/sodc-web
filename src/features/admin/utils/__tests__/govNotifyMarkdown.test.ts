@@ -73,8 +73,10 @@ describe("UNSUPPORTED_PATTERNS", () => {
 });
 
 describe("STANDARD_FOOTER", () => {
-  it("contains SODC and unsubscribeUrl variable", () => {
+  it("contains SODC, RAF SODC context, section and unsubscribeUrl variables", () => {
     expect(STANDARD_FOOTER).toContain("SODC");
+    expect(STANDARD_FOOTER).toContain("RAF SODC");
+    expect(STANDARD_FOOTER).toContain("((section))");
     expect(STANDARD_FOOTER).toContain("((unsubscribeUrl))");
     expect(STANDARD_FOOTER).toContain("---");
   });
