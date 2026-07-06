@@ -21,6 +21,7 @@ const APP_BASE_URL = (() => {
   return url.replace(/\/$/, "");
 })();
 
+
 // ── Auth helper ──────────────────────────────────────────────────────────────
 
 function linkHasPurpose(
