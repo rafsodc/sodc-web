@@ -12,6 +12,7 @@ export const UNSUPPORTED_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: "blockquote (> text)", pattern: /^> /m },
   { name: "image (![alt](url))", pattern: /!\[[^\]]*\]\([^)]+\)/ },
   { name: "HTML tag (<tag>)", pattern: /<\/?[a-z][a-z0-9]*(\s[^>]*)?>/ },
+  { name: "heading H3 or deeper (### text)", pattern: /^#{3,}\s/m },
 ];
 
 export const STANDARD_FOOTER = "---\nSODC\n\n[Unsubscribe](((unsubscribeUrl)))";
@@ -28,24 +29,33 @@ function renderInline(line: string): string {
   const parts: string[] = [];
   let lastIndex = 0;
 
-  // Combined pattern: [text](((var))), [text](url), ((variable))
+  // Combined pattern (order matters — more specific first):
+  // 1. ((var??optional text))  — conditional/optional content
+  // 2. [text](((var)))         — personalisation variable as URL
+  // 3. [text](url)             — regular link
+  // 4. ((variable))            — personalisation variable
   const pattern =
-    /\[([^\]]+)\]\(\(\(([^)]+)\)\)\)|\[([^\]]+)\]\(([^)]+)\)|\(\(([^)]+)\)\)/g;
+    /\(\(([^?)]+)\?\?([^)]*)\)\)|\[([^\]]+)\]\(\(\(([^)]+)\)\)\)|\[([^\]]+)\]\(([^)]+)\)|\(\(([^)]+)\)\)/g;
 
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(line)) !== null) {
     parts.push(escapeHtml(line.slice(lastIndex, match.index)));
 
     if (match[1] !== undefined) {
-      // [text](((var))) — personalisation variable as URL
-      parts.push(`<a href="#">${escapeHtml(match[1])}</a>`);
+      // ((var??optional text))
+      parts.push(
+        `<span style="background:#e8f5e9;padding:0 2px;border:1px dashed #66bb6a">${escapeHtml(match[2])}</span>`
+      );
     } else if (match[3] !== undefined) {
-      // [text](url) — regular link
-      parts.push(`<a href="${escapeHtml(match[4] ?? "")}">${escapeHtml(match[3])}</a>`);
+      // [text](((var))) — personalisation variable as URL
+      parts.push(`<a href="#">${escapeHtml(match[3])}</a>`);
     } else if (match[5] !== undefined) {
+      // [text](url) — regular link
+      parts.push(`<a href="${escapeHtml(match[6] ?? "")}">${escapeHtml(match[5])}</a>`);
+    } else if (match[7] !== undefined) {
       // ((variable))
       parts.push(
-        `<mark style="background:#ffdd00;padding:0 2px">${escapeHtml(match[5])}</mark>`
+        `<mark style="background:#ffdd00;padding:0 2px">${escapeHtml(match[7])}</mark>`
       );
     }
 
@@ -71,19 +81,19 @@ export function renderGovNotifyMarkdown(body: string): string {
   };
 
   for (const line of lines) {
-    // Heading
-    const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
+    // Heading (H1 and H2 only — H3+ warned as unsupported)
+    const headingMatch = line.match(/^(#{1,2})\s+(.+)/);
     if (headingMatch) {
       closeList();
-      const level = Math.min(headingMatch[1].length, 4);
-      const sizes = ["1.5rem", "1.25rem", "1.1rem", "1rem"];
+      const level = headingMatch[1].length as 1 | 2;
+      const sizes: Record<1 | 2, string> = { 1: "1.5rem", 2: "1.25rem" };
       parts.push(
-        `<h${level} style="font-size:${sizes[level - 1]};margin:1em 0 0.5em;font-weight:700">${renderInline(headingMatch[2])}</h${level}>`
+        `<h${level} style="font-size:${sizes[level]};margin:1em 0 0.5em;font-weight:700">${renderInline(headingMatch[2])}</h${level}>`
       );
       continue;
     }
 
-    // Horizontal rule
+    // Horizontal rule (used by footer — not advertised but supported)
     if (/^---+$/.test(line)) {
       closeList();
       parts.push(

@@ -57,8 +57,15 @@ describe("UNSUPPORTED_PATTERNS", () => {
     expect(match?.pattern.test("<br>")).toBe(true);
   });
 
+  it("detects H3+ heading", () => {
+    const match = UNSUPPORTED_PATTERNS.find((p) => p.name.includes("H3 or deeper"));
+    expect(match?.pattern.test("### Third level")).toBe(true);
+    expect(match?.pattern.test("## Second level")).toBe(false);
+    expect(match?.pattern.test("# First level")).toBe(false);
+  });
+
   it("does not flag supported GOV Notify markdown", () => {
-    const body = "# Heading\n\n* bullet\n\n[link](https://example.com)\n\n^ inset\n\n---";
+    const body = "# Heading\n\n## Sub\n\n* bullet\n\n[link](https://example.com)\n\n^ inset\n\n((firstName))\n\n((show_extra??Optional text))";
     for (const { pattern } of UNSUPPORTED_PATTERNS) {
       expect(pattern.test(body)).toBe(false);
     }
@@ -137,6 +144,17 @@ describe("renderGovNotifyMarkdown", () => {
   it("handles personalisation variable as link target", () => {
     const html = renderGovNotifyMarkdown("[Unsubscribe](((unsubscribeUrl)))");
     expect(html).toContain('<a href="#">Unsubscribe</a>');
+  });
+
+  it("renders optional content with green highlight", () => {
+    const html = renderGovNotifyMarkdown("((show_extra??Extra info here))");
+    expect(html).toContain("Extra info here");
+    expect(html).toContain("e8f5e9");
+  });
+
+  it("does not render H3 as heading", () => {
+    const html = renderGovNotifyMarkdown("### Third level");
+    expect(html).not.toContain("<h3");
   });
 
   it("closes list when followed by a heading", () => {

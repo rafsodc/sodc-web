@@ -6,6 +6,7 @@ import {
   Collapse,
   Divider,
   IconButton,
+  InputAdornment,
   Stack,
   TextField,
   Tooltip,
@@ -52,6 +53,7 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
   const [body, setBody] = useState("");
 
   const suggestedName = `BULK: ${sectionName} — `;
+  const fullSubject = subject ? `BULK: ${subject}` : "";
 
   const bodyWithFooter = body.trim()
     ? `${body.trim()}\n\n${STANDARD_FOOTER}`
@@ -60,12 +62,12 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
   const warnings = useMemo(() => {
     const found: string[] = [];
     for (const { name, pattern } of UNSUPPORTED_PATTERNS) {
-      if (pattern.test(bodyWithFooter) || pattern.test(subject)) {
+      if (pattern.test(bodyWithFooter) || pattern.test(fullSubject)) {
         found.push(name);
       }
     }
     return found;
-  }, [subject, bodyWithFooter]);
+  }, [fullSubject, bodyWithFooter]);
 
   const previewHtml = useMemo(
     () => renderGovNotifyMarkdown(bodyWithFooter),
@@ -125,15 +127,16 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
             Supported Markdown syntax
           </Typography>
           <Typography variant="body2" component="ul" sx={{ m: 0, pl: 2 }}>
-            <li>Headings: <code># H1</code>, <code>## H2</code>, <code>### H3</code></li>
+            <li>Headings: <code># H1</code>, <code>## H2</code></li>
             <li>Bullets: <code>* item</code> or <code>- item</code></li>
             <li>Numbered lists: <code>1. item</code></li>
             <li>Inset text: <code>^ note</code></li>
-            <li>Horizontal rule: <code>---</code></li>
             <li>Links: <code>[text](url)</code></li>
+            <li>Personalisation: <code>((firstName))</code></li>
+            <li>Optional content: <code>((show_extra??Text shown only if set))</code></li>
           </Typography>
           <Typography variant="body2" sx={{ mt: 1, color: "error.main" }}>
-            Not supported: <strong>bold</strong>, <em>italic</em>, inline code, images, or HTML tags.
+            Not supported: <strong>bold</strong>, <em>italic</em>, H3+, inline code, images, or HTML tags.
           </Typography>
         </Box>
       </Collapse>
@@ -165,14 +168,26 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
             <Typography variant="body2" fontWeight={500}>
               Subject
             </Typography>
-            {subject && <CopyButton text={subject} label="subject" />}
+            {subject && <CopyButton text={fullSubject} label="subject" />}
           </Stack>
           <TextField
             fullWidth
             size="small"
-            placeholder="e.g. SODC — Spring Dinner announcement"
+            placeholder="e.g. Spring Dinner announcement"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "text.disabled", userSelect: "none", whiteSpace: "nowrap" }}
+                  >
+                    BULK:
+                  </Typography>
+                </InputAdornment>
+              ),
+            }}
             inputProps={{ "aria-label": "Template subject" }}
           />
         </Box>
@@ -207,7 +222,7 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
               size="small"
               variant="outlined"
               startIcon={<ContentCopy />}
-              onClick={() => void navigator.clipboard.writeText(subject)}
+              onClick={() => void navigator.clipboard.writeText(fullSubject)}
               disabled={!subject}
             >
               Copy subject
@@ -233,7 +248,7 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
           </Typography>
           {subject && (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Subject: <strong>{subject}</strong>
+              Subject: <strong>{fullSubject}</strong>
             </Typography>
           )}
           <Box
@@ -247,7 +262,7 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
               lineHeight: 1.6,
               fontFamily: "Arial, sans-serif",
               "& a": { color: "primary.main" },
-              "& h1,h2,h3,h4": { fontFamily: "inherit" },
+              "& h1,h2": { fontFamily: "inherit" },
             }}
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />

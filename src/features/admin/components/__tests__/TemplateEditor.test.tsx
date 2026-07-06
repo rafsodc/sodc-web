@@ -14,6 +14,14 @@ describe("TemplateEditor", () => {
     expect(screen.getByLabelText("Template body")).toBeInTheDocument();
   });
 
+  it("shows BULK: prefix adornment in subject field", () => {
+    render(<TemplateEditor sectionName="Alpha Section" />);
+    // The adornment sits inside the MUI input wrapper alongside the actual input
+    const subjectInput = screen.getByLabelText("Template subject");
+    const inputWrapper = subjectInput.closest(".MuiInputBase-root");
+    expect(inputWrapper).toHaveTextContent("BULK:");
+  });
+
   it("shows collapsible guide on click", async () => {
     const user = userEvent.setup();
     render(<TemplateEditor sectionName="Alpha Section" />);
@@ -46,6 +54,15 @@ describe("TemplateEditor", () => {
     });
   });
 
+  it("shows optional content syntax in guide", async () => {
+    const user = userEvent.setup();
+    render(<TemplateEditor sectionName="Alpha Section" />);
+    await user.click(screen.getByText("How to create a GOV Notify template"));
+
+    expect(screen.getByText(/Optional content/i)).toBeVisible();
+    expect(screen.getByText(/\(\(show_extra\?\?/)).toBeVisible();
+  });
+
   it("shows live preview when body is typed", async () => {
     const user = userEvent.setup();
     render(<TemplateEditor sectionName="Alpha Section" />);
@@ -53,18 +70,17 @@ describe("TemplateEditor", () => {
     await user.type(screen.getByLabelText("Template body"), "Hello world");
 
     expect(screen.getByText("Preview")).toBeInTheDocument();
-    // "Hello world" appears in both textarea and rendered preview
     expect(screen.getAllByText("Hello world").length).toBeGreaterThan(0);
   });
 
-  it("shows preview with subject label when both are filled", async () => {
+  it("shows BULK: prefix in preview subject line", async () => {
     const user = userEvent.setup();
     render(<TemplateEditor sectionName="Alpha Section" />);
 
-    await user.type(screen.getByLabelText("Template subject"), "Test subject");
+    await user.type(screen.getByLabelText("Template subject"), "Spring Dinner");
     await user.type(screen.getByLabelText("Template body"), "Body text");
 
-    expect(screen.getByText(/Subject:/)).toBeInTheDocument();
+    expect(screen.getByText("BULK: Spring Dinner")).toBeInTheDocument();
   });
 
   it("does not show preview when body is empty", () => {
@@ -82,11 +98,30 @@ describe("TemplateEditor", () => {
     expect(screen.getByText(/bold \(\*\*text\*\*\)/)).toBeInTheDocument();
   });
 
+  it("shows warning for H3+ headings", async () => {
+    const user = userEvent.setup();
+    render(<TemplateEditor sectionName="Alpha Section" />);
+
+    await user.type(screen.getByLabelText("Template body"), "### Too deep");
+
+    expect(screen.getByText(/Unsupported GOV Notify syntax detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/heading H3 or deeper/i)).toBeInTheDocument();
+  });
+
   it("does not show warning for valid GOV Notify markdown", async () => {
     const user = userEvent.setup();
     render(<TemplateEditor sectionName="Alpha Section" />);
 
     await user.type(screen.getByLabelText("Template body"), "# Heading");
+
+    expect(screen.queryByText(/Unsupported/i)).not.toBeInTheDocument();
+  });
+
+  it("does not show warning for H2 headings", async () => {
+    const user = userEvent.setup();
+    render(<TemplateEditor sectionName="Alpha Section" />);
+
+    await user.type(screen.getByLabelText("Template body"), "## Sub heading");
 
     expect(screen.queryByText(/Unsupported/i)).not.toBeInTheDocument();
   });
@@ -98,12 +133,11 @@ describe("TemplateEditor", () => {
     await user.type(screen.getByLabelText("Template subject"), "My subject");
     await user.type(screen.getByLabelText("Template body"), "My body");
 
-    // Both icon button and full-width button share the accessible name
     expect(screen.getAllByRole("button", { name: "Copy subject" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: "Copy body" }).length).toBeGreaterThan(0);
   });
 
-  it("copy subject button calls clipboard.writeText with subject", async () => {
+  it("copy subject includes BULK: prefix", async () => {
     const user = userEvent.setup();
     render(<TemplateEditor sectionName="Alpha Section" />);
 
@@ -112,16 +146,15 @@ describe("TemplateEditor", () => {
     await user.type(screen.getByLabelText("Template subject"), "My subject");
     await user.type(screen.getByLabelText("Template body"), "My body");
 
-    // Use the full-width button (last one in DOM order)
     const copyBtns = screen.getAllByRole("button", { name: "Copy subject" });
     await user.click(copyBtns[copyBtns.length - 1]);
 
     await waitFor(() => {
-      expect(spy).toHaveBeenCalledWith("My subject");
+      expect(spy).toHaveBeenCalledWith("BULK: My subject");
     });
   });
 
-  it("copy body button calls clipboard.writeText with body including footer", async () => {
+  it("copy body includes body text and footer", async () => {
     const user = userEvent.setup();
     render(<TemplateEditor sectionName="Alpha Section" />);
 
@@ -147,9 +180,7 @@ describe("TemplateEditor", () => {
 
     await user.type(screen.getByLabelText("Template body"), "My announcement");
 
-    // The preview box shows SODC from the footer
-    const preview = screen.getByText("SODC");
-    expect(preview).toBeInTheDocument();
+    expect(screen.getByText("SODC")).toBeInTheDocument();
   });
 
   it("shows warning when subject contains unsupported syntax", async () => {
