@@ -77,7 +77,10 @@ async function requireSectionModerator(
 interface Recipient {
   id: string;
   firstName: string;
+  lastName: string;
   email: string;
+  serviceNumber: string;
+  membershipStatus: string;
 }
 
 interface ResolveResult {
@@ -117,7 +120,14 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
     for (const { user } of link.userGroup.users) {
       if (!seen.has(user.id)) {
         seen.add(user.id);
-        recipients.push({ id: user.id, firstName: user.firstName, email: user.email });
+        recipients.push({
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          serviceNumber: user.serviceNumber,
+          membershipStatus: user.membershipStatus,
+        });
       }
     }
   }
@@ -233,6 +243,10 @@ export const sendSectionAnnouncement = onCall(
         await client.sendEmail(templateUuid, recipient.email, {
           personalisation: {
             firstName: recipient.firstName,
+            lastName: recipient.lastName,
+            email: recipient.email,
+            serviceNumber: recipient.serviceNumber,
+            membershipStatus: recipient.membershipStatus,
             section: sectionName,
             // TODO(#311): replace with a per-user, per-section opt-out deep link
             unsubscribeUrl: `${APP_BASE_URL}/account`,

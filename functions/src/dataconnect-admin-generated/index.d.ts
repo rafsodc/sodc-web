@@ -1131,6 +1131,7 @@ export interface GetSectionMembersData {
             firstName: string;
             lastName: string;
             email: string;
+            serviceNumber: string;
             membershipStatus: MembershipStatus;
           } & User_Key;
         })[];

@@ -7,6 +7,7 @@ import {
   Divider,
   IconButton,
   ListItemText,
+  ListSubheader,
   Menu,
   MenuItem,
   Stack,
@@ -52,11 +53,25 @@ const LINK_ITEM: ToolbarItem = {
   label: "Link", tooltip: "Link [text](url)", prefix: "[", suffix: "](url)", placeholder: "link text", block: false,
 };
 
-// Variables passed to every announcement email
-const AVAILABLE_VARIABLES: { name: string; description: string }[] = [
-  { name: "firstName",      description: "Recipient's first name" },
-  { name: "section",        description: "Section name" },
-  { name: "unsubscribeUrl", description: "Unsubscribe link (used in the footer)" },
+// Grouped variables passed to every announcement email
+const VARIABLE_GROUPS: { heading: string; vars: { name: string; description: string }[] }[] = [
+  {
+    heading: "User",
+    vars: [
+      { name: "firstName",      description: "First name" },
+      { name: "lastName",       description: "Last name" },
+      { name: "email",          description: "Email address" },
+      { name: "serviceNumber",  description: "Service number" },
+      { name: "membershipStatus", description: "Membership status" },
+    ],
+  },
+  {
+    heading: "System",
+    vars: [
+      { name: "section",        description: "Section name" },
+      { name: "unsubscribeUrl", description: "Unsubscribe link (used in the footer)" },
+    ],
+  },
 ];
 
 // Optional content is a special syntax, not a simple variable
@@ -208,11 +223,10 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
                   <code>{suggestedName}&lt;description&gt;</code>
                 </li>
                 <li>
-                  Add these required personalisation variables in the body:
+                  The footer uses <code>((section))</code> and <code>((unsubscribeUrl))</code> automatically. Use the variable picker to insert any of these into the body:
                   <ul style={{ marginTop: 4 }}>
-                    <li><code>((firstName))</code> — recipient's first name</li>
-                    <li><code>((section))</code> — section name (used in the footer)</li>
-                    <li><code>((unsubscribeUrl))</code> — unsubscribe link (used in the footer)</li>
+                    <li><strong>User:</strong> <code>((firstName))</code>, <code>((lastName))</code>, <code>((email))</code>, <code>((serviceNumber))</code>, <code>((membershipStatus))</code></li>
+                    <li><strong>System:</strong> <code>((section))</code>, <code>((unsubscribeUrl))</code></li>
                   </ul>
                 </li>
               </Typography>
@@ -362,14 +376,19 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
                   onClose={() => setVarMenuAnchor(null)}
                   anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
                 >
-                  {AVAILABLE_VARIABLES.map((v) => (
-                    <MenuItem key={v.name} onClick={() => insertVariable(v.name)} dense>
-                      <ListItemText
-                        primary={<code style={{ fontSize: "0.85rem" }}>{`((${v.name}))`}</code>}
-                        secondary={v.description}
-                      />
-                    </MenuItem>
-                  ))}
+                  {VARIABLE_GROUPS.flatMap((group) => [
+                    <ListSubheader key={group.heading} sx={{ lineHeight: "2rem", fontSize: "0.7rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      {group.heading}
+                    </ListSubheader>,
+                    ...group.vars.map((v) => (
+                      <MenuItem key={v.name} onClick={() => insertVariable(v.name)} dense>
+                        <ListItemText
+                          primary={<code style={{ fontSize: "0.85rem" }}>{`((${v.name}))`}</code>}
+                          secondary={v.description}
+                        />
+                      </MenuItem>
+                    )),
+                  ])}
                 </Menu>
 
                 <Tooltip title={OPTIONAL_ITEM.tooltip}>

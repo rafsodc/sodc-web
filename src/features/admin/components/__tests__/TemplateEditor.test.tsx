@@ -64,12 +64,14 @@ describe("TemplateEditor", () => {
       expect(screen.getByText(/Log into the GOV Notify/i)).toBeVisible();
     });
 
-    it("guide mentions required variables", async () => {
+    it("guide mentions user and system variables", async () => {
       const user = await expand();
       await user.click(screen.getByText("How to create a GOV Notify template"));
 
-      expect(screen.getByText(/\(\(section\)\)/)).toBeVisible();
-      expect(screen.getByText(/\(\(unsubscribeUrl\)\)/)).toBeVisible();
+      // Guide lists user variables in a <code> block — check text content
+      const guideContent = screen.getByText(/The footer uses/);
+      expect(guideContent).toBeVisible();
+      expect(guideContent.closest("li")?.textContent).toContain("((serviceNumber))");
     });
 
     it("shows live preview when body is typed", async () => {
@@ -129,17 +131,25 @@ describe("TemplateEditor", () => {
       expect(screen.getByRole("button", { name: "Optional content" })).toBeInTheDocument();
     });
 
-    it("variable picker opens and shows available variables as menu items", async () => {
+    it("variable picker opens and shows grouped User and System variables", async () => {
       const user = await expand();
 
       await user.click(screen.getByRole("button", { name: "Insert variable" }));
 
-      // Menu items are visible; guide code snippets (collapsed) are not
       const menuItems = screen.getAllByRole("menuitem");
       const menuText = menuItems.map((el) => el.textContent ?? "").join(" ");
+      // User group
       expect(menuText).toContain("((firstName))");
+      expect(menuText).toContain("((lastName))");
+      expect(menuText).toContain("((email))");
+      expect(menuText).toContain("((serviceNumber))");
+      expect(menuText).toContain("((membershipStatus))");
+      // System group
       expect(menuText).toContain("((section))");
       expect(menuText).toContain("((unsubscribeUrl))");
+      // Group headings
+      expect(screen.getByText("User")).toBeInTheDocument();
+      expect(screen.getByText("System")).toBeInTheDocument();
     });
 
     it("inserting a variable from the picker adds it to the body", async () => {
