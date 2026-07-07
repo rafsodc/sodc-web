@@ -345,6 +345,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
             firstName
             lastName
             email
+            serviceNumber
             membershipStatus
           }
         }

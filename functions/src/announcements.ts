@@ -15,6 +15,13 @@ import { FUNCTIONS_REGION } from "./constants";
 
 const BULK_PREFIX = "BULK:";
 
+const APP_BASE_URL = (() => {
+  const url = process.env.APP_BASE_URL || "http://localhost:5173";
+  try { new URL(url); } catch { throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`); }
+  return url.replace(/\/$/, "");
+})();
+
+
 // ── Auth helper ──────────────────────────────────────────────────────────────
 
 function linkHasPurpose(
@@ -71,10 +78,18 @@ async function requireSectionModerator(
 interface Recipient {
   id: string;
   firstName: string;
+  lastName: string;
   email: string;
+  serviceNumber: string;
+  membershipStatus: string;
 }
 
-async function resolveRecipients(sectionId: string, callerUid: string): Promise<Recipient[]> {
+interface ResolveResult {
+  recipients: Recipient[];
+  sectionName: string;
+}
+
+async function resolveRecipients(sectionId: string, callerUid: string): Promise<ResolveResult> {
   const [membersResult, callerGroupsResult, userStatusResult] = await Promise.all([
     getSectionMembers({ sectionId }),
     getUserAccessGroupsById({ userId: callerUid }),
@@ -106,7 +121,14 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
     for (const { user } of link.userGroup.users) {
       if (!seen.has(user.id)) {
         seen.add(user.id);
-        recipients.push({ id: user.id, firstName: user.firstName, email: user.email });
+        recipients.push({
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          serviceNumber: user.serviceNumber,
+          membershipStatus: user.membershipStatus,
+        });
       }
     }
   }
@@ -126,7 +148,7 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
     }
   }
 
-  return recipients;
+  return { recipients, sectionName: sectionData.name ?? sectionId };
 }
 
 // ── Cloud Functions ──────────────────────────────────────────────────────────
@@ -196,7 +218,7 @@ export const sendSectionAnnouncement = onCall(
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
 
-    const [recipients, optOutResult] = await Promise.all([
+    const [{ recipients, sectionName }, optOutResult] = await Promise.all([
       resolveRecipients(sectionId, callerUid),
       getSectionAnnouncementOptOuts({ sectionId }),
     ]);
@@ -220,7 +242,16 @@ export const sendSectionAnnouncement = onCall(
 
       try {
         await client.sendEmail(templateUuid, recipient.email, {
-          personalisation: { firstName: recipient.firstName },
+          personalisation: {
+            firstName: recipient.firstName,
+            lastName: recipient.lastName,
+            email: recipient.email,
+            serviceNumber: recipient.serviceNumber,
+            membershipStatus: recipient.membershipStatus,
+            section: sectionName,
+            // TODO(#311): replace with a per-user, per-section opt-out deep link
+            unsubscribeUrl: `${APP_BASE_URL}/account`,
+          },
           reference: `announcement-${sectionId}-${recipient.id}`,
         });
         sentCount++;
