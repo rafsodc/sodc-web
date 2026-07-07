@@ -49,6 +49,7 @@ const PublicHomePage = lazy(() => import("./features/welcome/components/PublicHo
 const AccountSettingsPage = lazy(() => import("./features/account/components/AccountSettingsPage"));
 const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"));
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
+const UnsubscribeConfirmedPage = lazy(() => import("./features/account/components/UnsubscribeConfirmedPage"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -595,6 +596,14 @@ function AppContent() {
                 <Route
                   path={ROUTES.SECTION_DETAIL}
                   element={protectedRoute(<Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense>)}
+                />
+                <Route
+                  path={ROUTES.UNSUBSCRIBE_CONFIRMED}
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <UnsubscribeConfirmedPage />
+                    </Suspense>
+                  }
                 />
                 <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
               </Routes>

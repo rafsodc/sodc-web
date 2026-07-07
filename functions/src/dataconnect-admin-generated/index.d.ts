@@ -2699,3 +2699,27 @@ export function optInSectionAnnouncement(dc: DataConnect, vars: OptInSectionAnno
 /** Generated Node Admin SDK operation action function for the 'OptInSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
 export function optInSectionAnnouncement(vars: OptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<OptInSectionAnnouncementData>>;
 
+export interface AdminOptOutSectionAnnouncementData {
+  sectionAnnouncementOptOut_upsert: SectionAnnouncementOptOut_Key;
+}
+export interface AdminOptOutSectionAnnouncementVariables {
+  userId: UUIDString;
+  sectionId: UUIDString;
+}
+/** Generated Node Admin SDK operation action function for the 'AdminOptOutSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */
+export function adminOptOutSectionAnnouncement(dc: DataConnect, vars: AdminOptOutSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptOutSectionAnnouncementData>>;
+/** Generated Node Admin SDK operation action function for the 'AdminOptOutSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function adminOptOutSectionAnnouncement(vars: AdminOptOutSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptOutSectionAnnouncementData>>;
+
+export interface AdminOptInSectionAnnouncementData {
+  sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
+}
+export interface AdminOptInSectionAnnouncementVariables {
+  userId: UUIDString;
+  sectionId: UUIDString;
+}
+/** Generated Node Admin SDK operation action function for the 'AdminOptInSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */
+export function adminOptInSectionAnnouncement(dc: DataConnect, vars: AdminOptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptInSectionAnnouncementData>>;
+/** Generated Node Admin SDK operation action function for the 'AdminOptInSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function adminOptInSectionAnnouncement(vars: AdminOptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptInSectionAnnouncementData>>;
+
