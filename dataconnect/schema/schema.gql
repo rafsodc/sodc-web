@@ -97,6 +97,8 @@ type User @table {
   isCivilServant: Boolean @default(value: false)
   isIndustry: Boolean @default(value: false)
   stripeCustomerId: String
+  emailBounceCount: Int! @default(value: 0)
+  emailLastBounceAt: Timestamp
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
