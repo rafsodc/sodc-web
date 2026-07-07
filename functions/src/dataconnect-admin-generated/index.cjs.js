@@ -883,6 +883,34 @@ function optInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.optInSectionAnnouncement = optInSectionAnnouncement;
 
+function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementSend', inputVars, inputOpts);
+}
+exports.createAnnouncementSend = createAnnouncementSend;
+
+function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
+}
+exports.createAnnouncementRecipient = createAnnouncementRecipient;
+
+function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendHistory', inputVars, inputOpts);
+}
+exports.getAnnouncementSendHistory = getAnnouncementSendHistory;
+
+function getAnnouncementSendRecipients(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendRecipients', inputVars, inputOpts);
+}
+exports.getAnnouncementSendRecipients = getAnnouncementSendRecipients;
+
 function adminOptOutSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

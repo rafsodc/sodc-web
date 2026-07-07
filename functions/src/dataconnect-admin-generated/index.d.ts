@@ -2699,6 +2699,93 @@ export function optInSectionAnnouncement(dc: DataConnect, vars: OptInSectionAnno
 /** Generated Node Admin SDK operation action function for the 'OptInSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
 export function optInSectionAnnouncement(vars: OptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<OptInSectionAnnouncementData>>;
 
+export interface AnnouncementSend_Key {
+  id: UUIDString;
+  __typename?: 'AnnouncementSend_Key';
+}
+
+export interface AnnouncementRecipient_Key {
+  id: UUIDString;
+  __typename?: 'AnnouncementRecipient_Key';
+}
+
+export interface CreateAnnouncementSendData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+export interface CreateAnnouncementSendVariables {
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  failureCount: number;
+}
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementSend' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAnnouncementSend(dc: DataConnect, vars: CreateAnnouncementSendVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementSendData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementSend' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAnnouncementSend(vars: CreateAnnouncementSendVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementSendData>>;
+
+export interface CreateAnnouncementRecipientData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+export interface CreateAnnouncementRecipientVariables {
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+}
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipient' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnouncementRecipientVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipient' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientData>>;
+
+export interface GetAnnouncementSendHistoryData {
+  announcementSends: ({
+    id: UUIDString;
+    templateUuid: string;
+    templateName?: string | null;
+    sentBy: string;
+    sentAt: TimestampString;
+    recipientCount: number;
+    skippedCount: number;
+    failureCount: number;
+  })[];
+}
+export interface GetAnnouncementSendHistoryVariables {
+  sectionId: UUIDString;
+}
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendHistory' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementSendHistory(dc: DataConnect, vars: GetAnnouncementSendHistoryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendHistoryData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendHistory' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementSendHistory(vars: GetAnnouncementSendHistoryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendHistoryData>>;
+
+export interface GetAnnouncementSendRecipientsData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+  })[];
+}
+export interface GetAnnouncementSendRecipientsVariables {
+  sendId: UUIDString;
+}
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendRecipients' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementSendRecipients(dc: DataConnect, vars: GetAnnouncementSendRecipientsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendRecipients' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementSendRecipients(vars: GetAnnouncementSendRecipientsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientsData>>;
+
 export interface AdminOptOutSectionAnnouncementData {
   sectionAnnouncementOptOut_upsert: SectionAnnouncementOptOut_Key;
 }

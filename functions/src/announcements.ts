@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { NotifyClient } from "notifications-node-client";
 import {
   getSectionById,
@@ -8,6 +7,10 @@ import {
   getUserAccessGroupsById,
   getUserMembershipStatus,
   getSectionAnnouncementOptOuts,
+  createAnnouncementSend,
+  createAnnouncementRecipient,
+  getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
+  getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
 import { requireAuth, requireString } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
@@ -258,25 +261,19 @@ export const sendSectionAnnouncement = onCall(
       )
     );
 
-    const db = getFirestore();
-    const sendRef = db.collection("announcementSends").doc();
-    const sendId = sendRef.id;
-
     const client = new NotifyClient(apiKey);
     let sentCount = 0;
     let skippedCount = 0;
     let failureCount = 0;
 
     interface RecipientRecord {
-      sendId: string;
-      sectionId: string;
       userId: string;
       email: string;
       firstName: string;
       lastName: string;
       status: "skipped" | "sent" | "failed";
       skippedReason?: string;
-      sentAt?: Timestamp;
+      sentAt?: string;
       failureReason?: string;
     }
     const recipientRecords: RecipientRecord[] = [];
@@ -285,8 +282,6 @@ export const sendSectionAnnouncement = onCall(
       if (sectionOptOutIds.has(recipient.id)) {
         skippedCount++;
         recipientRecords.push({
-          sendId,
-          sectionId,
           userId: recipient.id,
           email: recipient.email,
           firstName: recipient.firstName,
@@ -324,21 +319,17 @@ export const sendSectionAnnouncement = onCall(
         } as Parameters<typeof client.sendEmail>[2]);
         sentCount++;
         recipientRecords.push({
-          sendId,
-          sectionId,
           userId: recipient.id,
           email: recipient.email,
           firstName: recipient.firstName,
           lastName: recipient.lastName,
           status: "sent",
-          sentAt: Timestamp.now(),
+          sentAt: new Date().toISOString(),
         });
       } catch (err) {
         failureCount++;
         logger.error(`Failed to send announcement to ${recipient.id}`, { err, sectionId, templateUuid });
         recipientRecords.push({
-          sendId,
-          sectionId,
           userId: recipient.id,
           email: recipient.email,
           firstName: recipient.firstName,
@@ -349,27 +340,36 @@ export const sendSectionAnnouncement = onCall(
       }
     }
 
-    // Write the send summary doc
-    await sendRef.set({
+    // Write the send summary to DataConnect
+    const sendResult = await createAnnouncementSend({
+      sectionId,
       templateUuid,
       templateName,
-      sectionId,
       sentBy: callerUid,
-      sentAt: Timestamp.now(),
       recipientCount: sentCount,
       skippedCount,
       failureCount,
     });
+    const announcementSendId = sendResult.data.announcementSend_insert.id;
 
-    // Write per-recipient docs in batches of 499 (Firestore batch limit is 500)
-    const recipientsRef = db.collection("announcementRecipients");
-    const BATCH_SIZE = 499;
-    for (let i = 0; i < recipientRecords.length; i += BATCH_SIZE) {
-      const batch = db.batch();
-      for (const record of recipientRecords.slice(i, i + BATCH_SIZE)) {
-        batch.set(recipientsRef.doc(), record);
-      }
-      await batch.commit();
+    // Write per-recipient records concurrently in chunks
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < recipientRecords.length; i += CHUNK_SIZE) {
+      await Promise.all(
+        recipientRecords.slice(i, i + CHUNK_SIZE).map((r) =>
+          createAnnouncementRecipient({
+            announcementSendId,
+            userId: r.userId,
+            email: r.email,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            status: r.status,
+            skippedReason: r.skippedReason ?? null,
+            sentAt: r.sentAt ?? null,
+            failureReason: r.failureReason ?? null,
+          })
+        )
+      );
     }
 
     logger.info("Announcement sent", { sectionId, templateUuid, sentCount, skippedCount, failureCount });
@@ -384,27 +384,18 @@ export const getAnnouncementSendHistory = onCall(
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId);
 
-    const snap = await getFirestore()
-      .collection("announcementSends")
-      .where("sectionId", "==", sectionId)
-      .orderBy("sentAt", "desc")
-      .limit(50)
-      .get();
-
-    const sends: AnnouncementSend[] = snap.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        id: doc.id,
-        templateUuid: d.templateUuid as string,
-        templateName: (d.templateName as string | null) ?? null,
-        sectionId: d.sectionId as string,
-        sentBy: d.sentBy as string,
-        sentAt: (d.sentAt as Timestamp).toDate().toISOString(),
-        recipientCount: d.recipientCount as number,
-        skippedCount: d.skippedCount as number,
-        failureCount: d.failureCount as number,
-      };
-    });
+    const result = await dcGetAnnouncementSendHistory({ sectionId });
+    const sends: AnnouncementSend[] = (result.data?.announcementSends ?? []).map((s) => ({
+      id: s.id,
+      templateUuid: s.templateUuid,
+      templateName: s.templateName ?? null,
+      sectionId,
+      sentBy: s.sentBy,
+      sentAt: s.sentAt,
+      recipientCount: s.recipientCount,
+      skippedCount: s.skippedCount,
+      failureCount: s.failureCount,
+    }));
 
     return { sends };
   }
@@ -418,28 +409,19 @@ export const getAnnouncementSendRecipients = onCall(
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId);
 
-    const snap = await getFirestore()
-      .collection("announcementRecipients")
-      .where("sendId", "==", sendId)
-      .orderBy("lastName")
-      .get();
-
-    const recipients: AnnouncementRecipient[] = snap.docs.map((doc) => {
-      const d = doc.data();
-      const r: AnnouncementRecipient = {
-        id: doc.id,
-        sendId: d.sendId as string,
-        userId: d.userId as string,
-        email: d.email as string,
-        firstName: d.firstName as string,
-        lastName: d.lastName as string,
-        status: d.status as "skipped" | "sent" | "failed",
-      };
-      if (d.skippedReason) r.skippedReason = d.skippedReason as string;
-      if (d.sentAt) r.sentAt = (d.sentAt as Timestamp).toDate().toISOString();
-      if (d.failureReason) r.failureReason = d.failureReason as string;
-      return r;
-    });
+    const result = await dcGetAnnouncementSendRecipients({ sendId });
+    const recipients: AnnouncementRecipient[] = (result.data?.announcementRecipients ?? []).map((r) => ({
+      id: r.id,
+      sendId,
+      userId: r.userId,
+      email: r.email,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      status: r.status as "skipped" | "sent" | "failed",
+      skippedReason: r.skippedReason ?? undefined,
+      sentAt: r.sentAt ?? undefined,
+      failureReason: r.failureReason ?? undefined,
+    }));
 
     return { recipients };
   }

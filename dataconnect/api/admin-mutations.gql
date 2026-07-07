@@ -1045,6 +1045,92 @@ query GetSectionAnnouncementOptOuts($sectionId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+# ── Announcement audit trail ─────────────────────────────────────────────────
+
+mutation CreateAnnouncementSend(
+  $sectionId: UUID!
+  $templateUuid: String!
+  $templateName: String
+  $sentBy: String!
+  $recipientCount: Int!
+  $skippedCount: Int!
+  $failureCount: Int!
+) @auth(level: NO_ACCESS) {
+  announcementSend_insert(data: {
+    sectionId: $sectionId
+    templateUuid: $templateUuid
+    templateName: $templateName
+    sentBy: $sentBy
+    recipientCount: $recipientCount
+    skippedCount: $skippedCount
+    failureCount: $failureCount
+  }) {
+    id
+  }
+}
+
+mutation CreateAnnouncementRecipient(
+  $announcementSendId: UUID!
+  $userId: String!
+  $email: String!
+  $firstName: String!
+  $lastName: String!
+  $status: String!
+  $skippedReason: String
+  $sentAt: Timestamp
+  $failureReason: String
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_insert(data: {
+    announcementSendId: $announcementSendId
+    userId: $userId
+    email: $email
+    firstName: $firstName
+    lastName: $lastName
+    status: $status
+    skippedReason: $skippedReason
+    sentAt: $sentAt
+    failureReason: $failureReason
+  }) {
+    id
+  }
+}
+
+query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
+  announcementSends(
+    where: { sectionId: { eq: $sectionId } }
+    orderBy: { sentAt: DESC }
+    limit: 50
+  ) {
+    id
+    templateUuid
+    templateName
+    sentBy
+    sentAt
+    recipientCount
+    skippedCount
+    failureCount
+  }
+}
+
+query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: { lastName: ASC }
+  ) {
+    id
+    userId
+    email
+    firstName
+    lastName
+    status
+    skippedReason
+    sentAt
+    failureReason
+  }
+}
+
+# ── Unsubscribe ───────────────────────────────────────────────────────────────
+
 # Opt a specific user out of a section's announcements by userId (used by unsubscribeAnnouncement CF)
 mutation AdminOptOutSectionAnnouncement($userId: UUID!, $sectionId: UUID!) @auth(level: NO_ACCESS) {
   sectionAnnouncementOptOut_upsert(data: {

@@ -361,6 +361,33 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
+# Announcement send summary — one per bulk send triggered by a moderator.
+type AnnouncementSend @table {
+  id: UUID! @default(expr: "uuidV4()")
+  section: Section!
+  templateUuid: String!
+  templateName: String
+  sentBy: String!
+  sentAt: Timestamp! @default(expr: "request.time")
+  recipientCount: Int!
+  skippedCount: Int!
+  failureCount: Int!
+}
+
+# Per-recipient audit row for a bulk announcement send.
+type AnnouncementRecipient @table {
+  id: UUID! @default(expr: "uuidV4()")
+  announcementSend: AnnouncementSend!
+  userId: String!
+  email: String!
+  firstName: String!
+  lastName: String!
+  status: String!
+  skippedReason: String
+  sentAt: Timestamp
+  failureReason: String
+}
+
 type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking"]) {
   id: UUID! @default(expr: "uuidV4()")
   revisionBooking: Booking!
