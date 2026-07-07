@@ -66,15 +66,25 @@ export const searchUsers = onCall(
 
   try {
     const searchLower = searchTerm.toLowerCase();
-    const allUsers = await listAllAuthUsers();
-    
+    const [allUsers, dcResult] = await Promise.all([
+      listAllAuthUsers(),
+      dcListUsers(),
+    ]);
+
+    const dcProfileById = new Map(
+      (dcResult.data?.users ?? []).map((u) => [u.id, u.membershipStatus])
+    );
+
     const matchingUsers = allUsers
       .map((userRecord) => {
         const email = (userRecord.email || "").toLowerCase();
         const displayName = (userRecord.displayName || "").toLowerCase();
-        
+
         if (email.includes(searchLower) || displayName.includes(searchLower)) {
-          return mapUserRecord(userRecord);
+          return {
+            ...mapUserRecord(userRecord),
+            membershipStatus: dcProfileById.get(userRecord.uid) ?? null,
+          };
         }
         return null;
       })
