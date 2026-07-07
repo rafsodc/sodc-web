@@ -1044,3 +1044,19 @@ query GetSectionAnnouncementOptOuts($sectionId: UUID!) @auth(level: NO_ACCESS) {
     }
   }
 }
+
+# Opt a specific user out of a section's announcements by userId (used by unsubscribeAnnouncement CF)
+mutation AdminOptOutSectionAnnouncement($userId: UUID!, $sectionId: UUID!) @auth(level: NO_ACCESS) {
+  sectionAnnouncementOptOut_upsert(data: {
+    userId: $userId,
+    sectionId: $sectionId
+  }) {
+    userId
+    sectionId
+  }
+}
+
+# Remove a specific user's opt-out for a section's announcements (re-subscribe, used by unsubscribeAnnouncement CF)
+mutation AdminOptInSectionAnnouncement($userId: UUID!, $sectionId: UUID!) @auth(level: NO_ACCESS) {
+  sectionAnnouncementOptOut_delete(key: { userId: $userId, sectionId: $sectionId })
+}

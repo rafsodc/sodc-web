@@ -21,6 +21,7 @@ export const ROUTES = {
   EMAIL_TEMPLATES: "/admin/email-templates",
   REGISTER: "/register",
   PROFILE_COMPLETION: "/profile-completion",
+  UNSUBSCRIBE_CONFIRMED: "/unsubscribe/confirmed",
 } as const;
 
 /**

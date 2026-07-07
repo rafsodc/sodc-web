@@ -12,6 +12,7 @@ import {
 import { requireAuth, requireString } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
+import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
 
 const BULK_PREFIX = "BULK:";
 
@@ -206,7 +207,7 @@ export interface SendAnnouncementResult {
 }
 
 export const sendSectionAnnouncement = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey, unsubscribeSecret] },
   async (request): Promise<SendAnnouncementResult> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
@@ -240,6 +241,16 @@ export const sendSectionAnnouncement = onCall(
         continue;
       }
 
+      const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+        {
+          userId: recipient.id,
+          sectionId,
+          sectionName,
+          exp: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
+        },
+        unsubscribeSecret.value()
+      )}`;
+
       try {
         await client.sendEmail(templateUuid, recipient.email, {
           personalisation: {
@@ -249,11 +260,12 @@ export const sendSectionAnnouncement = onCall(
             serviceNumber: recipient.serviceNumber,
             membershipStatus: recipient.membershipStatus,
             section: sectionName,
-            // TODO(#311): replace with a per-user, per-section opt-out deep link
-            unsubscribeUrl: `${APP_BASE_URL}/account`,
+            unsubscribeUrl,
           },
           reference: `announcement-${sectionId}-${recipient.id}`,
-        });
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          one_click_unsubscribe_url: unsubscribeUrl,
+        } as Parameters<typeof client.sendEmail>[2]);
         sentCount++;
       } catch (err) {
         failureCount++;
