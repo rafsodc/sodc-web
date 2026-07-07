@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { NotifyClient } from "notifications-node-client";
 import {
   getSectionById,
@@ -8,6 +7,10 @@ import {
   getUserAccessGroupsById,
   getUserMembershipStatus,
   getSectionAnnouncementOptOuts,
+  createAnnouncementSend,
+  createAnnouncementRecipient,
+  getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
+  getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
 import { requireAuth, requireString } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
@@ -206,12 +209,40 @@ export interface SendAnnouncementResult {
   failureCount: number;
 }
 
+export interface AnnouncementSend {
+  id: string;
+  templateUuid: string;
+  templateName: string | null;
+  sectionId: string;
+  sentBy: string;
+  sentAt: string;
+  recipientCount: number;
+  skippedCount: number;
+  failureCount: number;
+}
+
+export interface AnnouncementRecipient {
+  id: string;
+  sendId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: "skipped" | "sent" | "failed";
+  skippedReason?: string;
+  sentAt?: string;
+  failureReason?: string;
+}
+
 export const sendSectionAnnouncement = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey, unsubscribeSecret] },
   async (request): Promise<SendAnnouncementResult> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
+    const templateName: string | null = typeof request.data?.templateName === "string"
+      ? request.data.templateName
+      : null;
     const callerUid = request.auth!.uid;
 
     await requireSectionModerator(callerUid, sectionId);
@@ -235,9 +266,29 @@ export const sendSectionAnnouncement = onCall(
     let skippedCount = 0;
     let failureCount = 0;
 
+    interface RecipientRecord {
+      userId: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      status: "skipped" | "sent" | "failed";
+      skippedReason?: string;
+      sentAt?: string;
+      failureReason?: string;
+    }
+    const recipientRecords: RecipientRecord[] = [];
+
     for (const recipient of recipients) {
       if (sectionOptOutIds.has(recipient.id)) {
         skippedCount++;
+        recipientRecords.push({
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: "skipped",
+          skippedReason: "opted_out",
+        });
         continue;
       }
 
@@ -267,26 +318,111 @@ export const sendSectionAnnouncement = onCall(
           one_click_unsubscribe_url: unsubscribeUrl,
         } as Parameters<typeof client.sendEmail>[2]);
         sentCount++;
+        recipientRecords.push({
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: "sent",
+          sentAt: new Date().toISOString(),
+        });
       } catch (err) {
         failureCount++;
         logger.error(`Failed to send announcement to ${recipient.id}`, { err, sectionId, templateUuid });
+        recipientRecords.push({
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: "failed",
+          failureReason: err instanceof Error ? err.message : "Unknown error",
+        });
       }
     }
 
-    // Audit record
-    await getFirestore()
-      .collection("announcementSends")
-      .add({
-        templateUuid,
-        sectionId,
-        sentBy: callerUid,
-        sentAt: Timestamp.now(),
-        recipientCount: sentCount,
-        skippedCount,
-        failureCount,
-      });
+    // Write the send summary to DataConnect
+    const sendResult = await createAnnouncementSend({
+      sectionId,
+      templateUuid,
+      templateName,
+      sentBy: callerUid,
+      recipientCount: sentCount,
+      skippedCount,
+      failureCount,
+    });
+    const announcementSendId = sendResult.data.announcementSend_insert.id;
+
+    // Write per-recipient records concurrently in chunks
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < recipientRecords.length; i += CHUNK_SIZE) {
+      await Promise.all(
+        recipientRecords.slice(i, i + CHUNK_SIZE).map((r) =>
+          createAnnouncementRecipient({
+            announcementSendId,
+            userId: r.userId,
+            email: r.email,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            status: r.status,
+            skippedReason: r.skippedReason ?? null,
+            sentAt: r.sentAt ?? null,
+            failureReason: r.failureReason ?? null,
+          })
+        )
+      );
+    }
 
     logger.info("Announcement sent", { sectionId, templateUuid, sentCount, skippedCount, failureCount });
     return { sentCount, skippedCount, failureCount };
+  }
+);
+
+export const getAnnouncementSendHistory = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request): Promise<{ sends: AnnouncementSend[] }> => {
+    requireAuth(request);
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    await requireSectionModerator(request.auth!.uid, sectionId);
+
+    const result = await dcGetAnnouncementSendHistory({ sectionId });
+    const sends: AnnouncementSend[] = (result.data?.announcementSends ?? []).map((s) => ({
+      id: s.id,
+      templateUuid: s.templateUuid,
+      templateName: s.templateName ?? null,
+      sectionId,
+      sentBy: s.sentBy,
+      sentAt: s.sentAt,
+      recipientCount: s.recipientCount,
+      skippedCount: s.skippedCount,
+      failureCount: s.failureCount,
+    }));
+
+    return { sends };
+  }
+);
+
+export const getAnnouncementSendRecipients = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request): Promise<{ recipients: AnnouncementRecipient[] }> => {
+    requireAuth(request);
+    const sendId = requireString(request.data?.sendId, "sendId");
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    await requireSectionModerator(request.auth!.uid, sectionId);
+
+    const result = await dcGetAnnouncementSendRecipients({ sendId });
+    const recipients: AnnouncementRecipient[] = (result.data?.announcementRecipients ?? []).map((r) => ({
+      id: r.id,
+      sendId,
+      userId: r.userId,
+      email: r.email,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      status: r.status as "skipped" | "sent" | "failed",
+      skippedReason: r.skippedReason ?? undefined,
+      sentAt: r.sentAt ?? undefined,
+      failureReason: r.failureReason ?? undefined,
+    }));
+
+    return { recipients };
   }
 );
