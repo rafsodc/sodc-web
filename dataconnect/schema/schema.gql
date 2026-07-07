@@ -167,6 +167,13 @@ type SectionUserGroupPurposeLink @table(key: ["section", "userGroup"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
+# Per-section announcement opt-out. A row here means the user has opted out of announcements for that section.
+type SectionAnnouncementOptOut @table(key: ["user", "section"]) {
+  user: User!
+  section: Section!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
 # Event - a single calendar event (e.g. symposium) linked to an EVENTS section. Order by startDateTime.
 type Event @table {
   id: UUID! @default(expr: "uuidV4()")

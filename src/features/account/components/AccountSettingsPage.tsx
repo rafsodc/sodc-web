@@ -10,11 +10,20 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
+  FormControlLabel,
   Snackbar,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
+import {
+  useGetMyAnnouncementPreferences,
+  useOptOutSectionAnnouncement,
+  useOptInSectionAnnouncement,
+} from "@dataconnect/generated/react";
+import { MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/generated";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 import {
   EmailAuthProvider,
@@ -56,6 +65,126 @@ function getAuthErrorMessage(error: unknown): string {
 
 function usesEmailPassword(user: User): boolean {
   return user.providerData.some((provider) => provider.providerId === "password");
+}
+
+function AnnouncementPreferencesList() {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useGetMyAnnouncementPreferences({ staleTime: Infinity });
+  const optOut = useOptOutSectionAnnouncement();
+  const optIn = useOptInSectionAnnouncement();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map());
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+
+  const sections = useMemo(() => {
+    const grantsAccess = (purposes?: string[] | null) =>
+      purposes?.includes(SectionUserGroupPurpose.ACCESS) ||
+      purposes?.includes(SectionUserGroupPurpose.MODERATOR);
+
+    const sectionMap = new Map<string, { id: string; name: string }>();
+    const addSection = (s: { id: string; name: string }) => {
+      if (!sectionMap.has(s.id)) sectionMap.set(s.id, s);
+    };
+
+    // Explicit group memberships
+    for (const ug of data?.user?.userGroups ?? []) {
+      for (const pl of ug.userGroup.purposeLinks) {
+        if (grantsAccess(pl.purposes) && pl.section) addSection(pl.section);
+      }
+    }
+
+    // Status-based group memberships
+    const userStatus = data?.user?.membershipStatus;
+    for (const ug of data?.allUserGroups ?? []) {
+      if (!ug.membershipStatuses?.includes(userStatus as MembershipStatus)) continue;
+      for (const pl of ug.purposeLinks) {
+        if (grantsAccess(pl.purposes) && pl.section) addSection(pl.section);
+      }
+    }
+
+    return Array.from(sectionMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [data]);
+
+  const optOutIds = useMemo(
+    () => new Set((data?.user?.optOuts ?? []).map((o) => o.section.id)),
+    [data]
+  );
+
+  const handleToggle = async (sectionId: string, currentlyOptedOut: boolean) => {
+    const newOptedOut = !currentlyOptedOut;
+    setLocalOverrides(prev => new Map(prev).set(sectionId, newOptedOut));
+    setBusy(sectionId);
+    try {
+      if (currentlyOptedOut) {
+        await optIn.mutateAsync({ sectionId });
+      } else {
+        await optOut.mutateAsync({ sectionId });
+      }
+      queryClient.setQueryData(
+        ["GetMyAnnouncementPreferences", null],
+        (old: typeof data) => {
+          if (!old?.user) return old;
+          const newOptOuts = newOptedOut
+            ? [...(old.user.optOuts ?? []), { section: { id: sectionId } }]
+            : (old.user.optOuts ?? []).filter((o) => o.section.id !== sectionId);
+          return { ...old, user: { ...old.user, optOuts: newOptOuts } };
+        }
+      );
+      setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
+      setSnackbar(newOptedOut ? "Opted out of announcements" : "Opted in to announcements");
+    } catch {
+      setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Box component="section" aria-labelledby="email-preferences-heading">
+      <Typography id="email-preferences-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
+        Announcement emails
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Choose which sections you receive announcement emails from. You can also change this on each
+        section's page.
+      </Typography>
+      {isLoading ? (
+        <CircularProgress size={20} />
+      ) : sections.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          You are not a member of any sections.
+        </Typography>
+      ) : (
+        <Stack spacing={0.5}>
+          {sections.map((section) => {
+            const isOptedOut = localOverrides.has(section.id) ? localOverrides.get(section.id)! : optOutIds.has(section.id);
+            const isBusy = busy === section.id;
+            return (
+              <FormControlLabel
+                key={section.id}
+                control={
+                  <Switch
+                    checked={!isOptedOut}
+                    onChange={() => void handleToggle(section.id, isOptedOut)}
+                    size="small"
+                    disabled={isBusy}
+                  />
+                }
+                label={<Typography variant="body2">{section.name}</Typography>}
+              />
+            );
+          })}
+        </Stack>
+      )}
+      <Snackbar
+        open={!!snackbar}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(null)}
+        message={snackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
+    </Box>
+  );
 }
 
 export default function AccountSettingsPage({
@@ -237,6 +366,9 @@ export default function AccountSettingsPage({
             </>
           )}
         </Box>
+
+        <Divider />
+        <AnnouncementPreferencesList />
 
         {canResign && (
           <>

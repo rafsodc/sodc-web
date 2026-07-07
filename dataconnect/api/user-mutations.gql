@@ -159,3 +159,16 @@ mutation UnsubscribeFromUserGroup(
     }
   )
 }
+
+# Opt the current user out of announcements for a specific section
+mutation OptOutSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  sectionAnnouncementOptOut_upsert(data: {
+    userId_expr: "auth.uid"
+    sectionId: $sectionId
+  })
+}
+
+# Remove the current user's per-section opt-out (opt back in)
+mutation OptInSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  sectionAnnouncementOptOut_delete(key: { userId_expr: "auth.uid", sectionId: $sectionId })
+}

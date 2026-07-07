@@ -17,6 +17,7 @@ import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils
 import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetailTabs";
+import AnnouncementOptOutToggle from "./AnnouncementOptOutToggle";
 import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
 import SectionEventCard from "./SectionEventCard";
@@ -32,10 +33,12 @@ interface SectionDescriptionHeaderProps {
   hasCurrentUser: boolean;
   canSubscribe: boolean;
   userIsMember: boolean;
+  userHasSectionAccess: boolean;
   hasSubscribableMemberGroup: boolean;
   subscribing: boolean;
   onSubscribe: () => void;
   onUnsubscribe: () => void;
+  sectionId: string;
 }
 
 export function SectionDescriptionHeader({
@@ -44,10 +47,12 @@ export function SectionDescriptionHeader({
   hasCurrentUser,
   canSubscribe,
   userIsMember,
+  userHasSectionAccess,
   hasSubscribableMemberGroup,
   subscribing,
   onSubscribe,
   onUnsubscribe,
+  sectionId,
 }: SectionDescriptionHeaderProps) {
   return (
     <Box sx={{ mb: 3 }}>
@@ -86,6 +91,11 @@ export function SectionDescriptionHeader({
               {subscribing ? "Unsubscribing..." : "Unsubscribe"}
             </Button>
           )}
+        </Box>
+      )}
+      {hasCurrentUser && userHasSectionAccess && (
+        <Box sx={{ mt: 2 }}>
+          <AnnouncementOptOutToggle sectionId={sectionId} />
         </Box>
       )}
     </Box>

@@ -29,6 +29,7 @@ import {
 import type { ReactNode } from "react";
 import {
   Add as AddIcon,
+  Campaign as CampaignIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   ExpandMore as ExpandMoreIcon,
@@ -52,6 +53,7 @@ interface EventListSurfaceProps {
   error: string | null;
   onDismissError: () => void;
   onAddEvent: () => void;
+  onSendAnnouncement: () => void;
   loadingEvents: boolean;
   errorEvents: boolean;
   events: EventRow[];
@@ -66,6 +68,7 @@ export function EventListSurface({
   error,
   onDismissError,
   onAddEvent,
+  onSendAnnouncement,
   loadingEvents,
   errorEvents,
   events,
@@ -81,9 +84,14 @@ export function EventListSurface({
           {error}
         </Alert>
       )}
-      <Button startIcon={<AddIcon />} variant="contained" onClick={onAddEvent} sx={{ mb: 2 }}>
-        Add event
-      </Button>
+      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        <Button startIcon={<AddIcon />} variant="contained" onClick={onAddEvent}>
+          Add event
+        </Button>
+        <Button startIcon={<CampaignIcon />} variant="outlined" onClick={onSendAnnouncement}>
+          Send announcement
+        </Button>
+      </Box>
       {loadingEvents ? (
         <CircularProgress />
       ) : errorEvents ? (

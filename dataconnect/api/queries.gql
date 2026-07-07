@@ -345,6 +345,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == tr
             firstName
             lastName
             email
+            serviceNumber
             membershipStatus
           }
         }
@@ -737,6 +738,38 @@ query ListOpenPaymentReconciliationExceptions @auth(expr: "auth.token.admin == t
         id
         title
       }
+    }
+  }
+}
+# Get the current user's per-section announcement opt-out status
+query GetSectionAnnouncementOptOut($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+  sectionAnnouncementOptOut(key: { userId_expr: "auth.uid", sectionId: $sectionId }) {
+    createdAt
+  }
+}
+
+# Get all sections the current user has access to (explicit + status-based), with opt-out status
+query GetMyAnnouncementPreferences @auth(expr: "auth.token.enabled == true") {
+  user(key: { id_expr: "auth.uid" }) {
+    membershipStatus
+    userGroups: userUserGroups_on_user {
+      userGroup {
+        membershipStatuses
+        purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+          purposes
+          section { id name }
+        }
+      }
+    }
+    optOuts: sectionAnnouncementOptOuts_on_user {
+      section { id }
+    }
+  }
+  allUserGroups: userGroups {
+    membershipStatuses
+    purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+      purposes
+      section { id name }
     }
   }
 }
