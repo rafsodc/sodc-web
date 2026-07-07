@@ -13,6 +13,7 @@ export * from "./userGroups";
 export * from "./emailTemplateSync";
 export * from "./announcements";
 export * from "./unsubscribe";
+export * from "./notifyCallback";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {

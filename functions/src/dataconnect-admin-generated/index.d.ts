@@ -2810,3 +2810,31 @@ export function adminOptInSectionAnnouncement(dc: DataConnect, vars: AdminOptInS
 /** Generated Node Admin SDK operation action function for the 'AdminOptInSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
 export function adminOptInSectionAnnouncement(vars: AdminOptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptInSectionAnnouncementData>>;
 
+export interface GetUserByEmailData {
+  users: ({
+    id: string;
+    membershipStatus: MembershipStatus;
+    emailBounceCount: number;
+  })[];
+}
+export interface GetUserByEmailVariables {
+  email: string;
+}
+/** Generated Node Admin SDK operation action function for the 'GetUserByEmail' Query. Allow users to execute without passing in DataConnect. */
+export function getUserByEmail(dc: DataConnect, vars: GetUserByEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByEmailData>>;
+/** Generated Node Admin SDK operation action function for the 'GetUserByEmail' Query. Allow users to pass in custom DataConnect instances. */
+export function getUserByEmail(vars: GetUserByEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByEmailData>>;
+
+export interface UpdateEmailBounceStatsData {
+  user_update?: string | null;
+}
+export interface UpdateEmailBounceStatsVariables {
+  userId: string;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+}
+/** Generated Node Admin SDK operation action function for the 'UpdateEmailBounceStats' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateEmailBounceStats(dc: DataConnect, vars: UpdateEmailBounceStatsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEmailBounceStatsData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateEmailBounceStats' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateEmailBounceStats(vars: UpdateEmailBounceStatsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEmailBounceStatsData>>;
+
