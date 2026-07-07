@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "announcementSends",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sectionId", "order": "ASCENDING" },
+        { "fieldPath": "sentAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "announcementRecipients",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sendId", "order": "ASCENDING" },
+        { "fieldPath": "lastName", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

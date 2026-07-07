@@ -206,12 +206,40 @@ export interface SendAnnouncementResult {
   failureCount: number;
 }
 
+export interface AnnouncementSend {
+  id: string;
+  templateUuid: string;
+  templateName: string | null;
+  sectionId: string;
+  sentBy: string;
+  sentAt: string;
+  recipientCount: number;
+  skippedCount: number;
+  failureCount: number;
+}
+
+export interface AnnouncementRecipient {
+  id: string;
+  sendId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: "skipped" | "sent" | "failed";
+  skippedReason?: string;
+  sentAt?: string;
+  failureReason?: string;
+}
+
 export const sendSectionAnnouncement = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey, unsubscribeSecret] },
   async (request): Promise<SendAnnouncementResult> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
+    const templateName: string | null = typeof request.data?.templateName === "string"
+      ? request.data.templateName
+      : null;
     const callerUid = request.auth!.uid;
 
     await requireSectionModerator(callerUid, sectionId);
@@ -230,14 +258,42 @@ export const sendSectionAnnouncement = onCall(
       )
     );
 
+    const db = getFirestore();
+    const sendRef = db.collection("announcementSends").doc();
+    const sendId = sendRef.id;
+
     const client = new NotifyClient(apiKey);
     let sentCount = 0;
     let skippedCount = 0;
     let failureCount = 0;
 
+    interface RecipientRecord {
+      sendId: string;
+      sectionId: string;
+      userId: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      status: "skipped" | "sent" | "failed";
+      skippedReason?: string;
+      sentAt?: Timestamp;
+      failureReason?: string;
+    }
+    const recipientRecords: RecipientRecord[] = [];
+
     for (const recipient of recipients) {
       if (sectionOptOutIds.has(recipient.id)) {
         skippedCount++;
+        recipientRecords.push({
+          sendId,
+          sectionId,
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: "skipped",
+          skippedReason: "opted_out",
+        });
         continue;
       }
 
@@ -267,26 +323,124 @@ export const sendSectionAnnouncement = onCall(
           one_click_unsubscribe_url: unsubscribeUrl,
         } as Parameters<typeof client.sendEmail>[2]);
         sentCount++;
+        recipientRecords.push({
+          sendId,
+          sectionId,
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: "sent",
+          sentAt: Timestamp.now(),
+        });
       } catch (err) {
         failureCount++;
         logger.error(`Failed to send announcement to ${recipient.id}`, { err, sectionId, templateUuid });
+        recipientRecords.push({
+          sendId,
+          sectionId,
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: "failed",
+          failureReason: err instanceof Error ? err.message : "Unknown error",
+        });
       }
     }
 
-    // Audit record
-    await getFirestore()
-      .collection("announcementSends")
-      .add({
-        templateUuid,
-        sectionId,
-        sentBy: callerUid,
-        sentAt: Timestamp.now(),
-        recipientCount: sentCount,
-        skippedCount,
-        failureCount,
-      });
+    // Write the send summary doc
+    await sendRef.set({
+      templateUuid,
+      templateName,
+      sectionId,
+      sentBy: callerUid,
+      sentAt: Timestamp.now(),
+      recipientCount: sentCount,
+      skippedCount,
+      failureCount,
+    });
+
+    // Write per-recipient docs in batches of 499 (Firestore batch limit is 500)
+    const recipientsRef = db.collection("announcementRecipients");
+    const BATCH_SIZE = 499;
+    for (let i = 0; i < recipientRecords.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      for (const record of recipientRecords.slice(i, i + BATCH_SIZE)) {
+        batch.set(recipientsRef.doc(), record);
+      }
+      await batch.commit();
+    }
 
     logger.info("Announcement sent", { sectionId, templateUuid, sentCount, skippedCount, failureCount });
     return { sentCount, skippedCount, failureCount };
+  }
+);
+
+export const getAnnouncementSendHistory = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request): Promise<{ sends: AnnouncementSend[] }> => {
+    requireAuth(request);
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    await requireSectionModerator(request.auth!.uid, sectionId);
+
+    const snap = await getFirestore()
+      .collection("announcementSends")
+      .where("sectionId", "==", sectionId)
+      .orderBy("sentAt", "desc")
+      .limit(50)
+      .get();
+
+    const sends: AnnouncementSend[] = snap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        templateUuid: d.templateUuid as string,
+        templateName: (d.templateName as string | null) ?? null,
+        sectionId: d.sectionId as string,
+        sentBy: d.sentBy as string,
+        sentAt: (d.sentAt as Timestamp).toDate().toISOString(),
+        recipientCount: d.recipientCount as number,
+        skippedCount: d.skippedCount as number,
+        failureCount: d.failureCount as number,
+      };
+    });
+
+    return { sends };
+  }
+);
+
+export const getAnnouncementSendRecipients = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request): Promise<{ recipients: AnnouncementRecipient[] }> => {
+    requireAuth(request);
+    const sendId = requireString(request.data?.sendId, "sendId");
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    await requireSectionModerator(request.auth!.uid, sectionId);
+
+    const snap = await getFirestore()
+      .collection("announcementRecipients")
+      .where("sendId", "==", sendId)
+      .orderBy("lastName")
+      .get();
+
+    const recipients: AnnouncementRecipient[] = snap.docs.map((doc) => {
+      const d = doc.data();
+      const r: AnnouncementRecipient = {
+        id: doc.id,
+        sendId: d.sendId as string,
+        userId: d.userId as string,
+        email: d.email as string,
+        firstName: d.firstName as string,
+        lastName: d.lastName as string,
+        status: d.status as "skipped" | "sent" | "failed",
+      };
+      if (d.skippedReason) r.skippedReason = d.skippedReason as string;
+      if (d.sentAt) r.sentAt = (d.sentAt as Timestamp).toDate().toISOString();
+      if (d.failureReason) r.failureReason = d.failureReason as string;
+      return r;
+    });
+
+    return { recipients };
   }
 );
