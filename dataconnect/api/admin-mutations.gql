@@ -1129,6 +1129,32 @@ query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+# ── Email bounce tracking ────────────────────────────────────────────────────
+
+query GetUserByEmail($email: String!) @auth(level: NO_ACCESS) {
+  users(where: { email: { eq: $email } }, limit: 1) {
+    id
+    membershipStatus
+    emailBounceCount
+  }
+}
+
+mutation UpdateEmailBounceStats(
+  $userId: String!
+  $emailBounceCount: Int!
+  $emailLastBounceAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  user_update(
+    id: $userId
+    data: {
+      emailBounceCount: $emailBounceCount
+      emailLastBounceAt: $emailLastBounceAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 # ── Unsubscribe ───────────────────────────────────────────────────────────────
 
 # Opt a specific user out of a section's announcements by userId (used by unsubscribeAnnouncement CF)

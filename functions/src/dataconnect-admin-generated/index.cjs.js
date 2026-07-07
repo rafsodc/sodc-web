@@ -925,3 +925,17 @@ function adminOptInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options
 }
 exports.adminOptInSectionAnnouncement = adminOptInSectionAnnouncement;
 
+function getUserByEmail(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserByEmail', inputVars, inputOpts);
+}
+exports.getUserByEmail = getUserByEmail;
+
+function updateEmailBounceStats(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateEmailBounceStats', inputVars, inputOpts);
+}
+exports.updateEmailBounceStats = updateEmailBounceStats;
+
