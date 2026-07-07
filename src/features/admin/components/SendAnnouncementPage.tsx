@@ -22,6 +22,7 @@ import {
   type AnnouncementTemplate,
 } from "../../../shared/utils/firebaseFunctions";
 import TemplateEditor from "./TemplateEditor";
+import AnnouncementSendHistory from "./AnnouncementSendHistory";
 
 interface SendAnnouncementPageProps {
   sectionId: string;
@@ -58,6 +59,7 @@ export default function SendAnnouncementPage({
     failureCount: number;
   } | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [historyTrigger, setHistoryTrigger] = useState(0);
 
   useEffect(() => {
     setLoadingTemplates(true);
@@ -93,8 +95,10 @@ export default function SendAnnouncementPage({
     setSendError(null);
     setSendResult(null);
     try {
-      const result = await sendSectionAnnouncement(sectionId, selectedId);
+      const selectedTemplate = templates.find((t) => t.id === selectedId);
+      const result = await sendSectionAnnouncement(sectionId, selectedId, selectedTemplate?.name);
       setSendResult(result);
+      setHistoryTrigger((n) => n + 1);
     } catch {
       setSendError("Failed to send announcement. Please try again.");
     } finally {
@@ -201,6 +205,8 @@ export default function SendAnnouncementPage({
       )}
 
       <TemplateEditor sectionName={sectionName} />
+
+      <AnnouncementSendHistory sectionId={sectionId} refreshTrigger={historyTrigger} />
     </Box>
   );
 }

@@ -659,13 +659,62 @@ export interface SendAnnouncementResult {
 
 export async function sendSectionAnnouncement(
   sectionId: string,
-  templateUuid: string
+  templateUuid: string,
+  templateName?: string
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
-    { sectionId: string; templateUuid: string },
+    { sectionId: string; templateUuid: string; templateName?: string },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
-  const result = await callable({ sectionId, templateUuid });
+  const result = await callable({ sectionId, templateUuid, templateName });
   return result.data;
+}
+
+export interface AnnouncementSend {
+  id: string;
+  templateUuid: string;
+  templateName: string | null;
+  sectionId: string;
+  sentBy: string;
+  sentAt: string;
+  recipientCount: number;
+  skippedCount: number;
+  failureCount: number;
+}
+
+export interface AnnouncementRecipient {
+  id: string;
+  sendId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: "skipped" | "sent" | "failed";
+  skippedReason?: string;
+  sentAt?: string;
+  failureReason?: string;
+}
+
+export async function getAnnouncementSendHistory(
+  sectionId: string
+): Promise<AnnouncementSend[]> {
+  const callable = httpsCallable<{ sectionId: string }, { sends: AnnouncementSend[] }>(
+    functions,
+    "getAnnouncementSendHistory"
+  );
+  const result = await callable({ sectionId });
+  return result.data.sends;
+}
+
+export async function getAnnouncementSendRecipients(
+  sendId: string,
+  sectionId: string
+): Promise<AnnouncementRecipient[]> {
+  const callable = httpsCallable<
+    { sendId: string; sectionId: string },
+    { recipients: AnnouncementRecipient[] }
+  >(functions, "getAnnouncementSendRecipients");
+  const result = await callable({ sendId, sectionId });
+  return result.data.recipients;
 }
 
