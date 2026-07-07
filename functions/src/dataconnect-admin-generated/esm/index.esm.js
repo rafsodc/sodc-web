@@ -758,3 +758,15 @@ export function optInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, optio
   return dcInstance.executeMutation('OptInSectionAnnouncement', inputVars, inputOpts);
 }
 
+export function adminOptOutSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AdminOptOutSectionAnnouncement', inputVars, inputOpts);
+}
+
+export function adminOptInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AdminOptInSectionAnnouncement', inputVars, inputOpts);
+}
+

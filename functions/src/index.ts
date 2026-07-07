@@ -12,6 +12,7 @@ export * from "./stagedExpiry";
 export * from "./userGroups";
 export * from "./emailTemplateSync";
 export * from "./announcements";
+export * from "./unsubscribe";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
