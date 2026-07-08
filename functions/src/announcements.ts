@@ -355,7 +355,8 @@ export const sendSectionAnnouncement = onCall(
         await client.sendEmail(templateUuid, recipient.email, {
           personalisation,
           reference: `announcement-${sectionId}-${recipient.id}`,
-        });
+          oneClickUnsubscribeURL: personalisation.unsubscribeUrl,
+        } as Parameters<typeof client.sendEmail>[2]);
         sentCount++;
         recipientRecords.push({
           userId: recipient.id,
