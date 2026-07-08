@@ -19,47 +19,47 @@ function makeUser(overrides: Partial<SearchUser> = {}): SearchUser {
 
 describe("UsersTable", () => {
   it("renders Account and Membership column headers", () => {
-    render(<UsersTable users={[]} />);
+    render(<UsersTable mode="edit" users={[]} />);
     expect(screen.getByText("Account")).toBeInTheDocument();
     expect(screen.getByText("Membership")).toBeInTheDocument();
     expect(screen.queryByText("Status")).not.toBeInTheDocument();
   });
 
   it("shows friendly membership status label for a user with a profile", () => {
-    render(<UsersTable users={[makeUser({ membershipStatus: "REGULAR" as never })]} />);
+    render(<UsersTable mode="edit" users={[makeUser({ membershipStatus: "REGULAR" as never })]} />);
     expect(screen.getByText("Regular")).toBeInTheDocument();
   });
 
   it("shows 'No profile' for a user without a DC profile", () => {
-    render(<UsersTable users={[makeUser({ membershipStatus: null })]} />);
+    render(<UsersTable mode="edit" users={[makeUser({ membershipStatus: null })]} />);
     expect(screen.getByText("No profile")).toBeInTheDocument();
   });
 
   it("shows 'No profile' when membershipStatus is undefined", () => {
     const user = makeUser();
     delete (user as Partial<SearchUser>).membershipStatus;
-    render(<UsersTable users={[user]} />);
+    render(<UsersTable mode="edit" users={[user]} />);
     expect(screen.getByText("No profile")).toBeInTheDocument();
   });
 
   it("shows Active for a non-disabled user in the Account column", () => {
-    render(<UsersTable users={[makeUser({ disabled: false })]} />);
+    render(<UsersTable mode="edit" users={[makeUser({ disabled: false })]} />);
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
   it("shows Disabled for a disabled user in the Account column", () => {
-    render(<UsersTable users={[makeUser({ disabled: true })]} />);
+    render(<UsersTable mode="edit" users={[makeUser({ disabled: true })]} />);
     expect(screen.getByText("Disabled")).toBeInTheDocument();
   });
 
   it("renders 'No users found' with correct colSpan when list is empty", () => {
-    render(<UsersTable users={[]} />);
+    render(<UsersTable mode="edit" users={[]} />);
     const cell = screen.getByText("No users found").closest("td");
     expect(cell).toHaveAttribute("colspan", "7");
   });
 
   it("passes PENDING status through the label helper", () => {
-    render(<UsersTable users={[makeUser({ membershipStatus: "PENDING" as never })]} />);
+    render(<UsersTable mode="edit" users={[makeUser({ membershipStatus: "PENDING" as never })]} />);
     expect(screen.getByText("Pending")).toBeInTheDocument();
   });
 });

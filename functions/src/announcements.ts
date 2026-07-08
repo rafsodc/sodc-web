@@ -38,8 +38,10 @@ function linkHasPurpose(
 
 async function requireSectionModerator(
   callerUid: string,
-  sectionId: string
+  sectionId: string,
+  callerIsAdmin = false
 ): Promise<void> {
+  if (callerIsAdmin) return;
   const [sectionResult, callerGroupsResult, userStatusResult] = await Promise.all([
     getSectionById({ id: sectionId }),
     getUserAccessGroupsById({ userId: callerUid }),
@@ -168,7 +170,7 @@ export const getAnnouncementTemplates = onCall(
   async (request): Promise<{ templates: AnnouncementTemplate[] }> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId);
+    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
@@ -245,7 +247,7 @@ export const sendSectionAnnouncement = onCall(
       : null;
     const callerUid = request.auth!.uid;
 
-    await requireSectionModerator(callerUid, sectionId);
+    await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
 
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
@@ -382,7 +384,7 @@ export const getAnnouncementSendHistory = onCall(
   async (request): Promise<{ sends: AnnouncementSend[] }> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId);
+    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
     const result = await dcGetAnnouncementSendHistory({ sectionId });
     const sends: AnnouncementSend[] = (result.data?.announcementSends ?? []).map((s) => ({
@@ -407,7 +409,7 @@ export const getAnnouncementSendRecipients = onCall(
     requireAuth(request);
     const sendId = requireString(request.data?.sendId, "sendId");
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId);
+    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
     const result = await dcGetAnnouncementSendRecipients({ sendId });
     const recipients: AnnouncementRecipient[] = (result.data?.announcementRecipients ?? []).map((r) => ({
