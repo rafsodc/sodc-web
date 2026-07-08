@@ -231,21 +231,13 @@ export const previewAnnouncementTemplate = onCall(
   async (request): Promise<{ html: string; subject: string }> => {
     requireAuth(request);
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
-    const requiredPersonalisation = Array.isArray(request.data?.requiredPersonalisation)
-      ? (request.data.requiredPersonalisation as string[])
-      : [];
 
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
 
-    const personalisation = Object.fromEntries(
-      requiredPersonalisation
-        .filter((v) => v in PREVIEW_PLACEHOLDERS)
-        .map((v) => [v, PREVIEW_PLACEHOLDERS[v]])
-    );
-
     const client = new NotifyClient(apiKey);
-    const response = await client.previewTemplateById(templateUuid, personalisation);
+    // GOV Notify ignores extra personalisation keys — pass all placeholders so any template variable is satisfied
+    const response = await client.previewTemplateById(templateUuid, PREVIEW_PLACEHOLDERS);
     const data = response.data as { html: string; subject: string };
     return { html: data.html ?? "", subject: data.subject ?? "" };
   }
@@ -291,9 +283,6 @@ export const sendSectionAnnouncement = onCall(
     const templateName: string | null = typeof request.data?.templateName === "string"
       ? request.data.templateName
       : null;
-    const requiredPersonalisation = Array.isArray(request.data?.requiredPersonalisation)
-      ? (request.data.requiredPersonalisation as string[])
-      : [];
     const callerUid = request.auth!.uid;
 
     await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
@@ -343,16 +332,15 @@ export const sendSectionAnnouncement = onCall(
         continue;
       }
 
-      const allValues: Record<string, string> = {
+      // GOV Notify ignores extra personalisation keys — pass everything available
+      const personalisation: Record<string, string> = {
         firstName: recipient.firstName,
         lastName: recipient.lastName,
         email: recipient.email,
         serviceNumber: recipient.serviceNumber,
         membershipStatus: recipient.membershipStatus,
         section: sectionName,
-      };
-      if (requiredPersonalisation.includes("unsubscribeUrl")) {
-        allValues.unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+        unsubscribeUrl: `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
           {
             userId: recipient.id,
             sectionId,
@@ -360,14 +348,8 @@ export const sendSectionAnnouncement = onCall(
             exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
           },
           unsubscribeSecret.value()
-        )}`;
-      }
-
-      const personalisation = Object.fromEntries(
-        requiredPersonalisation
-          .filter((v) => v in allValues)
-          .map((v) => [v, allValues[v]])
-      );
+        )}`,
+      };
 
       try {
         await client.sendEmail(templateUuid, recipient.email, {

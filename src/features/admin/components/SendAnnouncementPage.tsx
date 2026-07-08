@@ -53,6 +53,7 @@ export default function SendAnnouncementPage({
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{
@@ -78,17 +79,17 @@ export default function SendAnnouncementPage({
     setSelectedId(id);
     setPreviewHtml(null);
     setPreviewSubject(null);
+    setPreviewError(null);
     setSendResult(null);
     setSendError(null);
     if (!id) return;
     setLoadingPreview(true);
     try {
-      const template = templates.find((t) => t.id === id);
-      const { html, subject } = await previewAnnouncementTemplate(id, template?.requiredPersonalisation ?? []);
+      const { html, subject } = await previewAnnouncementTemplate(id);
       setPreviewHtml(html);
       setPreviewSubject(subject);
-    } catch {
-      setPreviewHtml(null);
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Failed to load preview");
     } finally {
       setLoadingPreview(false);
     }
@@ -101,7 +102,7 @@ export default function SendAnnouncementPage({
     setSendResult(null);
     try {
       const selectedTemplate = templates.find((t) => t.id === selectedId);
-      const result = await sendSectionAnnouncement(sectionId, selectedId, selectedTemplate?.name, selectedTemplate?.requiredPersonalisation);
+      const result = await sendSectionAnnouncement(sectionId, selectedId, selectedTemplate?.name);
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
     } catch {
@@ -175,6 +176,10 @@ export default function SendAnnouncementPage({
 
       {loadingPreview && <CircularProgress size={24} sx={{ mb: 2 }} />}
 
+      {previewError && !loadingPreview && (
+        <Alert severity="warning" sx={{ mb: 2 }}>Preview unavailable: {previewError}</Alert>
+      )}
+
       {previewHtml && !loadingPreview && (
         <>
           <Divider sx={{ mb: 2 }} />
@@ -189,15 +194,22 @@ export default function SendAnnouncementPage({
               border: "1px solid",
               borderColor: "divider",
               borderRadius: 1,
-              p: 2,
               mb: 3,
-              bgcolor: "background.paper",
-              fontSize: "0.875rem",
-              lineHeight: 1.6,
-              "& a": { color: "primary.main" },
+              overflow: "hidden",
             }}
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
+          >
+            <iframe
+              srcDoc={previewHtml}
+              title="Email preview"
+              sandbox="allow-same-origin"
+              style={{ width: "100%", border: "none", display: "block", minHeight: 400 }}
+              onLoad={(e) => {
+                const iframe = e.currentTarget;
+                const height = iframe.contentDocument?.body?.scrollHeight;
+                if (height) iframe.style.height = `${height + 32}px`;
+              }}
+            />
+          </Box>
         </>
       )}
 
