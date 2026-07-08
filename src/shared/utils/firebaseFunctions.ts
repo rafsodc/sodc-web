@@ -627,6 +627,7 @@ export interface AnnouncementTemplate {
   id: string;
   name: string;
   updatedAt: string;
+  requiredPersonalisation: string[];
 }
 
 export async function getAnnouncementTemplates(
@@ -641,13 +642,14 @@ export async function getAnnouncementTemplates(
 }
 
 export async function previewAnnouncementTemplate(
-  templateUuid: string
+  templateUuid: string,
+  requiredPersonalisation: string[]
 ): Promise<{ html: string; subject: string }> {
-  const callable = httpsCallable<{ templateUuid: string }, { html: string; subject: string }>(
-    functions,
-    "previewAnnouncementTemplate"
-  );
-  const result = await callable({ templateUuid });
+  const callable = httpsCallable<
+    { templateUuid: string; requiredPersonalisation: string[] },
+    { html: string; subject: string }
+  >(functions, "previewAnnouncementTemplate");
+  const result = await callable({ templateUuid, requiredPersonalisation });
   return result.data;
 }
 
@@ -660,13 +662,14 @@ export interface SendAnnouncementResult {
 export async function sendSectionAnnouncement(
   sectionId: string,
   templateUuid: string,
-  templateName?: string
+  templateName?: string,
+  requiredPersonalisation?: string[]
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
-    { sectionId: string; templateUuid: string; templateName?: string },
+    { sectionId: string; templateUuid: string; templateName?: string; requiredPersonalisation?: string[] },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
-  const result = await callable({ sectionId, templateUuid, templateName });
+  const result = await callable({ sectionId, templateUuid, templateName, requiredPersonalisation });
   return result.data;
 }
 

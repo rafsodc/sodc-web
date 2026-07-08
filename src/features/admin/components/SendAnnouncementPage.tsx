@@ -83,7 +83,8 @@ export default function SendAnnouncementPage({
     if (!id) return;
     setLoadingPreview(true);
     try {
-      const { html, subject } = await previewAnnouncementTemplate(id);
+      const template = templates.find((t) => t.id === id);
+      const { html, subject } = await previewAnnouncementTemplate(id, template?.requiredPersonalisation ?? []);
       setPreviewHtml(html);
       setPreviewSubject(subject);
     } catch {
@@ -100,7 +101,7 @@ export default function SendAnnouncementPage({
     setSendResult(null);
     try {
       const selectedTemplate = templates.find((t) => t.id === selectedId);
-      const result = await sendSectionAnnouncement(sectionId, selectedId, selectedTemplate?.name);
+      const result = await sendSectionAnnouncement(sectionId, selectedId, selectedTemplate?.name, selectedTemplate?.requiredPersonalisation);
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
     } catch {

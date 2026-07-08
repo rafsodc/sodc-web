@@ -158,12 +158,31 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
   return { recipients, sectionName: sectionData.name ?? sectionId };
 }
 
+// ── Personalisation helpers ───────────────────────────────────────────────────
+
+function extractTemplateVariables(body: string, subject: string): string[] {
+  const text = `${body} ${subject}`;
+  const matches = [...text.matchAll(/\(\(([^)]+)\)\)/g)];
+  return [...new Set(matches.map((m) => m[1].trim()))];
+}
+
+const PREVIEW_PLACEHOLDERS: Record<string, string> = {
+  firstName: "Jane",
+  lastName: "Smith",
+  email: "jane.smith@example.com",
+  serviceNumber: "S123456",
+  membershipStatus: "Regular",
+  section: "Example Section",
+  unsubscribeUrl: "https://example.com/unsubscribe",
+};
+
 // ── Cloud Functions ──────────────────────────────────────────────────────────
 
 export interface AnnouncementTemplate {
   id: string;
   name: string;
   updatedAt: string;
+  requiredPersonalisation: string[];
 }
 
 export const getAnnouncementTemplates = onCall(
@@ -178,8 +197,16 @@ export const getAnnouncementTemplates = onCall(
 
     const client = new NotifyClient(apiKey);
     const response = await client.getAllTemplates("email");
-    const all = (response.data as { templates: { id: string; name: string; updated_at: string | null; created_at: string }[] })
-      .templates ?? [];
+    const all = (response.data as {
+      templates: {
+        id: string;
+        name: string;
+        updated_at: string | null;
+        created_at: string;
+        body: string;
+        subject: string;
+      }[];
+    }).templates ?? [];
 
     const templates: AnnouncementTemplate[] = all
       .filter((t) => t.name.startsWith(BULK_PREFIX))
@@ -188,7 +215,12 @@ export const getAnnouncementTemplates = onCall(
         const dateB = new Date(b.updated_at ?? b.created_at).getTime();
         return dateB - dateA;
       })
-      .map((t) => ({ id: t.id, name: t.name, updatedAt: t.updated_at ?? t.created_at }));
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        updatedAt: t.updated_at ?? t.created_at,
+        requiredPersonalisation: extractTemplateVariables(t.body ?? "", t.subject ?? ""),
+      }));
 
     return { templates };
   }
@@ -199,16 +231,21 @@ export const previewAnnouncementTemplate = onCall(
   async (request): Promise<{ html: string; subject: string }> => {
     requireAuth(request);
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
+    const requiredPersonalisation = Array.isArray(request.data?.requiredPersonalisation)
+      ? (request.data.requiredPersonalisation as string[])
+      : [];
 
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
 
+    const personalisation = Object.fromEntries(
+      requiredPersonalisation
+        .filter((v) => v in PREVIEW_PLACEHOLDERS)
+        .map((v) => [v, PREVIEW_PLACEHOLDERS[v]])
+    );
+
     const client = new NotifyClient(apiKey);
-    const response = await client.previewTemplateById(templateUuid, {
-      firstName: "Jane",
-      section: "Example Section",
-      unsubscribeUrl: "https://example.com/unsubscribe",
-    });
+    const response = await client.previewTemplateById(templateUuid, personalisation);
     const data = response.data as { html: string; subject: string };
     return { html: data.html ?? "", subject: data.subject ?? "" };
   }
@@ -254,6 +291,9 @@ export const sendSectionAnnouncement = onCall(
     const templateName: string | null = typeof request.data?.templateName === "string"
       ? request.data.templateName
       : null;
+    const requiredPersonalisation = Array.isArray(request.data?.requiredPersonalisation)
+      ? (request.data.requiredPersonalisation as string[])
+      : [];
     const callerUid = request.auth!.uid;
 
     await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
@@ -303,23 +343,35 @@ export const sendSectionAnnouncement = onCall(
         continue;
       }
 
-      const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
-        {
-          userId: recipient.id,
-          sectionId,
-          sectionName,
-          exp: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
-        },
-        unsubscribeSecret.value()
-      )}`;
+      const allValues: Record<string, string> = {
+        firstName: recipient.firstName,
+        lastName: recipient.lastName,
+        email: recipient.email,
+        serviceNumber: recipient.serviceNumber,
+        membershipStatus: recipient.membershipStatus,
+        section: sectionName,
+      };
+      if (requiredPersonalisation.includes("unsubscribeUrl")) {
+        allValues.unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+          {
+            userId: recipient.id,
+            sectionId,
+            sectionName,
+            exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
+          },
+          unsubscribeSecret.value()
+        )}`;
+      }
+
+      const personalisation = Object.fromEntries(
+        requiredPersonalisation
+          .filter((v) => v in allValues)
+          .map((v) => [v, allValues[v]])
+      );
 
       try {
         await client.sendEmail(templateUuid, recipient.email, {
-          personalisation: {
-            firstName: recipient.firstName,
-            section: sectionName,
-            unsubscribeUrl,
-          },
+          personalisation,
           reference: `announcement-${sectionId}-${recipient.id}`,
         });
         sentCount++;
