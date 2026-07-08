@@ -6,14 +6,16 @@ import {
   CircularProgress,
   Divider,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
   type SelectChangeEvent,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { Campaign } from "@mui/icons-material";
+import { Campaign, Refresh } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import {
   getAnnouncementTemplates,
@@ -60,14 +62,16 @@ export default function SendAnnouncementPage({
   } | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyTrigger, setHistoryTrigger] = useState(0);
+  const [templatesTrigger, setTemplatesTrigger] = useState(0);
 
   useEffect(() => {
     setLoadingTemplates(true);
+    setTemplatesError(null);
     getAnnouncementTemplates(sectionId)
       .then(setTemplates)
       .catch(() => setTemplatesError("Failed to load templates from GOV Notify"))
       .finally(() => setLoadingTemplates(false));
-  }, [sectionId]);
+  }, [sectionId, templatesTrigger]);
 
   const handleTemplateChange = async (e: SelectChangeEvent) => {
     const id = e.target.value;
@@ -123,35 +127,50 @@ export default function SendAnnouncementPage({
         <Alert severity="error" sx={{ mb: 2 }}>{templatesError}</Alert>
       )}
 
-      {loadingTemplates ? (
-        <CircularProgress size={24} />
-      ) : (
-        <FormControl fullWidth sx={{ mb: 3 }} disabled={templates.length === 0}>
-          <InputLabel id="template-select-label">Template</InputLabel>
-          <Select
-            labelId="template-select-label"
-            label="Template"
-            value={selectedId}
-            onChange={(e) => void handleTemplateChange(e)}
-          >
-            {templates.length === 0 && (
-              <MenuItem value="" disabled>
-                No BULK: templates found in GOV Notify
-              </MenuItem>
-            )}
-            {templates.map((t) => (
-              <MenuItem key={t.id} value={t.id}>
-                <Stack direction="row" justifyContent="space-between" sx={{ width: "100%" }}>
-                  <Typography variant="body2">{t.name}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 2, whiteSpace: "nowrap" }}>
-                    Updated {formatUpdatedAt(t.updatedAt)}
-                  </Typography>
-                </Stack>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+        <Box sx={{ flex: 1 }}>
+          {loadingTemplates ? (
+            <CircularProgress size={24} />
+          ) : (
+            <FormControl fullWidth disabled={templates.length === 0}>
+              <InputLabel id="template-select-label">Template</InputLabel>
+              <Select
+                labelId="template-select-label"
+                label="Template"
+                value={selectedId}
+                onChange={(e) => void handleTemplateChange(e)}
+              >
+                {templates.length === 0 && (
+                  <MenuItem value="" disabled>
+                    No BULK: templates found in GOV Notify
+                  </MenuItem>
+                )}
+                {templates.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    <Stack direction="row" justifyContent="space-between" sx={{ width: "100%" }}>
+                      <Typography variant="body2">{t.name}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 2, whiteSpace: "nowrap" }}>
+                        Updated {formatUpdatedAt(t.updatedAt)}
+                      </Typography>
+                    </Stack>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </Box>
+        <Tooltip title="Refresh template list from GOV Notify">
+          <span>
+            <IconButton
+              onClick={() => setTemplatesTrigger((n) => n + 1)}
+              disabled={loadingTemplates}
+              aria-label="Refresh templates"
+            >
+              {loadingTemplates ? <CircularProgress size={20} /> : <Refresh />}
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
 
       {loadingPreview && <CircularProgress size={24} sx={{ mb: 2 }} />}
 
