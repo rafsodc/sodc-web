@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { NotifyClient } from "notifications-node-client";
@@ -343,7 +344,9 @@ export const sendSectionAnnouncement = onCall(
     }
 
     // Write the send summary to DataConnect
-    const sendResult = await createAnnouncementSend({
+    const announcementSendId = randomUUID();
+    await createAnnouncementSend({
+      id: announcementSendId,
       sectionId,
       templateUuid,
       templateName,
@@ -352,7 +355,6 @@ export const sendSectionAnnouncement = onCall(
       skippedCount,
       failureCount,
     });
-    const announcementSendId = sendResult.data.announcementSend_insert.id;
 
     // Write per-recipient records concurrently in chunks
     const CHUNK_SIZE = 10;
