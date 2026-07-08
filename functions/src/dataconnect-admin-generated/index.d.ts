@@ -2710,9 +2710,10 @@ export interface AnnouncementRecipient_Key {
 }
 
 export interface CreateAnnouncementSendData {
-  announcementSend_insert: AnnouncementSend_Key;
+  announcementSend_insert?: AnnouncementSend_Key | null;
 }
 export interface CreateAnnouncementSendVariables {
+  id: UUIDString;
   sectionId: UUIDString;
   templateUuid: string;
   templateName?: string | null;
@@ -2727,7 +2728,7 @@ export function createAnnouncementSend(dc: DataConnect, vars: CreateAnnouncement
 export function createAnnouncementSend(vars: CreateAnnouncementSendVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementSendData>>;
 
 export interface CreateAnnouncementRecipientData {
-  announcementRecipient_insert: AnnouncementRecipient_Key;
+  announcementRecipient_insert?: AnnouncementRecipient_Key | null;
 }
 export interface CreateAnnouncementRecipientVariables {
   announcementSendId: UUIDString;
@@ -2787,10 +2788,10 @@ export function getAnnouncementSendRecipients(dc: DataConnect, vars: GetAnnounce
 export function getAnnouncementSendRecipients(vars: GetAnnouncementSendRecipientsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientsData>>;
 
 export interface AdminOptOutSectionAnnouncementData {
-  sectionAnnouncementOptOut_upsert: SectionAnnouncementOptOut_Key;
+  sectionAnnouncementOptOut_upsert?: SectionAnnouncementOptOut_Key | null;
 }
 export interface AdminOptOutSectionAnnouncementVariables {
-  userId: UUIDString;
+  userId: string;
   sectionId: UUIDString;
 }
 /** Generated Node Admin SDK operation action function for the 'AdminOptOutSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */
@@ -2802,7 +2803,7 @@ export interface AdminOptInSectionAnnouncementData {
   sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
 }
 export interface AdminOptInSectionAnnouncementVariables {
-  userId: UUIDString;
+  userId: string;
   sectionId: UUIDString;
 }
 /** Generated Node Admin SDK operation action function for the 'AdminOptInSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */

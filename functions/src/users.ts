@@ -1,10 +1,28 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { listUsers as dcListUsers } from "@dataconnect/admin-generated";
+import { listUsers as dcListUsers, type MembershipStatus } from "@dataconnect/admin-generated";
 import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAME_LENGTH, mapUserRecord, handleFunctionError, listAllAuthUsers } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { isUserAwaitingProfile, isUserPendingApproval } from "./pendingUserApproval";
+
+const DC_PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let dcProfileCache: { map: Map<string, MembershipStatus>; expiresAt: number } | null = null;
+
+export function clearDcProfileCacheForTesting(): void { dcProfileCache = null; }
+
+async function getDcProfileMap(): Promise<Map<string, MembershipStatus>> {
+  const now = Date.now();
+  if (dcProfileCache && dcProfileCache.expiresAt > now) {
+    return dcProfileCache.map;
+  }
+  const result = await dcListUsers();
+  const map = new Map(
+    (result.data?.users ?? []).map((u) => [u.id, u.membershipStatus])
+  );
+  dcProfileCache = { map, expiresAt: now + DC_PROFILE_CACHE_TTL_MS };
+  return map;
+}
 
 /**
  * Updates the display name of the authenticated user
@@ -66,15 +84,21 @@ export const searchUsers = onCall(
 
   try {
     const searchLower = searchTerm.toLowerCase();
-    const allUsers = await listAllAuthUsers();
-    
+    const [allUsers, dcProfileById] = await Promise.all([
+      listAllAuthUsers(),
+      getDcProfileMap(),
+    ]);
+
     const matchingUsers = allUsers
       .map((userRecord) => {
         const email = (userRecord.email || "").toLowerCase();
         const displayName = (userRecord.displayName || "").toLowerCase();
-        
+
         if (email.includes(searchLower) || displayName.includes(searchLower)) {
-          return mapUserRecord(userRecord);
+          return {
+            ...mapUserRecord(userRecord),
+            membershipStatus: dcProfileById.get(userRecord.uid) ?? null,
+          };
         }
         return null;
       })
