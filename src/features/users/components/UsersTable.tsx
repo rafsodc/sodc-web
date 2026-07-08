@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import type { SearchUser } from "../../../types";
 import { colors } from "../../../config/colors";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 
 /** Hide button text on narrow viewports; icons + aria-label remain. */
 const labelOnlyFromSm = { display: { xs: "none", sm: "inline" } } as const;
@@ -252,14 +253,15 @@ export default function UsersTable({
             <TableCell>Email</TableCell>
             <TableCell>Email Verified</TableCell>
             <TableCell>Admin</TableCell>
-            <TableCell>Status</TableCell>
+            <TableCell>Account</TableCell>
+            <TableCell>Membership</TableCell>
             <TableCell align="center">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} align="center">
+              <TableCell colSpan={7} align="center">
                 No users found
               </TableCell>
             </TableRow>
@@ -306,6 +308,17 @@ export default function UsersTable({
                   ) : (
                     <Typography variant="body2" color="success.main">
                       Active
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {user.membershipStatus ? (
+                    <Typography variant="body2">
+                      {getMembershipStatusLabel(user.membershipStatus)}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No profile
                     </Typography>
                   )}
                 </TableCell>

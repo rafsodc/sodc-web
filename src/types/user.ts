@@ -28,6 +28,7 @@ export interface SearchUser {
   displayName: string;
   emailVerified: boolean;
   disabled: boolean;
+  membershipStatus?: MembershipStatus | null;
   metadata: {
     creationTime: string;
     lastSignInTime: string | null;
