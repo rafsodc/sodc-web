@@ -46,9 +46,12 @@ function makeAuthUser(uid: string, email: string) {
   } as unknown as import("firebase-admin").auth.UserRecord;
 }
 
+import { clearDcProfileCacheForTesting } from "../users.js";
+
 describe("searchUsers — membership status enrichment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearDcProfileCacheForTesting();
   });
 
   it("attaches membershipStatus from DC profile when user has a profile", async () => {
@@ -83,6 +86,16 @@ describe("searchUsers — membership status enrichment", () => {
 
     expect(mockDcListUsers).toHaveBeenCalledTimes(1);
     expect(mockListAllAuthUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-fetch DC profiles on a second search within the TTL", async () => {
+    mockListAllAuthUsers.mockResolvedValue([makeAuthUser("user-1", "alice@example.com")]);
+    mockDcListUsers.mockResolvedValue({ data: { users: [] } } as never);
+
+    await handler(adminRequest());
+    await handler(adminRequest());
+
+    expect(mockDcListUsers).toHaveBeenCalledTimes(1);
   });
 
   it("only includes users matching the search term", async () => {
