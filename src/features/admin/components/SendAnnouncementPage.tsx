@@ -197,7 +197,11 @@ export default function SendAnnouncementPage({
             }}
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
+        </>
+      )}
 
+      {selectedId && (
+        <>
           {sendResult ? (
             <Alert severity={sendResult.failureCount > 0 ? "warning" : "success"} sx={{ mb: 2 }}>
               Sent to {sendResult.sentCount} member{sendResult.sentCount !== 1 ? "s" : ""}.

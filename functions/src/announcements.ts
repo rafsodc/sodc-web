@@ -178,13 +178,17 @@ export const getAnnouncementTemplates = onCall(
 
     const client = new NotifyClient(apiKey);
     const response = await client.getAllTemplates("email");
-    const all = (response.data as { templates: { id: string; name: string; updated_at: string }[] })
+    const all = (response.data as { templates: { id: string; name: string; updated_at: string | null; created_at: string }[] })
       .templates ?? [];
 
     const templates: AnnouncementTemplate[] = all
       .filter((t) => t.name.startsWith(BULK_PREFIX))
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .map((t) => ({ id: t.id, name: t.name, updatedAt: t.updated_at }));
+      .sort((a, b) => {
+        const dateA = new Date(a.updated_at ?? a.created_at).getTime();
+        const dateB = new Date(b.updated_at ?? b.created_at).getTime();
+        return dateB - dateA;
+      })
+      .map((t) => ({ id: t.id, name: t.name, updatedAt: t.updated_at ?? t.created_at }));
 
     return { templates };
   }
