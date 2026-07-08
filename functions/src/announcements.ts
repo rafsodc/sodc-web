@@ -158,12 +158,31 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
   return { recipients, sectionName: sectionData.name ?? sectionId };
 }
 
+// ── Personalisation helpers ───────────────────────────────────────────────────
+
+function extractTemplateVariables(body: string, subject: string): string[] {
+  const text = `${body} ${subject}`;
+  const matches = [...text.matchAll(/\(\(([^)]+)\)\)/g)];
+  return [...new Set(matches.map((m) => m[1].trim()))];
+}
+
+const PREVIEW_PLACEHOLDERS: Record<string, string> = {
+  firstName: "Jane",
+  lastName: "Smith",
+  email: "jane.smith@example.com",
+  serviceNumber: "S123456",
+  membershipStatus: "Regular",
+  section: "Example Section",
+  unsubscribeUrl: "https://example.com/unsubscribe",
+};
+
 // ── Cloud Functions ──────────────────────────────────────────────────────────
 
 export interface AnnouncementTemplate {
   id: string;
   name: string;
   updatedAt: string;
+  requiredPersonalisation: string[];
 }
 
 export const getAnnouncementTemplates = onCall(
@@ -178,13 +197,30 @@ export const getAnnouncementTemplates = onCall(
 
     const client = new NotifyClient(apiKey);
     const response = await client.getAllTemplates("email");
-    const all = (response.data as { templates: { id: string; name: string; updated_at: string }[] })
-      .templates ?? [];
+    const all = (response.data as {
+      templates: {
+        id: string;
+        name: string;
+        updated_at: string | null;
+        created_at: string;
+        body: string;
+        subject: string;
+      }[];
+    }).templates ?? [];
 
     const templates: AnnouncementTemplate[] = all
       .filter((t) => t.name.startsWith(BULK_PREFIX))
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .map((t) => ({ id: t.id, name: t.name, updatedAt: t.updated_at }));
+      .sort((a, b) => {
+        const dateA = new Date(a.updated_at ?? a.created_at).getTime();
+        const dateB = new Date(b.updated_at ?? b.created_at).getTime();
+        return dateB - dateA;
+      })
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        updatedAt: t.updated_at ?? t.created_at,
+        requiredPersonalisation: extractTemplateVariables(t.body ?? "", t.subject ?? ""),
+      }));
 
     return { templates };
   }
@@ -200,7 +236,8 @@ export const previewAnnouncementTemplate = onCall(
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
 
     const client = new NotifyClient(apiKey);
-    const response = await client.previewTemplateById(templateUuid, { firstName: "there" });
+    // GOV Notify ignores extra personalisation keys — pass all placeholders so any template variable is satisfied
+    const response = await client.previewTemplateById(templateUuid, PREVIEW_PLACEHOLDERS);
     const data = response.data as { html: string; subject: string };
     return { html: data.html ?? "", subject: data.subject ?? "" };
   }
@@ -295,30 +332,30 @@ export const sendSectionAnnouncement = onCall(
         continue;
       }
 
-      const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
-        {
-          userId: recipient.id,
-          sectionId,
-          sectionName,
-          exp: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
-        },
-        unsubscribeSecret.value()
-      )}`;
+      // GOV Notify ignores extra personalisation keys — pass everything available
+      const personalisation: Record<string, string> = {
+        firstName: recipient.firstName,
+        lastName: recipient.lastName,
+        email: recipient.email,
+        serviceNumber: recipient.serviceNumber,
+        membershipStatus: recipient.membershipStatus,
+        section: sectionName,
+        unsubscribeUrl: `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+          {
+            userId: recipient.id,
+            sectionId,
+            sectionName,
+            exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
+          },
+          unsubscribeSecret.value()
+        )}`,
+      };
 
       try {
         await client.sendEmail(templateUuid, recipient.email, {
-          personalisation: {
-            firstName: recipient.firstName,
-            lastName: recipient.lastName,
-            email: recipient.email,
-            serviceNumber: recipient.serviceNumber,
-            membershipStatus: recipient.membershipStatus,
-            section: sectionName,
-            unsubscribeUrl,
-          },
+          personalisation,
           reference: `announcement-${sectionId}-${recipient.id}`,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          one_click_unsubscribe_url: unsubscribeUrl,
+          oneClickUnsubscribeURL: personalisation.unsubscribeUrl,
         } as Parameters<typeof client.sendEmail>[2]);
         sentCount++;
         recipientRecords.push({

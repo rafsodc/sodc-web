@@ -627,6 +627,7 @@ export interface AnnouncementTemplate {
   id: string;
   name: string;
   updatedAt: string;
+  requiredPersonalisation: string[];
 }
 
 export async function getAnnouncementTemplates(

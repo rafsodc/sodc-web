@@ -6,14 +6,16 @@ import {
   CircularProgress,
   Divider,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
   type SelectChangeEvent,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { Campaign } from "@mui/icons-material";
+import { Campaign, Refresh } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import {
   getAnnouncementTemplates,
@@ -51,6 +53,7 @@ export default function SendAnnouncementPage({
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{
@@ -60,20 +63,23 @@ export default function SendAnnouncementPage({
   } | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyTrigger, setHistoryTrigger] = useState(0);
+  const [templatesTrigger, setTemplatesTrigger] = useState(0);
 
   useEffect(() => {
     setLoadingTemplates(true);
+    setTemplatesError(null);
     getAnnouncementTemplates(sectionId)
       .then(setTemplates)
       .catch(() => setTemplatesError("Failed to load templates from GOV Notify"))
       .finally(() => setLoadingTemplates(false));
-  }, [sectionId]);
+  }, [sectionId, templatesTrigger]);
 
   const handleTemplateChange = async (e: SelectChangeEvent) => {
     const id = e.target.value;
     setSelectedId(id);
     setPreviewHtml(null);
     setPreviewSubject(null);
+    setPreviewError(null);
     setSendResult(null);
     setSendError(null);
     if (!id) return;
@@ -82,8 +88,8 @@ export default function SendAnnouncementPage({
       const { html, subject } = await previewAnnouncementTemplate(id);
       setPreviewHtml(html);
       setPreviewSubject(subject);
-    } catch {
-      setPreviewHtml(null);
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Failed to load preview");
     } finally {
       setLoadingPreview(false);
     }
@@ -123,37 +129,56 @@ export default function SendAnnouncementPage({
         <Alert severity="error" sx={{ mb: 2 }}>{templatesError}</Alert>
       )}
 
-      {loadingTemplates ? (
-        <CircularProgress size={24} />
-      ) : (
-        <FormControl fullWidth sx={{ mb: 3 }} disabled={templates.length === 0}>
-          <InputLabel id="template-select-label">Template</InputLabel>
-          <Select
-            labelId="template-select-label"
-            label="Template"
-            value={selectedId}
-            onChange={(e) => void handleTemplateChange(e)}
-          >
-            {templates.length === 0 && (
-              <MenuItem value="" disabled>
-                No BULK: templates found in GOV Notify
-              </MenuItem>
-            )}
-            {templates.map((t) => (
-              <MenuItem key={t.id} value={t.id}>
-                <Stack direction="row" justifyContent="space-between" sx={{ width: "100%" }}>
-                  <Typography variant="body2">{t.name}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 2, whiteSpace: "nowrap" }}>
-                    Updated {formatUpdatedAt(t.updatedAt)}
-                  </Typography>
-                </Stack>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+        <Box sx={{ flex: 1 }}>
+          {loadingTemplates ? (
+            <CircularProgress size={24} />
+          ) : (
+            <FormControl fullWidth disabled={templates.length === 0}>
+              <InputLabel id="template-select-label">Template</InputLabel>
+              <Select
+                labelId="template-select-label"
+                label="Template"
+                value={selectedId}
+                onChange={(e) => void handleTemplateChange(e)}
+              >
+                {templates.length === 0 && (
+                  <MenuItem value="" disabled>
+                    No BULK: templates found in GOV Notify
+                  </MenuItem>
+                )}
+                {templates.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    <Stack direction="row" justifyContent="space-between" sx={{ width: "100%" }}>
+                      <Typography variant="body2">{t.name}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 2, whiteSpace: "nowrap" }}>
+                        Updated {formatUpdatedAt(t.updatedAt)}
+                      </Typography>
+                    </Stack>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </Box>
+        <Tooltip title="Refresh template list from GOV Notify">
+          <span>
+            <IconButton
+              onClick={() => setTemplatesTrigger((n) => n + 1)}
+              disabled={loadingTemplates}
+              aria-label="Refresh templates"
+            >
+              {loadingTemplates ? <CircularProgress size={20} /> : <Refresh />}
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
 
       {loadingPreview && <CircularProgress size={24} sx={{ mb: 2 }} />}
+
+      {previewError && !loadingPreview && (
+        <Alert severity="warning" sx={{ mb: 2 }}>Preview unavailable: {previewError}</Alert>
+      )}
 
       {previewHtml && !loadingPreview && (
         <>
@@ -169,16 +194,27 @@ export default function SendAnnouncementPage({
               border: "1px solid",
               borderColor: "divider",
               borderRadius: 1,
-              p: 2,
               mb: 3,
-              bgcolor: "background.paper",
-              fontSize: "0.875rem",
-              lineHeight: 1.6,
-              "& a": { color: "primary.main" },
+              overflow: "hidden",
             }}
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
+          >
+            <iframe
+              srcDoc={previewHtml}
+              title="Email preview"
+              sandbox="allow-same-origin"
+              style={{ width: "100%", border: "none", display: "block", minHeight: 400 }}
+              onLoad={(e) => {
+                const iframe = e.currentTarget;
+                const height = iframe.contentDocument?.body?.scrollHeight;
+                if (height) iframe.style.height = `${height + 32}px`;
+              }}
+            />
+          </Box>
+        </>
+      )}
 
+      {selectedId && (
+        <>
           {sendResult ? (
             <Alert severity={sendResult.failureCount > 0 ? "warning" : "success"} sx={{ mb: 2 }}>
               Sent to {sendResult.sentCount} member{sendResult.sentCount !== 1 ? "s" : ""}.
