@@ -16,15 +16,9 @@ import {
 import { requireAuth, requireString } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
-import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
+import { unsubscribeSecret } from "./unsubscribe";
 
 const BULK_PREFIX = "BULK:";
-
-const APP_BASE_URL = (() => {
-  const url = process.env.APP_BASE_URL || "http://localhost:5173";
-  try { new URL(url); } catch { throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`); }
-  return url.replace(/\/$/, "");
-})();
 
 
 // ── Auth helper ──────────────────────────────────────────────────────────────
@@ -204,7 +198,10 @@ export const previewAnnouncementTemplate = onCall(
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
 
     const client = new NotifyClient(apiKey);
-    const response = await client.previewTemplateById(templateUuid, { firstName: "there" });
+    const response = await client.previewTemplateById(templateUuid, {
+      firstName: "Jane",
+      section: "Example Section",
+    });
     const data = response.data as { html: string; subject: string };
     return { html: data.html ?? "", subject: data.subject ?? "" };
   }
@@ -299,31 +296,14 @@ export const sendSectionAnnouncement = onCall(
         continue;
       }
 
-      const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
-        {
-          userId: recipient.id,
-          sectionId,
-          sectionName,
-          exp: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
-        },
-        unsubscribeSecret.value()
-      )}`;
-
       try {
         await client.sendEmail(templateUuid, recipient.email, {
           personalisation: {
             firstName: recipient.firstName,
-            lastName: recipient.lastName,
-            email: recipient.email,
-            serviceNumber: recipient.serviceNumber,
-            membershipStatus: recipient.membershipStatus,
             section: sectionName,
-            unsubscribeUrl,
           },
           reference: `announcement-${sectionId}-${recipient.id}`,
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          one_click_unsubscribe_url: unsubscribeUrl,
-        } as Parameters<typeof client.sendEmail>[2]);
+        });
         sentCount++;
         recipientRecords.push({
           userId: recipient.id,
