@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onTaskDispatched } from "firebase-functions/v2/tasks";
+import { getFunctions } from "firebase-admin/functions";
 import * as logger from "firebase-functions/logger";
 import { NotifyClient } from "notifications-node-client";
 import {
@@ -10,6 +12,7 @@ import {
   getSectionAnnouncementOptOuts,
   createAnnouncementSend,
   createAnnouncementRecipient,
+  getAnnouncementRecipientCount,
   getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
@@ -244,9 +247,9 @@ export const previewAnnouncementTemplate = onCall(
 );
 
 export interface SendAnnouncementResult {
-  sentCount: number;
+  sendId: string;
+  queuedCount: number;
   skippedCount: number;
-  failureCount: number;
 }
 
 export interface AnnouncementSend {
@@ -258,7 +261,7 @@ export interface AnnouncementSend {
   sentAt: string;
   recipientCount: number;
   skippedCount: number;
-  failureCount: number;
+  processedCount: number;
 }
 
 export interface AnnouncementRecipient {
@@ -274,8 +277,18 @@ export interface AnnouncementRecipient {
   failureReason?: string;
 }
 
+interface AnnouncementEmailTask {
+  sendId: string;
+  recipientId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  personalisation: Record<string, string>;
+  templateUuid: string;
+}
+
 export const sendSectionAnnouncement = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey, unsubscribeSecret] },
+  { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret] },
   async (request): Promise<SendAnnouncementResult> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
@@ -286,9 +299,6 @@ export const sendSectionAnnouncement = onCall(
     const callerUid = request.auth!.uid;
 
     await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
-
-    const apiKey = govNotifyApiKey.value();
-    if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
 
     const [{ recipients, sectionName }, optOutResult] = await Promise.all([
       resolveRecipients(sectionId, callerUid),
@@ -301,38 +311,21 @@ export const sendSectionAnnouncement = onCall(
       )
     );
 
-    const client = new NotifyClient(apiKey);
-    let sentCount = 0;
-    let skippedCount = 0;
-    let failureCount = 0;
-
-    interface RecipientRecord {
-      userId: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      status: "skipped" | "sent" | "failed";
-      skippedReason?: string;
-      sentAt?: string;
-      failureReason?: string;
-    }
-    const recipientRecords: RecipientRecord[] = [];
+    const secret = unsubscribeSecret.value();
+    const skippedRecipients: { userId: string; email: string; firstName: string; lastName: string }[] = [];
+    const tasks: AnnouncementEmailTask[] = [];
 
     for (const recipient of recipients) {
       if (sectionOptOutIds.has(recipient.id)) {
-        skippedCount++;
-        recipientRecords.push({
+        skippedRecipients.push({
           userId: recipient.id,
           email: recipient.email,
           firstName: recipient.firstName,
           lastName: recipient.lastName,
-          status: "skipped",
-          skippedReason: "opted_out",
         });
         continue;
       }
 
-      // GOV Notify ignores extra personalisation keys — pass everything available
       const personalisation: Record<string, string> = {
         firstName: recipient.firstName,
         lastName: recipient.lastName,
@@ -347,40 +340,21 @@ export const sendSectionAnnouncement = onCall(
             sectionName,
             exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
           },
-          unsubscribeSecret.value()
+          secret
         )}`,
       };
 
-      try {
-        await client.sendEmail(templateUuid, recipient.email, {
-          personalisation,
-          reference: `announcement-${sectionId}-${recipient.id}`,
-          oneClickUnsubscribeURL: personalisation.unsubscribeUrl,
-        } as Parameters<typeof client.sendEmail>[2]);
-        sentCount++;
-        recipientRecords.push({
-          userId: recipient.id,
-          email: recipient.email,
-          firstName: recipient.firstName,
-          lastName: recipient.lastName,
-          status: "sent",
-          sentAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        failureCount++;
-        logger.error(`Failed to send announcement to ${recipient.id}`, { err, sectionId, templateUuid });
-        recipientRecords.push({
-          userId: recipient.id,
-          email: recipient.email,
-          firstName: recipient.firstName,
-          lastName: recipient.lastName,
-          status: "failed",
-          failureReason: err instanceof Error ? err.message : "Unknown error",
-        });
-      }
+      tasks.push({
+        sendId: "",  // filled in after createAnnouncementSend
+        recipientId: recipient.id,
+        firstName: recipient.firstName,
+        lastName: recipient.lastName,
+        email: recipient.email,
+        personalisation,
+        templateUuid,
+      });
     }
 
-    // Write the send summary to DataConnect
     const announcementSendId = randomUUID();
     await createAnnouncementSend({
       id: announcementSendId,
@@ -388,33 +362,91 @@ export const sendSectionAnnouncement = onCall(
       templateUuid,
       templateName,
       sentBy: callerUid,
-      recipientCount: sentCount,
-      skippedCount,
-      failureCount,
+      recipientCount: tasks.length,
+      skippedCount: skippedRecipients.length,
+      failureCount: 0,
     });
 
-    // Write per-recipient records concurrently in chunks
+    // Write skipped recipients
     const CHUNK_SIZE = 10;
-    for (let i = 0; i < recipientRecords.length; i += CHUNK_SIZE) {
+    for (let i = 0; i < skippedRecipients.length; i += CHUNK_SIZE) {
       await Promise.all(
-        recipientRecords.slice(i, i + CHUNK_SIZE).map((r) =>
+        skippedRecipients.slice(i, i + CHUNK_SIZE).map((r) =>
           createAnnouncementRecipient({
             announcementSendId,
             userId: r.userId,
             email: r.email,
             firstName: r.firstName,
             lastName: r.lastName,
-            status: r.status,
-            skippedReason: r.skippedReason ?? null,
-            sentAt: r.sentAt ?? null,
-            failureReason: r.failureReason ?? null,
+            status: "skipped",
+            skippedReason: "opted_out",
+            sentAt: null,
+            failureReason: null,
           })
         )
       );
     }
 
-    logger.info("Announcement sent", { sectionId, templateUuid, sentCount, skippedCount, failureCount });
-    return { sentCount, skippedCount, failureCount };
+    // Enqueue one task per recipient
+    const queue = getFunctions().taskQueue(
+      `locations/${FUNCTIONS_REGION}/functions/processAnnouncementEmail`
+    );
+    await Promise.all(
+      tasks.map((t) => queue.enqueue({ ...t, sendId: announcementSendId }))
+    );
+
+    logger.info("Announcement queued", {
+      announcementSendId,
+      sectionId,
+      templateUuid,
+      queuedCount: tasks.length,
+      skippedCount: skippedRecipients.length,
+    });
+    return { sendId: announcementSendId, queuedCount: tasks.length, skippedCount: skippedRecipients.length };
+  }
+);
+
+export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
+  {
+    region: FUNCTIONS_REGION,
+    secrets: [govNotifyApiKey],
+    rateLimits: { maxDispatchesPerSecond: 20 },
+    retryConfig: { maxAttempts: 3, minBackoffSeconds: 10, maxBackoffSeconds: 60 },
+  },
+  async (req) => {
+    const { sendId, recipientId, firstName, lastName, email, personalisation, templateUuid } = req.data;
+
+    const client = new NotifyClient(govNotifyApiKey.value());
+    let status: "sent" | "failed" = "sent";
+    let failureReason: string | null = null;
+
+    try {
+      await client.sendEmail(templateUuid, email, {
+        personalisation,
+        reference: `announcement-${sendId}-${recipientId}`,
+        oneClickUnsubscribeURL: personalisation.unsubscribeUrl,
+      } as Parameters<typeof client.sendEmail>[2]);
+    } catch (err) {
+      status = "failed";
+      failureReason = err instanceof Error ? err.message : "Unknown error";
+      logger.error("Failed to send announcement email", { sendId, recipientId, err });
+    }
+
+    await createAnnouncementRecipient({
+      announcementSendId: sendId,
+      userId: recipientId,
+      email,
+      firstName,
+      lastName,
+      status,
+      skippedReason: null,
+      sentAt: status === "sent" ? new Date().toISOString() : null,
+      failureReason,
+    });
+
+    // Re-throw on failure so Cloud Tasks retries (recipient record will be duplicate on retry,
+    // but GOV Notify's idempotent reference prevents duplicate sends)
+    if (status === "failed") throw new Error(failureReason ?? "Send failed");
   }
 );
 
@@ -426,7 +458,17 @@ export const getAnnouncementSendHistory = onCall(
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
     const result = await dcGetAnnouncementSendHistory({ sectionId });
-    const sends: AnnouncementSend[] = (result.data?.announcementSends ?? []).map((s) => ({
+    const rawSends = result.data?.announcementSends ?? [];
+
+    const processedCounts = await Promise.all(
+      rawSends.map((s) =>
+        getAnnouncementRecipientCount({ sendId: s.id })
+          .then((r) => r.data?.announcementRecipients?.length ?? 0)
+          .catch(() => 0)
+      )
+    );
+
+    const sends: AnnouncementSend[] = rawSends.map((s, i) => ({
       id: s.id,
       templateUuid: s.templateUuid,
       templateName: s.templateName ?? null,
@@ -435,7 +477,7 @@ export const getAnnouncementSendHistory = onCall(
       sentAt: s.sentAt,
       recipientCount: s.recipientCount,
       skippedCount: s.skippedCount,
-      failureCount: s.failureCount,
+      processedCount: processedCounts[i],
     }));
 
     return { sends };

@@ -1093,6 +1093,12 @@ mutation CreateAnnouncementRecipient(
   })
 }
 
+query GetAnnouncementRecipientCount($sendId: UUID!) @auth(level: NO_ACCESS) {
+  announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
+    id
+  }
+}
+
 query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
   announcementSends(
     where: { sectionId: { eq: $sectionId } }

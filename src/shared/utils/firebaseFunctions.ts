@@ -653,9 +653,9 @@ export async function previewAnnouncementTemplate(
 }
 
 export interface SendAnnouncementResult {
-  sentCount: number;
+  sendId: string;
+  queuedCount: number;
   skippedCount: number;
-  failureCount: number;
 }
 
 export async function sendSectionAnnouncement(
@@ -680,7 +680,7 @@ export interface AnnouncementSend {
   sentAt: string;
   recipientCount: number;
   skippedCount: number;
-  failureCount: number;
+  processedCount: number;
 }
 
 export interface AnnouncementRecipient {

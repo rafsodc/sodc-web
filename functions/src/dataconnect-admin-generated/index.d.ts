@@ -2746,6 +2746,17 @@ export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnounc
 /** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipient' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientData>>;
 
+export interface GetAnnouncementRecipientCountData {
+  announcementRecipients: { id: UUIDString }[];
+}
+export interface GetAnnouncementRecipientCountVariables {
+  sendId: UUIDString;
+}
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientCount' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementRecipientCount(dc: DataConnect, vars: GetAnnouncementRecipientCountVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientCountData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientCount' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementRecipientCount(vars: GetAnnouncementRecipientCountVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientCountData>>;
+
 export interface GetAnnouncementSendHistoryData {
   announcementSends: ({
     id: UUIDString;
