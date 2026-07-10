@@ -399,7 +399,11 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const sectionAdminAction = {
     visible: Boolean(currentUser && (isAdmin || canModerateSection)),
     onClick: () => {
-      const destination = getSectionAdminDestination(section, isMembers, selectedEventId);
+      const destination = getSectionAdminDestination(
+        { ...section, type: section.type ?? undefined },
+        isMembers,
+        selectedEventId
+      );
       navigate(destination.to, { state: destination.state });
     },
   };

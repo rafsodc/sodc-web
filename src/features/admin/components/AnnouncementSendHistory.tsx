@@ -167,7 +167,12 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
     setError(null);
     getAnnouncementSendHistory(sectionId)
       .then(setSends)
-      .catch(() => setError("Failed to load send history"))
+      .catch((err: unknown) => {
+        const msg = err && typeof (err as { message?: string }).message === "string"
+          ? (err as { message: string }).message
+          : "Unknown error";
+        setError(`Failed to load send history: ${msg}`);
+      })
       .finally(() => setLoading(false));
   }, [sectionId, refreshTrigger]);
 

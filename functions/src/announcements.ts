@@ -457,15 +457,24 @@ export const getAnnouncementSendHistory = onCall(
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
-    const result = await dcGetAnnouncementSendHistory({ sectionId });
+    let result: Awaited<ReturnType<typeof dcGetAnnouncementSendHistory>>;
+    try {
+      result = await dcGetAnnouncementSendHistory({ sectionId });
+    } catch (err) {
+      logger.error("dcGetAnnouncementSendHistory failed", { sectionId, err });
+      throw new HttpsError("internal", "Failed to load send history");
+    }
     const rawSends = result.data?.announcementSends ?? [];
 
     const processedCounts = await Promise.all(
-      rawSends.map((s) =>
-        getAnnouncementRecipientCount({ sendId: s.id })
-          .then((r) => r.data?.announcementRecipients?.length ?? 0)
-          .catch(() => 0)
-      )
+      rawSends.map(async (s) => {
+        try {
+          const r = await getAnnouncementRecipientCount({ sendId: s.id });
+          return r.data?.announcementRecipients?.length ?? 0;
+        } catch {
+          return 0;
+        }
+      })
     );
 
     const sends: AnnouncementSend[] = rawSends.map((s, i) => ({
@@ -492,7 +501,13 @@ export const getAnnouncementSendRecipients = onCall(
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
-    const result = await dcGetAnnouncementSendRecipients({ sendId });
+    let result: Awaited<ReturnType<typeof dcGetAnnouncementSendRecipients>>;
+    try {
+      result = await dcGetAnnouncementSendRecipients({ sendId });
+    } catch (err) {
+      logger.error("dcGetAnnouncementSendRecipients failed", { sendId, err });
+      throw new HttpsError("internal", "Failed to load recipients");
+    }
     const recipients: AnnouncementRecipient[] = (result.data?.announcementRecipients ?? []).map((r) => ({
       id: r.id,
       sendId,

@@ -35,6 +35,7 @@ const ApproveUsers = lazy(() => import("./features/admin/components/ApproveUsers
 const UserGroups = lazy(() => import("./features/admin/components/UserGroups"));
 const AuditLogs = lazy(() => import("./features/admin/components/AuditLogs"));
 const ManageSections = lazy(() => import("./features/admin/components/ManageSections"));
+const SectionAdminPage = lazy(() => import("./features/admin/components/SectionAdminPage"));
 const PaymentReconciliationDashboard = lazy(() => import("./features/admin/components/PaymentReconciliationDashboard"));
 const EmailTemplateSyncPage = lazy(() => import("./features/admin/components/EmailTemplateSyncPage"));
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
@@ -548,6 +549,14 @@ function AppContent() {
                     "Email Templates",
                     <Suspense fallback={<LoadingFallback />}>
                       <EmailTemplateSyncPage onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
+                  )}
+                />
+                <Route
+                  path={ROUTES.SECTION_ADMIN}
+                  element={protectedRoute(
+                    <Suspense fallback={<LoadingFallback />}>
+                      <SectionAdminPage />
                     </Suspense>
                   )}
                 />
