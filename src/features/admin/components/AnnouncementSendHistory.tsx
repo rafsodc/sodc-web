@@ -7,11 +7,13 @@ import {
   Collapse,
   Divider,
   IconButton,
+  LinearProgress,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { ExpandLess, ExpandMore, History } from "@mui/icons-material";
@@ -89,19 +91,29 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
           </Typography>
         </TableCell>
         <TableCell align="right">
-          <Typography variant="body2" color="success.main">{send.recipientCount}</Typography>
+          {send.processedCount < send.recipientCount ? (
+            <Tooltip title={`${send.processedCount} of ${send.recipientCount} processed`}>
+              <Box sx={{ minWidth: 80 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  {send.processedCount} / {send.recipientCount}
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={send.recipientCount > 0 ? (send.processedCount / send.recipientCount) * 100 : 0}
+                  sx={{ height: 4, borderRadius: 2 }}
+                />
+              </Box>
+            </Tooltip>
+          ) : (
+            <Typography variant="body2" color="success.main">{send.recipientCount}</Typography>
+          )}
         </TableCell>
         <TableCell align="right">
           <Typography variant="body2" color="text.secondary">{send.skippedCount}</Typography>
         </TableCell>
-        <TableCell align="right">
-          <Typography variant="body2" color={send.failureCount > 0 ? "error.main" : "text.secondary"}>
-            {send.failureCount}
-          </Typography>
-        </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={6} sx={{ py: 0 }}>
+        <TableCell colSpan={5} sx={{ py: 0 }}>
           <Collapse in={open} unmountOnExit>
             <Box sx={{ px: 2, py: 1 }}>
               {loading && <CircularProgress size={20} sx={{ my: 1 }} />}
@@ -155,7 +167,12 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
     setError(null);
     getAnnouncementSendHistory(sectionId)
       .then(setSends)
-      .catch(() => setError("Failed to load send history"))
+      .catch((err: unknown) => {
+        const msg = err && typeof (err as { message?: string }).message === "string"
+          ? (err as { message: string }).message
+          : "Unknown error";
+        setError(`Failed to load send history: ${msg}`);
+      })
       .finally(() => setLoading(false));
   }, [sectionId, refreshTrigger]);
 
@@ -183,7 +200,6 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
               <TableCell>Template</TableCell>
               <TableCell align="right">Sent</TableCell>
               <TableCell align="right">Skipped</TableCell>
-              <TableCell align="right">Failed</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

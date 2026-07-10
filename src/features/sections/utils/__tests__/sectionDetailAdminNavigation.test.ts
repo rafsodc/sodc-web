@@ -3,27 +3,21 @@ import { ROUTES } from "../../../../constants";
 import { getSectionAdminDestination } from "../sectionDetailAdminNavigation";
 
 describe("getSectionAdminDestination", () => {
-  it("routes member sections to the section edit dialog", () => {
+  it("routes member sections to the section admin hub", () => {
     expect(
-      getSectionAdminDestination({ id: "section-1", name: "Members" }, true, null)
+      getSectionAdminDestination({ id: "section-1", name: "Members", type: "MEMBERS" }, true, null)
     ).toEqual({
-      to: ROUTES.MANAGE_SECTIONS,
-      state: { editSectionId: "section-1" },
+      to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+      state: { sectionName: "Members", sectionType: "MEMBERS" },
     });
   });
 
-  it("routes event sections to event administration with selected event context", () => {
+  it("routes event sections to the section admin hub", () => {
     expect(
-      getSectionAdminDestination({ id: "section-2", name: "Events" }, false, "event-1")
+      getSectionAdminDestination({ id: "section-2", name: "Events", type: "EVENTS" }, false, "event-1")
     ).toEqual({
-      to: ROUTES.MANAGE_SECTIONS,
-      state: {
-        managedSection: {
-          id: "section-2",
-          name: "Events",
-        },
-        eventId: "event-1",
-      },
+      to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
+      state: { sectionName: "Events", sectionType: "EVENTS" },
     });
   });
 });

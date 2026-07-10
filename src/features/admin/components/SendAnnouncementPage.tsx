@@ -57,9 +57,9 @@ export default function SendAnnouncementPage({
 
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{
-    sentCount: number;
+    sendId: string;
+    queuedCount: number;
     skippedCount: number;
-    failureCount: number;
   } | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyTrigger, setHistoryTrigger] = useState(0);
@@ -216,10 +216,10 @@ export default function SendAnnouncementPage({
       {selectedId && (
         <>
           {sendResult ? (
-            <Alert severity={sendResult.failureCount > 0 ? "warning" : "success"} sx={{ mb: 2 }}>
-              Sent to {sendResult.sentCount} member{sendResult.sentCount !== 1 ? "s" : ""}.
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {sendResult.queuedCount} email{sendResult.queuedCount !== 1 ? "s" : ""} queued for delivery.
               {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped (opted out).`}
-              {sendResult.failureCount > 0 && ` ${sendResult.failureCount} failed — check function logs.`}
+              {" "}Check send history below to track progress.
             </Alert>
           ) : (
             <>

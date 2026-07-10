@@ -897,6 +897,13 @@ function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) 
 }
 exports.createAnnouncementRecipient = createAnnouncementRecipient;
 
+function getAnnouncementRecipientCount(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientCount', inputVars, inputOpts);
+}
+exports.getAnnouncementRecipientCount = getAnnouncementRecipientCount;
+
 function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

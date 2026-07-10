@@ -21,7 +21,7 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     sentAt: "2026-07-01T10:00:00.000Z",
     recipientCount: 3,
     skippedCount: 1,
-    failureCount: 0,
+    processedCount: 3,
   },
   {
     id: "send-2",
@@ -32,7 +32,7 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     sentAt: "2026-06-15T09:00:00.000Z",
     recipientCount: 2,
     skippedCount: 0,
-    failureCount: 1,
+    processedCount: 2,
   },
 ];
 
@@ -90,7 +90,7 @@ describe("AnnouncementSendHistory", () => {
     render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load send history")).toBeInTheDocument();
+      expect(screen.getByText("Failed to load send history: network")).toBeInTheDocument();
     });
   });
 
@@ -106,9 +106,9 @@ describe("AnnouncementSendHistory", () => {
     // Second send has no templateName — falls back to UUID
     expect(screen.getByText("uuid-2")).toBeInTheDocument();
 
-    // Counts visible (send-1: 3 sent, 1 skipped, 0 failed; send-2: 2 sent, 0 skipped, 1 failed)
+    // Counts visible (send-1: 3 processed, 1 skipped; send-2: 2 processed, 0 skipped)
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getAllByText("1")).toHaveLength(2); // skippedCount for send-1, failureCount for send-2
+    expect(screen.getByText("1")).toBeInTheDocument(); // skippedCount for send-1
   });
 
   it("expands a row and loads recipients", async () => {

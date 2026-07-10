@@ -3,28 +3,19 @@ import { ROUTES } from "../../../constants";
 interface SectionAdminNavigationSection {
   id: string;
   name: string;
+  type?: string;
 }
 
 export function getSectionAdminDestination(
   section: SectionAdminNavigationSection,
-  isMembers: boolean,
-  selectedEventId: string | null
+  _isMembers: boolean,
+  _selectedEventId: string | null
 ) {
-  if (isMembers) {
-    return {
-      to: ROUTES.MANAGE_SECTIONS,
-      state: { editSectionId: section.id },
-    };
-  }
-
   return {
-    to: ROUTES.MANAGE_SECTIONS,
+    to: ROUTES.SECTION_ADMIN.replace(":sectionId", section.id),
     state: {
-      managedSection: {
-        id: section.id,
-        name: section.name,
-      },
-      eventId: selectedEventId ?? undefined,
+      sectionName: section.name,
+      sectionType: section.type ?? "MEMBERS",
     },
   };
 }
