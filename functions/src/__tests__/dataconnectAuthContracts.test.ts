@@ -184,7 +184,6 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetEventsForSection", mustInclude: USER_EXPR },
       { op: "query GetEventById", mustInclude: USER_EXPR },
       { op: "query GetSectionById", mustInclude: USER_EXPR },
-      { op: "query GetSectionMembers", mustInclude: USER_EXPR },
       { op: "query GetMyBookingsForEvent", mustInclude: USER_EXPR },
       { op: "query GetMyTicketOrders", mustInclude: USER_EXPR },
       { op: "query GetMyBookingPaymentAdjustments", mustInclude: USER_EXPR },
@@ -207,6 +206,10 @@ describe("Data Connect auth contracts", () => {
     assertAuth(queries, [
       { op: "query GetUserMembershipStatus", mustInclude: NO_ACCESS },
       { op: "query GetAllUserGroupsWithStatuses", mustInclude: NO_ACCESS },
+      // GetSectionMembers exposes member PII (email, serviceNumber) for an arbitrary sectionId with
+      // no relationship check — must stay SDK-only. Clients go through the getSectionMembersMerged
+      // callable (functions/src/sections.ts), which verifies the caller's own section access first.
+      { op: "query GetSectionMembers", mustInclude: NO_ACCESS },
     ]);
   });
 
