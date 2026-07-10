@@ -327,7 +327,10 @@ query GetAllUserGroupsWithStatuses @auth(level: NO_ACCESS) {
 
 # Section member rollup uses MEMBER-purpose links; if none, ACCESS-purpose links (same as legacy fallback).
 # Includes both directly added users and users whose membership status matches the group's membershipStatuses
-query GetSectionMembers($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+# SDK-only: exposes member PII (email, serviceNumber) for an arbitrary sectionId with no relationship check.
+# The client must go through the getSectionMembersMerged callable, which verifies the caller's own section
+# access before returning data (see functions/src/sections.ts).
+query GetSectionMembers($sectionId: UUID!) @auth(level: NO_ACCESS) {
   section(id: $sectionId) {
     id
     name
