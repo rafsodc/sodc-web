@@ -85,7 +85,7 @@ export default function SendAnnouncementPage({
     if (!id) return;
     setLoadingPreview(true);
     try {
-      const { html, subject } = await previewAnnouncementTemplate(id);
+      const { html, subject } = await previewAnnouncementTemplate(sectionId, id);
       setPreviewHtml(html);
       setPreviewSubject(subject);
     } catch (err) {

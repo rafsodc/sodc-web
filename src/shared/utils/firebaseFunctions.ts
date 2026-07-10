@@ -642,13 +642,14 @@ export async function getAnnouncementTemplates(
 }
 
 export async function previewAnnouncementTemplate(
+  sectionId: string,
   templateUuid: string
 ): Promise<{ html: string; subject: string }> {
-  const callable = httpsCallable<{ templateUuid: string }, { html: string; subject: string }>(
-    functions,
-    "previewAnnouncementTemplate"
-  );
-  const result = await callable({ templateUuid });
+  const callable = httpsCallable<
+    { sectionId: string; templateUuid: string },
+    { html: string; subject: string }
+  >(functions, "previewAnnouncementTemplate");
+  const result = await callable({ sectionId, templateUuid });
   return result.data;
 }
 

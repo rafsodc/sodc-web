@@ -6,12 +6,12 @@ function readSource(fileName: string): string {
   return fs.readFileSync(path.resolve(process.cwd(), "src", fileName), "utf8");
 }
 
-function assertOnCallGuard(source: string, functionName: string, guardCall: string): void {
+function assertOnCallGuard(source: string, functionName: string, guardCall: string, maxDistance = 400): void {
   const exportIdx = source.indexOf(`export const ${functionName} = onCall`);
   expect(exportIdx).toBeGreaterThanOrEqual(0);
   const guardIdx = source.indexOf(guardCall, exportIdx);
   expect(guardIdx).toBeGreaterThan(exportIdx);
-  expect(guardIdx - exportIdx).toBeLessThan(400);
+  expect(guardIdx - exportIdx).toBeLessThan(maxDistance);
 }
 
 describe("function entry guard contracts", () => {
@@ -43,6 +43,20 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(payments, "createTicketCheckoutSession", "requireEnabled(request);");
     assertOnCallGuard(payments, "createEventBookingCheckoutSession", "requireEnabled(request);");
     assertOnCallGuard(payments, "getMyTicketOrderStripeArtifactsBatch", "requireEnabled(request);");
+  });
+
+  it("requires section-moderator authorization on every announcement callable", () => {
+    const announcements = readSource("announcements.ts");
+    for (const fn of [
+      "getAnnouncementTemplates",
+      "previewAnnouncementTemplate",
+      "sendSectionAnnouncement",
+      "getAnnouncementSendHistory",
+      "getAnnouncementSendRecipients",
+    ]) {
+      assertOnCallGuard(announcements, fn, "requireAuth(request);");
+      assertOnCallGuard(announcements, fn, "requireSectionModerator(", 600);
+    }
   });
 
   it("keeps Stripe webhook signature verification in place", () => {
