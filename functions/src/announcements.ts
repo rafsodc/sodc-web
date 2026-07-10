@@ -233,7 +233,9 @@ export const previewAnnouncementTemplate = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request): Promise<{ html: string; subject: string }> => {
     requireAuth(request);
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
+    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
