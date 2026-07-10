@@ -13,6 +13,7 @@ import {
   createAnnouncementSend,
   createAnnouncementRecipient,
   getAnnouncementRecipientCount,
+  getAnnouncementSendById,
   getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
@@ -502,6 +503,16 @@ export const getAnnouncementSendRecipients = onCall(
     const sendId = requireString(request.data?.sendId, "sendId");
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+
+    // sendId and sectionId are independent client-supplied values — confirm the send
+    // actually belongs to the section the caller was just authorized against, so a
+    // moderator of one section can't read another section's recipients by passing a
+    // sendId that isn't theirs.
+    const sendResult = await getAnnouncementSendById({ id: sendId });
+    const send = sendResult.data?.announcementSend;
+    if (!send || send.sectionId !== sectionId) {
+      throw new HttpsError("not-found", "Announcement send not found");
+    }
 
     let result: Awaited<ReturnType<typeof dcGetAnnouncementSendRecipients>>;
     try {

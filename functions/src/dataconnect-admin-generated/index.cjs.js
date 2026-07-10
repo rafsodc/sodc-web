@@ -442,6 +442,76 @@ function getSectionAnnouncementOptOuts(dcOrVarsOrOptions, varsOrOptions, options
 }
 exports.getSectionAnnouncementOptOuts = getSectionAnnouncementOptOuts;
 
+function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementSend', inputVars, inputOpts);
+}
+exports.createAnnouncementSend = createAnnouncementSend;
+
+function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
+}
+exports.createAnnouncementRecipient = createAnnouncementRecipient;
+
+function getAnnouncementRecipientCount(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientCount', inputVars, inputOpts);
+}
+exports.getAnnouncementRecipientCount = getAnnouncementRecipientCount;
+
+function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendHistory', inputVars, inputOpts);
+}
+exports.getAnnouncementSendHistory = getAnnouncementSendHistory;
+
+function getAnnouncementSendRecipients(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendRecipients', inputVars, inputOpts);
+}
+exports.getAnnouncementSendRecipients = getAnnouncementSendRecipients;
+
+function getAnnouncementSendById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendById', inputVars, inputOpts);
+}
+exports.getAnnouncementSendById = getAnnouncementSendById;
+
+function getUserByEmail(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetUserByEmail', inputVars, inputOpts);
+}
+exports.getUserByEmail = getUserByEmail;
+
+function updateEmailBounceStats(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateEmailBounceStats', inputVars, inputOpts);
+}
+exports.updateEmailBounceStats = updateEmailBounceStats;
+
+function adminOptOutSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AdminOptOutSectionAnnouncement', inputVars, inputOpts);
+}
+exports.adminOptOutSectionAnnouncement = adminOptOutSectionAnnouncement;
+
+function adminOptInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AdminOptInSectionAnnouncement', inputVars, inputOpts);
+}
+exports.adminOptInSectionAnnouncement = adminOptInSectionAnnouncement;
+
 function createBookingDraft(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -882,67 +952,4 @@ function optInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeMutation('OptInSectionAnnouncement', inputVars, inputOpts);
 }
 exports.optInSectionAnnouncement = optInSectionAnnouncement;
-
-function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateAnnouncementSend', inputVars, inputOpts);
-}
-exports.createAnnouncementSend = createAnnouncementSend;
-
-function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
-}
-exports.createAnnouncementRecipient = createAnnouncementRecipient;
-
-function getAnnouncementRecipientCount(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAnnouncementRecipientCount', inputVars, inputOpts);
-}
-exports.getAnnouncementRecipientCount = getAnnouncementRecipientCount;
-
-function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAnnouncementSendHistory', inputVars, inputOpts);
-}
-exports.getAnnouncementSendHistory = getAnnouncementSendHistory;
-
-function getAnnouncementSendRecipients(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAnnouncementSendRecipients', inputVars, inputOpts);
-}
-exports.getAnnouncementSendRecipients = getAnnouncementSendRecipients;
-
-function adminOptOutSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('AdminOptOutSectionAnnouncement', inputVars, inputOpts);
-}
-exports.adminOptOutSectionAnnouncement = adminOptOutSectionAnnouncement;
-
-function adminOptInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('AdminOptInSectionAnnouncement', inputVars, inputOpts);
-}
-exports.adminOptInSectionAnnouncement = adminOptInSectionAnnouncement;
-
-function getUserByEmail(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserByEmail', inputVars, inputOpts);
-}
-exports.getUserByEmail = getUserByEmail;
-
-function updateEmailBounceStats(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateEmailBounceStats', inputVars, inputOpts);
-}
-exports.updateEmailBounceStats = updateEmailBounceStats;
 
