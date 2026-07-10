@@ -90,7 +90,7 @@ describe("AnnouncementSendHistory", () => {
     render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load send history")).toBeInTheDocument();
+      expect(screen.getByText("Failed to load send history: network")).toBeInTheDocument();
     });
   });
 

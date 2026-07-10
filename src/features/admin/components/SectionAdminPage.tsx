@@ -5,7 +5,6 @@ import {
   Card,
   CardActionArea,
   CardContent,
-  Grid,
   Typography,
 } from "@mui/material";
 import { Campaign, Event, Settings } from "@mui/icons-material";
@@ -82,18 +81,18 @@ export default function SectionAdminPage() {
         Choose an action to perform for this section.
       </Typography>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        <Box sx={{ flex: "1 1 280px" }}>
           <ActionCard
             icon={<Campaign fontSize="large" />}
             title="Send Announcement"
             description="Email all active members of this section using a GOV Notify template."
             onClick={() => setView("announcement")}
           />
-        </Grid>
+        </Box>
 
         {isEvents && (
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ flex: "1 1 280px" }}>
             <ActionCard
               icon={<Event fontSize="large" />}
               title="Manage Events"
@@ -104,11 +103,11 @@ export default function SectionAdminPage() {
                 })
               }
             />
-          </Grid>
+          </Box>
         )}
 
         {isAdmin && (
-          <Grid item xs={12} sm={6}>
+          <Box sx={{ flex: "1 1 280px" }}>
             <ActionCard
               icon={<Settings fontSize="large" />}
               title="Edit Section"
@@ -119,9 +118,9 @@ export default function SectionAdminPage() {
                 })
               }
             />
-          </Grid>
+          </Box>
         )}
-      </Grid>
+      </Box>
     </Box>
   );
 }
