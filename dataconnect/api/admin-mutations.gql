@@ -1133,6 +1133,15 @@ query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+# Used to verify a send actually belongs to the sectionId a caller was authorized against,
+# before returning its (PII-bearing) recipients — see getAnnouncementSendRecipients.
+query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
+  announcementSend(id: $id) {
+    id
+    sectionId
+  }
+}
+
 # ── Email bounce tracking ────────────────────────────────────────────────────
 
 query GetUserByEmail($email: String!) @auth(level: NO_ACCESS) {
