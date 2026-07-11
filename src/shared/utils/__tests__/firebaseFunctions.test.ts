@@ -25,6 +25,9 @@ import {
   updateMembershipStatus,
   resignMembership,
   getSectionMembersMerged,
+  getSectionForUser,
+  getSectionEventsForUser,
+  getEventForUser,
   submitEventBooking,
   createTicketCheckoutSession,
   createEventBookingCheckoutSession,
@@ -261,6 +264,65 @@ describe("getSectionMembersMerged", () => {
     makeFailingCallable("Section not found");
 
     await expect(getSectionMembersMerged("bad-id")).rejects.toThrow("Section not found");
+  });
+});
+
+describe("getSectionForUser", () => {
+  it("calls getSectionForUser with sectionId and returns the access result", async () => {
+    const response = { section: { id: "section-abc", name: "Test" }, hasAccess: true, canModerate: false };
+    const callable = makeCallable({ data: response });
+
+    const result = await getSectionForUser("section-abc");
+
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "getSectionForUser");
+    expect(callable).toHaveBeenCalledWith({ sectionId: "section-abc" });
+    expect(result).toEqual(response);
+  });
+
+  it("propagates errors (no try/catch)", async () => {
+    makeFailingCallable("Section not found");
+
+    await expect(getSectionForUser("bad-id")).rejects.toThrow("Section not found");
+  });
+});
+
+describe("getSectionEventsForUser", () => {
+  it("calls getSectionEventsForUser with sectionId and returns events", async () => {
+    const events = [{ id: "event-1", title: "Dinner" }];
+    const callable = makeCallable({ data: { events } });
+
+    const result = await getSectionEventsForUser("section-abc");
+
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "getSectionEventsForUser");
+    expect(callable).toHaveBeenCalledWith({ sectionId: "section-abc" });
+    expect(result).toEqual({ events });
+  });
+
+  it("propagates errors (no try/catch)", async () => {
+    makeFailingCallable("You do not have permission to view this section");
+
+    await expect(getSectionEventsForUser("bad-id")).rejects.toThrow(
+      "You do not have permission to view this section"
+    );
+  });
+});
+
+describe("getEventForUser", () => {
+  it("calls getEventForUser with eventId and returns the event", async () => {
+    const event = { id: "event-1", title: "Dinner" };
+    const callable = makeCallable({ data: { event } });
+
+    const result = await getEventForUser("event-1");
+
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "getEventForUser");
+    expect(callable).toHaveBeenCalledWith({ eventId: "event-1" });
+    expect(result).toEqual({ event });
+  });
+
+  it("propagates errors (no try/catch)", async () => {
+    makeFailingCallable("Event not found");
+
+    await expect(getEventForUser("bad-id")).rejects.toThrow("Event not found");
   });
 });
 

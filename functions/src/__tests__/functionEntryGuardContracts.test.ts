@@ -35,6 +35,9 @@ describe("function entry guard contracts", () => {
 
     const sections = readSource("sections.ts");
     assertOnCallGuard(sections, "getSectionMembersMerged", "requireAuth(request);");
+    assertOnCallGuard(sections, "getSectionForUser", "requireEnabled(request);");
+    assertOnCallGuard(sections, "getSectionEventsForUser", "requireEnabled(request);");
+    assertOnCallGuard(sections, "getEventForUser", "requireEnabled(request);");
 
     const bookings = readSource("bookings.ts");
     assertOnCallGuard(bookings, "submitEventBooking", "requireEnabled(request);");

@@ -3,17 +3,12 @@ import { render, screen, waitFor } from '../../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import SectionAdminPage from '../SectionAdminPage';
-import * as reactGenerated from '@dataconnect/generated/react';
 import { createMockUser } from '../../../../test-utils/mocks/firebase';
-import {
-  dataConnectQueryResult,
-  type DataConnectQueryResultOverrides,
-} from '../../../../test-utils/dataConnectMocks';
 import { ROUTES } from '../../../../constants';
+import { getSectionForUser } from '../../../../shared/utils/firebaseFunctions';
 
-vi.mock('@dataconnect/generated/react', () => ({
-  useGetSectionById: vi.fn(),
-  useGetUserAccessGroups: vi.fn(),
+vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
+  getSectionForUser: vi.fn(),
 }));
 
 const mockCurrentUser = createMockUser({ uid: 'user-1' });
@@ -51,20 +46,15 @@ vi.mock('../SendAnnouncementPage', () => ({
   ),
 }));
 
-function mockGetSectionById(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useGetSectionById).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useGetSectionById>(overrides)
-  );
-}
-
-function mockGetUserAccessGroups(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useGetUserAccessGroups>(overrides)
-  );
-}
-
 const sectionId = 'section-1';
-const moderatorGroupId = 'group-moderator';
+
+function mockCanModerate(canModerate: boolean) {
+  vi.mocked(getSectionForUser).mockResolvedValue({
+    section: { id: sectionId },
+    hasAccess: canModerate,
+    canModerate,
+  } as unknown as Awaited<ReturnType<typeof getSectionForUser>>);
+}
 
 function renderSectionAdminPage(sectionType: string = 'MEMBERS') {
   return render(
@@ -84,19 +74,7 @@ describe('SectionAdminPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsAdmin = false;
-    mockGetSectionById({
-      data: {
-        section: {
-          id: sectionId,
-          purposeLinks: [
-            { purposes: ['MODERATOR'], userGroup: { id: moderatorGroupId } },
-          ],
-        },
-      },
-    });
-    mockGetUserAccessGroups({
-      data: { user: { userGroups: [] } },
-    });
+    mockCanModerate(false);
   });
 
   it('shows access denied for a user who is neither admin nor a section moderator', async () => {
@@ -120,9 +98,7 @@ describe('SectionAdminPage', () => {
   });
 
   it('shows the admin hub for a section moderator, without the admin-only Edit Section card', async () => {
-    mockGetUserAccessGroups({
-      data: { user: { userGroups: [{ userGroup: { id: moderatorGroupId } }] } },
-    });
+    mockCanModerate(true);
 
     renderSectionAdminPage();
 
@@ -134,9 +110,7 @@ describe('SectionAdminPage', () => {
 
   it('opens and returns from the Send Announcement view', async () => {
     const user = userEvent.setup();
-    mockGetUserAccessGroups({
-      data: { user: { userGroups: [{ userGroup: { id: moderatorGroupId } }] } },
-    });
+    mockCanModerate(true);
 
     renderSectionAdminPage();
 
@@ -154,6 +128,7 @@ describe('SectionAdminPage', () => {
   it('navigates to Manage Sections with the managed section for an EVENTS section', async () => {
     const user = userEvent.setup();
     mockIsAdmin = true;
+    mockCanModerate(false);
 
     renderSectionAdminPage('EVENTS');
 
@@ -170,6 +145,7 @@ describe('SectionAdminPage', () => {
   it('shows the admin hub including Edit Section for a global admin, and navigates to edit it', async () => {
     const user = userEvent.setup();
     mockIsAdmin = true;
+    mockCanModerate(false);
 
     renderSectionAdminPage();
 
