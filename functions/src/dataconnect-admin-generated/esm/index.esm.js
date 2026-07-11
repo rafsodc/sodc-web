@@ -440,6 +440,18 @@ export function adminOptInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, 
   return dcInstance.executeMutation('AdminOptInSectionAnnouncement', inputVars, inputOpts);
 }
 
+export function getCallableInvocation(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetCallableInvocation', inputVars, inputOpts);
+}
+
+export function upsertCallableInvocation(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpsertCallableInvocation', inputVars, inputOpts);
+}
+
 export function createBookingDraft(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

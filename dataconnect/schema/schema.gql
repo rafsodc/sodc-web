@@ -403,3 +403,15 @@ type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking
   createdBy: String @default(expr: "auth.uid")
   updatedBy: String @default(expr: "auth.uid")
 }
+
+# Per-user fixed-window rate-limit counter for high-risk callable functions (see #344,
+# functions/src/rateLimiter.ts). SDK-only — never exposed to the client. One row per
+# (userId, functionName) pair, overwritten every window rather than accumulating a row
+# per window, so the table stays bounded by (active users) x (rate-limited functions)
+# with no cleanup job needed.
+type CallableInvocation @table(key: ["userId", "functionName"]) {
+  userId: String!
+  functionName: String!
+  windowStart: Timestamp!
+  count: Int!
+}

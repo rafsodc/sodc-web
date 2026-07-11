@@ -34,6 +34,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetAnnouncementSendRecipients*](#getannouncementsendrecipients)
   - [*GetAnnouncementSendById*](#getannouncementsendbyid)
   - [*GetUserByEmail*](#getuserbyemail)
+  - [*GetCallableInvocation*](#getcallableinvocation)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -98,6 +99,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*UpdateEmailBounceStats*](#updateemailbouncestats)
   - [*AdminOptOutSectionAnnouncement*](#adminoptoutsectionannouncement)
   - [*AdminOptInSectionAnnouncement*](#adminoptinsectionannouncement)
+  - [*UpsertCallableInvocation*](#upsertcallableinvocation)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
   - [*UpdateBookingStatus*](#updatebookingstatus)
@@ -3167,6 +3169,121 @@ console.log(data.users);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.users);
+});
+```
+
+## GetCallableInvocation
+You can execute the `GetCallableInvocation` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getCallableInvocation(vars: GetCallableInvocationVariables, options?: ExecuteQueryOptions): QueryPromise<GetCallableInvocationData, GetCallableInvocationVariables>;
+
+interface GetCallableInvocationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetCallableInvocationVariables): QueryRef<GetCallableInvocationData, GetCallableInvocationVariables>;
+}
+export const getCallableInvocationRef: GetCallableInvocationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getCallableInvocation(dc: DataConnect, vars: GetCallableInvocationVariables, options?: ExecuteQueryOptions): QueryPromise<GetCallableInvocationData, GetCallableInvocationVariables>;
+
+interface GetCallableInvocationRef {
+  ...
+  (dc: DataConnect, vars: GetCallableInvocationVariables): QueryRef<GetCallableInvocationData, GetCallableInvocationVariables>;
+}
+export const getCallableInvocationRef: GetCallableInvocationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getCallableInvocationRef:
+```typescript
+const name = getCallableInvocationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetCallableInvocation` query requires an argument of type `GetCallableInvocationVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetCallableInvocationVariables {
+  userId: string;
+  functionName: string;
+}
+```
+### Return Type
+Recall that executing the `GetCallableInvocation` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetCallableInvocationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetCallableInvocationData {
+  callableInvocation?: {
+    windowStart: TimestampString;
+    count: number;
+  };
+}
+```
+### Using `GetCallableInvocation`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getCallableInvocation, GetCallableInvocationVariables } from '@dataconnect/generated';
+
+// The `GetCallableInvocation` query requires an argument of type `GetCallableInvocationVariables`:
+const getCallableInvocationVars: GetCallableInvocationVariables = {
+  userId: ..., 
+  functionName: ..., 
+};
+
+// Call the `getCallableInvocation()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getCallableInvocation(getCallableInvocationVars);
+// Variables can be defined inline as well.
+const { data } = await getCallableInvocation({ userId: ..., functionName: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getCallableInvocation(dataConnect, getCallableInvocationVars);
+
+console.log(data.callableInvocation);
+
+// Or, you can use the `Promise` API.
+getCallableInvocation(getCallableInvocationVars).then((response) => {
+  const data = response.data;
+  console.log(data.callableInvocation);
+});
+```
+
+### Using `GetCallableInvocation`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getCallableInvocationRef, GetCallableInvocationVariables } from '@dataconnect/generated';
+
+// The `GetCallableInvocation` query requires an argument of type `GetCallableInvocationVariables`:
+const getCallableInvocationVars: GetCallableInvocationVariables = {
+  userId: ..., 
+  functionName: ..., 
+};
+
+// Call the `getCallableInvocationRef()` function to get a reference to the query.
+const ref = getCallableInvocationRef(getCallableInvocationVars);
+// Variables can be defined inline as well.
+const ref = getCallableInvocationRef({ userId: ..., functionName: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getCallableInvocationRef(dataConnect, getCallableInvocationVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.callableInvocation);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.callableInvocation);
 });
 ```
 
@@ -10833,6 +10950,124 @@ console.log(data.sectionAnnouncementOptOut_delete);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.sectionAnnouncementOptOut_delete);
+});
+```
+
+## UpsertCallableInvocation
+You can execute the `UpsertCallableInvocation` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+upsertCallableInvocation(vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+
+interface UpsertCallableInvocationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertCallableInvocationVariables): MutationRef<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+}
+export const upsertCallableInvocationRef: UpsertCallableInvocationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+
+interface UpsertCallableInvocationRef {
+  ...
+  (dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationRef<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+}
+export const upsertCallableInvocationRef: UpsertCallableInvocationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertCallableInvocationRef:
+```typescript
+const name = upsertCallableInvocationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpsertCallableInvocation` mutation requires an argument of type `UpsertCallableInvocationVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpsertCallableInvocationVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  count: number;
+}
+```
+### Return Type
+Recall that executing the `UpsertCallableInvocation` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpsertCallableInvocationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpsertCallableInvocationData {
+  callableInvocation_upsert: CallableInvocation_Key;
+}
+```
+### Using `UpsertCallableInvocation`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, upsertCallableInvocation, UpsertCallableInvocationVariables } from '@dataconnect/generated';
+
+// The `UpsertCallableInvocation` mutation requires an argument of type `UpsertCallableInvocationVariables`:
+const upsertCallableInvocationVars: UpsertCallableInvocationVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  count: ..., 
+};
+
+// Call the `upsertCallableInvocation()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await upsertCallableInvocation(upsertCallableInvocationVars);
+// Variables can be defined inline as well.
+const { data } = await upsertCallableInvocation({ userId: ..., functionName: ..., windowStart: ..., count: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await upsertCallableInvocation(dataConnect, upsertCallableInvocationVars);
+
+console.log(data.callableInvocation_upsert);
+
+// Or, you can use the `Promise` API.
+upsertCallableInvocation(upsertCallableInvocationVars).then((response) => {
+  const data = response.data;
+  console.log(data.callableInvocation_upsert);
+});
+```
+
+### Using `UpsertCallableInvocation`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, upsertCallableInvocationRef, UpsertCallableInvocationVariables } from '@dataconnect/generated';
+
+// The `UpsertCallableInvocation` mutation requires an argument of type `UpsertCallableInvocationVariables`:
+const upsertCallableInvocationVars: UpsertCallableInvocationVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  count: ..., 
+};
+
+// Call the `upsertCallableInvocationRef()` function to get a reference to the mutation.
+const ref = upsertCallableInvocationRef(upsertCallableInvocationVars);
+// Variables can be defined inline as well.
+const ref = upsertCallableInvocationRef({ userId: ..., functionName: ..., windowStart: ..., count: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = upsertCallableInvocationRef(dataConnect, upsertCallableInvocationVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.callableInvocation_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.callableInvocation_upsert);
 });
 ```
 

@@ -1182,3 +1182,23 @@ mutation AdminOptOutSectionAnnouncement($userId: String!, $sectionId: UUID!) @au
 mutation AdminOptInSectionAnnouncement($userId: String!, $sectionId: UUID!) @auth(level: NO_ACCESS) {
   sectionAnnouncementOptOut_delete(key: { userId: $userId, sectionId: $sectionId })
 }
+
+# ── Rate limiting (functions/src/rateLimiter.ts) ─────────────────────────────
+
+query GetCallableInvocation($userId: String!, $functionName: String!) @auth(level: NO_ACCESS) {
+  callableInvocation(key: { userId: $userId, functionName: $functionName }) {
+    windowStart
+    count
+  }
+}
+
+mutation UpsertCallableInvocation(
+  $userId: String!
+  $functionName: String!
+  $windowStart: Timestamp!
+  $count: Int!
+) @auth(level: NO_ACCESS) {
+  callableInvocation_upsert(
+    data: { userId: $userId, functionName: $functionName, windowStart: $windowStart, count: $count }
+  )
+}
