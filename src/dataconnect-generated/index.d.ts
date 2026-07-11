@@ -230,6 +230,12 @@ export interface Booking_Key {
   __typename?: 'Booking_Key';
 }
 
+export interface CallableInvocation_Key {
+  userId: string;
+  functionName: string;
+  __typename?: 'CallableInvocation_Key';
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -759,6 +765,18 @@ export interface GetBookingsForBookerAndEventData {
 export interface GetBookingsForBookerAndEventVariables {
   bookerId: string;
   eventId: UUIDString;
+}
+
+export interface GetCallableInvocationData {
+  callableInvocation?: {
+    windowStart: TimestampString;
+    count: number;
+  };
+}
+
+export interface GetCallableInvocationVariables {
+  userId: string;
+  functionName: string;
 }
 
 export interface GetCurrentUserData {
@@ -2250,6 +2268,17 @@ export interface UpdateUserVariables {
   isIndustry?: boolean | null;
 }
 
+export interface UpsertCallableInvocationData {
+  callableInvocation_upsert: CallableInvocation_Key;
+}
+
+export interface UpsertCallableInvocationVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  count: number;
+}
+
 export interface UpsertTicketOrderDisputeFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -2991,6 +3020,30 @@ export const adminOptInSectionAnnouncementRef: AdminOptInSectionAnnouncementRef;
 
 export function adminOptInSectionAnnouncement(vars: AdminOptInSectionAnnouncementVariables): MutationPromise<AdminOptInSectionAnnouncementData, AdminOptInSectionAnnouncementVariables>;
 export function adminOptInSectionAnnouncement(dc: DataConnect, vars: AdminOptInSectionAnnouncementVariables): MutationPromise<AdminOptInSectionAnnouncementData, AdminOptInSectionAnnouncementVariables>;
+
+interface GetCallableInvocationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetCallableInvocationVariables): QueryRef<GetCallableInvocationData, GetCallableInvocationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetCallableInvocationVariables): QueryRef<GetCallableInvocationData, GetCallableInvocationVariables>;
+  operationName: string;
+}
+export const getCallableInvocationRef: GetCallableInvocationRef;
+
+export function getCallableInvocation(vars: GetCallableInvocationVariables, options?: ExecuteQueryOptions): QueryPromise<GetCallableInvocationData, GetCallableInvocationVariables>;
+export function getCallableInvocation(dc: DataConnect, vars: GetCallableInvocationVariables, options?: ExecuteQueryOptions): QueryPromise<GetCallableInvocationData, GetCallableInvocationVariables>;
+
+interface UpsertCallableInvocationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertCallableInvocationVariables): MutationRef<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationRef<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+  operationName: string;
+}
+export const upsertCallableInvocationRef: UpsertCallableInvocationRef;
+
+export function upsertCallableInvocation(vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+export function upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
 
 interface CreateBookingDraftRef {
   /* Allow users to create refs without passing in DataConnect */

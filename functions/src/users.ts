@@ -3,6 +3,7 @@ import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { listUsers as dcListUsers, type MembershipStatus } from "@dataconnect/admin-generated";
 import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAME_LENGTH, mapUserRecord, handleFunctionError, listAllAuthUsers } from "./helpers";
+import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { isUserAwaitingProfile, isUserPendingApproval } from "./pendingUserApproval";
 
@@ -31,6 +32,7 @@ export const updateDisplayName = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAuth(request);
+  await enforceRateLimit("updateDisplayName", request.auth!.uid, { limit: 5, windowMs: 60 * 60 * 1000 });
   const displayName = validateStringLength(
     requireString(request.data.displayName, "displayName"),
     "Display name",
@@ -78,6 +80,7 @@ export const searchUsers = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
+  await enforceRateLimit("searchUsers", request.auth!.uid, { limit: 60, windowMs: 5 * 60 * 1000 });
   const searchTerm = requireString(request.data.searchTerm, "searchTerm");
   const page = request.data.page || 1;
   const pageSize = request.data.pageSize || 25;

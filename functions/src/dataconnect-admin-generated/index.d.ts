@@ -215,6 +215,12 @@ export interface Booking_Key {
   __typename?: 'Booking_Key';
 }
 
+export interface CallableInvocation_Key {
+  userId: string;
+  functionName: string;
+  __typename?: 'CallableInvocation_Key';
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -744,6 +750,18 @@ export interface GetBookingsForBookerAndEventData {
 export interface GetBookingsForBookerAndEventVariables {
   bookerId: string;
   eventId: UUIDString;
+}
+
+export interface GetCallableInvocationData {
+  callableInvocation?: {
+    windowStart: TimestampString;
+    count: number;
+  };
+}
+
+export interface GetCallableInvocationVariables {
+  userId: string;
+  functionName: string;
 }
 
 export interface GetCurrentUserData {
@@ -2235,6 +2253,17 @@ export interface UpdateUserVariables {
   isIndustry?: boolean | null;
 }
 
+export interface UpsertCallableInvocationData {
+  callableInvocation_upsert: CallableInvocation_Key;
+}
+
+export interface UpsertCallableInvocationVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  count: number;
+}
+
 export interface UpsertTicketOrderDisputeFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -2570,6 +2599,16 @@ export function adminOptOutSectionAnnouncement(vars: AdminOptOutSectionAnnouncem
 export function adminOptInSectionAnnouncement(dc: DataConnect, vars: AdminOptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptInSectionAnnouncementData>>;
 /** Generated Node Admin SDK operation action function for the 'AdminOptInSectionAnnouncement' Mutation. Allow users to pass in custom DataConnect instances. */
 export function adminOptInSectionAnnouncement(vars: AdminOptInSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptInSectionAnnouncementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetCallableInvocation' Query. Allow users to execute without passing in DataConnect. */
+export function getCallableInvocation(dc: DataConnect, vars: GetCallableInvocationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCallableInvocationData>>;
+/** Generated Node Admin SDK operation action function for the 'GetCallableInvocation' Query. Allow users to pass in custom DataConnect instances. */
+export function getCallableInvocation(vars: GetCallableInvocationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCallableInvocationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpsertCallableInvocation' Mutation. Allow users to execute without passing in DataConnect. */
+export function upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertCallableInvocationData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertCallableInvocation' Mutation. Allow users to pass in custom DataConnect instances. */
+export function upsertCallableInvocation(vars: UpsertCallableInvocationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertCallableInvocationData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to execute without passing in DataConnect. */
 export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;

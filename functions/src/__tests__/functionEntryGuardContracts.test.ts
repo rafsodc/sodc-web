@@ -62,6 +62,23 @@ describe("function entry guard contracts", () => {
     }
   });
 
+  it("applies enforceRateLimit to the high-risk callables named in #344", () => {
+    const users = readSource("users.ts");
+    assertOnCallGuard(users, "updateDisplayName", 'enforceRateLimit("updateDisplayName"', 200);
+    assertOnCallGuard(users, "searchUsers", 'enforceRateLimit("searchUsers"', 200);
+
+    const bookings = readSource("bookings.ts");
+    assertOnCallGuard(bookings, "submitEventBooking", 'enforceRateLimit("submitEventBooking"', 200);
+
+    const guestTicketRequests = readSource("guestTicketRequests.ts");
+    assertOnCallGuard(
+      guestTicketRequests,
+      "submitGuestTicketRequest",
+      'enforceRateLimit("submitGuestTicketRequest"',
+      250
+    );
+  });
+
   it("keeps Stripe webhook signature verification in place", () => {
     const payments = readSource("payments.ts");
     expect(payments).toContain("stripe-signature");

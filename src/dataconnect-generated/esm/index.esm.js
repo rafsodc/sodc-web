@@ -811,6 +811,31 @@ export function adminOptInSectionAnnouncement(dcOrVars, vars) {
   return executeMutation(adminOptInSectionAnnouncementRef(dcInstance, inputVars));
 }
 
+export const getCallableInvocationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetCallableInvocation', inputVars);
+}
+getCallableInvocationRef.operationName = 'GetCallableInvocation';
+
+export function getCallableInvocation(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getCallableInvocationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const upsertCallableInvocationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertCallableInvocation', inputVars);
+}
+upsertCallableInvocationRef.operationName = 'UpsertCallableInvocation';
+
+export function upsertCallableInvocation(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(upsertCallableInvocationRef(dcInstance, inputVars));
+}
+
 export const createBookingDraftRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
