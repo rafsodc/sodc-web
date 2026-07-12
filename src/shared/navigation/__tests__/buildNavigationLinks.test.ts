@@ -99,8 +99,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Administer",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-1", name: "Signals" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+            state: { sectionName: "Signals", sectionType: "EVENTS" },
           },
         ],
       },
@@ -113,8 +113,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Signals",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-1", name: "Signals" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+            state: { sectionName: "Signals", sectionType: "EVENTS" },
           },
         ],
       },
@@ -145,8 +145,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Administer",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-2", name: "Events" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
+            state: { sectionName: "Events", sectionType: "EVENTS" },
           },
         ],
       },
@@ -159,8 +159,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Events",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-2", name: "Events" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
+            state: { sectionName: "Events", sectionType: "EVENTS" },
           },
         ],
       },
@@ -237,8 +237,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Administer",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-1", name: "Signals" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+            state: { sectionName: "Signals", sectionType: "EVENTS" },
           },
         ],
       },
@@ -253,8 +253,8 @@ describe("buildNavigationLinks", () => {
           children: [
             {
               label: "Signals",
-              to: ROUTES.MANAGE_SECTIONS,
-              state: { managedSection: { id: "section-1", name: "Signals" } },
+              to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+              state: { sectionName: "Signals", sectionType: "EVENTS" },
             },
           ],
         },
@@ -309,8 +309,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Administer",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-1", name: "Alpha" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+            state: { sectionName: "Alpha", sectionType: "EVENTS" },
           },
         ],
       },
@@ -321,8 +321,8 @@ describe("buildNavigationLinks", () => {
         children: [
           {
             label: "Administer",
-            to: ROUTES.MANAGE_SECTIONS,
-            state: { managedSection: { id: "section-2", name: "Zulu" } },
+            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
+            state: { sectionName: "Zulu", sectionType: "EVENTS" },
           },
         ],
       },
@@ -334,13 +334,13 @@ describe("buildNavigationLinks", () => {
           children: [
             {
               label: "Alpha",
-              to: ROUTES.MANAGE_SECTIONS,
-              state: { managedSection: { id: "section-1", name: "Alpha" } },
+              to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
+              state: { sectionName: "Alpha", sectionType: "EVENTS" },
             },
             {
               label: "Zulu",
-              to: ROUTES.MANAGE_SECTIONS,
-              state: { managedSection: { id: "section-2", name: "Zulu" } },
+              to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
+              state: { sectionName: "Zulu", sectionType: "EVENTS" },
             },
           ],
         }),

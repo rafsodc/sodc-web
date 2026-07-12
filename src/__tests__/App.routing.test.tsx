@@ -239,6 +239,10 @@ vi.mock("../features/admin/components/ManageSections", () => ({
   default: () => <h1>Manage Sections Page</h1>,
 }));
 
+vi.mock("../features/admin/components/SectionAdminPage", () => ({
+  default: () => <h1>Section Admin Page</h1>,
+}));
+
 vi.mock("../features/users/components/AccountStatusMessage", () => ({
   default: () => <h1>Account Status Page</h1>,
 }));
@@ -506,13 +510,16 @@ describe("App routing", () => {
     renderApp([ROUTES.HOME]);
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Administer" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
+    expect(screen.getByRole("link", { name: "Administer" })).toHaveAttribute(
+      "href",
+      ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1")
+    );
     expect(screen.getByRole("link", { name: "Manage Sections" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
   });
 
-  it("navigates section admin links with managed section route state", async () => {
+  it("navigates section admin links to the section admin hub", async () => {
     signInEnabledUser({ admin: true });
     const user = userEvent.setup();
 
@@ -521,14 +528,16 @@ describe("App routing", () => {
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Administer" }));
 
-    expect(await screen.findByRole("heading", { name: "Manage Sections Page" })).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_SECTIONS);
+    expect(await screen.findByRole("heading", { name: "Section Admin Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1")
+    );
     expect(screen.getByTestId("location-state")).toHaveTextContent(
-      JSON.stringify({ managedSection: { id: "section-1", name: "Signals" } })
+      JSON.stringify({ sectionName: "Signals", sectionType: "MEMBERS" })
     );
   });
 
-  it("clears managed section route state from the root Manage Sections link", async () => {
+  it("clears route state when navigating from the section admin hub to the root Manage Sections link", async () => {
     signInEnabledUser({ admin: true });
     const user = userEvent.setup();
 
@@ -536,8 +545,8 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Administer" }));
-    await screen.findByRole("heading", { name: "Manage Sections Page" });
-    expect(screen.getByTestId("location-state")).toHaveTextContent("section-1");
+    await screen.findByRole("heading", { name: "Section Admin Page" });
+    expect(screen.getByTestId("location-state")).toHaveTextContent("Signals");
 
     await user.click(screen.getByRole("link", { name: "Manage Sections" }));
 
