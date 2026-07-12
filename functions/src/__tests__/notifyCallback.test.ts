@@ -52,6 +52,14 @@ describe("handleNotifyDelivery", () => {
     expect((res.status as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(403);
   });
 
+  it("rejects a same-length wrong bearer token (exercises the timingSafeEqual path, not just the length check)", async () => {
+    const wrongSameLength = BEARER.slice(0, -1) + (BEARER.at(-1) === "x" ? "y" : "x");
+    expect(wrongSameLength.length).toBe(BEARER.length);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({ headers: { authorization: `Bearer ${wrongSameLength}` } }), res, BEARER);
+    expect((res.status as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(403);
+  });
+
   it("rejects requests with no auth header", async () => {
     const res = makeRes();
     await handleNotifyDelivery(makeReq({ headers: {} }), res, BEARER);

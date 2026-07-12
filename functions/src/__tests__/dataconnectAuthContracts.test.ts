@@ -181,10 +181,6 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetCurrentUser", mustInclude: USER_EXPR },
       { op: "query GetSectionsForUser", mustInclude: USER_EXPR },
       { op: "query GetUserAccessGroups", mustInclude: USER_EXPR },
-      { op: "query GetEventsForSection", mustInclude: USER_EXPR },
-      { op: "query GetEventById", mustInclude: USER_EXPR },
-      { op: "query GetSectionById", mustInclude: USER_EXPR },
-      { op: "query GetSectionMembers", mustInclude: USER_EXPR },
       { op: "query GetMyBookingsForEvent", mustInclude: USER_EXPR },
       { op: "query GetMyTicketOrders", mustInclude: USER_EXPR },
       { op: "query GetMyBookingPaymentAdjustments", mustInclude: USER_EXPR },
@@ -201,12 +197,23 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetUserGroupById", mustInclude: ADMIN_EXPR },
       { op: "query ListBookingPaymentAdjustmentsForAdmin", mustInclude: ADMIN_EXPR },
       { op: "query ListOpenPaymentReconciliationExceptions", mustInclude: ADMIN_EXPR },
+      // GetEventsForSection/GetEventById/GetSectionById accept an arbitrary id with no
+      // relationship check — must stay admin-only. Non-admin members go through the
+      // getSectionEventsForUser/getEventForUser/getSectionForUser callables
+      // (functions/src/sections.ts), which verify the caller's own section access first.
+      { op: "query GetEventsForSection", mustInclude: ADMIN_EXPR },
+      { op: "query GetEventById", mustInclude: ADMIN_EXPR },
+      { op: "query GetSectionById", mustInclude: ADMIN_EXPR },
     ]);
 
     // System-only queries (NO_ACCESS — callable from Firebase Functions only)
     assertAuth(queries, [
       { op: "query GetUserMembershipStatus", mustInclude: NO_ACCESS },
       { op: "query GetAllUserGroupsWithStatuses", mustInclude: NO_ACCESS },
+      // GetSectionMembers exposes member PII (email, serviceNumber) for an arbitrary sectionId with
+      // no relationship check — must stay SDK-only. Clients go through the getSectionMembersMerged
+      // callable (functions/src/sections.ts), which verifies the caller's own section access first.
+      { op: "query GetSectionMembers", mustInclude: NO_ACCESS },
     ]);
   });
 

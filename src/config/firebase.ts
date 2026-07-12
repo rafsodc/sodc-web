@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDataConnect } from "firebase/data-connect";
 import { getFunctions } from "firebase/functions";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { connectorConfig } from "../dataconnect-generated";
 
 // Optional: only load Analytics in the browser and only if a measurementId is provided.
@@ -18,6 +19,7 @@ import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
 // VITE_FIREBASE_PROJECT_ID=...
 // VITE_FIREBASE_APP_ID=...
 // VITE_FIREBASE_MEASUREMENT_ID=...
+// VITE_RECAPTCHA_SITE_KEY=...
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
@@ -31,6 +33,18 @@ const firebaseConfig = {
 export const firebaseApp = initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
 export const functions = getFunctions(firebaseApp, "europe-west2");
+
+// App Check (see #345): only initialised when a site key is configured, so local dev/test/CI
+// environments without one behave exactly as before. Functions aren't enforcing App Check yet
+// (enforceAppCheck isn't set on any callable) — this just gets clients attaching valid tokens
+// so we can watch the App Check console's metrics before turning enforcement on server-side.
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+if (recaptchaSiteKey && typeof window !== "undefined") {
+  initializeAppCheck(firebaseApp, {
+    provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
 // Initialize Data Connect
 export const dataConnect = getDataConnect(connectorConfig);

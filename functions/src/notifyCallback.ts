@@ -1,6 +1,7 @@
 import { onRequest, type Request } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
+import { timingSafeEqual } from "node:crypto";
 import type { Response } from "express";
 import {
   getUserByEmail,
@@ -25,15 +26,21 @@ export interface NotifyReceipt {
   sent_at?: string;
 }
 
+function isValidBearerToken(token: string, expected: string): boolean {
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(expected);
+  return tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf);
+}
+
 export async function handleNotifyDelivery(
   req: Request,
   res: Response,
   bearerToken: string
 ): Promise<void> {
-  // Verify bearer token
+  // Verify bearer token (constant-time compare — this is a shared secret, not just a lookup key)
   const authHeader = (req.headers["authorization"] as string | undefined) ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token || token !== bearerToken) {
+  if (!token || !isValidBearerToken(token, bearerToken)) {
     res.status(403).send("Forbidden");
     return;
   }

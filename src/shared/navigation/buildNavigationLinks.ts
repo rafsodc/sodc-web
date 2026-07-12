@@ -26,6 +26,7 @@ type SectionLinkSource = {
   section?: {
     id?: string | null;
     name?: string | null;
+    type?: string | null;
   } | null;
 };
 
@@ -33,9 +34,19 @@ function linkHasPurpose(link: SectionLinkSource, target: SectionUserGroupPurpose
   return link.purposes?.includes(target) ?? false;
 }
 
-function addSectionLink(map: Map<string, NavigationLink>, link: SectionLinkSource) {
+function addSectionLink(
+  map: Map<string, NavigationLink>,
+  typeMap: Map<string, string | null | undefined>,
+  link: SectionLinkSource
+) {
   const section = link.section;
-  if (!section?.id || map.has(section.id)) {
+  if (!section?.id) {
+    return;
+  }
+  if (!typeMap.has(section.id)) {
+    typeMap.set(section.id, section.type);
+  }
+  if (map.has(section.id)) {
     return;
   }
   const label = section.name || "Untitled section";
@@ -58,23 +69,25 @@ function sortLinks<T extends NavigationLink>(links: Iterable<T>): T[] {
   return Array.from(links).sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function manageSectionLink({
+// Same destination as the "Admin" button on a section's own page (see getSectionAdminDestination) —
+// both entry points should open the same hub of options, not diverge into a narrower admin surface.
+function sectionAdminLink({
   label,
   sectionId,
   sectionName,
+  sectionType,
 }: {
   label: string;
   sectionId: string;
   sectionName: string;
+  sectionType?: string | null;
 }): NavigationLink {
   return {
     label,
-    to: ROUTES.MANAGE_SECTIONS,
+    to: ROUTES.SECTION_ADMIN.replace(":sectionId", sectionId),
     state: {
-      managedSection: {
-        id: sectionId,
-        name: sectionName,
-      },
+      sectionName,
+      sectionType: sectionType ?? "MEMBERS",
     },
   };
 }
@@ -83,11 +96,13 @@ function buildAdminLinks({
   isAdmin,
   sectionMap,
   administerableSectionIds,
+  sectionTypeMap,
   sectionsData,
 }: {
   isAdmin: boolean;
   sectionMap: Map<string, NavigationLink>;
   administerableSectionIds: Map<string, boolean>;
+  sectionTypeMap: Map<string, string | null | undefined>;
   sectionsData?: GetSectionsForUserData;
 }): NavigationLink[] {
   const sectionAdminChildren = sortLinks(
@@ -97,10 +112,11 @@ function buildAdminLinks({
         return [];
       }
       return [
-        manageSectionLink({
+        sectionAdminLink({
           label: section.label,
           sectionId,
           sectionName: section.label,
+          sectionType: sectionTypeMap.get(sectionId),
         }),
       ];
     })
@@ -159,6 +175,7 @@ export function buildNavigationLinks({
   }
 
   const sectionMap = new Map<string, NavigationLink>();
+  const sectionTypeMap = new Map<string, string | null | undefined>();
   const administerableSectionIds = new Map<string, boolean>();
   const explicitGroups = sectionsData?.user?.userGroups ?? [];
 
@@ -168,7 +185,7 @@ export function buildNavigationLinks({
         linkHasPurpose(purposeLink, SectionPurpose.ACCESS) ||
         linkHasPurpose(purposeLink, SectionPurpose.MODERATOR)
       ) {
-        addSectionLink(sectionMap, purposeLink);
+        addSectionLink(sectionMap, sectionTypeMap, purposeLink);
       }
       markSectionAdministerable(administerableSectionIds, purposeLink);
     }
@@ -185,7 +202,7 @@ export function buildNavigationLinks({
           linkHasPurpose(purposeLink, SectionPurpose.ACCESS) ||
           linkHasPurpose(purposeLink, SectionPurpose.MODERATOR)
         ) {
-          addSectionLink(sectionMap, purposeLink);
+          addSectionLink(sectionMap, sectionTypeMap, purposeLink);
         }
         markSectionAdministerable(administerableSectionIds, purposeLink);
       }
@@ -207,14 +224,15 @@ export function buildNavigationLinks({
         return {
           ...section,
           children: [
-            manageSectionLink({
+            sectionAdminLink({
               label: "Administer",
               sectionId,
               sectionName: section.label,
+              sectionType: sectionTypeMap.get(sectionId),
             }),
           ],
         };
       }),
-    admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionsData }),
+    admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionTypeMap, sectionsData }),
   };
 }

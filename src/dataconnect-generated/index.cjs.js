@@ -797,6 +797,180 @@ exports.getSectionAnnouncementOptOuts = function getSectionAnnouncementOptOuts(d
 }
 ;
 
+const createAnnouncementSendRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAnnouncementSend', inputVars);
+}
+createAnnouncementSendRef.operationName = 'CreateAnnouncementSend';
+exports.createAnnouncementSendRef = createAnnouncementSendRef;
+
+exports.createAnnouncementSend = function createAnnouncementSend(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createAnnouncementSendRef(dcInstance, inputVars));
+}
+;
+
+const createAnnouncementRecipientRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAnnouncementRecipient', inputVars);
+}
+createAnnouncementRecipientRef.operationName = 'CreateAnnouncementRecipient';
+exports.createAnnouncementRecipientRef = createAnnouncementRecipientRef;
+
+exports.createAnnouncementRecipient = function createAnnouncementRecipient(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createAnnouncementRecipientRef(dcInstance, inputVars));
+}
+;
+
+const getAnnouncementRecipientCountRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementRecipientCount', inputVars);
+}
+getAnnouncementRecipientCountRef.operationName = 'GetAnnouncementRecipientCount';
+exports.getAnnouncementRecipientCountRef = getAnnouncementRecipientCountRef;
+
+exports.getAnnouncementRecipientCount = function getAnnouncementRecipientCount(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementRecipientCountRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementSendHistoryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementSendHistory', inputVars);
+}
+getAnnouncementSendHistoryRef.operationName = 'GetAnnouncementSendHistory';
+exports.getAnnouncementSendHistoryRef = getAnnouncementSendHistoryRef;
+
+exports.getAnnouncementSendHistory = function getAnnouncementSendHistory(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementSendHistoryRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementSendRecipientsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementSendRecipients', inputVars);
+}
+getAnnouncementSendRecipientsRef.operationName = 'GetAnnouncementSendRecipients';
+exports.getAnnouncementSendRecipientsRef = getAnnouncementSendRecipientsRef;
+
+exports.getAnnouncementSendRecipients = function getAnnouncementSendRecipients(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementSendRecipientsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementSendByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementSendById', inputVars);
+}
+getAnnouncementSendByIdRef.operationName = 'GetAnnouncementSendById';
+exports.getAnnouncementSendByIdRef = getAnnouncementSendByIdRef;
+
+exports.getAnnouncementSendById = function getAnnouncementSendById(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementSendByIdRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getUserByEmailRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetUserByEmail', inputVars);
+}
+getUserByEmailRef.operationName = 'GetUserByEmail';
+exports.getUserByEmailRef = getUserByEmailRef;
+
+exports.getUserByEmail = function getUserByEmail(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getUserByEmailRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const updateEmailBounceStatsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateEmailBounceStats', inputVars);
+}
+updateEmailBounceStatsRef.operationName = 'UpdateEmailBounceStats';
+exports.updateEmailBounceStatsRef = updateEmailBounceStatsRef;
+
+exports.updateEmailBounceStats = function updateEmailBounceStats(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateEmailBounceStatsRef(dcInstance, inputVars));
+}
+;
+
+const adminOptOutSectionAnnouncementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminOptOutSectionAnnouncement', inputVars);
+}
+adminOptOutSectionAnnouncementRef.operationName = 'AdminOptOutSectionAnnouncement';
+exports.adminOptOutSectionAnnouncementRef = adminOptOutSectionAnnouncementRef;
+
+exports.adminOptOutSectionAnnouncement = function adminOptOutSectionAnnouncement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(adminOptOutSectionAnnouncementRef(dcInstance, inputVars));
+}
+;
+
+const adminOptInSectionAnnouncementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AdminOptInSectionAnnouncement', inputVars);
+}
+adminOptInSectionAnnouncementRef.operationName = 'AdminOptInSectionAnnouncement';
+exports.adminOptInSectionAnnouncementRef = adminOptInSectionAnnouncementRef;
+
+exports.adminOptInSectionAnnouncement = function adminOptInSectionAnnouncement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(adminOptInSectionAnnouncementRef(dcInstance, inputVars));
+}
+;
+
+const getCallableInvocationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetCallableInvocation', inputVars);
+}
+getCallableInvocationRef.operationName = 'GetCallableInvocation';
+exports.getCallableInvocationRef = getCallableInvocationRef;
+
+exports.getCallableInvocation = function getCallableInvocation(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getCallableInvocationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const upsertCallableInvocationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertCallableInvocation', inputVars);
+}
+upsertCallableInvocationRef.operationName = 'UpsertCallableInvocation';
+exports.upsertCallableInvocationRef = upsertCallableInvocationRef;
+
+exports.upsertCallableInvocation = function upsertCallableInvocation(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(upsertCallableInvocationRef(dcInstance, inputVars));
+}
+;
+
 const createBookingDraftRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

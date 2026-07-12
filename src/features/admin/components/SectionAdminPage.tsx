@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardActionArea,
   CardContent,
+  CircularProgress,
   Typography,
 } from "@mui/material";
 import { Campaign, Event, Settings } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import { ROUTES } from "../../../constants";
-import { useAdminClaim } from "../../users/hooks/useAdminClaim";
-import { auth } from "../../../config/firebase";
+import { useCanModerateSection } from "../../sections/hooks/useCanModerateSection";
 import SendAnnouncementPage from "./SendAnnouncementPage";
 import "../../../shared/components/PageContainer.css";
 
@@ -45,7 +47,7 @@ export default function SectionAdminPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const isAdmin = useAdminClaim(auth.currentUser);
+  const { isResolved, isAdmin, canModerateSection } = useCanModerateSection(sectionId);
   const state = location.state as SectionAdminLocationState | null;
   const sectionName = state?.sectionName ?? "Section";
   const sectionType = state?.sectionType ?? "MEMBERS";
@@ -62,6 +64,28 @@ export default function SectionAdminPage() {
   };
 
   if (!sectionId) return null;
+
+  if (!isResolved) {
+    return (
+      <Box className="page-container" sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAdmin && !canModerateSection) {
+    return (
+      <Box className="page-container">
+        <PageHeader title={`Administer — ${sectionName}`} onBack={() => navigate(-1)} />
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Access denied. You must be an admin or a moderator of this section.
+        </Alert>
+        <Button variant="outlined" onClick={() => navigate(ROUTES.HOME)}>
+          Back to Home
+        </Button>
+      </Box>
+    );
+  }
 
   if (view === "announcement") {
     return (

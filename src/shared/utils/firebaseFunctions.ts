@@ -1,6 +1,6 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../config/firebase";
-import type { MembershipStatus } from "@dataconnect/generated";
+import type { GetEventByIdData, GetEventsForSectionData, GetSectionByIdData, MembershipStatus } from "@dataconnect/generated";
 import { toCanonicalUuid } from "./uuid";
 
 /**
@@ -361,6 +361,54 @@ export async function getSectionMembersMerged(
 }
 
 // ============================================================================
+// Section/event lookup (callable — GetSectionById/GetEventsForSection/GetEventById
+// are admin-only in Data Connect since they accept an arbitrary id with no relationship
+// check; these callables are the only path a non-admin member has to that data, and they
+// verify the caller's actual section access server-side first)
+// ============================================================================
+
+export interface SectionForUserResponse {
+  section: NonNullable<GetSectionByIdData["section"]> | null;
+  hasAccess: boolean;
+  canModerate: boolean;
+}
+
+export async function getSectionForUser(sectionId: string): Promise<SectionForUserResponse> {
+  const callable = httpsCallable<{ sectionId: string }, SectionForUserResponse>(
+    functions,
+    "getSectionForUser"
+  );
+  const result = await callable({ sectionId });
+  return result.data;
+}
+
+export interface SectionEventsForUserResponse {
+  events: NonNullable<GetEventsForSectionData["section"]>["events"];
+}
+
+export async function getSectionEventsForUser(sectionId: string): Promise<SectionEventsForUserResponse> {
+  const callable = httpsCallable<{ sectionId: string }, SectionEventsForUserResponse>(
+    functions,
+    "getSectionEventsForUser"
+  );
+  const result = await callable({ sectionId });
+  return result.data;
+}
+
+export interface EventForUserResponse {
+  event: NonNullable<GetEventByIdData["event"]> | null;
+}
+
+export async function getEventForUser(eventId: string): Promise<EventForUserResponse> {
+  const callable = httpsCallable<{ eventId: string }, EventForUserResponse>(
+    functions,
+    "getEventForUser"
+  );
+  const result = await callable({ eventId });
+  return result.data;
+}
+
+// ============================================================================
 // Event booking (callable — server rules + idempotency)
 // ============================================================================
 
@@ -642,13 +690,14 @@ export async function getAnnouncementTemplates(
 }
 
 export async function previewAnnouncementTemplate(
+  sectionId: string,
   templateUuid: string
 ): Promise<{ html: string; subject: string }> {
-  const callable = httpsCallable<{ templateUuid: string }, { html: string; subject: string }>(
-    functions,
-    "previewAnnouncementTemplate"
-  );
-  const result = await callable({ templateUuid });
+  const callable = httpsCallable<
+    { sectionId: string; templateUuid: string },
+    { html: string; subject: string }
+  >(functions, "previewAnnouncementTemplate");
+  const result = await callable({ sectionId, templateUuid });
   return result.data;
 }
 

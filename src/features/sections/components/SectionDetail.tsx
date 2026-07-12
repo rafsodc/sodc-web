@@ -6,7 +6,7 @@ import {
   Button,
   Snackbar,
 } from "@mui/material";
-import { useGetSectionById, useGetUserAccessGroups, useGetSectionsForUser, useGetEventsForSection, useGetEventById } from "@dataconnect/generated/react";
+import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import { colors } from "../../../config/colors";
@@ -21,7 +21,18 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getSectionMembersMerged, subscribeToUserGroup } from "../../../shared/utils/firebaseFunctions";
+import {
+  getSectionMembersMerged,
+  subscribeToUserGroup,
+  getSectionForUser,
+  getSectionEventsForUser,
+  getEventForUser,
+} from "../../../shared/utils/firebaseFunctions";
+import type {
+  SectionForUserResponse,
+  SectionEventsForUserResponse,
+  EventForUserResponse,
+} from "../../../shared/utils/firebaseFunctions";
 import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
 import { MembershipStatus, SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
@@ -61,13 +72,31 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const currentUser = auth.currentUser;
   const isAdmin = useAdminClaim(currentUser);
 
-  // Get section details (for user group info and subscribability)
-  const {
-    data: sectionData,
-    isLoading: loadingSection,
-    isError: errorSection,
-    refetch: refetchSection,
-  } = useGetSectionById(dataConnect, { id: sectionId as UUIDString });
+  // Get section details (for user group info and subscribability). GetSectionById itself is
+  // admin-only in Data Connect (see #328) — this callable checks the caller's actual section
+  // access server-side before returning anything.
+  const [sectionData, setSectionData] = useState<{ section: SectionForUserResponse["section"] } | undefined>(undefined);
+  const [loadingSection, setLoadingSection] = useState(true);
+  const [errorSection, setErrorSection] = useState(false);
+
+  const refetchSection = useCallback(async () => {
+    if (!sectionId) return;
+    setLoadingSection(true);
+    setErrorSection(false);
+    try {
+      const result = await getSectionForUser(sectionId);
+      setSectionData({ section: result.section });
+    } catch {
+      setSectionData(undefined);
+      setErrorSection(true);
+    } finally {
+      setLoadingSection(false);
+    }
+  }, [sectionId]);
+
+  useEffect(() => {
+    void refetchSection();
+  }, [refetchSection]);
 
   const fetchMembers = useCallback(async () => {
     setLoadingMembers(true);
@@ -107,25 +136,60 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   // Used to check access including status-based group memberships (result is cached from App.tsx)
   const { data: userSectionsData } = useGetSectionsForUser(dataConnect, {});
 
-  // Get events for this section (used when section.type === EVENTS)
-  const {
-    data: eventsData,
-    isLoading: loadingEvents,
-    isError: errorEvents,
-    refetch: refetchEvents,
-  } = useGetEventsForSection(dataConnect, { sectionId: sectionId as UUIDString });
+  // Get events for this section (used when section.type === EVENTS). GetEventsForSection is
+  // admin-only in Data Connect (see #328); this callable is access-checked the same way as
+  // getSectionForUser above.
+  const [eventsData, setEventsData] = useState<{ section: { events: SectionEventsForUserResponse["events"] } } | undefined>(undefined);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [errorEvents, setErrorEvents] = useState(false);
 
-  // Get single event for detail view (only runs when selectedEventId is set)
-  const {
-    data: eventDetailData,
-    isLoading: loadingEventDetail,
-    isError: errorEventDetail,
-    refetch: refetchEventDetail,
-  } = useGetEventById(
-    dataConnect,
-    { id: (selectedEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
-    { enabled: !!selectedEventId }
-  );
+  const refetchEvents = useCallback(async () => {
+    if (!sectionId) return;
+    setLoadingEvents(true);
+    setErrorEvents(false);
+    try {
+      const result = await getSectionEventsForUser(sectionId);
+      setEventsData({ section: { events: result.events } });
+    } catch {
+      setEventsData(undefined);
+      setErrorEvents(true);
+    } finally {
+      setLoadingEvents(false);
+    }
+  }, [sectionId]);
+
+  useEffect(() => {
+    void refetchEvents();
+  }, [refetchEvents]);
+
+  // Get single event for detail view (only runs when selectedEventId is set). GetEventById is
+  // admin-only in Data Connect (see #328); this callable checks access to the event's section.
+  const [eventDetailData, setEventDetailData] = useState<{ event: EventForUserResponse["event"] } | undefined>(undefined);
+  const [loadingEventDetail, setLoadingEventDetail] = useState(false);
+  const [errorEventDetail, setErrorEventDetail] = useState(false);
+
+  const refetchEventDetail = useCallback(async () => {
+    if (!selectedEventId) return;
+    setLoadingEventDetail(true);
+    setErrorEventDetail(false);
+    try {
+      const result = await getEventForUser(selectedEventId);
+      setEventDetailData({ event: result.event });
+    } catch {
+      setEventDetailData(undefined);
+      setErrorEventDetail(true);
+    } finally {
+      setLoadingEventDetail(false);
+    }
+  }, [selectedEventId]);
+
+  useEffect(() => {
+    if (!selectedEventId) {
+      setEventDetailData(undefined);
+      return;
+    }
+    void refetchEventDetail();
+  }, [selectedEventId, refetchEventDetail]);
 
   // Extract user's user group IDs
   const userUserGroupIds = useMemo(() => {

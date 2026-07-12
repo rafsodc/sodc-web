@@ -165,6 +165,24 @@ export interface AdminDeleteGuestTicketRequestVariables {
   id: UUIDString;
 }
 
+export interface AdminOptInSectionAnnouncementData {
+  sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
+}
+
+export interface AdminOptInSectionAnnouncementVariables {
+  userId: string;
+  sectionId: UUIDString;
+}
+
+export interface AdminOptOutSectionAnnouncementData {
+  sectionAnnouncementOptOut_upsert: SectionAnnouncementOptOut_Key;
+}
+
+export interface AdminOptOutSectionAnnouncementVariables {
+  userId: string;
+  sectionId: UUIDString;
+}
+
 export interface AdminReviewGuestTicketRequestData {
   guestTicketRequest_update?: GuestTicketRequest_Key | null;
 }
@@ -186,6 +204,16 @@ export interface AdminReviewGuestTicketRequestVariables {
   moderatorNote?: string | null;
 }
 
+export interface AnnouncementRecipient_Key {
+  id: UUIDString;
+  __typename?: 'AnnouncementRecipient_Key';
+}
+
+export interface AnnouncementSend_Key {
+  id: UUIDString;
+  __typename?: 'AnnouncementSend_Key';
+}
+
 export interface BookingLine_Key {
   id: UUIDString;
   __typename?: 'BookingLine_Key';
@@ -202,6 +230,12 @@ export interface Booking_Key {
   __typename?: 'Booking_Key';
 }
 
+export interface CallableInvocation_Key {
+  userId: string;
+  functionName: string;
+  __typename?: 'CallableInvocation_Key';
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -209,6 +243,37 @@ export interface CheckUserProfileExistsData {
     lastName: string;
     membershipStatus: MembershipStatus;
   } & User_Key;
+}
+
+export interface CreateAnnouncementRecipientData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+
+export interface CreateAnnouncementRecipientVariables {
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+}
+
+export interface CreateAnnouncementSendData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+
+export interface CreateAnnouncementSendVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  failureCount: number;
 }
 
 export interface CreateBookingDraftData {
@@ -496,6 +561,62 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetAnnouncementRecipientCountData {
+  announcementRecipients: ({
+    id: UUIDString;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementRecipientCountVariables {
+  sendId: UUIDString;
+}
+
+export interface GetAnnouncementSendByIdData {
+  announcementSend?: {
+    id: UUIDString;
+    sectionId: UUIDString;
+  } & AnnouncementSend_Key;
+}
+
+export interface GetAnnouncementSendByIdVariables {
+  id: UUIDString;
+}
+
+export interface GetAnnouncementSendHistoryData {
+  announcementSends: ({
+    id: UUIDString;
+    templateUuid: string;
+    templateName?: string | null;
+    sentBy: string;
+    sentAt: TimestampString;
+    recipientCount: number;
+    skippedCount: number;
+    failureCount: number;
+  } & AnnouncementSend_Key)[];
+}
+
+export interface GetAnnouncementSendHistoryVariables {
+  sectionId: UUIDString;
+}
+
+export interface GetAnnouncementSendRecipientsData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementSendRecipientsVariables {
+  sendId: UUIDString;
+}
+
 export interface GetBookingForGuestTicketCallableData {
   booking?: {
     id: UUIDString;
@@ -644,6 +765,18 @@ export interface GetBookingsForBookerAndEventData {
 export interface GetBookingsForBookerAndEventVariables {
   bookerId: string;
   eventId: UUIDString;
+}
+
+export interface GetCallableInvocationData {
+  callableInvocation?: {
+    windowStart: TimestampString;
+    count: number;
+  };
+}
+
+export interface GetCallableInvocationVariables {
+  userId: string;
+  functionName: string;
 }
 
 export interface GetCurrentUserData {
@@ -1146,6 +1279,7 @@ export interface GetSectionMembersData {
             firstName: string;
             lastName: string;
             email: string;
+            serviceNumber: string;
             membershipStatus: MembershipStatus;
           } & User_Key;
         })[];
@@ -1329,6 +1463,18 @@ export interface GetUserAccessGroupsData {
       } & UserGroup_Key;
     })[];
   } & User_Key;
+}
+
+export interface GetUserByEmailData {
+  users: ({
+    id: string;
+    membershipStatus: MembershipStatus;
+    emailBounceCount: number;
+  } & User_Key)[];
+}
+
+export interface GetUserByEmailVariables {
+  email: string;
 }
 
 export interface GetUserByIdData {
@@ -2013,6 +2159,16 @@ export interface UpdateBookingStatusVariables {
   status: BookingStatus;
 }
 
+export interface UpdateEmailBounceStatsData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateEmailBounceStatsVariables {
+  userId: string;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+}
+
 export interface UpdateEventData {
   event_update?: Event_Key | null;
 }
@@ -2110,6 +2266,17 @@ export interface UpdateUserVariables {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+}
+
+export interface UpsertCallableInvocationData {
+  callableInvocation_upsert: CallableInvocation_Key;
+}
+
+export interface UpsertCallableInvocationVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  count: number;
 }
 
 export interface UpsertTicketOrderDisputeFromWebhookData {
@@ -2733,6 +2900,150 @@ export const getSectionAnnouncementOptOutsRef: GetSectionAnnouncementOptOutsRef;
 
 export function getSectionAnnouncementOptOuts(vars: GetSectionAnnouncementOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutsData, GetSectionAnnouncementOptOutsVariables>;
 export function getSectionAnnouncementOptOuts(dc: DataConnect, vars: GetSectionAnnouncementOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutsData, GetSectionAnnouncementOptOutsVariables>;
+
+interface CreateAnnouncementSendRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementSendVariables): MutationRef<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnnouncementSendVariables): MutationRef<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
+  operationName: string;
+}
+export const createAnnouncementSendRef: CreateAnnouncementSendRef;
+
+export function createAnnouncementSend(vars: CreateAnnouncementSendVariables): MutationPromise<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
+export function createAnnouncementSend(dc: DataConnect, vars: CreateAnnouncementSendVariables): MutationPromise<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
+
+interface CreateAnnouncementRecipientRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementRecipientVariables): MutationRef<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnnouncementRecipientVariables): MutationRef<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
+  operationName: string;
+}
+export const createAnnouncementRecipientRef: CreateAnnouncementRecipientRef;
+
+export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables): MutationPromise<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
+export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnouncementRecipientVariables): MutationPromise<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
+
+interface GetAnnouncementRecipientCountRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientCountVariables): QueryRef<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementRecipientCountVariables): QueryRef<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+  operationName: string;
+}
+export const getAnnouncementRecipientCountRef: GetAnnouncementRecipientCountRef;
+
+export function getAnnouncementRecipientCount(vars: GetAnnouncementRecipientCountVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+export function getAnnouncementRecipientCount(dc: DataConnect, vars: GetAnnouncementRecipientCountVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+
+interface GetAnnouncementSendHistoryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementSendHistoryVariables): QueryRef<GetAnnouncementSendHistoryData, GetAnnouncementSendHistoryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementSendHistoryVariables): QueryRef<GetAnnouncementSendHistoryData, GetAnnouncementSendHistoryVariables>;
+  operationName: string;
+}
+export const getAnnouncementSendHistoryRef: GetAnnouncementSendHistoryRef;
+
+export function getAnnouncementSendHistory(vars: GetAnnouncementSendHistoryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendHistoryData, GetAnnouncementSendHistoryVariables>;
+export function getAnnouncementSendHistory(dc: DataConnect, vars: GetAnnouncementSendHistoryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendHistoryData, GetAnnouncementSendHistoryVariables>;
+
+interface GetAnnouncementSendRecipientsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementSendRecipientsVariables): QueryRef<GetAnnouncementSendRecipientsData, GetAnnouncementSendRecipientsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementSendRecipientsVariables): QueryRef<GetAnnouncementSendRecipientsData, GetAnnouncementSendRecipientsVariables>;
+  operationName: string;
+}
+export const getAnnouncementSendRecipientsRef: GetAnnouncementSendRecipientsRef;
+
+export function getAnnouncementSendRecipients(vars: GetAnnouncementSendRecipientsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientsData, GetAnnouncementSendRecipientsVariables>;
+export function getAnnouncementSendRecipients(dc: DataConnect, vars: GetAnnouncementSendRecipientsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientsData, GetAnnouncementSendRecipientsVariables>;
+
+interface GetAnnouncementSendByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementSendByIdVariables): QueryRef<GetAnnouncementSendByIdData, GetAnnouncementSendByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementSendByIdVariables): QueryRef<GetAnnouncementSendByIdData, GetAnnouncementSendByIdVariables>;
+  operationName: string;
+}
+export const getAnnouncementSendByIdRef: GetAnnouncementSendByIdRef;
+
+export function getAnnouncementSendById(vars: GetAnnouncementSendByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendByIdData, GetAnnouncementSendByIdVariables>;
+export function getAnnouncementSendById(dc: DataConnect, vars: GetAnnouncementSendByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendByIdData, GetAnnouncementSendByIdVariables>;
+
+interface GetUserByEmailRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetUserByEmailVariables): QueryRef<GetUserByEmailData, GetUserByEmailVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetUserByEmailVariables): QueryRef<GetUserByEmailData, GetUserByEmailVariables>;
+  operationName: string;
+}
+export const getUserByEmailRef: GetUserByEmailRef;
+
+export function getUserByEmail(vars: GetUserByEmailVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserByEmailData, GetUserByEmailVariables>;
+export function getUserByEmail(dc: DataConnect, vars: GetUserByEmailVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserByEmailData, GetUserByEmailVariables>;
+
+interface UpdateEmailBounceStatsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateEmailBounceStatsVariables): MutationRef<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateEmailBounceStatsVariables): MutationRef<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+  operationName: string;
+}
+export const updateEmailBounceStatsRef: UpdateEmailBounceStatsRef;
+
+export function updateEmailBounceStats(vars: UpdateEmailBounceStatsVariables): MutationPromise<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+export function updateEmailBounceStats(dc: DataConnect, vars: UpdateEmailBounceStatsVariables): MutationPromise<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+
+interface AdminOptOutSectionAnnouncementRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AdminOptOutSectionAnnouncementVariables): MutationRef<AdminOptOutSectionAnnouncementData, AdminOptOutSectionAnnouncementVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AdminOptOutSectionAnnouncementVariables): MutationRef<AdminOptOutSectionAnnouncementData, AdminOptOutSectionAnnouncementVariables>;
+  operationName: string;
+}
+export const adminOptOutSectionAnnouncementRef: AdminOptOutSectionAnnouncementRef;
+
+export function adminOptOutSectionAnnouncement(vars: AdminOptOutSectionAnnouncementVariables): MutationPromise<AdminOptOutSectionAnnouncementData, AdminOptOutSectionAnnouncementVariables>;
+export function adminOptOutSectionAnnouncement(dc: DataConnect, vars: AdminOptOutSectionAnnouncementVariables): MutationPromise<AdminOptOutSectionAnnouncementData, AdminOptOutSectionAnnouncementVariables>;
+
+interface AdminOptInSectionAnnouncementRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AdminOptInSectionAnnouncementVariables): MutationRef<AdminOptInSectionAnnouncementData, AdminOptInSectionAnnouncementVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AdminOptInSectionAnnouncementVariables): MutationRef<AdminOptInSectionAnnouncementData, AdminOptInSectionAnnouncementVariables>;
+  operationName: string;
+}
+export const adminOptInSectionAnnouncementRef: AdminOptInSectionAnnouncementRef;
+
+export function adminOptInSectionAnnouncement(vars: AdminOptInSectionAnnouncementVariables): MutationPromise<AdminOptInSectionAnnouncementData, AdminOptInSectionAnnouncementVariables>;
+export function adminOptInSectionAnnouncement(dc: DataConnect, vars: AdminOptInSectionAnnouncementVariables): MutationPromise<AdminOptInSectionAnnouncementData, AdminOptInSectionAnnouncementVariables>;
+
+interface GetCallableInvocationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetCallableInvocationVariables): QueryRef<GetCallableInvocationData, GetCallableInvocationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetCallableInvocationVariables): QueryRef<GetCallableInvocationData, GetCallableInvocationVariables>;
+  operationName: string;
+}
+export const getCallableInvocationRef: GetCallableInvocationRef;
+
+export function getCallableInvocation(vars: GetCallableInvocationVariables, options?: ExecuteQueryOptions): QueryPromise<GetCallableInvocationData, GetCallableInvocationVariables>;
+export function getCallableInvocation(dc: DataConnect, vars: GetCallableInvocationVariables, options?: ExecuteQueryOptions): QueryPromise<GetCallableInvocationData, GetCallableInvocationVariables>;
+
+interface UpsertCallableInvocationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertCallableInvocationVariables): MutationRef<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationRef<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+  operationName: string;
+}
+export const upsertCallableInvocationRef: UpsertCallableInvocationRef;
+
+export function upsertCallableInvocation(vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+export function upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
 
 interface CreateBookingDraftRef {
   /* Allow users to create refs without passing in DataConnect */

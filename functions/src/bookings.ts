@@ -27,6 +27,7 @@ import {
   type TicketTypeForRules,
 } from "./bookingRules";
 import { requireEnabled, requireString, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
+import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
@@ -157,6 +158,7 @@ function isDuplicateKeyError(err: unknown): boolean {
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
+  await enforceRateLimit("submitEventBooking", uid, { limit: 20, windowMs: 60 * 60 * 1000 });
 
   const idempotencyKey = validateUUID(
     requireString(request.data?.idempotencyKey, "idempotencyKey"),

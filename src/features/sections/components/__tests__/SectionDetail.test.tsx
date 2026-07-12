@@ -4,7 +4,12 @@ import { MemoryRouter } from 'react-router-dom';
 import SectionDetail from '../SectionDetail';
 import * as reactGenerated from '@dataconnect/generated/react';
 import { createMockUser } from '../../../../test-utils/mocks/firebase';
-import { getSectionMembersMerged } from '../../../../shared/utils/firebaseFunctions';
+import {
+  getSectionMembersMerged,
+  getSectionForUser,
+  getSectionEventsForUser,
+  getEventForUser,
+} from '../../../../shared/utils/firebaseFunctions';
 import {
   dataConnectQueryResult,
   type DataConnectQueryResultOverrides,
@@ -12,14 +17,11 @@ import {
 
 // Mock the DataConnect hooks (SectionDetail uses getSectionMembersMerged callable, not useGetSectionMembers)
 vi.mock('@dataconnect/generated/react', () => ({
-  useGetSectionById: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
   useGetSectionsForUser: vi.fn(() => ({
     data: { user: { membershipStatus: null, userGroups: [] }, allUserGroups: [] },
     isLoading: false,
   })),
-  useGetEventsForSection: vi.fn(),
-  useGetEventById: vi.fn(),
   useGetCurrentUser: vi.fn(),
   useGetMyBookingsForEvent: vi.fn(),
   useGetMyTicketOrders: vi.fn(),
@@ -45,6 +47,9 @@ vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
   getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
   subscribeToUserGroup: vi.fn().mockResolvedValue(undefined),
   submitEventBooking: vi.fn(),
+  getSectionForUser: vi.fn(),
+  getSectionEventsForUser: vi.fn(),
+  getEventForUser: vi.fn(),
 }));
 
 vi.mock('../../../users/hooks/useAdminClaim', () => ({
@@ -82,10 +87,26 @@ vi.mock('@dataconnect/generated', async () => {
   };
 });
 
+// SectionDetail.tsx fetches section/events/event-detail via callables (getSectionForUser etc.,
+// see #328) rather than the react-query hooks these tests used to mock directly. These helpers
+// keep the old { data, isLoading, isError } call shape used throughout this file (so none of the
+// dozens of call sites below need to change) and translate it into a promise-based mock: a
+// never-resolving promise for isLoading, a rejection for isError, otherwise a resolved value
+// built from the same `data` shape the old react-query mock would have returned.
 function mockGetSectionById(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useGetSectionById).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useGetSectionById>(overrides)
-  );
+  const mocked = vi.mocked(getSectionForUser);
+  if (overrides.isLoading) {
+    mocked.mockReturnValue(new Promise(() => undefined));
+    return;
+  }
+  if (overrides.isError) {
+    mocked.mockRejectedValue(new Error('Failed to load section'));
+    return;
+  }
+  const section = (overrides.data as { section?: unknown } | undefined)?.section ?? null;
+  mocked.mockResolvedValue({ section, hasAccess: true, canModerate: false } as Awaited<
+    ReturnType<typeof getSectionForUser>
+  >);
 }
 
 function mockGetUserAccessGroups(overrides: DataConnectQueryResultOverrides) {
@@ -95,15 +116,31 @@ function mockGetUserAccessGroups(overrides: DataConnectQueryResultOverrides) {
 }
 
 function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useGetEventsForSection>(overrides)
-  );
+  const mocked = vi.mocked(getSectionEventsForUser);
+  if (overrides.isLoading) {
+    mocked.mockReturnValue(new Promise(() => undefined));
+    return;
+  }
+  if (overrides.isError) {
+    mocked.mockRejectedValue(new Error('Failed to load events'));
+    return;
+  }
+  const events = (overrides.data as { section?: { events?: unknown[] } } | undefined)?.section?.events ?? [];
+  mocked.mockResolvedValue({ events } as Awaited<ReturnType<typeof getSectionEventsForUser>>);
 }
 
 function mockGetEventById(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useGetEventById).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useGetEventById>(overrides)
-  );
+  const mocked = vi.mocked(getEventForUser);
+  if (overrides.isLoading) {
+    mocked.mockReturnValue(new Promise(() => undefined));
+    return;
+  }
+  if (overrides.isError) {
+    mocked.mockRejectedValue(new Error('Failed to load event'));
+    return;
+  }
+  const event = (overrides.data as { event?: unknown } | undefined)?.event ?? null;
+  mocked.mockResolvedValue({ event } as Awaited<ReturnType<typeof getEventForUser>>);
 }
 
 function mockGetCurrentUser(overrides: DataConnectQueryResultOverrides) {
