@@ -8,8 +8,12 @@ import {
   updateEmailBounceStats,
   updateUserMembershipStatus,
   MembershipStatus,
+  getAnnouncementRecipientBySendAndUser,
+  updateAnnouncementRecipientDeliveryStatus,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants.js";
+import { invalidateDcProfileCache } from "./users.js";
+import { parseAnnouncementReference } from "./announcementReference.js";
 
 export const notifyCallbackSecret = defineSecret("NOTIFY_CALLBACK_BEARER_TOKEN");
 
@@ -30,6 +34,32 @@ function isValidBearerToken(token: string, expected: string): boolean {
   const tokenBuf = Buffer.from(token);
   const expectedBuf = Buffer.from(expected);
   return tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf);
+}
+
+/**
+ * Updates the specific AnnouncementRecipient row a delivery/bounce receipt is about (see #334).
+ * Independent of the emailBounceCount/membershipStatus updates below, which are keyed by the
+ * recipient's email address rather than a specific announcement send.
+ */
+async function applyAnnouncementDeliveryStatus(
+  sendId: string,
+  recipientId: string,
+  status: "delivered" | "permanent-failure"
+): Promise<void> {
+  const result = await getAnnouncementRecipientBySendAndUser({ announcementSendId: sendId, userId: recipientId });
+  const recipient = result.data?.announcementRecipients?.[0];
+  if (!recipient) {
+    logger.warn("No AnnouncementRecipient found for delivery receipt", { sendId, recipientId });
+    return;
+  }
+
+  const newStatus = status === "delivered" ? "delivered" : "bounced";
+  await updateAnnouncementRecipientDeliveryStatus({
+    id: recipient.id,
+    status: newStatus,
+    failureReason: newStatus === "bounced" ? "GOV Notify reported permanent-failure" : null,
+  });
+  logger.info("Updated announcement recipient delivery status", { sendId, recipientId, status: newStatus });
 }
 
 export async function handleNotifyDelivery(
@@ -69,6 +99,11 @@ export async function handleNotifyDelivery(
     return;
   }
 
+  const parsedReference = parseAnnouncementReference(receipt.reference);
+  if (parsedReference) {
+    await applyAnnouncementDeliveryStatus(parsedReference.sendId, parsedReference.recipientId, receipt.status);
+  }
+
   // Look up user by email address
   const userResult = await getUserByEmail({ email: receipt.to });
   const user = userResult.data?.users?.[0];
@@ -98,6 +133,7 @@ export async function handleNotifyDelivery(
 
     if (newCount >= BOUNCE_THRESHOLD && user.membershipStatus !== MembershipStatus.LOST) {
       await updateUserMembershipStatus({ userId: user.id, membershipStatus: MembershipStatus.LOST });
+      invalidateDcProfileCache();
       logger.info("Set membership status to LOST due to repeated email bounces", {
         userId: user.id,
         bounceCount: newCount,

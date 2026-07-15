@@ -21,6 +21,7 @@ import { requireAuth, requireString } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
+import { buildAnnouncementReference } from "./announcementReference";
 
 const BULK_PREFIX = "BULK:";
 
@@ -274,7 +275,7 @@ export interface AnnouncementRecipient {
   email: string;
   firstName: string;
   lastName: string;
-  status: "skipped" | "sent" | "failed";
+  status: "skipped" | "sent" | "failed" | "delivered" | "bounced";
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;
@@ -426,7 +427,7 @@ export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
     try {
       await client.sendEmail(templateUuid, email, {
         personalisation,
-        reference: `announcement-${sendId}-${recipientId}`,
+        reference: buildAnnouncementReference(sendId, recipientId),
         oneClickUnsubscribeURL: personalisation.unsubscribeUrl,
       } as Parameters<typeof client.sendEmail>[2]);
     } catch (err) {
@@ -528,7 +529,7 @@ export const getAnnouncementSendRecipients = onCall(
       email: r.email,
       firstName: r.firstName,
       lastName: r.lastName,
-      status: r.status as "skipped" | "sent" | "failed",
+      status: r.status as "skipped" | "sent" | "failed" | "delivered" | "bounced",
       skippedReason: r.skippedReason ?? undefined,
       sentAt: r.sentAt ?? undefined,
       failureReason: r.failureReason ?? undefined,

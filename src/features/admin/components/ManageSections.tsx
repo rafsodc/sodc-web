@@ -21,6 +21,8 @@ import {
 import SectionEventsManager from "./SectionEventsManager";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
+import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import { useLocation } from "react-router-dom";
@@ -52,7 +54,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const [sections, setSections] = useState<SectionWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
+
   // Create/Edit dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<SectionWithDetails | null>(null);
@@ -220,6 +223,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       const ref = deleteSectionRef(dataConnect, { id: section.id });
       await executeMutation(ref);
       await fetchSections();
+      showSuccess(`Section "${section.name}" deleted`);
     } catch (err: any) {
       setError(err?.message || "Failed to delete section");
     }
@@ -253,6 +257,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       }
       setDialogOpen(false);
       await fetchSections();
+      showSuccess(`Section ${editingSection ? "updated" : "created"}`);
     } catch (err: any) {
       setError(err?.message || `Failed to ${editingSection ? "update" : "create"} section`);
     } finally {
@@ -281,12 +286,13 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         ),
       });
       await executeMutation(ref);
-      
+
       await fetchSectionUserGroups(editingSection.id);
-      
+
       setSelectedUserGroup(null);
       setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
       setAddUserGroupDialogOpen(false);
+      showSuccess("User group added to section");
     } catch (err: any) {
       setError(err?.message || "Failed to add user group");
     } finally {
@@ -329,6 +335,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       
       // Refresh section user groups
       await fetchSectionUserGroups(editingSection.id);
+      showSuccess("User group removed from section");
     } catch (err: any) {
       setError(err?.message || "Failed to remove user group");
     } finally {
@@ -437,6 +444,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         onPurposeChange={handlePurposeChange}
         onUserGroupChange={setSelectedUserGroup}
       />
+
+      <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
 }

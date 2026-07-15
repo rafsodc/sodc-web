@@ -546,6 +546,17 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetAnnouncementRecipientBySendAndUserData {
+  announcementRecipients: ({
+    id: UUIDString;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementRecipientBySendAndUserVariables {
+  announcementSendId: UUIDString;
+  userId: string;
+}
+
 export interface GetAnnouncementRecipientCountData {
   announcementRecipients: ({
     id: UUIDString;
@@ -2114,6 +2125,16 @@ export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
 }
 
+export interface UpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_update?: AnnouncementRecipient_Key | null;
+}
+
+export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
+  id: UUIDString;
+  status: string;
+  failureReason?: string | null;
+}
+
 export interface UpdateBookingPreferencesFromCallableData {
   booking_update?: Booking_Key | null;
 }
@@ -2579,6 +2600,16 @@ export function getAnnouncementSendRecipients(vars: GetAnnouncementSendRecipient
 export function getAnnouncementSendById(dc: DataConnect, vars: GetAnnouncementSendByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendByIdData>>;
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendById' Query. Allow users to pass in custom DataConnect instances. */
 export function getAnnouncementSendById(vars: GetAnnouncementSendByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientBySendAndUser' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementRecipientBySendAndUser(dc: DataConnect, vars: GetAnnouncementRecipientBySendAndUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientBySendAndUserData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientBySendAndUser' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementRecipientBySendAndUser(vars: GetAnnouncementRecipientBySendAndUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientBySendAndUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementRecipientDeliveryStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateAnnouncementRecipientDeliveryStatus(vars: UpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementRecipientDeliveryStatusData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetUserByEmail' Query. Allow users to execute without passing in DataConnect. */
 export function getUserByEmail(dc: DataConnect, vars: GetUserByEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByEmailData>>;

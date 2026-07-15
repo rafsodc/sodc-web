@@ -30,7 +30,9 @@ interface Props {
 }
 
 function statusChip(status: AnnouncementRecipient["status"]) {
-  if (status === "sent") return <Chip label="Sent" color="success" size="small" />;
+  if (status === "delivered") return <Chip label="Delivered" color="success" size="small" />;
+  if (status === "sent") return <Chip label="Sent" color="success" size="small" variant="outlined" />;
+  if (status === "bounced") return <Chip label="Bounced" color="error" size="small" />;
   if (status === "skipped") return <Chip label="Skipped" size="small" />;
   return <Chip label="Failed" color="error" size="small" />;
 }

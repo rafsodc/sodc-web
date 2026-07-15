@@ -45,6 +45,8 @@ import {
   TicketTypeDialogSurface,
 } from "./SectionEventsManagerSurfaces";
 import SendAnnouncementPage from "./SendAnnouncementPage";
+import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionEventsManagerProps {
@@ -71,6 +73,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [maxGuestsStr, setMaxGuestsStr] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   // Ticket types: which event we're managing ticket types for
@@ -213,6 +216,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       }
       refetchEvents();
       setEventDialogOpen(false);
+      showSuccess(`Event ${editingEvent ? "updated" : "created"}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save event");
     } finally {
@@ -244,6 +248,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       await executeMutation(deleteEventRef(dataConnect, { id: event.id }));
       refetchEvents();
       if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
+      showSuccess(`Event "${event.title}" deleted`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete event");
     } finally {
@@ -315,6 +320,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       refetchEventDetail();
       refetchEvents();
       setTicketTypeDialogOpen(false);
+      showSuccess(`Ticket type ${editingTicketType ? "updated" : "created"}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save ticket type");
     } finally {
@@ -330,6 +336,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       await executeMutation(deleteTicketTypeRef(dataConnect, { id }));
       refetchEventDetail();
       refetchEvents();
+      showSuccess("Ticket type deleted");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete ticket type");
     } finally {
@@ -365,6 +372,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       });
       setModeratorNoteDraft((prev) => ({ ...prev, [request.id]: "" }));
       refetchGuestRequests();
+      showSuccess(`Guest ticket request ${status === GuestTicketRequestStatus.APPROVED ? "approved" : "rejected"}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to review guest ticket request");
     } finally {
@@ -476,6 +484,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onBookingEndDateTimeChange={setBookingEndDateTime}
           onMaxGuestsChange={setMaxGuestsStr}
         />
+
+        <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
       </Box>
     );
   }
@@ -520,6 +530,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         onBookingEndDateTimeChange={setBookingEndDateTime}
         onMaxGuestsChange={setMaxGuestsStr}
       />
+
+      <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
 }

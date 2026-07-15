@@ -338,6 +338,7 @@ describe("SectionEventsManager", () => {
         status: "APPROVED",
       })
     );
+    expect(await screen.findByText("Guest ticket request approved")).toBeInTheDocument();
   });
 
   it("opens event edit dialog from the event admin details section", async () => {
