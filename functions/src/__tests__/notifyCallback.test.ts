@@ -10,6 +10,8 @@ const mockGetUserByEmail = vi.spyOn(admin, "getUserByEmail");
 const mockUpdateEmailBounceStats = vi.spyOn(admin, "updateEmailBounceStats");
 const mockUpdateUserMembershipStatus = vi.spyOn(admin, "updateUserMembershipStatus");
 const mockInvalidateDcProfileCache = vi.spyOn(users, "invalidateDcProfileCache");
+const mockGetAnnouncementRecipientBySendAndUser = vi.spyOn(admin, "getAnnouncementRecipientBySendAndUser");
+const mockUpdateAnnouncementRecipientDeliveryStatus = vi.spyOn(admin, "updateAnnouncementRecipientDeliveryStatus");
 
 const BEARER = "test-bearer-token";
 
@@ -46,6 +48,10 @@ describe("handleNotifyDelivery", () => {
     vi.clearAllMocks();
     mockUpdateEmailBounceStats.mockResolvedValue({ data: { user_update: null } } as never);
     mockUpdateUserMembershipStatus.mockResolvedValue({ data: {} } as never);
+    mockGetUserByEmail.mockResolvedValue({ data: { users: [] } } as never);
+    mockUpdateAnnouncementRecipientDeliveryStatus.mockResolvedValue({
+      data: { announcementRecipient_update: { id: "recipient-1" } },
+    } as never);
   });
 
   it("rejects requests with wrong bearer token", async () => {
@@ -157,5 +163,83 @@ describe("handleNotifyDelivery", () => {
     await handleNotifyDelivery(makeReq({ body: { id: "x", to: "alice@example.com", status: "permanent-failure" } }), res, BEARER);
     expect(mockUpdateUserMembershipStatus).not.toHaveBeenCalled();
     expect((res.status as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(200);
+  });
+
+  describe("AnnouncementRecipient delivery status (#334)", () => {
+    const sendId = "11111111-1111-4111-8111-111111111111";
+    const recipientId = "22222222-2222-4222-8222-222222222222";
+    const announcementReference = `announcement:${sendId}:${recipientId}`;
+
+    it("marks the recipient delivered on a delivered receipt", async () => {
+      mockGetAnnouncementRecipientBySendAndUser.mockResolvedValue({
+        data: { announcementRecipients: [{ id: "recipient-row-1" }] },
+      } as never);
+      const res = makeRes();
+
+      await handleNotifyDelivery(
+        makeReq({ body: { id: "x", to: "alice@example.com", status: "delivered", reference: announcementReference } }),
+        res,
+        BEARER
+      );
+
+      expect(mockGetAnnouncementRecipientBySendAndUser).toHaveBeenCalledWith({
+        announcementSendId: sendId,
+        userId: recipientId,
+      });
+      expect(mockUpdateAnnouncementRecipientDeliveryStatus).toHaveBeenCalledWith({
+        id: "recipient-row-1",
+        status: "delivered",
+        failureReason: null,
+      });
+    });
+
+    it("marks the recipient bounced with a failureReason on a permanent-failure receipt", async () => {
+      mockGetAnnouncementRecipientBySendAndUser.mockResolvedValue({
+        data: { announcementRecipients: [{ id: "recipient-row-1" }] },
+      } as never);
+      const res = makeRes();
+
+      await handleNotifyDelivery(
+        makeReq({ body: { id: "x", to: "alice@example.com", status: "permanent-failure", reference: announcementReference } }),
+        res,
+        BEARER
+      );
+
+      expect(mockUpdateAnnouncementRecipientDeliveryStatus).toHaveBeenCalledWith({
+        id: "recipient-row-1",
+        status: "bounced",
+        failureReason: "GOV Notify reported permanent-failure",
+      });
+    });
+
+    it("does not attempt a recipient lookup for receipts from other transactional emails", async () => {
+      const res = makeRes();
+
+      await handleNotifyDelivery(
+        makeReq({ body: { id: "x", to: "alice@example.com", status: "delivered", reference: "booking-confirmation-abc" } }),
+        res,
+        BEARER
+      );
+
+      expect(mockGetAnnouncementRecipientBySendAndUser).not.toHaveBeenCalled();
+      expect(mockUpdateAnnouncementRecipientDeliveryStatus).not.toHaveBeenCalled();
+    });
+
+    it("still processes bounce stats when no matching AnnouncementRecipient row is found", async () => {
+      mockGetAnnouncementRecipientBySendAndUser.mockResolvedValue({
+        data: { announcementRecipients: [] },
+      } as never);
+      mockGetUserByEmail.mockResolvedValue({ data: { users: [makeUser({ emailBounceCount: 0 })] } } as never);
+      const res = makeRes();
+
+      await handleNotifyDelivery(
+        makeReq({ body: { id: "x", to: "alice@example.com", status: "delivered", reference: announcementReference } }),
+        res,
+        BEARER
+      );
+
+      expect(mockUpdateAnnouncementRecipientDeliveryStatus).not.toHaveBeenCalled();
+      expect((res.status as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(200);
+    });
   });
 });
