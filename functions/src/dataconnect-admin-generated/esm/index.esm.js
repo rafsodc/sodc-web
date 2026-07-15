@@ -416,6 +416,18 @@ export function getAnnouncementSendById(dcOrVarsOrOptions, varsOrOptions, option
   return dcInstance.executeQuery('GetAnnouncementSendById', inputVars, inputOpts);
 }
 
+export function getAnnouncementRecipientBySendAndUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientBySendAndUser', inputVars, inputOpts);
+}
+
+export function updateAnnouncementRecipientDeliveryStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateAnnouncementRecipientDeliveryStatus', inputVars, inputOpts);
+}
+
 export function getUserByEmail(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

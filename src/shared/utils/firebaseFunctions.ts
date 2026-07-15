@@ -739,7 +739,7 @@ export interface AnnouncementRecipient {
   email: string;
   firstName: string;
   lastName: string;
-  status: "skipped" | "sent" | "failed";
+  status: "skipped" | "sent" | "failed" | "delivered" | "bounced";
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;

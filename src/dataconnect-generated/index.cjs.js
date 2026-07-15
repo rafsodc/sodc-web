@@ -885,6 +885,35 @@ exports.getAnnouncementSendById = function getAnnouncementSendById(dcOrVars, var
 }
 ;
 
+const getAnnouncementRecipientBySendAndUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementRecipientBySendAndUser', inputVars);
+}
+getAnnouncementRecipientBySendAndUserRef.operationName = 'GetAnnouncementRecipientBySendAndUser';
+exports.getAnnouncementRecipientBySendAndUserRef = getAnnouncementRecipientBySendAndUserRef;
+
+exports.getAnnouncementRecipientBySendAndUser = function getAnnouncementRecipientBySendAndUser(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementRecipientBySendAndUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const updateAnnouncementRecipientDeliveryStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAnnouncementRecipientDeliveryStatus', inputVars);
+}
+updateAnnouncementRecipientDeliveryStatusRef.operationName = 'UpdateAnnouncementRecipientDeliveryStatus';
+exports.updateAnnouncementRecipientDeliveryStatusRef = updateAnnouncementRecipientDeliveryStatusRef;
+
+exports.updateAnnouncementRecipientDeliveryStatus = function updateAnnouncementRecipientDeliveryStatus(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateAnnouncementRecipientDeliveryStatusRef(dcInstance, inputVars));
+}
+;
+
 const getUserByEmailRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

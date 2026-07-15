@@ -40,6 +40,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetAnnouncementSendHistory*](#getannouncementsendhistory)
   - [*GetAnnouncementSendRecipients*](#getannouncementsendrecipients)
   - [*GetAnnouncementSendById*](#getannouncementsendbyid)
+  - [*GetAnnouncementRecipientBySendAndUser*](#getannouncementrecipientbysendanduser)
   - [*GetUserByEmail*](#getuserbyemail)
   - [*GetCallableInvocation*](#getcallableinvocation)
   - [*GetCurrentUser*](#getcurrentuser)
@@ -103,6 +104,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateAnnouncementSend*](#createannouncementsend)
   - [*CreateAnnouncementRecipient*](#createannouncementrecipient)
+  - [*UpdateAnnouncementRecipientDeliveryStatus*](#updateannouncementrecipientdeliverystatus)
   - [*UpdateEmailBounceStats*](#updateemailbouncestats)
   - [*AdminOptOutSectionAnnouncement*](#adminoptoutsectionannouncement)
   - [*AdminOptInSectionAnnouncement*](#adminoptinsectionannouncement)
@@ -2479,6 +2481,92 @@ export default function GetAnnouncementSendByIdComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.announcementSend);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetAnnouncementRecipientBySendAndUser
+You can execute the `GetAnnouncementRecipientBySendAndUser` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetAnnouncementRecipientBySendAndUser(dc: DataConnect, vars: GetAnnouncementRecipientBySendAndUserVariables, options?: useDataConnectQueryOptions<GetAnnouncementRecipientBySendAndUserData>): UseDataConnectQueryResult<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetAnnouncementRecipientBySendAndUser(vars: GetAnnouncementRecipientBySendAndUserVariables, options?: useDataConnectQueryOptions<GetAnnouncementRecipientBySendAndUserData>): UseDataConnectQueryResult<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
+```
+
+### Variables
+The `GetAnnouncementRecipientBySendAndUser` Query requires an argument of type `GetAnnouncementRecipientBySendAndUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetAnnouncementRecipientBySendAndUserVariables {
+  announcementSendId: UUIDString;
+  userId: string;
+}
+```
+### Return Type
+Recall that calling the `GetAnnouncementRecipientBySendAndUser` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAnnouncementRecipientBySendAndUser` Query is of type `GetAnnouncementRecipientBySendAndUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetAnnouncementRecipientBySendAndUserData {
+  announcementRecipients: ({
+    id: UUIDString;
+  } & AnnouncementRecipient_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetAnnouncementRecipientBySendAndUser`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetAnnouncementRecipientBySendAndUserVariables } from '@dataconnect/generated';
+import { useGetAnnouncementRecipientBySendAndUser } from '@dataconnect/generated/react'
+
+export default function GetAnnouncementRecipientBySendAndUserComponent() {
+  // The `useGetAnnouncementRecipientBySendAndUser` Query hook requires an argument of type `GetAnnouncementRecipientBySendAndUserVariables`:
+  const getAnnouncementRecipientBySendAndUserVars: GetAnnouncementRecipientBySendAndUserVariables = {
+    announcementSendId: ..., 
+    userId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetAnnouncementRecipientBySendAndUser(getAnnouncementRecipientBySendAndUserVars);
+  // Variables can be defined inline as well.
+  const query = useGetAnnouncementRecipientBySendAndUser({ announcementSendId: ..., userId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetAnnouncementRecipientBySendAndUser(dataConnect, getAnnouncementRecipientBySendAndUserVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementRecipientBySendAndUser(getAnnouncementRecipientBySendAndUserVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementRecipientBySendAndUser(dataConnect, getAnnouncementRecipientBySendAndUserVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.announcementRecipients);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -8673,6 +8761,104 @@ export default function CreateAnnouncementRecipientComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.announcementRecipient_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateAnnouncementRecipientDeliveryStatus
+You can execute the `UpdateAnnouncementRecipientDeliveryStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateAnnouncementRecipientDeliveryStatus(options?: useDataConnectMutationOptions<UpdateAnnouncementRecipientDeliveryStatusData, FirebaseError, UpdateAnnouncementRecipientDeliveryStatusVariables>): UseDataConnectMutationResult<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateAnnouncementRecipientDeliveryStatusData, FirebaseError, UpdateAnnouncementRecipientDeliveryStatusVariables>): UseDataConnectMutationResult<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+```
+
+### Variables
+The `UpdateAnnouncementRecipientDeliveryStatus` Mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
+  id: UUIDString;
+  status: string;
+  failureReason?: string | null;
+}
+```
+### Return Type
+Recall that calling the `UpdateAnnouncementRecipientDeliveryStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateAnnouncementRecipientDeliveryStatus` Mutation is of type `UpdateAnnouncementRecipientDeliveryStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_update?: AnnouncementRecipient_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateAnnouncementRecipientDeliveryStatus`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
+import { useUpdateAnnouncementRecipientDeliveryStatus } from '@dataconnect/generated/react'
+
+export default function UpdateAnnouncementRecipientDeliveryStatusComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateAnnouncementRecipientDeliveryStatus();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateAnnouncementRecipientDeliveryStatus(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateAnnouncementRecipientDeliveryStatus(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateAnnouncementRecipientDeliveryStatus(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateAnnouncementRecipientDeliveryStatus` Mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`:
+  const updateAnnouncementRecipientDeliveryStatusVars: UpdateAnnouncementRecipientDeliveryStatusVariables = {
+    id: ..., 
+    status: ..., 
+    failureReason: ..., // optional
+  };
+  mutation.mutate(updateAnnouncementRecipientDeliveryStatusVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., status: ..., failureReason: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateAnnouncementRecipientDeliveryStatusVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.announcementRecipient_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

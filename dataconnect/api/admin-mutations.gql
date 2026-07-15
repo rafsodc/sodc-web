@@ -1142,6 +1142,26 @@ query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+# Used by the GOV Notify delivery callback (notifyCallback.ts) to find the recipient row for a
+# delivery/bounce receipt. Looked up by (announcementSendId, userId) parsed from the reference
+# string set at send time — see #334.
+query GetAnnouncementRecipientBySendAndUser($announcementSendId: UUID!, $userId: String!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $announcementSendId }, userId: { eq: $userId } }
+    limit: 1
+  ) {
+    id
+  }
+}
+
+mutation UpdateAnnouncementRecipientDeliveryStatus(
+  $id: UUID!
+  $status: String!
+  $failureReason: String
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_update(id: $id, data: { status: $status, failureReason: $failureReason })
+}
+
 # ── Email bounce tracking ────────────────────────────────────────────────────
 
 query GetUserByEmail($email: String!) @auth(level: NO_ACCESS) {

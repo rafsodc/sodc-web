@@ -561,6 +561,17 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetAnnouncementRecipientBySendAndUserData {
+  announcementRecipients: ({
+    id: UUIDString;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementRecipientBySendAndUserVariables {
+  announcementSendId: UUIDString;
+  userId: string;
+}
+
 export interface GetAnnouncementRecipientCountData {
   announcementRecipients: ({
     id: UUIDString;
@@ -2129,6 +2140,16 @@ export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
 }
 
+export interface UpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_update?: AnnouncementRecipient_Key | null;
+}
+
+export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
+  id: UUIDString;
+  status: string;
+  failureReason?: string | null;
+}
+
 export interface UpdateBookingPreferencesFromCallableData {
   booking_update?: Booking_Key | null;
 }
@@ -2972,6 +2993,30 @@ export const getAnnouncementSendByIdRef: GetAnnouncementSendByIdRef;
 
 export function getAnnouncementSendById(vars: GetAnnouncementSendByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendByIdData, GetAnnouncementSendByIdVariables>;
 export function getAnnouncementSendById(dc: DataConnect, vars: GetAnnouncementSendByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendByIdData, GetAnnouncementSendByIdVariables>;
+
+interface GetAnnouncementRecipientBySendAndUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientBySendAndUserVariables): QueryRef<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementRecipientBySendAndUserVariables): QueryRef<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
+  operationName: string;
+}
+export const getAnnouncementRecipientBySendAndUserRef: GetAnnouncementRecipientBySendAndUserRef;
+
+export function getAnnouncementRecipientBySendAndUser(vars: GetAnnouncementRecipientBySendAndUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
+export function getAnnouncementRecipientBySendAndUser(dc: DataConnect, vars: GetAnnouncementRecipientBySendAndUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
+
+interface UpdateAnnouncementRecipientDeliveryStatusRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+  operationName: string;
+}
+export const updateAnnouncementRecipientDeliveryStatusRef: UpdateAnnouncementRecipientDeliveryStatusRef;
+
+export function updateAnnouncementRecipientDeliveryStatus(vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+export function updateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
 
 interface GetUserByEmailRef {
   /* Allow users to create refs without passing in DataConnect */

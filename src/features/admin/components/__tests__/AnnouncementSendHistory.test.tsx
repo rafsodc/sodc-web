@@ -67,6 +67,27 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     status: "failed",
     failureReason: "GOV Notify rejected",
   },
+  {
+    id: "rec-4",
+    sendId: "send-1",
+    userId: "user-d",
+    email: "dave@example.com",
+    firstName: "Dave",
+    lastName: "White",
+    status: "delivered",
+    sentAt: "2026-07-01T10:00:05.000Z",
+  },
+  {
+    id: "rec-5",
+    sendId: "send-1",
+    userId: "user-e",
+    email: "eve@example.com",
+    firstName: "Eve",
+    lastName: "Black",
+    status: "bounced",
+    sentAt: "2026-07-01T10:00:05.000Z",
+    failureReason: "GOV Notify reported permanent-failure",
+  },
 ];
 
 describe("AnnouncementSendHistory", () => {
@@ -131,13 +152,18 @@ describe("AnnouncementSendHistory", () => {
 
     expect(screen.getByText("Bob Jones")).toBeInTheDocument();
     expect(screen.getByText("Carol Brown")).toBeInTheDocument();
+    expect(screen.getByText("Dave White")).toBeInTheDocument();
+    expect(screen.getByText("Eve Black")).toBeInTheDocument();
     expect(screen.getByText("opted_out")).toBeInTheDocument();
     expect(screen.getByText("GOV Notify rejected")).toBeInTheDocument();
+    expect(screen.getByText("GOV Notify reported permanent-failure")).toBeInTheDocument();
 
     // Status chips — "Sent"/"Skipped"/"Failed" also appear as column headers, so use getAllByText
     expect(screen.getAllByText("Sent").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Skipped").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Failed").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Delivered")).toBeInTheDocument();
+    expect(screen.getByText("Bounced")).toBeInTheDocument();
   });
 
   it("shows an error when recipients fail to load", async () => {
