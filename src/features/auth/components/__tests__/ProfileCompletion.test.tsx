@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { render, screen, waitFor, fireEvent } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import ProfileCompletion from "../ProfileCompletion";
 import { MembershipStatus } from "@dataconnect/generated";
@@ -60,7 +60,32 @@ describe("ProfileCompletion", () => {
           requestedMembershipStatus: MembershipStatus.REGULAR,
           firstName: "New",
           lastName: "Member",
+          rank: null,
         })
+      );
+    });
+  });
+
+  it("includes the selected rank when submitting", async () => {
+    const user = userEvent.setup();
+    render(<ProfileCompletion userEmail="new@example.com" />);
+
+    const textboxes = screen.getAllByRole("textbox");
+    await user.type(textboxes[0], "New");
+    await user.type(textboxes[1], "Member");
+    const serviceNumberInput = document.querySelector('input[maxlength="50"]') as HTMLInputElement;
+    await user.type(serviceNumberInput, "99999");
+
+    const rankSelect = screen.getByLabelText("Rank / Title");
+    fireEvent.mouseDown(rankSelect);
+    await user.click(await screen.findByRole("option", { name: "Flight Lieutenant" }));
+    await user.click(screen.getByRole("button", { name: /submit profile/i }));
+
+    await waitFor(() => {
+      expect(mutationRef).toHaveBeenCalledWith(
+        {},
+        "CreateUserProfile",
+        expect.objectContaining({ rank: "Flight Lieutenant" })
       );
     });
   });

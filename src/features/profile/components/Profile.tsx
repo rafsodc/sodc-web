@@ -22,6 +22,7 @@ import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@datacon
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import { MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH, ROUTES, MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import RankSelect from "../../../shared/components/RankSelect";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
 
@@ -42,6 +43,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
+  const [rank, setRank] = useState("");
   const [membershipStatus, setMembershipStatus] = useState<MembershipStatus | "">(
     () => userData?.membershipStatus ?? ""
   );
@@ -59,9 +61,11 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
       setIsReserve(userData.isReserve ?? false);
       setIsCivilServant(userData.isCivilServant ?? false);
       setIsIndustry(userData.isIndustry ?? false);
+      setRank(userData.rank || "");
       setMembershipStatus(userData.membershipStatus || "");
     } else {
       setEmail(userEmail);
+      setRank("");
       setMembershipStatus("");
     }
   }, [userData, userEmail]);
@@ -88,6 +92,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
         isReserve,
         isCivilServant,
         isIndustry,
+        rank: rank || null,
       };
       await upsertUser(dataConnect, vars);
 
@@ -243,6 +248,8 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
               </Typography>
             )}
           </FormControl>
+
+          <RankSelect value={rank} onChange={setRank} disabled={submitting} />
 
           <Divider sx={{ my: 2 }} />
 

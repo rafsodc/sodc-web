@@ -17,6 +17,8 @@ export const createUserData = (overrides?: Partial<UserData>): UserData => ({
   isReserve: false,
   isCivilServant: false,
   isIndustry: false,
+  rank: null,
+  shareContactInfo: true,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
   ...overrides,

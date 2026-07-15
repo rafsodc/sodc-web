@@ -15,6 +15,8 @@ export interface UserData {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+  rank?: string | null;
+  shareContactInfo?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }

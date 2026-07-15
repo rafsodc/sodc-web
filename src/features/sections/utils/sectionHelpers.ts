@@ -7,8 +7,19 @@ export interface SectionMember {
   userId: string;
   firstName: string;
   lastName: string;
-  email: string;
   membershipStatus: MembershipStatus;
+  rank: string | null;
+  sharesContactInfo: boolean;
+  /** Null whenever sharesContactInfo is false — withheld server-side, not just hidden client-side. */
+  email: string | null;
+}
+
+/** Sorts by surname, then first name to break ties. Does not mutate the input array. */
+export function sortMembersBySurname(members: SectionMember[]): SectionMember[] {
+  return [...members].sort((a, b) => {
+    const lastNameCompare = a.lastName.localeCompare(b.lastName);
+    return lastNameCompare !== 0 ? lastNameCompare : a.firstName.localeCompare(b.firstName);
+  });
 }
 
 /** Purposes that allow opening / seeing a section. MODERATOR implies this for authorization. */
@@ -93,6 +104,11 @@ export function getAllUsersFromSection(
           lastName: user.lastName,
           email: user.email,
           membershipStatus: user.membershipStatus,
+          // This raw purposeLinks shape predates rank/shareContactInfo and isn't used by any
+          // production call site (only getSectionMembersMerged is, which does carry them) —
+          // default rather than plumb the fields through a function nothing calls.
+          rank: null,
+          sharesContactInfo: true,
         });
       }
     }

@@ -5,10 +5,20 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Paper,
   Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tabs,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import { ViewList as ViewListIcon, ViewModule as ViewModuleIcon } from "@mui/icons-material";
 import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
@@ -18,10 +28,14 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetailTabs";
 import AnnouncementOptOutToggle from "./AnnouncementOptOutToggle";
+import ContactDetailsDialog from "./ContactDetailsDialog";
 import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
 import SectionEventCard from "./SectionEventCard";
 import SectionMemberCard from "./SectionMemberCard";
+import SectionMemberListItem from "./SectionMemberListItem";
+
+type MemberViewMode = "card" | "list";
 
 type SectionDetailSection = NonNullable<GetSectionByIdData["section"]>;
 type SectionEventRow = NonNullable<NonNullable<GetEventsForSectionData["section"]>["events"]>[number];
@@ -130,13 +144,32 @@ export function SectionMembersView({
   onRefresh,
   onPageChange,
 }: SectionMembersViewProps) {
+  const [selectedMember, setSelectedMember] = useState<SectionMember | null>(null);
+  const [viewMode, setViewMode] = useState<MemberViewMode>("card");
+
   return (
     <Box sx={{ mt: 1 }}>
-      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
-        Members ({allMembersCount})
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, mb: 1 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          Members ({allMembersCount})
+        </Typography>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, value: MemberViewMode | null) => value && setViewMode(value)}
+          size="small"
+          aria-label="Member display style"
+        >
+          <ToggleButton value="card" aria-label="Card view">
+            <ViewModuleIcon fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="list" aria-label="List view">
+            <ViewListIcon fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Names and membership type are shown by default. Email addresses stay hidden until you choose to show them for a member.
+        Tap a member to see their contact details. Members who've chosen not to share theirs are marked "Private".
       </Typography>
       <SearchBar
         value={searchTerm}
@@ -156,24 +189,45 @@ export function SectionMembersView({
             Showing {paginatedMembers.length} of {filteredMembers.length} {searchTerm ? "filtered " : ""}members
             {totalPages > 1 && ` (page ${page} of ${totalPages})`}
           </Typography>
-          <Box
-            component="ul"
-            sx={{
-              listStyle: "none",
-              m: 0,
-              p: 0,
-              display: "grid",
-              gap: 2,
-              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
-            }}
-          >
-            {paginatedMembers.map((member) => (
-              <SectionMemberCard key={member.userId} member={member} />
-            ))}
-          </Box>
+          {viewMode === "card" ? (
+            <Box
+              component="ul"
+              sx={{
+                listStyle: "none",
+                m: 0,
+                p: 0,
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
+              }}
+            >
+              {paginatedMembers.map((member) => (
+                <SectionMemberCard key={member.userId} member={member} onSelect={setSelectedMember} />
+              ))}
+            </Box>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Rank</TableCell>
+                    <TableCell>Membership</TableCell>
+                    <TableCell align="center">Privacy</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedMembers.map((member) => (
+                    <SectionMemberListItem key={member.userId} member={member} onSelect={setSelectedMember} />
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
           <PaginationDisplay page={page} totalPages={totalPages} onChange={onPageChange} />
         </>
       )}
+      <ContactDetailsDialog member={selectedMember} onClose={() => setSelectedMember(null)} />
     </Box>
   );
 }

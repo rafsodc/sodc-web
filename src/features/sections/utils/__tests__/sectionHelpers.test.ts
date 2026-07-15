@@ -6,10 +6,53 @@ import {
   canUserAccessSection,
   canUserSubscribe,
   isUserMember,
+  sortMembersBySurname,
 } from '../sectionHelpers';
 import type { SectionType, MembershipStatus } from '@dataconnect/generated';
+import type { SectionMember } from '../sectionHelpers';
+
+function member(overrides: Partial<SectionMember>): SectionMember {
+  return {
+    userId: 'user-1',
+    firstName: 'First',
+    lastName: 'Last',
+    email: 'user@example.com',
+    membershipStatus: 'REGULAR' as MembershipStatus,
+    rank: null,
+    sharesContactInfo: true,
+    ...overrides,
+  };
+}
 
 describe('sectionHelpers', () => {
+  describe('sortMembersBySurname', () => {
+    it('sorts by last name', () => {
+      const result = sortMembersBySurname([
+        member({ userId: '1', firstName: 'John', lastName: 'Zeta' }),
+        member({ userId: '2', firstName: 'Jane', lastName: 'Alpha' }),
+      ]);
+      expect(result.map((m) => m.userId)).toEqual(['2', '1']);
+    });
+
+    it('breaks ties on last name using first name', () => {
+      const result = sortMembersBySurname([
+        member({ userId: '1', firstName: 'Zoe', lastName: 'Smith' }),
+        member({ userId: '2', firstName: 'Amy', lastName: 'Smith' }),
+      ]);
+      expect(result.map((m) => m.userId)).toEqual(['2', '1']);
+    });
+
+    it('does not mutate the input array', () => {
+      const input = [
+        member({ userId: '1', lastName: 'Zeta' }),
+        member({ userId: '2', lastName: 'Alpha' }),
+      ];
+      const result = sortMembersBySurname(input);
+      expect(result).not.toBe(input);
+      expect(input.map((m) => m.userId)).toEqual(['1', '2']);
+    });
+  });
+
   describe('isMembersSection', () => {
     it('should return true for MEMBERS section', () => {
       expect(isMembersSection({ type: 'MEMBERS' as SectionType })).toBe(true);

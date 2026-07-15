@@ -19,6 +19,7 @@ import { validateUserForm } from "../../users/utils/userHelpers";
 import { MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { auth } from "../../../config/firebase";
 import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/firebaseFunctions";
+import RankSelect from "../../../shared/components/RankSelect";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -37,6 +38,7 @@ export default function ProfileCompletion({
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
   const [isIndustry, setIsIndustry] = useState(false);
+  const [rank, setRank] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -77,6 +79,7 @@ export default function ProfileCompletion({
         isReserve,
         isCivilServant,
         isIndustry,
+        rank: rank || null,
       });
 
       const result = await executeMutation(mutation);
@@ -193,6 +196,8 @@ export default function ProfileCompletion({
             inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
+
+          <RankSelect value={rank} onChange={setRank} disabled={submitting} />
 
           <Divider sx={{ my: 2 }} />
 

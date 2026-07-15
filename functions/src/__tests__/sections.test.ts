@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
 import { MembershipStatus } from "@dataconnect/admin-generated";
-import { getSectionForUser, getSectionEventsForUser, getEventForUser } from "../sections";
+import { getSectionForUser, getSectionEventsForUser, getEventForUser, getSectionMembersMerged } from "../sections";
 
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
 const mockGetUserAccessGroupsById = vi.spyOn(admin, "getUserAccessGroupsById");
 const mockGetUserMembershipStatus = vi.spyOn(admin, "getUserMembershipStatus");
 const mockGetEventsForSection = vi.spyOn(admin, "getEventsForSection");
 const mockGetEventById = vi.spyOn(admin, "getEventById");
+const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
+const mockListUsers = vi.spyOn(admin, "listUsers");
 
 const sectionId = "00000000-0000-4000-8000-000000000001";
 const accessGroupId = "00000000-0000-4000-8000-0000000000a1";
@@ -172,5 +174,131 @@ describe("getEventForUser", () => {
     const result = await callAs(getEventForUser, "member-1", false, { eventId });
 
     expect(result.event?.id).toBe(eventId);
+  });
+});
+
+describe("getSectionMembersMerged", () => {
+  function member(overrides: Partial<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: string;
+    rank: string | null;
+    shareContactInfo: boolean | null;
+  }> = {}) {
+    return {
+      id: "user-1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@example.com",
+      membershipStatus: MembershipStatus.REGULAR,
+      rank: null,
+      shareContactInfo: true,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSection([{ purposes: ["ACCESS"], userGroupId: accessGroupId }]);
+    mockGetUserAccessGroupsById.mockResolvedValue({
+      data: { user: { id: "member-1", userGroups: [{ userGroup: { id: accessGroupId, name: "Access", description: null } }] } },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserAccessGroupsById>>);
+    mockGetUserMembershipStatus.mockResolvedValue({
+      data: { user: { membershipStatus: MembershipStatus.REGULAR } },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserMembershipStatus>>);
+  });
+
+  function mockMembers(users: ReturnType<typeof member>[]) {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionId,
+          name: "Test Section",
+          type: "MEMBERS",
+          description: null,
+          purposeLinks: [
+            {
+              purposes: ["MEMBER"],
+              userGroup: {
+                id: accessGroupId,
+                name: "Access",
+                membershipStatuses: null,
+                users: users.map((u) => ({ user: u })),
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+  }
+
+  it("includes email and rank for a member who shares contact info", async () => {
+    mockMembers([member({ rank: "Wing Commander", shareContactInfo: true })]);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members).toEqual([
+      {
+        id: "user-1",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        membershipStatus: MembershipStatus.REGULAR,
+        rank: "Wing Commander",
+        sharesContactInfo: true,
+        email: "ada@example.com",
+      },
+    ]);
+  });
+
+  it("still lists an opted-out member but returns email: null", async () => {
+    mockMembers([member({ shareContactInfo: false })]);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members).toHaveLength(1);
+    expect(result.members[0]).toMatchObject({ id: "user-1", sharesContactInfo: false, email: null });
+  });
+
+  it("defaults to sharing when shareContactInfo is null/undefined (legacy rows)", async () => {
+    mockMembers([member({ shareContactInfo: null })]);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members[0]).toMatchObject({ sharesContactInfo: true, email: "ada@example.com" });
+  });
+
+  it("redacts status-derived members (resolved via listUsers) the same way as explicit members", async () => {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionId,
+          name: "Test Section",
+          type: "MEMBERS",
+          description: null,
+          purposeLinks: [
+            {
+              purposes: ["MEMBER"],
+              userGroup: {
+                id: accessGroupId,
+                name: "Access",
+                membershipStatuses: [MembershipStatus.REGULAR],
+                users: [],
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+    mockListUsers.mockResolvedValue({
+      data: { users: [member({ id: "user-2", shareContactInfo: false })] },
+    } as unknown as Awaited<ReturnType<typeof admin.listUsers>>);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members).toEqual([
+      expect.objectContaining({ id: "user-2", sharesContactInfo: false, email: null }),
+    ]);
   });
 });

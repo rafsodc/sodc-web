@@ -23,6 +23,8 @@ query GetCurrentUser @auth(expr: "auth.token.enabled == true") {
     isReserve
     isCivilServant
     isIndustry
+    rank
+    shareContactInfo
     createdAt
     updatedAt
   }
@@ -63,6 +65,8 @@ query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == t
     isReserve
     isCivilServant
     isIndustry
+    rank
+    shareContactInfo
     createdAt
     updatedAt
     createdBy
@@ -352,6 +356,8 @@ query GetSectionMembers($sectionId: UUID!) @auth(level: NO_ACCESS) {
             email
             serviceNumber
             membershipStatus
+            rank
+            shareContactInfo
           }
         }
       }

@@ -17,8 +17,32 @@ export interface SectionMemberResponse {
   id: string;
   firstName: string;
   lastName: string;
+  membershipStatus: string;
+  rank: string | null;
+  sharesContactInfo: boolean;
+  /** Null whenever sharesContactInfo is false — the client never receives it, this isn't just hidden client-side. See #273. */
+  email: string | null;
+}
+
+function toSectionMemberResponse(u: {
+  id: string;
+  firstName: string;
+  lastName: string;
   email: string;
   membershipStatus: string;
+  rank?: string | null;
+  shareContactInfo?: boolean | null;
+}): SectionMemberResponse {
+  const sharesContactInfo = u.shareContactInfo !== false;
+  return {
+    id: u.id,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    membershipStatus: u.membershipStatus,
+    rank: u.rank ?? null,
+    sharesContactInfo,
+    email: sharesContactInfo ? u.email : null,
+  };
 }
 
 function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
@@ -137,8 +161,18 @@ export const getSectionMembersMerged = onCall(
       const statuses = new Set<string>();
       const explicitMap = new Map<string, SectionMemberResponse>();
 
+      interface RawSectionMemberUser {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: string;
+        rank?: string | null;
+        shareContactInfo?: boolean | null;
+      }
+
       for (const rel of sourceLinks) {
-        const group = (rel as { userGroup: { membershipStatuses?: string[]; users: Array<{ user: SectionMemberResponse }> } })
+        const group = (rel as { userGroup: { membershipStatuses?: string[]; users: Array<{ user: RawSectionMemberUser }> } })
           .userGroup;
         if (group.membershipStatuses) {
           group.membershipStatuses.forEach((s: string) => statuses.add(s));
@@ -146,13 +180,7 @@ export const getSectionMembersMerged = onCall(
         for (const uag of group.users || []) {
           const u = uag.user;
           if (!explicitMap.has(u.id)) {
-            explicitMap.set(u.id, {
-              id: u.id,
-              firstName: u.firstName,
-              lastName: u.lastName,
-              email: u.email,
-              membershipStatus: u.membershipStatus,
-            });
+            explicitMap.set(u.id, toSectionMemberResponse(u));
           }
         }
       }
@@ -162,16 +190,10 @@ export const getSectionMembersMerged = onCall(
       }
 
       const listResult = await listUsers();
-      const users = listResult.data?.users || [];
+      const users = (listResult.data?.users || []) as RawSectionMemberUser[];
       for (const u of users) {
         if (statuses.has(u.membershipStatus) && !explicitMap.has(u.id)) {
-          explicitMap.set(u.id, {
-            id: u.id,
-            firstName: u.firstName,
-            lastName: u.lastName,
-            email: u.email,
-            membershipStatus: u.membershipStatus,
-          });
+          explicitMap.set(u.id, toSectionMemberResponse(u));
         }
       }
 

@@ -96,6 +96,13 @@ type User @table {
   isReserve: Boolean @default(value: false)
   isCivilServant: Boolean @default(value: false)
   isIndustry: Boolean @default(value: false)
+  # Free-text rank/title (e.g. "Wing Commander", "Mr") — the client constrains input to a fixed
+  # dropdown, but this stays a plain string so the list can change without a schema migration.
+  rank: String
+  # Site-wide (not per-section) preference: whether other members can see this user's contact
+  # details (currently just email) on section member lists. Enforced server-side in
+  # getSectionMembersMerged, not just hidden client-side. See #273.
+  shareContactInfo: Boolean @default(value: true)
   stripeCustomerId: String
   emailBounceCount: Int! @default(value: 0)
   emailLastBounceAt: Timestamp

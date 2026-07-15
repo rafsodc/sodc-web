@@ -338,8 +338,11 @@ export interface GetSectionMembersMergedMember {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
   membershipStatus: string;
+  rank: string | null;
+  sharesContactInfo: boolean;
+  /** Null whenever sharesContactInfo is false — withheld server-side, not just hidden client-side. */
+  email: string | null;
 }
 
 export interface GetSectionMembersMergedResponse {
