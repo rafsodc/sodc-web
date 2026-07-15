@@ -7,7 +7,6 @@ import {
 } from "@mui/material";
 import { useGetSectionsForUser, useListSections } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
-import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
@@ -157,7 +156,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
   // Early return for loading state
   if (loading) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
         <PageHeader title="Sections" onBack={onBack} />
         <Box className="loading-container">
           <CircularProgress />
@@ -169,7 +168,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
   // Early return for error state
   if (error || errorMessage) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
         <PageHeader title="Sections" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           {errorMessage || "Failed to load sections. Please try again."}
@@ -183,7 +182,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
 
   // Main render - always return valid JSX
   return (
-    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
       <PageHeader title="Sections" onBack={onBack} />
       <SearchBar
         value={searchTerm}
@@ -228,7 +227,7 @@ export default function SectionsList(props: SectionsListProps) {
   } catch (error) {
     console.error('SectionsList render error:', error);
     return (
-      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
         <PageHeader title="Sections" onBack={props.onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           An error occurred while loading sections. Please refresh the page.

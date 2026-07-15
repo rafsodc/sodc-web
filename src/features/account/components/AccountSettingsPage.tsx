@@ -33,7 +33,6 @@ import {
   type User,
 } from "firebase/auth";
 import { auth, dataConnect } from "../../../config/firebase";
-import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
 import { resignMembership } from "../../../shared/utils/firebaseFunctions";
@@ -303,7 +302,7 @@ export default function AccountSettingsPage({
 
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto", py: 2 }}>
-      <Typography variant="h4" gutterBottom sx={{ color: colors.titlePrimary, mb: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ color: "primary.main", mb: 3 }}>
         Account
       </Typography>
 
@@ -411,9 +410,9 @@ export default function AccountSettingsPage({
                         newPassword !== confirmPassword
                       }
                       sx={{
-                        backgroundColor: colors.callToAction,
+                        backgroundColor: "secondary.main",
                         "&:hover": {
-                          backgroundColor: colors.callToAction,
+                          backgroundColor: "secondary.main",
                           opacity: 0.9,
                         },
                       }}

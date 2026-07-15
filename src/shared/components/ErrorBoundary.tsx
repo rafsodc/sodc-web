@@ -2,7 +2,6 @@ import { Component, type ReactNode, type ErrorInfo } from "react";
 import { Box, Alert, Button, Typography } from "@mui/material";
 import PageHeader from "./PageHeader";
 import "./PageContainer.css";
-import { colors } from "../../config/colors";
 
 interface Props {
   children: ReactNode;
@@ -32,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+        <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
           <PageHeader title={this.props.title} onBack={this.props.onBack} />
           <Alert severity="error" sx={{ mt: 2 }}>
             <Typography variant="h6" sx={{ mb: 1 }}>

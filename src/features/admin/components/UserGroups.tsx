@@ -17,7 +17,6 @@ import {
   getUserWithAccessGroupsRef,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
@@ -446,7 +445,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
         <PageHeader title="User Groups" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Access denied. Admin privileges required to manage user groups.
@@ -456,7 +455,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   }
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
       <UserGroupsListSurface
         onBack={onBack}
         error={error}

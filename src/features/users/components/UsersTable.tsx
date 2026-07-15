@@ -21,7 +21,6 @@ import {
   RemoveModerator,
 } from "@mui/icons-material";
 import type { SearchUser } from "../../../types";
-import { colors } from "../../../config/colors";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 
 /** Hide button text on narrow viewports; icons + aria-label remain. */
@@ -146,7 +145,7 @@ export default function UsersTable({
                   disabled={isDisabled}
                   sx={{
                     ...compactActionButtonSx,
-                    backgroundColor: colors.callToAction,
+                    backgroundColor: "secondary.main",
                     color: "white",
                     "& .MuiButton-startIcon": {
                       color: "white",
@@ -154,11 +153,11 @@ export default function UsersTable({
                       marginLeft: { xs: 0, sm: undefined },
                     },
                     "&:hover": {
-                      backgroundColor: colors.callToAction,
+                      backgroundColor: "secondary.main",
                       opacity: 0.9,
                     },
                     "&:disabled": {
-                      backgroundColor: colors.callToAction,
+                      backgroundColor: "secondary.main",
                       opacity: 0.5,
                     },
                   }}

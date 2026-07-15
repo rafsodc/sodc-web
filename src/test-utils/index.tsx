@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { theme } from '../config/theme';
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  const theme = createTheme();
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });

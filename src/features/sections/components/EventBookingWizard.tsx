@@ -1,7 +1,6 @@
 import { Alert, Box, Button, CircularProgress, Paper, Step, StepLabel, Stepper, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants/routes";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import { useBookingWizardState } from "../hooks/useBookingWizardState";
@@ -255,7 +254,7 @@ export default function EventBookingWizard({
                   variant="contained"
                   onClick={w.handleNext}
                   disabled={w.submitting || w.payingAllTickets}
-                  sx={{ backgroundColor: colors.callToAction }}
+                  sx={{ backgroundColor: "secondary.main" }}
                 >
                   Next
                 </Button>
@@ -266,7 +265,7 @@ export default function EventBookingWizard({
                   variant="contained"
                   onClick={() => void w.handleConfirm()}
                   disabled={w.submitting}
-                  sx={{ backgroundColor: colors.callToAction }}
+                  sx={{ backgroundColor: "secondary.main" }}
                 >
                   {w.submitting
                     ? "Submitting…"
@@ -278,7 +277,7 @@ export default function EventBookingWizard({
                 </Button>
               ) : null}
               {w.wizardMode === "full" && w.activeStep === 4 ? (
-                <Button variant="contained" onClick={w.closeWizard} sx={{ backgroundColor: colors.callToAction }}>
+                <Button variant="contained" onClick={w.closeWizard} sx={{ backgroundColor: "secondary.main" }}>
                   Done
                 </Button>
               ) : null}

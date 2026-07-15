@@ -1,5 +1,4 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
-import { colors } from "../../../config/colors";
 
 export interface PublicHomePageProps {
   onJoinClick: () => void;
@@ -13,7 +12,7 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
         variant="h3"
         component="h1"
         sx={{
-          color: colors.titlePrimary,
+          color: "primary.main",
           fontWeight: 400,
           fontSize: { xs: "2rem", sm: "2.75rem" },
           mb: 1,
@@ -25,7 +24,7 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
         variant="h5"
         component="p"
         sx={{
-          color: colors.titleSecondary,
+          color: "text.secondary",
           fontWeight: 400,
           fontSize: { xs: "1.25rem", sm: "1.5rem" },
           mb: 3,
@@ -48,7 +47,7 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
           variant="contained"
           size="large"
           onClick={onJoinClick}
-          sx={{ backgroundColor: colors.callToAction, "&:hover": { backgroundColor: colors.callToAction } }}
+          sx={{ backgroundColor: "secondary.main", "&:hover": { backgroundColor: "secondary.main" } }}
         >
           Join SODC
         </Button>

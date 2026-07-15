@@ -32,7 +32,6 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from "@mui/icons-material";
 import { SectionUserGroupPurpose, type ListUserGroupsData, type SectionType } from "@dataconnect/generated";
 import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH } from "../../../constants";
-import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import type { SectionUserGroupRow, SectionWithDetails } from "./manageSectionsTypes";
 
@@ -97,7 +96,7 @@ export function ManageSectionsListSurface({
       <PageHeader title="Manage Sections" onBack={onBack} />
 
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           Manage sections that organize content and control access. Sections can be MEMBERS (user lists) or EVENTS
           (event listings).
         </Typography>

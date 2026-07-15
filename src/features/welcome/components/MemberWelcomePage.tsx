@@ -11,7 +11,6 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import { getSectionTypeLabel } from "../../../shared/utils/sectionTypeLabels";
 import { formatSectionEventWhen } from "../../../shared/utils/sectionEventDisplay";
 import { ROUTES } from "../../../constants";
@@ -41,7 +40,7 @@ export default function MemberWelcomePage({
       <Typography
         variant="h4"
         component="h1"
-        sx={{ color: colors.titlePrimary, fontWeight: 500, mb: 1 }}
+        sx={{ color: "primary.main", fontWeight: 500, mb: 1 }}
       >
         Welcome, {displayName}
       </Typography>

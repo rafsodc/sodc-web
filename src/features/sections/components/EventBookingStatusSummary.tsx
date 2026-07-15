@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants/routes";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
@@ -196,7 +195,7 @@ export default function EventBookingStatusSummary({
             variant="contained"
             disabled={payingTicketTypeId === paymentSummary.unpaidTicketTypeId}
             onClick={() => onPayNow?.(paymentSummary.unpaidTicketTypeId as string)}
-            sx={{ backgroundColor: colors.callToAction }}
+            sx={{ backgroundColor: "secondary.main" }}
           >
             {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay for all tickets"}
           </Button>

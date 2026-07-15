@@ -8,7 +8,6 @@ import {
 } from "@mui/material";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../config/firebase";
-import { colors } from "../../../config/colors";
 import type { UserData } from "../../../types";
 
 interface AccountStatusMessageProps {
@@ -84,7 +83,7 @@ export default function AccountStatusMessage({ userData }: AccountStatusMessageP
             variant="contained"
             onClick={handleSignOut}
             disabled={submitting}
-            sx={{ backgroundColor: colors.callToAction }}
+            sx={{ backgroundColor: "secondary.main" }}
           >
             Sign out
           </Button>

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
-import { Box, Button, CssBaseline, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
+import { Box, Button, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { dataConnect } from "./config/firebase";
 import { useUserData } from "./features/users/hooks/useUserData";
@@ -11,7 +11,6 @@ import Header from "./shared/components/Header";
 import AppSideNav from "./shared/components/AppSideNav";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
-import { colors } from "./config/colors";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
 import { useGetSectionsForUser } from "@dataconnect/generated/react";
@@ -151,8 +150,7 @@ function AppContent() {
 
   if (!isOnline) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <Box sx={{ maxWidth: { sm: "700px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
@@ -170,8 +168,7 @@ function AppContent() {
 
   if (emailNotVerified) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box
           component="main"
@@ -208,8 +205,7 @@ function AppContent() {
     (!authInitialized || (user && !isEnabledClaimResolved))
   ) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <LoadingFallback />
@@ -220,8 +216,7 @@ function AppContent() {
 
   if (user && !isEnabledClaimResolved) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <LoadingFallback />
@@ -232,8 +227,7 @@ function AppContent() {
 
   if (user && needsProfileCompletion && location.pathname !== ROUTES.PROFILE_COMPLETION) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Navigate to={ROUTES.PROFILE_COMPLETION} replace />
       </Box>
@@ -258,8 +252,7 @@ function AppContent() {
     const showApprovalStep = inactiveUserData?.membershipStatus === "PENDING";
 
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-        <CssBaseline />
+      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box
           component="main"
@@ -303,7 +296,7 @@ function AppContent() {
     }
     return (
       <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-        <Typography variant="h4" sx={{ color: colors.titlePrimary, mb: 3 }}>
+        <Typography variant="h4" sx={{ color: "primary.main", mb: 3 }}>
           {title}
         </Typography>
         {!user ? (
@@ -337,8 +330,7 @@ function AppContent() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: colors.background }}>
-      <CssBaseline />
+    <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
       <Snackbar
         open={logoutSuccess}
         autoHideDuration={6000}

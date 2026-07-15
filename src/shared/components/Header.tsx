@@ -3,7 +3,6 @@ import { AppBar, Avatar, Box, Button, IconButton, Menu, MenuItem, Toolbar, Typog
 import { ExpandMore, Menu as MenuIcon, Person } from "@mui/icons-material";
 import { signOut, type User } from "firebase/auth";
 import { auth } from "../../config/firebase";
-import { colors } from "../../config/colors";
 import type { UserData } from "../../types";
 import { useEnabledClaim } from "../../features/users/hooks/useEnabledClaim";
 
@@ -97,7 +96,7 @@ export default function Header({
     <AppBar
       position="fixed"
       sx={{
-        backgroundColor: colors.primary,
+        backgroundColor: "primary.main",
         top: 0,
         left: 0,
         right: 0,
@@ -155,7 +154,7 @@ export default function Header({
               <Avatar
                 sx={{
                   flexShrink: 0,
-                  backgroundColor: colors.callToAction,
+                  backgroundColor: "secondary.main",
                   color: "white",
                   width: 40,
                   height: 40,
@@ -290,7 +289,7 @@ export default function Header({
               sx={{
                 textTransform: "none",
                 backgroundColor: "white",
-                color: colors.primary,
+                color: "primary.main",
                 borderRadius: "9999px",
                 px: 3,
                 "&:hover": {
@@ -311,12 +310,12 @@ export default function Header({
               onClick={onJoinClick || onAccountClick}
               sx={{
                 textTransform: "none",
-                backgroundColor: colors.callToAction,
+                backgroundColor: "secondary.main",
                 color: "white",
                 borderRadius: "9999px",
                 px: 3,
                 "&:hover": {
-                  backgroundColor: colors.callToAction,
+                  backgroundColor: "secondary.main",
                   opacity: 0.9,
                 },
                 "&:focus": {

@@ -21,7 +21,6 @@ import {
 import { dataConnect } from "../../../config/firebase";
 import type { SearchUser } from "../../../types";
 import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../dataconnect-generated";
-import { colors } from "../../../config/colors";
 import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
 import { parseDisplayName, validateUserForm } from "../../users/utils/userHelpers";
 import { updateUserDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
@@ -309,7 +308,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                   })()}
                 </Select>
                 {currentStatus === MembershipStatus.PENDING && requestedMembershipStatus && (
-                  <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
+                  <Typography variant="caption" sx={{ color: "text.secondary", mt: 1, ml: 1.5 }}>
                     User requested: {MEMBERSHIP_STATUS_OPTIONS.find(opt => opt.value === requestedMembershipStatus)?.label || requestedMembershipStatus}
                   </Typography>
                 )}
@@ -317,11 +316,11 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
 
               <Divider sx={{ my: 2 }} />
 
-              <Typography variant="h6" sx={{ color: colors.titlePrimary, mb: 1 }}>
+              <Typography variant="h6" sx={{ color: "primary.main", mb: 1 }}>
                 Service Background
               </Typography>
 
-              <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
                 Please indicate whether you are or have been a regular, reserve, civil servant, or worked in industry.
               </Typography>
 
@@ -380,9 +379,9 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
           variant="contained"
           disabled={submitting || loading || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
           sx={{
-            backgroundColor: colors.callToAction,
+            backgroundColor: "secondary.main",
             "&:hover": {
-              backgroundColor: colors.callToAction,
+              backgroundColor: "secondary.main",
               opacity: 0.9,
             },
           }}

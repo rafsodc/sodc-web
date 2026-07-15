@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { dataConnect } from "../../../config/firebase";
-import { colors } from "../../../config/colors";
 import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
@@ -141,7 +140,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
 
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto" }}>
-      <Typography variant="h4" gutterBottom sx={{ color: colors.titlePrimary, mb: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ color: "primary.main", mb: 3 }}>
         Profile
       </Typography>
 
@@ -243,7 +242,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
               )}
             </Select>
             {statusLocked && (
-              <Typography variant="caption" sx={{ color: colors.titleSecondary, mt: 1, ml: 1.5 }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", mt: 1, ml: 1.5 }}>
                 Cannot change from restricted status
               </Typography>
             )}
@@ -253,11 +252,11 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ color: colors.titlePrimary, mb: 1 }}>
+          <Typography variant="h6" sx={{ color: "primary.main", mb: 1 }}>
             Service Background
           </Typography>
 
-          <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
             Please indicate whether you are or have been a regular, reserve, civil servant, or worked in industry.
           </Typography>
 
@@ -310,9 +309,9 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
               variant="contained"
               disabled={submitting || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
               sx={{
-                backgroundColor: colors.callToAction,
+                backgroundColor: "secondary.main",
                 "&:hover": {
-                  backgroundColor: colors.callToAction,
+                  backgroundColor: "secondary.main",
                   opacity: 0.9,
                 },
               }}
