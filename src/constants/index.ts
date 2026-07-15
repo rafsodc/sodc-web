@@ -30,6 +30,10 @@ import { MembershipStatus } from "../dataconnect-generated";
 // Re-export validation constants
 export { NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../features/users/utils/membershipStatusValidation";
 
+// Re-export rank/title dropdown options
+export { RANK_OPTION_GROUPS } from "./rankOptions";
+export type { RankOptionGroup } from "./rankOptions";
+
 export const MEMBERSHIP_STATUS_OPTIONS = [
   { value: MembershipStatus.PENDING, label: "Pending" },
   { value: MembershipStatus.REGULAR, label: "Regular" },

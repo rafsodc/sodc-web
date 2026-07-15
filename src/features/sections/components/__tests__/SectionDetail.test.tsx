@@ -336,8 +336,8 @@ describe('SectionDetail', () => {
 
     vi.mocked(getSectionMembersMerged).mockResolvedValue({
       members: [
-        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR' },
-        { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', membershipStatus: 'RESERVE' },
+        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR', rank: null, sharesContactInfo: true },
+        { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', membershipStatus: 'RESERVE', rank: null, sharesContactInfo: true },
       ],
     });
 
@@ -368,9 +368,96 @@ describe('SectionDetail', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.queryByText('john@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText('jane@example.com')).not.toBeInTheDocument();
-    expect(screen.getByText('Regular')).toBeInTheDocument();
-    expect(screen.getByText('Reserve')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Show email' })).toHaveLength(2);
+    expect(screen.getByText('Membership: Regular')).toBeInTheDocument();
+    expect(screen.getByText('Membership: Reserve')).toBeInTheDocument();
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    await user.click(screen.getByText('John Doe'));
+    expect(await screen.findByText('john@example.com')).toBeInTheDocument();
+  });
+
+  it('should sort members by surname', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        purposeLinks: [],
+      },
+    };
+
+    vi.mocked(getSectionMembersMerged).mockResolvedValue({
+      members: [
+        { id: 'user-1', firstName: 'John', lastName: 'Zeta', email: 'john@example.com', membershipStatus: 'REGULAR', rank: null, sharesContactInfo: true },
+        { id: 'user-2', firstName: 'Jane', lastName: 'Alpha', email: 'jane@example.com', membershipStatus: 'RESERVE', rank: null, sharesContactInfo: true },
+      ],
+    });
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('Members (2)')).toBeInTheDocument();
+    });
+
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(headings).toEqual(['Jane Alpha', 'John Zeta']);
+  });
+
+  it('should switch between card and list view for members', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Test Section',
+        type: 'MEMBERS',
+        purposeLinks: [],
+      },
+    };
+
+    vi.mocked(getSectionMembersMerged).mockResolvedValue({
+      members: [
+        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR', rank: null, sharesContactInfo: true },
+      ],
+    });
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+
+    renderSectionDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    // Card view is the default — renders as a heading inside a card
+    expect(screen.getByRole('heading', { name: 'John Doe', level: 3 })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'List view' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'John Doe' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Card view' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'John Doe', level: 3 })).toBeInTheDocument();
+    });
   });
 
   it('should show subscribe button when user can subscribe', async () => {
@@ -492,8 +579,8 @@ describe('SectionDetail', () => {
 
     vi.mocked(getSectionMembersMerged).mockResolvedValue({
       members: [
-        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR' },
-        { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', membershipStatus: 'RESERVE' },
+        { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', membershipStatus: 'REGULAR', rank: null, sharesContactInfo: true },
+        { id: 'user-2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', membershipStatus: 'RESERVE', rank: null, sharesContactInfo: true },
       ],
     });
 

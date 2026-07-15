@@ -45,6 +45,8 @@ const userData: UserData = {
   isReserve: false,
   isCivilServant: false,
   isIndustry: false,
+  rank: null,
+  shareContactInfo: true,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
 };
@@ -114,6 +116,32 @@ describe("Profile", () => {
         MembershipStatus.RESERVE
       );
     });
+  });
+
+  it("includes the selected rank when saving", async () => {
+    const user = userEvent.setup();
+    renderProfile({ userData, userEmail: userData.email });
+
+    const rankSelect = screen.getByLabelText("Rank / Title");
+    fireEvent.mouseDown(rankSelect);
+    await user.click(await screen.findByRole("option", { name: "Wing Commander" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => {
+      expect(dataconnect.upsertUser).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({ rank: "Wing Commander" })
+      );
+    });
+  });
+
+  it("pre-fills the rank field from existing user data", () => {
+    renderProfile({
+      userData: { ...userData, rank: "Squadron Leader" },
+      userEmail: userData.email,
+    });
+
+    expect(screen.getByText("Squadron Leader")).toBeInTheDocument();
   });
 
   it("locks membership status when current status is restricted", () => {

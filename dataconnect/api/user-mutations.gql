@@ -21,6 +21,8 @@ mutation CreateUserProfile(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
+  $rank: String
+  $shareContactInfo: Boolean
 ) @auth(expr: "auth.token.email_verified == true") {
   user_upsert(
     data: {
@@ -35,6 +37,8 @@ mutation CreateUserProfile(
       isReserve: $isReserve
       isCivilServant: $isCivilServant
       isIndustry: $isIndustry
+      rank: $rank
+      shareContactInfo: $shareContactInfo
       # createdAt, updatedAt, createdBy, and updatedBy are set automatically via defaults
     }
   )
@@ -54,6 +58,8 @@ mutation UpsertUser(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
+  $rank: String
+  $shareContactInfo: Boolean
 ) @auth(expr: "auth.token.enabled == true") {
   user_upsert(
     data: {
@@ -66,6 +72,8 @@ mutation UpsertUser(
       isReserve: $isReserve
       isCivilServant: $isCivilServant
       isIndustry: $isIndustry
+      rank: $rank
+      shareContactInfo: $shareContactInfo
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"
       # createdAt and createdBy are set automatically via defaults on insert only

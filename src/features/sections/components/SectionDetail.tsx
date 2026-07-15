@@ -16,6 +16,7 @@ import {
   canUserSubscribe,
   isUserMember,
   isMembersSection,
+  sortMembersBySurname,
 } from "../utils/sectionHelpers";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
@@ -108,6 +109,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         firstName: m.firstName,
         lastName: m.lastName,
         email: m.email,
+        rank: m.rank,
+        sharesContactInfo: m.sharesContactInfo,
         membershipStatus: m.membershipStatus as SectionMember["membershipStatus"],
       }));
       setSectionMembers(members);
@@ -262,18 +265,18 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const allMembers = sectionMembers;
   const refetchMembers = fetchMembers;
 
-  // Filter members by search term
+  // Filter members by search term, then sort by surname
   const filteredMembers = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return allMembers;
-    }
-    const lowerSearch = searchTerm.toLowerCase();
-    return allMembers.filter(
-      (member) =>
-        member.firstName.toLowerCase().includes(lowerSearch) ||
-        member.lastName.toLowerCase().includes(lowerSearch) ||
-        member.email.toLowerCase().includes(lowerSearch)
-    );
+    const lowerSearch = searchTerm.trim().toLowerCase();
+    const matching = lowerSearch
+      ? allMembers.filter(
+          (member) =>
+            member.firstName.toLowerCase().includes(lowerSearch) ||
+            member.lastName.toLowerCase().includes(lowerSearch) ||
+            (member.email?.toLowerCase().includes(lowerSearch) ?? false)
+        )
+      : allMembers;
+    return sortMembersBySurname(matching);
   }, [allMembers, searchTerm]);
 
   // Reset page to 1 when search term changes

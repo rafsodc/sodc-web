@@ -19,6 +19,16 @@ vi.mock("firebase/auth", () => ({
   signOut: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockUpsertUser = vi.fn().mockResolvedValue({ data: {} });
+
+vi.mock("@dataconnect/generated", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dataconnect/generated")>();
+  return {
+    ...actual,
+    upsertUser: (...args: unknown[]) => mockUpsertUser(...args),
+  };
+});
+
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   resignMembership: vi.fn(),
 }));
@@ -62,6 +72,8 @@ const userData: UserData = {
   isReserve: false,
   isCivilServant: false,
   isIndustry: false,
+  rank: null,
+  shareContactInfo: true,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
 };
@@ -89,6 +101,67 @@ describe("AccountSettingsPage", () => {
       "href",
       "/profile"
     );
+  });
+
+  it("shows the privacy toggle on by default", () => {
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    const toggle = screen.getByRole("switch", {
+      name: "Share my contact details with other section members",
+    });
+    expect(toggle).toBeChecked();
+  });
+
+  it("shows the privacy toggle off when the user has opted out", () => {
+    renderAccountSettings({
+      user: mockUser,
+      userData: { ...userData, shareContactInfo: false },
+      isAdmin: false,
+    });
+
+    const toggle = screen.getByRole("switch", {
+      name: "Share my contact details with other section members",
+    });
+    expect(toggle).not.toBeChecked();
+  });
+
+  it("upserts the user with shareContactInfo flipped, preserving other fields", async () => {
+    const user = userEvent.setup();
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    const toggle = screen.getByRole("switch", {
+      name: "Share my contact details with other section members",
+    });
+    await user.click(toggle);
+
+    await waitFor(() => {
+      expect(mockUpsertUser).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({
+          firstName: "Alex",
+          lastName: "Member",
+          serviceNumber: "12345",
+          shareContactInfo: false,
+        })
+      );
+    });
+    expect(toggle).not.toBeChecked();
+  });
+
+  it("reverts the toggle and shows an error if the upsert fails", async () => {
+    const user = userEvent.setup();
+    mockUpsertUser.mockRejectedValueOnce(new Error("Network error"));
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    const toggle = screen.getByRole("switch", {
+      name: "Share my contact details with other section members",
+    });
+    await user.click(toggle);
+
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeInTheDocument();
+    });
+    expect(toggle).toBeChecked();
   });
 
   it("updates password after re-authentication", async () => {
@@ -353,7 +426,7 @@ describe("AnnouncementPreferencesList", () => {
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
     expect(screen.getByText("Alpha Section")).toBeInTheDocument();
-    const toggle = screen.getByRole("switch");
+    const toggle = screen.getByRole("switch", { name: "Alpha Section" });
     expect(toggle).toBeChecked();
   });
 
@@ -372,7 +445,7 @@ describe("AnnouncementPreferencesList", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const toggle = screen.getByRole("switch");
+    const toggle = screen.getByRole("switch", { name: "Alpha Section" });
     expect(toggle).not.toBeChecked();
   });
 
@@ -392,7 +465,7 @@ describe("AnnouncementPreferencesList", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    await user.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("switch", { name: "Alpha Section" }));
 
     await waitFor(() => {
       expect(mockOptOutAsync).toHaveBeenCalledWith({ sectionId: "s1" });
@@ -416,7 +489,7 @@ describe("AnnouncementPreferencesList", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const toggle = screen.getByRole("switch");
+    const toggle = screen.getByRole("switch", { name: "Alpha Section" });
     expect(toggle).not.toBeChecked();
 
     await user.click(toggle);

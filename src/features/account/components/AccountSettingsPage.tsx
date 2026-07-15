@@ -22,7 +22,7 @@ import {
   useOptOutSectionAnnouncement,
   useOptInSectionAnnouncement,
 } from "@dataconnect/generated/react";
-import { MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/generated";
+import { MembershipStatus, SectionUserGroupPurpose, upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 import {
@@ -32,7 +32,7 @@ import {
   updatePassword,
   type User,
 } from "firebase/auth";
-import { auth } from "../../../config/firebase";
+import { auth, dataConnect } from "../../../config/firebase";
 import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
@@ -205,6 +205,10 @@ export default function AccountSettingsPage({
   const [resignSubmitting, setResignSubmitting] = useState(false);
   const [resignError, setResignError] = useState<string | null>(null);
 
+  const [shareContactInfoSubmitting, setShareContactInfoSubmitting] = useState(false);
+  const [shareContactInfoError, setShareContactInfoError] = useState<string | null>(null);
+  const [shareContactInfoOverride, setShareContactInfoOverride] = useState<boolean | null>(null);
+
   const canChangePassword = usesEmailPassword(user);
   const membershipStatus = userData?.membershipStatus ?? null;
   const membershipLabel = userDataLoading && !userData
@@ -250,6 +254,35 @@ export default function AccountSettingsPage({
     }
   };
 
+  const shareContactInfo = shareContactInfoOverride ?? userData?.shareContactInfo ?? true;
+
+  const handleShareContactInfoToggle = async () => {
+    if (!userData) return;
+    const newValue = !shareContactInfo;
+    setShareContactInfoError(null);
+    setShareContactInfoOverride(newValue);
+    setShareContactInfoSubmitting(true);
+    try {
+      const vars: UpsertUserVariables = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        serviceNumber: userData.serviceNumber,
+        isRegular: userData.isRegular,
+        isReserve: userData.isReserve,
+        isCivilServant: userData.isCivilServant,
+        isIndustry: userData.isIndustry,
+        rank: userData.rank,
+        shareContactInfo: newValue,
+      };
+      await upsertUser(dataConnect, vars);
+    } catch (error) {
+      setShareContactInfoOverride(null);
+      setShareContactInfoError((error as Error)?.message ?? "Failed to update privacy setting");
+    } finally {
+      setShareContactInfoSubmitting(false);
+    }
+  };
+
   const handleResignConfirm = async () => {
     setResignError(null);
     setResignSubmitting(true);
@@ -288,6 +321,33 @@ export default function AccountSettingsPage({
           <Button component={RouterLink} to={ROUTES.PROFILE} variant="outlined">
             Edit profile details
           </Button>
+        </Box>
+
+        <Divider />
+
+        <Box component="section" aria-labelledby="privacy-heading">
+          <Typography id="privacy-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
+            Privacy
+          </Typography>
+          {shareContactInfoError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {shareContactInfoError}
+            </Alert>
+          )}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={shareContactInfo}
+                onChange={() => void handleShareContactInfoToggle()}
+                disabled={!userData || shareContactInfoSubmitting}
+              />
+            }
+            label="Share my contact details with other section members"
+          />
+          <Typography variant="body2" color="text.secondary">
+            When off, other members will see you listed but won't be able to view your contact
+            details.
+          </Typography>
         </Box>
 
         <Divider />

@@ -2778,6 +2778,8 @@ export interface GetCurrentUserData {
     isReserve?: boolean | null;
     isCivilServant?: boolean | null;
     isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -2959,6 +2961,8 @@ export interface ListUsersData {
     isReserve?: boolean | null;
     isCivilServant?: boolean | null;
     isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -4228,6 +4232,8 @@ export interface GetSectionMembersData {
             email: string;
             serviceNumber: string;
             membershipStatus: MembershipStatus;
+            rank?: string | null;
+            shareContactInfo?: boolean | null;
           } & User_Key;
         })[];
       } & UserGroup_Key;
@@ -11741,6 +11747,8 @@ export interface CreateUserProfileVariables {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+  rank?: string | null;
+  shareContactInfo?: boolean | null;
 }
 ```
 ### Return Type
@@ -11798,10 +11806,12 @@ export default function CreateUserProfileComponent() {
     isReserve: ..., // optional
     isCivilServant: ..., // optional
     isIndustry: ..., // optional
+    rank: ..., // optional
+    shareContactInfo: ..., // optional
   };
   mutation.mutate(createUserProfileVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., rank: ..., shareContactInfo: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -11848,6 +11858,8 @@ export interface UpsertUserVariables {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+  rank?: string | null;
+  shareContactInfo?: boolean | null;
 }
 ```
 ### Return Type
@@ -11904,10 +11916,12 @@ export default function UpsertUserComponent() {
     isReserve: ..., // optional
     isCivilServant: ..., // optional
     isIndustry: ..., // optional
+    rank: ..., // optional
+    shareContactInfo: ..., // optional
   };
   mutation.mutate(upsertUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., rank: ..., shareContactInfo: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

@@ -469,6 +469,8 @@ export interface CreateUserProfileVariables {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+  rank?: string | null;
+  shareContactInfo?: boolean | null;
 }
 
 export interface CreateUserVariables {
@@ -788,6 +790,8 @@ export interface GetCurrentUserData {
     isReserve?: boolean | null;
     isCivilServant?: boolean | null;
     isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -1277,6 +1281,8 @@ export interface GetSectionMembersData {
             email: string;
             serviceNumber: string;
             membershipStatus: MembershipStatus;
+            rank?: string | null;
+            shareContactInfo?: boolean | null;
           } & User_Key;
         })[];
       } & UserGroup_Key;
@@ -1913,6 +1919,8 @@ export interface ListUsersData {
     isReserve?: boolean | null;
     isCivilServant?: boolean | null;
     isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -2313,6 +2321,8 @@ export interface UpsertUserVariables {
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
+  rank?: string | null;
+  shareContactInfo?: boolean | null;
 }
 
 export interface UserGroup_Key {
