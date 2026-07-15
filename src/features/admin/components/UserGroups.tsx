@@ -19,6 +19,8 @@ import {
 import { MembershipStatus } from "@dataconnect/generated";
 import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
+import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import { searchUsers } from "../../users/utils/searchUsers";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
@@ -53,6 +55,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [userGroups, setUserGroups] = useState<UserGroupWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [groupDetails, setGroupDetails] = useState<Record<string, UserGroupDetails>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
@@ -280,16 +283,17 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         userGroupId: addingToGroupId,
       });
       await executeMutation(ref);
-      
+
       // Refresh group details
       delete groupDetails[addingToGroupId];
       setGroupDetails({ ...groupDetails });
       await fetchGroupDetails(addingToGroupId);
-      
+
       setAddUserDialogOpen(false);
       setAddingToGroupId(null);
       setUserSearchTerm("");
       setSearchResults([]);
+      showSuccess("User added to group");
     } catch (err: any) {
       setError(err?.message || "Failed to add user to group");
     } finally {
@@ -308,11 +312,12 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         userGroupId: groupId,
       });
       await executeMutation(ref);
-      
+
       // Refresh group details
       delete groupDetails[groupId];
       setGroupDetails({ ...groupDetails });
       await fetchGroupDetails(groupId);
+      showSuccess("User removed from group");
     } catch (err: any) {
       setError(err?.message || "Failed to remove user from group");
     }
@@ -348,6 +353,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       }
       delete groupDetails[group.id];
       setGroupDetails({ ...groupDetails });
+      showSuccess(`User group "${group.name}" deleted`);
     } catch (err: any) {
       setError(err?.message || "Failed to delete user group");
     }
@@ -382,6 +388,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       }
       setDialogOpen(false);
       await fetchUserGroupsList();
+      showSuccess(`User group ${editingGroup ? "updated" : "created"}`);
     } catch (err: any) {
       setError(err?.message || `Failed to ${editingGroup ? "update" : "create"} user group`);
     } finally {
@@ -498,6 +505,8 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       />
 
       <UserDetailDialogSurface user={selectedUserDetail} onClose={() => setSelectedUserDetail(null)} />
+
+      <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
 }

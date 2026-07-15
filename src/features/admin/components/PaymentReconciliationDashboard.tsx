@@ -27,6 +27,8 @@ import {
 import { useListOpenPaymentReconciliationExceptions } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
+import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import "../../../shared/components/PageContainer.css";
 
 interface PaymentReconciliationDashboardProps {
@@ -39,6 +41,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
   const [eventSearch, setEventSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
 
   const filteredRows = useMemo(() => {
     const rows = data?.paymentReconciliationExceptions ?? [];
@@ -61,6 +64,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
     try {
       await executeMutation(resolvePaymentReconciliationExceptionRef(dataConnect, { id, note: "Reviewed in dashboard" }));
       await refetch();
+      showSuccess("Exception marked reviewed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to mark exception reviewed");
     } finally {
@@ -157,6 +161,8 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
           </Table>
         </TableContainer>
       )}
+
+      <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
 }

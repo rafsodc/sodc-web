@@ -37,6 +37,8 @@ import {
   type ListUserGroupsData,
 } from "@dataconnect/generated";
 import { MembershipStatus } from "@dataconnect/generated";
+import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 
 interface UserGroupMembershipsProps {
   userId: string;
@@ -54,6 +56,7 @@ export default function UserGroupMemberships({
   const [allGroups, setAllGroups] = useState<ListUserGroupsData["userGroups"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [removingGroupId, setRemovingGroupId] = useState<string | null>(null);
   const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
@@ -105,6 +108,7 @@ export default function UserGroupMemberships({
         onUpdate();
       }
       setAddDialogOpen(false);
+      showSuccess(`Added to "${allGroups.find((g) => g.id === groupId)?.name ?? "group"}"`);
     } catch (err: any) {
       setError(err?.message || "Failed to add user to user group");
     } finally {
@@ -117,6 +121,7 @@ export default function UserGroupMemberships({
       return;
     }
 
+    const groupName = userData?.userGroups?.find((ug) => ug.userGroup.id === groupId)?.userGroup.name ?? "group";
     setRemovingGroupId(groupId);
     setError(null);
     try {
@@ -129,6 +134,7 @@ export default function UserGroupMemberships({
       if (onUpdate) {
         onUpdate();
       }
+      showSuccess(`Removed from "${groupName}"`);
     } catch (err: any) {
       setError(err?.message || "Failed to remove user from user group");
     } finally {
@@ -315,6 +321,8 @@ export default function UserGroupMemberships({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
 }
