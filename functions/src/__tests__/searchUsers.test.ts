@@ -21,7 +21,7 @@ const mockListAllAuthUsers = vi.spyOn(helpers, "listAllAuthUsers");
 const mockGetCallableInvocation = vi.spyOn(admin, "getCallableInvocation");
 const mockUpsertCallableInvocation = vi.spyOn(admin, "upsertCallableInvocation");
 
-import { searchUsers } from "../users.js";
+import { searchUsers, invalidateDcProfileCache } from "../users.js";
 
 type Handler = (req: {
   auth: { uid: string; token?: Record<string, unknown> };
@@ -48,12 +48,10 @@ function makeAuthUser(uid: string, email: string) {
   } as unknown as import("firebase-admin").auth.UserRecord;
 }
 
-import { clearDcProfileCacheForTesting } from "../users.js";
-
 describe("searchUsers — membership status enrichment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    clearDcProfileCacheForTesting();
+    invalidateDcProfileCache();
     mockGetCallableInvocation.mockResolvedValue({ data: { callableInvocation: undefined } } as never);
     mockUpsertCallableInvocation.mockResolvedValue({
       data: { callableInvocation_upsert: { userId: "admin-uid", functionName: "searchUsers" } },
@@ -102,6 +100,17 @@ describe("searchUsers — membership status enrichment", () => {
     await handler(adminRequest());
 
     expect(mockDcListUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-fetches DC profiles after invalidateDcProfileCache, even within the TTL (see #321)", async () => {
+    mockListAllAuthUsers.mockResolvedValue([makeAuthUser("user-1", "alice@example.com")]);
+    mockDcListUsers.mockResolvedValue({ data: { users: [] } } as never);
+
+    await handler(adminRequest());
+    invalidateDcProfileCache();
+    await handler(adminRequest());
+
+    expect(mockDcListUsers).toHaveBeenCalledTimes(2);
   });
 
   it("only includes users matching the search term", async () => {

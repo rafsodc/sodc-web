@@ -10,7 +10,13 @@ import { isUserAwaitingProfile, isUserPendingApproval } from "./pendingUserAppro
 const DC_PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let dcProfileCache: { map: Map<string, MembershipStatus>; expiresAt: number } | null = null;
 
-export function clearDcProfileCacheForTesting(): void { dcProfileCache = null; }
+/**
+ * Drops the cached membershipStatus map so the next searchUsers call re-fetches from Data
+ * Connect. Call this after any write that changes User.membershipStatus (see #321) — otherwise
+ * searchUsers can keep serving a stale status for up to DC_PROFILE_CACHE_TTL_MS regardless of
+ * which admin screen or code path made the change.
+ */
+export function invalidateDcProfileCache(): void { dcProfileCache = null; }
 
 async function getDcProfileMap(): Promise<Map<string, MembershipStatus>> {
   const now = Date.now();

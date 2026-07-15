@@ -4,10 +4,12 @@ import * as admin from "@dataconnect/admin-generated";
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
 import { handleNotifyDelivery, BOUNCE_THRESHOLD } from "../notifyCallback.js";
+import * as users from "../users.js";
 
 const mockGetUserByEmail = vi.spyOn(admin, "getUserByEmail");
 const mockUpdateEmailBounceStats = vi.spyOn(admin, "updateEmailBounceStats");
 const mockUpdateUserMembershipStatus = vi.spyOn(admin, "updateUserMembershipStatus");
+const mockInvalidateDcProfileCache = vi.spyOn(users, "invalidateDcProfileCache");
 
 const BEARER = "test-bearer-token";
 
@@ -143,6 +145,7 @@ describe("handleNotifyDelivery", () => {
       userId: "user-abc",
       membershipStatus: MembershipStatus.LOST,
     });
+    expect(mockInvalidateDcProfileCache).toHaveBeenCalled();
     expect((res.status as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(200);
   });
 
