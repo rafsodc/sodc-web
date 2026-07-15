@@ -34,7 +34,7 @@ function ActionCard({ icon, title, description, onClick }: ActionCardProps) {
     <Card variant="outlined">
       <CardActionArea onClick={onClick} sx={{ height: "100%" }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1, p: 3 }}>
-          <Box sx={{ color: "primary.main" }}>{icon}</Box>
+          <Box sx={{ color: "primary.light" }}>{icon}</Box>
           <Typography variant="subtitle1" fontWeight={600}>{title}</Typography>
           <Typography variant="body2" color="text.secondary">{description}</Typography>
         </CardContent>

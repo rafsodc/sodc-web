@@ -82,7 +82,7 @@ export default function EmailVerificationMessage({
 
   return (
     <Box sx={{ textAlign: "left" }}>
-      <Typography variant="h5" sx={{ color: "primary.main", mb: 1 }}>
+      <Typography variant="h5" sx={{ color: "primary.light", mb: 1 }}>
         Verify your email
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>

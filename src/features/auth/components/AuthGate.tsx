@@ -111,7 +111,7 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
 
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
-      <Typography variant="h5" sx={{ color: "primary.main" }}>
+      <Typography variant="h5" sx={{ color: "primary.light" }}>
         Sign in
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary" }}>

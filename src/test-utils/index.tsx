@@ -1,9 +1,7 @@
 import type { ReactElement } from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { theme } from '../config/theme';
+import { ColorModeProvider } from '../shared/appShell/ColorModeProvider';
 
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -12,10 +10,7 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
+      <ColorModeProvider>{children}</ColorModeProvider>
     </QueryClientProvider>
   );
 };
@@ -27,4 +22,3 @@ const customRender = (
 
 export * from '@testing-library/react';
 export { customRender as render };
-

@@ -190,7 +190,7 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
         <Alert severity="error">{error}</Alert>
       ) : (
         <>
-          <Typography variant="h6" sx={{ mb: 1, color: "primary.main" }}>
+          <Typography variant="h6" sx={{ mb: 1, color: "primary.light" }}>
             Not enabled, no Data Connect profile ({usersWithoutProfile.length})
           </Typography>
           <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
@@ -263,7 +263,7 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
             </Table>
           </TableContainer>
 
-          <Typography variant="h6" sx={{ mb: 1, color: "primary.main" }}>
+          <Typography variant="h6" sx={{ mb: 1, color: "primary.light" }}>
             Pending membership approval ({pendingUsers.length})
           </Typography>
           <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>

@@ -122,7 +122,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h5" sx={{ color: "primary.main", mb: 1 }}>
+      <Typography variant="h5" sx={{ color: "primary.light", mb: 1 }}>
         Create account
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary" }}>

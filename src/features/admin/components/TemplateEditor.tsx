@@ -479,7 +479,7 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
                   fontSize: "0.875rem",
                   lineHeight: 1.6,
                   fontFamily: "Arial, sans-serif",
-                  "& a": { color: "primary.main" },
+                  "& a": { color: "primary.light" },
                   "& h1,h2": { fontFamily: "inherit" },
                 }}
                 dangerouslySetInnerHTML={{ __html: previewHtml }}

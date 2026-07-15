@@ -302,7 +302,7 @@ export default function AccountSettingsPage({
 
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto", py: 2 }}>
-      <Typography variant="h4" gutterBottom sx={{ color: "primary.main", mb: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ color: "primary.light", mb: 3 }}>
         Account
       </Typography>
 

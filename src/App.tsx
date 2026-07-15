@@ -296,7 +296,7 @@ function AppContent() {
     }
     return (
       <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-        <Typography variant="h4" sx={{ color: "primary.main", mb: 3 }}>
+        <Typography variant="h4" sx={{ color: "primary.light", mb: 3 }}>
           {title}
         </Typography>
         {!user ? (
