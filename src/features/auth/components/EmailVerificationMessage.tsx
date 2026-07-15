@@ -8,7 +8,6 @@ import {
   Typography,
 } from "@mui/material";
 import { sendEmailVerification, reload, type User } from "firebase/auth";
-import { colors } from "../../../config/colors";
 
 interface EmailVerificationMessageProps {
   user: User;
@@ -83,10 +82,10 @@ export default function EmailVerificationMessage({
 
   return (
     <Box sx={{ textAlign: "left" }}>
-      <Typography variant="h5" sx={{ color: colors.titlePrimary, mb: 1 }}>
+      <Typography variant="h5" sx={{ color: "primary.main", mb: 1 }}>
         Verify your email
       </Typography>
-      <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
+      <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
         We sent a link to <strong>{user.email}</strong>. Click the link in that email, then come
         back here to continue.
       </Typography>
@@ -112,10 +111,10 @@ export default function EmailVerificationMessage({
           onClick={checkVerification}
           disabled={checking}
           sx={{
-            backgroundColor: colors.callToAction,
+            backgroundColor: "secondary.main",
             color: "white",
             "&:hover": {
-              backgroundColor: colors.callToAction,
+              backgroundColor: "secondary.main",
               opacity: 0.9,
             },
           }}

@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth } from "../../../config/firebase";
-import { colors } from "../../../config/colors";
 import { syncPendingUserClaims } from "../../../shared/utils/firebaseFunctions";
 import {
   getRegistrationPasswordHelperText,
@@ -108,7 +107,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
         <Alert severity="success">
           You&apos;re in — now check your inbox.
         </Alert>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           We sent a verification link to <strong>{email}</strong>. Click the link in that email,
           then come back here to complete your profile. We look forward to welcoming you to SODC.
         </Typography>
@@ -123,10 +122,10 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h5" sx={{ color: colors.titlePrimary, mb: 1 }}>
+      <Typography variant="h5" sx={{ color: "primary.main", mb: 1 }}>
         Create account
       </Typography>
-      <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
         Register with your email address to get started.
       </Typography>
 
@@ -176,10 +175,10 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
               password !== confirmPassword
             }
             sx={{
-              backgroundColor: colors.callToAction,
+              backgroundColor: "secondary.main",
               color: "white",
               "&:hover": {
-                backgroundColor: colors.callToAction,
+                backgroundColor: "secondary.main",
                 opacity: 0.9,
               },
             }}
@@ -190,7 +189,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
       </form>
 
       {onSignInClick && (
-        <Typography variant="body2" sx={{ textAlign: "center", color: colors.titleSecondary }}>
+        <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary" }}>
           Already a member?{" "}
           <Link
             component="button"

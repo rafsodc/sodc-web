@@ -42,7 +42,6 @@ import {
 } from "@mui/icons-material";
 import { type MembershipStatus } from "@dataconnect/generated";
 import { MEMBERSHIP_STATUS_OPTIONS, MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH } from "../../../constants";
-import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import type {
   MergedUser,
@@ -94,7 +93,7 @@ export function UserGroupsListSurface({
       <PageHeader title="User Groups" onBack={onBack} />
 
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           Manage user groups that control section visibility. Groups can include individual users and/or membership
           statuses (automatically includes all users with those statuses).
         </Typography>

@@ -9,7 +9,6 @@ import {
   Snackbar,
 } from "@mui/material";
 import type { AdminUser, SearchUser } from "../../../types";
-import { colors } from "../../../config/colors";
 import { useUserSearch } from "../../users/hooks/useUserSearch";
 import {
   ITEMS_PER_PAGE,
@@ -300,7 +299,7 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
             <Alert severity="info">No users found. Try a different search term.</Alert>
           ) : (
             <>
-              <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
+              <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
                 Showing {searchResults.length} of {searchTotal} users (page {searchPage} of{" "}
                 {searchTotalPages})
               </Typography>
@@ -366,7 +365,7 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
             <Alert severity="error">{adminListError}</Alert>
           ) : (
             <>
-              <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
+              <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
                 Showing {paginatedAdminUsers.length} of {filteredAdminUsers.length} administrators
               </Typography>
               <AdminUsersTable

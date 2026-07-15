@@ -41,7 +41,7 @@ export default function PageHeader({ title, onBack, adminAction: adminActionOver
     <Box sx={{ mb: 3 }}>
       {breadcrumbs}
       <Box className="page-header" sx={{ mb: 0 }}>
-        <Typography variant="h4" className="page-header-title">
+        <Typography variant="h4" sx={{ color: "primary.main" }}>
           {title}
         </Typography>
         <Box className="page-header-actions">

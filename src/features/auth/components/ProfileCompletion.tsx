@@ -12,7 +12,6 @@ import {
   Divider,
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
-import { colors } from "../../../config/colors";
 import { executeMutation, mutationRef } from "firebase/data-connect";
 import { MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
@@ -127,7 +126,7 @@ export default function ProfileCompletion({
         <Alert severity="success" sx={{ mb: 2 }}>
           Welcome to SODC — your profile has been submitted.
         </Alert>
-        <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
           Your profile is with us and we&apos;ll be in touch once your membership has been
           activated. You can sign out and return here to check your status.
         </Typography>
@@ -137,11 +136,11 @@ export default function ProfileCompletion({
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom sx={{ color: colors.titlePrimary, mb: 1 }}>
+      <Typography variant="h5" gutterBottom sx={{ color: "primary.main", mb: 1 }}>
         Complete your profile
       </Typography>
 
-      <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 3 }}>
+      <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
         Tell us about yourself so we can set up your membership correctly.
       </Typography>
 
@@ -201,11 +200,11 @@ export default function ProfileCompletion({
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ color: colors.titlePrimary, mb: 1 }}>
+          <Typography variant="h6" sx={{ color: "primary.main", mb: 1 }}>
             Service background
           </Typography>
 
-          <Typography variant="body2" sx={{ color: colors.titleSecondary, mb: 2 }}>
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
             Tick all that apply — past or present. This helps us assign the right membership
             category when we activate your account.
           </Typography>
@@ -259,9 +258,9 @@ export default function ProfileCompletion({
               variant="contained"
               disabled={submitting || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
               sx={{
-                backgroundColor: colors.callToAction,
+                backgroundColor: "secondary.main",
                 "&:hover": {
-                  backgroundColor: colors.callToAction,
+                  backgroundColor: "secondary.main",
                   opacity: 0.9,
                 },
               }}

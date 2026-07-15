@@ -1,5 +1,4 @@
 import { Box, Step, StepLabel, Stepper, Typography } from "@mui/material";
-import { colors } from "../../../config/colors";
 import {
   ONBOARDING_STEPS,
   getOnboardingStepIndex,
@@ -26,7 +25,7 @@ export default function OnboardingShell({ activeStep, children }: OnboardingShel
           </Step>
         ))}
       </Stepper>
-      <Box sx={{ color: colors.titlePrimary }}>{children}</Box>
+      <Box sx={{ color: "primary.main" }}>{children}</Box>
     </Box>
   );
 }

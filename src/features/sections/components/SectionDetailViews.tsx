@@ -20,7 +20,6 @@ import {
 } from "@mui/material";
 import { ViewList as ViewListIcon, ViewModule as ViewModuleIcon } from "@mui/icons-material";
 import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
 import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
@@ -89,7 +88,7 @@ export function SectionDescriptionHeader({
               color="primary"
               onClick={onSubscribe}
               disabled={subscribing}
-              sx={{ backgroundColor: colors.callToAction }}
+              sx={{ backgroundColor: "secondary.main" }}
             >
               {subscribing ? "Subscribing..." : "Subscribe"}
             </Button>
@@ -185,7 +184,7 @@ export function SectionMembersView({
         </Alert>
       ) : (
         <>
-          <Typography variant="body2" sx={{ mt: 2, mb: 2, color: colors.titleSecondary }}>
+          <Typography variant="body2" sx={{ mt: 2, mb: 2, color: "text.secondary" }}>
             Showing {paginatedMembers.length} of {filteredMembers.length} {searchTerm ? "filtered " : ""}members
             {totalPages > 1 && ` (page ${page} of ${totalPages})`}
           </Typography>
@@ -401,7 +400,7 @@ export function SectionEventDetailView({
                   <Button
                     variant="contained"
                     onClick={handleGoToBook}
-                    sx={{ backgroundColor: colors.callToAction }}
+                    sx={{ backgroundColor: "secondary.main" }}
                   >
                     {hasExistingBooking ? "View my booking" : "Book this event"}
                   </Button>

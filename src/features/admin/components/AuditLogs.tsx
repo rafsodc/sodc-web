@@ -28,7 +28,6 @@ import {
 } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
-import { colors } from "../../../config/colors";
 
 interface AuditLogsProps {
   onBack: () => void;
@@ -107,7 +106,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   };
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Box sx={{ flex: 1 }}>
           <PageHeader title="Audit Logs" onBack={onBack} />

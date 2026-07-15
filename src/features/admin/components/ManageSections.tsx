@@ -19,7 +19,6 @@ import {
   type ListUserGroupsData,
 } from "@dataconnect/generated";
 import SectionEventsManager from "./SectionEventsManager";
-import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
@@ -391,7 +390,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
         <PageHeader title="Manage Sections" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Access denied. Admin privileges required to manage sections.
@@ -401,7 +400,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   }
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: colors.background, minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
       <ManageSectionsListSurface
         onBack={onBack}
         error={error}

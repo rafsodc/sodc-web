@@ -19,7 +19,6 @@ import {
   Typography,
 } from "@mui/material";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
-import { colors } from "../../../config/colors";
 import { submitGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 
@@ -260,7 +259,7 @@ export default function AdditionalGuestRequestSection({
               variant="contained"
               onClick={() => void handleSubmit()}
               disabled={submitting}
-              sx={{ mt: 0.5, backgroundColor: colors.callToAction }}
+              sx={{ mt: 0.5, backgroundColor: "secondary.main" }}
             >
               {submitting ? "Submitting…" : "Submit request"}
             </Button>

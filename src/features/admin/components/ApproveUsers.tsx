@@ -16,7 +16,6 @@ import {
   Snackbar,
 } from "@mui/material";
 import { Visibility, CheckCircle, Refresh } from "@mui/icons-material";
-import { colors } from "../../../config/colors";
 import PageHeader from "../../../shared/components/PageHeader";
 import EditUserDialog from "../../profile/components/EditUserDialog";
 import { MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
@@ -191,10 +190,10 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
         <Alert severity="error">{error}</Alert>
       ) : (
         <>
-          <Typography variant="h6" sx={{ mb: 1, color: colors.titlePrimary }}>
+          <Typography variant="h6" sx={{ mb: 1, color: "primary.main" }}>
             Not enabled, no Data Connect profile ({usersWithoutProfile.length})
           </Typography>
-          <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
+          <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
             Firebase Auth accounts where the enabled claim is not true and there is no user row
             in Data Connect. They have not completed profile registration in the database yet.
             Completing profile in the app only requires sign-in (not enabled); if they are stuck,
@@ -264,10 +263,10 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
             </Table>
           </TableContainer>
 
-          <Typography variant="h6" sx={{ mb: 1, color: colors.titlePrimary }}>
+          <Typography variant="h6" sx={{ mb: 1, color: "primary.main" }}>
             Pending membership approval ({pendingUsers.length})
           </Typography>
-          <Typography variant="body2" sx={{ mb: 2, color: colors.titleSecondary }}>
+          <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
             Has a Data Connect profile, enabled claim is not true, email verified, membership
             PENDING or blank. Use Accept to activate.
           </Typography>

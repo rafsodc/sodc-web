@@ -17,7 +17,6 @@ import AccountStatusMessage from "../../users/components/AccountStatusMessage";
 import type { UserData } from "../../../types";
 import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
-import { colors } from "../../../config/colors";
 import { ROUTES } from "../../../constants";
 import { canAttemptSignIn } from "../utils/passwordValidation";
 import { FIREBASE_MIN_PASSWORD_LENGTH } from "../../../constants/auth";
@@ -112,10 +111,10 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
 
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
-      <Typography variant="h5" sx={{ color: colors.titlePrimary }}>
+      <Typography variant="h5" sx={{ color: "primary.main" }}>
         Sign in
       </Typography>
-      <Typography variant="body2" sx={{ color: colors.titleSecondary }}>
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
         New to SODC?{" "}
         <Link component={RouterLink} to={ROUTES.REGISTER}>
           Create an account

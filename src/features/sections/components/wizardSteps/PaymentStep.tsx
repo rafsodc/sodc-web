@@ -1,5 +1,4 @@
 import { Alert, Box, Button, Chip, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
-import { colors } from "../../../../config/colors";
 import { formatGbpMajorAmount } from "../../../../shared/utils/currencyDisplay";
 import {
   bookingTicketPaymentChipColor,
@@ -70,7 +69,7 @@ export default function PaymentStep({
           variant="contained"
           disabled={payingAllTickets}
           onClick={onPayAllTickets}
-          sx={{ mt: 1, backgroundColor: colors.callToAction }}
+          sx={{ mt: 1, backgroundColor: "secondary.main" }}
         >
           {payingAllTickets ? "Starting checkout…" : "Pay for all tickets"}
         </Button>
