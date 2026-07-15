@@ -10,6 +10,7 @@ import {
   MembershipStatus,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants.js";
+import { invalidateDcProfileCache } from "./users.js";
 
 export const notifyCallbackSecret = defineSecret("NOTIFY_CALLBACK_BEARER_TOKEN");
 
@@ -98,6 +99,7 @@ export async function handleNotifyDelivery(
 
     if (newCount >= BOUNCE_THRESHOLD && user.membershipStatus !== MembershipStatus.LOST) {
       await updateUserMembershipStatus({ userId: user.id, membershipStatus: MembershipStatus.LOST });
+      invalidateDcProfileCache();
       logger.info("Set membership status to LOST due to repeated email bounces", {
         userId: user.id,
         bounceCount: newCount,

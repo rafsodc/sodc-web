@@ -11,6 +11,7 @@ import {
 } from "@dataconnect/admin-generated";
 import { govNotifyApiKey } from "./mailer";
 import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDispatcher";
+import { invalidateDcProfileCache } from "./users";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -168,6 +169,7 @@ async function updateMembershipStatusInDataConnect(
       userId,
       membershipStatus: membershipStatus as AdminMembershipStatus
     });
+    invalidateDcProfileCache();
     logger.info(`Successfully updated membership status for userId=${userId} to ${membershipStatus}`);
   } catch (error: any) {
     logger.error(`Could not update membership status in Data Connect for userId=${userId}:`, error);
