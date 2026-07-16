@@ -27,9 +27,9 @@ function assertAuth(source: string, checks: AuthExpectation[]): void {
   }
 }
 
-const ADMIN_EXPR = '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")';
-const USER_EXPR = '@auth(expr: "auth.token.enabled == true")';
-const EMAIL_VERIFIED_EXPR = '@auth(expr: "auth.token.email_verified == true")';
+const ADMIN_EXPR = "@auth(expr: \"auth.token.admin == true && auth.token.enabled == true\")";
+const USER_EXPR = "@auth(expr: \"auth.token.enabled == true\")";
+const EMAIL_VERIFIED_EXPR = "@auth(expr: \"auth.token.email_verified == true\")";
 const NO_ACCESS = "@auth(level: NO_ACCESS)";
 
 describe("Data Connect auth contracts", () => {

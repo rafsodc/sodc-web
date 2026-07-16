@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint src/App.tsx src/constants src/features src/shared src/test-utils src/types",
+    "lint": "eslint src",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",

@@ -22,7 +22,7 @@ function readFirebasercProjects(): Map<string, string> {
         }
       }
     }
-  } catch (error) {
+  } catch {
     // If we can't read .firebaserc, return empty map
   }
 

@@ -33,6 +33,9 @@ jobs:
       - name: Install functions dependencies
         run: npm ci --prefix functions
 
+      - name: Run functions lint
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run lint
+
       - name: Run functions build
         run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run build
 
