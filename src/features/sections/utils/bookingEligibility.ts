@@ -1,4 +1,5 @@
 import type { MembershipStatus } from "@dataconnect/generated";
+import { linkHasPurpose } from "./purposeLinks";
 
 /** Mirrors server `bookingRules.userMatchesUserGroup` for client-side previews. */
 export function userMatchesUserGroup(
@@ -14,10 +15,6 @@ export function userMatchesUserGroup(
 
 export function purposeGrantsSectionAccess(purpose: string): boolean {
   return purpose === "ACCESS" || purpose === "MODERATOR";
-}
-
-function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
-  return link.purpose === target || (link.purposes?.includes(target) ?? false);
 }
 
 export function userHasSectionAccess(

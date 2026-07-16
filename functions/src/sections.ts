@@ -154,9 +154,10 @@ export const getSectionMembersMerged = onCall(
         return { members: [] };
       }
 
+      // A section only has members if it has an explicit MEMBER-purpose group — ACCESS/MODERATOR
+      // only grant seeing the section, not membership. See #322.
       const links = sectionData.purposeLinks ?? [];
-      const memberLinks = links.filter((p) => linkHasPurpose(p, "MEMBER"));
-      const sourceLinks = memberLinks.length > 0 ? memberLinks : links.filter((p) => linkHasPurpose(p, "ACCESS"));
+      const sourceLinks = links.filter((p) => linkHasPurpose(p, "MEMBER"));
 
       const statuses = new Set<string>();
       const explicitMap = new Map<string, SectionMemberResponse>();

@@ -139,7 +139,7 @@ describe('sectionHelpers', () => {
       expect(result.map((u) => u.userId)).toEqual(['user-1', 'user-2', 'user-3']);
     });
 
-    it('should use ACCESS purpose when no MEMBER links exist', () => {
+    it('should return no members when the section only has ACCESS purpose links (no MEMBER group configured)', () => {
       const sectionData = {
         purposeLinks: [
           {
@@ -164,7 +164,7 @@ describe('sectionHelpers', () => {
       };
 
       const result = getAllUsersFromSection(sectionData as any);
-      expect(result).toHaveLength(1);
+      expect(result).toHaveLength(0);
     });
 
     it('should prefer MEMBER links over ACCESS for rollup', () => {
@@ -255,7 +255,7 @@ describe('sectionHelpers', () => {
       });
     });
 
-    it('should fall back to ACCESS groups when no MEMBER links', () => {
+    it('should return no member groups when the section only has ACCESS purpose links (no MEMBER group configured)', () => {
       const sectionData = {
         purposeLinks: [
           {
@@ -271,8 +271,7 @@ describe('sectionHelpers', () => {
       };
 
       const result = getMemberGroups(sectionData as any);
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('view-group-1');
+      expect(result).toHaveLength(0);
     });
   });
 

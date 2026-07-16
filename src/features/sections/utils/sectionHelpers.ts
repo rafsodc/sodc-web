@@ -1,4 +1,5 @@
 import type { SectionType, MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/generated";
+import { linkHasPurpose, type PurposeBearingLink } from "./purposeLinks";
 
 /**
  * Flattened user data from section member list
@@ -36,11 +37,6 @@ export function isMembersSection(section: { type: SectionType }): boolean {
   return section.type === "MEMBERS";
 }
 
-type PurposeBearingLink = {
-  purpose?: string;
-  purposes?: string[] | null;
-};
-
 type PurposeLinkWithUsers = PurposeBearingLink & {
   userGroup: {
     id: string;
@@ -58,22 +54,19 @@ type PurposeLinkWithUsers = PurposeBearingLink & {
   };
 };
 
-// TODO: Extract to a shared utility module and reuse across bookingEligibility, sections, and bookingRules.
-function linkHasPurpose(link: PurposeBearingLink, target: string): boolean {
-  return link.purpose === target || (link.purposes?.includes(target) ?? false);
-}
-
 type SectionDataWithPurposeLinks = {
   purposeLinks?: PurposeLinkWithUsers[];
 };
 
-/** MEMBER-purpose groups for rollup; if none, ACCESS-purpose groups (legacy fallback). */
+/**
+ * MEMBER-purpose groups for rollup. A section only has members if it has an explicit
+ * MEMBER-purpose group — ACCESS/MODERATOR only grant seeing the section, not membership. See #322.
+ */
 function getRollupPurposeLinks(
   sectionData: SectionDataWithPurposeLinks | null | undefined
 ): PurposeLinkWithUsers[] {
   const links = sectionData?.purposeLinks ?? [];
-  const memberLinks = links.filter((l) => linkHasPurpose(l, "MEMBER"));
-  return memberLinks.length > 0 ? memberLinks : links.filter((l) => linkHasPurpose(l, "ACCESS"));
+  return links.filter((l) => linkHasPurpose(l, "MEMBER"));
 }
 
 /**
@@ -143,7 +136,7 @@ type SectionMemberGroupData = {
 };
 
 /**
- * Member-list / subscription groups: MEMBER purpose, or ACCESS if no MEMBER rows (legacy fallback).
+ * Member-list / subscription groups: only groups with an explicit MEMBER-purpose link. See #322.
  */
 export function getMemberGroups(
   sectionData: SectionMemberGroupData | null | undefined,
@@ -157,9 +150,9 @@ export function getMemberGroups(
   if (!sectionData?.purposeLinks?.length) {
     return [];
   }
-  const member = sectionData.purposeLinks.filter((l) => linkHasPurpose(l, "MEMBER"));
-  const source = member.length > 0 ? member : sectionData.purposeLinks.filter((l) => linkHasPurpose(l, "ACCESS"));
-  return source.map((groupRelation) => groupRelation.userGroup);
+  return sectionData.purposeLinks
+    .filter((l) => linkHasPurpose(l, "MEMBER"))
+    .map((groupRelation) => groupRelation.userGroup);
 }
 
 /**

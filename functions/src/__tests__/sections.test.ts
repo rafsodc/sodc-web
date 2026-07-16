@@ -301,4 +301,32 @@ describe("getSectionMembersMerged", () => {
       expect.objectContaining({ id: "user-2", sharesContactInfo: false, email: null }),
     ]);
   });
+
+  it("returns no members for a section with only an ACCESS-purpose group and no MEMBER group (#322)", async () => {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionId,
+          name: "Test Section",
+          type: "MEMBERS",
+          description: null,
+          purposeLinks: [
+            {
+              purposes: ["ACCESS"],
+              userGroup: {
+                id: accessGroupId,
+                name: "Access",
+                membershipStatuses: null,
+                users: [{ user: member() }],
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members).toEqual([]);
+  });
 });
