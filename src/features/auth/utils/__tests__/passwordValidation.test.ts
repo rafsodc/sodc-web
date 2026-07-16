@@ -11,16 +11,16 @@ import {
 
 describe("passwordValidation", () => {
   it("uses shared registration minimum length", () => {
-    expect(REGISTRATION_MIN_PASSWORD_LENGTH).toBe(6);
-    expect(getRegistrationPasswordHelperText()).toBe("Must be at least 6 characters");
+    expect(REGISTRATION_MIN_PASSWORD_LENGTH).toBe(12);
+    expect(getRegistrationPasswordHelperText()).toBe("Must be at least 12 characters");
   });
 
   it("rejects registration passwords below the minimum", () => {
-    expect(validateRegistrationPassword("12345")).toEqual({
+    expect(validateRegistrationPassword("123456789012").isValid).toBe(true);
+    expect(validateRegistrationPassword("12345678901")).toEqual({
       isValid: false,
-      error: "Password must be at least 6 characters",
+      error: "Password must be at least 12 characters",
     });
-    expect(validateRegistrationPassword("123456").isValid).toBe(true);
   });
 
   it("allows sign-in at the Firebase minimum length", () => {

@@ -9,7 +9,7 @@ import {
 describe('auth constants', () => {
   it('should export password length constants for onboarding', () => {
     expect(FIREBASE_MIN_PASSWORD_LENGTH).toBe(6);
-    expect(REGISTRATION_MIN_PASSWORD_LENGTH).toBe(6);
+    expect(REGISTRATION_MIN_PASSWORD_LENGTH).toBe(12);
   });
   it('should export USER_ACCESS expression', () => {
     expect(AUTH_EXPRESSIONS.USER_ACCESS).toBe('auth.token.enabled == true');

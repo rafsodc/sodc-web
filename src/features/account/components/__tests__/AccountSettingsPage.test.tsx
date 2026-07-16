@@ -219,15 +219,40 @@ describe("AccountSettingsPage", () => {
     );
 
     await user.type(currentPasswordInput, "old-pass");
-    await user.type(newPasswordInput, "new-pass");
-    await user.type(confirmPasswordInputs[1]!, "new-pass");
+    await user.type(newPasswordInput, "new-password123");
+    await user.type(confirmPasswordInputs[1]!, "new-password123");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
       expect(reauthenticateWithCredential).toHaveBeenCalled();
-      expect(updatePassword).toHaveBeenCalledWith(mockUser, "new-pass");
+      expect(updatePassword).toHaveBeenCalledWith(mockUser, "new-password123");
     });
     expect(screen.getByText("Password updated successfully")).toBeInTheDocument();
+  });
+
+  it("rejects a new password below the shared minimum length (#208)", async () => {
+    const user = userEvent.setup();
+    const { updatePassword } = await import("firebase/auth");
+
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    const currentPasswordInput = document.querySelector(
+      'input[autocomplete="current-password"]'
+    ) as HTMLInputElement;
+    const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
+
+    await user.type(currentPasswordInput, "old-pass");
+    await user.type(newPasswordInputs[0]!, "short12345");
+    await user.type(newPasswordInputs[1]!, "short12345");
+
+    expect(screen.getByRole("button", { name: "Update password" })).toBeDisabled();
+    expect(updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("shows the shared minimum length in the new password helper text", () => {
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    expect(screen.getByText("Must be at least 12 characters")).toBeInTheDocument();
   });
 
   it("resigns membership and signs out", async () => {
@@ -295,8 +320,8 @@ describe("AccountSettingsPage", () => {
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "pass");
-    await user.type(newPasswordInputs[0]!, "newpass123");
-    await user.type(newPasswordInputs[1]!, "newpass123");
+    await user.type(newPasswordInputs[0]!, "newpassword123");
+    await user.type(newPasswordInputs[1]!, "newpassword123");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
@@ -360,8 +385,8 @@ describe("AccountSettingsPage", () => {
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "wrong-pass");
-    await user.type(newPasswordInputs[0]!, "newpass123");
-    await user.type(newPasswordInputs[1]!, "newpass123");
+    await user.type(newPasswordInputs[0]!, "newpassword123");
+    await user.type(newPasswordInputs[1]!, "newpassword123");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
@@ -383,8 +408,8 @@ describe("AccountSettingsPage", () => {
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "pass");
-    await user.type(newPasswordInputs[0]!, "newpass123");
-    await user.type(newPasswordInputs[1]!, "newpass123");
+    await user.type(newPasswordInputs[0]!, "newpassword123");
+    await user.type(newPasswordInputs[1]!, "newpassword123");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
@@ -407,8 +432,8 @@ describe("AccountSettingsPage", () => {
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "pass");
-    await user.type(newPasswordInputs[0]!, "newpass123");
-    await user.type(newPasswordInputs[1]!, "newpass123");
+    await user.type(newPasswordInputs[0]!, "newpassword123");
+    await user.type(newPasswordInputs[1]!, "newpassword123");
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {

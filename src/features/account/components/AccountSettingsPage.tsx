@@ -42,6 +42,10 @@ import { resignMembership } from "../../../shared/utils/firebaseFunctions";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { canUserResignMembership } from "../../users/utils/membershipStatusValidation";
 import { useColorMode, type ColorModePreference } from "../../../shared/appShell/ColorModeContext";
+import {
+  getRegistrationPasswordHelperText,
+  validateRegistrationPassword,
+} from "../../auth/utils/passwordValidation";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -230,8 +234,9 @@ export default function AccountSettingsPage({
     setPasswordError(null);
     setPasswordSuccess(false);
 
-    if (newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters");
+    const passwordValidation = validateRegistrationPassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.error ?? "Password does not meet the minimum requirements");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -426,7 +431,7 @@ export default function AccountSettingsPage({
                     required
                     fullWidth
                     disabled={passwordSubmitting}
-                    helperText="At least 6 characters"
+                    helperText={getRegistrationPasswordHelperText()}
                   />
                   <TextField
                     label="Confirm new password"
@@ -445,7 +450,7 @@ export default function AccountSettingsPage({
                       disabled={
                         passwordSubmitting ||
                         !currentPassword ||
-                        newPassword.length < 6 ||
+                        !validateRegistrationPassword(newPassword).isValid ||
                         newPassword !== confirmPassword
                       }
                       sx={{
