@@ -19,7 +19,6 @@ import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
 import { ROUTES } from "../../../constants";
 import { canAttemptSignIn } from "../utils/passwordValidation";
-import { FIREBASE_MIN_PASSWORD_LENGTH } from "../../../constants/auth";
 
 interface AuthGateProps {
   userData?: UserData | null;
@@ -152,10 +151,6 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
           </Button>
         </Stack>
       </form>
-
-      <Typography variant="caption" color="text.secondary">
-        Sign-in requires at least {FIREBASE_MIN_PASSWORD_LENGTH} characters (Firebase minimum).
-      </Typography>
     </Stack>
   );
 }
