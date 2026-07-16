@@ -15,8 +15,11 @@ import {
   Stack,
   Switch,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import { DarkMode, LightMode, SettingsBrightness } from "@mui/icons-material";
 import {
   useGetMyAnnouncementPreferences,
   useOptOutSectionAnnouncement,
@@ -38,6 +41,7 @@ import type { UserData } from "../../../types";
 import { resignMembership } from "../../../shared/utils/firebaseFunctions";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { canUserResignMembership } from "../../users/utils/membershipStatusValidation";
+import { useColorMode, type ColorModePreference } from "../../../shared/appShell/ColorModeContext";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -208,6 +212,8 @@ export default function AccountSettingsPage({
   const [shareContactInfoError, setShareContactInfoError] = useState<string | null>(null);
   const [shareContactInfoOverride, setShareContactInfoOverride] = useState<boolean | null>(null);
 
+  const { preference: colorModePreference, setPreference: setColorModePreference } = useColorMode();
+
   const canChangePassword = usesEmailPassword(user);
   const membershipStatus = userData?.membershipStatus ?? null;
   const membershipLabel = userDataLoading && !userData
@@ -302,7 +308,7 @@ export default function AccountSettingsPage({
 
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto", py: 2 }}>
-      <Typography variant="h4" gutterBottom sx={{ color: "primary.main", mb: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ color: "primary.light", mb: 3 }}>
         Account
       </Typography>
 
@@ -320,6 +326,39 @@ export default function AccountSettingsPage({
           <Button component={RouterLink} to={ROUTES.PROFILE} variant="outlined">
             Edit profile details
           </Button>
+        </Box>
+
+        <Divider />
+
+        <Box component="section" aria-labelledby="appearance-heading">
+          <Typography id="appearance-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
+            Appearance
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Choose whether the site follows your device's light/dark setting, or always uses a
+            specific one.
+          </Typography>
+          <ToggleButtonGroup
+            value={colorModePreference}
+            exclusive
+            onChange={(_, value: ColorModePreference | null) => {
+              if (value) setColorModePreference(value);
+            }}
+            aria-label="Appearance"
+          >
+            <ToggleButton value="system" aria-label="System">
+              <SettingsBrightness fontSize="small" sx={{ mr: 1 }} />
+              System
+            </ToggleButton>
+            <ToggleButton value="light" aria-label="Light">
+              <LightMode fontSize="small" sx={{ mr: 1 }} />
+              Light
+            </ToggleButton>
+            <ToggleButton value="dark" aria-label="Dark">
+              <DarkMode fontSize="small" sx={{ mr: 1 }} />
+              Dark
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         <Divider />

@@ -5,6 +5,7 @@ import { signOut, type User } from "firebase/auth";
 import { auth } from "../../config/firebase";
 import type { UserData } from "../../types";
 import { useEnabledClaim } from "../../features/users/hooks/useEnabledClaim";
+import ColorModeToggle from "./ColorModeToggle";
 
 interface HeaderProps {
   user: User | null;
@@ -118,6 +119,7 @@ export default function Header({
           SODC
         </Typography>
         <Box sx={{ flexGrow: 1 }} />
+        <ColorModeToggle />
         {user ? (
           <>
             <Button

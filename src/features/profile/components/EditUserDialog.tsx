@@ -316,7 +316,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
 
               <Divider sx={{ my: 2 }} />
 
-              <Typography variant="h6" sx={{ color: "primary.main", mb: 1 }}>
+              <Typography variant="h6" sx={{ color: "primary.light", mb: 1 }}>
                 Service Background
               </Typography>
 

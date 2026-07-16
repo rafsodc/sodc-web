@@ -40,7 +40,7 @@ export default function MemberWelcomePage({
       <Typography
         variant="h4"
         component="h1"
-        sx={{ color: "primary.main", fontWeight: 500, mb: 1 }}
+        sx={{ color: "primary.light", fontWeight: 500, mb: 1 }}
       >
         Welcome, {displayName}
       </Typography>

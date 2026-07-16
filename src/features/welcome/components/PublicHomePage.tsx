@@ -12,7 +12,7 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
         variant="h3"
         component="h1"
         sx={{
-          color: "primary.main",
+          color: "primary.light",
           fontWeight: 400,
           fontSize: { xs: "2rem", sm: "2.75rem" },
           mb: 1,

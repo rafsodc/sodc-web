@@ -140,7 +140,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
 
   return (
     <Box sx={{ maxWidth: "600px", mx: "auto" }}>
-      <Typography variant="h4" gutterBottom sx={{ color: "primary.main", mb: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ color: "primary.light", mb: 3 }}>
         Profile
       </Typography>
 
@@ -252,7 +252,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ color: "primary.main", mb: 1 }}>
+          <Typography variant="h6" sx={{ color: "primary.light", mb: 1 }}>
             Service Background
           </Typography>
 

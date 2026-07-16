@@ -25,7 +25,7 @@ export default function OnboardingShell({ activeStep, children }: OnboardingShel
           </Step>
         ))}
       </Stepper>
-      <Box sx={{ color: "primary.main" }}>{children}</Box>
+      <Box sx={{ color: "primary.light" }}>{children}</Box>
     </Box>
   );
 }

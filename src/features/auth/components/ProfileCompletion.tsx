@@ -136,7 +136,7 @@ export default function ProfileCompletion({
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom sx={{ color: "primary.main", mb: 1 }}>
+      <Typography variant="h5" gutterBottom sx={{ color: "primary.light", mb: 1 }}>
         Complete your profile
       </Typography>
 
@@ -200,7 +200,7 @@ export default function ProfileCompletion({
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6" sx={{ color: "primary.main", mb: 1 }}>
+          <Typography variant="h6" sx={{ color: "primary.light", mb: 1 }}>
             Service background
           </Typography>
 
