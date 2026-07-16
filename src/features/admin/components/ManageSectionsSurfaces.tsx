@@ -270,7 +270,16 @@ export function SectionEditorDialogSurface({
                 No user groups assigned to this section.
               </Alert>
             ) : (
-              <TableContainer component={Paper} sx={{ mb: 2 }}>
+              <>
+                {sectionType === "MEMBERS" &&
+                  !sectionUserGroups.some((group) => group.purpose === SectionUserGroupPurpose.MEMBER) && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      This section has no MEMBER-purpose group, so it has no members — ACCESS/MODERATOR only
+                      grant seeing the section, not membership. Add a MEMBER-purpose group below if this
+                      section should have a member list.
+                    </Alert>
+                  )}
+                <TableContainer component={Paper} sx={{ mb: 2 }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -321,7 +330,8 @@ export function SectionEditorDialogSurface({
                     ))}
                   </TableBody>
                 </Table>
-              </TableContainer>
+                </TableContainer>
+              </>
             )}
 
             <Button
