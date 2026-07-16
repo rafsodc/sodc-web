@@ -165,10 +165,41 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
 
 // ── Personalisation helpers ───────────────────────────────────────────────────
 
-function extractTemplateVariables(body: string, subject: string): string[] {
+export function extractTemplateVariables(body: string, subject: string): string[] {
   const text = `${body} ${subject}`;
   const matches = [...text.matchAll(/\(\(([^)]+)\)\)/g)];
   return [...new Set(matches.map((m) => m[1].trim()))];
+}
+
+/**
+ * Filters a recipient's full candidate personalisation down to only the keys the selected
+ * template actually references. GOV Notify ignores extra personalisation keys at render time,
+ * but that doesn't stop the data being sent — every field here is member PII, so we only
+ * transmit what the template will actually display. See #362.
+ */
+export function buildRecipientPersonalisation(
+  recipient: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    membershipStatus: string;
+  },
+  sectionName: string,
+  unsubscribeUrl: string,
+  requiredPersonalisation: string[]
+): Record<string, string> {
+  const candidate: Record<string, string> = {
+    firstName: recipient.firstName,
+    lastName: recipient.lastName,
+    email: recipient.email,
+    serviceNumber: recipient.serviceNumber,
+    membershipStatus: recipient.membershipStatus,
+    section: sectionName,
+    unsubscribeUrl,
+  };
+  const required = new Set(requiredPersonalisation);
+  return Object.fromEntries(Object.entries(candidate).filter(([key]) => required.has(key)));
 }
 
 const PREVIEW_PLACEHOLDERS: Record<string, string> = {
@@ -288,11 +319,19 @@ interface AnnouncementEmailTask {
   lastName: string;
   email: string;
   personalisation: Record<string, string>;
+  /**
+   * Always present regardless of whether the template's visible text references
+   * ((unsubscribeUrl)) — GOV Notify requires a one-click-unsubscribe URL for bulk email
+   * independent of what the template body displays. Kept separate from `personalisation`
+   * (which is filtered down to only what the template references) so filtering can never
+   * silently disable this.
+   */
+  unsubscribeUrl: string;
   templateUuid: string;
 }
 
 export const sendSectionAnnouncement = onCall(
-  { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret] },
+  { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret, govNotifyApiKey] },
   async (request): Promise<SendAnnouncementResult> => {
     requireAuth(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
@@ -303,6 +342,13 @@ export const sendSectionAnnouncement = onCall(
     const callerUid = request.auth!.uid;
 
     await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
+
+    const apiKey = govNotifyApiKey.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
+    const client = new NotifyClient(apiKey);
+    const templateResponse = await client.getTemplateById(templateUuid);
+    const template = templateResponse.data as { body?: string; subject?: string };
+    const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
     const [{ recipients, sectionName }, optOutResult] = await Promise.all([
       resolveRecipients(sectionId, callerUid),
@@ -330,23 +376,22 @@ export const sendSectionAnnouncement = onCall(
         continue;
       }
 
-      const personalisation: Record<string, string> = {
-        firstName: recipient.firstName,
-        lastName: recipient.lastName,
-        email: recipient.email,
-        serviceNumber: recipient.serviceNumber,
-        membershipStatus: recipient.membershipStatus,
-        section: sectionName,
-        unsubscribeUrl: `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
-          {
-            userId: recipient.id,
-            sectionId,
-            sectionName,
-            exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
-          },
-          secret
-        )}`,
-      };
+      const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+        {
+          userId: recipient.id,
+          sectionId,
+          sectionName,
+          exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
+        },
+        secret
+      )}`;
+
+      const personalisation = buildRecipientPersonalisation(
+        recipient,
+        sectionName,
+        unsubscribeUrl,
+        requiredPersonalisation
+      );
 
       tasks.push({
         sendId: "",  // filled in after createAnnouncementSend
@@ -355,6 +400,7 @@ export const sendSectionAnnouncement = onCall(
         lastName: recipient.lastName,
         email: recipient.email,
         personalisation,
+        unsubscribeUrl,
         templateUuid,
       });
     }
@@ -418,7 +464,7 @@ export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
     retryConfig: { maxAttempts: 3, minBackoffSeconds: 10, maxBackoffSeconds: 60 },
   },
   async (req) => {
-    const { sendId, recipientId, firstName, lastName, email, personalisation, templateUuid } = req.data;
+    const { sendId, recipientId, firstName, lastName, email, personalisation, unsubscribeUrl, templateUuid } = req.data;
 
     const client = new NotifyClient(govNotifyApiKey.value());
     let status: "sent" | "failed" = "sent";
@@ -428,7 +474,7 @@ export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
       await client.sendEmail(templateUuid, email, {
         personalisation,
         reference: buildAnnouncementReference(sendId, recipientId),
-        oneClickUnsubscribeURL: personalisation.unsubscribeUrl,
+        oneClickUnsubscribeURL: unsubscribeUrl,
       } as Parameters<typeof client.sendEmail>[2]);
     } catch (err) {
       status = "failed";
