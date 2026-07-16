@@ -86,9 +86,19 @@ function renderAccountSettings(props: ComponentProps<typeof AccountSettingsPage>
   );
 }
 
+function clearCookies() {
+  document.cookie.split(";").forEach((cookie) => {
+    const name = cookie.split("=")[0]?.trim();
+    if (name) {
+      document.cookie = `${name}=; max-age=0; path=/`;
+    }
+  });
+}
+
 describe("AccountSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearCookies();
   });
 
   it("shows read-only membership status and profile link", () => {
@@ -101,6 +111,32 @@ describe("AccountSettingsPage", () => {
       "href",
       "/profile"
     );
+  });
+
+  it("defaults the Appearance selector to System", () => {
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    expect(screen.getByRole("button", { name: "System" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("selecting Dark in Appearance persists the choice", async () => {
+    const user = userEvent.setup();
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+
+    expect(screen.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.cookie).toContain("sodc-color-mode-preference=dark");
+  });
+
+  it("selecting Light in Appearance persists the choice", async () => {
+    const user = userEvent.setup();
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    await user.click(screen.getByRole("button", { name: "Light" }));
+
+    expect(screen.getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.cookie).toContain("sodc-color-mode-preference=light");
   });
 
   it("shows the privacy toggle on by default", () => {

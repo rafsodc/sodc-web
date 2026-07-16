@@ -4,47 +4,30 @@ import { render, screen } from "../../../test-utils";
 import ColorModeToggle from "../ColorModeToggle";
 
 describe("ColorModeToggle", () => {
-  it("shows the appearance menu with System, Light, and Dark options", async () => {
-    const user = userEvent.setup();
+  it("shows a switch reflecting the current resolved mode", () => {
     render(<ColorModeToggle />);
 
-    await user.click(screen.getByRole("button", { name: "Appearance" }));
-
-    expect(screen.getByRole("menuitem", { name: "System" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Light" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Dark" })).toBeInTheDocument();
+    expect(screen.getByRole("switch")).toBeInTheDocument();
   });
 
-  it("defaults to System selected", async () => {
+  it("toggling the switch flips resolved mode", async () => {
     const user = userEvent.setup();
     render(<ColorModeToggle />);
 
-    await user.click(screen.getByRole("button", { name: "Appearance" }));
+    const initiallyChecked = (screen.getByRole("switch") as HTMLInputElement).checked;
+    await user.click(screen.getByRole("switch"));
 
-    expect(screen.getByRole("menuitem", { name: "System" })).toHaveClass("Mui-selected");
+    expect((screen.getByRole("switch") as HTMLInputElement).checked).toBe(!initiallyChecked);
   });
 
-  it("selecting Dark closes the menu and marks Dark as selected next time it's opened", async () => {
+  it("toggling twice returns to the original resolved mode", async () => {
     const user = userEvent.setup();
     render(<ColorModeToggle />);
 
-    await user.click(screen.getByRole("button", { name: "Appearance" }));
-    await user.click(screen.getByRole("menuitem", { name: "Dark" }));
+    const initiallyChecked = (screen.getByRole("switch") as HTMLInputElement).checked;
+    await user.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("switch"));
 
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Appearance" }));
-    expect(screen.getByRole("menuitem", { name: "Dark" })).toHaveClass("Mui-selected");
-  });
-
-  it("selecting Light marks Light as selected next time it's opened", async () => {
-    const user = userEvent.setup();
-    render(<ColorModeToggle />);
-
-    await user.click(screen.getByRole("button", { name: "Appearance" }));
-    await user.click(screen.getByRole("menuitem", { name: "Light" }));
-
-    await user.click(screen.getByRole("button", { name: "Appearance" }));
-    expect(screen.getByRole("menuitem", { name: "Light" })).toHaveClass("Mui-selected");
+    expect((screen.getByRole("switch") as HTMLInputElement).checked).toBe(initiallyChecked);
   });
 });

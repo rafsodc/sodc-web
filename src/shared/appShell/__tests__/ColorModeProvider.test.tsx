@@ -16,30 +16,18 @@ function mockMatchMedia(matches: boolean) {
   })) as unknown as typeof window.matchMedia;
 }
 
-function createMockStorage(): Storage {
-  const store = new Map<string, string>();
-  return {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      store.set(key, value);
-    },
-    removeItem: (key: string) => {
-      store.delete(key);
-    },
-    clear: () => store.clear(),
-    key: (index: number) => Array.from(store.keys())[index] ?? null,
-    get length() {
-      return store.size;
-    },
-  };
+function clearCookies() {
+  document.cookie.split(";").forEach((cookie) => {
+    const name = cookie.split("=")[0]?.trim();
+    if (name) {
+      document.cookie = `${name}=; max-age=0; path=/`;
+    }
+  });
 }
 
 describe("ColorModeProvider / useColorMode", () => {
   beforeEach(() => {
-    Object.defineProperty(window, "localStorage", {
-      value: createMockStorage(),
-      writable: true,
-    });
+    clearCookies();
   });
 
   it("defaults to system preference resolving to light when the OS prefers light", () => {
@@ -68,17 +56,19 @@ describe("ColorModeProvider / useColorMode", () => {
     expect(result.current.resolvedMode).toBe("dark");
   });
 
-  it("persists an explicit preference and restores it on the next mount", () => {
+  it("persists an explicit preference in a cookie and restores it on the next mount", () => {
     mockMatchMedia(false);
     const first = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
     act(() => first.result.current.setPreference("dark"));
+
+    expect(document.cookie).toContain("sodc-color-mode-preference=dark");
 
     const second = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
     expect(second.result.current.preference).toBe("dark");
     expect(second.result.current.resolvedMode).toBe("dark");
   });
 
-  it("setPreference('system') clears the stored preference and follows the OS again", () => {
+  it("setPreference('system') clears the cookie and follows the OS again", () => {
     mockMatchMedia(true);
     const { result } = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
 
@@ -88,7 +78,41 @@ describe("ColorModeProvider / useColorMode", () => {
     act(() => result.current.setPreference("system"));
     expect(result.current.preference).toBe("system");
     expect(result.current.resolvedMode).toBe("dark");
-    expect(window.localStorage.getItem("sodc-color-mode-preference")).toBeNull();
+    expect(document.cookie).not.toContain("sodc-color-mode-preference=");
+  });
+
+  it("toggleSessionMode flips resolvedMode without changing the persisted preference", () => {
+    mockMatchMedia(false);
+    const { result } = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
+
+    expect(result.current.resolvedMode).toBe("light");
+
+    act(() => result.current.toggleSessionMode());
+
+    expect(result.current.resolvedMode).toBe("dark");
+    expect(result.current.preference).toBe("system");
+    expect(document.cookie).not.toContain("sodc-color-mode-preference=");
+  });
+
+  it("a fresh mount ignores a previous session's toggleSessionMode override", () => {
+    mockMatchMedia(false);
+    const first = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
+    act(() => first.result.current.toggleSessionMode());
+    expect(first.result.current.resolvedMode).toBe("dark");
+
+    const second = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
+    expect(second.result.current.resolvedMode).toBe("light");
+  });
+
+  it("setPreference clears any active session override", () => {
+    mockMatchMedia(false);
+    const { result } = renderHook(() => useColorMode(), { wrapper: ColorModeProvider });
+
+    act(() => result.current.toggleSessionMode());
+    expect(result.current.resolvedMode).toBe("dark");
+
+    act(() => result.current.setPreference("light"));
+    expect(result.current.resolvedMode).toBe("light");
   });
 
   it("throws when useColorMode is used outside a ColorModeProvider", () => {
