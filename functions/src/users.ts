@@ -6,6 +6,13 @@ import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAM
 import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { isUserAwaitingProfile, isUserPendingApproval } from "./pendingUserApproval";
+import { notifyAdminsUserPendingApproval } from "./pendingApprovalAdminAlert";
+
+const APP_BASE_URL = (() => {
+  const url = process.env.APP_BASE_URL || "http://localhost:5173";
+  try { new URL(url); } catch { throw new Error(`APP_BASE_URL is not a valid URL: "${url}"`); }
+  return url.replace(/\/$/, "");
+})();
 
 const DC_PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let dcProfileCache: { map: Map<string, MembershipStatus>; expiresAt: number } | null = null;
@@ -282,6 +289,15 @@ export const syncPendingUserClaims = onCall(
         enabled: false,
       });
       logger.info(`syncPendingUserClaims: enabled=false for uid=${uid}`);
+
+      // Non-blocking: no-ops unless this call is what actually put the user into the approval
+      // queue (verified email + profile submitted + awaiting approval) — see #271.
+      void notifyAdminsUserPendingApproval({
+        userId: uid,
+        emailVerified: userRecord.emailVerified,
+        appBaseUrl: APP_BASE_URL,
+      });
+
       return { success: true };
     } catch (e: unknown) {
       handleFunctionError(e, "syncing pending user claims");

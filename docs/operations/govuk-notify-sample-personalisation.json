@@ -125,5 +125,14 @@
     "previousTotalFormatted": "35.00 GBP",
     "revisedTotalFormatted": "50.00 GBP",
     "deltaAmountFormatted": "+15.00 GBP"
+  },
+  "newUserPendingApprovalAlert": {
+    "firstName": "Ada",
+    "lastName": "Lovelace",
+    "email": "ada@example.com",
+    "serviceNumber": "S123456",
+    "serviceBackgroundSummary": "Regular, Reserve",
+    "requestedMembershipStatus": "Regular",
+    "approveUsersUrl": "https://app.example/admin/users/approvals"
   }
 }

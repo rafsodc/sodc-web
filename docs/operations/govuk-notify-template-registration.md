@@ -39,10 +39,11 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
 | `guestTicketRequestRejected` | `GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_REJECTED` | | | | [ ] |
 | `bookingConfirmation` | `GOV_NOTIFY_TEMPLATE_BOOKING_CONFIRMATION` | | | | [ ] |
 | `bookingRevision` | `GOV_NOTIFY_TEMPLATE_BOOKING_REVISION` | | | | [ ] |
+| `newUserPendingApprovalAlert` | `GOV_NOTIFY_TEMPLATE_NEW_USER_PENDING_APPROVAL_ALERT` | | | | [ ] |
 
 ## Suggested order
 
-1. Dev — all 12 templates, then E2E smoke tests  
+1. Dev — all 13 templates, then E2E smoke tests  
 2. Beta — clone copy, new UUIDs, repeat smoke tests  
 3. Prod — final copy review, register UUIDs, enable sends  
 

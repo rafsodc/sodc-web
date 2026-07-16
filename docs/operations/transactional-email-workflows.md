@@ -83,6 +83,18 @@ flowchart LR
 | **Templates** | `bookingConfirmation` (new booking); `bookingRevision` (supersedes prior booking) |
 | **Deep dive** | [govuk-notify-booking-templates.md](./govuk-notify-booking-templates.md) |
 
+### Approval queue (internal)
+
+| | |
+|---|---|
+| **Trigger** | `syncPendingUserClaims` (runs at registration and again after profile submit) where the user is newly `isUserPendingApproval` (verified email + `enabled` claim not true + membership status awaiting approval) |
+| **Entrypoint** | [`users.ts`](../../functions/src/users.ts) → [`pendingApprovalAdminAlert.ts`](../../functions/src/pendingApprovalAdminAlert.ts) |
+| **Recipient** | All current admins (`getAdminUsers()`) |
+| **No send** | No Data Connect profile yet; email not verified; membership status not awaiting approval; no admin recipients |
+| **Delivery key** | `pending-approval:{userId}:{adminEmail}` |
+| **Templates** | `newUserPendingApprovalAlert` |
+| **Deep dive** | [govuk-notify-pending-approval-templates.md](./govuk-notify-pending-approval-templates.md) |
+
 ## Manual QA (Beta)
 
 After templates are provisioned per Firebase environment (see [govuk-notify-template-registration.md](./govuk-notify-template-registration.md)):
@@ -93,6 +105,7 @@ After templates are provisioned per Firebase environment (see [govuk-notify-temp
 - [ ] Admin activates member / restricts member → correct user email
 - [ ] Guest ticket submit → moderator inboxes; approve/reject → booker
 - [ ] New booking → confirmation; revision → revision email; same idempotency key replay → no second email
+- [ ] Register, verify email, complete profile → admin alert; repeat profile-submit call → no second email to the same admin
 
 ## Related issues
 
