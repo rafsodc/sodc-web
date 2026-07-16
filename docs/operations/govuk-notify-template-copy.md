@@ -344,3 +344,30 @@ Payments: ((myPaymentsUrl))
 ```
 
 **Placeholders used:** all confirmation keys plus `previousRevisionNumber`, `revisedRevisionNumber`, `paymentAdjustmentStatus`, `previousTotalFormatted`, `revisedTotalFormatted`, `deltaAmountFormatted`
+
+---
+
+## Internal approval queue
+
+### `newUserPendingApprovalAlert`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_NEW_USER_PENDING_APPROVAL_ALERT`
+
+**Subject:** [SODC] New member awaiting approval — ((firstName)) ((lastName))
+
+**Body:**
+
+```
+A new member has completed their profile and is awaiting approval.
+
+Name: ((firstName)) ((lastName))
+Email: ((email))
+Service number: ((serviceNumber))
+Service background: ((serviceBackgroundSummary))
+Requested status: ((requestedMembershipStatus))
+
+Review in Approve Users:
+((approveUsersUrl))
+```
+
+**Placeholders used:** `firstName`, `lastName`, `email`, `serviceNumber`, `serviceBackgroundSummary`, `requestedMembershipStatus`, `approveUsersUrl`

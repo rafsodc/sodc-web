@@ -26,6 +26,7 @@ Sent because of a **user action or system state change** the user or operator mu
 | Membership access | Account activated, access restricted | No — tied to status change |
 | Guest ticket moderation | Moderator alert, approve/reject to booker | No — tied to request workflow |
 | Internal payment ops | Reconciliation exception, dispute alert | N/A (internal recipients only) |
+| Internal approval queue | New user entering Approve Users queue | N/A (internal recipients only) |
 
 **Rules**
 
@@ -59,6 +60,7 @@ Lower priority or bulk-style messages. **Do not implement** without explicit pro
 | Membership | `membershipActivated`, `membershipAccessRestricted` |
 | Guest tickets | `guestTicketRequestSubmittedModerator`, `guestTicketRequestApproved`, `guestTicketRequestRejected` |
 | Bookings | `bookingConfirmation`, `bookingRevision` |
+| Approval queue (internal) | `newUserPendingApprovalAlert` |
 
 Configuration: [environment-and-secrets.md](./environment-and-secrets.md). Registration: [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 
