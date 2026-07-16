@@ -165,10 +165,26 @@ async function resolveRecipients(sectionId: string, callerUid: string): Promise<
 
 // ── Personalisation helpers ───────────────────────────────────────────────────
 
+/**
+ * Extracts GOV Notify ((placeholder)) tokens from template content. A manual scan rather than a
+ * regex — `/\(\(([^)]+)\)\)/g` is vulnerable to polynomial-time backtracking on adversarial input
+ * (e.g. a long run of unmatched "(" characters), and template body/subject comes from GOV Notify,
+ * not something we control the format of.
+ */
 export function extractTemplateVariables(body: string, subject: string): string[] {
   const text = `${body} ${subject}`;
-  const matches = [...text.matchAll(/\(\(([^)]+)\)\)/g)];
-  return [...new Set(matches.map((m) => m[1].trim()))];
+  const found = new Set<string>();
+  let index = 0;
+  while (index < text.length) {
+    const start = text.indexOf("((", index);
+    if (start === -1) break;
+    const end = text.indexOf("))", start + 2);
+    if (end === -1) break;
+    const name = text.slice(start + 2, end).trim();
+    if (name) found.add(name);
+    index = end + 2;
+  }
+  return [...found];
 }
 
 /**

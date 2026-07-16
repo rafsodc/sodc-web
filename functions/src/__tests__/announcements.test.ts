@@ -91,6 +91,23 @@ describe("extractTemplateVariables", () => {
   it("returns an empty array for a template with no placeholders", () => {
     expect(extractTemplateVariables("Just plain text.", "A subject")).toEqual([]);
   });
+
+  it("ignores an unclosed placeholder", () => {
+    expect(extractTemplateVariables("Hi ((firstName, no closing", "")).toEqual([]);
+  });
+
+  it("runs in linear time on adversarial input (no regex backtracking blowup)", () => {
+    // A long run of unmatched "(" is the classic trigger for catastrophic/polynomial regex
+    // backtracking on patterns like /\(\(([^)]+)\)\)/g. Template body/subject comes from GOV
+    // Notify, not something this app controls the shape of, so this must stay fast regardless.
+    const adversarial = "(".repeat(200_000);
+    const start = performance.now();
+    const result = extractTemplateVariables(adversarial, "");
+    const elapsedMs = performance.now() - start;
+
+    expect(result).toEqual([]);
+    expect(elapsedMs).toBeLessThan(200);
+  });
 });
 
 describe("buildRecipientPersonalisation (#362)", () => {
