@@ -37,8 +37,9 @@ export type AuthExpression = typeof AUTH_EXPRESSIONS[keyof typeof AUTH_EXPRESSIO
 export const FIREBASE_MIN_PASSWORD_LENGTH = 6;
 
 /**
- * Minimum length for new registrations.
- * Raise alongside issue #208 when the security policy is finalized.
+ * Minimum length for new registrations, and for any newly-set password (e.g. Account Settings'
+ * change-password flow). Existing accounts created before this was raised are not affected —
+ * sign-in still only requires FIREBASE_MIN_PASSWORD_LENGTH. See #208.
  */
-export const REGISTRATION_MIN_PASSWORD_LENGTH = 6;
+export const REGISTRATION_MIN_PASSWORD_LENGTH = 12;
 
