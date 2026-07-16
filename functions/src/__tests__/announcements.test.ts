@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
-import { getAnnouncementSendRecipients } from "../announcements";
+import {
+  getAnnouncementSendRecipients,
+  extractTemplateVariables,
+  buildRecipientPersonalisation,
+} from "../announcements";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
 const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipients");
@@ -70,5 +74,91 @@ describe("getAnnouncementSendRecipients", () => {
     await expect(
       callAsAdmin({ sectionId: sectionAId, sendId: "00000000-0000-4000-8000-000000000000" })
     ).rejects.toMatchObject({ code: "not-found" });
+  });
+});
+
+describe("extractTemplateVariables", () => {
+  it("extracts placeholders from body and subject", () => {
+    expect(extractTemplateVariables("Hi ((firstName)), see ((section)) news", "((section)) update")).toEqual(
+      expect.arrayContaining(["firstName", "section"])
+    );
+  });
+
+  it("deduplicates repeated placeholders", () => {
+    expect(extractTemplateVariables("((firstName)) ((firstName))", "")).toEqual(["firstName"]);
+  });
+
+  it("returns an empty array for a template with no placeholders", () => {
+    expect(extractTemplateVariables("Just plain text.", "A subject")).toEqual([]);
+  });
+
+  it("ignores an unclosed placeholder", () => {
+    expect(extractTemplateVariables("Hi ((firstName, no closing", "")).toEqual([]);
+  });
+
+  it("runs in linear time on adversarial input (no regex backtracking blowup)", () => {
+    // A long run of unmatched "(" is the classic trigger for catastrophic/polynomial regex
+    // backtracking on patterns like /\(\(([^)]+)\)\)/g. Template body/subject comes from GOV
+    // Notify, not something this app controls the shape of, so this must stay fast regardless.
+    const adversarial = "(".repeat(200_000);
+    const start = performance.now();
+    const result = extractTemplateVariables(adversarial, "");
+    const elapsedMs = performance.now() - start;
+
+    expect(result).toEqual([]);
+    expect(elapsedMs).toBeLessThan(200);
+  });
+});
+
+describe("buildRecipientPersonalisation (#362)", () => {
+  const recipient = {
+    firstName: "Ada",
+    lastName: "Lovelace",
+    email: "ada@example.com",
+    serviceNumber: "S123456",
+    membershipStatus: "REGULAR",
+  };
+
+  it("includes only the fields the template actually references", () => {
+    const result = buildRecipientPersonalisation(
+      recipient,
+      "Signals",
+      "https://example.com/unsubscribe?token=abc",
+      ["firstName", "section"]
+    );
+
+    expect(result).toEqual({ firstName: "Ada", section: "Signals" });
+  });
+
+  it("returns an empty object for a template with no placeholders", () => {
+    const result = buildRecipientPersonalisation(
+      recipient,
+      "Signals",
+      "https://example.com/unsubscribe?token=abc",
+      []
+    );
+
+    expect(result).toEqual({});
+  });
+
+  it("never includes fields the template doesn't reference, even PII fields like serviceNumber/membershipStatus", () => {
+    const result = buildRecipientPersonalisation(
+      recipient,
+      "Signals",
+      "https://example.com/unsubscribe?token=abc",
+      ["firstName"]
+    );
+
+    expect(result).not.toHaveProperty("serviceNumber");
+    expect(result).not.toHaveProperty("membershipStatus");
+    expect(result).not.toHaveProperty("email");
+  });
+
+  it("includes unsubscribeUrl in personalisation only when the template references it", () => {
+    const withRef = buildRecipientPersonalisation(recipient, "Signals", "https://x/unsub", ["unsubscribeUrl"]);
+    const withoutRef = buildRecipientPersonalisation(recipient, "Signals", "https://x/unsub", ["firstName"]);
+
+    expect(withRef.unsubscribeUrl).toBe("https://x/unsub");
+    expect(withoutRef).not.toHaveProperty("unsubscribeUrl");
   });
 });
