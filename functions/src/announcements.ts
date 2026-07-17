@@ -9,6 +9,7 @@ import {
   getSectionMembers,
   getUserAccessGroupsById,
   getUserMembershipStatus,
+  listUsers,
   getSectionAnnouncementOptOuts,
   createAnnouncementSend,
   createAnnouncementRecipient,
@@ -23,6 +24,13 @@ import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
 import { buildAnnouncementReference } from "./announcementReference";
+import {
+  getAnnouncementStatusFilters,
+  mergeAnnouncementRecipients,
+  partitionAnnouncementRecipients,
+  type AnnouncementPurposeLink,
+  type AnnouncementAudienceRecipient,
+} from "./announcementRecipients";
 
 const BULK_PREFIX = "BULK:";
 
@@ -88,78 +96,23 @@ async function requireSectionModerator(
 
 // ── Recipient resolution ─────────────────────────────────────────────────────
 
-interface Recipient {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  serviceNumber: string;
-  membershipStatus: string;
-}
-
 interface ResolveResult {
-  recipients: Recipient[];
+  recipients: AnnouncementAudienceRecipient[];
   sectionName: string;
 }
 
-async function resolveRecipients(sectionId: string, callerUid: string): Promise<ResolveResult> {
-  const [membersResult, callerGroupsResult, userStatusResult] = await Promise.all([
-    getSectionMembers({ sectionId }),
-    getUserAccessGroupsById({ userId: callerUid }),
-    getUserMembershipStatus({ id: callerUid }),
-  ]);
+export async function resolveAnnouncementRecipients(sectionId: string): Promise<ResolveResult> {
+  const membersResult = await getSectionMembers({ sectionId });
 
   const sectionData = membersResult.data?.section;
   if (!sectionData) throw new HttpsError("not-found", "Section not found");
 
-  const purposeLinks = sectionData.purposeLinks ?? [];
-  const accessGroupIds = new Set(
-    purposeLinks
-      .filter((pl) => linkHasPurpose(pl, "ACCESS") || linkHasPurpose(pl, "MODERATOR"))
-      .map((pl) => pl.userGroup.id)
-  );
-
-  const callerGroupIds = new Set(
-    (callerGroupsResult.data?.user?.userGroups ?? []).map(
-      (ug: { userGroup: { id: string } }) => ug.userGroup.id
-    )
-  );
-
-  // Explicit group members
-  const seen = new Set<string>();
-  const recipients: Recipient[] = [];
-
-  for (const link of purposeLinks) {
-    if (!accessGroupIds.has(link.userGroup.id)) continue;
-    for (const { user } of link.userGroup.users) {
-      if (!seen.has(user.id)) {
-        seen.add(user.id);
-        recipients.push({
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          serviceNumber: user.serviceNumber,
-          membershipStatus: user.membershipStatus,
-        });
-      }
-    }
-  }
-
-  // Status-derived members (those whose membership status grants access)
-  const userStatus = userStatusResult.data?.user?.membershipStatus;
-  const hasCallerDirectAccess = [...accessGroupIds].some((id) => callerGroupIds.has(id));
-  if (!hasCallerDirectAccess && userStatus) {
-    const grantedByStatus = purposeLinks.some(
-      (pl) =>
-        accessGroupIds.has(pl.userGroup.id) &&
-        (pl.userGroup.membershipStatuses?.includes(userStatus) ?? false)
-    );
-    if (grantedByStatus && !seen.has(callerUid)) {
-      // Status-derived members are handled by the existing groups; we trust getSectionMembers
-      // includes them via membershipStatuses. No extra action needed here.
-    }
-  }
+  const purposeLinks = (sectionData.purposeLinks ?? []) as AnnouncementPurposeLink[];
+  const statusFilters = getAnnouncementStatusFilters(purposeLinks);
+  const statusCandidates = statusFilters.size > 0
+    ? (await listUsers()).data?.users ?? []
+    : [];
+  const recipients = mergeAnnouncementRecipients(purposeLinks, statusCandidates);
 
   return { recipients, sectionName: sectionData.name ?? sectionId };
 }
@@ -371,7 +324,7 @@ export const sendSectionAnnouncement = onCall(
     const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
     const [{ recipients, sectionName }, optOutResult] = await Promise.all([
-      resolveRecipients(sectionId, callerUid),
+      resolveAnnouncementRecipients(sectionId),
       getSectionAnnouncementOptOuts({ sectionId }),
     ]);
 
@@ -380,22 +333,21 @@ export const sendSectionAnnouncement = onCall(
         (r: { user: { id: string } }) => r.user.id
       )
     );
+    const { deliverable, optedOut } = partitionAnnouncementRecipients(
+      recipients,
+      sectionOptOutIds
+    );
 
     const secret = unsubscribeSecret.value();
-    const skippedRecipients: { userId: string; email: string; firstName: string; lastName: string }[] = [];
+    const skippedRecipients = optedOut.map((recipient) => ({
+      userId: recipient.id,
+      email: recipient.email,
+      firstName: recipient.firstName,
+      lastName: recipient.lastName,
+    }));
     const tasks: AnnouncementEmailTask[] = [];
 
-    for (const recipient of recipients) {
-      if (sectionOptOutIds.has(recipient.id)) {
-        skippedRecipients.push({
-          userId: recipient.id,
-          email: recipient.email,
-          firstName: recipient.firstName,
-          lastName: recipient.lastName,
-        });
-        continue;
-      }
-
+    for (const recipient of deliverable) {
       const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
         {
           userId: recipient.id,
