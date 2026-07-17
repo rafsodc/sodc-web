@@ -510,17 +510,17 @@ exports.createNotificationDelivery = function createNotificationDelivery(dcOrVar
 }
 ;
 
-const markNotificationDeliveryPendingByIdRef = (dcOrVars, vars) => {
+const claimNotificationDeliveryByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'MarkNotificationDeliveryPendingById', inputVars);
+  return mutationRef(dcInstance, 'ClaimNotificationDeliveryById', inputVars);
 }
-markNotificationDeliveryPendingByIdRef.operationName = 'MarkNotificationDeliveryPendingById';
-exports.markNotificationDeliveryPendingByIdRef = markNotificationDeliveryPendingByIdRef;
+claimNotificationDeliveryByIdRef.operationName = 'ClaimNotificationDeliveryById';
+exports.claimNotificationDeliveryByIdRef = claimNotificationDeliveryByIdRef;
 
-exports.markNotificationDeliveryPendingById = function markNotificationDeliveryPendingById(dcOrVars, vars) {
+exports.claimNotificationDeliveryById = function claimNotificationDeliveryById(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(markNotificationDeliveryPendingByIdRef(dcInstance, inputVars));
+  return executeMutation(claimNotificationDeliveryByIdRef(dcInstance, inputVars));
 }
 ;
 

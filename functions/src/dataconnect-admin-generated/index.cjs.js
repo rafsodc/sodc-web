@@ -302,12 +302,12 @@ function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.createNotificationDelivery = createNotificationDelivery;
 
-function markNotificationDeliveryPendingById(dcOrVarsOrOptions, varsOrOptions, options) {
+function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('MarkNotificationDeliveryPendingById', inputVars, inputOpts);
+  return dcInstance.executeMutation('ClaimNotificationDeliveryById', inputVars, inputOpts);
 }
-exports.markNotificationDeliveryPendingById = markNotificationDeliveryPendingById;
+exports.claimNotificationDeliveryById = claimNotificationDeliveryById;
 
 function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

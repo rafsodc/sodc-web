@@ -48,6 +48,9 @@ describe("mailer", () => {
   });
 
   it("sends typed template payloads through GOV.UK Notify", async () => {
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
+      data: { notifications: [] },
+    }));
     const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>(async () => ({
       data: {
         id: "notify-message-id",
@@ -61,7 +64,7 @@ describe("mailer", () => {
         paymentConfirmation: "template-paid",
       },
       emailReplyToId: "reply-to-id",
-      clientFactory: () => ({ sendEmail }),
+      clientFactory: () => ({ getNotifications, sendEmail }),
       logger,
     });
 
@@ -89,7 +92,43 @@ describe("mailer", () => {
       reference: "order-123",
       emailReplyToId: "reply-to-id",
     });
+    expect(getNotifications).toHaveBeenCalledWith("email", undefined, "order-123");
     expect(JSON.stringify(logger.info.mock.calls)).not.toContain("buyer@example.com");
+  });
+
+  it("adopts an existing provider notification with the same reference", async () => {
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
+      data: {
+        notifications: [{ id: "existing-notify-id", reference: "order-123" }],
+      },
+    }));
+    const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>();
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      apiKey: "notify-api-key",
+      templateIds: {
+        paymentConfirmation: "template-paid",
+      },
+      clientFactory: () => ({ getNotifications, sendEmail }),
+      logger: fakeLogger(),
+    });
+
+    await expect(
+      mailer.sendEmail({
+        templateName: "paymentConfirmation",
+        to: "buyer@example.com",
+        personalisation: {
+          event_title: "Annual Dinner",
+          amount_paid: "GBP 10.00",
+        },
+        reference: "order-123",
+      })
+    ).resolves.toEqual({
+      provider: "govuk_notify",
+      providerNotificationId: "existing-notify-id",
+      reference: "order-123",
+    });
+
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it("logs provider failures without recipient PII", async () => {
@@ -111,13 +150,16 @@ describe("mailer", () => {
     const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>(async () => {
       throw providerError;
     });
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
+      data: { notifications: [] },
+    }));
     const logger = fakeLogger();
     const mailer = createGovNotifyMailer<TestTemplates>({
       apiKey: "notify-api-key",
       templateIds: {
         paymentFailure: "template-failed",
       },
-      clientFactory: () => ({ sendEmail }),
+      clientFactory: () => ({ getNotifications, sendEmail }),
       logger,
     });
 

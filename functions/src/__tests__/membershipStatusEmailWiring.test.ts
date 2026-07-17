@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { scheduleMembershipStatusEmailIfChanged } from "../membershipStatus";
+import { sendMembershipStatusEmailIfChanged } from "../membershipStatus";
 import { notifyMembershipStatusEmailIfNeeded } from "../membershipStatusEmailDispatcher";
 
 vi.mock("../membershipStatusEmailDispatcher", () => ({
   notifyMembershipStatusEmailIfNeeded: vi.fn(),
 }));
 
-describe("scheduleMembershipStatusEmailIfChanged", () => {
+describe("sendMembershipStatusEmailIfChanged", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("notifies when status changes", () => {
-    scheduleMembershipStatusEmailIfChanged({
+  it("notifies when status changes", async () => {
+    await sendMembershipStatusEmailIfChanged({
       userId: "uid-1",
       previousStatus: "PENDING",
       newStatus: "REGULAR",
@@ -28,8 +28,8 @@ describe("scheduleMembershipStatusEmailIfChanged", () => {
     });
   });
 
-  it("does not notify when status is unchanged", () => {
-    scheduleMembershipStatusEmailIfChanged({
+  it("does not notify when status is unchanged", async () => {
+    await sendMembershipStatusEmailIfChanged({
       userId: "uid-1",
       previousStatus: "REGULAR",
       newStatus: "REGULAR",

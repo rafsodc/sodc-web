@@ -95,7 +95,7 @@ export function createMembershipStatusMailer(): ReturnType<
 }
 
 /**
- * Non-blocking membership status emails after a successful callable update.
+ * Best-effort membership status email, awaited by the originating callable.
  */
 export async function notifyMembershipStatusEmailIfNeeded(args: {
   userId: string;

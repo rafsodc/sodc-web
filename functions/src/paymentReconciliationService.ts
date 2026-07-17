@@ -127,7 +127,7 @@ export async function upsertReconciliationSnapshot(args: {
         fromDisputeWebhook: args.fromDisputeWebhook === true,
       })
     ) {
-      void notifyPaymentOpsReconciliationExceptionOpened({
+      await notifyPaymentOpsReconciliationExceptionOpened({
         orderId: args.orderId,
         exceptionType: type,
         exceptionNote: note,

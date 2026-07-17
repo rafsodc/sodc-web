@@ -71,7 +71,7 @@ async function loadOrderOpsContext(orderId: UUIDString): Promise<{
 }
 
 /**
- * Non-blocking internal alerts for finance/ops. Safe to call from Stripe webhooks.
+ * Best-effort internal alerts for finance/ops, awaited by Stripe webhook processing.
  */
 export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
   orderId: UUIDString;

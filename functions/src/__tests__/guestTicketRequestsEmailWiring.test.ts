@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GuestTicketRequestStatus } from "@dataconnect/admin-generated";
 import {
-  scheduleGuestTicketRequestReviewedEmails,
-  scheduleGuestTicketRequestSubmittedEmails,
+  sendGuestTicketRequestReviewedEmails,
+  sendGuestTicketRequestSubmittedEmails,
 } from "../guestTicketRequests";
 import {
   notifyBookerGuestTicketRequestReviewed,
@@ -19,8 +19,8 @@ describe("guest ticket request email wiring", () => {
     vi.clearAllMocks();
   });
 
-  it("fans out moderator emails on submit", () => {
-    scheduleGuestTicketRequestSubmittedEmails({
+  it("fans out moderator emails on submit", async () => {
+    await sendGuestTicketRequestSubmittedEmails({
       requestId: "req-1",
       appBaseUrl: "https://app.example",
     });
@@ -32,8 +32,8 @@ describe("guest ticket request email wiring", () => {
     });
   });
 
-  it("notifies booker on approve", () => {
-    scheduleGuestTicketRequestReviewedEmails({
+  it("notifies booker on approve", async () => {
+    await sendGuestTicketRequestReviewedEmails({
       requestId: "req-2",
       status: GuestTicketRequestStatus.APPROVED,
       appBaseUrl: "https://app.example",
@@ -46,8 +46,8 @@ describe("guest ticket request email wiring", () => {
     });
   });
 
-  it("notifies booker on reject", () => {
-    scheduleGuestTicketRequestReviewedEmails({
+  it("notifies booker on reject", async () => {
+    await sendGuestTicketRequestReviewedEmails({
       requestId: "req-3",
       status: GuestTicketRequestStatus.REJECTED,
       appBaseUrl: "https://app.example",

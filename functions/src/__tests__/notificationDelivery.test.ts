@@ -22,6 +22,7 @@ interface StoredDelivery {
   deliveryKey: string;
   status: NotificationDeliveryStatus;
   attemptCount: number;
+  lastAttemptedAt?: string | null;
   provider?: string | null;
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
@@ -57,6 +58,7 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
             id: record.id,
             status: record.status,
             attemptCount: record.attemptCount,
+            lastAttemptedAt: record.lastAttemptedAt ?? null,
           }
         : null;
     },
@@ -72,6 +74,7 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
         deliveryKey: args.deliveryKey,
         status: NotificationDeliveryStatus.PENDING,
         attemptCount: args.attemptCount,
+        lastAttemptedAt: args.lastAttemptedAt,
         provider: args.provider ?? null,
       };
       records.set(mapKey, record);
@@ -79,33 +82,58 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
         id: record.id,
         status: record.status,
         attemptCount: record.attemptCount,
+        lastAttemptedAt: record.lastAttemptedAt ?? null,
       };
     },
 
-    async markPending(args) {
+    async tryMarkPending(args) {
       const record = getById(args.id);
+      if (
+        record.status !== args.expectedStatus ||
+        record.attemptCount !== args.expectedAttemptCount
+      ) {
+        return false;
+      }
       record.status = NotificationDeliveryStatus.PENDING;
       record.attemptCount = args.attemptCount;
+      record.lastAttemptedAt = args.lastAttemptedAt;
       record.provider = args.provider ?? null;
+      return true;
     },
 
     async markSent(args) {
       const record = getById(args.id);
+      if (
+        record.status !== NotificationDeliveryStatus.PENDING ||
+        record.attemptCount !== args.attemptCount
+      ) {
+        return false;
+      }
       record.status = NotificationDeliveryStatus.SENT;
       record.attemptCount = args.attemptCount;
+      record.lastAttemptedAt = args.lastAttemptedAt;
       record.provider = args.provider ?? null;
       record.providerMessageId = args.providerMessageId ?? null;
       record.lastErrorCode = null;
       record.lastErrorMessage = null;
+      return true;
     },
 
     async markFailed(args) {
       const record = getById(args.id);
+      if (
+        record.status !== NotificationDeliveryStatus.PENDING ||
+        record.attemptCount !== args.attemptCount
+      ) {
+        return false;
+      }
       record.status = NotificationDeliveryStatus.FAILED;
       record.attemptCount = args.attemptCount;
+      record.lastAttemptedAt = args.lastAttemptedAt;
       record.provider = args.provider ?? null;
       record.lastErrorCode = args.lastErrorCode ?? null;
       record.lastErrorMessage = args.lastErrorMessage ?? null;
+      return true;
     },
   };
 
@@ -179,6 +207,92 @@ describe("notificationDelivery", () => {
       attemptCount: 1,
     });
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("keeps a fresh pending claim in progress, then recovers it after the lease expires", async () => {
+    const { repository, records } = createRepository([
+      {
+        id: "delivery-1" as UUIDString,
+        channel: NotificationChannel.EMAIL,
+        deliveryKey: "booking-confirm:booking-1:key-1",
+        status: NotificationDeliveryStatus.PENDING,
+        attemptCount: 1,
+        lastAttemptedAt: "2026-05-14T20:00:00.000Z",
+      },
+    ]);
+    const send = vi.fn(async () => ({ providerMessageId: "provider-message-recovered" }));
+    const request = {
+      channel: NotificationChannel.EMAIL,
+      notificationType: "BOOKING_CONFIRMATION",
+      deliveryKey: "booking-confirm:booking-1:key-1",
+      send,
+    };
+
+    const freshResult = await sendNotificationOnce(request, {
+      repository,
+      now: () => "2026-05-14T20:05:00.000Z",
+      leaseMs: 10 * 60 * 1000,
+    });
+
+    expect(freshResult).toEqual({
+      outcome: "duplicate",
+      reason: "in_progress",
+      deliveryId: "delivery-1",
+      attemptCount: 1,
+    });
+    expect(send).not.toHaveBeenCalled();
+
+    const recoveredResult = await sendNotificationOnce(request, {
+      repository,
+      now: () => "2026-05-14T20:11:00.000Z",
+      leaseMs: 10 * 60 * 1000,
+    });
+
+    expect(recoveredResult).toEqual({
+      outcome: "sent",
+      deliveryId: "delivery-1",
+      attemptCount: 2,
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(records.get("EMAIL:booking-confirm:booking-1:key-1")).toMatchObject({
+      status: NotificationDeliveryStatus.SENT,
+      attemptCount: 2,
+      providerMessageId: "provider-message-recovered",
+    });
+  });
+
+  it("allows only one concurrent invocation to recover a stale pending claim", async () => {
+    const { repository } = createRepository([
+      {
+        id: "delivery-1" as UUIDString,
+        channel: NotificationChannel.EMAIL,
+        deliveryKey: "membership-activation:uid-1:PENDING:REGULAR",
+        status: NotificationDeliveryStatus.PENDING,
+        attemptCount: 1,
+        lastAttemptedAt: "2026-05-14T20:00:00.000Z",
+      },
+    ]);
+    const send = vi.fn(async () => ({ providerMessageId: "provider-message-claimed-once" }));
+    const request = {
+      channel: NotificationChannel.EMAIL,
+      notificationType: "MEMBERSHIP_ACTIVATED",
+      deliveryKey: "membership-activation:uid-1:PENDING:REGULAR",
+      send,
+    };
+    const dependencies = {
+      repository,
+      now: () => "2026-05-14T20:11:00.000Z",
+      leaseMs: 10 * 60 * 1000,
+    };
+
+    const results = await Promise.all([
+      sendNotificationOnce(request, dependencies),
+      sendNotificationOnce(request, dependencies),
+    ]);
+
+    expect(results.filter((result) => result.outcome === "sent")).toHaveLength(1);
+    expect(results.filter((result) => result.outcome === "duplicate")).toHaveLength(1);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 
   it("retries failed deliveries with the same key", async () => {

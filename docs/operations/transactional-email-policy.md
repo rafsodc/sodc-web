@@ -30,7 +30,7 @@ Sent because of a **user action or system state change** the user or operator mu
 
 **Rules**
 
-- Idempotent delivery via `NotificationDelivery` (no duplicate sends on webhook/callable retries).
+- Idempotent delivery via `NotificationDelivery`: awaited sends, atomic claims, and recoverable 10-minute `PENDING` leases prevent webhook/callable retries from concurrently sending the same delivery key.
 - Recipients and placeholders are defined in code and `govuk-notify-*.md` specs.
 - Internal ops emails use `PAYMENT_OPS_ALERT_EMAILS`; if unset, those alerts are not sent.
 

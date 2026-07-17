@@ -245,6 +245,19 @@ export interface CheckUserProfileExistsData {
   } & User_Key;
 }
 
+export interface ClaimNotificationDeliveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface ClaimNotificationDeliveryByIdVariables {
+  id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
 export interface CreateAnnouncementRecipientData {
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
@@ -1952,7 +1965,7 @@ export interface MarkBookingSupersededFromCallableVariables {
 }
 
 export interface MarkNotificationDeliveryFailedByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 
 export interface MarkNotificationDeliveryFailedByIdVariables {
@@ -1964,19 +1977,8 @@ export interface MarkNotificationDeliveryFailedByIdVariables {
   lastErrorMessage?: string | null;
 }
 
-export interface MarkNotificationDeliveryPendingByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
-}
-
-export interface MarkNotificationDeliveryPendingByIdVariables {
-  id: UUIDString;
-  attemptCount: number;
-  lastAttemptedAt: TimestampString;
-  provider?: string | null;
-}
-
 export interface MarkNotificationDeliverySentByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 
 export interface MarkNotificationDeliverySentByIdVariables {
@@ -2692,17 +2694,17 @@ export const createNotificationDeliveryRef: CreateNotificationDeliveryRef;
 export function createNotificationDelivery(vars: CreateNotificationDeliveryVariables): MutationPromise<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
 export function createNotificationDelivery(dc: DataConnect, vars: CreateNotificationDeliveryVariables): MutationPromise<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
 
-interface MarkNotificationDeliveryPendingByIdRef {
+interface ClaimNotificationDeliveryByIdRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  (vars: ClaimNotificationDeliveryByIdVariables): MutationRef<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  (dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationRef<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
   operationName: string;
 }
-export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 
-export function markNotificationDeliveryPendingById(vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
-export function markNotificationDeliveryPendingById(dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+export function claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
+export function claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 
 interface MarkNotificationDeliverySentByIdRef {
   /* Allow users to create refs without passing in DataConnect */

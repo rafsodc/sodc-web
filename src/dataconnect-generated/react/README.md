@@ -89,7 +89,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
-  - [*MarkNotificationDeliveryPendingById*](#marknotificationdeliverypendingbyid)
+  - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliveryFailedById*](#marknotificationdeliveryfailedbyid)
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
@@ -7218,88 +7218,92 @@ export default function CreateNotificationDeliveryComponent() {
 }
 ```
 
-## MarkNotificationDeliveryPendingById
-You can execute the `MarkNotificationDeliveryPendingById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## ClaimNotificationDeliveryById
+You can execute the `ClaimNotificationDeliveryById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useMarkNotificationDeliveryPendingById(options?: useDataConnectMutationOptions<MarkNotificationDeliveryPendingByIdData, FirebaseError, MarkNotificationDeliveryPendingByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+useClaimNotificationDeliveryById(options?: useDataConnectMutationOptions<ClaimNotificationDeliveryByIdData, FirebaseError, ClaimNotificationDeliveryByIdVariables>): UseDataConnectMutationResult<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useMarkNotificationDeliveryPendingById(dc: DataConnect, options?: useDataConnectMutationOptions<MarkNotificationDeliveryPendingByIdData, FirebaseError, MarkNotificationDeliveryPendingByIdVariables>): UseDataConnectMutationResult<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+useClaimNotificationDeliveryById(dc: DataConnect, options?: useDataConnectMutationOptions<ClaimNotificationDeliveryByIdData, FirebaseError, ClaimNotificationDeliveryByIdVariables>): UseDataConnectMutationResult<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 ```
 
 ### Variables
-The `MarkNotificationDeliveryPendingById` Mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `ClaimNotificationDeliveryById` Mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface MarkNotificationDeliveryPendingByIdVariables {
+export interface ClaimNotificationDeliveryByIdVariables {
   id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
   provider?: string | null;
 }
 ```
 ### Return Type
-Recall that calling the `MarkNotificationDeliveryPendingById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `ClaimNotificationDeliveryById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotificationDeliveryPendingById` Mutation is of type `MarkNotificationDeliveryPendingByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ClaimNotificationDeliveryById` Mutation is of type `ClaimNotificationDeliveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface MarkNotificationDeliveryPendingByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+export interface ClaimNotificationDeliveryByIdData {
+  notificationDelivery_updateMany: number;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `MarkNotificationDeliveryPendingById`'s Mutation hook function
+### Using `ClaimNotificationDeliveryById`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, MarkNotificationDeliveryPendingByIdVariables } from '@dataconnect/generated';
-import { useMarkNotificationDeliveryPendingById } from '@dataconnect/generated/react'
+import { connectorConfig, ClaimNotificationDeliveryByIdVariables } from '@dataconnect/generated';
+import { useClaimNotificationDeliveryById } from '@dataconnect/generated/react'
 
-export default function MarkNotificationDeliveryPendingByIdComponent() {
+export default function ClaimNotificationDeliveryByIdComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useMarkNotificationDeliveryPendingById();
+  const mutation = useClaimNotificationDeliveryById();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useMarkNotificationDeliveryPendingById(dataConnect);
+  const mutation = useClaimNotificationDeliveryById(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useMarkNotificationDeliveryPendingById(options);
+  const mutation = useClaimNotificationDeliveryById(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useMarkNotificationDeliveryPendingById(dataConnect, options);
+  const mutation = useClaimNotificationDeliveryById(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useMarkNotificationDeliveryPendingById` Mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`:
-  const markNotificationDeliveryPendingByIdVars: MarkNotificationDeliveryPendingByIdVariables = {
+  // The `useClaimNotificationDeliveryById` Mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
+  const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
     id: ..., 
+    expectedStatus: ...,
+    expectedAttemptCount: ...,
     attemptCount: ..., 
     lastAttemptedAt: ..., 
     provider: ..., // optional
   };
-  mutation.mutate(markNotificationDeliveryPendingByIdVars);
+  mutation.mutate(claimNotificationDeliveryByIdVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+  mutation.mutate({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(markNotificationDeliveryPendingByIdVars, options);
+  mutation.mutate(claimNotificationDeliveryByIdVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -7312,7 +7316,7 @@ export default function MarkNotificationDeliveryPendingByIdComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.notificationDelivery_update);
+    console.log(mutation.data.notificationDelivery_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -7353,7 +7357,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotificationDeliverySentById` Mutation is of type `MarkNotificationDeliverySentByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface MarkNotificationDeliverySentByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 ```
 
@@ -7420,7 +7424,7 @@ export default function MarkNotificationDeliverySentByIdComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.notificationDelivery_update);
+    console.log(mutation.data.notificationDelivery_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -7459,7 +7463,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotificationDeliveryFailedById` Mutation is of type `MarkNotificationDeliveryFailedByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface MarkNotificationDeliveryFailedByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 ```
 
@@ -7524,7 +7528,7 @@ export default function MarkNotificationDeliveryFailedByIdComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.notificationDelivery_update);
+    console.log(mutation.data.notificationDelivery_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -12619,4 +12623,3 @@ export default function OptInSectionAnnouncementComponent() {
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
-

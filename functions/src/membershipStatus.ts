@@ -20,16 +20,16 @@ const APP_BASE_URL = (() => {
 })();
 
 /** Sends membership access email when the stored status value changes. */
-export function scheduleMembershipStatusEmailIfChanged(args: {
+export async function sendMembershipStatusEmailIfChanged(args: {
   userId: string;
   previousStatus: MembershipStatus | null;
   newStatus: MembershipStatus;
   appBaseUrl: string;
-}): void {
+}): Promise<void> {
   if (args.previousStatus === args.newStatus) {
     return;
   }
-  void notifyMembershipStatusEmailIfNeeded({
+  await notifyMembershipStatusEmailIfNeeded({
     userId: args.userId,
     previousStatus: args.previousStatus,
     newStatus: args.newStatus,
@@ -94,7 +94,7 @@ export const updateMembershipStatus = onCall(
     // Access group membership by status is computed at read time (admin UI and getSectionMembersMerged)
     // — we do not write UserAccessGroup rows when status changes.
 
-    scheduleMembershipStatusEmailIfChanged({
+    await sendMembershipStatusEmailIfChanged({
       userId,
       previousStatus: currentStatus,
       newStatus: newStatus as MembershipStatus,
@@ -142,7 +142,7 @@ export const resignMembership = onCall(
       await updateMembershipStatusInDataConnect(userId, newStatus);
       await updateEnabledClaim(userId, newStatus);
 
-      scheduleMembershipStatusEmailIfChanged({
+      await sendMembershipStatusEmailIfChanged({
         userId,
         previousStatus: currentStatus,
         newStatus,

@@ -74,7 +74,7 @@ describe("paymentNotifications", () => {
     );
   });
 
-  it("swallows delivery helper failures to keep payment path non-blocking", async () => {
+  it("swallows delivery helper failures after awaiting them", async () => {
     const dispatcher = vi.fn(async () => undefined);
     const notificationSender = vi.fn(async () => {
       throw new Error("delivery failed for buyer@example.com");

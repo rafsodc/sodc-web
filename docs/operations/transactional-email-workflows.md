@@ -7,8 +7,10 @@ Per-template placeholder specs live in the linked `govuk-notify-*.md` files belo
 ## Shared delivery pattern
 
 1. A callable or Stripe webhook completes a domain write.
-2. Code calls `sendNotificationOnce` with a stable **`deliveryKey`** (or a dispatcher that does).
-3. On first send, Notify is called and a `NotificationDelivery` row is recorded; retries/replays return without a second email.
+2. The handler awaits a dispatcher that calls `sendNotificationOnce` with a stable **`deliveryKey`**.
+3. `sendNotificationOnce` atomically claims a `PENDING` ledger attempt before calling Notify.
+4. The same invocation awaits Notify and conditionally records `SENT` or `FAILED` before returning.
+5. Retries return immediately for `SENT` deliveries and can reclaim `FAILED` or stale `PENDING` deliveries without two invocations owning the same attempt.
 
 ```mermaid
 flowchart LR
@@ -21,8 +23,27 @@ flowchart LR
   trigger --> fn
   fn --> dc
   fn --> ledger
-  ledger -->|first delivery only| notify
+  ledger -->|atomic claim| notify
+  notify -->|awaited completion| ledger
 ```
+
+## Retry and stale-claim recovery
+
+`PENDING` is a time-bounded processing lease, not a permanent skip state. A claim is considered active for **10 minutes** from `lastAttemptedAt`. During that window, another invocation returns `duplicate / in_progress`. After the lease expires, the next invocation with the same channel and delivery key may take over the row, increment `attemptCount`, and retry the send.
+
+Takeover uses a conditional Data Connect update matching the row's status and previous attempt count. Only one concurrent invocation can win. `SENT` and `FAILED` completion updates also match the owning attempt count, so an expired invocation cannot overwrite a newer attempt if it resumes late. A `FAILED` delivery is eligible for immediate retry.
+
+Before sending an email with a stable Notify reference, the mailer queries GOV.UK Notify for an existing notification with that reference. If Notify accepted the earlier attempt but the function terminated before recording `SENT`, recovery adopts the existing provider notification ID and completes the ledger instead of sending a duplicate email.
+
+Operational recovery:
+
+1. Locate the `NotificationDelivery` row by channel and delivery key and inspect `status`, `attemptCount`, and `lastAttemptedAt`.
+2. For `SENT`, do not replay the notification.
+3. For `FAILED`, rerun the same domain dispatcher with the original delivery key.
+4. For `PENDING` younger than 10 minutes, allow the current invocation to finish.
+5. For `PENDING` older than 10 minutes, replay the originating domain action or dispatcher with the same stable key. The compare-and-swap claim prevents concurrent recovery attempts from both sending.
+
+Do not invent a new delivery key during recovery: that bypasses idempotency. Check Functions logs for `notification delivery failed`, `notification delivery sent after its lease was replaced`, or `notification delivery failure occurred after its lease was replaced`. Because every server entry path awaits its dispatcher, ordinary provider errors are normally recorded as `FAILED` within the originating invocation; stale recovery is primarily for process termination after a claim.
 
 ## Domain workflows
 
