@@ -1,67 +1,42 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  useGetCurrentUser,
-  useGetMyBookingPaymentAdjustments,
-  useGetMyBookingsForEvent,
-  useGetMyTicketOrders,
-  useGetUserAccessGroups,
-} from "@dataconnect/generated/react";
-import { dataConnect } from "../../../config/firebase";
-import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
-import { BookingStatus, GuestTicketRequestStatus, TicketAudience } from "@dataconnect/generated";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generated";
+import { BookingStatus } from "@dataconnect/generated";
 import {
   createEventBookingCheckoutSession,
-  getSectionMembersMerged,
   submitEventBooking,
   submitGuestTicketRequest,
 } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
-import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
-import {
-  bookingNeedsPayment,
-  hasPendingGuestTicketsAwaitingApproval,
-  hasExpiredDraftHold,
-  isBookingPaymentComplete,
-  summarizeEventBookingPayment,
-  buildBookingTicketRowsWithPaymentStatus,
-} from "../utils/eventBookingStatusSummary";
+import { bookingNeedsPayment } from "../utils/eventBookingStatusSummary";
 import { hydrateFormFromExistingBooking } from "../utils/bookingWizardHydration";
+import {
+  ADDITIONAL_GUEST_STEPS,
+  BOOKING_STEPS,
+  buildBookingSubmissionLines,
+  EMPTY_GUEST_DETAIL,
+  extractCallableErrorCode,
+  guestCountValidationError,
+  guestDetailsValidationError,
+  resizeExtraGuestDetails,
+  type ExtraGuestDetailRow,
+  type WizardMode,
+} from "./bookingWizardModel";
+import { useBookingWizardData } from "./useBookingWizardData";
+import { useSectionMemberSeatingOptions } from "./useSectionMemberSeatingOptions";
+
+export {
+  ADDITIONAL_GUEST_STEPS,
+  BOOKING_STEPS,
+  EMPTY_GUEST_DETAIL,
+} from "./bookingWizardModel";
+export type {
+  ExtraGuestDetailRow,
+  GuestDetailFields,
+  WizardMode,
+} from "./bookingWizardModel";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
 type SectionDetail = NonNullable<GetSectionByIdData["section"]>;
-
-export type WizardMode = "full" | "additionalGuests";
-
-export type GuestDetailFields = {
-  guestDisplayName: string;
-  dietaryNote: string;
-};
-
-export type ExtraGuestDetailRow = GuestDetailFields & {
-  guestRequestStatus?: GuestTicketRequestStatus | string | null;
-};
-
-export const EMPTY_GUEST_DETAIL: GuestDetailFields = { guestDisplayName: "", dietaryNote: "" };
-
-export const BOOKING_STEPS = [
-  "Your ticket",
-  "Guest",
-  "Review",
-  "Pay",
-  "Confirmation",
-] as const;
-
-export const ADDITIONAL_GUEST_STEPS = ["Extra guests", "Guest", "Review"] as const;
-
-function extractCallableErrorCode(err: unknown): string | undefined {
-  const e = err as {
-    code?: string;
-    message?: string;
-    details?: { code?: string };
-    customData?: { code?: string };
-  };
-  return e?.details?.code ?? e?.customData?.code;
-}
 
 export interface UseBookingWizardStateProps {
   section: SectionDetail;
@@ -95,7 +70,6 @@ export function useBookingWizardState({
   const [bookerDietaryNote, setBookerDietaryNote] = useState("");
   const [sitNextToUserIds, setSitNextToUserIds] = useState<string[]>([]);
   const [accommodationRequested, setAccommodationRequested] = useState(false);
-  const [seatingOptions, setSeatingOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isEditingBooking, setIsEditingBooking] = useState(false);
@@ -111,79 +85,30 @@ export function useBookingWizardState({
     wizardMode === "additionalGuests" ? requestedExtraGuestCount : Math.max(0, totalGuestCount - 1);
 
   useEffect(() => {
-    setExtraGuestDetails((prev) => {
-      if (wizardMode === "additionalGuests") {
-        const next = prev.slice(0, extraGuestRequestCount);
-        while (next.length < extraGuestRequestCount) next.push({ ...EMPTY_GUEST_DETAIL });
-        return next;
-      }
-      if (prev.length === extraGuestRequestCount) return prev;
-      const next = [...prev];
-      while (next.length < extraGuestRequestCount) next.push({ ...EMPTY_GUEST_DETAIL });
-      while (next.length > extraGuestRequestCount) next.pop();
-      return next;
-    });
+    setExtraGuestDetails((previous) =>
+      resizeExtraGuestDetails(previous, extraGuestRequestCount, wizardMode)
+    );
   }, [extraGuestRequestCount, wizardMode]);
 
-  const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
-  const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
   const {
-    data: myBookingsData,
-    isLoading: loadingBookings,
-    refetch: refetchMyBookings,
-  } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString });
-
-  const membershipStatus = currentUserData?.user?.membershipStatus;
-
-  const explicitGroupIds = useMemo(() => {
-    const ids = accessData?.user?.userGroups?.map((g) => g.userGroup.id) ?? [];
-    return new Set(ids);
-  }, [accessData]);
-
-  const gate = useMemo(() => {
-    if (!membershipStatus) {
-      return { ok: false as const, message: "Your profile must include a membership status before booking." };
-    }
-    return evaluateBookingGatePreview({
-      purposeLinks: section.purposeLinks ?? [],
-      membershipStatus,
-      explicitGroupIds,
-      bookingStartDateTime: event.bookingStartDateTime,
-      bookingEndDateTime: event.bookingEndDateTime,
-    });
-  }, [membershipStatus, section.purposeLinks, explicitGroupIds, event]);
-
-  const memberTicketTypes = useMemo(() => {
-    if (!membershipStatus || gate.ok !== true) return [];
-    return (event.ticketTypes ?? []).filter(
-      (tt) =>
-        tt.audience === TicketAudience.MEMBER &&
-        userMatchesUserGroup(membershipStatus, tt.userGroup, explicitGroupIds)
-    );
-  }, [event.ticketTypes, membershipStatus, explicitGroupIds, gate]);
-
-  const guestTicketTypes = useMemo(() => {
-    if (!membershipStatus || gate.ok !== true) return [];
-    return (event.ticketTypes ?? []).filter(
-      (tt) =>
-        tt.audience === TicketAudience.GUEST &&
-        userMatchesUserGroup(membershipStatus, tt.userGroup, explicitGroupIds)
-    );
-  }, [event.ticketTypes, membershipStatus, explicitGroupIds, gate]);
-
-  const existingTerminalBooking = useMemo(() => {
-    const list = myBookingsData?.user?.bookings ?? [];
-    return list
-      .filter(
-        (b) =>
-          (b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED) &&
-          b.supersededAt == null
-      )
-      .reduce<(typeof list)[number] | null>((latest, booking) => {
-        if (!latest) return booking;
-        return booking.revisionNumber > latest.revisionNumber ? booking : latest;
-      }, null);
-  }, [myBookingsData]);
+    bookingPaymentAdjustments,
+    canProceedToConfirmation,
+    currentUserData,
+    existingDraft,
+    existingTerminalBooking,
+    gate,
+    guestTicketTypes,
+    loadingBookings,
+    loadingProfile,
+    memberTicketTypes,
+    membershipStatus,
+    paymentSummaryForBooking,
+    paymentTicketRows,
+    pendingGuestTicketsAwaitingApproval,
+    refetchMyBookings,
+    showExpiredDraftHoldNotice,
+    ticketOrdersData,
+  } = useBookingWizardData({ section, event, postSubmitFlow });
 
   const editingExistingBooking = isEditingBooking && Boolean(existingTerminalBooking);
   const steps = wizardMode === "additionalGuests" ? ADDITIONAL_GUEST_STEPS : BOOKING_STEPS;
@@ -191,31 +116,6 @@ export function useBookingWizardState({
   useEffect(() => {
     onHasExistingBookingChange?.(Boolean(existingTerminalBooking));
   }, [existingTerminalBooking, onHasExistingBookingChange]);
-
-  const { data: ticketOrdersData } = useGetMyTicketOrders(dataConnect, {
-    enabled: Boolean(existingTerminalBooking) || postSubmitFlow,
-  });
-  const { data: paymentAdjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, {
-    enabled: Boolean(existingTerminalBooking) || postSubmitFlow,
-  });
-
-  const bookingPaymentAdjustments = useMemo(() => {
-    if (!existingTerminalBooking) return [];
-    const bookingRow = paymentAdjustmentsData?.user?.bookings?.find(
-      (row) => row.id === existingTerminalBooking.id
-    );
-    return bookingRow?.adjustments ?? [];
-  }, [existingTerminalBooking, paymentAdjustmentsData]);
-
-  const existingDraft = useMemo(() => {
-    const list = myBookingsData?.user?.bookings ?? [];
-    return list.find((b) => b.status === BookingStatus.DRAFT) ?? null;
-  }, [myBookingsData]);
-
-  const showExpiredDraftHoldNotice = useMemo(
-    () => hasExpiredDraftHold(myBookingsData?.user?.bookings),
-    [myBookingsData]
-  );
 
   useEffect(() => {
     const raw = existingDraft?.clientSubmissionKey;
@@ -274,50 +174,10 @@ export function useBookingWizardState({
   const selectedMember = memberTicketTypes.find((t) => t.id === memberTicketTypeId);
   const selectedGuest = guestTicketTypes.find((t) => t.id === guestTicketTypeId);
   const canRequestAccommodation = membershipStatus === "REGULAR" || membershipStatus === "RESERVE";
-
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      try {
-        const merged = await getSectionMembersMerged(section.id);
-        if (!alive) return;
-        const options = (merged.members ?? [])
-          .filter((m) => m.id !== currentUserData?.user?.id)
-          .map((m) => ({ id: m.id, label: `${m.firstName} ${m.lastName}` }));
-        setSeatingOptions(options);
-      } catch {
-        if (alive) setSeatingOptions([]);
-      }
-    })();
-    return () => { alive = false; };
-  }, [section.id, currentUserData?.user?.id]);
-
-  const paymentSummaryForBooking = useMemo(() => {
-    if (!existingTerminalBooking) return null;
-    return summarizeEventBookingPayment({
-      booking: existingTerminalBooking,
-      eventId: event.id,
-      ticketOrders: ticketOrdersData?.user?.ticketOrders ?? [],
-      adjustments: bookingPaymentAdjustments,
-    });
-  }, [existingTerminalBooking, event.id, ticketOrdersData, bookingPaymentAdjustments]);
-
-  const paymentTicketRows = useMemo(() => {
-    if (!existingTerminalBooking) return [];
-    return buildBookingTicketRowsWithPaymentStatus({
-      booking: existingTerminalBooking,
-      eventId: event.id,
-      ticketOrders: ticketOrdersData?.user?.ticketOrders ?? [],
-    });
-  }, [existingTerminalBooking, event.id, ticketOrdersData]);
-
-  const pendingGuestTicketsAwaitingApproval = useMemo(() => {
-    if (!existingTerminalBooking) return false;
-    return hasPendingGuestTicketsAwaitingApproval(existingTerminalBooking);
-  }, [existingTerminalBooking]);
-
-  const canProceedToConfirmation =
-    paymentSummaryForBooking != null && isBookingPaymentComplete(paymentSummaryForBooking);
+  const seatingOptions = useSectionMemberSeatingOptions(
+    section.id,
+    currentUserData?.user?.id
+  );
 
   useEffect(() => {
     if (wizardMode !== "full" || activeStep !== 4 || canProceedToConfirmation) return;
@@ -351,50 +211,32 @@ export function useBookingWizardState({
   ]);
 
   const validateGuestCountStep = (): boolean => {
-    if (wizardMode === "additionalGuests") {
-      if (extraGuestRequestCount < 1) {
-        setSubmitError("Enter how many extra guest tickets you need.");
-        return false;
-      }
-      return true;
-    }
-    if (totalGuestCount > 0 && !guestTicketTypes.length) {
-      setSubmitError("Guest tickets are not available for this event.");
+    const error = guestCountValidationError({
+      mode: wizardMode,
+      extraGuestRequestCount,
+      totalGuestCount,
+      hasGuestTicketTypes: guestTicketTypes.length > 0,
+    });
+    if (error) {
+      setSubmitError(error);
       return false;
     }
     return true;
   };
 
   const validateGuestDetailsStep = (): boolean => {
-    if (wizardMode === "full" && includeGuest) {
-      if (!guestTicketTypeId) {
-        setSubmitError("Choose a guest ticket type.");
-        return false;
-      }
-      if (!guestDisplayName.trim()) {
-        setSubmitError("Enter a name for your guest.");
-        return false;
-      }
-    }
-    if (extraGuestRequestCount > 0) {
-      if (!extraGuestTicketTypeId) {
-        setSubmitError(
-          wizardMode === "additionalGuests"
-            ? "Choose a guest ticket type."
-            : "Choose a ticket type for additional guests."
-        );
-        return false;
-      }
-      for (let index = 0; index < extraGuestRequestCount; index++) {
-        if (!extraGuestDetails[index]?.guestDisplayName.trim()) {
-          setSubmitError(
-            extraGuestRequestCount === 1
-              ? "Enter a name for the additional guest."
-              : `Enter a name for additional guest ${index + 1}.`
-          );
-          return false;
-        }
-      }
+    const error = guestDetailsValidationError({
+      mode: wizardMode,
+      includeGuest,
+      guestTicketTypeId,
+      guestDisplayName,
+      extraGuestRequestCount,
+      extraGuestTicketTypeId,
+      extraGuestDetails,
+    });
+    if (error) {
+      setSubmitError(error);
+      return false;
     }
     return true;
   };
@@ -492,25 +334,13 @@ export function useBookingWizardState({
         }
       }
 
-      const lines: {
-        ticketTypeId: string;
-        sortOrder: number;
-        guestUserId: string | null;
-        guestDisplayName: string | null;
-        dietaryNote: string | null;
-      }[] = [
-        { ticketTypeId: memberTicketTypeId, sortOrder: 0, guestUserId: null, guestDisplayName: null, dietaryNote: null },
-      ];
-
-      if (includeGuest && guestTicketTypeId) {
-        lines.push({
-          ticketTypeId: guestTicketTypeId,
-          sortOrder: 1,
-          guestUserId: null,
-          guestDisplayName: guestDisplayName.trim(),
-          dietaryNote: guestDietaryNote.trim() || null,
-        });
-      }
+      const lines = buildBookingSubmissionLines({
+        memberTicketTypeId,
+        includeGuest,
+        guestTicketTypeId,
+        guestDisplayName,
+        guestDietaryNote,
+      });
 
       const result = await submitEventBooking({
         idempotencyKey: idempotencyKeyRef.current,

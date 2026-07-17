@@ -42,10 +42,15 @@ describe("function entry guard contracts", () => {
     const bookings = readSource("bookings.ts");
     assertOnCallGuard(bookings, "submitEventBooking", "requireEnabled(request);");
 
-    const payments = readSource("payments.ts");
-    assertOnCallGuard(payments, "createTicketCheckoutSession", "requireEnabled(request);");
-    assertOnCallGuard(payments, "createEventBookingCheckoutSession", "requireEnabled(request);");
-    assertOnCallGuard(payments, "getMyTicketOrderStripeArtifactsBatch", "requireEnabled(request);");
+    const paymentCheckout = readSource("paymentCheckoutCallables.ts");
+    assertOnCallGuard(paymentCheckout, "createTicketCheckoutSession", "requireEnabled(request);");
+    assertOnCallGuard(paymentCheckout, "createEventBookingCheckoutSession", "requireEnabled(request);");
+
+    const paymentArtifacts = readSource("paymentStripeArtifacts.ts");
+    assertOnCallGuard(paymentArtifacts, "getMyTicketOrderStripeArtifactsBatch", "requireEnabled(request);");
+
+    const paymentReconciliation = readSource("paymentReconciliationCallable.ts");
+    assertOnCallGuard(paymentReconciliation, "reconcileMyCheckoutSessionOrders", "requireEnabled(request);");
   });
 
   it("requires section-moderator authorization on every announcement callable", () => {
@@ -80,11 +85,13 @@ describe("function entry guard contracts", () => {
   });
 
   it("keeps Stripe webhook signature verification in place", () => {
-    const payments = readSource("payments.ts");
-    expect(payments).toContain("stripe-signature");
-    expect(payments).toContain("constructEvent(req.rawBody, signature,");
-    expect(payments).toContain("getPaymentWebhookEventByStripeEventId");
-    expect(payments).toContain("createPaymentWebhookEvent");
-    expect(payments).toContain("emitPaymentLifecycleNotification");
+    const webhook = readSource("paymentWebhook.ts");
+    expect(webhook).toContain("stripe-signature");
+    expect(webhook).toContain("constructEvent(req.rawBody, signature,");
+    expect(webhook).toContain("getPaymentWebhookEventByStripeEventId");
+    expect(webhook).toContain("createPaymentWebhookEvent");
+
+    const reconciliation = readSource("paymentReconciliationService.ts");
+    expect(reconciliation).toContain("emitPaymentLifecycleNotification");
   });
 });

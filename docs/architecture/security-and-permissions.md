@@ -65,7 +65,7 @@ Typical usage:
 
 ## Webhook security
 
-Stripe webhook uses signature verification in `functions/src/payments.ts`:
+Stripe webhook uses signature verification in `functions/src/paymentWebhook.ts` (re-exported by `functions/src/payments.ts`):
 
 - requires `stripe-signature` header
 - verifies payload via `constructEvent(req.rawBody, signature, webhookSecret)`

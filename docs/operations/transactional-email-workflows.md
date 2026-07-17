@@ -31,7 +31,7 @@ flowchart LR
 | | |
 |---|---|
 | **Trigger** | Stripe webhook applies `PAID`, `FAILED`, or `REFUNDED` to a `TicketOrder` |
-| **Entrypoint** | [`functions/src/payments.ts`](../../functions/src/payments.ts) → [`emitPaymentLifecycleNotification`](../../functions/src/paymentNotifications.ts) → [`paymentLifecycleEmailDispatcher.ts`](../../functions/src/paymentLifecycleEmailDispatcher.ts) |
+| **Entrypoint** | [`paymentWebhook.ts`](../../functions/src/paymentWebhook.ts) → [`paymentReconciliationService.ts`](../../functions/src/paymentReconciliationService.ts) → [`emitPaymentLifecycleNotification`](../../functions/src/paymentNotifications.ts) → [`paymentLifecycleEmailDispatcher.ts`](../../functions/src/paymentLifecycleEmailDispatcher.ts) |
 | **Recipient** | Purchaser email from order query |
 | **No send** | Transition not applied (`noop_replay`, illegal transition); dispute side-state path |
 | **Delivery key** | `payment:{orderId}:{type}:{stripeEventId}` |
@@ -43,7 +43,7 @@ flowchart LR
 | | |
 |---|---|
 | **Trigger** | Reconciliation exception newly opened or reopened; Stripe dispute side-state webhook |
-| **Entrypoint** | [`payments.ts`](../../functions/src/payments.ts) → [`paymentOpsInternalAlerts.ts`](../../functions/src/paymentOpsInternalAlerts.ts) |
+| **Entrypoint** | [`paymentWebhook.ts`](../../functions/src/paymentWebhook.ts) / [`paymentReconciliationService.ts`](../../functions/src/paymentReconciliationService.ts) → [`paymentOpsInternalAlerts.ts`](../../functions/src/paymentOpsInternalAlerts.ts) |
 | **Recipient** | `PAYMENT_OPS_ALERT_EMAILS` (comma-separated); unset = no sends |
 | **No send** | `ACTIVE_DISPUTE` opened from dispute webhook (dispute alert covers it); ops list empty |
 | **Templates** | `paymentReconciliationExceptionAlert`, `paymentDisputeOpsAlert` |
