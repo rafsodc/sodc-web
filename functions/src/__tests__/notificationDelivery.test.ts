@@ -9,6 +9,7 @@ import {
   sendNotificationOnce,
   type NotificationDeliveryRepository,
 } from "../notificationDelivery";
+import { parseNotificationRecoveryPayload } from "../notificationRecoveryPayload";
 
 vi.mock("firebase-functions/logger", () => ({
   error: vi.fn(),
@@ -27,6 +28,7 @@ interface StoredDelivery {
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
+  recoveryPayload?: string | null;
 }
 
 function createRepository(initialRecords: StoredDelivery[] = []): {
@@ -76,6 +78,7 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
         attemptCount: args.attemptCount,
         lastAttemptedAt: args.lastAttemptedAt,
         provider: args.provider ?? null,
+        recoveryPayload: args.recoveryPayload ?? null,
       };
       records.set(mapKey, record);
       return {
@@ -98,6 +101,7 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
       record.attemptCount = args.attemptCount;
       record.lastAttemptedAt = args.lastAttemptedAt;
       record.provider = args.provider ?? null;
+      record.recoveryPayload = args.recoveryPayload ?? record.recoveryPayload ?? null;
       return true;
     },
 
@@ -159,6 +163,17 @@ describe("notificationDelivery", () => {
         notificationType: "PAYMENT_PAID",
         deliveryKey: "payment:order-1:PAYMENT_PAID:evt_1",
         provider: "unit-test",
+        recoveryPayload: {
+          version: 1,
+          kind: "PAYMENT_LIFECYCLE",
+          type: "PAYMENT_PAID",
+          orderId: "00000000-0000-0000-0000-000000000001",
+          eventId: null,
+          stripeEventId: "evt_1",
+          status: null,
+          occurredAt: "2026-05-14T20:00:00.000Z",
+          userId: "user-1",
+        },
         send,
       },
       { repository, now }
@@ -175,6 +190,14 @@ describe("notificationDelivery", () => {
       attemptCount: 1,
       provider: "unit-test",
       providerMessageId: "provider-message-1",
+    });
+    const storedPayload = records.get(
+      "EMAIL:payment:order-1:PAYMENT_PAID:evt_1"
+    )?.recoveryPayload;
+    expect(storedPayload).toBeTruthy();
+    expect(parseNotificationRecoveryPayload(storedPayload!)).toMatchObject({
+      kind: "PAYMENT_LIFECYCLE",
+      stripeEventId: "evt_1",
     });
   });
 

@@ -57,4 +57,28 @@ describe("notification lifecycle contracts", () => {
       expect(operation).toContain("attemptCount: { eq: $attemptCount }");
     }
   });
+
+  it("persists recovery context for every transactional notification sender", () => {
+    for (const fileName of [
+      "bookingEmailDispatcher.ts",
+      "guestTicketRequestEmails.ts",
+      "membershipStatusEmailDispatcher.ts",
+      "paymentNotifications.ts",
+      "paymentOpsInternalAlerts.ts",
+      "pendingApprovalAdminAlert.ts",
+    ]) {
+      const source = readFunctionSource(fileName);
+      const requests = [
+        ...source.matchAll(
+          /(?:sendNotificationOnce|notificationSender)\(\{([\s\S]*?)\bsend:\s*async/g
+        ),
+      ];
+      expect(requests.length, `${fileName} must send at least one notification`).toBeGreaterThan(0);
+      for (const request of requests) {
+        expect(request[1], `${fileName} notification missing recoveryPayload`).toContain(
+          "recoveryPayload:"
+        );
+      }
+    }
+  });
 });

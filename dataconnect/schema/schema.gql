@@ -373,6 +373,8 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   channel: NotificationChannel!
   notificationType: String!
   deliveryKey: String!
+  # Versioned minimal domain context used by the scheduled recovery dispatcher.
+  recoveryPayload: String
   status: NotificationDeliveryStatus! @default(value: PENDING)
   ticketOrder: TicketOrder
   booking: Booking

@@ -9,6 +9,10 @@ import {
   NotificationDeliveryStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
+import {
+  serializeNotificationRecoveryPayload,
+  type NotificationRecoveryPayload,
+} from "./notificationRecoveryPayload";
 
 const MAX_ERROR_CODE_LENGTH = 120;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -26,6 +30,7 @@ export interface SendNotificationOnceRequest {
   bookingId?: UUIDString | null;
   userId?: string | null;
   provider?: string | null;
+  recoveryPayload?: NotificationRecoveryPayload;
   send: () => Promise<NotificationSendResult | void>;
 }
 
@@ -56,6 +61,7 @@ export interface NotificationDeliveryRepository {
     bookingId?: UUIDString | null;
     userId?: string | null;
     provider?: string | null;
+    recoveryPayload?: string | null;
     attemptCount: number;
     lastAttemptedAt: string;
   }): Promise<NotificationDeliveryRecord>;
@@ -66,6 +72,7 @@ export interface NotificationDeliveryRepository {
     attemptCount: number;
     lastAttemptedAt: string;
     provider?: string | null;
+    recoveryPayload?: string | null;
   }): Promise<boolean>;
   markSent(args: {
     id: UUIDString;
@@ -119,6 +126,7 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       bookingId: args.bookingId ?? null,
       userId: args.userId ?? null,
       provider: args.provider ?? null,
+      recoveryPayload: args.recoveryPayload ?? null,
       attemptCount: args.attemptCount,
       lastAttemptedAt: args.lastAttemptedAt,
     });
@@ -138,6 +146,7 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       attemptCount: args.attemptCount,
       lastAttemptedAt: args.lastAttemptedAt,
       provider: args.provider ?? null,
+      recoveryPayload: args.recoveryPayload ?? null,
     });
     return claimed.data.notificationDelivery_updateMany === 1;
   },
@@ -246,7 +255,8 @@ async function claimExistingNotificationDelivery(
   repository: NotificationDeliveryRepository,
   existing: NotificationDeliveryRecord,
   attemptStartedAt: string,
-  leaseMs: number
+  leaseMs: number,
+  recoveryPayload: string | null
 ): Promise<SendNotificationOnceResult | { delivery: NotificationDeliveryRecord; attemptCount: number }> {
   if (existing.status === NotificationDeliveryStatus.SENT) {
     return duplicateResult("already_sent", existing);
@@ -266,6 +276,7 @@ async function claimExistingNotificationDelivery(
     attemptCount,
     lastAttemptedAt: attemptStartedAt,
     provider: request.provider ?? null,
+    recoveryPayload,
   });
   if (claimed) {
     return {
@@ -295,14 +306,22 @@ async function claimNotificationDelivery(
   request: SendNotificationOnceRequest,
   repository: NotificationDeliveryRepository,
   attemptStartedAt: string,
-  leaseMs: number
+  leaseMs: number,
+  recoveryPayload: string | null
 ): Promise<SendNotificationOnceResult | { delivery: NotificationDeliveryRecord; attemptCount: number }> {
   const existing = await repository.getByChannelAndKey({
     channel: request.channel,
     deliveryKey: request.deliveryKey,
   });
   if (existing) {
-    return claimExistingNotificationDelivery(request, repository, existing, attemptStartedAt, leaseMs);
+    return claimExistingNotificationDelivery(
+      request,
+      repository,
+      existing,
+      attemptStartedAt,
+      leaseMs,
+      recoveryPayload
+    );
   }
 
   try {
@@ -314,6 +333,7 @@ async function claimNotificationDelivery(
       bookingId: request.bookingId ?? null,
       userId: request.userId ?? null,
       provider: request.provider ?? null,
+      recoveryPayload,
       attemptCount: 1,
       lastAttemptedAt: attemptStartedAt,
     });
@@ -331,7 +351,14 @@ async function claimNotificationDelivery(
   if (!raced) {
     throw new Error(`Notification delivery race for ${request.channel}:${request.deliveryKey} but no row was found`);
   }
-  return claimExistingNotificationDelivery(request, repository, raced, attemptStartedAt, leaseMs);
+  return claimExistingNotificationDelivery(
+    request,
+    repository,
+    raced,
+    attemptStartedAt,
+    leaseMs,
+    recoveryPayload
+  );
 }
 
 export async function sendNotificationOnce(
@@ -342,7 +369,16 @@ export async function sendNotificationOnce(
   const now = dependencies.now ?? (() => new Date().toISOString());
   const leaseMs = dependencies.leaseMs ?? DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS;
   const attemptStartedAt = now();
-  const claimResult = await claimNotificationDelivery(request, repository, attemptStartedAt, leaseMs);
+  const recoveryPayload = request.recoveryPayload
+    ? serializeNotificationRecoveryPayload(request.recoveryPayload)
+    : null;
+  const claimResult = await claimNotificationDelivery(
+    request,
+    repository,
+    attemptStartedAt,
+    leaseMs,
+    recoveryPayload
+  );
 
   if ("outcome" in claimResult) {
     return claimResult;

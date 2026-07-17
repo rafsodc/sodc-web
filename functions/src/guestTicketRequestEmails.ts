@@ -75,6 +75,7 @@ export function createGuestTicketRequestMailer(): ReturnType<
 export async function notifyModeratorsGuestTicketRequestSubmitted(args: {
   requestId: UUIDString;
   appBaseUrl: string;
+  recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createGuestTicketRequestMailer>;
 }): Promise<void> {
   try {
@@ -87,10 +88,18 @@ export async function notifyModeratorsGuestTicketRequestSubmitted(args: {
 
     const section = request.booking.event.section;
     const booker = request.booking.booker;
-    const recipients = await resolveGuestTicketModeratorEmails({
-      sectionId: section.id,
-      excludeUserId: booker.id,
-    });
+    const recipients = args.recipientEmails
+      ? Array.from(
+          new Set(
+            args.recipientEmails
+              .map((email) => email.trim().toLowerCase())
+              .filter((email) => email.length > 0)
+          )
+        )
+      : await resolveGuestTicketModeratorEmails({
+          sectionId: section.id,
+          excludeUserId: booker.id,
+        });
     if (recipients.length === 0) {
       logger.warn("guest ticket moderator alert skipped (no recipients)", {
         requestId: args.requestId,
@@ -126,6 +135,12 @@ export async function notifyModeratorsGuestTicketRequestSubmitted(args: {
           bookingId: request.booking.id,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
+          recoveryPayload: {
+            version: 1,
+            kind: "GUEST_REQUEST_MODERATORS",
+            requestId: args.requestId,
+            recipientEmail: to,
+          },
           send: async () => {
             const r = await mailer.sendEmail({
               templateName: "guestTicketRequestSubmittedModerator",
@@ -209,6 +224,12 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
       bookingId: request.booking.id,
       userId: booker.id,
       provider: GOV_NOTIFY_PROVIDER,
+      recoveryPayload: {
+        version: 1,
+        kind: "GUEST_REQUEST_BOOKER",
+        requestId: args.requestId,
+        status: args.status,
+      },
       send: async () => {
         const r = await mailer.sendEmail({
           templateName,

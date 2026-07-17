@@ -268,6 +268,18 @@ export function getNotificationDeliveryByChannelAndKey(dcOrVarsOrOptions, varsOr
   return dcInstance.executeQuery('GetNotificationDeliveryByChannelAndKey', inputVars, inputOpts);
 }
 
+export function listFailedNotificationDeliveriesForRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListFailedNotificationDeliveriesForRecovery', inputVars, inputOpts);
+}
+
+export function listStalePendingNotificationDeliveriesForRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStalePendingNotificationDeliveriesForRecovery', inputVars, inputOpts);
+}
+
 export function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -278,6 +290,12 @@ export function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, 
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('ClaimNotificationDeliveryById', inputVars, inputOpts);
+}
+
+export function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordNotificationRecoveryFailureById', inputVars, inputOpts);
 }
 
 export function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {

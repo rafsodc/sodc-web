@@ -29,6 +29,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetNotificationDeliveryByChannelAndKey*](#getnotificationdeliverybychannelandkey)
+  - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
+  - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
@@ -94,6 +96,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
+  - [*RecordNotificationRecoveryFailureById*](#recordnotificationrecoveryfailurebyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliveryFailedById*](#marknotificationdeliveryfailedbyid)
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
@@ -1375,6 +1378,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     channel: NotificationChannel;
     deliveryKey: string;
     notificationType: string;
+    recoveryPayload?: string | null;
     status: NotificationDeliveryStatus;
     provider?: string | null;
     providerMessageId?: string | null;
@@ -1422,6 +1426,198 @@ export default function GetNotificationDeliveryByChannelAndKeyComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetNotificationDeliveryByChannelAndKey(dataConnect, getNotificationDeliveryByChannelAndKeyVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notificationDeliveries);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListFailedNotificationDeliveriesForRecovery
+You can execute the `ListFailedNotificationDeliveriesForRecovery` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListFailedNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: useDataConnectQueryOptions<ListFailedNotificationDeliveriesForRecoveryData>): UseDataConnectQueryResult<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListFailedNotificationDeliveriesForRecovery(vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: useDataConnectQueryOptions<ListFailedNotificationDeliveriesForRecoveryData>): UseDataConnectQueryResult<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+```
+
+### Variables
+The `ListFailedNotificationDeliveriesForRecovery` Query requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListFailedNotificationDeliveriesForRecoveryVariables {
+  attemptedBefore: TimestampString;
+  maxAttemptCount: number;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListFailedNotificationDeliveriesForRecovery` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListFailedNotificationDeliveriesForRecovery` Query is of type `ListFailedNotificationDeliveriesForRecoveryData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListFailedNotificationDeliveriesForRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListFailedNotificationDeliveriesForRecovery`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListFailedNotificationDeliveriesForRecoveryVariables } from '@dataconnect/generated';
+import { useListFailedNotificationDeliveriesForRecovery } from '@dataconnect/generated/react'
+
+export default function ListFailedNotificationDeliveriesForRecoveryComponent() {
+  // The `useListFailedNotificationDeliveriesForRecovery` Query hook requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`:
+  const listFailedNotificationDeliveriesForRecoveryVars: ListFailedNotificationDeliveriesForRecoveryVariables = {
+    attemptedBefore: ...,
+    maxAttemptCount: ...,
+    limit: ...,
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListFailedNotificationDeliveriesForRecovery(listFailedNotificationDeliveriesForRecoveryVars);
+  // Variables can be defined inline as well.
+  const query = useListFailedNotificationDeliveriesForRecovery({ attemptedBefore: ..., maxAttemptCount: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListFailedNotificationDeliveriesForRecovery(dataConnect, listFailedNotificationDeliveriesForRecoveryVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListFailedNotificationDeliveriesForRecovery(listFailedNotificationDeliveriesForRecoveryVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListFailedNotificationDeliveriesForRecovery(dataConnect, listFailedNotificationDeliveriesForRecoveryVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notificationDeliveries);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListStalePendingNotificationDeliveriesForRecovery
+You can execute the `ListStalePendingNotificationDeliveriesForRecovery` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListStalePendingNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: useDataConnectQueryOptions<ListStalePendingNotificationDeliveriesForRecoveryData>): UseDataConnectQueryResult<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListStalePendingNotificationDeliveriesForRecovery(vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: useDataConnectQueryOptions<ListStalePendingNotificationDeliveriesForRecoveryData>): UseDataConnectQueryResult<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+```
+
+### Variables
+The `ListStalePendingNotificationDeliveriesForRecovery` Query requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListStalePendingNotificationDeliveriesForRecoveryVariables {
+  attemptedBefore: TimestampString;
+  maxAttemptCount: number;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListStalePendingNotificationDeliveriesForRecovery` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListStalePendingNotificationDeliveriesForRecovery` Query is of type `ListStalePendingNotificationDeliveriesForRecoveryData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListStalePendingNotificationDeliveriesForRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListStalePendingNotificationDeliveriesForRecovery`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListStalePendingNotificationDeliveriesForRecoveryVariables } from '@dataconnect/generated';
+import { useListStalePendingNotificationDeliveriesForRecovery } from '@dataconnect/generated/react'
+
+export default function ListStalePendingNotificationDeliveriesForRecoveryComponent() {
+  // The `useListStalePendingNotificationDeliveriesForRecovery` Query hook requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`:
+  const listStalePendingNotificationDeliveriesForRecoveryVars: ListStalePendingNotificationDeliveriesForRecoveryVariables = {
+    attemptedBefore: ...,
+    maxAttemptCount: ...,
+    limit: ...,
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListStalePendingNotificationDeliveriesForRecovery(listStalePendingNotificationDeliveriesForRecoveryVars);
+  // Variables can be defined inline as well.
+  const query = useListStalePendingNotificationDeliveriesForRecovery({ attemptedBefore: ..., maxAttemptCount: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListStalePendingNotificationDeliveriesForRecovery(dataConnect, listStalePendingNotificationDeliveriesForRecoveryVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListStalePendingNotificationDeliveriesForRecovery(listStalePendingNotificationDeliveriesForRecoveryVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListStalePendingNotificationDeliveriesForRecovery(dataConnect, listStalePendingNotificationDeliveriesForRecoveryVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -7505,6 +7701,7 @@ export interface CreateNotificationDeliveryVariables {
   channel: NotificationChannel;
   notificationType: string;
   deliveryKey: string;
+  recoveryPayload?: string | null;
   status: NotificationDeliveryStatus;
   ticketOrderId?: UUIDString | null;
   bookingId?: UUIDString | null;
@@ -7564,6 +7761,7 @@ export default function CreateNotificationDeliveryComponent() {
     channel: ..., 
     notificationType: ..., 
     deliveryKey: ..., 
+    recoveryPayload: ..., // optional
     status: ..., 
     ticketOrderId: ..., // optional
     bookingId: ..., // optional
@@ -7574,7 +7772,7 @@ export default function CreateNotificationDeliveryComponent() {
   };
   mutation.mutate(createNotificationDeliveryVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ channel: ..., notificationType: ..., deliveryKey: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
+  mutation.mutate({ channel: ..., notificationType: ..., deliveryKey: ..., recoveryPayload: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -7620,6 +7818,7 @@ export interface ClaimNotificationDeliveryByIdVariables {
   attemptCount: number;
   lastAttemptedAt: TimestampString;
   provider?: string | null;
+  recoveryPayload?: string | null;
 }
 ```
 ### Return Type
@@ -7675,16 +7874,123 @@ export default function ClaimNotificationDeliveryByIdComponent() {
     attemptCount: ..., 
     lastAttemptedAt: ..., 
     provider: ..., // optional
+    recoveryPayload: ..., // optional
   };
   mutation.mutate(claimNotificationDeliveryByIdVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+  mutation.mutate({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., recoveryPayload: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
   mutation.mutate(claimNotificationDeliveryByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notificationDelivery_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## RecordNotificationRecoveryFailureById
+You can execute the `RecordNotificationRecoveryFailureById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useRecordNotificationRecoveryFailureById(options?: useDataConnectMutationOptions<RecordNotificationRecoveryFailureByIdData, FirebaseError, RecordNotificationRecoveryFailureByIdVariables>): UseDataConnectMutationResult<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useRecordNotificationRecoveryFailureById(dc: DataConnect, options?: useDataConnectMutationOptions<RecordNotificationRecoveryFailureByIdData, FirebaseError, RecordNotificationRecoveryFailureByIdVariables>): UseDataConnectMutationResult<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+```
+
+### Variables
+The `RecordNotificationRecoveryFailureById` Mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface RecordNotificationRecoveryFailureByIdVariables {
+  id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+```
+### Return Type
+Recall that calling the `RecordNotificationRecoveryFailureById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RecordNotificationRecoveryFailureById` Mutation is of type `RecordNotificationRecoveryFailureByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface RecordNotificationRecoveryFailureByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `RecordNotificationRecoveryFailureById`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, RecordNotificationRecoveryFailureByIdVariables } from '@dataconnect/generated';
+import { useRecordNotificationRecoveryFailureById } from '@dataconnect/generated/react'
+
+export default function RecordNotificationRecoveryFailureByIdComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useRecordNotificationRecoveryFailureById();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useRecordNotificationRecoveryFailureById(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordNotificationRecoveryFailureById(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordNotificationRecoveryFailureById(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useRecordNotificationRecoveryFailureById` Mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
+  const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
+    id: ...,
+    expectedStatus: ...,
+    expectedAttemptCount: ...,
+    attemptCount: ...,
+    lastAttemptedAt: ...,
+    lastErrorCode: ...,
+    lastErrorMessage: ...,
+  };
+  mutation.mutate(recordNotificationRecoveryFailureByIdVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(recordNotificationRecoveryFailureByIdVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {

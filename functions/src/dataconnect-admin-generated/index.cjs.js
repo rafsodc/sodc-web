@@ -311,6 +311,20 @@ function getNotificationDeliveryByChannelAndKey(dcOrVarsOrOptions, varsOrOptions
 }
 exports.getNotificationDeliveryByChannelAndKey = getNotificationDeliveryByChannelAndKey;
 
+function listFailedNotificationDeliveriesForRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListFailedNotificationDeliveriesForRecovery', inputVars, inputOpts);
+}
+exports.listFailedNotificationDeliveriesForRecovery = listFailedNotificationDeliveriesForRecovery;
+
+function listStalePendingNotificationDeliveriesForRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStalePendingNotificationDeliveriesForRecovery', inputVars, inputOpts);
+}
+exports.listStalePendingNotificationDeliveriesForRecovery = listStalePendingNotificationDeliveriesForRecovery;
+
 function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -324,6 +338,13 @@ function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options
   return dcInstance.executeMutation('ClaimNotificationDeliveryById', inputVars, inputOpts);
 }
 exports.claimNotificationDeliveryById = claimNotificationDeliveryById;
+
+function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordNotificationRecoveryFailureById', inputVars, inputOpts);
+}
+exports.recordNotificationRecoveryFailureById = recordNotificationRecoveryFailureById;
 
 function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

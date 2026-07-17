@@ -14,6 +14,7 @@ export * from "./emailTemplateSync";
 export * from "./announcements";
 export * from "./unsubscribe";
 export * from "./notifyCallback";
+export * from "./notificationRecovery";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
