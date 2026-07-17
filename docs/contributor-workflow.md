@@ -65,10 +65,10 @@ The initial global floors preserve the measured baseline while allowing coverage
 
 | Metric | Global minimum |
 | --- | ---: |
-| Statements | 44% |
-| Branches | 40% |
+| Statements | 45% |
+| Branches | 41% |
 | Functions | 57% |
-| Lines | 45% |
+| Lines | 46% |
 
 Higher grouped thresholds protect code at critical boundaries:
 
@@ -76,7 +76,7 @@ Higher grouped thresholds protect code at critical boundaries:
 - deterministic payment, Stripe webhook, and state-transition logic: 90% statements, 73% branches, 100% functions, 94% lines
 - notification delivery and callback handling: 81% statements, 68% branches, 69% functions, 82% lines
 
-Treat these values as ratchets. Raise the relevant whole-number threshold when a change creates durable headroom; do not lower one without explaining the coverage loss and follow-up plan in the PR. Large callable wrappers such as `payments.ts` remain covered by the global gate until more logic can be extracted into focused, testable modules.
+Treat these values as ratchets. Raise the relevant whole-number threshold when a change creates durable headroom; do not lower one without explaining the coverage loss and follow-up plan in the PR. Integration-heavy callable and webhook entry points remain covered by the global gate and security contract tests, while extracted deterministic payment and state-transition modules use the higher grouped thresholds above.
 
 When changing transactional email (callables, webhooks, dispatchers), run the **full** functions suite and update [`operations/transactional-email-workflows.md`](operations/transactional-email-workflows.md) when triggers or delivery keys change.
 

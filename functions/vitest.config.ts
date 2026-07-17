@@ -20,10 +20,10 @@ export default defineConfig({
         'src/generatedEmailTemplateManifest.ts',
       ],
       thresholds: {
-        statements: 44,
-        branches: 40,
+        statements: 45,
+        branches: 41,
         functions: 57,
-        lines: 45,
+        lines: 46,
         'src/{helpers,rateLimiter,sections,validation}.ts': {
           statements: 77,
           branches: 66,
