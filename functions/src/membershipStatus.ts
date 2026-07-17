@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { requireAuth, handleFunctionError } from "./helpers";
+import { requireEnabled, handleFunctionError } from "./helpers";
 import { canUserChangeStatus, canUserResignMembership, isNonRestrictedStatus, type MembershipStatus } from "./validation";
 import { FUNCTIONS_REGION } from "./constants";
 import {
@@ -48,7 +48,7 @@ export async function sendMembershipStatusEmailIfChanged(args: {
 export const updateMembershipStatus = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
-  requireAuth(request);
+  requireEnabled(request);
 
   const { userId, newStatus } = request.data;
 
@@ -115,7 +115,7 @@ export const updateMembershipStatus = onCall(
 export const resignMembership = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
-    requireAuth(request);
+    requireEnabled(request);
 
     const userId = request.auth!.uid;
     const callerEnabled = request.auth!.token.enabled === true;

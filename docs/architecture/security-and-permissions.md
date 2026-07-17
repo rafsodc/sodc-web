@@ -55,13 +55,22 @@ Guard helpers in `functions/src/helpers.ts`:
 - `requireEnabled(request)`:
   - requires authenticated caller with `enabled: true`.
 - `requireAdmin(request)`:
-  - requires authenticated caller with `admin: true`.
+  - requires authenticated caller with both `admin: true` and `enabled: true`.
+  - an admin claim never bypasses account revocation.
 
 Typical usage:
 
-- Member flows (`submitEventBooking`, checkout start): `requireEnabled`.
-- Admin-only operations: `requireAdmin`.
-- Mixed/self-service operations (`updateMembershipStatus`, section member rollups): `requireAuth` + in-function ownership checks.
+- Member flows (`submitEventBooking`, checkout start, membership self-service): `requireEnabled`.
+- PII-bearing member directories and all announcement template, preview, send, history, and recipient callables: `requireEnabled` before section/group checks.
+- Admin-only operations: `requireAdmin`, which also enforces `enabled: true`.
+- A caller with `admin: true` but `enabled !== true` is rejected; admin status is not an access-revocation bypass.
+
+The only callable entry points intentionally using authentication without an enabled claim are pre-approval setup flows:
+
+- `updateDisplayName`, used while establishing the account profile.
+- `syncPendingUserClaims`, used to reconcile the pre-approval Auth/profile state.
+
+These exceptions must not return member-directory data, announcement data, or other enabled-member content. Adding another authentication-only callable requires an explicit security review and a contract-test update.
 
 ## Webhook security
 

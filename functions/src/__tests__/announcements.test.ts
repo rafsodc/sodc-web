@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
 import {
+  getAnnouncementTemplates,
+  previewAnnouncementTemplate,
+  sendSectionAnnouncement,
+  getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
   extractTemplateVariables,
   buildRecipientPersonalisation,
@@ -8,6 +12,7 @@ import {
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
 const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipients");
+const mockGetSectionById = vi.spyOn(admin, "getSectionById");
 
 const sectionAId = "00000000-0000-4000-8000-00000000000a";
 const sectionBId = "00000000-0000-4000-8000-00000000000b";
@@ -15,10 +20,40 @@ const sendIdForSectionB = "00000000-0000-4000-8000-0000000000b1";
 
 function callAsAdmin(data: Record<string, unknown>) {
   return getAnnouncementSendRecipients.run({
-    auth: { uid: "admin-1", token: { admin: true } },
+    auth: { uid: "admin-1", token: { admin: true, enabled: true } },
     data,
   } as unknown as Parameters<typeof getAnnouncementSendRecipients.run>[0]);
 }
+
+const announcementCallables = [
+  getAnnouncementTemplates,
+  previewAnnouncementTemplate,
+  sendSectionAnnouncement,
+  getAnnouncementSendHistory,
+  getAnnouncementSendRecipients,
+] as const;
+
+describe("announcement callable enabled-account boundary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    { role: "moderator", admin: false },
+    { role: "admin", admin: true },
+  ])("rejects a disabled $role before section-role checks", async ({ admin: isAdmin }) => {
+    for (const callable of announcementCallables) {
+      await expect(
+        callable.run({
+          auth: { uid: "disabled-user", token: { admin: isAdmin, enabled: false } },
+          data: {},
+        } as never)
+      ).rejects.toMatchObject({ code: "permission-denied", message: "Account must be enabled" });
+    }
+
+    expect(mockGetSectionById).not.toHaveBeenCalled();
+  });
+});
 
 describe("getAnnouncementSendRecipients", () => {
   beforeEach(() => {

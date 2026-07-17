@@ -31,7 +31,7 @@ const handler = searchUsers as unknown as Handler;
 
 function adminRequest(data: Record<string, unknown> = {}) {
   return {
-    auth: { uid: "admin-uid", token: { admin: true } },
+    auth: { uid: "admin-uid", token: { admin: true, enabled: true } },
     data: { searchTerm: "alice", ...data },
   };
 }

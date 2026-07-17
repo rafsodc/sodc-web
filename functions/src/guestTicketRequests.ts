@@ -145,9 +145,6 @@ export const reviewGuestTicketRequest = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
     requireAdmin(request);
-    if (request.auth!.token.enabled !== true) {
-      throw new HttpsError("permission-denied", "Account must be enabled");
-    }
 
     const id = validateUUID(request.data?.id, "id") as UUIDString;
     const status = request.data?.status;
