@@ -1165,15 +1165,36 @@ query GetAnnouncementRecipientBySendAndUser($announcementSendId: UUID!, $userId:
     limit: 1
   ) {
     id
+    status
+    failureReason
+    deliveryVersion
+    deliveryStatusUpdatedAt
+    deliveryReceiptId
   }
 }
 
-mutation UpdateAnnouncementRecipientDeliveryStatus(
+mutation TryUpdateAnnouncementRecipientDeliveryStatus(
   $id: UUID!
+  $expectedDeliveryVersion: Int!
+  $deliveryVersion: Int!
   $status: String!
   $failureReason: String
+  $deliveryStatusUpdatedAt: Timestamp!
+  $deliveryReceiptId: String!
 ) @auth(level: NO_ACCESS) {
-  announcementRecipient_update(id: $id, data: { status: $status, failureReason: $failureReason })
+  announcementRecipient_updateMany(
+    where: {
+      id: { eq: $id }
+      deliveryVersion: { eq: $expectedDeliveryVersion }
+    }
+    data: {
+      status: $status
+      failureReason: $failureReason
+      deliveryVersion: $deliveryVersion
+      deliveryStatusUpdatedAt: $deliveryStatusUpdatedAt
+      deliveryReceiptId: $deliveryReceiptId
+    }
+  )
 }
 
 # ── Email bounce tracking ────────────────────────────────────────────────────
@@ -1183,23 +1204,231 @@ query GetUserByEmail($email: String!) @auth(level: NO_ACCESS) {
     id
     membershipStatus
     emailBounceCount
+    emailLastBounceAt
+    emailDeliveryVersion
+    emailDeliveryStatus
+    emailDeliveryStatusUpdatedAt
+    emailDeliveryReceiptId
   }
 }
 
-mutation UpdateEmailBounceStats(
+query GetNotifyCallbackUserById($userId: String!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    membershipStatus
+    emailBounceCount
+    emailLastBounceAt
+    emailDeliveryVersion
+    emailDeliveryStatus
+    emailDeliveryStatusUpdatedAt
+    emailDeliveryReceiptId
+  }
+}
+
+mutation TryApplyNotifyDeliveryUserState(
   $userId: String!
+  $expectedEmailDeliveryVersion: Int!
+  $emailDeliveryVersion: Int!
   $emailBounceCount: Int!
   $emailLastBounceAt: Timestamp
+  $emailDeliveryStatus: String!
+  $emailDeliveryStatusUpdatedAt: Timestamp!
+  $emailDeliveryReceiptId: String!
 ) @auth(level: NO_ACCESS) {
-  user_update(
-    id: $userId
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
+    }
     data: {
       emailBounceCount: $emailBounceCount
       emailLastBounceAt: $emailLastBounceAt
+      emailDeliveryVersion: $emailDeliveryVersion
+      emailDeliveryStatus: $emailDeliveryStatus
+      emailDeliveryStatusUpdatedAt: $emailDeliveryStatusUpdatedAt
+      emailDeliveryReceiptId: $emailDeliveryReceiptId
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
   )
+}
+
+mutation TryApplyNotifyDeliveryUserStateAndMarkLost(
+  $userId: String!
+  $expectedEmailDeliveryVersion: Int!
+  $emailDeliveryVersion: Int!
+  $emailBounceCount: Int!
+  $emailLastBounceAt: Timestamp
+  $emailDeliveryStatus: String!
+  $emailDeliveryStatusUpdatedAt: Timestamp!
+  $emailDeliveryReceiptId: String!
+) @auth(level: NO_ACCESS) {
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
+    }
+    data: {
+      membershipStatus: LOST
+      emailBounceCount: $emailBounceCount
+      emailLastBounceAt: $emailLastBounceAt
+      emailDeliveryVersion: $emailDeliveryVersion
+      emailDeliveryStatus: $emailDeliveryStatus
+      emailDeliveryStatusUpdatedAt: $emailDeliveryStatusUpdatedAt
+      emailDeliveryReceiptId: $emailDeliveryReceiptId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# ── GOV.UK Notify callback receipt ledger ────────────────────────────────────
+
+query GetNotifyDeliveryReceipt($id: String!) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt(id: $id) {
+    id
+    notifyStatus
+    reference
+    recipientHash
+    userId
+    eventAt
+    eventOrderingKey
+    affectsBounceState
+    processingStatus
+    outcome
+    attemptCount
+    lastAttemptedAt
+    processedAt
+  }
+}
+
+mutation CreateNotifyDeliveryReceipt(
+  $id: String!
+  $notifyStatus: String!
+  $reference: String
+  $recipientHash: String!
+  $userId: String
+  $eventAt: Timestamp!
+  $eventOrderingKey: String!
+  $affectsBounceState: Boolean!
+  $lastAttemptedAt: Timestamp!
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_insert(
+    data: {
+      id: $id
+      notifyStatus: $notifyStatus
+      reference: $reference
+      recipientHash: $recipientHash
+      userId: $userId
+      eventAt: $eventAt
+      eventOrderingKey: $eventOrderingKey
+      affectsBounceState: $affectsBounceState
+      processingStatus: PENDING
+      attemptCount: 1
+      lastAttemptedAt: $lastAttemptedAt
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation ClaimNotifyDeliveryReceipt(
+  $id: String!
+  $expectedProcessingStatus: NotifyDeliveryReceiptProcessingStatus!
+  $expectedAttemptCount: Int!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_updateMany(
+    where: {
+      id: { eq: $id }
+      processingStatus: { eq: $expectedProcessingStatus }
+      attemptCount: { eq: $expectedAttemptCount }
+    }
+    data: {
+      processingStatus: PENDING
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      lastErrorMessage: null
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotifyDeliveryReceiptProcessed(
+  $id: String!
+  $attemptCount: Int!
+  $outcome: NotifyDeliveryReceiptOutcome!
+  $processedAt: Timestamp!
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_updateMany(
+    where: {
+      id: { eq: $id }
+      processingStatus: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
+    data: {
+      processingStatus: PROCESSED
+      outcome: $outcome
+      processedAt: $processedAt
+      lastErrorMessage: null
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotifyDeliveryReceiptFailed(
+  $id: String!
+  $attemptCount: Int!
+  $lastErrorMessage: String
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_updateMany(
+    where: {
+      id: { eq: $id }
+      processingStatus: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
+    data: {
+      processingStatus: FAILED
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+query GetRecentNotifyDeliveryReceiptsForUser($userId: String!) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipts(
+    where: {
+      userId: { eq: $userId }
+      affectsBounceState: { eq: true }
+    }
+    orderBy: { eventOrderingKey: DESC }
+    limit: 3
+  ) {
+    id
+    notifyStatus
+    eventAt
+    eventOrderingKey
+  }
+}
+
+query GetLatestNotifyDeliveryReceiptForReference($reference: String!) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipts(
+    where: {
+      reference: { eq: $reference }
+      affectsBounceState: { eq: true }
+    }
+    orderBy: { eventOrderingKey: DESC }
+    limit: 1
+  ) {
+    id
+    notifyStatus
+    eventAt
+    eventOrderingKey
+  }
 }
 
 # ── Unsubscribe ───────────────────────────────────────────────────────────────

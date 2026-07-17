@@ -44,6 +44,18 @@ export enum NotificationDeliveryStatus {
   SENT = "SENT",
   FAILED = "FAILED",
 }
+export enum NotifyDeliveryReceiptOutcome {
+  APPLIED = "APPLIED",
+  IGNORED_STATUS = "IGNORED_STATUS",
+  IGNORED_NO_USER = "IGNORED_NO_USER",
+  IGNORED_NO_RECIPIENT = "IGNORED_NO_RECIPIENT",
+  NO_STATE_CHANGE = "NO_STATE_CHANGE",
+}
+export enum NotifyDeliveryReceiptProcessingStatus {
+  PENDING = "PENDING",
+  PROCESSED = "PROCESSED",
+  FAILED = "FAILED",
+}
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -243,6 +255,18 @@ export interface ClaimNotificationDeliveryByIdVariables {
   provider?: string | null;
 }
 
+export interface ClaimNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+
+export interface ClaimNotifyDeliveryReceiptVariables {
+  id: string;
+  expectedProcessingStatus: NotifyDeliveryReceiptProcessingStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+}
+
 export interface CreateAnnouncementRecipientData {
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
@@ -376,6 +400,22 @@ export interface CreateNotificationDeliveryVariables {
   provider?: string | null;
   attemptCount: number;
   lastAttemptedAt?: TimestampString | null;
+}
+
+export interface CreateNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
+}
+
+export interface CreateNotifyDeliveryReceiptVariables {
+  id: string;
+  notifyStatus: string;
+  reference?: string | null;
+  recipientHash: string;
+  userId?: string | null;
+  eventAt: TimestampString;
+  eventOrderingKey: string;
+  affectsBounceState: boolean;
+  lastAttemptedAt: TimestampString;
 }
 
 export interface CreatePaymentReconciliationExceptionData {
@@ -564,6 +604,11 @@ export interface GetAllUserGroupsWithStatusesData {
 export interface GetAnnouncementRecipientBySendAndUserData {
   announcementRecipients: ({
     id: UUIDString;
+    status: string;
+    failureReason?: string | null;
+    deliveryVersion: number;
+    deliveryStatusUpdatedAt?: TimestampString | null;
+    deliveryReceiptId?: string | null;
   } & AnnouncementRecipient_Key)[];
 }
 
@@ -935,6 +980,19 @@ export interface GetGuestTicketRequestForNotificationVariables {
   id: UUIDString;
 }
 
+export interface GetLatestNotifyDeliveryReceiptForReferenceData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+
+export interface GetLatestNotifyDeliveryReceiptForReferenceVariables {
+  reference: string;
+}
+
 export interface GetMyAnnouncementPreferencesData {
   user?: {
     membershipStatus: MembershipStatus;
@@ -1170,6 +1228,45 @@ export interface GetNotificationDeliveryByChannelAndKeyVariables {
   deliveryKey: string;
 }
 
+export interface GetNotifyCallbackUserByIdData {
+  user?: {
+    id: string;
+    membershipStatus: MembershipStatus;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
+  } & User_Key;
+}
+
+export interface GetNotifyCallbackUserByIdVariables {
+  userId: string;
+}
+
+export interface GetNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt?: {
+    id: string;
+    notifyStatus: string;
+    reference?: string | null;
+    recipientHash: string;
+    userId?: string | null;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+    affectsBounceState: boolean;
+    processingStatus: NotifyDeliveryReceiptProcessingStatus;
+    outcome?: NotifyDeliveryReceiptOutcome | null;
+    attemptCount: number;
+    lastAttemptedAt: TimestampString;
+    processedAt?: TimestampString | null;
+  } & NotifyDeliveryReceipt_Key;
+}
+
+export interface GetNotifyDeliveryReceiptVariables {
+  id: string;
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -1200,6 +1297,19 @@ export interface GetPaymentWebhookEventByStripeEventIdData {
 
 export interface GetPaymentWebhookEventByStripeEventIdVariables {
   stripeEventId: string;
+}
+
+export interface GetRecentNotifyDeliveryReceiptsForUserData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+
+export interface GetRecentNotifyDeliveryReceiptsForUserVariables {
+  userId: string;
 }
 
 export interface GetSectionAnnouncementOptOutData {
@@ -1485,6 +1595,11 @@ export interface GetUserByEmailData {
     id: string;
     membershipStatus: MembershipStatus;
     emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
   } & User_Key)[];
 }
 
@@ -1977,6 +2092,27 @@ export interface MarkNotificationDeliverySentByIdVariables {
   lastErrorMessage?: string | null;
 }
 
+export interface MarkNotifyDeliveryReceiptFailedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+
+export interface MarkNotifyDeliveryReceiptFailedVariables {
+  id: string;
+  attemptCount: number;
+  lastErrorMessage?: string | null;
+}
+
+export interface MarkNotifyDeliveryReceiptProcessedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+
+export interface MarkNotifyDeliveryReceiptProcessedVariables {
+  id: string;
+  attemptCount: number;
+  outcome: NotifyDeliveryReceiptOutcome;
+  processedAt: TimestampString;
+}
+
 export interface MarkTicketOrderFailedFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -2012,6 +2148,11 @@ export interface MarkTicketOrderRefundedFromWebhookVariables {
 export interface NotificationDelivery_Key {
   id: UUIDString;
   __typename?: 'NotificationDelivery_Key';
+}
+
+export interface NotifyDeliveryReceipt_Key {
+  id: string;
+  __typename?: 'NotifyDeliveryReceipt_Key';
 }
 
 export interface OptInSectionAnnouncementData {
@@ -2119,6 +2260,50 @@ export interface TicketType_Key {
   __typename?: 'TicketType_Key';
 }
 
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
+  user_updateMany: number;
+}
+
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
+  userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
+}
+
+export interface TryApplyNotifyDeliveryUserStateData {
+  user_updateMany: number;
+}
+
+export interface TryApplyNotifyDeliveryUserStateVariables {
+  userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
+}
+
+export interface TryUpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_updateMany: number;
+}
+
+export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
+  id: UUIDString;
+  expectedDeliveryVersion: number;
+  deliveryVersion: number;
+  status: string;
+  failureReason?: string | null;
+  deliveryStatusUpdatedAt: TimestampString;
+  deliveryReceiptId: string;
+}
+
 export interface UnregisterFromSectionData {
   userUserGroup_delete?: UserUserGroup_Key | null;
 }
@@ -2133,16 +2318,6 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
-}
-
-export interface UpdateAnnouncementRecipientDeliveryStatusData {
-  announcementRecipient_update?: AnnouncementRecipient_Key | null;
-}
-
-export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
-  id: UUIDString;
-  status: string;
-  failureReason?: string | null;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -2173,16 +2348,6 @@ export interface UpdateBookingStatusFromCallableVariables {
 export interface UpdateBookingStatusVariables {
   id: UUIDString;
   status: BookingStatus;
-}
-
-export interface UpdateEmailBounceStatsData {
-  user_update?: User_Key | null;
-}
-
-export interface UpdateEmailBounceStatsVariables {
-  userId: string;
-  emailBounceCount: number;
-  emailLastBounceAt?: TimestampString | null;
 }
 
 export interface UpdateEventData {
@@ -2618,20 +2783,65 @@ export function getAnnouncementRecipientBySendAndUser(dc: DataConnect, vars: Get
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientBySendAndUser' Query. Allow users to pass in custom DataConnect instances. */
 export function getAnnouncementRecipientBySendAndUser(vars: GetAnnouncementRecipientBySendAndUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientBySendAndUserData>>;
 
-/** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementRecipientDeliveryStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateAnnouncementRecipientDeliveryStatus(vars: UpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementRecipientDeliveryStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'TryUpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function tryUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryUpdateAnnouncementRecipientDeliveryStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'TryUpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function tryUpdateAnnouncementRecipientDeliveryStatus(vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryUpdateAnnouncementRecipientDeliveryStatusData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetUserByEmail' Query. Allow users to execute without passing in DataConnect. */
 export function getUserByEmail(dc: DataConnect, vars: GetUserByEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByEmailData>>;
 /** Generated Node Admin SDK operation action function for the 'GetUserByEmail' Query. Allow users to pass in custom DataConnect instances. */
 export function getUserByEmail(vars: GetUserByEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserByEmailData>>;
 
-/** Generated Node Admin SDK operation action function for the 'UpdateEmailBounceStats' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateEmailBounceStats(dc: DataConnect, vars: UpdateEmailBounceStatsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEmailBounceStatsData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateEmailBounceStats' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateEmailBounceStats(vars: UpdateEmailBounceStatsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateEmailBounceStatsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotifyCallbackUserById' Query. Allow users to execute without passing in DataConnect. */
+export function getNotifyCallbackUserById(dc: DataConnect, vars: GetNotifyCallbackUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyCallbackUserByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotifyCallbackUserById' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotifyCallbackUserById(vars: GetNotifyCallbackUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyCallbackUserByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserState' Mutation. Allow users to execute without passing in DataConnect. */
+export function tryApplyNotifyDeliveryUserState(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateData>>;
+/** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserState' Mutation. Allow users to pass in custom DataConnect instances. */
+export function tryApplyNotifyDeliveryUserState(vars: TryApplyNotifyDeliveryUserStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateData>>;
+
+/** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserStateAndMarkLost' Mutation. Allow users to execute without passing in DataConnect. */
+export function tryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateAndMarkLostData>>;
+/** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserStateAndMarkLost' Mutation. Allow users to pass in custom DataConnect instances. */
+export function tryApplyNotifyDeliveryUserStateAndMarkLost(vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateAndMarkLostData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetNotifyDeliveryReceipt' Query. Allow users to execute without passing in DataConnect. */
+export function getNotifyDeliveryReceipt(dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyDeliveryReceiptData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotifyDeliveryReceipt' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotifyDeliveryReceipt(vars: GetNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyDeliveryReceiptData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateNotifyDeliveryReceipt' Mutation. Allow users to execute without passing in DataConnect. */
+export function createNotifyDeliveryReceipt(dc: DataConnect, vars: CreateNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotifyDeliveryReceiptData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateNotifyDeliveryReceipt' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createNotifyDeliveryReceipt(vars: CreateNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotifyDeliveryReceiptData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ClaimNotifyDeliveryReceipt' Mutation. Allow users to execute without passing in DataConnect. */
+export function claimNotifyDeliveryReceipt(dc: DataConnect, vars: ClaimNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotifyDeliveryReceiptData>>;
+/** Generated Node Admin SDK operation action function for the 'ClaimNotifyDeliveryReceipt' Mutation. Allow users to pass in custom DataConnect instances. */
+export function claimNotifyDeliveryReceipt(vars: ClaimNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotifyDeliveryReceiptData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkNotifyDeliveryReceiptProcessed' Mutation. Allow users to execute without passing in DataConnect. */
+export function markNotifyDeliveryReceiptProcessed(dc: DataConnect, vars: MarkNotifyDeliveryReceiptProcessedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotifyDeliveryReceiptProcessedData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkNotifyDeliveryReceiptProcessed' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markNotifyDeliveryReceiptProcessed(vars: MarkNotifyDeliveryReceiptProcessedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotifyDeliveryReceiptProcessedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkNotifyDeliveryReceiptFailed' Mutation. Allow users to execute without passing in DataConnect. */
+export function markNotifyDeliveryReceiptFailed(dc: DataConnect, vars: MarkNotifyDeliveryReceiptFailedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotifyDeliveryReceiptFailedData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkNotifyDeliveryReceiptFailed' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markNotifyDeliveryReceiptFailed(vars: MarkNotifyDeliveryReceiptFailedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotifyDeliveryReceiptFailedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetRecentNotifyDeliveryReceiptsForUser' Query. Allow users to execute without passing in DataConnect. */
+export function getRecentNotifyDeliveryReceiptsForUser(dc: DataConnect, vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetRecentNotifyDeliveryReceiptsForUserData>>;
+/** Generated Node Admin SDK operation action function for the 'GetRecentNotifyDeliveryReceiptsForUser' Query. Allow users to pass in custom DataConnect instances. */
+export function getRecentNotifyDeliveryReceiptsForUser(vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetRecentNotifyDeliveryReceiptsForUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetLatestNotifyDeliveryReceiptForReference' Query. Allow users to execute without passing in DataConnect. */
+export function getLatestNotifyDeliveryReceiptForReference(dc: DataConnect, vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetLatestNotifyDeliveryReceiptForReferenceData>>;
+/** Generated Node Admin SDK operation action function for the 'GetLatestNotifyDeliveryReceiptForReference' Query. Allow users to pass in custom DataConnect instances. */
+export function getLatestNotifyDeliveryReceiptForReference(vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetLatestNotifyDeliveryReceiptForReferenceData>>;
 
 /** Generated Node Admin SDK operation action function for the 'AdminOptOutSectionAnnouncement' Mutation. Allow users to execute without passing in DataConnect. */
 export function adminOptOutSectionAnnouncement(dc: DataConnect, vars: AdminOptOutSectionAnnouncementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminOptOutSectionAnnouncementData>>;

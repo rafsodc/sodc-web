@@ -45,6 +45,30 @@ Operational recovery:
 
 Do not invent a new delivery key during recovery: that bypasses idempotency. Check Functions logs for `notification delivery failed`, `notification delivery sent after its lease was replaced`, or `notification delivery failure occurred after its lease was replaced`. Because every server entry path awaits its dispatcher, ordinary provider errors are normally recorded as `FAILED` within the originating invocation; stale recovery is primarily for process termination after a claim.
 
+## GOV.UK Notify delivery receipts
+
+`notifyDeliveryCallback` authenticates delivery receipts with `NOTIFY_CALLBACK_BEARER_TOKEN` and records every valid provider receipt ID in `NotifyDeliveryReceipt`. The provider ID is the table key, so an exact replay cannot create a second ledger entry. A receipt is processed under a 10-minute `PENDING` lease; failed or stale attempts can be reclaimed, while a concurrent callback for a fresh claim receives a retryable response.
+
+Delivery ordering uses Notify's first valid timestamp in this order: `completed_at`, `sent_at`, then `created_at`. The function receive time is used only when Notify supplies none of those timestamps. The timestamp and receipt ID form a deterministic ordering key, so callbacks with equal timestamps still have a stable order.
+
+User bounce state is derived from the newest final receipts rather than incremented with an unprotected read/write pair:
+
+- `delivered` resets the consecutive bounce count when it is the newest final state.
+- `permanent-failure` contributes to the consecutive count, capped at the `LOST` threshold of three.
+- older receipts are retained for audit and can change the derived consecutive count, but cannot replace a newer delivery status.
+- user and announcement-recipient updates use versioned compare-and-swap mutations, so concurrent callbacks retry against the newest ledger state.
+- membership changes to `LOST` happen in the same user-row mutation as the threshold-reaching bounce state.
+
+Announcement receipts use the same ordering rules, keyed by the stable announcement reference. An older `delivered` callback therefore cannot overwrite a newer `bounced` result (or vice versa).
+
+Operational recovery:
+
+1. Correlate the callback using `receiptId` in Functions logs. Recipient email addresses and raw references are not logged; `recipientHash` and `referenceHash` are SHA-256 correlation values.
+2. Inspect the matching `NotifyDeliveryReceipt` row's `processingStatus`, `attemptCount`, `lastAttemptedAt`, `outcome`, and `lastErrorMessage`.
+3. Do not delete or recreate a processed receipt. Replaying the original callback body is safe and returns without applying state again.
+4. A `FAILED` receipt can be replayed immediately. A `PENDING` receipt can be replayed after its 10-minute lease; the compare-and-swap claim ensures only one recovery attempt wins.
+5. A fresh concurrent `PENDING` response is intentionally retryable. Allow the owning invocation to finish before investigating it as stuck.
+
 ## Domain workflows
 
 ### Ticket order lifecycle (customer)

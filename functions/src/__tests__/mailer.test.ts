@@ -9,7 +9,10 @@ vi.mock("firebase-functions/params", () => ({
 
 import {
   createGovNotifyMailer,
+  createConfiguredGovNotifyMailer,
+  getGovNotifyEmailReplyToId,
   govNotifyTemplateEnvVarName,
+  MailerConfigurationError,
   readGovNotifyTemplateIds,
   type NotifyEmailClient,
 } from "../mailer";
@@ -45,6 +48,36 @@ describe("mailer", () => {
     ).toEqual({
       paymentConfirmation: "template-paid",
     });
+  });
+
+  it("reads the optional reply-to ID and builds the environment-configured mailer", () => {
+    expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id" })).toBe("reply-to-id");
+    expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: "  " })).toBeUndefined();
+    expect(
+      createConfiguredGovNotifyMailer<TestTemplates>(["paymentConfirmation"], {
+        GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION: "template-paid",
+        GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id",
+      })
+    ).toHaveProperty("sendEmail");
+  });
+
+  it("fails with a typed configuration error before contacting Notify", async () => {
+    const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>();
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>();
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      templateIds: { paymentConfirmation: "template-paid" },
+      clientFactory: () => ({ getNotifications, sendEmail }),
+      logger: fakeLogger(),
+    });
+
+    await expect(
+      mailer.sendEmail({
+        templateName: "paymentConfirmation",
+        to: "buyer@example.com",
+        personalisation: { event_title: "Dinner", amount_paid: "GBP 10.00" },
+      })
+    ).rejects.toBeInstanceOf(MailerConfigurationError);
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it("sends typed template payloads through GOV.UK Notify", async () => {
