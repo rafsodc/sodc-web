@@ -14,7 +14,7 @@ Firebase callable functions use authentication and authorization as the first ac
 
 The bucket key is `(userId, functionName, windowStart)`. PostgreSQL serializes concurrent updates to the same bucket, so parallel function instances cannot overwrite one another's counts. `CallableInvocation` and its old operations remain temporarily available only to permit a connector-first rollout; new Functions code does not use them.
 
-Deploy Data Connect schema and connector changes before deploying Functions. After all environments run the new Functions version, the legacy counter can be removed in a separate cleanup.
+Deploy Data Connect schema and connector changes before deploying Functions. Generated frontend and Admin SDKs must be regenerated and both consumers compiled before that deployment. Follow the per-environment checkpoints in the [central rollout runbook](../operations/environments-dev-beta-prod.md#full-stack-rollout-sequence). After all environments run the new Functions version, the legacy counter can be removed in a separate cleanup.
 
 ## Central limits
 

@@ -114,11 +114,16 @@ All auth patterns are documented in `AUTH_EXPRESSIONS.md`. Key patterns:
 
 ## Deployment
 
-After making changes:
+After making changes, generate and compile against the SDKs **before** changing a remote environment:
 
-1. Deploy schema changes: `firebase deploy --only dataconnect:schema`
-2. Deploy operations: `firebase deploy --only dataconnect:api`
-3. Regenerate SDK: `firebase dataconnect:sdk:generate`
+1. Run `npx firebase dataconnect:sdk:generate` from the repository root.
+2. Run `git diff --exit-code -- src/dataconnect-generated functions/src/dataconnect-admin-generated` and `git status --short -- src/dataconnect-generated functions/src/dataconnect-admin-generated`; both must produce no output, including no untracked generated files.
+3. Run `npm run build` and `npm --prefix functions run build` to verify frontend and Admin SDK compatibility.
+4. Deploy the schema and `api` connector together with `firebase deploy --only dataconnect --project <dev|beta|prod>`.
+5. Confirm the service with `firebase dataconnect:services:list --project <dev|beta|prod>` and complete the Data Connect smoke-test checkpoint.
+6. Only then deploy dependent Functions, followed by Hosting, using the central [Dev, Beta, and Prod rollout runbook](../docs/operations/environments-dev-beta-prod.md#full-stack-rollout-sequence).
+
+The Firebase CLI applies required SQL migration steps before updating the Data Connect schema and connectors. Granular targets such as `dataconnect:sodc-web-service:schema` or `dataconnect:sodc-web-service:api` are reserved for an explicitly planned expand/contract rollout; they are not the default application release path.
 
 ## Related Documentation
 
