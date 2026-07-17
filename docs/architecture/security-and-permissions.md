@@ -65,6 +65,14 @@ Typical usage:
 - Admin-only operations: `requireAdmin`, which also enforces `enabled: true`.
 - A caller with `admin: true` but `enabled !== true` is rejected; admin status is not an access-revocation bypass.
 
+The Data Connect membership status is the source of truth for the `enabled` claim,
+including for users who retain an `admin` claim. Restricted statuses always reconcile
+to `enabled: false`. Status changes use fail-closed cross-system write ordering, and an
+admin can repair drift by re-submitting the stored status. Notify-derived `LOST`
+transitions reuse the durable receipt retry when claim reconciliation fails. See
+[Enabled-claim reconciliation](../operations/enabled-claim-reconciliation.md) for the
+status mapping, failure modes, and recovery procedure.
+
 The only callable entry points intentionally using authentication without an enabled claim are pre-approval setup flows:
 
 - `updateDisplayName`, used while establishing the account profile.
@@ -107,6 +115,8 @@ npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts 
 
 - **Permission denied on callables**
   - Check auth token claims (`enabled`, `admin`) and entry guard expectations.
+  - If `enabled` disagrees with the Data Connect membership status, follow the
+    [enabled-claim reconciliation procedure](../operations/enabled-claim-reconciliation.md).
 - **Data Connect operation unexpectedly accessible/restricted**
   - Verify `@auth(...)` directive in source `.gql` and regenerate SDKs after changes.
 - **Webhook processing failures**

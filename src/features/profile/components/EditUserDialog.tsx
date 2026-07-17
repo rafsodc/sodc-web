@@ -26,7 +26,7 @@ import { parseDisplayName, validateUserForm } from "../../users/utils/userHelper
 import { updateUserDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
-import { canUserChangeStatus, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
+import { canUserChangeStatus, membershipStatusSaveAction, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -139,12 +139,19 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
 
     // Check if target user is an admin
     const targetUserIsAdmin = user?.customClaims?.admin === true;
+    const statusSaveAction = membershipStatusSaveAction(
+      currentStatus,
+      membershipStatus,
+      isAdmin
+    );
     
     // Client-side validation (for immediate UX feedback)
-    const clientValidation = canUserChangeStatus(currentStatus, membershipStatus, isAdmin, targetUserIsAdmin);
-    if (!clientValidation.allowed) {
-      setUpdateMessage({ type: "error", text: clientValidation.error || "Invalid membership status change" });
-      return;
+    if (statusSaveAction !== "reconcile") {
+      const clientValidation = canUserChangeStatus(currentStatus, membershipStatus, isAdmin, targetUserIsAdmin);
+      if (!clientValidation.allowed) {
+        setUpdateMessage({ type: "error", text: clientValidation.error || "Invalid membership status change" });
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -164,9 +171,9 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       };
       await updateUser(dataConnect, vars);
 
-      // Update membership status separately via Firebase Function (validates and enforces rules)
-      // Only call if the status has actually changed
-      if (membershipStatus && membershipStatus !== currentStatus) {
+      // Admin saves also invoke the status callable when the value is unchanged. The
+      // server treats that as an idempotent enabled-claim reconciliation operation.
+      if (statusSaveAction !== "none") {
         const statusResult = await updateMembershipStatus(user.uid, membershipStatus);
         if (!statusResult.success) {
           setUpdateMessage({ type: "error", text: statusResult.error || "Failed to update membership status" });
@@ -392,4 +399,3 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
     </Dialog>
   );
 }
-

@@ -5,6 +5,7 @@ import {
   RESTRICTED_STATUSES,
   canUserChangeStatus,
   canUserResignMembership,
+  membershipStatusSaveAction,
 } from '../membershipStatusValidation';
 import { MembershipStatus } from '../../../../dataconnect-generated';
 
@@ -238,5 +239,36 @@ describe('membershipStatusValidation', () => {
       expect(canUserResignMembership(null, false).allowed).toBe(false);
     });
   });
-});
 
+  describe('membershipStatusSaveAction', () => {
+    it('reconciles an unchanged status on an admin save', () => {
+      expect(
+        membershipStatusSaveAction(
+          MembershipStatus.LOST,
+          MembershipStatus.LOST,
+          true
+        )
+      ).toBe('reconcile');
+    });
+
+    it('does nothing for an unchanged status on a non-admin save', () => {
+      expect(
+        membershipStatusSaveAction(
+          MembershipStatus.REGULAR,
+          MembershipStatus.REGULAR,
+          false
+        )
+      ).toBe('none');
+    });
+
+    it('submits changed statuses as transitions', () => {
+      expect(
+        membershipStatusSaveAction(
+          MembershipStatus.PENDING,
+          MembershipStatus.REGULAR,
+          true
+        )
+      ).toBe('transition');
+    });
+  });
+});
