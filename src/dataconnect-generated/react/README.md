@@ -42,6 +42,10 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetAnnouncementSendById*](#getannouncementsendbyid)
   - [*GetAnnouncementRecipientBySendAndUser*](#getannouncementrecipientbysendanduser)
   - [*GetUserByEmail*](#getuserbyemail)
+  - [*GetNotifyCallbackUserById*](#getnotifycallbackuserbyid)
+  - [*GetNotifyDeliveryReceipt*](#getnotifydeliveryreceipt)
+  - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
+  - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
@@ -104,8 +108,13 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateAnnouncementSend*](#createannouncementsend)
   - [*CreateAnnouncementRecipient*](#createannouncementrecipient)
-  - [*UpdateAnnouncementRecipientDeliveryStatus*](#updateannouncementrecipientdeliverystatus)
-  - [*UpdateEmailBounceStats*](#updateemailbouncestats)
+  - [*TryUpdateAnnouncementRecipientDeliveryStatus*](#tryupdateannouncementrecipientdeliverystatus)
+  - [*TryApplyNotifyDeliveryUserState*](#tryapplynotifydeliveryuserstate)
+  - [*TryApplyNotifyDeliveryUserStateAndMarkLost*](#tryapplynotifydeliveryuserstateandmarklost)
+  - [*CreateNotifyDeliveryReceipt*](#createnotifydeliveryreceipt)
+  - [*ClaimNotifyDeliveryReceipt*](#claimnotifydeliveryreceipt)
+  - [*MarkNotifyDeliveryReceiptProcessed*](#marknotifydeliveryreceiptprocessed)
+  - [*MarkNotifyDeliveryReceiptFailed*](#marknotifydeliveryreceiptfailed)
   - [*AdminOptOutSectionAnnouncement*](#adminoptoutsectionannouncement)
   - [*AdminOptInSectionAnnouncement*](#adminoptinsectionannouncement)
   - [*UpsertCallableInvocation*](#upsertcallableinvocation)
@@ -281,7 +290,7 @@ import { useGetUserGroupByName } from '@dataconnect/generated/react'
 export default function GetUserGroupByNameComponent() {
   // The `useGetUserGroupByName` Query hook requires an argument of type `GetUserGroupByNameVariables`:
   const getUserGroupByNameVars: GetUserGroupByNameVariables = {
-    name: ..., 
+    name: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -372,7 +381,7 @@ import { useGetUserUserGroupsForAdmin } from '@dataconnect/generated/react'
 export default function GetUserUserGroupsForAdminComponent() {
   // The `useGetUserUserGroupsForAdmin` Query hook requires an argument of type `GetUserUserGroupsForAdminVariables`:
   const getUserUserGroupsForAdminVars: GetUserUserGroupsForAdminVariables = {
-    userId: ..., 
+    userId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -461,7 +470,7 @@ import { useGetUserForCheckout } from '@dataconnect/generated/react'
 export default function GetUserForCheckoutComponent() {
   // The `useGetUserForCheckout` Query hook requires an argument of type `GetUserForCheckoutVariables`:
   const getUserForCheckoutVars: GetUserForCheckoutVariables = {
-    userId: ..., 
+    userId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -561,7 +570,7 @@ import { useGetTicketTypeForCheckout } from '@dataconnect/generated/react'
 export default function GetTicketTypeForCheckoutComponent() {
   // The `useGetTicketTypeForCheckout` Query hook requires an argument of type `GetTicketTypeForCheckoutVariables`:
   const getTicketTypeForCheckoutVars: GetTicketTypeForCheckoutVariables = {
-    ticketTypeId: ..., 
+    ticketTypeId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -669,7 +678,7 @@ import { useGetEventByIdForCallable } from '@dataconnect/generated/react'
 export default function GetEventByIdForCallableComponent() {
   // The `useGetEventByIdForCallable` Query hook requires an argument of type `GetEventByIdForCallableVariables`:
   const getEventByIdForCallableVars: GetEventByIdForCallableVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -768,7 +777,7 @@ import { useGetSectionByIdForCallable } from '@dataconnect/generated/react'
 export default function GetSectionByIdForCallableComponent() {
   // The `useGetSectionByIdForCallable` Query hook requires an argument of type `GetSectionByIdForCallableVariables`:
   const getSectionByIdForCallableVars: GetSectionByIdForCallableVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -895,8 +904,8 @@ import { useGetBookingsForBookerAndEvent } from '@dataconnect/generated/react'
 export default function GetBookingsForBookerAndEventComponent() {
   // The `useGetBookingsForBookerAndEvent` Query hook requires an argument of type `GetBookingsForBookerAndEventVariables`:
   const getBookingsForBookerAndEventVars: GetBookingsForBookerAndEventVariables = {
-    bookerId: ..., 
-    eventId: ..., 
+    bookerId: ...,
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -993,8 +1002,8 @@ import { useGetTicketOrdersForBookerAndEvent } from '@dataconnect/generated/reac
 export default function GetTicketOrdersForBookerAndEventComponent() {
   // The `useGetTicketOrdersForBookerAndEvent` Query hook requires an argument of type `GetTicketOrdersForBookerAndEventVariables`:
   const getTicketOrdersForBookerAndEventVars: GetTicketOrdersForBookerAndEventVariables = {
-    userId: ..., 
-    eventId: ..., 
+    userId: ...,
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1110,7 +1119,7 @@ import { useGetTicketOrderForWebhook } from '@dataconnect/generated/react'
 export default function GetTicketOrderForWebhookComponent() {
   // The `useGetTicketOrderForWebhook` Query hook requires an argument of type `GetTicketOrderForWebhookVariables`:
   const getTicketOrderForWebhookVars: GetTicketOrderForWebhookVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1199,7 +1208,7 @@ import { useGetTicketOrderStripeArtifactsForCallable } from '@dataconnect/genera
 export default function GetTicketOrderStripeArtifactsForCallableComponent() {
   // The `useGetTicketOrderStripeArtifactsForCallable` Query hook requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`:
   const getTicketOrderStripeArtifactsForCallableVars: GetTicketOrderStripeArtifactsForCallableVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1293,7 +1302,7 @@ import { useGetPaymentWebhookEventByStripeEventId } from '@dataconnect/generated
 export default function GetPaymentWebhookEventByStripeEventIdComponent() {
   // The `useGetPaymentWebhookEventByStripeEventId` Query hook requires an argument of type `GetPaymentWebhookEventByStripeEventIdVariables`:
   const getPaymentWebhookEventByStripeEventIdVars: GetPaymentWebhookEventByStripeEventIdVariables = {
-    stripeEventId: ..., 
+    stripeEventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1390,8 +1399,8 @@ import { useGetNotificationDeliveryByChannelAndKey } from '@dataconnect/generate
 export default function GetNotificationDeliveryByChannelAndKeyComponent() {
   // The `useGetNotificationDeliveryByChannelAndKey` Query hook requires an argument of type `GetNotificationDeliveryByChannelAndKeyVariables`:
   const getNotificationDeliveryByChannelAndKeyVars: GetNotificationDeliveryByChannelAndKeyVariables = {
-    channel: ..., 
-    deliveryKey: ..., 
+    channel: ...,
+    deliveryKey: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1477,8 +1486,8 @@ import { useGetPaymentReconciliationExceptionByOrderAndType } from '@dataconnect
 export default function GetPaymentReconciliationExceptionByOrderAndTypeComponent() {
   // The `useGetPaymentReconciliationExceptionByOrderAndType` Query hook requires an argument of type `GetPaymentReconciliationExceptionByOrderAndTypeVariables`:
   const getPaymentReconciliationExceptionByOrderAndTypeVars: GetPaymentReconciliationExceptionByOrderAndTypeVariables = {
-    ticketOrderId: ..., 
-    exceptionType: ..., 
+    ticketOrderId: ...,
+    exceptionType: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1599,7 +1608,7 @@ import { useGetBookingForGuestTicketCallable } from '@dataconnect/generated/reac
 export default function GetBookingForGuestTicketCallableComponent() {
   // The `useGetBookingForGuestTicketCallable` Query hook requires an argument of type `GetBookingForGuestTicketCallableVariables`:
   const getBookingForGuestTicketCallableVars: GetBookingForGuestTicketCallableVariables = {
-    bookingId: ..., 
+    bookingId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1723,7 +1732,7 @@ import { useGetBookingForNotification } from '@dataconnect/generated/react'
 export default function GetBookingForNotificationComponent() {
   // The `useGetBookingForNotification` Query hook requires an argument of type `GetBookingForNotificationVariables`:
   const getBookingForNotificationVars: GetBookingForNotificationVariables = {
-    bookingId: ..., 
+    bookingId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1810,8 +1819,8 @@ import { useListStaleDraftBookingsForScheduler } from '@dataconnect/generated/re
 export default function ListStaleDraftBookingsForSchedulerComponent() {
   // The `useListStaleDraftBookingsForScheduler` Query hook requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
   const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
-    updatedBefore: ..., 
-    limit: ..., 
+    updatedBefore: ...,
+    limit: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1898,8 +1907,8 @@ import { useListStalePendingTicketOrdersForScheduler } from '@dataconnect/genera
 export default function ListStalePendingTicketOrdersForSchedulerComponent() {
   // The `useListStalePendingTicketOrdersForScheduler` Query hook requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
   const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
-    createdBefore: ..., 
-    limit: ..., 
+    createdBefore: ...,
+    limit: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2009,7 +2018,7 @@ import { useGetGuestTicketRequestForNotification } from '@dataconnect/generated/
 export default function GetGuestTicketRequestForNotificationComponent() {
   // The `useGetGuestTicketRequestForNotification` Query hook requires an argument of type `GetGuestTicketRequestForNotificationVariables`:
   const getGuestTicketRequestForNotificationVars: GetGuestTicketRequestForNotificationVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2095,7 +2104,7 @@ import { useGetSectionAnnouncementOptOuts } from '@dataconnect/generated/react'
 export default function GetSectionAnnouncementOptOutsComponent() {
   // The `useGetSectionAnnouncementOptOuts` Query hook requires an argument of type `GetSectionAnnouncementOptOutsVariables`:
   const getSectionAnnouncementOptOutsVars: GetSectionAnnouncementOptOutsVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2179,7 +2188,7 @@ import { useGetAnnouncementRecipientCount } from '@dataconnect/generated/react'
 export default function GetAnnouncementRecipientCountComponent() {
   // The `useGetAnnouncementRecipientCount` Query hook requires an argument of type `GetAnnouncementRecipientCountVariables`:
   const getAnnouncementRecipientCountVars: GetAnnouncementRecipientCountVariables = {
-    sendId: ..., 
+    sendId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2270,7 +2279,7 @@ import { useGetAnnouncementSendHistory } from '@dataconnect/generated/react'
 export default function GetAnnouncementSendHistoryComponent() {
   // The `useGetAnnouncementSendHistory` Query hook requires an argument of type `GetAnnouncementSendHistoryVariables`:
   const getAnnouncementSendHistoryVars: GetAnnouncementSendHistoryVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2362,7 +2371,7 @@ import { useGetAnnouncementSendRecipients } from '@dataconnect/generated/react'
 export default function GetAnnouncementSendRecipientsComponent() {
   // The `useGetAnnouncementSendRecipients` Query hook requires an argument of type `GetAnnouncementSendRecipientsVariables`:
   const getAnnouncementSendRecipientsVars: GetAnnouncementSendRecipientsVariables = {
-    sendId: ..., 
+    sendId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2447,7 +2456,7 @@ import { useGetAnnouncementSendById } from '@dataconnect/generated/react'
 export default function GetAnnouncementSendByIdComponent() {
   // The `useGetAnnouncementSendById` Query hook requires an argument of type `GetAnnouncementSendByIdVariables`:
   const getAnnouncementSendByIdVars: GetAnnouncementSendByIdVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2516,6 +2525,11 @@ To access the data returned by a Query, use the `UseQueryResult.data` field. The
 export interface GetAnnouncementRecipientBySendAndUserData {
   announcementRecipients: ({
     id: UUIDString;
+    status: string;
+    failureReason?: string | null;
+    deliveryVersion: number;
+    deliveryStatusUpdatedAt?: TimestampString | null;
+    deliveryReceiptId?: string | null;
   } & AnnouncementRecipient_Key)[];
 }
 ```
@@ -2532,8 +2546,8 @@ import { useGetAnnouncementRecipientBySendAndUser } from '@dataconnect/generated
 export default function GetAnnouncementRecipientBySendAndUserComponent() {
   // The `useGetAnnouncementRecipientBySendAndUser` Query hook requires an argument of type `GetAnnouncementRecipientBySendAndUserVariables`:
   const getAnnouncementRecipientBySendAndUserVars: GetAnnouncementRecipientBySendAndUserVariables = {
-    announcementSendId: ..., 
-    userId: ..., 
+    announcementSendId: ...,
+    userId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2603,6 +2617,11 @@ export interface GetUserByEmailData {
     id: string;
     membershipStatus: MembershipStatus;
     emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
   } & User_Key)[];
 }
 ```
@@ -2619,7 +2638,7 @@ import { useGetUserByEmail } from '@dataconnect/generated/react'
 export default function GetUserByEmailComponent() {
   // The `useGetUserByEmail` Query hook requires an argument of type `GetUserByEmailVariables`:
   const getUserByEmailVars: GetUserByEmailVariables = {
-    email: ..., 
+    email: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2653,6 +2672,367 @@ export default function GetUserByEmailComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.users);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNotifyCallbackUserById
+You can execute the `GetNotifyCallbackUserById` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotifyCallbackUserById(dc: DataConnect, vars: GetNotifyCallbackUserByIdVariables, options?: useDataConnectQueryOptions<GetNotifyCallbackUserByIdData>): UseDataConnectQueryResult<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotifyCallbackUserById(vars: GetNotifyCallbackUserByIdVariables, options?: useDataConnectQueryOptions<GetNotifyCallbackUserByIdData>): UseDataConnectQueryResult<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+```
+
+### Variables
+The `GetNotifyCallbackUserById` Query requires an argument of type `GetNotifyCallbackUserByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetNotifyCallbackUserByIdVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that calling the `GetNotifyCallbackUserById` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotifyCallbackUserById` Query is of type `GetNotifyCallbackUserByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotifyCallbackUserByIdData {
+  user?: {
+    id: string;
+    membershipStatus: MembershipStatus;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotifyCallbackUserById`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetNotifyCallbackUserByIdVariables } from '@dataconnect/generated';
+import { useGetNotifyCallbackUserById } from '@dataconnect/generated/react'
+
+export default function GetNotifyCallbackUserByIdComponent() {
+  // The `useGetNotifyCallbackUserById` Query hook requires an argument of type `GetNotifyCallbackUserByIdVariables`:
+  const getNotifyCallbackUserByIdVars: GetNotifyCallbackUserByIdVariables = {
+    userId: ...,
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotifyCallbackUserById(getNotifyCallbackUserByIdVars);
+  // Variables can be defined inline as well.
+  const query = useGetNotifyCallbackUserById({ userId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotifyCallbackUserById(dataConnect, getNotifyCallbackUserByIdVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyCallbackUserById(getNotifyCallbackUserByIdVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyCallbackUserById(dataConnect, getNotifyCallbackUserByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNotifyDeliveryReceipt
+You can execute the `GetNotifyDeliveryReceipt` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotifyDeliveryReceipt(dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables, options?: useDataConnectQueryOptions<GetNotifyDeliveryReceiptData>): UseDataConnectQueryResult<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotifyDeliveryReceipt(vars: GetNotifyDeliveryReceiptVariables, options?: useDataConnectQueryOptions<GetNotifyDeliveryReceiptData>): UseDataConnectQueryResult<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+```
+
+### Variables
+The `GetNotifyDeliveryReceipt` Query requires an argument of type `GetNotifyDeliveryReceiptVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetNotifyDeliveryReceiptVariables {
+  id: string;
+}
+```
+### Return Type
+Recall that calling the `GetNotifyDeliveryReceipt` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotifyDeliveryReceipt` Query is of type `GetNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt?: {
+    id: string;
+    notifyStatus: string;
+    reference?: string | null;
+    recipientHash: string;
+    userId?: string | null;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+    affectsBounceState: boolean;
+    processingStatus: NotifyDeliveryReceiptProcessingStatus;
+    outcome?: NotifyDeliveryReceiptOutcome | null;
+    attemptCount: number;
+    lastAttemptedAt: TimestampString;
+    processedAt?: TimestampString | null;
+  } & NotifyDeliveryReceipt_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotifyDeliveryReceipt`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+import { useGetNotifyDeliveryReceipt } from '@dataconnect/generated/react'
+
+export default function GetNotifyDeliveryReceiptComponent() {
+  // The `useGetNotifyDeliveryReceipt` Query hook requires an argument of type `GetNotifyDeliveryReceiptVariables`:
+  const getNotifyDeliveryReceiptVars: GetNotifyDeliveryReceiptVariables = {
+    id: ...,
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotifyDeliveryReceipt(getNotifyDeliveryReceiptVars);
+  // Variables can be defined inline as well.
+  const query = useGetNotifyDeliveryReceipt({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotifyDeliveryReceipt(dataConnect, getNotifyDeliveryReceiptVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyDeliveryReceipt(getNotifyDeliveryReceiptVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyDeliveryReceipt(dataConnect, getNotifyDeliveryReceiptVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyDeliveryReceipt);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetRecentNotifyDeliveryReceiptsForUser
+You can execute the `GetRecentNotifyDeliveryReceiptsForUser` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetRecentNotifyDeliveryReceiptsForUser(dc: DataConnect, vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: useDataConnectQueryOptions<GetRecentNotifyDeliveryReceiptsForUserData>): UseDataConnectQueryResult<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetRecentNotifyDeliveryReceiptsForUser(vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: useDataConnectQueryOptions<GetRecentNotifyDeliveryReceiptsForUserData>): UseDataConnectQueryResult<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+```
+
+### Variables
+The `GetRecentNotifyDeliveryReceiptsForUser` Query requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetRecentNotifyDeliveryReceiptsForUserVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that calling the `GetRecentNotifyDeliveryReceiptsForUser` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetRecentNotifyDeliveryReceiptsForUser` Query is of type `GetRecentNotifyDeliveryReceiptsForUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetRecentNotifyDeliveryReceiptsForUserData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetRecentNotifyDeliveryReceiptsForUser`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetRecentNotifyDeliveryReceiptsForUserVariables } from '@dataconnect/generated';
+import { useGetRecentNotifyDeliveryReceiptsForUser } from '@dataconnect/generated/react'
+
+export default function GetRecentNotifyDeliveryReceiptsForUserComponent() {
+  // The `useGetRecentNotifyDeliveryReceiptsForUser` Query hook requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`:
+  const getRecentNotifyDeliveryReceiptsForUserVars: GetRecentNotifyDeliveryReceiptsForUserVariables = {
+    userId: ...,
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetRecentNotifyDeliveryReceiptsForUser(getRecentNotifyDeliveryReceiptsForUserVars);
+  // Variables can be defined inline as well.
+  const query = useGetRecentNotifyDeliveryReceiptsForUser({ userId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetRecentNotifyDeliveryReceiptsForUser(dataConnect, getRecentNotifyDeliveryReceiptsForUserVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetRecentNotifyDeliveryReceiptsForUser(getRecentNotifyDeliveryReceiptsForUserVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetRecentNotifyDeliveryReceiptsForUser(dataConnect, getRecentNotifyDeliveryReceiptsForUserVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyDeliveryReceipts);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetLatestNotifyDeliveryReceiptForReference
+You can execute the `GetLatestNotifyDeliveryReceiptForReference` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetLatestNotifyDeliveryReceiptForReference(dc: DataConnect, vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: useDataConnectQueryOptions<GetLatestNotifyDeliveryReceiptForReferenceData>): UseDataConnectQueryResult<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetLatestNotifyDeliveryReceiptForReference(vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: useDataConnectQueryOptions<GetLatestNotifyDeliveryReceiptForReferenceData>): UseDataConnectQueryResult<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+```
+
+### Variables
+The `GetLatestNotifyDeliveryReceiptForReference` Query requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetLatestNotifyDeliveryReceiptForReferenceVariables {
+  reference: string;
+}
+```
+### Return Type
+Recall that calling the `GetLatestNotifyDeliveryReceiptForReference` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetLatestNotifyDeliveryReceiptForReference` Query is of type `GetLatestNotifyDeliveryReceiptForReferenceData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetLatestNotifyDeliveryReceiptForReferenceData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetLatestNotifyDeliveryReceiptForReference`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetLatestNotifyDeliveryReceiptForReferenceVariables } from '@dataconnect/generated';
+import { useGetLatestNotifyDeliveryReceiptForReference } from '@dataconnect/generated/react'
+
+export default function GetLatestNotifyDeliveryReceiptForReferenceComponent() {
+  // The `useGetLatestNotifyDeliveryReceiptForReference` Query hook requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`:
+  const getLatestNotifyDeliveryReceiptForReferenceVars: GetLatestNotifyDeliveryReceiptForReferenceVariables = {
+    reference: ...,
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetLatestNotifyDeliveryReceiptForReference(getLatestNotifyDeliveryReceiptForReferenceVars);
+  // Variables can be defined inline as well.
+  const query = useGetLatestNotifyDeliveryReceiptForReference({ reference: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetLatestNotifyDeliveryReceiptForReference(dataConnect, getLatestNotifyDeliveryReceiptForReferenceVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetLatestNotifyDeliveryReceiptForReference(getLatestNotifyDeliveryReceiptForReferenceVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetLatestNotifyDeliveryReceiptForReference(dataConnect, getLatestNotifyDeliveryReceiptForReferenceVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyDeliveryReceipts);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -2705,8 +3085,8 @@ import { useGetCallableInvocation } from '@dataconnect/generated/react'
 export default function GetCallableInvocationComponent() {
   // The `useGetCallableInvocation` Query hook requires an argument of type `GetCallableInvocationVariables`:
   const getCallableInvocationVars: GetCallableInvocationVariables = {
-    userId: ..., 
-    functionName: ..., 
+    userId: ...,
+    functionName: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -2889,7 +3269,7 @@ import { useGetUserById } from '@dataconnect/generated/react'
 export default function GetUserByIdComponent() {
   // The `useGetUserById` Query hook requires an argument of type `GetUserByIdVariables`:
   const getUserByIdVars: GetUserByIdVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -3475,7 +3855,7 @@ import { useGetUserMembershipStatus } from '@dataconnect/generated/react'
 export default function GetUserMembershipStatusComponent() {
   // The `useGetUserMembershipStatus` Query hook requires an argument of type `GetUserMembershipStatusVariables`:
   const getUserMembershipStatusVars: GetUserMembershipStatusVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -3571,7 +3951,7 @@ import { useGetUserWithAccessGroups } from '@dataconnect/generated/react'
 export default function GetUserWithAccessGroupsComponent() {
   // The `useGetUserWithAccessGroups` Query hook requires an argument of type `GetUserWithAccessGroupsVariables`:
   const getUserWithAccessGroupsVars: GetUserWithAccessGroupsVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -3662,7 +4042,7 @@ import { useGetUserAccessGroupsById } from '@dataconnect/generated/react'
 export default function GetUserAccessGroupsByIdComponent() {
   // The `useGetUserAccessGroupsById` Query hook requires an argument of type `GetUserAccessGroupsByIdVariables`:
   const getUserAccessGroupsByIdVars: GetUserAccessGroupsByIdVariables = {
-    userId: ..., 
+    userId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -3757,7 +4137,7 @@ import { useGetEventsForSection } from '@dataconnect/generated/react'
 export default function GetEventsForSectionComponent() {
   // The `useGetEventsForSection` Query hook requires an argument of type `GetEventsForSectionVariables`:
   const getEventsForSectionVars: GetEventsForSectionVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -3865,7 +4245,7 @@ import { useGetEventById } from '@dataconnect/generated/react'
 export default function GetEventByIdComponent() {
   // The `useGetEventById` Query hook requires an argument of type `GetEventByIdVariables`:
   const getEventByIdVars: GetEventByIdVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -3964,7 +4344,7 @@ import { useGetSectionById } from '@dataconnect/generated/react'
 export default function GetSectionByIdComponent() {
   // The `useGetSectionById` Query hook requires an argument of type `GetSectionByIdVariables`:
   const getSectionByIdVars: GetSectionByIdVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -4074,7 +4454,7 @@ import { useGetUserGroupById } from '@dataconnect/generated/react'
 export default function GetUserGroupByIdComponent() {
   // The `useGetUserGroupById` Query hook requires an argument of type `GetUserGroupByIdVariables`:
   const getUserGroupByIdVars: GetUserGroupByIdVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -4254,7 +4634,7 @@ import { useGetSectionMembers } from '@dataconnect/generated/react'
 export default function GetSectionMembersComponent() {
   // The `useGetSectionMembers` Query hook requires an argument of type `GetSectionMembersVariables`:
   const getSectionMembersVars: GetSectionMembersVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -4383,7 +4763,7 @@ import { useGetMyBookingsForEvent } from '@dataconnect/generated/react'
 export default function GetMyBookingsForEventComponent() {
   // The `useGetMyBookingsForEvent` Query hook requires an argument of type `GetMyBookingsForEventVariables`:
   const getMyBookingsForEventVars: GetMyBookingsForEventVariables = {
-    eventId: ..., 
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -4590,7 +4970,7 @@ import { useGetMyTicketOrderById } from '@dataconnect/generated/react'
 export default function GetMyTicketOrderByIdComponent() {
   // The `useGetMyTicketOrderById` Query hook requires an argument of type `GetMyTicketOrderByIdVariables`:
   const getMyTicketOrderByIdVars: GetMyTicketOrderByIdVariables = {
-    id: ..., 
+    id: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -4908,7 +5288,7 @@ import { useListEventBookingsForAdmin } from '@dataconnect/generated/react'
 export default function ListEventBookingsForAdminComponent() {
   // The `useListEventBookingsForAdmin` Query hook requires an argument of type `ListEventBookingsForAdminVariables`:
   const listEventBookingsForAdminVars: ListEventBookingsForAdminVariables = {
-    eventId: ..., 
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -5035,7 +5415,7 @@ import { useListGuestTicketRequestsForAdmin } from '@dataconnect/generated/react
 export default function ListGuestTicketRequestsForAdminComponent() {
   // The `useListGuestTicketRequestsForAdmin` Query hook requires an argument of type `ListGuestTicketRequestsForAdminVariables`:
   const listGuestTicketRequestsForAdminVars: ListGuestTicketRequestsForAdminVariables = {
-    eventId: ..., 
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -5154,7 +5534,7 @@ import { useListTicketOrdersForAdmin } from '@dataconnect/generated/react'
 export default function ListTicketOrdersForAdminComponent() {
   // The `useListTicketOrdersForAdmin` Query hook requires an argument of type `ListTicketOrdersForAdminVariables`:
   const listTicketOrdersForAdminVars: ListTicketOrdersForAdminVariables = {
-    eventId: ..., 
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -5260,7 +5640,7 @@ import { useListBookingPaymentAdjustmentsForAdmin } from '@dataconnect/generated
 export default function ListBookingPaymentAdjustmentsForAdminComponent() {
   // The `useListBookingPaymentAdjustmentsForAdmin` Query hook requires an argument of type `ListBookingPaymentAdjustmentsForAdminVariables`:
   const listBookingPaymentAdjustmentsForAdminVars: ListBookingPaymentAdjustmentsForAdminVariables = {
-    eventId: ..., 
+    eventId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -5441,7 +5821,7 @@ import { useGetSectionAnnouncementOptOut } from '@dataconnect/generated/react'
 export default function GetSectionAnnouncementOptOutComponent() {
   // The `useGetSectionAnnouncementOptOut` Query hook requires an argument of type `GetSectionAnnouncementOptOutVariables`:
   const getSectionAnnouncementOptOutVars: GetSectionAnnouncementOptOutVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -5670,8 +6050,8 @@ export default function UpdateUserMembershipStatusComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateUserMembershipStatus` Mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
   const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
-    userId: ..., 
-    membershipStatus: ..., 
+    userId: ...,
+    membershipStatus: ...,
   };
   mutation.mutate(updateUserMembershipStatusVars);
   // Variables can be defined inline as well.
@@ -5765,7 +6145,7 @@ export default function DeleteUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useDeleteUser` Mutation requires an argument of type `DeleteUserVariables`:
   const deleteUserVars: DeleteUserVariables = {
-    userId: ..., 
+    userId: ...,
   };
   mutation.mutate(deleteUserVars);
   // Variables can be defined inline as well.
@@ -5869,17 +6249,17 @@ export default function CreateUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateUser` Mutation requires an argument of type `CreateUserVariables`:
   const createUserVars: CreateUserVariables = {
-    userId: ..., 
-    firstName: ..., 
-    lastName: ..., 
-    email: ..., 
-    serviceNumber: ..., 
-    membershipStatus: ..., 
+    userId: ...,
+    firstName: ...,
+    lastName: ...,
+    email: ...,
+    serviceNumber: ...,
+    membershipStatus: ...,
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
     isIndustry: ..., // optional
-    now: ..., 
+    now: ...,
   };
   mutation.mutate(createUserVars);
   // Variables can be defined inline as well.
@@ -5975,9 +6355,9 @@ export default function CreateUserGroupAdminComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateUserGroupAdmin` Mutation requires an argument of type `CreateUserGroupAdminVariables`:
   const createUserGroupAdminVars: CreateUserGroupAdminVariables = {
-    name: ..., 
+    name: ...,
     description: ..., // optional
-    now: ..., 
+    now: ...,
   };
   mutation.mutate(createUserGroupAdminVars);
   // Variables can be defined inline as well.
@@ -6073,9 +6453,9 @@ export default function AddUserToUserGroupAdminComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAddUserToUserGroupAdmin` Mutation requires an argument of type `AddUserToUserGroupAdminVariables`:
   const addUserToUserGroupAdminVars: AddUserToUserGroupAdminVariables = {
-    userId: ..., 
-    userGroupId: ..., 
-    now: ..., 
+    userId: ...,
+    userGroupId: ...,
+    now: ...,
   };
   mutation.mutate(addUserToUserGroupAdminVars);
   // Variables can be defined inline as well.
@@ -6170,8 +6550,8 @@ export default function RemoveUserFromUserGroupAdminComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useRemoveUserFromUserGroupAdmin` Mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`:
   const removeUserFromUserGroupAdminVars: RemoveUserFromUserGroupAdminVariables = {
-    userId: ..., 
-    userGroupId: ..., 
+    userId: ...,
+    userGroupId: ...,
   };
   mutation.mutate(removeUserFromUserGroupAdminVars);
   // Variables can be defined inline as well.
@@ -6266,8 +6646,8 @@ export default function UpdateUserStripeCustomerIdComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateUserStripeCustomerId` Mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`:
   const updateUserStripeCustomerIdVars: UpdateUserStripeCustomerIdVariables = {
-    userId: ..., 
-    stripeCustomerId: ..., 
+    userId: ...,
+    stripeCustomerId: ...,
   };
   mutation.mutate(updateUserStripeCustomerIdVars);
   // Variables can be defined inline as well.
@@ -6363,9 +6743,9 @@ export default function CreateBookingDraftForUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateBookingDraftForUser` Mutation requires an argument of type `CreateBookingDraftForUserVariables`:
   const createBookingDraftForUserVars: CreateBookingDraftForUserVariables = {
-    eventId: ..., 
-    bookerId: ..., 
-    clientSubmissionKey: ..., 
+    eventId: ...,
+    bookerId: ...,
+    clientSubmissionKey: ...,
   };
   mutation.mutate(createBookingDraftForUserVars);
   // Variables can be defined inline as well.
@@ -6464,12 +6844,12 @@ export default function CreateBookingDraftRevisionForUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateBookingDraftRevisionForUser` Mutation requires an argument of type `CreateBookingDraftRevisionForUserVariables`:
   const createBookingDraftRevisionForUserVars: CreateBookingDraftRevisionForUserVariables = {
-    eventId: ..., 
-    bookerId: ..., 
-    clientSubmissionKey: ..., 
-    revisionGroupId: ..., 
-    revisionNumber: ..., 
-    supersedesBookingId: ..., 
+    eventId: ...,
+    bookerId: ...,
+    clientSubmissionKey: ...,
+    revisionGroupId: ...,
+    revisionNumber: ...,
+    supersedesBookingId: ...,
   };
   mutation.mutate(createBookingDraftRevisionForUserVars);
   // Variables can be defined inline as well.
@@ -6563,7 +6943,7 @@ export default function MarkBookingSupersededFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useMarkBookingSupersededFromCallable` Mutation requires an argument of type `MarkBookingSupersededFromCallableVariables`:
   const markBookingSupersededFromCallableVars: MarkBookingSupersededFromCallableVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(markBookingSupersededFromCallableVars);
   // Variables can be defined inline as well.
@@ -6661,11 +7041,11 @@ export default function CreateBookingPaymentAdjustmentFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateBookingPaymentAdjustmentFromCallable` Mutation requires an argument of type `CreateBookingPaymentAdjustmentFromCallableVariables`:
   const createBookingPaymentAdjustmentFromCallableVars: CreateBookingPaymentAdjustmentFromCallableVariables = {
-    revisionBookingId: ..., 
-    supersededBookingId: ..., 
-    deltaAmountMinor: ..., 
-    status: ..., 
-    orchestrationKey: ..., 
+    revisionBookingId: ...,
+    supersededBookingId: ...,
+    deltaAmountMinor: ...,
+    status: ...,
+    orchestrationKey: ...,
   };
   mutation.mutate(createBookingPaymentAdjustmentFromCallableVars);
   // Variables can be defined inline as well.
@@ -6764,12 +7144,12 @@ export default function AddBookingLineFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAddBookingLineFromCallable` Mutation requires an argument of type `AddBookingLineFromCallableVariables`:
   const addBookingLineFromCallableVars: AddBookingLineFromCallableVariables = {
-    bookingId: ..., 
-    ticketTypeId: ..., 
+    bookingId: ...,
+    ticketTypeId: ...,
     guestUserId: ..., // optional
     guestDisplayName: ..., // optional
     dietaryNote: ..., // optional
-    sortOrder: ..., 
+    sortOrder: ...,
   };
   mutation.mutate(addBookingLineFromCallableVars);
   // Variables can be defined inline as well.
@@ -6864,8 +7244,8 @@ export default function UpdateBookingStatusFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateBookingStatusFromCallable` Mutation requires an argument of type `UpdateBookingStatusFromCallableVariables`:
   const updateBookingStatusFromCallableVars: UpdateBookingStatusFromCallableVariables = {
-    id: ..., 
-    status: ..., 
+    id: ...,
+    status: ...,
   };
   mutation.mutate(updateBookingStatusFromCallableVars);
   // Variables can be defined inline as well.
@@ -6965,13 +7345,13 @@ export default function CreateTicketOrderForCheckoutComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateTicketOrderForCheckout` Mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`:
   const createTicketOrderForCheckoutVars: CreateTicketOrderForCheckoutVariables = {
-    userId: ..., 
-    eventId: ..., 
-    ticketTypeId: ..., 
-    quantity: ..., 
-    unitAmountMinor: ..., 
-    totalAmountMinor: ..., 
-    currency: ..., 
+    userId: ...,
+    eventId: ...,
+    ticketTypeId: ...,
+    quantity: ...,
+    unitAmountMinor: ...,
+    totalAmountMinor: ...,
+    currency: ...,
   };
   mutation.mutate(createTicketOrderForCheckoutVars);
   // Variables can be defined inline as well.
@@ -7071,13 +7451,13 @@ export default function CreatePaymentWebhookEventComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreatePaymentWebhookEvent` Mutation requires an argument of type `CreatePaymentWebhookEventVariables`:
   const createPaymentWebhookEventVars: CreatePaymentWebhookEventVariables = {
-    stripeEventId: ..., 
-    eventType: ..., 
-    outcome: ..., 
+    stripeEventId: ...,
+    eventType: ...,
+    outcome: ...,
     reason: ..., // optional
     ticketOrderId: ..., // optional
     stripeObjectId: ..., // optional
-    livemode: ..., 
+    livemode: ...,
   };
   mutation.mutate(createPaymentWebhookEventVars);
   // Variables can be defined inline as well.
@@ -7180,15 +7560,15 @@ export default function CreateNotificationDeliveryComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateNotificationDelivery` Mutation requires an argument of type `CreateNotificationDeliveryVariables`:
   const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
-    channel: ..., 
-    notificationType: ..., 
-    deliveryKey: ..., 
-    status: ..., 
+    channel: ...,
+    notificationType: ...,
+    deliveryKey: ...,
+    status: ...,
     ticketOrderId: ..., // optional
     bookingId: ..., // optional
     userId: ..., // optional
     provider: ..., // optional
-    attemptCount: ..., 
+    attemptCount: ...,
     lastAttemptedAt: ..., // optional
   };
   mutation.mutate(createNotificationDeliveryVars);
@@ -7288,11 +7668,11 @@ export default function ClaimNotificationDeliveryByIdComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useClaimNotificationDeliveryById` Mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
   const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
-    id: ..., 
+    id: ...,
     expectedStatus: ...,
     expectedAttemptCount: ...,
-    attemptCount: ..., 
-    lastAttemptedAt: ..., 
+    attemptCount: ...,
+    lastAttemptedAt: ...,
     provider: ..., // optional
   };
   mutation.mutate(claimNotificationDeliveryByIdVars);
@@ -7394,10 +7774,10 @@ export default function MarkNotificationDeliverySentByIdComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useMarkNotificationDeliverySentById` Mutation requires an argument of type `MarkNotificationDeliverySentByIdVariables`:
   const markNotificationDeliverySentByIdVars: MarkNotificationDeliverySentByIdVariables = {
-    id: ..., 
-    attemptCount: ..., 
-    lastAttemptedAt: ..., 
-    sentAt: ..., 
+    id: ...,
+    attemptCount: ...,
+    lastAttemptedAt: ...,
+    sentAt: ...,
     provider: ..., // optional
     providerMessageId: ..., // optional
     lastErrorCode: ..., // optional
@@ -7500,9 +7880,9 @@ export default function MarkNotificationDeliveryFailedByIdComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useMarkNotificationDeliveryFailedById` Mutation requires an argument of type `MarkNotificationDeliveryFailedByIdVariables`:
   const markNotificationDeliveryFailedByIdVars: MarkNotificationDeliveryFailedByIdVariables = {
-    id: ..., 
-    attemptCount: ..., 
-    lastAttemptedAt: ..., 
+    id: ...,
+    attemptCount: ...,
+    lastAttemptedAt: ...,
     provider: ..., // optional
     lastErrorCode: ..., // optional
     lastErrorMessage: ..., // optional
@@ -7602,7 +7982,7 @@ export default function MarkTicketOrderPaidFromWebhookComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useMarkTicketOrderPaidFromWebhook` Mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`:
   const markTicketOrderPaidFromWebhookVars: MarkTicketOrderPaidFromWebhookVariables = {
-    id: ..., 
+    id: ...,
     stripeCheckoutSessionId: ..., // optional
     stripePaymentIntentId: ..., // optional
     webhookEventId: ..., // optional
@@ -7700,7 +8080,7 @@ export default function MarkTicketOrderFailedFromWebhookComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useMarkTicketOrderFailedFromWebhook` Mutation requires an argument of type `MarkTicketOrderFailedFromWebhookVariables`:
   const markTicketOrderFailedFromWebhookVars: MarkTicketOrderFailedFromWebhookVariables = {
-    id: ..., 
+    id: ...,
     webhookEventId: ..., // optional
   };
   mutation.mutate(markTicketOrderFailedFromWebhookVars);
@@ -7799,7 +8179,7 @@ export default function MarkTicketOrderRefundedFromWebhookComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useMarkTicketOrderRefundedFromWebhook` Mutation requires an argument of type `MarkTicketOrderRefundedFromWebhookVariables`:
   const markTicketOrderRefundedFromWebhookVars: MarkTicketOrderRefundedFromWebhookVariables = {
-    id: ..., 
+    id: ...,
     webhookEventId: ..., // optional
     stripeRefundId: ..., // optional
     refundedAmountMinor: ..., // optional
@@ -7905,7 +8285,7 @@ export default function UpsertTicketOrderDisputeFromWebhookComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpsertTicketOrderDisputeFromWebhook` Mutation requires an argument of type `UpsertTicketOrderDisputeFromWebhookVariables`:
   const upsertTicketOrderDisputeFromWebhookVars: UpsertTicketOrderDisputeFromWebhookVariables = {
-    id: ..., 
+    id: ...,
     webhookEventId: ..., // optional
     stripeDisputeId: ..., // optional
     disputeStatus: ..., // optional
@@ -8013,9 +8393,9 @@ export default function CreatePaymentReconciliationExceptionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreatePaymentReconciliationException` Mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
   const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
-    ticketOrderId: ..., 
-    exceptionType: ..., 
-    status: ..., 
+    ticketOrderId: ...,
+    exceptionType: ...,
+    status: ...,
     note: ..., // optional
     ownerUserId: ..., // optional
     lastAttemptedAt: ..., // optional
@@ -8118,8 +8498,8 @@ export default function UpdatePaymentReconciliationExceptionByIdComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdatePaymentReconciliationExceptionById` Mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
   const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-    id: ..., 
-    status: ..., 
+    id: ...,
+    status: ...,
     note: ..., // optional
     ownerUserId: ..., // optional
     lastAttemptedAt: ..., // optional
@@ -8221,10 +8601,10 @@ export default function UpdateBookingPreferencesFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateBookingPreferencesFromCallable` Mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
   const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
-    id: ..., 
+    id: ...,
     bookerDietaryNote: ..., // optional
     sitNextToUserIds: ..., // optional
-    accommodationRequested: ..., 
+    accommodationRequested: ...,
     accommodationNote: ..., // optional
   };
   mutation.mutate(updateBookingPreferencesFromCallableVars);
@@ -8319,7 +8699,7 @@ export default function DeleteBookingLineFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useDeleteBookingLineFromCallable` Mutation requires an argument of type `DeleteBookingLineFromCallableVariables`:
   const deleteBookingLineFromCallableVars: DeleteBookingLineFromCallableVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(deleteBookingLineFromCallableVars);
   // Variables can be defined inline as well.
@@ -8421,12 +8801,12 @@ export default function CreateGuestTicketRequestFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateGuestTicketRequestFromCallable` Mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
   const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
-    bookingId: ..., 
-    requestedGuestCount: ..., 
-    guestTicketTypeId: ..., 
-    guestDisplayName: ..., 
+    bookingId: ...,
+    requestedGuestCount: ...,
+    guestTicketTypeId: ...,
+    guestDisplayName: ...,
     dietaryNote: ..., // optional
-    status: ..., 
+    status: ...,
     reviewedById: ..., // optional
     reviewedAt: ..., // optional
     moderatorNote: ..., // optional
@@ -8526,10 +8906,10 @@ export default function AdminReviewGuestTicketRequestFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminReviewGuestTicketRequestFromCallable` Mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`:
   const adminReviewGuestTicketRequestFromCallableVars: AdminReviewGuestTicketRequestFromCallableVariables = {
-    id: ..., 
-    status: ..., 
+    id: ...,
+    status: ...,
     moderatorNote: ..., // optional
-    reviewedById: ..., 
+    reviewedById: ...,
   };
   mutation.mutate(adminReviewGuestTicketRequestFromCallableVars);
   // Variables can be defined inline as well.
@@ -8630,14 +9010,14 @@ export default function CreateAnnouncementSendComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateAnnouncementSend` Mutation requires an argument of type `CreateAnnouncementSendVariables`:
   const createAnnouncementSendVars: CreateAnnouncementSendVariables = {
-    id: ..., 
-    sectionId: ..., 
-    templateUuid: ..., 
+    id: ...,
+    sectionId: ...,
+    templateUuid: ...,
     templateName: ..., // optional
-    sentBy: ..., 
-    recipientCount: ..., 
-    skippedCount: ..., 
-    failureCount: ..., 
+    sentBy: ...,
+    recipientCount: ...,
+    skippedCount: ...,
+    failureCount: ...,
   };
   mutation.mutate(createAnnouncementSendVars);
   // Variables can be defined inline as well.
@@ -8739,12 +9119,12 @@ export default function CreateAnnouncementRecipientComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateAnnouncementRecipient` Mutation requires an argument of type `CreateAnnouncementRecipientVariables`:
   const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
-    announcementSendId: ..., 
-    userId: ..., 
-    email: ..., 
-    firstName: ..., 
-    lastName: ..., 
-    status: ..., 
+    announcementSendId: ...,
+    userId: ...,
+    email: ...,
+    firstName: ...,
+    lastName: ...,
+    status: ...,
     skippedReason: ..., // optional
     sentAt: ..., // optional
     failureReason: ..., // optional
@@ -8776,86 +9156,94 @@ export default function CreateAnnouncementRecipientComponent() {
 }
 ```
 
-## UpdateAnnouncementRecipientDeliveryStatus
-You can execute the `UpdateAnnouncementRecipientDeliveryStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## TryUpdateAnnouncementRecipientDeliveryStatus
+You can execute the `TryUpdateAnnouncementRecipientDeliveryStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useUpdateAnnouncementRecipientDeliveryStatus(options?: useDataConnectMutationOptions<UpdateAnnouncementRecipientDeliveryStatusData, FirebaseError, UpdateAnnouncementRecipientDeliveryStatusVariables>): UseDataConnectMutationResult<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+useTryUpdateAnnouncementRecipientDeliveryStatus(options?: useDataConnectMutationOptions<TryUpdateAnnouncementRecipientDeliveryStatusData, FirebaseError, TryUpdateAnnouncementRecipientDeliveryStatusVariables>): UseDataConnectMutationResult<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateAnnouncementRecipientDeliveryStatusData, FirebaseError, UpdateAnnouncementRecipientDeliveryStatusVariables>): UseDataConnectMutationResult<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+useTryUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, options?: useDataConnectMutationOptions<TryUpdateAnnouncementRecipientDeliveryStatusData, FirebaseError, TryUpdateAnnouncementRecipientDeliveryStatusVariables>): UseDataConnectMutationResult<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
 ```
 
 ### Variables
-The `UpdateAnnouncementRecipientDeliveryStatus` Mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `TryUpdateAnnouncementRecipientDeliveryStatus` Mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
+export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
   id: UUIDString;
+  expectedDeliveryVersion: number;
+  deliveryVersion: number;
   status: string;
   failureReason?: string | null;
+  deliveryStatusUpdatedAt: TimestampString;
+  deliveryReceiptId: string;
 }
 ```
 ### Return Type
-Recall that calling the `UpdateAnnouncementRecipientDeliveryStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `TryUpdateAnnouncementRecipientDeliveryStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateAnnouncementRecipientDeliveryStatus` Mutation is of type `UpdateAnnouncementRecipientDeliveryStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `TryUpdateAnnouncementRecipientDeliveryStatus` Mutation is of type `TryUpdateAnnouncementRecipientDeliveryStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface UpdateAnnouncementRecipientDeliveryStatusData {
-  announcementRecipient_update?: AnnouncementRecipient_Key | null;
+export interface TryUpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_updateMany: number;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `UpdateAnnouncementRecipientDeliveryStatus`'s Mutation hook function
+### Using `TryUpdateAnnouncementRecipientDeliveryStatus`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
-import { useUpdateAnnouncementRecipientDeliveryStatus } from '@dataconnect/generated/react'
+import { connectorConfig, TryUpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
+import { useTryUpdateAnnouncementRecipientDeliveryStatus } from '@dataconnect/generated/react'
 
-export default function UpdateAnnouncementRecipientDeliveryStatusComponent() {
+export default function TryUpdateAnnouncementRecipientDeliveryStatusComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateAnnouncementRecipientDeliveryStatus();
+  const mutation = useTryUpdateAnnouncementRecipientDeliveryStatus();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateAnnouncementRecipientDeliveryStatus(dataConnect);
+  const mutation = useTryUpdateAnnouncementRecipientDeliveryStatus(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useUpdateAnnouncementRecipientDeliveryStatus(options);
+  const mutation = useTryUpdateAnnouncementRecipientDeliveryStatus(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useUpdateAnnouncementRecipientDeliveryStatus(dataConnect, options);
+  const mutation = useTryUpdateAnnouncementRecipientDeliveryStatus(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateAnnouncementRecipientDeliveryStatus` Mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`:
-  const updateAnnouncementRecipientDeliveryStatusVars: UpdateAnnouncementRecipientDeliveryStatusVariables = {
-    id: ..., 
-    status: ..., 
+  // The `useTryUpdateAnnouncementRecipientDeliveryStatus` Mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`:
+  const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRecipientDeliveryStatusVariables = {
+    id: ...,
+    expectedDeliveryVersion: ...,
+    deliveryVersion: ...,
+    status: ...,
     failureReason: ..., // optional
+    deliveryStatusUpdatedAt: ...,
+    deliveryReceiptId: ...,
   };
-  mutation.mutate(updateAnnouncementRecipientDeliveryStatusVars);
+  mutation.mutate(tryUpdateAnnouncementRecipientDeliveryStatusVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., status: ..., failureReason: ..., });
+  mutation.mutate({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(updateAnnouncementRecipientDeliveryStatusVars, options);
+  mutation.mutate(tryUpdateAnnouncementRecipientDeliveryStatusVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -8868,92 +9256,102 @@ export default function UpdateAnnouncementRecipientDeliveryStatusComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.announcementRecipient_update);
+    console.log(mutation.data.announcementRecipient_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
 
-## UpdateEmailBounceStats
-You can execute the `UpdateEmailBounceStats` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## TryApplyNotifyDeliveryUserState
+You can execute the `TryApplyNotifyDeliveryUserState` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useUpdateEmailBounceStats(options?: useDataConnectMutationOptions<UpdateEmailBounceStatsData, FirebaseError, UpdateEmailBounceStatsVariables>): UseDataConnectMutationResult<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+useTryApplyNotifyDeliveryUserState(options?: useDataConnectMutationOptions<TryApplyNotifyDeliveryUserStateData, FirebaseError, TryApplyNotifyDeliveryUserStateVariables>): UseDataConnectMutationResult<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useUpdateEmailBounceStats(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateEmailBounceStatsData, FirebaseError, UpdateEmailBounceStatsVariables>): UseDataConnectMutationResult<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+useTryApplyNotifyDeliveryUserState(dc: DataConnect, options?: useDataConnectMutationOptions<TryApplyNotifyDeliveryUserStateData, FirebaseError, TryApplyNotifyDeliveryUserStateVariables>): UseDataConnectMutationResult<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 ```
 
 ### Variables
-The `UpdateEmailBounceStats` Mutation requires an argument of type `UpdateEmailBounceStatsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `TryApplyNotifyDeliveryUserState` Mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface UpdateEmailBounceStatsVariables {
+export interface TryApplyNotifyDeliveryUserStateVariables {
   userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
   emailBounceCount: number;
   emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
 }
 ```
 ### Return Type
-Recall that calling the `UpdateEmailBounceStats` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `TryApplyNotifyDeliveryUserState` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateEmailBounceStats` Mutation is of type `UpdateEmailBounceStatsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `TryApplyNotifyDeliveryUserState` Mutation is of type `TryApplyNotifyDeliveryUserStateData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface UpdateEmailBounceStatsData {
-  user_update?: User_Key | null;
+export interface TryApplyNotifyDeliveryUserStateData {
+  user_updateMany: number;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `UpdateEmailBounceStats`'s Mutation hook function
+### Using `TryApplyNotifyDeliveryUserState`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateEmailBounceStatsVariables } from '@dataconnect/generated';
-import { useUpdateEmailBounceStats } from '@dataconnect/generated/react'
+import { connectorConfig, TryApplyNotifyDeliveryUserStateVariables } from '@dataconnect/generated';
+import { useTryApplyNotifyDeliveryUserState } from '@dataconnect/generated/react'
 
-export default function UpdateEmailBounceStatsComponent() {
+export default function TryApplyNotifyDeliveryUserStateComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateEmailBounceStats();
+  const mutation = useTryApplyNotifyDeliveryUserState();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateEmailBounceStats(dataConnect);
+  const mutation = useTryApplyNotifyDeliveryUserState(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useUpdateEmailBounceStats(options);
+  const mutation = useTryApplyNotifyDeliveryUserState(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useUpdateEmailBounceStats(dataConnect, options);
+  const mutation = useTryApplyNotifyDeliveryUserState(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateEmailBounceStats` Mutation requires an argument of type `UpdateEmailBounceStatsVariables`:
-  const updateEmailBounceStatsVars: UpdateEmailBounceStatsVariables = {
-    userId: ..., 
-    emailBounceCount: ..., 
+  // The `useTryApplyNotifyDeliveryUserState` Mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`:
+  const tryApplyNotifyDeliveryUserStateVars: TryApplyNotifyDeliveryUserStateVariables = {
+    userId: ...,
+    expectedEmailDeliveryVersion: ...,
+    emailDeliveryVersion: ...,
+    emailBounceCount: ...,
     emailLastBounceAt: ..., // optional
+    emailDeliveryStatus: ...,
+    emailDeliveryStatusUpdatedAt: ...,
+    emailDeliveryReceiptId: ...,
   };
-  mutation.mutate(updateEmailBounceStatsVars);
+  mutation.mutate(tryApplyNotifyDeliveryUserStateVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., emailBounceCount: ..., emailLastBounceAt: ..., });
+  mutation.mutate({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(updateEmailBounceStatsVars, options);
+  mutation.mutate(tryApplyNotifyDeliveryUserStateVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -8966,7 +9364,525 @@ export default function UpdateEmailBounceStatsComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_update);
+    console.log(mutation.data.user_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## TryApplyNotifyDeliveryUserStateAndMarkLost
+You can execute the `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useTryApplyNotifyDeliveryUserStateAndMarkLost(options?: useDataConnectMutationOptions<TryApplyNotifyDeliveryUserStateAndMarkLostData, FirebaseError, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>): UseDataConnectMutationResult<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useTryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, options?: useDataConnectMutationOptions<TryApplyNotifyDeliveryUserStateAndMarkLostData, FirebaseError, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>): UseDataConnectMutationResult<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+```
+
+### Variables
+The `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
+  userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
+}
+```
+### Return Type
+Recall that calling the `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation is of type `TryApplyNotifyDeliveryUserStateAndMarkLostData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
+  user_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `TryApplyNotifyDeliveryUserStateAndMarkLost`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, TryApplyNotifyDeliveryUserStateAndMarkLostVariables } from '@dataconnect/generated';
+import { useTryApplyNotifyDeliveryUserStateAndMarkLost } from '@dataconnect/generated/react'
+
+export default function TryApplyNotifyDeliveryUserStateAndMarkLostComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useTryApplyNotifyDeliveryUserStateAndMarkLost` Mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
+  const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
+    userId: ...,
+    expectedEmailDeliveryVersion: ...,
+    emailDeliveryVersion: ...,
+    emailBounceCount: ...,
+    emailLastBounceAt: ..., // optional
+    emailDeliveryStatus: ...,
+    emailDeliveryStatusUpdatedAt: ...,
+    emailDeliveryReceiptId: ...,
+  };
+  mutation.mutate(tryApplyNotifyDeliveryUserStateAndMarkLostVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(tryApplyNotifyDeliveryUserStateAndMarkLostVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateNotifyDeliveryReceipt
+You can execute the `CreateNotifyDeliveryReceipt` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateNotifyDeliveryReceipt(options?: useDataConnectMutationOptions<CreateNotifyDeliveryReceiptData, FirebaseError, CreateNotifyDeliveryReceiptVariables>): UseDataConnectMutationResult<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateNotifyDeliveryReceipt(dc: DataConnect, options?: useDataConnectMutationOptions<CreateNotifyDeliveryReceiptData, FirebaseError, CreateNotifyDeliveryReceiptVariables>): UseDataConnectMutationResult<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+```
+
+### Variables
+The `CreateNotifyDeliveryReceipt` Mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateNotifyDeliveryReceiptVariables {
+  id: string;
+  notifyStatus: string;
+  reference?: string | null;
+  recipientHash: string;
+  userId?: string | null;
+  eventAt: TimestampString;
+  eventOrderingKey: string;
+  affectsBounceState: boolean;
+  lastAttemptedAt: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `CreateNotifyDeliveryReceipt` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateNotifyDeliveryReceipt` Mutation is of type `CreateNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateNotifyDeliveryReceipt`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+import { useCreateNotifyDeliveryReceipt } from '@dataconnect/generated/react'
+
+export default function CreateNotifyDeliveryReceiptComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateNotifyDeliveryReceipt();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateNotifyDeliveryReceipt(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotifyDeliveryReceipt(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotifyDeliveryReceipt(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateNotifyDeliveryReceipt` Mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`:
+  const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
+    id: ...,
+    notifyStatus: ...,
+    reference: ..., // optional
+    recipientHash: ...,
+    userId: ..., // optional
+    eventAt: ...,
+    eventOrderingKey: ...,
+    affectsBounceState: ...,
+    lastAttemptedAt: ...,
+  };
+  mutation.mutate(createNotifyDeliveryReceiptVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createNotifyDeliveryReceiptVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyDeliveryReceipt_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ClaimNotifyDeliveryReceipt
+You can execute the `ClaimNotifyDeliveryReceipt` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useClaimNotifyDeliveryReceipt(options?: useDataConnectMutationOptions<ClaimNotifyDeliveryReceiptData, FirebaseError, ClaimNotifyDeliveryReceiptVariables>): UseDataConnectMutationResult<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useClaimNotifyDeliveryReceipt(dc: DataConnect, options?: useDataConnectMutationOptions<ClaimNotifyDeliveryReceiptData, FirebaseError, ClaimNotifyDeliveryReceiptVariables>): UseDataConnectMutationResult<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+```
+
+### Variables
+The `ClaimNotifyDeliveryReceipt` Mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ClaimNotifyDeliveryReceiptVariables {
+  id: string;
+  expectedProcessingStatus: NotifyDeliveryReceiptProcessingStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `ClaimNotifyDeliveryReceipt` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ClaimNotifyDeliveryReceipt` Mutation is of type `ClaimNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ClaimNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ClaimNotifyDeliveryReceipt`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ClaimNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+import { useClaimNotifyDeliveryReceipt } from '@dataconnect/generated/react'
+
+export default function ClaimNotifyDeliveryReceiptComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useClaimNotifyDeliveryReceipt();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useClaimNotifyDeliveryReceipt(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useClaimNotifyDeliveryReceipt(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useClaimNotifyDeliveryReceipt(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useClaimNotifyDeliveryReceipt` Mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`:
+  const claimNotifyDeliveryReceiptVars: ClaimNotifyDeliveryReceiptVariables = {
+    id: ...,
+    expectedProcessingStatus: ...,
+    expectedAttemptCount: ...,
+    attemptCount: ...,
+    lastAttemptedAt: ...,
+  };
+  mutation.mutate(claimNotifyDeliveryReceiptVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedProcessingStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(claimNotifyDeliveryReceiptVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyDeliveryReceipt_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkNotifyDeliveryReceiptProcessed
+You can execute the `MarkNotifyDeliveryReceiptProcessed` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkNotifyDeliveryReceiptProcessed(options?: useDataConnectMutationOptions<MarkNotifyDeliveryReceiptProcessedData, FirebaseError, MarkNotifyDeliveryReceiptProcessedVariables>): UseDataConnectMutationResult<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkNotifyDeliveryReceiptProcessed(dc: DataConnect, options?: useDataConnectMutationOptions<MarkNotifyDeliveryReceiptProcessedData, FirebaseError, MarkNotifyDeliveryReceiptProcessedVariables>): UseDataConnectMutationResult<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+```
+
+### Variables
+The `MarkNotifyDeliveryReceiptProcessed` Mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkNotifyDeliveryReceiptProcessedVariables {
+  id: string;
+  attemptCount: number;
+  outcome: NotifyDeliveryReceiptOutcome;
+  processedAt: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `MarkNotifyDeliveryReceiptProcessed` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotifyDeliveryReceiptProcessed` Mutation is of type `MarkNotifyDeliveryReceiptProcessedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkNotifyDeliveryReceiptProcessedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkNotifyDeliveryReceiptProcessed`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkNotifyDeliveryReceiptProcessedVariables } from '@dataconnect/generated';
+import { useMarkNotifyDeliveryReceiptProcessed } from '@dataconnect/generated/react'
+
+export default function MarkNotifyDeliveryReceiptProcessedComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkNotifyDeliveryReceiptProcessed();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkNotifyDeliveryReceiptProcessed(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotifyDeliveryReceiptProcessed(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotifyDeliveryReceiptProcessed(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkNotifyDeliveryReceiptProcessed` Mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`:
+  const markNotifyDeliveryReceiptProcessedVars: MarkNotifyDeliveryReceiptProcessedVariables = {
+    id: ...,
+    attemptCount: ...,
+    outcome: ...,
+    processedAt: ...,
+  };
+  mutation.mutate(markNotifyDeliveryReceiptProcessedVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., attemptCount: ..., outcome: ..., processedAt: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markNotifyDeliveryReceiptProcessedVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyDeliveryReceipt_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkNotifyDeliveryReceiptFailed
+You can execute the `MarkNotifyDeliveryReceiptFailed` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkNotifyDeliveryReceiptFailed(options?: useDataConnectMutationOptions<MarkNotifyDeliveryReceiptFailedData, FirebaseError, MarkNotifyDeliveryReceiptFailedVariables>): UseDataConnectMutationResult<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkNotifyDeliveryReceiptFailed(dc: DataConnect, options?: useDataConnectMutationOptions<MarkNotifyDeliveryReceiptFailedData, FirebaseError, MarkNotifyDeliveryReceiptFailedVariables>): UseDataConnectMutationResult<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+```
+
+### Variables
+The `MarkNotifyDeliveryReceiptFailed` Mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkNotifyDeliveryReceiptFailedVariables {
+  id: string;
+  attemptCount: number;
+  lastErrorMessage?: string | null;
+}
+```
+### Return Type
+Recall that calling the `MarkNotifyDeliveryReceiptFailed` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkNotifyDeliveryReceiptFailed` Mutation is of type `MarkNotifyDeliveryReceiptFailedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkNotifyDeliveryReceiptFailedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkNotifyDeliveryReceiptFailed`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkNotifyDeliveryReceiptFailedVariables } from '@dataconnect/generated';
+import { useMarkNotifyDeliveryReceiptFailed } from '@dataconnect/generated/react'
+
+export default function MarkNotifyDeliveryReceiptFailedComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkNotifyDeliveryReceiptFailed();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkNotifyDeliveryReceiptFailed(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotifyDeliveryReceiptFailed(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkNotifyDeliveryReceiptFailed(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkNotifyDeliveryReceiptFailed` Mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`:
+  const markNotifyDeliveryReceiptFailedVars: MarkNotifyDeliveryReceiptFailedVariables = {
+    id: ...,
+    attemptCount: ...,
+    lastErrorMessage: ..., // optional
+  };
+  mutation.mutate(markNotifyDeliveryReceiptFailedVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., attemptCount: ..., lastErrorMessage: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markNotifyDeliveryReceiptFailedVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyDeliveryReceipt_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -9038,8 +9954,8 @@ export default function AdminOptOutSectionAnnouncementComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminOptOutSectionAnnouncement` Mutation requires an argument of type `AdminOptOutSectionAnnouncementVariables`:
   const adminOptOutSectionAnnouncementVars: AdminOptOutSectionAnnouncementVariables = {
-    userId: ..., 
-    sectionId: ..., 
+    userId: ...,
+    sectionId: ...,
   };
   mutation.mutate(adminOptOutSectionAnnouncementVars);
   // Variables can be defined inline as well.
@@ -9134,8 +10050,8 @@ export default function AdminOptInSectionAnnouncementComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminOptInSectionAnnouncement` Mutation requires an argument of type `AdminOptInSectionAnnouncementVariables`:
   const adminOptInSectionAnnouncementVars: AdminOptInSectionAnnouncementVariables = {
-    userId: ..., 
-    sectionId: ..., 
+    userId: ...,
+    sectionId: ...,
   };
   mutation.mutate(adminOptInSectionAnnouncementVars);
   // Variables can be defined inline as well.
@@ -9232,10 +10148,10 @@ export default function UpsertCallableInvocationComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpsertCallableInvocation` Mutation requires an argument of type `UpsertCallableInvocationVariables`:
   const upsertCallableInvocationVars: UpsertCallableInvocationVariables = {
-    userId: ..., 
-    functionName: ..., 
-    windowStart: ..., 
-    count: ..., 
+    userId: ...,
+    functionName: ...,
+    windowStart: ...,
+    count: ...,
   };
   mutation.mutate(upsertCallableInvocationVars);
   // Variables can be defined inline as well.
@@ -9329,7 +10245,7 @@ export default function CreateBookingDraftComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateBookingDraft` Mutation requires an argument of type `CreateBookingDraftVariables`:
   const createBookingDraftVars: CreateBookingDraftVariables = {
-    eventId: ..., 
+    eventId: ...,
   };
   mutation.mutate(createBookingDraftVars);
   // Variables can be defined inline as well.
@@ -9428,12 +10344,12 @@ export default function AddBookingLineComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAddBookingLine` Mutation requires an argument of type `AddBookingLineVariables`:
   const addBookingLineVars: AddBookingLineVariables = {
-    bookingId: ..., 
-    ticketTypeId: ..., 
+    bookingId: ...,
+    ticketTypeId: ...,
     guestUserId: ..., // optional
     guestDisplayName: ..., // optional
     dietaryNote: ..., // optional
-    sortOrder: ..., 
+    sortOrder: ...,
   };
   mutation.mutate(addBookingLineVars);
   // Variables can be defined inline as well.
@@ -9528,8 +10444,8 @@ export default function UpdateBookingStatusComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateBookingStatus` Mutation requires an argument of type `UpdateBookingStatusVariables`:
   const updateBookingStatusVars: UpdateBookingStatusVariables = {
-    id: ..., 
-    status: ..., 
+    id: ...,
+    status: ...,
   };
   mutation.mutate(updateBookingStatusVars);
   // Variables can be defined inline as well.
@@ -9627,10 +10543,10 @@ export default function CreateGuestTicketRequestComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateGuestTicketRequest` Mutation requires an argument of type `CreateGuestTicketRequestVariables`:
   const createGuestTicketRequestVars: CreateGuestTicketRequestVariables = {
-    bookingId: ..., 
-    requestedGuestCount: ..., 
-    guestTicketTypeId: ..., 
-    guestDisplayName: ..., 
+    bookingId: ...,
+    requestedGuestCount: ...,
+    guestTicketTypeId: ...,
+    guestDisplayName: ...,
     dietaryNote: ..., // optional
   };
   mutation.mutate(createGuestTicketRequestVars);
@@ -9725,7 +10641,7 @@ export default function AdminDeleteGuestTicketRequestComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminDeleteGuestTicketRequest` Mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`:
   const adminDeleteGuestTicketRequestVars: AdminDeleteGuestTicketRequestVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(adminDeleteGuestTicketRequestVars);
   // Variables can be defined inline as well.
@@ -9821,8 +10737,8 @@ export default function AdminReviewGuestTicketRequestComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminReviewGuestTicketRequest` Mutation requires an argument of type `AdminReviewGuestTicketRequestVariables`:
   const adminReviewGuestTicketRequestVars: AdminReviewGuestTicketRequestVariables = {
-    id: ..., 
-    status: ..., 
+    id: ...,
+    status: ...,
     moderatorNote: ..., // optional
   };
   mutation.mutate(adminReviewGuestTicketRequestVars);
@@ -9917,7 +10833,7 @@ export default function AdminDeleteBookingLineComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminDeleteBookingLine` Mutation requires an argument of type `AdminDeleteBookingLineVariables`:
   const adminDeleteBookingLineVars: AdminDeleteBookingLineVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(adminDeleteBookingLineVars);
   // Variables can be defined inline as well.
@@ -10011,7 +10927,7 @@ export default function AdminDeleteBookingComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAdminDeleteBooking` Mutation requires an argument of type `AdminDeleteBookingVariables`:
   const adminDeleteBookingVars: AdminDeleteBookingVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(adminDeleteBookingVars);
   // Variables can be defined inline as well.
@@ -10106,7 +11022,7 @@ export default function ResolvePaymentReconciliationExceptionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useResolvePaymentReconciliationException` Mutation requires an argument of type `ResolvePaymentReconciliationExceptionVariables`:
   const resolvePaymentReconciliationExceptionVars: ResolvePaymentReconciliationExceptionVariables = {
-    id: ..., 
+    id: ...,
     note: ..., // optional
   };
   mutation.mutate(resolvePaymentReconciliationExceptionVars);
@@ -10203,8 +11119,8 @@ export default function CreateSectionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateSection` Mutation requires an argument of type `CreateSectionVariables`:
   const createSectionVars: CreateSectionVariables = {
-    name: ..., 
-    type: ..., 
+    name: ...,
+    type: ...,
     description: ..., // optional
   };
   mutation.mutate(createSectionVars);
@@ -10302,7 +11218,7 @@ export default function CreateUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateUserGroup` Mutation requires an argument of type `CreateUserGroupVariables`:
   const createUserGroupVars: CreateUserGroupVariables = {
-    name: ..., 
+    name: ...,
     description: ..., // optional
     membershipStatuses: ..., // optional
     subscribable: ..., // optional
@@ -10400,8 +11316,8 @@ export default function AddUserToUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useAddUserToUserGroup` Mutation requires an argument of type `AddUserToUserGroupVariables`:
   const addUserToUserGroupVars: AddUserToUserGroupVariables = {
-    userId: ..., 
-    userGroupId: ..., 
+    userId: ...,
+    userGroupId: ...,
   };
   mutation.mutate(addUserToUserGroupVars);
   // Variables can be defined inline as well.
@@ -10496,8 +11412,8 @@ export default function RemoveUserFromUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useRemoveUserFromUserGroup` Mutation requires an argument of type `RemoveUserFromUserGroupVariables`:
   const removeUserFromUserGroupVars: RemoveUserFromUserGroupVariables = {
-    userId: ..., 
-    userGroupId: ..., 
+    userId: ...,
+    userGroupId: ...,
   };
   mutation.mutate(removeUserFromUserGroupVars);
   // Variables can be defined inline as well.
@@ -10593,8 +11509,8 @@ export default function GrantUserGroupToSectionForPurposeComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useGrantUserGroupToSectionForPurpose` Mutation requires an argument of type `GrantUserGroupToSectionForPurposeVariables`:
   const grantUserGroupToSectionForPurposeVars: GrantUserGroupToSectionForPurposeVariables = {
-    sectionId: ..., 
-    userGroupId: ..., 
+    sectionId: ...,
+    userGroupId: ...,
     purposes: ..., // optional
   };
   mutation.mutate(grantUserGroupToSectionForPurposeVars);
@@ -10690,8 +11606,8 @@ export default function RevokeUserGroupFromSectionForPurposeComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useRevokeUserGroupFromSectionForPurpose` Mutation requires an argument of type `RevokeUserGroupFromSectionForPurposeVariables`:
   const revokeUserGroupFromSectionForPurposeVars: RevokeUserGroupFromSectionForPurposeVariables = {
-    sectionId: ..., 
-    userGroupId: ..., 
+    sectionId: ...,
+    userGroupId: ...,
   };
   mutation.mutate(revokeUserGroupFromSectionForPurposeVars);
   // Variables can be defined inline as well.
@@ -10789,8 +11705,8 @@ export default function UpdateUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateUserGroup` Mutation requires an argument of type `UpdateUserGroupVariables`:
   const updateUserGroupVars: UpdateUserGroupVariables = {
-    id: ..., 
-    name: ..., 
+    id: ...,
+    name: ...,
     description: ..., // optional
     membershipStatuses: ..., // optional
     subscribable: ..., // optional
@@ -10887,7 +11803,7 @@ export default function DeleteUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useDeleteUserGroup` Mutation requires an argument of type `DeleteUserGroupVariables`:
   const deleteUserGroupVars: DeleteUserGroupVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(deleteUserGroupVars);
   // Variables can be defined inline as well.
@@ -10983,8 +11899,8 @@ export default function UpdateSectionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateSection` Mutation requires an argument of type `UpdateSectionVariables`:
   const updateSectionVars: UpdateSectionVariables = {
-    id: ..., 
-    name: ..., 
+    id: ...,
+    name: ...,
     description: ..., // optional
   };
   mutation.mutate(updateSectionVars);
@@ -11079,7 +11995,7 @@ export default function DeleteSectionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useDeleteSection` Mutation requires an argument of type `DeleteSectionVariables`:
   const deleteSectionVars: DeleteSectionVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(deleteSectionVars);
   // Variables can be defined inline as well.
@@ -11181,14 +12097,14 @@ export default function CreateEventComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateEvent` Mutation requires an argument of type `CreateEventVariables`:
   const createEventVars: CreateEventVariables = {
-    sectionId: ..., 
-    title: ..., 
+    sectionId: ...,
+    title: ...,
     location: ..., // optional
     guestOfHonour: ..., // optional
-    startDateTime: ..., 
-    endDateTime: ..., 
-    bookingStartDateTime: ..., 
-    bookingEndDateTime: ..., 
+    startDateTime: ...,
+    endDateTime: ...,
+    bookingStartDateTime: ...,
+    bookingEndDateTime: ...,
     maxGuestsWithoutModeratorApproval: ..., // optional
   };
   mutation.mutate(createEventVars);
@@ -11291,14 +12207,14 @@ export default function UpdateEventComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateEvent` Mutation requires an argument of type `UpdateEventVariables`:
   const updateEventVars: UpdateEventVariables = {
-    id: ..., 
-    title: ..., 
+    id: ...,
+    title: ...,
     location: ..., // optional
     guestOfHonour: ..., // optional
-    startDateTime: ..., 
-    endDateTime: ..., 
-    bookingStartDateTime: ..., 
-    bookingEndDateTime: ..., 
+    startDateTime: ...,
+    endDateTime: ...,
+    bookingStartDateTime: ...,
+    bookingEndDateTime: ...,
     maxGuestsWithoutModeratorApproval: ..., // optional
   };
   mutation.mutate(updateEventVars);
@@ -11393,7 +12309,7 @@ export default function DeleteEventComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useDeleteEvent` Mutation requires an argument of type `DeleteEventVariables`:
   const deleteEventVars: DeleteEventVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(deleteEventVars);
   // Variables can be defined inline as well.
@@ -11493,12 +12409,12 @@ export default function CreateTicketTypeComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateTicketType` Mutation requires an argument of type `CreateTicketTypeVariables`:
   const createTicketTypeVars: CreateTicketTypeVariables = {
-    eventId: ..., 
-    userGroupId: ..., 
-    audience: ..., 
-    title: ..., 
+    eventId: ...,
+    userGroupId: ...,
+    audience: ...,
+    title: ...,
     description: ..., // optional
-    price: ..., 
+    price: ...,
     sortOrder: ..., // optional
   };
   mutation.mutate(createTicketTypeVars);
@@ -11599,13 +12515,13 @@ export default function UpdateTicketTypeComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateTicketType` Mutation requires an argument of type `UpdateTicketTypeVariables`:
   const updateTicketTypeVars: UpdateTicketTypeVariables = {
-    id: ..., 
-    userGroupId: ..., 
-    audience: ..., 
-    title: ..., 
+    id: ...,
+    userGroupId: ...,
+    audience: ...,
+    title: ...,
     description: ..., // optional
-    price: ..., 
-    sortOrder: ..., 
+    price: ...,
+    sortOrder: ...,
   };
   mutation.mutate(updateTicketTypeVars);
   // Variables can be defined inline as well.
@@ -11699,7 +12615,7 @@ export default function DeleteTicketTypeComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useDeleteTicketType` Mutation requires an argument of type `DeleteTicketTypeVariables`:
   const deleteTicketTypeVars: DeleteTicketTypeVariables = {
-    id: ..., 
+    id: ...,
   };
   mutation.mutate(deleteTicketTypeVars);
   // Variables can be defined inline as well.
@@ -11802,10 +12718,10 @@ export default function CreateUserProfileComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateUserProfile` Mutation requires an argument of type `CreateUserProfileVariables`:
   const createUserProfileVars: CreateUserProfileVariables = {
-    firstName: ..., 
-    lastName: ..., 
-    serviceNumber: ..., 
-    requestedMembershipStatus: ..., 
+    firstName: ...,
+    lastName: ...,
+    serviceNumber: ...,
+    requestedMembershipStatus: ...,
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -11913,9 +12829,9 @@ export default function UpsertUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpsertUser` Mutation requires an argument of type `UpsertUserVariables`:
   const upsertUserVars: UpsertUserVariables = {
-    firstName: ..., 
-    lastName: ..., 
-    serviceNumber: ..., 
+    firstName: ...,
+    lastName: ...,
+    serviceNumber: ...,
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -12023,11 +12939,11 @@ export default function UpdateUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateUser` Mutation requires an argument of type `UpdateUserVariables`:
   const updateUserVars: UpdateUserVariables = {
-    userId: ..., 
-    firstName: ..., 
-    lastName: ..., 
-    email: ..., 
-    serviceNumber: ..., 
+    userId: ...,
+    firstName: ...,
+    lastName: ...,
+    email: ...,
+    serviceNumber: ...,
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -12125,7 +13041,7 @@ export default function RegisterForSectionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useRegisterForSection` Mutation requires an argument of type `RegisterForSectionVariables`:
   const registerForSectionVars: RegisterForSectionVariables = {
-    userGroupId: ..., 
+    userGroupId: ...,
   };
   mutation.mutate(registerForSectionVars);
   // Variables can be defined inline as well.
@@ -12219,7 +13135,7 @@ export default function UnregisterFromSectionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUnregisterFromSection` Mutation requires an argument of type `UnregisterFromSectionVariables`:
   const unregisterFromSectionVars: UnregisterFromSectionVariables = {
-    userGroupId: ..., 
+    userGroupId: ...,
   };
   mutation.mutate(unregisterFromSectionVars);
   // Variables can be defined inline as well.
@@ -12313,7 +13229,7 @@ export default function SubscribeToUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useSubscribeToUserGroup` Mutation requires an argument of type `SubscribeToUserGroupVariables`:
   const subscribeToUserGroupVars: SubscribeToUserGroupVariables = {
-    userGroupId: ..., 
+    userGroupId: ...,
   };
   mutation.mutate(subscribeToUserGroupVars);
   // Variables can be defined inline as well.
@@ -12407,7 +13323,7 @@ export default function UnsubscribeFromUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUnsubscribeFromUserGroup` Mutation requires an argument of type `UnsubscribeFromUserGroupVariables`:
   const unsubscribeFromUserGroupVars: UnsubscribeFromUserGroupVariables = {
-    userGroupId: ..., 
+    userGroupId: ...,
   };
   mutation.mutate(unsubscribeFromUserGroupVars);
   // Variables can be defined inline as well.
@@ -12501,7 +13417,7 @@ export default function OptOutSectionAnnouncementComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useOptOutSectionAnnouncement` Mutation requires an argument of type `OptOutSectionAnnouncementVariables`:
   const optOutSectionAnnouncementVars: OptOutSectionAnnouncementVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
   mutation.mutate(optOutSectionAnnouncementVars);
   // Variables can be defined inline as well.
@@ -12595,7 +13511,7 @@ export default function OptInSectionAnnouncementComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useOptInSectionAnnouncement` Mutation requires an argument of type `OptInSectionAnnouncementVariables`:
   const optInSectionAnnouncementVars: OptInSectionAnnouncementVariables = {
-    sectionId: ..., 
+    sectionId: ...,
   };
   mutation.mutate(optInSectionAnnouncementVars);
   // Variables can be defined inline as well.

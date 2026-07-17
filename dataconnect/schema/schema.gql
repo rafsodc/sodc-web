@@ -81,6 +81,20 @@ enum NotificationDeliveryStatus {
   FAILED
 }
 
+enum NotifyDeliveryReceiptProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum NotifyDeliveryReceiptOutcome {
+  APPLIED
+  IGNORED_STATUS
+  IGNORED_NO_USER
+  IGNORED_NO_RECIPIENT
+  NO_STATE_CHANGE
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -106,6 +120,13 @@ type User @table {
   stripeCustomerId: String
   emailBounceCount: Int! @default(value: 0)
   emailLastBounceAt: Timestamp
+  # Optimistic-concurrency and ordering metadata for GOV.UK Notify callbacks.
+  # The version is advanced only by the callback processor, allowing updateMany
+  # mutations to compare-and-swap the complete derived delivery state safely.
+  emailDeliveryVersion: Int! @default(value: 0)
+  emailDeliveryStatus: String
+  emailDeliveryStatusUpdatedAt: Timestamp
+  emailDeliveryReceiptId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -395,6 +416,38 @@ type AnnouncementRecipient @table {
   skippedReason: String
   sentAt: Timestamp
   failureReason: String
+  # Latest GOV.UK Notify receipt applied to this recipient. The version supports
+  # compare-and-swap updates when callbacks arrive concurrently or out of order.
+  deliveryVersion: Int! @default(value: 0)
+  deliveryStatusUpdatedAt: Timestamp
+  deliveryReceiptId: String
+}
+
+# Durable receipt ledger for GOV.UK Notify callbacks. The provider receipt ID is
+# the primary key, which makes callback insertion idempotent. Processing leases
+# allow an abandoned PENDING receipt to be reclaimed safely.
+type NotifyDeliveryReceipt @table {
+  id: String!
+  notifyStatus: String!
+  reference: String
+  recipientHash: String!
+  user: User
+  eventAt: Timestamp!
+  # ISO timestamp followed by receipt ID; provides deterministic total ordering
+  # even if two provider events have the same timestamp.
+  eventOrderingKey: String!
+  affectsBounceState: Boolean!
+  processingStatus: NotifyDeliveryReceiptProcessingStatus! @default(value: PENDING)
+  outcome: NotifyDeliveryReceiptOutcome
+  attemptCount: Int! @default(value: 1)
+  lastAttemptedAt: Timestamp!
+  processedAt: Timestamp
+  lastErrorMessage: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
 }
 
 type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking"]) {

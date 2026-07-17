@@ -48,6 +48,12 @@ export default defineConfig({
           functions: 57,
           lines: 64,
         },
+        'src/notifyReceiptProcessor.ts': {
+          statements: 87,
+          branches: 78,
+          functions: 93,
+          lines: 91,
+        },
       },
     },
   },

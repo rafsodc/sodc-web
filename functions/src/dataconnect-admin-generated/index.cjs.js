@@ -49,6 +49,22 @@ const NotificationDeliveryStatus = {
 }
 exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
 
+const NotifyDeliveryReceiptOutcome = {
+  APPLIED: "APPLIED",
+  IGNORED_STATUS: "IGNORED_STATUS",
+  IGNORED_NO_USER: "IGNORED_NO_USER",
+  IGNORED_NO_RECIPIENT: "IGNORED_NO_RECIPIENT",
+  NO_STATE_CHANGE: "NO_STATE_CHANGE",
+}
+exports.NotifyDeliveryReceiptOutcome = NotifyDeliveryReceiptOutcome;
+
+const NotifyDeliveryReceiptProcessingStatus = {
+  PENDING: "PENDING",
+  PROCESSED: "PROCESSED",
+  FAILED: "FAILED",
+}
+exports.NotifyDeliveryReceiptProcessingStatus = NotifyDeliveryReceiptProcessingStatus;
+
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -491,12 +507,12 @@ function getAnnouncementRecipientBySendAndUser(dcOrVarsOrOptions, varsOrOptions,
 }
 exports.getAnnouncementRecipientBySendAndUser = getAnnouncementRecipientBySendAndUser;
 
-function updateAnnouncementRecipientDeliveryStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+function tryUpdateAnnouncementRecipientDeliveryStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateAnnouncementRecipientDeliveryStatus', inputVars, inputOpts);
+  return dcInstance.executeMutation('TryUpdateAnnouncementRecipientDeliveryStatus', inputVars, inputOpts);
 }
-exports.updateAnnouncementRecipientDeliveryStatus = updateAnnouncementRecipientDeliveryStatus;
+exports.tryUpdateAnnouncementRecipientDeliveryStatus = tryUpdateAnnouncementRecipientDeliveryStatus;
 
 function getUserByEmail(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -505,12 +521,75 @@ function getUserByEmail(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getUserByEmail = getUserByEmail;
 
-function updateEmailBounceStats(dcOrVarsOrOptions, varsOrOptions, options) {
+function getNotifyCallbackUserById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateEmailBounceStats', inputVars, inputOpts);
+  return dcInstance.executeQuery('GetNotifyCallbackUserById', inputVars, inputOpts);
 }
-exports.updateEmailBounceStats = updateEmailBounceStats;
+exports.getNotifyCallbackUserById = getNotifyCallbackUserById;
+
+function tryApplyNotifyDeliveryUserState(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('TryApplyNotifyDeliveryUserState', inputVars, inputOpts);
+}
+exports.tryApplyNotifyDeliveryUserState = tryApplyNotifyDeliveryUserState;
+
+function tryApplyNotifyDeliveryUserStateAndMarkLost(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('TryApplyNotifyDeliveryUserStateAndMarkLost', inputVars, inputOpts);
+}
+exports.tryApplyNotifyDeliveryUserStateAndMarkLost = tryApplyNotifyDeliveryUserStateAndMarkLost;
+
+function getNotifyDeliveryReceipt(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotifyDeliveryReceipt', inputVars, inputOpts);
+}
+exports.getNotifyDeliveryReceipt = getNotifyDeliveryReceipt;
+
+function createNotifyDeliveryReceipt(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateNotifyDeliveryReceipt', inputVars, inputOpts);
+}
+exports.createNotifyDeliveryReceipt = createNotifyDeliveryReceipt;
+
+function claimNotifyDeliveryReceipt(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ClaimNotifyDeliveryReceipt', inputVars, inputOpts);
+}
+exports.claimNotifyDeliveryReceipt = claimNotifyDeliveryReceipt;
+
+function markNotifyDeliveryReceiptProcessed(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotifyDeliveryReceiptProcessed', inputVars, inputOpts);
+}
+exports.markNotifyDeliveryReceiptProcessed = markNotifyDeliveryReceiptProcessed;
+
+function markNotifyDeliveryReceiptFailed(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotifyDeliveryReceiptFailed', inputVars, inputOpts);
+}
+exports.markNotifyDeliveryReceiptFailed = markNotifyDeliveryReceiptFailed;
+
+function getRecentNotifyDeliveryReceiptsForUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetRecentNotifyDeliveryReceiptsForUser', inputVars, inputOpts);
+}
+exports.getRecentNotifyDeliveryReceiptsForUser = getRecentNotifyDeliveryReceiptsForUser;
+
+function getLatestNotifyDeliveryReceiptForReference(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetLatestNotifyDeliveryReceiptForReference', inputVars, inputOpts);
+}
+exports.getLatestNotifyDeliveryReceiptForReference = getLatestNotifyDeliveryReceiptForReference;
 
 function adminOptOutSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

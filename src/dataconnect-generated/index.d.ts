@@ -51,6 +51,20 @@ export enum NotificationDeliveryStatus {
   FAILED = "FAILED",
 };
 
+export enum NotifyDeliveryReceiptOutcome {
+  APPLIED = "APPLIED",
+  IGNORED_STATUS = "IGNORED_STATUS",
+  IGNORED_NO_USER = "IGNORED_NO_USER",
+  IGNORED_NO_RECIPIENT = "IGNORED_NO_RECIPIENT",
+  NO_STATE_CHANGE = "NO_STATE_CHANGE",
+};
+
+export enum NotifyDeliveryReceiptProcessingStatus {
+  PENDING = "PENDING",
+  PROCESSED = "PROCESSED",
+  FAILED = "FAILED",
+};
+
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -258,6 +272,18 @@ export interface ClaimNotificationDeliveryByIdVariables {
   provider?: string | null;
 }
 
+export interface ClaimNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+
+export interface ClaimNotifyDeliveryReceiptVariables {
+  id: string;
+  expectedProcessingStatus: NotifyDeliveryReceiptProcessingStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+}
+
 export interface CreateAnnouncementRecipientData {
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
@@ -391,6 +417,22 @@ export interface CreateNotificationDeliveryVariables {
   provider?: string | null;
   attemptCount: number;
   lastAttemptedAt?: TimestampString | null;
+}
+
+export interface CreateNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
+}
+
+export interface CreateNotifyDeliveryReceiptVariables {
+  id: string;
+  notifyStatus: string;
+  reference?: string | null;
+  recipientHash: string;
+  userId?: string | null;
+  eventAt: TimestampString;
+  eventOrderingKey: string;
+  affectsBounceState: boolean;
+  lastAttemptedAt: TimestampString;
 }
 
 export interface CreatePaymentReconciliationExceptionData {
@@ -579,6 +621,11 @@ export interface GetAllUserGroupsWithStatusesData {
 export interface GetAnnouncementRecipientBySendAndUserData {
   announcementRecipients: ({
     id: UUIDString;
+    status: string;
+    failureReason?: string | null;
+    deliveryVersion: number;
+    deliveryStatusUpdatedAt?: TimestampString | null;
+    deliveryReceiptId?: string | null;
   } & AnnouncementRecipient_Key)[];
 }
 
@@ -950,6 +997,19 @@ export interface GetGuestTicketRequestForNotificationVariables {
   id: UUIDString;
 }
 
+export interface GetLatestNotifyDeliveryReceiptForReferenceData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+
+export interface GetLatestNotifyDeliveryReceiptForReferenceVariables {
+  reference: string;
+}
+
 export interface GetMyAnnouncementPreferencesData {
   user?: {
     membershipStatus: MembershipStatus;
@@ -1185,6 +1245,45 @@ export interface GetNotificationDeliveryByChannelAndKeyVariables {
   deliveryKey: string;
 }
 
+export interface GetNotifyCallbackUserByIdData {
+  user?: {
+    id: string;
+    membershipStatus: MembershipStatus;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
+  } & User_Key;
+}
+
+export interface GetNotifyCallbackUserByIdVariables {
+  userId: string;
+}
+
+export interface GetNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt?: {
+    id: string;
+    notifyStatus: string;
+    reference?: string | null;
+    recipientHash: string;
+    userId?: string | null;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+    affectsBounceState: boolean;
+    processingStatus: NotifyDeliveryReceiptProcessingStatus;
+    outcome?: NotifyDeliveryReceiptOutcome | null;
+    attemptCount: number;
+    lastAttemptedAt: TimestampString;
+    processedAt?: TimestampString | null;
+  } & NotifyDeliveryReceipt_Key;
+}
+
+export interface GetNotifyDeliveryReceiptVariables {
+  id: string;
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -1215,6 +1314,19 @@ export interface GetPaymentWebhookEventByStripeEventIdData {
 
 export interface GetPaymentWebhookEventByStripeEventIdVariables {
   stripeEventId: string;
+}
+
+export interface GetRecentNotifyDeliveryReceiptsForUserData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+
+export interface GetRecentNotifyDeliveryReceiptsForUserVariables {
+  userId: string;
 }
 
 export interface GetSectionAnnouncementOptOutData {
@@ -1500,6 +1612,11 @@ export interface GetUserByEmailData {
     id: string;
     membershipStatus: MembershipStatus;
     emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
   } & User_Key)[];
 }
 
@@ -1992,6 +2109,27 @@ export interface MarkNotificationDeliverySentByIdVariables {
   lastErrorMessage?: string | null;
 }
 
+export interface MarkNotifyDeliveryReceiptFailedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+
+export interface MarkNotifyDeliveryReceiptFailedVariables {
+  id: string;
+  attemptCount: number;
+  lastErrorMessage?: string | null;
+}
+
+export interface MarkNotifyDeliveryReceiptProcessedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+
+export interface MarkNotifyDeliveryReceiptProcessedVariables {
+  id: string;
+  attemptCount: number;
+  outcome: NotifyDeliveryReceiptOutcome;
+  processedAt: TimestampString;
+}
+
 export interface MarkTicketOrderFailedFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -2027,6 +2165,11 @@ export interface MarkTicketOrderRefundedFromWebhookVariables {
 export interface NotificationDelivery_Key {
   id: UUIDString;
   __typename?: 'NotificationDelivery_Key';
+}
+
+export interface NotifyDeliveryReceipt_Key {
+  id: string;
+  __typename?: 'NotifyDeliveryReceipt_Key';
 }
 
 export interface OptInSectionAnnouncementData {
@@ -2134,6 +2277,50 @@ export interface TicketType_Key {
   __typename?: 'TicketType_Key';
 }
 
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
+  user_updateMany: number;
+}
+
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
+  userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
+}
+
+export interface TryApplyNotifyDeliveryUserStateData {
+  user_updateMany: number;
+}
+
+export interface TryApplyNotifyDeliveryUserStateVariables {
+  userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
+}
+
+export interface TryUpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_updateMany: number;
+}
+
+export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
+  id: UUIDString;
+  expectedDeliveryVersion: number;
+  deliveryVersion: number;
+  status: string;
+  failureReason?: string | null;
+  deliveryStatusUpdatedAt: TimestampString;
+  deliveryReceiptId: string;
+}
+
 export interface UnregisterFromSectionData {
   userUserGroup_delete?: UserUserGroup_Key | null;
 }
@@ -2148,16 +2335,6 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
-}
-
-export interface UpdateAnnouncementRecipientDeliveryStatusData {
-  announcementRecipient_update?: AnnouncementRecipient_Key | null;
-}
-
-export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
-  id: UUIDString;
-  status: string;
-  failureReason?: string | null;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -2188,16 +2365,6 @@ export interface UpdateBookingStatusFromCallableVariables {
 export interface UpdateBookingStatusVariables {
   id: UUIDString;
   status: BookingStatus;
-}
-
-export interface UpdateEmailBounceStatsData {
-  user_update?: User_Key | null;
-}
-
-export interface UpdateEmailBounceStatsVariables {
-  userId: string;
-  emailBounceCount: number;
-  emailLastBounceAt?: TimestampString | null;
 }
 
 export interface UpdateEventData {
@@ -3018,17 +3185,17 @@ export const getAnnouncementRecipientBySendAndUserRef: GetAnnouncementRecipientB
 export function getAnnouncementRecipientBySendAndUser(vars: GetAnnouncementRecipientBySendAndUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
 export function getAnnouncementRecipientBySendAndUser(dc: DataConnect, vars: GetAnnouncementRecipientBySendAndUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientBySendAndUserData, GetAnnouncementRecipientBySendAndUserVariables>;
 
-interface UpdateAnnouncementRecipientDeliveryStatusRef {
+interface TryUpdateAnnouncementRecipientDeliveryStatusRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+  (vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+  (dc: DataConnect, vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
   operationName: string;
 }
-export const updateAnnouncementRecipientDeliveryStatusRef: UpdateAnnouncementRecipientDeliveryStatusRef;
+export const tryUpdateAnnouncementRecipientDeliveryStatusRef: TryUpdateAnnouncementRecipientDeliveryStatusRef;
 
-export function updateAnnouncementRecipientDeliveryStatus(vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
-export function updateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+export function tryUpdateAnnouncementRecipientDeliveryStatus(vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
+export function tryUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
 
 interface GetUserByEmailRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -3042,17 +3209,125 @@ export const getUserByEmailRef: GetUserByEmailRef;
 export function getUserByEmail(vars: GetUserByEmailVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserByEmailData, GetUserByEmailVariables>;
 export function getUserByEmail(dc: DataConnect, vars: GetUserByEmailVariables, options?: ExecuteQueryOptions): QueryPromise<GetUserByEmailData, GetUserByEmailVariables>;
 
-interface UpdateEmailBounceStatsRef {
+interface GetNotifyCallbackUserByIdRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateEmailBounceStatsVariables): MutationRef<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+  (vars: GetNotifyCallbackUserByIdVariables): QueryRef<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdateEmailBounceStatsVariables): MutationRef<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+  (dc: DataConnect, vars: GetNotifyCallbackUserByIdVariables): QueryRef<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
   operationName: string;
 }
-export const updateEmailBounceStatsRef: UpdateEmailBounceStatsRef;
+export const getNotifyCallbackUserByIdRef: GetNotifyCallbackUserByIdRef;
 
-export function updateEmailBounceStats(vars: UpdateEmailBounceStatsVariables): MutationPromise<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
-export function updateEmailBounceStats(dc: DataConnect, vars: UpdateEmailBounceStatsVariables): MutationPromise<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+export function getNotifyCallbackUserById(vars: GetNotifyCallbackUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+export function getNotifyCallbackUserById(dc: DataConnect, vars: GetNotifyCallbackUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+
+interface TryApplyNotifyDeliveryUserStateRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: TryApplyNotifyDeliveryUserStateVariables): MutationRef<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateVariables): MutationRef<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
+  operationName: string;
+}
+export const tryApplyNotifyDeliveryUserStateRef: TryApplyNotifyDeliveryUserStateRef;
+
+export function tryApplyNotifyDeliveryUserState(vars: TryApplyNotifyDeliveryUserStateVariables): MutationPromise<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
+export function tryApplyNotifyDeliveryUserState(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateVariables): MutationPromise<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
+
+interface TryApplyNotifyDeliveryUserStateAndMarkLostRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+  operationName: string;
+}
+export const tryApplyNotifyDeliveryUserStateAndMarkLostRef: TryApplyNotifyDeliveryUserStateAndMarkLostRef;
+
+export function tryApplyNotifyDeliveryUserStateAndMarkLost(vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+export function tryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+
+interface GetNotifyDeliveryReceiptRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotifyDeliveryReceiptVariables): QueryRef<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables): QueryRef<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+  operationName: string;
+}
+export const getNotifyDeliveryReceiptRef: GetNotifyDeliveryReceiptRef;
+
+export function getNotifyDeliveryReceipt(vars: GetNotifyDeliveryReceiptVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+export function getNotifyDeliveryReceipt(dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+
+interface CreateNotifyDeliveryReceiptRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateNotifyDeliveryReceiptVariables): MutationRef<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateNotifyDeliveryReceiptVariables): MutationRef<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+  operationName: string;
+}
+export const createNotifyDeliveryReceiptRef: CreateNotifyDeliveryReceiptRef;
+
+export function createNotifyDeliveryReceipt(vars: CreateNotifyDeliveryReceiptVariables): MutationPromise<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+export function createNotifyDeliveryReceipt(dc: DataConnect, vars: CreateNotifyDeliveryReceiptVariables): MutationPromise<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+
+interface ClaimNotifyDeliveryReceiptRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClaimNotifyDeliveryReceiptVariables): MutationRef<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ClaimNotifyDeliveryReceiptVariables): MutationRef<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+  operationName: string;
+}
+export const claimNotifyDeliveryReceiptRef: ClaimNotifyDeliveryReceiptRef;
+
+export function claimNotifyDeliveryReceipt(vars: ClaimNotifyDeliveryReceiptVariables): MutationPromise<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+export function claimNotifyDeliveryReceipt(dc: DataConnect, vars: ClaimNotifyDeliveryReceiptVariables): MutationPromise<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+
+interface MarkNotifyDeliveryReceiptProcessedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationRef<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationRef<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+  operationName: string;
+}
+export const markNotifyDeliveryReceiptProcessedRef: MarkNotifyDeliveryReceiptProcessedRef;
+
+export function markNotifyDeliveryReceiptProcessed(vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationPromise<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+export function markNotifyDeliveryReceiptProcessed(dc: DataConnect, vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationPromise<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+
+interface MarkNotifyDeliveryReceiptFailedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotifyDeliveryReceiptFailedVariables): MutationRef<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotifyDeliveryReceiptFailedVariables): MutationRef<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+  operationName: string;
+}
+export const markNotifyDeliveryReceiptFailedRef: MarkNotifyDeliveryReceiptFailedRef;
+
+export function markNotifyDeliveryReceiptFailed(vars: MarkNotifyDeliveryReceiptFailedVariables): MutationPromise<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+export function markNotifyDeliveryReceiptFailed(dc: DataConnect, vars: MarkNotifyDeliveryReceiptFailedVariables): MutationPromise<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+
+interface GetRecentNotifyDeliveryReceiptsForUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetRecentNotifyDeliveryReceiptsForUserVariables): QueryRef<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetRecentNotifyDeliveryReceiptsForUserVariables): QueryRef<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+  operationName: string;
+}
+export const getRecentNotifyDeliveryReceiptsForUserRef: GetRecentNotifyDeliveryReceiptsForUserRef;
+
+export function getRecentNotifyDeliveryReceiptsForUser(vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+export function getRecentNotifyDeliveryReceiptsForUser(dc: DataConnect, vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+
+interface GetLatestNotifyDeliveryReceiptForReferenceRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetLatestNotifyDeliveryReceiptForReferenceVariables): QueryRef<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetLatestNotifyDeliveryReceiptForReferenceVariables): QueryRef<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+  operationName: string;
+}
+export const getLatestNotifyDeliveryReceiptForReferenceRef: GetLatestNotifyDeliveryReceiptForReferenceRef;
+
+export function getLatestNotifyDeliveryReceiptForReference(vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+export function getLatestNotifyDeliveryReceiptForReference(dc: DataConnect, vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
 
 interface AdminOptOutSectionAnnouncementRef {
   /* Allow users to create refs without passing in DataConnect */
