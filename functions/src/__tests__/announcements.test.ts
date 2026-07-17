@@ -6,6 +6,7 @@ import {
   sendSectionAnnouncement,
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
+  resolveAnnouncementRecipients,
   extractTemplateVariables,
   buildRecipientPersonalisation,
 } from "../announcements";
@@ -13,6 +14,8 @@ import {
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
 const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipients");
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
+const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
+const mockListUsers = vi.spyOn(admin, "listUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 
 beforeEach(() => {
@@ -37,6 +40,72 @@ const announcementCallables = [
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
 ] as const;
+
+describe("resolveAnnouncementRecipients", () => {
+  beforeEach(() => {
+    mockGetSectionMembers.mockReset();
+    mockListUsers.mockReset();
+  });
+
+  it("loads and merges users matching an eligible group's membership statuses", async () => {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionAId,
+          name: "Signals",
+          purposeLinks: [
+            {
+              purposes: ["ACCESS"],
+              userGroup: {
+                id: "regular-access",
+                membershipStatuses: ["REGULAR"],
+                users: [],
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+    mockListUsers.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: "status-user",
+            firstName: "Status",
+            lastName: "User",
+            email: "status@example.com",
+            serviceNumber: "S123",
+            membershipStatus: "REGULAR",
+          },
+        ],
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.listUsers>>);
+
+    const result = await resolveAnnouncementRecipients(sectionAId);
+
+    expect(result.sectionName).toBe("Signals");
+    expect(result.recipients.map(({ id }) => id)).toEqual(["status-user"]);
+    expect(mockListUsers).toHaveBeenCalledOnce();
+  });
+
+  it("does not load all users when no eligible inherited statuses are configured", async () => {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionAId,
+          name: "Signals",
+          purposeLinks: [],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+
+    await expect(resolveAnnouncementRecipients(sectionAId)).resolves.toEqual({
+      recipients: [],
+      sectionName: "Signals",
+    });
+    expect(mockListUsers).not.toHaveBeenCalled();
+  });
+});
 
 describe("announcement callable enabled-account boundary", () => {
   beforeEach(() => {
