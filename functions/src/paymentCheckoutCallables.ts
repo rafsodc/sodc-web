@@ -14,6 +14,7 @@ import {
 import type { UUIDString } from "@dataconnect/admin-generated";
 import Stripe from "stripe";
 import { requireEnabled, validateUUID } from "./helpers";
+import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
 import {
@@ -117,6 +118,7 @@ async function ensureStripeCustomerId(args: {
 export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
+  await enforceRateLimit("createTicketCheckoutSession", uid);
   const quantity = Number(request.data?.quantity ?? 1);
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
     throw new HttpsError("invalid-argument", "quantity must be an integer between 1 and 10");
@@ -187,6 +189,7 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
 export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
+  await enforceRateLimit("createEventBookingCheckoutSession", uid);
   const eventId = validateUUID(String(request.data?.eventId), "eventId") as UUIDString;
 
   const bookingsResult = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });

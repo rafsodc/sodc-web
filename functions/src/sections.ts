@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { requireEnabled, requireString, handleFunctionError } from "./helpers";
+import { enforceRateLimit } from "./rateLimiter";
 import {
   getSectionById,
   getSectionMembers,
@@ -104,6 +105,7 @@ export const getSectionMembersMerged = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
     requireEnabled(request);
+    await enforceRateLimit("getSectionMembersMerged", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const callerUid = request.auth!.uid;
 

@@ -5,6 +5,7 @@ import { requireAdmin, requireString, getAdminUsers, mapUserRecord, handleFuncti
 import { getUserMembershipStatus } from "@dataconnect/admin-generated";
 import { isRestrictedStatus, type MembershipStatus } from "./validation";
 import { FUNCTIONS_REGION } from "./constants";
+import { enforceRateLimit } from "./rateLimiter";
 
 /**
  * Grants admin claim to a user
@@ -14,6 +15,7 @@ export const grantAdmin = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
+  await enforceRateLimit("grantAdmin", request.auth!.uid);
   const uid = requireString(request.data.uid, "uid");
 
   try {
@@ -55,6 +57,7 @@ export const revokeAdmin = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
+  await enforceRateLimit("revokeAdmin", request.auth!.uid);
   const uid = requireString(request.data.uid, "uid");
 
   try {
@@ -87,6 +90,7 @@ export const listAdminUsers = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
+  await enforceRateLimit("listAdminUsers", request.auth!.uid);
 
   try {
     const adminUsers = await getAdminUsers();
@@ -98,4 +102,3 @@ export const listAdminUsers = onCall(
   }
   }
 );
-

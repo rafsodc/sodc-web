@@ -6,6 +6,7 @@ import { requireAdmin, handleFunctionError } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
 import { EMAIL_TEMPLATE_MANIFEST } from "./generatedEmailTemplateManifest";
 import { FUNCTIONS_REGION } from "./constants";
+import { enforceRateLimit } from "./rateLimiter";
 
 const REGISTRY_PATH = path.resolve(__dirname, "../email-templates/template-registry.json");
 
@@ -77,6 +78,7 @@ export const getTemplateSyncStatus = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request): Promise<{ results: TemplateSyncResult[] }> => {
     requireAdmin(request);
+    await enforceRateLimit("getTemplateSyncStatus", request.auth!.uid);
 
     const apiKey = govNotifyApiKey.value();
     if (!apiKey) {

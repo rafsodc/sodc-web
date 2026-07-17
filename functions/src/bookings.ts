@@ -158,7 +158,7 @@ function isDuplicateKeyError(err: unknown): boolean {
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
-  await enforceRateLimit("submitEventBooking", uid, { limit: 20, windowMs: 60 * 60 * 1000 });
+  await enforceRateLimit("submitEventBooking", uid);
 
   const idempotencyKey = validateUUID(
     requireString(request.data?.idempotencyKey, "idempotencyKey"),

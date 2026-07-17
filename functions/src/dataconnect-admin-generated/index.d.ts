@@ -233,6 +233,13 @@ export interface CallableInvocation_Key {
   __typename?: 'CallableInvocation_Key';
 }
 
+export interface CallableRateLimitBucket_Key {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  __typename?: 'CallableRateLimitBucket_Key';
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -265,6 +272,19 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
+}
+
+export interface ConsumeCallableRateLimitData {
+  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
+  consumed: number;
+  callableRateLimitBucket_deleteMany: number;
+}
+
+export interface ConsumeCallableRateLimitVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  limit: number;
 }
 
 export interface CreateAnnouncementRecipientData {
@@ -2862,6 +2882,11 @@ export function getCallableInvocation(vars: GetCallableInvocationVariables, opti
 export function upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertCallableInvocationData>>;
 /** Generated Node Admin SDK operation action function for the 'UpsertCallableInvocation' Mutation. Allow users to pass in custom DataConnect instances. */
 export function upsertCallableInvocation(vars: UpsertCallableInvocationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertCallableInvocationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ConsumeCallableRateLimit' Mutation. Allow users to execute without passing in DataConnect. */
+export function consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableRateLimitVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConsumeCallableRateLimitData>>;
+/** Generated Node Admin SDK operation action function for the 'ConsumeCallableRateLimit' Mutation. Allow users to pass in custom DataConnect instances. */
+export function consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConsumeCallableRateLimitData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to execute without passing in DataConnect. */
 export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;

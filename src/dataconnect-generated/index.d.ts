@@ -250,6 +250,13 @@ export interface CallableInvocation_Key {
   __typename?: 'CallableInvocation_Key';
 }
 
+export interface CallableRateLimitBucket_Key {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  __typename?: 'CallableRateLimitBucket_Key';
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -282,6 +289,19 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
+}
+
+export interface ConsumeCallableRateLimitData {
+  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
+  consumed: number;
+  callableRateLimitBucket_deleteMany: number;
+}
+
+export interface ConsumeCallableRateLimitVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  limit: number;
 }
 
 export interface CreateAnnouncementRecipientData {
@@ -3376,6 +3396,18 @@ export const upsertCallableInvocationRef: UpsertCallableInvocationRef;
 
 export function upsertCallableInvocation(vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
 export function upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+
+interface ConsumeCallableRateLimitRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConsumeCallableRateLimitVariables): MutationRef<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationRef<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+  operationName: string;
+}
+export const consumeCallableRateLimitRef: ConsumeCallableRateLimitRef;
+
+export function consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+export function consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
 
 interface CreateBookingDraftRef {
   /* Allow users to create refs without passing in DataConnect */

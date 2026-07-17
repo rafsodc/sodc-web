@@ -55,7 +55,7 @@ export const submitGuestTicketRequest = onCall(
   async (request) => {
     requireEnabled(request);
     const callerUid = request.auth!.uid;
-    await enforceRateLimit("submitGuestTicketRequest", callerUid, { limit: 20, windowMs: 60 * 60 * 1000 });
+    await enforceRateLimit("submitGuestTicketRequest", callerUid);
 
     const bookingId = validateUUID(request.data?.bookingId, "bookingId") as UUIDString;
     const guestTicketTypeId = validateUUID(request.data?.guestTicketTypeId, "guestTicketTypeId") as UUIDString;
@@ -145,6 +145,7 @@ export const reviewGuestTicketRequest = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
     requireAdmin(request);
+    await enforceRateLimit("reviewGuestTicketRequest", request.auth!.uid);
 
     const id = validateUUID(request.data?.id, "id") as UUIDString;
     const status = request.data?.status;

@@ -5,6 +5,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireStripe, stripeSecret, type StripeClient } from "./paymentConfig";
+import { enforceRateLimit } from "./rateLimiter";
 
 export async function fetchStripeArtifactsForOrder(args: {
   stripeClient: StripeClient;
@@ -64,6 +65,7 @@ export const getMyTicketOrderStripeArtifactsBatch = onCall(
   async (request) => {
     requireEnabled(request);
     const uid = request.auth!.uid;
+    await enforceRateLimit("getMyTicketOrderStripeArtifactsBatch", uid);
     const orderIds = Array.isArray(request.data?.orderIds)
       ? request.data.orderIds.map((id: unknown) => validateUUID(String(id), "orderId") as UUIDString)
       : [];

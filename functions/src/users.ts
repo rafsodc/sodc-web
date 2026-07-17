@@ -45,7 +45,7 @@ export const updateDisplayName = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAuth(request);
-  await enforceRateLimit("updateDisplayName", request.auth!.uid, { limit: 5, windowMs: 60 * 60 * 1000 });
+  await enforceRateLimit("updateDisplayName", request.auth!.uid);
   const displayName = validateStringLength(
     requireString(request.data.displayName, "displayName"),
     "Display name",
@@ -69,6 +69,7 @@ export const updateUserDisplayName = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
+  await enforceRateLimit("updateUserDisplayName", request.auth!.uid);
   const userId = requireString(request.data.userId, "userId");
   const displayName = validateStringLength(
     requireString(request.data.displayName, "displayName"),
@@ -93,7 +94,7 @@ export const searchUsers = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
   requireAdmin(request);
-  await enforceRateLimit("searchUsers", request.auth!.uid, { limit: 60, windowMs: 5 * 60 * 1000 });
+  await enforceRateLimit("searchUsers", request.auth!.uid);
   const searchTerm = requireString(request.data.searchTerm, "searchTerm");
   const page = request.data.page || 1;
   const pageSize = request.data.pageSize || 25;
@@ -152,6 +153,7 @@ export const listUsersWithoutDataConnectProfile = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
     requireAdmin(request);
+    await enforceRateLimit("listUsersWithoutDataConnectProfile", request.auth!.uid);
 
     try {
       const [dcResult, authResult] = await Promise.all([
@@ -208,6 +210,7 @@ export const listUsersPendingApproval = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
     requireAdmin(request);
+    await enforceRateLimit("listUsersPendingApproval", request.auth!.uid);
 
     try {
       const [dcResult, authResult] = await Promise.all([
@@ -274,6 +277,7 @@ export const syncPendingUserClaims = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
     requireAuth(request);
+    await enforceRateLimit("syncPendingUserClaims", request.auth!.uid);
 
     try {
       const uid = request.auth!.uid;

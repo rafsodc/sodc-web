@@ -18,8 +18,7 @@ vi.mock("firebase-functions/logger", () => ({
 
 const mockDcListUsers = vi.spyOn(admin, "listUsers");
 const mockListAllAuthUsers = vi.spyOn(helpers, "listAllAuthUsers");
-const mockGetCallableInvocation = vi.spyOn(admin, "getCallableInvocation");
-const mockUpsertCallableInvocation = vi.spyOn(admin, "upsertCallableInvocation");
+const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 
 import { searchUsers, invalidateDcProfileCache } from "../users.js";
 
@@ -52,10 +51,7 @@ describe("searchUsers — membership status enrichment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     invalidateDcProfileCache();
-    mockGetCallableInvocation.mockResolvedValue({ data: { callableInvocation: undefined } } as never);
-    mockUpsertCallableInvocation.mockResolvedValue({
-      data: { callableInvocation_upsert: { userId: "admin-uid", functionName: "searchUsers" } },
-    } as never);
+    mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
   });
 
   it("attaches membershipStatus from DC profile when user has a profile", async () => {
