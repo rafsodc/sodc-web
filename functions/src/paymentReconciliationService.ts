@@ -66,27 +66,51 @@ export function shouldSendReconciliationExceptionOpenedAlert(args: {
   }
   return true;
 }
-export async function upsertReconciliationSnapshot(args: {
-  orderId: UUIDString;
-  snapshot: {
-    status: TicketOrderStatus;
-    totalAmountMinor: number;
-    refundedAmountMinor?: number | null;
-    stripePaymentIntentId?: string | null;
-    disputeStatus?: string | null;
-  };
-  stripeEventId: string;
-  fromDisputeWebhook?: boolean;
-}): Promise<void> {
+
+export interface ReconciliationSnapshotDependencies {
+  getException: typeof getPaymentReconciliationExceptionByOrderAndType;
+  createException: typeof createPaymentReconciliationException;
+  updateException: typeof updatePaymentReconciliationExceptionById;
+  notifyExceptionOpened: typeof notifyPaymentOpsReconciliationExceptionOpened;
+  now: () => string;
+}
+
+const defaultReconciliationSnapshotDependencies: ReconciliationSnapshotDependencies = {
+  getException: getPaymentReconciliationExceptionByOrderAndType,
+  createException: createPaymentReconciliationException,
+  updateException: updatePaymentReconciliationExceptionById,
+  notifyExceptionOpened: notifyPaymentOpsReconciliationExceptionOpened,
+  now: () => new Date().toISOString(),
+};
+
+export async function upsertReconciliationSnapshot(
+  args: {
+    orderId: UUIDString;
+    snapshot: {
+      status: TicketOrderStatus;
+      totalAmountMinor: number;
+      refundedAmountMinor?: number | null;
+      stripePaymentIntentId?: string | null;
+      disputeStatus?: string | null;
+    };
+    stripeEventId: string;
+    fromDisputeWebhook?: boolean;
+  },
+  dependencies: ReconciliationSnapshotDependencies =
+    defaultReconciliationSnapshotDependencies
+): Promise<void> {
   const signals = evaluateReconciliationSignals(args.snapshot);
   const signalMap = new Map(signals.map((signal) => [signal.type, signal]));
-  const nowIso = new Date().toISOString();
+  const nowIso = dependencies.now();
+  const pendingAlerts: Array<
+    Parameters<typeof notifyPaymentOpsReconciliationExceptionOpened>[0]
+  > = [];
 
   for (const type of RECONCILIATION_EXCEPTION_TYPES) {
     const signal = signalMap.get(type);
     const status = signal ? PaymentReconciliationExceptionStatus.OPEN : PaymentReconciliationExceptionStatus.RESOLVED;
     const note = signal?.note ?? "Auto-resolved by reconciliation snapshot";
-    const existing = await getPaymentReconciliationExceptionByOrderAndType({
+    const existing = await dependencies.getException({
       ticketOrderId: args.orderId,
       exceptionType: type,
     });
@@ -94,7 +118,7 @@ export async function upsertReconciliationSnapshot(args: {
     const previousStatus = existingRow?.status;
 
     if (existingRow?.id) {
-      await updatePaymentReconciliationExceptionById({
+      await dependencies.updateException({
         id: existingRow.id,
         status,
         note,
@@ -103,7 +127,7 @@ export async function upsertReconciliationSnapshot(args: {
         resolvedAt: signal ? null : nowIso,
       });
     } else {
-      await createPaymentReconciliationException({
+      await dependencies.createException({
         ticketOrderId: args.orderId,
         exceptionType: type,
         status,
@@ -127,7 +151,7 @@ export async function upsertReconciliationSnapshot(args: {
         fromDisputeWebhook: args.fromDisputeWebhook === true,
       })
     ) {
-      await notifyPaymentOpsReconciliationExceptionOpened({
+      pendingAlerts.push({
         orderId: args.orderId,
         exceptionType: type,
         exceptionNote: note,
@@ -135,6 +159,10 @@ export async function upsertReconciliationSnapshot(args: {
         appBaseUrl: APP_BASE_URL,
       });
     }
+  }
+
+  for (const alert of pendingAlerts) {
+    await dependencies.notifyExceptionOpened(alert);
   }
 }
 
@@ -152,33 +180,53 @@ export function paidContextFromCheckoutSessionObject(session: {
   };
 }
 
-export async function applyPaymentTransitionToOrders(args: {
-  orderIds: UUIDString[];
-  intent: PaymentTransitionIntent;
-  webhookEventId: string;
-  paidContext?: {
-    stripeCheckoutSessionId?: string | null;
-    stripePaymentIntentId?: string | null;
-  };
-  refundContext?: {
-    stripeRefundId?: string | null;
-    refundedAmountMinor?: number | null;
-    refundedAt?: string | null;
-  };
-  recoverFailedCheckoutPayment?: boolean;
-  paymentIntentIdFromEvent?: string | null;
-  refundAmountFromEvent?: number | null;
-}): Promise<{ appliedCount: number; reconciledOrderIds: UUIDString[] }> {
+export interface PaymentTransitionOrchestrationDependencies {
+  getOrder: typeof getTicketOrderForWebhook;
+  runTransition: typeof runTicketOrderTransition;
+  emitNotification: typeof emitPaymentLifecycleNotification;
+  upsertSnapshot: typeof upsertReconciliationSnapshot;
+  now: () => string;
+}
+
+const defaultPaymentTransitionDependencies: PaymentTransitionOrchestrationDependencies = {
+  getOrder: getTicketOrderForWebhook,
+  runTransition: runTicketOrderTransition,
+  emitNotification: emitPaymentLifecycleNotification,
+  upsertSnapshot: upsertReconciliationSnapshot,
+  now: () => new Date().toISOString(),
+};
+
+export async function applyPaymentTransitionToOrders(
+  args: {
+    orderIds: UUIDString[];
+    intent: PaymentTransitionIntent;
+    webhookEventId: string;
+    paidContext?: {
+      stripeCheckoutSessionId?: string | null;
+      stripePaymentIntentId?: string | null;
+    };
+    refundContext?: {
+      stripeRefundId?: string | null;
+      refundedAmountMinor?: number | null;
+      refundedAt?: string | null;
+    };
+    recoverFailedCheckoutPayment?: boolean;
+    paymentIntentIdFromEvent?: string | null;
+    refundAmountFromEvent?: number | null;
+  },
+  dependencies: PaymentTransitionOrchestrationDependencies =
+    defaultPaymentTransitionDependencies
+): Promise<{ appliedCount: number; reconciledOrderIds: UUIDString[] }> {
   let appliedCount = 0;
   const reconciledOrderIds: UUIDString[] = [];
 
   for (const [orderIndex, orderId] of args.orderIds.entries()) {
-    const orderRow = await getTicketOrderForWebhook({ id: orderId });
+    const orderRow = await dependencies.getOrder({ id: orderId });
     const currentOrder = orderRow.data?.ticketOrder;
     if (!currentOrder) {
       continue;
     }
-    const transitionResult = await runTicketOrderTransition(
+    const transitionResult = await dependencies.runTransition(
       {
         orderId,
         currentStatus: currentOrder.status,
@@ -204,20 +252,20 @@ export async function applyPaymentTransitionToOrders(args: {
     reconciledOrderIds.push(orderId);
     const notificationType =
       args.intent === "MARK_PAID" ? "PAYMENT_PAID" : args.intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
-    await emitPaymentLifecycleNotification(
+    await dependencies.emitNotification(
       {
         type: notificationType,
         orderId,
         eventId: currentOrder.event.id,
         stripeEventId: args.webhookEventId,
         status: transitionResult.targetStatus,
-        occurredAt: new Date().toISOString(),
+        occurredAt: dependencies.now(),
       },
       govNotifyTicketOrderDispatcher,
       sendNotificationOnce,
       { userId: currentOrder.user.id, provider: GOV_NOTIFY_PROVIDER }
     );
-    await upsertReconciliationSnapshot({
+    await dependencies.upsertSnapshot({
       orderId,
       snapshot: {
         status: transitionResult.targetStatus,
@@ -233,18 +281,38 @@ export async function applyPaymentTransitionToOrders(args: {
   return { appliedCount, reconciledOrderIds };
 }
 
-export async function reconcilePaidCheckoutSessionOrders(args: {
-  uid: string;
-  anchorOrderId: UUIDString;
-  webhookEventId: string;
-}): Promise<{ appliedCount: number; reconciledOrderIds: UUIDString[]; orderIds: UUIDString[] }> {
-  const orderRow = await getTicketOrderForWebhook({ id: args.anchorOrderId });
+export interface PaidCheckoutReconciliationDependencies {
+  getOrder: typeof getTicketOrderForWebhook;
+  getStripe: () => ReturnType<typeof requireStripe>;
+  applyTransitions: typeof applyPaymentTransitionToOrders;
+}
+
+const defaultPaidCheckoutReconciliationDependencies: PaidCheckoutReconciliationDependencies = {
+  getOrder: getTicketOrderForWebhook,
+  getStripe: () => requireStripe(stripeSecret.value()),
+  applyTransitions: applyPaymentTransitionToOrders,
+};
+
+export async function reconcilePaidCheckoutSessionOrders(
+  args: {
+    uid: string;
+    anchorOrderId: UUIDString;
+    webhookEventId: string;
+  },
+  dependencies: PaidCheckoutReconciliationDependencies =
+    defaultPaidCheckoutReconciliationDependencies
+): Promise<{
+  appliedCount: number;
+  reconciledOrderIds: UUIDString[];
+  orderIds: UUIDString[];
+}> {
+  const orderRow = await dependencies.getOrder({ id: args.anchorOrderId });
   const anchorOrder = orderRow.data?.ticketOrder;
   if (!anchorOrder || anchorOrder.user.id !== args.uid) {
     throw new HttpsError("not-found", "Order not found");
   }
 
-  const stripeClient = requireStripe(stripeSecret.value());
+  const stripeClient = dependencies.getStripe();
   let session: Awaited<ReturnType<typeof stripeClient.checkout.sessions.retrieve>> | null = null;
 
   if (anchorOrder.stripeCheckoutSessionId) {
@@ -276,7 +344,7 @@ export async function reconcilePaidCheckoutSessionOrders(args: {
   }
 
   for (const orderId of orderIds) {
-    const sibling = await getTicketOrderForWebhook({ id: orderId });
+    const sibling = await dependencies.getOrder({ id: orderId });
     const siblingOrder = sibling.data?.ticketOrder;
     if (!siblingOrder || siblingOrder.user.id !== args.uid) {
       throw new HttpsError("permission-denied", "Checkout session includes an order you do not own");
@@ -284,7 +352,7 @@ export async function reconcilePaidCheckoutSessionOrders(args: {
   }
 
   const paidContext = paidContextFromCheckoutSessionObject(session);
-  const { appliedCount, reconciledOrderIds } = await applyPaymentTransitionToOrders({
+  const { appliedCount, reconciledOrderIds } = await dependencies.applyTransitions({
     orderIds,
     intent: "MARK_PAID",
     webhookEventId: args.webhookEventId,

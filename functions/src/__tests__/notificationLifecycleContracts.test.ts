@@ -28,7 +28,7 @@ describe("notification lifecycle contracts", () => {
     expect(sourceByFile.get("guestTicketRequests.ts")).toContain("await sendGuestTicketRequestReviewedEmails(");
     expect(sourceByFile.get("membershipStatus.ts")).toContain("await sendMembershipStatusEmailIfChanged(");
     expect(sourceByFile.get("paymentReconciliationService.ts")).toContain(
-      "await notifyPaymentOpsReconciliationExceptionOpened("
+      "await dependencies.notifyExceptionOpened(alert)"
     );
     expect(sourceByFile.get("paymentWebhook.ts")).toContain("await notifyPaymentOpsDisputeSideState(");
     expect(sourceByFile.get("users.ts")).toContain("await notifyAdminsUserPendingApproval(");
