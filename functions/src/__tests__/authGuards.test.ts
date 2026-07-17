@@ -30,8 +30,18 @@ describe("auth guard helpers", () => {
   });
 
   it("requireAdmin rejects non-admin calls", () => {
-    const req: RequestLike = { auth: { uid: "u1", token: { admin: false } } };
+    const req: RequestLike = { auth: { uid: "u1", token: { admin: false, enabled: true } } };
     expect(() => requireAdmin(req as unknown as never)).toThrow("Admins only");
+  });
+
+  it("requireAdmin rejects a disabled caller even when the admin claim is true", () => {
+    const req: RequestLike = { auth: { uid: "u1", token: { admin: true, enabled: false } } };
+    expect(() => requireAdmin(req as unknown as never)).toThrow("Account must be enabled");
+  });
+
+  it("requireAdmin rejects an admin whose enabled claim is absent", () => {
+    const req: RequestLike = { auth: { uid: "u1", token: { admin: true } } };
+    expect(() => requireAdmin(req as unknown as never)).toThrow("Account must be enabled");
   });
 
   it("requireAdmin rejects unauthenticated calls", () => {
@@ -39,7 +49,7 @@ describe("auth guard helpers", () => {
   });
 
   it("requireAdmin accepts admin calls", () => {
-    const req: RequestLike = { auth: { uid: "u1", token: { admin: true } } };
+    const req: RequestLike = { auth: { uid: "u1", token: { admin: true, enabled: true } } };
     expect(() => requireAdmin(req as unknown as never)).not.toThrow();
   });
 });

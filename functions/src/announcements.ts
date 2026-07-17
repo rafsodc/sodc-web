@@ -17,7 +17,7 @@ import {
   getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
-import { requireAuth, requireString } from "./helpers";
+import { requireEnabled, requireString } from "./helpers";
 import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
@@ -240,7 +240,7 @@ export interface AnnouncementTemplate {
 export const getAnnouncementTemplates = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request): Promise<{ templates: AnnouncementTemplate[] }> => {
-    requireAuth(request);
+    requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
@@ -281,7 +281,7 @@ export const getAnnouncementTemplates = onCall(
 export const previewAnnouncementTemplate = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request): Promise<{ html: string; subject: string }> => {
-    requireAuth(request);
+    requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
@@ -349,7 +349,7 @@ interface AnnouncementEmailTask {
 export const sendSectionAnnouncement = onCall(
   { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret, govNotifyApiKey] },
   async (request): Promise<SendAnnouncementResult> => {
-    requireAuth(request);
+    requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
     const templateName: string | null = typeof request.data?.templateName === "string"
@@ -519,7 +519,7 @@ export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
 export const getAnnouncementSendHistory = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<{ sends: AnnouncementSend[] }> => {
-    requireAuth(request);
+    requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
@@ -562,7 +562,7 @@ export const getAnnouncementSendHistory = onCall(
 export const getAnnouncementSendRecipients = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<{ recipients: AnnouncementRecipient[] }> => {
-    requireAuth(request);
+    requireEnabled(request);
     const sendId = requireString(request.data?.sendId, "sendId");
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);

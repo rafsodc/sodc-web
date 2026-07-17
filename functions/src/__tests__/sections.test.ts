@@ -19,10 +19,11 @@ function callAs<T>(
   fn: { run: (request: any) => Promise<T> },
   uid: string,
   isAdmin: boolean,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  enabled = true
 ): Promise<T> {
   return fn.run({
-    auth: { uid, token: { admin: isAdmin, enabled: true } },
+    auth: { uid, token: { admin: isAdmin, enabled } },
     data,
   });
 }
@@ -64,6 +65,13 @@ describe("getSectionForUser", () => {
 
     expect(result.hasAccess).toBe(true);
     expect(result.section?.id).toBe(sectionId);
+  });
+
+  it("rejects a disabled admin before the admin bypass or section lookup", async () => {
+    await expect(
+      callAs(getSectionForUser, "admin-1", true, { sectionId }, false)
+    ).rejects.toMatchObject({ code: "permission-denied", message: "Account must be enabled" });
+    expect(mockGetSectionById).not.toHaveBeenCalled();
   });
 
   it("returns hasAccess and canModerate for a non-admin with a MODERATOR group", async () => {
@@ -232,6 +240,16 @@ describe("getSectionMembersMerged", () => {
       },
     } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
   }
+
+  it("rejects a disabled caller before retained group membership can grant directory access", async () => {
+    await expect(
+      callAs(getSectionMembersMerged, "member-1", false, { sectionId }, false)
+    ).rejects.toMatchObject({ code: "permission-denied", message: "Account must be enabled" });
+
+    expect(mockGetSectionById).not.toHaveBeenCalled();
+    expect(mockGetSectionMembers).not.toHaveBeenCalled();
+    expect(mockGetUserAccessGroupsById).not.toHaveBeenCalled();
+  });
 
   it("includes email and rank for a member who shares contact info", async () => {
     mockMembers([member({ rank: "Wing Commander", shareContactInfo: true })]);

@@ -30,11 +30,11 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(users, "syncPendingUserClaims", "requireAuth(request);");
 
     const membership = readSource("membershipStatus.ts");
-    assertOnCallGuard(membership, "updateMembershipStatus", "requireAuth(request);");
-    assertOnCallGuard(membership, "resignMembership", "requireAuth(request);");
+    assertOnCallGuard(membership, "updateMembershipStatus", "requireEnabled(request);");
+    assertOnCallGuard(membership, "resignMembership", "requireEnabled(request);");
 
     const sections = readSource("sections.ts");
-    assertOnCallGuard(sections, "getSectionMembersMerged", "requireAuth(request);");
+    assertOnCallGuard(sections, "getSectionMembersMerged", "requireEnabled(request);");
     assertOnCallGuard(sections, "getSectionForUser", "requireEnabled(request);");
     assertOnCallGuard(sections, "getSectionEventsForUser", "requireEnabled(request);");
     assertOnCallGuard(sections, "getEventForUser", "requireEnabled(request);");
@@ -62,9 +62,23 @@ describe("function entry guard contracts", () => {
       "getAnnouncementSendHistory",
       "getAnnouncementSendRecipients",
     ]) {
-      assertOnCallGuard(announcements, fn, "requireAuth(request);");
+      assertOnCallGuard(announcements, fn, "requireEnabled(request);");
       assertOnCallGuard(announcements, fn, "requireSectionModerator(", 600);
     }
+  });
+
+  it("keeps only intentional pre-approval entry points authentication-only", () => {
+    const users = readSource("users.ts");
+    for (const fn of ["updateDisplayName", "syncPendingUserClaims"]) {
+      assertOnCallGuard(users, fn, "requireAuth(request);");
+    }
+
+    const guardedSources = [
+      readSource("sections.ts"),
+      readSource("announcements.ts"),
+      readSource("membershipStatus.ts"),
+    ].join("\n");
+    expect(guardedSources).not.toContain("requireAuth(request);");
   });
 
   it("applies enforceRateLimit to the high-risk callables named in #344", () => {

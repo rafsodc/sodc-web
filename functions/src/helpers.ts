@@ -23,12 +23,17 @@ export function requireEnabled(request: CallableRequest): void {
 }
 
 /**
- * Ensures the request is authenticated and the user is an admin
+ * Ensures the request is authenticated, enabled, and an admin.
+ * An admin claim never bypasses account revocation: admin callables use the
+ * same enabled-account boundary as member and moderator surfaces.
  */
 export function requireAdmin(request: CallableRequest): void {
   requireAuth(request);
   if (request.auth!.token.admin !== true) {
     throw new HttpsError("permission-denied", "Admins only");
+  }
+  if (request.auth!.token.enabled !== true) {
+    throw new HttpsError("permission-denied", "Account must be enabled");
   }
 }
 
@@ -150,4 +155,3 @@ export function handleFunctionError(error: any, context: string): never {
   logger.error(`Error ${context}:`, error);
   throw new HttpsError("internal", "Internal server error");
 }
-
