@@ -16,7 +16,6 @@ const accessGroupId = "00000000-0000-4000-8000-0000000000a1";
 const moderatorGroupId = "00000000-0000-4000-8000-0000000000a2";
 
 function callAs<T>(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fn: { run: (request: any) => Promise<T> },
   uid: string,
   isAdmin: boolean,

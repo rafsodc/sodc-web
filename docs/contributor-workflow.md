@@ -40,11 +40,12 @@ Common commands:
 
 ```sh
 # Frontend
+npm run lint
 npm run test
 
 # Functions
-cd functions
-npm run test
+npm --prefix functions run lint
+npm --prefix functions run test
 
 # Full functions suite (includes mailers, dispatchers, wiring tests)
 cd functions
