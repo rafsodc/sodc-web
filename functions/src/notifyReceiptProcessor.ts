@@ -21,6 +21,7 @@ import {
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { parseAnnouncementReference } from "./announcementReference.js";
 import { invalidateDcProfileCache } from "./users.js";
+import { reconcileEnabledClaim } from "./enabledClaimReconciliation.js";
 
 export const BOUNCE_THRESHOLD = 3;
 export const DEFAULT_NOTIFY_RECEIPT_LEASE_MS = 10 * 60 * 1000;
@@ -478,8 +479,9 @@ async function applyDerivedUserState(args: {
   repository: NotifyReceiptRepository;
   userId: string;
   onMembershipLost: (userId: string) => void | Promise<void>;
+  reconcileExistingLost: boolean;
 }): Promise<"applied" | "no_state_change" | "no_user"> {
-  const { repository, userId, onMembershipLost } = args;
+  const { repository, userId, onMembershipLost, reconcileExistingLost } = args;
   for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
     const [user, recentReceipts] = await Promise.all([
       repository.getUserById(userId),
@@ -491,13 +493,20 @@ async function applyDerivedUserState(args: {
 
     const markLost =
       derived.bounceCount >= BOUNCE_THRESHOLD && user.membershipStatus !== MembershipStatus.LOST;
+    const requiresLostClaimReconciliation =
+      derived.bounceCount >= BOUNCE_THRESHOLD &&
+      (markLost ||
+        (reconcileExistingLost && user.membershipStatus === MembershipStatus.LOST));
     const stateAlreadyCurrent =
       user.emailBounceCount === derived.bounceCount &&
       user.emailLastBounceAt === derived.lastBounceAt &&
       user.emailDeliveryStatus === derived.latest.notifyStatus &&
       user.emailDeliveryStatusUpdatedAt === derived.latest.eventAt &&
       user.emailDeliveryReceiptId === derived.latest.id;
-    if (stateAlreadyCurrent && !markLost) return "no_state_change";
+    if (stateAlreadyCurrent && !markLost) {
+      if (requiresLostClaimReconciliation) await onMembershipLost(userId);
+      return "no_state_change";
+    }
 
     const applied = await repository.tryApplyUserState({
       userId,
@@ -511,7 +520,7 @@ async function applyDerivedUserState(args: {
       markLost,
     });
     if (!applied) continue;
-    if (markLost) await onMembershipLost(userId);
+    if (requiresLostClaimReconciliation) await onMembershipLost(userId);
     return "applied";
   }
   throw new Error(`Unable to update Notify delivery state for user ${userId} after repeated contention`);
@@ -584,7 +593,10 @@ export async function processNotifyReceipt(
   const repository = dependencies.repository ?? dataConnectNotifyReceiptRepository;
   const receivedAt = dependencies.now?.() ?? new Date().toISOString();
   const leaseMs = dependencies.leaseMs ?? DEFAULT_NOTIFY_RECEIPT_LEASE_MS;
-  const onMembershipLost = dependencies.onMembershipLost ?? (() => invalidateDcProfileCache());
+  const onMembershipLost = dependencies.onMembershipLost ?? (async (userId: string) => {
+    invalidateDcProfileCache();
+    await reconcileEnabledClaim(userId, "LOST");
+  });
   if (!Number.isFinite(leaseMs) || leaseMs <= 0) {
     throw new Error("Notify receipt lease duration must be a positive number");
   }
@@ -611,7 +623,12 @@ export async function processNotifyReceipt(
       const parsedReference = parseAnnouncementReference(receipt.reference);
       const [userResult, announcementResult] = await Promise.all([
         initialUser
-          ? applyDerivedUserState({ repository, userId: initialUser.id, onMembershipLost })
+          ? applyDerivedUserState({
+              repository,
+              userId: initialUser.id,
+              onMembershipLost,
+              reconcileExistingLost: attemptCount > 1,
+            })
           : Promise.resolve<"no_user">("no_user"),
         parsedReference
           ? applyDerivedAnnouncementState({

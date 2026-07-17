@@ -565,6 +565,60 @@ describe("handleNotifyDelivery", () => {
     expect(onMembershipLost).toHaveBeenCalledTimes(1);
   });
 
+  it("retries LOST claim reconciliation after the status update has already applied", async () => {
+    const user = repository.addUser();
+    const onMembershipLost = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Firebase Auth unavailable"))
+      .mockResolvedValue(undefined);
+
+    await sendReceipt(
+      repository,
+      receipt({
+        id: "claim-retry-1",
+        status: "permanent-failure",
+        completed_at: "2026-07-17T10:00:00.000Z",
+      }),
+      onMembershipLost
+    );
+    await sendReceipt(
+      repository,
+      receipt({
+        id: "claim-retry-2",
+        status: "permanent-failure",
+        completed_at: "2026-07-17T11:00:00.000Z",
+      }),
+      onMembershipLost
+    );
+    const thresholdReceipt = receipt({
+      id: "claim-retry-3",
+      status: "permanent-failure",
+      completed_at: "2026-07-17T12:00:00.000Z",
+    });
+
+    await expect(
+      sendReceipt(repository, thresholdReceipt, onMembershipLost)
+    ).rejects.toThrow("Firebase Auth unavailable");
+    expect(user.membershipStatus).toBe(MembershipStatus.LOST);
+    expect(repository.receipts.get(thresholdReceipt.id)?.processingStatus).toBe(
+      NotifyDeliveryReceiptProcessingStatus.FAILED
+    );
+
+    const response = await sendReceipt(
+      repository,
+      thresholdReceipt,
+      onMembershipLost
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(onMembershipLost).toHaveBeenCalledTimes(2);
+    expect(repository.userStateApplyCount).toBe(3);
+    expect(repository.receipts.get(thresholdReceipt.id)?.attemptCount).toBe(2);
+    expect(repository.receipts.get(thresholdReceipt.id)?.processingStatus).toBe(
+      NotifyDeliveryReceiptProcessingStatus.PROCESSED
+    );
+  });
+
   it("keeps announcement delivery state ordered independently of callback arrival", async () => {
     const sendId = "11111111-1111-4111-8111-111111111111";
     const recipientId = "22222222-2222-4222-8222-222222222222";

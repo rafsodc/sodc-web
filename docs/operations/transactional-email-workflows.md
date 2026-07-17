@@ -49,6 +49,12 @@ Do not invent a new delivery key during recovery: that bypasses idempotency. Che
 
 `notifyDeliveryCallback` authenticates delivery receipts with `NOTIFY_CALLBACK_BEARER_TOKEN` and records every valid provider receipt ID in `NotifyDeliveryReceipt`. The provider ID is the table key, so an exact replay cannot create a second ledger entry. A receipt is processed under a 10-minute `PENDING` lease; failed or stale attempts can be reclaimed, while a concurrent callback for a fresh claim receives a retryable response.
 
+When the permanent-failure threshold changes a user's status to `LOST`, receipt
+processing also reconciles Firebase Auth to `enabled: false`. The receipt is not marked
+processed until that claim reconciliation succeeds. A failed claim write therefore
+leaves the receipt eligible for replay, including when the Data Connect status update
+already succeeded. See [Enabled-claim reconciliation](enabled-claim-reconciliation.md).
+
 Delivery ordering uses Notify's first valid timestamp in this order: `completed_at`, `sent_at`, then `created_at`. The function receive time is used only when Notify supplies none of those timestamps. The timestamp and receipt ID form a deterministic ordering key, so callbacks with equal timestamps still have a stable order.
 
 User bounce state is derived from the newest final receipts rather than incremented with an unprotected read/write pair:

@@ -35,6 +35,22 @@ export function isRestrictedStatus(status: MembershipStatus): boolean {
   return RESTRICTED_STATUSES.includes(status);
 }
 
+export type MembershipStatusSaveAction = "none" | "transition" | "reconcile";
+
+/**
+ * Admin profile saves deliberately reconcile the enabled claim even when the
+ * selected status is unchanged. Non-admin saves retain the previous behaviour.
+ */
+export function membershipStatusSaveAction(
+  currentStatus: MembershipStatus | null,
+  selectedStatus: MembershipStatus,
+  isAdmin: boolean
+): MembershipStatusSaveAction {
+  if (isAdmin && selectedStatus === currentStatus) return "reconcile";
+  if (selectedStatus !== currentStatus) return "transition";
+  return "none";
+}
+
 /**
  * Validates if a user can change from one membership status to another
  * @param currentStatus - The user's current membership status (null if new user)
@@ -112,4 +128,3 @@ export function canUserResignMembership(
 
   return { allowed: true };
 }
-
