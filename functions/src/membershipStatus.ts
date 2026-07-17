@@ -12,6 +12,7 @@ import {
 import { govNotifyApiKey } from "./mailer";
 import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDispatcher";
 import { invalidateDcProfileCache } from "./users";
+import { enforceRateLimit } from "./rateLimiter";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -49,6 +50,7 @@ export const updateMembershipStatus = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
   requireEnabled(request);
+  await enforceRateLimit("updateMembershipStatus", request.auth!.uid);
 
   const { userId, newStatus } = request.data;
 
@@ -116,6 +118,7 @@ export const resignMembership = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
     requireEnabled(request);
+    await enforceRateLimit("resignMembership", request.auth!.uid);
 
     const userId = request.auth!.uid;
     const callerEnabled = request.auth!.token.enabled === true;

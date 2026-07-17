@@ -1,69 +1,97 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
-import { enforceRateLimit } from "../rateLimiter";
+import { CALLABLE_RATE_LIMITS, enforceRateLimit } from "../rateLimiter";
 
-const mockGetCallableInvocation = vi.spyOn(admin, "getCallableInvocation");
-const mockUpsertCallableInvocation = vi.spyOn(admin, "upsertCallableInvocation");
-
+const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const uid = "user-1";
-const fn = "testFunction";
-const windowMs = 60 * 60 * 1000; // 1 hour
 
 describe("enforceRateLimit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUpsertCallableInvocation.mockResolvedValue({
-      data: { callableInvocation_upsert: { userId: uid, functionName: fn } },
-    } as never);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-17T12:07:30.000Z"));
+    mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
   });
 
-  it("allows the first call and records count 1", async () => {
-    mockGetCallableInvocation.mockResolvedValue({ data: { callableInvocation: undefined } } as never);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-    await enforceRateLimit(fn, uid, { limit: 3, windowMs });
+  it("consumes the centralized limit in the current fixed window", async () => {
+    await enforceRateLimit("updateDisplayName", uid);
 
-    expect(mockUpsertCallableInvocation).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: uid, functionName: fn, count: 1 })
+    expect(mockConsumeCallableRateLimit).toHaveBeenCalledWith({
+      userId: uid,
+      functionName: "updateDisplayName",
+      windowStart: "2026-07-17T12:00:00.000Z",
+      limit: CALLABLE_RATE_LIMITS.updateDisplayName.limit,
+    });
+  });
+
+  it("starts a fresh bucket after the window rolls over", async () => {
+    await enforceRateLimit("updateDisplayName", uid);
+    vi.setSystemTime(new Date("2026-07-17T13:00:00.000Z"));
+    await enforceRateLimit("updateDisplayName", uid);
+
+    expect(mockConsumeCallableRateLimit).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ windowStart: "2026-07-17T13:00:00.000Z" })
     );
   });
 
-  it("allows a subsequent call within the same window while under the limit", async () => {
-    const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs).toISOString();
-    mockGetCallableInvocation.mockResolvedValue({
-      data: { callableInvocation: { windowStart, count: 2 } },
-    } as never);
+  it("allows requests through the threshold and rejects the next request", async () => {
+    let consumed = 0;
+    const limit = CALLABLE_RATE_LIMITS.updateDisplayName.limit;
+    mockConsumeCallableRateLimit.mockImplementation(async () => {
+      consumed += 1;
+      if (consumed > limit) throw new Error("RATE_LIMIT_EXCEEDED");
+      return { data: {} } as never;
+    });
 
-    await enforceRateLimit(fn, uid, { limit: 3, windowMs });
-
-    expect(mockUpsertCallableInvocation).toHaveBeenCalledWith(
-      expect.objectContaining({ count: 3 })
-    );
-  });
-
-  it("rejects once the limit is reached within the current window", async () => {
-    const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs).toISOString();
-    mockGetCallableInvocation.mockResolvedValue({
-      data: { callableInvocation: { windowStart, count: 3 } },
-    } as never);
-
-    await expect(enforceRateLimit(fn, uid, { limit: 3, windowMs })).rejects.toMatchObject({
+    for (let i = 0; i < limit; i += 1) {
+      await expect(enforceRateLimit("updateDisplayName", uid)).resolves.toBeUndefined();
+    }
+    await expect(enforceRateLimit("updateDisplayName", uid)).rejects.toMatchObject({
       code: "resource-exhausted",
     });
-    expect(mockUpsertCallableInvocation).not.toHaveBeenCalled();
   });
 
-  it("resets the count when the existing row is from a previous window", async () => {
-    const previousWindowStart = new Date(
-      Math.floor(Date.now() / windowMs) * windowMs - windowMs
-    ).toISOString();
-    mockGetCallableInvocation.mockResolvedValue({
-      data: { callableInvocation: { windowStart: previousWindowStart, count: 3 } },
-    } as never);
+  it("rejects concurrent requests beyond the atomic backend threshold", async () => {
+    let consumed = 0;
+    const limit = CALLABLE_RATE_LIMITS.updateDisplayName.limit;
+    mockConsumeCallableRateLimit.mockImplementation(async () => {
+      consumed += 1;
+      if (consumed > limit) throw new Error("RATE_LIMIT_EXCEEDED");
+      return { data: {} } as never;
+    });
 
-    await enforceRateLimit(fn, uid, { limit: 3, windowMs });
-
-    expect(mockUpsertCallableInvocation).toHaveBeenCalledWith(
-      expect.objectContaining({ count: 1 })
+    const results = await Promise.allSettled(
+      Array.from({ length: limit + 2 }, () => enforceRateLimit("updateDisplayName", uid))
     );
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(limit);
+    const rejected = results.filter((result) => result.status === "rejected");
+    expect(rejected).toHaveLength(2);
+    for (const result of rejected) {
+      expect(result.reason).toMatchObject({ code: "resource-exhausted" });
+    }
+  });
+
+  it("does not hide backend failures unrelated to rate limiting", async () => {
+    const backendError = new Error("database unavailable");
+    mockConsumeCallableRateLimit.mockRejectedValue(backendError);
+
+    await expect(enforceRateLimit("updateDisplayName", uid)).rejects.toBe(backendError);
+  });
+
+  it("recognizes a rate-limit marker nested in backend error details", async () => {
+    mockConsumeCallableRateLimit.mockRejectedValue({
+      message: "mutation failed",
+      errors: [{ message: "RATE_LIMIT_EXCEEDED" }],
+    });
+
+    await expect(enforceRateLimit("updateDisplayName", uid)).rejects.toMatchObject({
+      code: "resource-exhausted",
+    });
   });
 });

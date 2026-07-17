@@ -111,6 +111,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*AdminOptOutSectionAnnouncement*](#adminoptoutsectionannouncement)
   - [*AdminOptInSectionAnnouncement*](#adminoptinsectionannouncement)
   - [*UpsertCallableInvocation*](#upsertcallableinvocation)
+  - [*ConsumeCallableRateLimit*](#consumecallableratelimit)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
   - [*UpdateBookingStatus*](#updatebookingstatus)
@@ -249,7 +250,7 @@ import { connectorConfig, getUserGroupByName, GetUserGroupByNameVariables } from
 
 // The `GetUserGroupByName` query requires an argument of type `GetUserGroupByNameVariables`:
 const getUserGroupByNameVars: GetUserGroupByNameVariables = {
-  name: ...,
+  name: ..., 
 };
 
 // Call the `getUserGroupByName()` function to execute the query.
@@ -279,7 +280,7 @@ import { connectorConfig, getUserGroupByNameRef, GetUserGroupByNameVariables } f
 
 // The `GetUserGroupByName` query requires an argument of type `GetUserGroupByNameVariables`:
 const getUserGroupByNameVars: GetUserGroupByNameVariables = {
-  name: ...,
+  name: ..., 
 };
 
 // Call the `getUserGroupByNameRef()` function to get a reference to the query.
@@ -367,7 +368,7 @@ import { connectorConfig, getUserUserGroupsForAdmin, GetUserUserGroupsForAdminVa
 
 // The `GetUserUserGroupsForAdmin` query requires an argument of type `GetUserUserGroupsForAdminVariables`:
 const getUserUserGroupsForAdminVars: GetUserUserGroupsForAdminVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getUserUserGroupsForAdmin()` function to execute the query.
@@ -397,7 +398,7 @@ import { connectorConfig, getUserUserGroupsForAdminRef, GetUserUserGroupsForAdmi
 
 // The `GetUserUserGroupsForAdmin` query requires an argument of type `GetUserUserGroupsForAdminVariables`:
 const getUserUserGroupsForAdminVars: GetUserUserGroupsForAdminVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getUserUserGroupsForAdminRef()` function to get a reference to the query.
@@ -483,7 +484,7 @@ import { connectorConfig, getUserForCheckout, GetUserForCheckoutVariables } from
 
 // The `GetUserForCheckout` query requires an argument of type `GetUserForCheckoutVariables`:
 const getUserForCheckoutVars: GetUserForCheckoutVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getUserForCheckout()` function to execute the query.
@@ -513,7 +514,7 @@ import { connectorConfig, getUserForCheckoutRef, GetUserForCheckoutVariables } f
 
 // The `GetUserForCheckout` query requires an argument of type `GetUserForCheckoutVariables`:
 const getUserForCheckoutVars: GetUserForCheckoutVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getUserForCheckoutRef()` function to get a reference to the query.
@@ -610,7 +611,7 @@ import { connectorConfig, getTicketTypeForCheckout, GetTicketTypeForCheckoutVari
 
 // The `GetTicketTypeForCheckout` query requires an argument of type `GetTicketTypeForCheckoutVariables`:
 const getTicketTypeForCheckoutVars: GetTicketTypeForCheckoutVariables = {
-  ticketTypeId: ...,
+  ticketTypeId: ..., 
 };
 
 // Call the `getTicketTypeForCheckout()` function to execute the query.
@@ -640,7 +641,7 @@ import { connectorConfig, getTicketTypeForCheckoutRef, GetTicketTypeForCheckoutV
 
 // The `GetTicketTypeForCheckout` query requires an argument of type `GetTicketTypeForCheckoutVariables`:
 const getTicketTypeForCheckoutVars: GetTicketTypeForCheckoutVariables = {
-  ticketTypeId: ...,
+  ticketTypeId: ..., 
 };
 
 // Call the `getTicketTypeForCheckoutRef()` function to get a reference to the query.
@@ -745,7 +746,7 @@ import { connectorConfig, getEventByIdForCallable, GetEventByIdForCallableVariab
 
 // The `GetEventByIdForCallable` query requires an argument of type `GetEventByIdForCallableVariables`:
 const getEventByIdForCallableVars: GetEventByIdForCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getEventByIdForCallable()` function to execute the query.
@@ -775,7 +776,7 @@ import { connectorConfig, getEventByIdForCallableRef, GetEventByIdForCallableVar
 
 // The `GetEventByIdForCallable` query requires an argument of type `GetEventByIdForCallableVariables`:
 const getEventByIdForCallableVars: GetEventByIdForCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getEventByIdForCallableRef()` function to get a reference to the query.
@@ -871,7 +872,7 @@ import { connectorConfig, getSectionByIdForCallable, GetSectionByIdForCallableVa
 
 // The `GetSectionByIdForCallable` query requires an argument of type `GetSectionByIdForCallableVariables`:
 const getSectionByIdForCallableVars: GetSectionByIdForCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getSectionByIdForCallable()` function to execute the query.
@@ -901,7 +902,7 @@ import { connectorConfig, getSectionByIdForCallableRef, GetSectionByIdForCallabl
 
 // The `GetSectionByIdForCallable` query requires an argument of type `GetSectionByIdForCallableVariables`:
 const getSectionByIdForCallableVars: GetSectionByIdForCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getSectionByIdForCallableRef()` function to get a reference to the query.
@@ -1025,8 +1026,8 @@ import { connectorConfig, getBookingsForBookerAndEvent, GetBookingsForBookerAndE
 
 // The `GetBookingsForBookerAndEvent` query requires an argument of type `GetBookingsForBookerAndEventVariables`:
 const getBookingsForBookerAndEventVars: GetBookingsForBookerAndEventVariables = {
-  bookerId: ...,
-  eventId: ...,
+  bookerId: ..., 
+  eventId: ..., 
 };
 
 // Call the `getBookingsForBookerAndEvent()` function to execute the query.
@@ -1056,8 +1057,8 @@ import { connectorConfig, getBookingsForBookerAndEventRef, GetBookingsForBookerA
 
 // The `GetBookingsForBookerAndEvent` query requires an argument of type `GetBookingsForBookerAndEventVariables`:
 const getBookingsForBookerAndEventVars: GetBookingsForBookerAndEventVariables = {
-  bookerId: ...,
-  eventId: ...,
+  bookerId: ..., 
+  eventId: ..., 
 };
 
 // Call the `getBookingsForBookerAndEventRef()` function to get a reference to the query.
@@ -1151,8 +1152,8 @@ import { connectorConfig, getTicketOrdersForBookerAndEvent, GetTicketOrdersForBo
 
 // The `GetTicketOrdersForBookerAndEvent` query requires an argument of type `GetTicketOrdersForBookerAndEventVariables`:
 const getTicketOrdersForBookerAndEventVars: GetTicketOrdersForBookerAndEventVariables = {
-  userId: ...,
-  eventId: ...,
+  userId: ..., 
+  eventId: ..., 
 };
 
 // Call the `getTicketOrdersForBookerAndEvent()` function to execute the query.
@@ -1182,8 +1183,8 @@ import { connectorConfig, getTicketOrdersForBookerAndEventRef, GetTicketOrdersFo
 
 // The `GetTicketOrdersForBookerAndEvent` query requires an argument of type `GetTicketOrdersForBookerAndEventVariables`:
 const getTicketOrdersForBookerAndEventVars: GetTicketOrdersForBookerAndEventVariables = {
-  userId: ...,
-  eventId: ...,
+  userId: ..., 
+  eventId: ..., 
 };
 
 // Call the `getTicketOrdersForBookerAndEventRef()` function to get a reference to the query.
@@ -1296,7 +1297,7 @@ import { connectorConfig, getTicketOrderForWebhook, GetTicketOrderForWebhookVari
 
 // The `GetTicketOrderForWebhook` query requires an argument of type `GetTicketOrderForWebhookVariables`:
 const getTicketOrderForWebhookVars: GetTicketOrderForWebhookVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getTicketOrderForWebhook()` function to execute the query.
@@ -1326,7 +1327,7 @@ import { connectorConfig, getTicketOrderForWebhookRef, GetTicketOrderForWebhookV
 
 // The `GetTicketOrderForWebhook` query requires an argument of type `GetTicketOrderForWebhookVariables`:
 const getTicketOrderForWebhookVars: GetTicketOrderForWebhookVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getTicketOrderForWebhookRef()` function to get a reference to the query.
@@ -1412,7 +1413,7 @@ import { connectorConfig, getTicketOrderStripeArtifactsForCallable, GetTicketOrd
 
 // The `GetTicketOrderStripeArtifactsForCallable` query requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`:
 const getTicketOrderStripeArtifactsForCallableVars: GetTicketOrderStripeArtifactsForCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getTicketOrderStripeArtifactsForCallable()` function to execute the query.
@@ -1442,7 +1443,7 @@ import { connectorConfig, getTicketOrderStripeArtifactsForCallableRef, GetTicket
 
 // The `GetTicketOrderStripeArtifactsForCallable` query requires an argument of type `GetTicketOrderStripeArtifactsForCallableVariables`:
 const getTicketOrderStripeArtifactsForCallableVars: GetTicketOrderStripeArtifactsForCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getTicketOrderStripeArtifactsForCallableRef()` function to get a reference to the query.
@@ -1533,7 +1534,7 @@ import { connectorConfig, getPaymentWebhookEventByStripeEventId, GetPaymentWebho
 
 // The `GetPaymentWebhookEventByStripeEventId` query requires an argument of type `GetPaymentWebhookEventByStripeEventIdVariables`:
 const getPaymentWebhookEventByStripeEventIdVars: GetPaymentWebhookEventByStripeEventIdVariables = {
-  stripeEventId: ...,
+  stripeEventId: ..., 
 };
 
 // Call the `getPaymentWebhookEventByStripeEventId()` function to execute the query.
@@ -1563,7 +1564,7 @@ import { connectorConfig, getPaymentWebhookEventByStripeEventIdRef, GetPaymentWe
 
 // The `GetPaymentWebhookEventByStripeEventId` query requires an argument of type `GetPaymentWebhookEventByStripeEventIdVariables`:
 const getPaymentWebhookEventByStripeEventIdVars: GetPaymentWebhookEventByStripeEventIdVariables = {
-  stripeEventId: ...,
+  stripeEventId: ..., 
 };
 
 // Call the `getPaymentWebhookEventByStripeEventIdRef()` function to get a reference to the query.
@@ -1657,8 +1658,8 @@ import { connectorConfig, getNotificationDeliveryByChannelAndKey, GetNotificatio
 
 // The `GetNotificationDeliveryByChannelAndKey` query requires an argument of type `GetNotificationDeliveryByChannelAndKeyVariables`:
 const getNotificationDeliveryByChannelAndKeyVars: GetNotificationDeliveryByChannelAndKeyVariables = {
-  channel: ...,
-  deliveryKey: ...,
+  channel: ..., 
+  deliveryKey: ..., 
 };
 
 // Call the `getNotificationDeliveryByChannelAndKey()` function to execute the query.
@@ -1688,8 +1689,8 @@ import { connectorConfig, getNotificationDeliveryByChannelAndKeyRef, GetNotifica
 
 // The `GetNotificationDeliveryByChannelAndKey` query requires an argument of type `GetNotificationDeliveryByChannelAndKeyVariables`:
 const getNotificationDeliveryByChannelAndKeyVars: GetNotificationDeliveryByChannelAndKeyVariables = {
-  channel: ...,
-  deliveryKey: ...,
+  channel: ..., 
+  deliveryKey: ..., 
 };
 
 // Call the `getNotificationDeliveryByChannelAndKeyRef()` function to get a reference to the query.
@@ -1772,8 +1773,8 @@ import { connectorConfig, getPaymentReconciliationExceptionByOrderAndType, GetPa
 
 // The `GetPaymentReconciliationExceptionByOrderAndType` query requires an argument of type `GetPaymentReconciliationExceptionByOrderAndTypeVariables`:
 const getPaymentReconciliationExceptionByOrderAndTypeVars: GetPaymentReconciliationExceptionByOrderAndTypeVariables = {
-  ticketOrderId: ...,
-  exceptionType: ...,
+  ticketOrderId: ..., 
+  exceptionType: ..., 
 };
 
 // Call the `getPaymentReconciliationExceptionByOrderAndType()` function to execute the query.
@@ -1803,8 +1804,8 @@ import { connectorConfig, getPaymentReconciliationExceptionByOrderAndTypeRef, Ge
 
 // The `GetPaymentReconciliationExceptionByOrderAndType` query requires an argument of type `GetPaymentReconciliationExceptionByOrderAndTypeVariables`:
 const getPaymentReconciliationExceptionByOrderAndTypeVars: GetPaymentReconciliationExceptionByOrderAndTypeVariables = {
-  ticketOrderId: ...,
-  exceptionType: ...,
+  ticketOrderId: ..., 
+  exceptionType: ..., 
 };
 
 // Call the `getPaymentReconciliationExceptionByOrderAndTypeRef()` function to get a reference to the query.
@@ -1922,7 +1923,7 @@ import { connectorConfig, getBookingForGuestTicketCallable, GetBookingForGuestTi
 
 // The `GetBookingForGuestTicketCallable` query requires an argument of type `GetBookingForGuestTicketCallableVariables`:
 const getBookingForGuestTicketCallableVars: GetBookingForGuestTicketCallableVariables = {
-  bookingId: ...,
+  bookingId: ..., 
 };
 
 // Call the `getBookingForGuestTicketCallable()` function to execute the query.
@@ -1952,7 +1953,7 @@ import { connectorConfig, getBookingForGuestTicketCallableRef, GetBookingForGues
 
 // The `GetBookingForGuestTicketCallable` query requires an argument of type `GetBookingForGuestTicketCallableVariables`:
 const getBookingForGuestTicketCallableVars: GetBookingForGuestTicketCallableVariables = {
-  bookingId: ...,
+  bookingId: ..., 
 };
 
 // Call the `getBookingForGuestTicketCallableRef()` function to get a reference to the query.
@@ -2073,7 +2074,7 @@ import { connectorConfig, getBookingForNotification, GetBookingForNotificationVa
 
 // The `GetBookingForNotification` query requires an argument of type `GetBookingForNotificationVariables`:
 const getBookingForNotificationVars: GetBookingForNotificationVariables = {
-  bookingId: ...,
+  bookingId: ..., 
 };
 
 // Call the `getBookingForNotification()` function to execute the query.
@@ -2103,7 +2104,7 @@ import { connectorConfig, getBookingForNotificationRef, GetBookingForNotificatio
 
 // The `GetBookingForNotification` query requires an argument of type `GetBookingForNotificationVariables`:
 const getBookingForNotificationVars: GetBookingForNotificationVariables = {
-  bookingId: ...,
+  bookingId: ..., 
 };
 
 // Call the `getBookingForNotificationRef()` function to get a reference to the query.
@@ -2187,8 +2188,8 @@ import { connectorConfig, listStaleDraftBookingsForScheduler, ListStaleDraftBook
 
 // The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
 const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
-  updatedBefore: ...,
-  limit: ...,
+  updatedBefore: ..., 
+  limit: ..., 
 };
 
 // Call the `listStaleDraftBookingsForScheduler()` function to execute the query.
@@ -2218,8 +2219,8 @@ import { connectorConfig, listStaleDraftBookingsForSchedulerRef, ListStaleDraftB
 
 // The `ListStaleDraftBookingsForScheduler` query requires an argument of type `ListStaleDraftBookingsForSchedulerVariables`:
 const listStaleDraftBookingsForSchedulerVars: ListStaleDraftBookingsForSchedulerVariables = {
-  updatedBefore: ...,
-  limit: ...,
+  updatedBefore: ..., 
+  limit: ..., 
 };
 
 // Call the `listStaleDraftBookingsForSchedulerRef()` function to get a reference to the query.
@@ -2303,8 +2304,8 @@ import { connectorConfig, listStalePendingTicketOrdersForScheduler, ListStalePen
 
 // The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
 const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
-  createdBefore: ...,
-  limit: ...,
+  createdBefore: ..., 
+  limit: ..., 
 };
 
 // Call the `listStalePendingTicketOrdersForScheduler()` function to execute the query.
@@ -2334,8 +2335,8 @@ import { connectorConfig, listStalePendingTicketOrdersForSchedulerRef, ListStale
 
 // The `ListStalePendingTicketOrdersForScheduler` query requires an argument of type `ListStalePendingTicketOrdersForSchedulerVariables`:
 const listStalePendingTicketOrdersForSchedulerVars: ListStalePendingTicketOrdersForSchedulerVariables = {
-  createdBefore: ...,
-  limit: ...,
+  createdBefore: ..., 
+  limit: ..., 
 };
 
 // Call the `listStalePendingTicketOrdersForSchedulerRef()` function to get a reference to the query.
@@ -2442,7 +2443,7 @@ import { connectorConfig, getGuestTicketRequestForNotification, GetGuestTicketRe
 
 // The `GetGuestTicketRequestForNotification` query requires an argument of type `GetGuestTicketRequestForNotificationVariables`:
 const getGuestTicketRequestForNotificationVars: GetGuestTicketRequestForNotificationVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getGuestTicketRequestForNotification()` function to execute the query.
@@ -2472,7 +2473,7 @@ import { connectorConfig, getGuestTicketRequestForNotificationRef, GetGuestTicke
 
 // The `GetGuestTicketRequestForNotification` query requires an argument of type `GetGuestTicketRequestForNotificationVariables`:
 const getGuestTicketRequestForNotificationVars: GetGuestTicketRequestForNotificationVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getGuestTicketRequestForNotificationRef()` function to get a reference to the query.
@@ -2555,7 +2556,7 @@ import { connectorConfig, getSectionAnnouncementOptOuts, GetSectionAnnouncementO
 
 // The `GetSectionAnnouncementOptOuts` query requires an argument of type `GetSectionAnnouncementOptOutsVariables`:
 const getSectionAnnouncementOptOutsVars: GetSectionAnnouncementOptOutsVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getSectionAnnouncementOptOuts()` function to execute the query.
@@ -2585,7 +2586,7 @@ import { connectorConfig, getSectionAnnouncementOptOutsRef, GetSectionAnnounceme
 
 // The `GetSectionAnnouncementOptOuts` query requires an argument of type `GetSectionAnnouncementOptOutsVariables`:
 const getSectionAnnouncementOptOutsVars: GetSectionAnnouncementOptOutsVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getSectionAnnouncementOptOutsRef()` function to get a reference to the query.
@@ -2666,7 +2667,7 @@ import { connectorConfig, getAnnouncementRecipientCount, GetAnnouncementRecipien
 
 // The `GetAnnouncementRecipientCount` query requires an argument of type `GetAnnouncementRecipientCountVariables`:
 const getAnnouncementRecipientCountVars: GetAnnouncementRecipientCountVariables = {
-  sendId: ...,
+  sendId: ..., 
 };
 
 // Call the `getAnnouncementRecipientCount()` function to execute the query.
@@ -2696,7 +2697,7 @@ import { connectorConfig, getAnnouncementRecipientCountRef, GetAnnouncementRecip
 
 // The `GetAnnouncementRecipientCount` query requires an argument of type `GetAnnouncementRecipientCountVariables`:
 const getAnnouncementRecipientCountVars: GetAnnouncementRecipientCountVariables = {
-  sendId: ...,
+  sendId: ..., 
 };
 
 // Call the `getAnnouncementRecipientCountRef()` function to get a reference to the query.
@@ -2784,7 +2785,7 @@ import { connectorConfig, getAnnouncementSendHistory, GetAnnouncementSendHistory
 
 // The `GetAnnouncementSendHistory` query requires an argument of type `GetAnnouncementSendHistoryVariables`:
 const getAnnouncementSendHistoryVars: GetAnnouncementSendHistoryVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getAnnouncementSendHistory()` function to execute the query.
@@ -2814,7 +2815,7 @@ import { connectorConfig, getAnnouncementSendHistoryRef, GetAnnouncementSendHist
 
 // The `GetAnnouncementSendHistory` query requires an argument of type `GetAnnouncementSendHistoryVariables`:
 const getAnnouncementSendHistoryVars: GetAnnouncementSendHistoryVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getAnnouncementSendHistoryRef()` function to get a reference to the query.
@@ -2903,7 +2904,7 @@ import { connectorConfig, getAnnouncementSendRecipients, GetAnnouncementSendReci
 
 // The `GetAnnouncementSendRecipients` query requires an argument of type `GetAnnouncementSendRecipientsVariables`:
 const getAnnouncementSendRecipientsVars: GetAnnouncementSendRecipientsVariables = {
-  sendId: ...,
+  sendId: ..., 
 };
 
 // Call the `getAnnouncementSendRecipients()` function to execute the query.
@@ -2933,7 +2934,7 @@ import { connectorConfig, getAnnouncementSendRecipientsRef, GetAnnouncementSendR
 
 // The `GetAnnouncementSendRecipients` query requires an argument of type `GetAnnouncementSendRecipientsVariables`:
 const getAnnouncementSendRecipientsVars: GetAnnouncementSendRecipientsVariables = {
-  sendId: ...,
+  sendId: ..., 
 };
 
 // Call the `getAnnouncementSendRecipientsRef()` function to get a reference to the query.
@@ -3015,7 +3016,7 @@ import { connectorConfig, getAnnouncementSendById, GetAnnouncementSendByIdVariab
 
 // The `GetAnnouncementSendById` query requires an argument of type `GetAnnouncementSendByIdVariables`:
 const getAnnouncementSendByIdVars: GetAnnouncementSendByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getAnnouncementSendById()` function to execute the query.
@@ -3045,7 +3046,7 @@ import { connectorConfig, getAnnouncementSendByIdRef, GetAnnouncementSendByIdVar
 
 // The `GetAnnouncementSendById` query requires an argument of type `GetAnnouncementSendByIdVariables`:
 const getAnnouncementSendByIdVars: GetAnnouncementSendByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getAnnouncementSendByIdRef()` function to get a reference to the query.
@@ -3132,8 +3133,8 @@ import { connectorConfig, getAnnouncementRecipientBySendAndUser, GetAnnouncement
 
 // The `GetAnnouncementRecipientBySendAndUser` query requires an argument of type `GetAnnouncementRecipientBySendAndUserVariables`:
 const getAnnouncementRecipientBySendAndUserVars: GetAnnouncementRecipientBySendAndUserVariables = {
-  announcementSendId: ...,
-  userId: ...,
+  announcementSendId: ..., 
+  userId: ..., 
 };
 
 // Call the `getAnnouncementRecipientBySendAndUser()` function to execute the query.
@@ -3163,8 +3164,8 @@ import { connectorConfig, getAnnouncementRecipientBySendAndUserRef, GetAnnouncem
 
 // The `GetAnnouncementRecipientBySendAndUser` query requires an argument of type `GetAnnouncementRecipientBySendAndUserVariables`:
 const getAnnouncementRecipientBySendAndUserVars: GetAnnouncementRecipientBySendAndUserVariables = {
-  announcementSendId: ...,
-  userId: ...,
+  announcementSendId: ..., 
+  userId: ..., 
 };
 
 // Call the `getAnnouncementRecipientBySendAndUserRef()` function to get a reference to the query.
@@ -3252,7 +3253,7 @@ import { connectorConfig, getUserByEmail, GetUserByEmailVariables } from '@datac
 
 // The `GetUserByEmail` query requires an argument of type `GetUserByEmailVariables`:
 const getUserByEmailVars: GetUserByEmailVariables = {
-  email: ...,
+  email: ..., 
 };
 
 // Call the `getUserByEmail()` function to execute the query.
@@ -3282,7 +3283,7 @@ import { connectorConfig, getUserByEmailRef, GetUserByEmailVariables } from '@da
 
 // The `GetUserByEmail` query requires an argument of type `GetUserByEmailVariables`:
 const getUserByEmailVars: GetUserByEmailVariables = {
-  email: ...,
+  email: ..., 
 };
 
 // Call the `getUserByEmailRef()` function to get a reference to the query.
@@ -3370,7 +3371,7 @@ import { connectorConfig, getNotifyCallbackUserById, GetNotifyCallbackUserByIdVa
 
 // The `GetNotifyCallbackUserById` query requires an argument of type `GetNotifyCallbackUserByIdVariables`:
 const getNotifyCallbackUserByIdVars: GetNotifyCallbackUserByIdVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getNotifyCallbackUserById()` function to execute the query.
@@ -3400,7 +3401,7 @@ import { connectorConfig, getNotifyCallbackUserByIdRef, GetNotifyCallbackUserByI
 
 // The `GetNotifyCallbackUserById` query requires an argument of type `GetNotifyCallbackUserByIdVariables`:
 const getNotifyCallbackUserByIdVars: GetNotifyCallbackUserByIdVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getNotifyCallbackUserByIdRef()` function to get a reference to the query.
@@ -3493,7 +3494,7 @@ import { connectorConfig, getNotifyDeliveryReceipt, GetNotifyDeliveryReceiptVari
 
 // The `GetNotifyDeliveryReceipt` query requires an argument of type `GetNotifyDeliveryReceiptVariables`:
 const getNotifyDeliveryReceiptVars: GetNotifyDeliveryReceiptVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getNotifyDeliveryReceipt()` function to execute the query.
@@ -3523,7 +3524,7 @@ import { connectorConfig, getNotifyDeliveryReceiptRef, GetNotifyDeliveryReceiptV
 
 // The `GetNotifyDeliveryReceipt` query requires an argument of type `GetNotifyDeliveryReceiptVariables`:
 const getNotifyDeliveryReceiptVars: GetNotifyDeliveryReceiptVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getNotifyDeliveryReceiptRef()` function to get a reference to the query.
@@ -3607,7 +3608,7 @@ import { connectorConfig, getRecentNotifyDeliveryReceiptsForUser, GetRecentNotif
 
 // The `GetRecentNotifyDeliveryReceiptsForUser` query requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`:
 const getRecentNotifyDeliveryReceiptsForUserVars: GetRecentNotifyDeliveryReceiptsForUserVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getRecentNotifyDeliveryReceiptsForUser()` function to execute the query.
@@ -3637,7 +3638,7 @@ import { connectorConfig, getRecentNotifyDeliveryReceiptsForUserRef, GetRecentNo
 
 // The `GetRecentNotifyDeliveryReceiptsForUser` query requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`:
 const getRecentNotifyDeliveryReceiptsForUserVars: GetRecentNotifyDeliveryReceiptsForUserVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getRecentNotifyDeliveryReceiptsForUserRef()` function to get a reference to the query.
@@ -3721,7 +3722,7 @@ import { connectorConfig, getLatestNotifyDeliveryReceiptForReference, GetLatestN
 
 // The `GetLatestNotifyDeliveryReceiptForReference` query requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`:
 const getLatestNotifyDeliveryReceiptForReferenceVars: GetLatestNotifyDeliveryReceiptForReferenceVariables = {
-  reference: ...,
+  reference: ..., 
 };
 
 // Call the `getLatestNotifyDeliveryReceiptForReference()` function to execute the query.
@@ -3751,7 +3752,7 @@ import { connectorConfig, getLatestNotifyDeliveryReceiptForReferenceRef, GetLate
 
 // The `GetLatestNotifyDeliveryReceiptForReference` query requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`:
 const getLatestNotifyDeliveryReceiptForReferenceVars: GetLatestNotifyDeliveryReceiptForReferenceVariables = {
-  reference: ...,
+  reference: ..., 
 };
 
 // Call the `getLatestNotifyDeliveryReceiptForReferenceRef()` function to get a reference to the query.
@@ -3834,8 +3835,8 @@ import { connectorConfig, getCallableInvocation, GetCallableInvocationVariables 
 
 // The `GetCallableInvocation` query requires an argument of type `GetCallableInvocationVariables`:
 const getCallableInvocationVars: GetCallableInvocationVariables = {
-  userId: ...,
-  functionName: ...,
+  userId: ..., 
+  functionName: ..., 
 };
 
 // Call the `getCallableInvocation()` function to execute the query.
@@ -3865,8 +3866,8 @@ import { connectorConfig, getCallableInvocationRef, GetCallableInvocationVariabl
 
 // The `GetCallableInvocation` query requires an argument of type `GetCallableInvocationVariables`:
 const getCallableInvocationVars: GetCallableInvocationVariables = {
-  userId: ...,
-  functionName: ...,
+  userId: ..., 
+  functionName: ..., 
 };
 
 // Call the `getCallableInvocationRef()` function to get a reference to the query.
@@ -4068,7 +4069,7 @@ import { connectorConfig, getUserById, GetUserByIdVariables } from '@dataconnect
 
 // The `GetUserById` query requires an argument of type `GetUserByIdVariables`:
 const getUserByIdVars: GetUserByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserById()` function to execute the query.
@@ -4098,7 +4099,7 @@ import { connectorConfig, getUserByIdRef, GetUserByIdVariables } from '@dataconn
 
 // The `GetUserById` query requires an argument of type `GetUserByIdVariables`:
 const getUserByIdVars: GetUserByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserByIdRef()` function to get a reference to the query.
@@ -4816,7 +4817,7 @@ import { connectorConfig, getUserMembershipStatus, GetUserMembershipStatusVariab
 
 // The `GetUserMembershipStatus` query requires an argument of type `GetUserMembershipStatusVariables`:
 const getUserMembershipStatusVars: GetUserMembershipStatusVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserMembershipStatus()` function to execute the query.
@@ -4846,7 +4847,7 @@ import { connectorConfig, getUserMembershipStatusRef, GetUserMembershipStatusVar
 
 // The `GetUserMembershipStatus` query requires an argument of type `GetUserMembershipStatusVariables`:
 const getUserMembershipStatusVars: GetUserMembershipStatusVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserMembershipStatusRef()` function to get a reference to the query.
@@ -4939,7 +4940,7 @@ import { connectorConfig, getUserWithAccessGroups, GetUserWithAccessGroupsVariab
 
 // The `GetUserWithAccessGroups` query requires an argument of type `GetUserWithAccessGroupsVariables`:
 const getUserWithAccessGroupsVars: GetUserWithAccessGroupsVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserWithAccessGroups()` function to execute the query.
@@ -4969,7 +4970,7 @@ import { connectorConfig, getUserWithAccessGroupsRef, GetUserWithAccessGroupsVar
 
 // The `GetUserWithAccessGroups` query requires an argument of type `GetUserWithAccessGroupsVariables`:
 const getUserWithAccessGroupsVars: GetUserWithAccessGroupsVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserWithAccessGroupsRef()` function to get a reference to the query.
@@ -5057,7 +5058,7 @@ import { connectorConfig, getUserAccessGroupsById, GetUserAccessGroupsByIdVariab
 
 // The `GetUserAccessGroupsById` query requires an argument of type `GetUserAccessGroupsByIdVariables`:
 const getUserAccessGroupsByIdVars: GetUserAccessGroupsByIdVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getUserAccessGroupsById()` function to execute the query.
@@ -5087,7 +5088,7 @@ import { connectorConfig, getUserAccessGroupsByIdRef, GetUserAccessGroupsByIdVar
 
 // The `GetUserAccessGroupsById` query requires an argument of type `GetUserAccessGroupsByIdVariables`:
 const getUserAccessGroupsByIdVars: GetUserAccessGroupsByIdVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `getUserAccessGroupsByIdRef()` function to get a reference to the query.
@@ -5179,7 +5180,7 @@ import { connectorConfig, getEventsForSection, GetEventsForSectionVariables } fr
 
 // The `GetEventsForSection` query requires an argument of type `GetEventsForSectionVariables`:
 const getEventsForSectionVars: GetEventsForSectionVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getEventsForSection()` function to execute the query.
@@ -5209,7 +5210,7 @@ import { connectorConfig, getEventsForSectionRef, GetEventsForSectionVariables }
 
 // The `GetEventsForSection` query requires an argument of type `GetEventsForSectionVariables`:
 const getEventsForSectionVars: GetEventsForSectionVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getEventsForSectionRef()` function to get a reference to the query.
@@ -5314,7 +5315,7 @@ import { connectorConfig, getEventById, GetEventByIdVariables } from '@dataconne
 
 // The `GetEventById` query requires an argument of type `GetEventByIdVariables`:
 const getEventByIdVars: GetEventByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getEventById()` function to execute the query.
@@ -5344,7 +5345,7 @@ import { connectorConfig, getEventByIdRef, GetEventByIdVariables } from '@dataco
 
 // The `GetEventById` query requires an argument of type `GetEventByIdVariables`:
 const getEventByIdVars: GetEventByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getEventByIdRef()` function to get a reference to the query.
@@ -5440,7 +5441,7 @@ import { connectorConfig, getSectionById, GetSectionByIdVariables } from '@datac
 
 // The `GetSectionById` query requires an argument of type `GetSectionByIdVariables`:
 const getSectionByIdVars: GetSectionByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getSectionById()` function to execute the query.
@@ -5470,7 +5471,7 @@ import { connectorConfig, getSectionByIdRef, GetSectionByIdVariables } from '@da
 
 // The `GetSectionById` query requires an argument of type `GetSectionByIdVariables`:
 const getSectionByIdVars: GetSectionByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getSectionByIdRef()` function to get a reference to the query.
@@ -5577,7 +5578,7 @@ import { connectorConfig, getUserGroupById, GetUserGroupByIdVariables } from '@d
 
 // The `GetUserGroupById` query requires an argument of type `GetUserGroupByIdVariables`:
 const getUserGroupByIdVars: GetUserGroupByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserGroupById()` function to execute the query.
@@ -5607,7 +5608,7 @@ import { connectorConfig, getUserGroupByIdRef, GetUserGroupByIdVariables } from 
 
 // The `GetUserGroupById` query requires an argument of type `GetUserGroupByIdVariables`:
 const getUserGroupByIdVars: GetUserGroupByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getUserGroupByIdRef()` function to get a reference to the query.
@@ -5806,7 +5807,7 @@ import { connectorConfig, getSectionMembers, GetSectionMembersVariables } from '
 
 // The `GetSectionMembers` query requires an argument of type `GetSectionMembersVariables`:
 const getSectionMembersVars: GetSectionMembersVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getSectionMembers()` function to execute the query.
@@ -5836,7 +5837,7 @@ import { connectorConfig, getSectionMembersRef, GetSectionMembersVariables } fro
 
 // The `GetSectionMembers` query requires an argument of type `GetSectionMembersVariables`:
 const getSectionMembersVars: GetSectionMembersVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getSectionMembersRef()` function to get a reference to the query.
@@ -5962,7 +5963,7 @@ import { connectorConfig, getMyBookingsForEvent, GetMyBookingsForEventVariables 
 
 // The `GetMyBookingsForEvent` query requires an argument of type `GetMyBookingsForEventVariables`:
 const getMyBookingsForEventVars: GetMyBookingsForEventVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `getMyBookingsForEvent()` function to execute the query.
@@ -5992,7 +5993,7 @@ import { connectorConfig, getMyBookingsForEventRef, GetMyBookingsForEventVariabl
 
 // The `GetMyBookingsForEvent` query requires an argument of type `GetMyBookingsForEventVariables`:
 const getMyBookingsForEventVars: GetMyBookingsForEventVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `getMyBookingsForEventRef()` function to get a reference to the query.
@@ -6218,7 +6219,7 @@ import { connectorConfig, getMyTicketOrderById, GetMyTicketOrderByIdVariables } 
 
 // The `GetMyTicketOrderById` query requires an argument of type `GetMyTicketOrderByIdVariables`:
 const getMyTicketOrderByIdVars: GetMyTicketOrderByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getMyTicketOrderById()` function to execute the query.
@@ -6248,7 +6249,7 @@ import { connectorConfig, getMyTicketOrderByIdRef, GetMyTicketOrderByIdVariables
 
 // The `GetMyTicketOrderById` query requires an argument of type `GetMyTicketOrderByIdVariables`:
 const getMyTicketOrderByIdVars: GetMyTicketOrderByIdVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `getMyTicketOrderByIdRef()` function to get a reference to the query.
@@ -6607,7 +6608,7 @@ import { connectorConfig, listEventBookingsForAdmin, ListEventBookingsForAdminVa
 
 // The `ListEventBookingsForAdmin` query requires an argument of type `ListEventBookingsForAdminVariables`:
 const listEventBookingsForAdminVars: ListEventBookingsForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listEventBookingsForAdmin()` function to execute the query.
@@ -6637,7 +6638,7 @@ import { connectorConfig, listEventBookingsForAdminRef, ListEventBookingsForAdmi
 
 // The `ListEventBookingsForAdmin` query requires an argument of type `ListEventBookingsForAdminVariables`:
 const listEventBookingsForAdminVars: ListEventBookingsForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listEventBookingsForAdminRef()` function to get a reference to the query.
@@ -6761,7 +6762,7 @@ import { connectorConfig, listGuestTicketRequestsForAdmin, ListGuestTicketReques
 
 // The `ListGuestTicketRequestsForAdmin` query requires an argument of type `ListGuestTicketRequestsForAdminVariables`:
 const listGuestTicketRequestsForAdminVars: ListGuestTicketRequestsForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listGuestTicketRequestsForAdmin()` function to execute the query.
@@ -6791,7 +6792,7 @@ import { connectorConfig, listGuestTicketRequestsForAdminRef, ListGuestTicketReq
 
 // The `ListGuestTicketRequestsForAdmin` query requires an argument of type `ListGuestTicketRequestsForAdminVariables`:
 const listGuestTicketRequestsForAdminVars: ListGuestTicketRequestsForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listGuestTicketRequestsForAdminRef()` function to get a reference to the query.
@@ -6907,7 +6908,7 @@ import { connectorConfig, listTicketOrdersForAdmin, ListTicketOrdersForAdminVari
 
 // The `ListTicketOrdersForAdmin` query requires an argument of type `ListTicketOrdersForAdminVariables`:
 const listTicketOrdersForAdminVars: ListTicketOrdersForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listTicketOrdersForAdmin()` function to execute the query.
@@ -6937,7 +6938,7 @@ import { connectorConfig, listTicketOrdersForAdminRef, ListTicketOrdersForAdminV
 
 // The `ListTicketOrdersForAdmin` query requires an argument of type `ListTicketOrdersForAdminVariables`:
 const listTicketOrdersForAdminVars: ListTicketOrdersForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listTicketOrdersForAdminRef()` function to get a reference to the query.
@@ -7040,7 +7041,7 @@ import { connectorConfig, listBookingPaymentAdjustmentsForAdmin, ListBookingPaym
 
 // The `ListBookingPaymentAdjustmentsForAdmin` query requires an argument of type `ListBookingPaymentAdjustmentsForAdminVariables`:
 const listBookingPaymentAdjustmentsForAdminVars: ListBookingPaymentAdjustmentsForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listBookingPaymentAdjustmentsForAdmin()` function to execute the query.
@@ -7070,7 +7071,7 @@ import { connectorConfig, listBookingPaymentAdjustmentsForAdminRef, ListBookingP
 
 // The `ListBookingPaymentAdjustmentsForAdmin` query requires an argument of type `ListBookingPaymentAdjustmentsForAdminVariables`:
 const listBookingPaymentAdjustmentsForAdminVars: ListBookingPaymentAdjustmentsForAdminVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `listBookingPaymentAdjustmentsForAdminRef()` function to get a reference to the query.
@@ -7270,7 +7271,7 @@ import { connectorConfig, getSectionAnnouncementOptOut, GetSectionAnnouncementOp
 
 // The `GetSectionAnnouncementOptOut` query requires an argument of type `GetSectionAnnouncementOptOutVariables`:
 const getSectionAnnouncementOptOutVars: GetSectionAnnouncementOptOutVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getSectionAnnouncementOptOut()` function to execute the query.
@@ -7300,7 +7301,7 @@ import { connectorConfig, getSectionAnnouncementOptOutRef, GetSectionAnnouncemen
 
 // The `GetSectionAnnouncementOptOut` query requires an argument of type `GetSectionAnnouncementOptOutVariables`:
 const getSectionAnnouncementOptOutVars: GetSectionAnnouncementOptOutVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `getSectionAnnouncementOptOutRef()` function to get a reference to the query.
@@ -7519,8 +7520,8 @@ import { connectorConfig, updateUserMembershipStatus, UpdateUserMembershipStatus
 
 // The `UpdateUserMembershipStatus` mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
 const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
-  userId: ...,
-  membershipStatus: ...,
+  userId: ..., 
+  membershipStatus: ..., 
 };
 
 // Call the `updateUserMembershipStatus()` function to execute the mutation.
@@ -7550,8 +7551,8 @@ import { connectorConfig, updateUserMembershipStatusRef, UpdateUserMembershipSta
 
 // The `UpdateUserMembershipStatus` mutation requires an argument of type `UpdateUserMembershipStatusVariables`:
 const updateUserMembershipStatusVars: UpdateUserMembershipStatusVariables = {
-  userId: ...,
-  membershipStatus: ...,
+  userId: ..., 
+  membershipStatus: ..., 
 };
 
 // Call the `updateUserMembershipStatusRef()` function to get a reference to the mutation.
@@ -7630,7 +7631,7 @@ import { connectorConfig, deleteUser, DeleteUserVariables } from '@dataconnect/g
 
 // The `DeleteUser` mutation requires an argument of type `DeleteUserVariables`:
 const deleteUserVars: DeleteUserVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `deleteUser()` function to execute the mutation.
@@ -7660,7 +7661,7 @@ import { connectorConfig, deleteUserRef, DeleteUserVariables } from '@dataconnec
 
 // The `DeleteUser` mutation requires an argument of type `DeleteUserVariables`:
 const deleteUserVars: DeleteUserVariables = {
-  userId: ...,
+  userId: ..., 
 };
 
 // Call the `deleteUserRef()` function to get a reference to the mutation.
@@ -7749,17 +7750,17 @@ import { connectorConfig, createUser, CreateUserVariables } from '@dataconnect/g
 
 // The `CreateUser` mutation requires an argument of type `CreateUserVariables`:
 const createUserVars: CreateUserVariables = {
-  userId: ...,
-  firstName: ...,
-  lastName: ...,
-  email: ...,
-  serviceNumber: ...,
-  membershipStatus: ...,
+  userId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  membershipStatus: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
   isIndustry: ..., // optional
-  now: ...,
+  now: ..., 
 };
 
 // Call the `createUser()` function to execute the mutation.
@@ -7789,17 +7790,17 @@ import { connectorConfig, createUserRef, CreateUserVariables } from '@dataconnec
 
 // The `CreateUser` mutation requires an argument of type `CreateUserVariables`:
 const createUserVars: CreateUserVariables = {
-  userId: ...,
-  firstName: ...,
-  lastName: ...,
-  email: ...,
-  serviceNumber: ...,
-  membershipStatus: ...,
+  userId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
+  membershipStatus: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
   isIndustry: ..., // optional
-  now: ...,
+  now: ..., 
 };
 
 // Call the `createUserRef()` function to get a reference to the mutation.
@@ -7880,9 +7881,9 @@ import { connectorConfig, createUserGroupAdmin, CreateUserGroupAdminVariables } 
 
 // The `CreateUserGroupAdmin` mutation requires an argument of type `CreateUserGroupAdminVariables`:
 const createUserGroupAdminVars: CreateUserGroupAdminVariables = {
-  name: ...,
+  name: ..., 
   description: ..., // optional
-  now: ...,
+  now: ..., 
 };
 
 // Call the `createUserGroupAdmin()` function to execute the mutation.
@@ -7912,9 +7913,9 @@ import { connectorConfig, createUserGroupAdminRef, CreateUserGroupAdminVariables
 
 // The `CreateUserGroupAdmin` mutation requires an argument of type `CreateUserGroupAdminVariables`:
 const createUserGroupAdminVars: CreateUserGroupAdminVariables = {
-  name: ...,
+  name: ..., 
   description: ..., // optional
-  now: ...,
+  now: ..., 
 };
 
 // Call the `createUserGroupAdminRef()` function to get a reference to the mutation.
@@ -7995,9 +7996,9 @@ import { connectorConfig, addUserToUserGroupAdmin, AddUserToUserGroupAdminVariab
 
 // The `AddUserToUserGroupAdmin` mutation requires an argument of type `AddUserToUserGroupAdminVariables`:
 const addUserToUserGroupAdminVars: AddUserToUserGroupAdminVariables = {
-  userId: ...,
-  userGroupId: ...,
-  now: ...,
+  userId: ..., 
+  userGroupId: ..., 
+  now: ..., 
 };
 
 // Call the `addUserToUserGroupAdmin()` function to execute the mutation.
@@ -8027,9 +8028,9 @@ import { connectorConfig, addUserToUserGroupAdminRef, AddUserToUserGroupAdminVar
 
 // The `AddUserToUserGroupAdmin` mutation requires an argument of type `AddUserToUserGroupAdminVariables`:
 const addUserToUserGroupAdminVars: AddUserToUserGroupAdminVariables = {
-  userId: ...,
-  userGroupId: ...,
-  now: ...,
+  userId: ..., 
+  userGroupId: ..., 
+  now: ..., 
 };
 
 // Call the `addUserToUserGroupAdminRef()` function to get a reference to the mutation.
@@ -8109,8 +8110,8 @@ import { connectorConfig, removeUserFromUserGroupAdmin, RemoveUserFromUserGroupA
 
 // The `RemoveUserFromUserGroupAdmin` mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`:
 const removeUserFromUserGroupAdminVars: RemoveUserFromUserGroupAdminVariables = {
-  userId: ...,
-  userGroupId: ...,
+  userId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `removeUserFromUserGroupAdmin()` function to execute the mutation.
@@ -8140,8 +8141,8 @@ import { connectorConfig, removeUserFromUserGroupAdminRef, RemoveUserFromUserGro
 
 // The `RemoveUserFromUserGroupAdmin` mutation requires an argument of type `RemoveUserFromUserGroupAdminVariables`:
 const removeUserFromUserGroupAdminVars: RemoveUserFromUserGroupAdminVariables = {
-  userId: ...,
-  userGroupId: ...,
+  userId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `removeUserFromUserGroupAdminRef()` function to get a reference to the mutation.
@@ -8221,8 +8222,8 @@ import { connectorConfig, updateUserStripeCustomerId, UpdateUserStripeCustomerId
 
 // The `UpdateUserStripeCustomerId` mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`:
 const updateUserStripeCustomerIdVars: UpdateUserStripeCustomerIdVariables = {
-  userId: ...,
-  stripeCustomerId: ...,
+  userId: ..., 
+  stripeCustomerId: ..., 
 };
 
 // Call the `updateUserStripeCustomerId()` function to execute the mutation.
@@ -8252,8 +8253,8 @@ import { connectorConfig, updateUserStripeCustomerIdRef, UpdateUserStripeCustome
 
 // The `UpdateUserStripeCustomerId` mutation requires an argument of type `UpdateUserStripeCustomerIdVariables`:
 const updateUserStripeCustomerIdVars: UpdateUserStripeCustomerIdVariables = {
-  userId: ...,
-  stripeCustomerId: ...,
+  userId: ..., 
+  stripeCustomerId: ..., 
 };
 
 // Call the `updateUserStripeCustomerIdRef()` function to get a reference to the mutation.
@@ -8334,9 +8335,9 @@ import { connectorConfig, createBookingDraftForUser, CreateBookingDraftForUserVa
 
 // The `CreateBookingDraftForUser` mutation requires an argument of type `CreateBookingDraftForUserVariables`:
 const createBookingDraftForUserVars: CreateBookingDraftForUserVariables = {
-  eventId: ...,
-  bookerId: ...,
-  clientSubmissionKey: ...,
+  eventId: ..., 
+  bookerId: ..., 
+  clientSubmissionKey: ..., 
 };
 
 // Call the `createBookingDraftForUser()` function to execute the mutation.
@@ -8366,9 +8367,9 @@ import { connectorConfig, createBookingDraftForUserRef, CreateBookingDraftForUse
 
 // The `CreateBookingDraftForUser` mutation requires an argument of type `CreateBookingDraftForUserVariables`:
 const createBookingDraftForUserVars: CreateBookingDraftForUserVariables = {
-  eventId: ...,
-  bookerId: ...,
-  clientSubmissionKey: ...,
+  eventId: ..., 
+  bookerId: ..., 
+  clientSubmissionKey: ..., 
 };
 
 // Call the `createBookingDraftForUserRef()` function to get a reference to the mutation.
@@ -8452,12 +8453,12 @@ import { connectorConfig, createBookingDraftRevisionForUser, CreateBookingDraftR
 
 // The `CreateBookingDraftRevisionForUser` mutation requires an argument of type `CreateBookingDraftRevisionForUserVariables`:
 const createBookingDraftRevisionForUserVars: CreateBookingDraftRevisionForUserVariables = {
-  eventId: ...,
-  bookerId: ...,
-  clientSubmissionKey: ...,
-  revisionGroupId: ...,
-  revisionNumber: ...,
-  supersedesBookingId: ...,
+  eventId: ..., 
+  bookerId: ..., 
+  clientSubmissionKey: ..., 
+  revisionGroupId: ..., 
+  revisionNumber: ..., 
+  supersedesBookingId: ..., 
 };
 
 // Call the `createBookingDraftRevisionForUser()` function to execute the mutation.
@@ -8487,12 +8488,12 @@ import { connectorConfig, createBookingDraftRevisionForUserRef, CreateBookingDra
 
 // The `CreateBookingDraftRevisionForUser` mutation requires an argument of type `CreateBookingDraftRevisionForUserVariables`:
 const createBookingDraftRevisionForUserVars: CreateBookingDraftRevisionForUserVariables = {
-  eventId: ...,
-  bookerId: ...,
-  clientSubmissionKey: ...,
-  revisionGroupId: ...,
-  revisionNumber: ...,
-  supersedesBookingId: ...,
+  eventId: ..., 
+  bookerId: ..., 
+  clientSubmissionKey: ..., 
+  revisionGroupId: ..., 
+  revisionNumber: ..., 
+  supersedesBookingId: ..., 
 };
 
 // Call the `createBookingDraftRevisionForUserRef()` function to get a reference to the mutation.
@@ -8571,7 +8572,7 @@ import { connectorConfig, markBookingSupersededFromCallable, MarkBookingSupersed
 
 // The `MarkBookingSupersededFromCallable` mutation requires an argument of type `MarkBookingSupersededFromCallableVariables`:
 const markBookingSupersededFromCallableVars: MarkBookingSupersededFromCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `markBookingSupersededFromCallable()` function to execute the mutation.
@@ -8601,7 +8602,7 @@ import { connectorConfig, markBookingSupersededFromCallableRef, MarkBookingSuper
 
 // The `MarkBookingSupersededFromCallable` mutation requires an argument of type `MarkBookingSupersededFromCallableVariables`:
 const markBookingSupersededFromCallableVars: MarkBookingSupersededFromCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `markBookingSupersededFromCallableRef()` function to get a reference to the mutation.
@@ -8684,11 +8685,11 @@ import { connectorConfig, createBookingPaymentAdjustmentFromCallable, CreateBook
 
 // The `CreateBookingPaymentAdjustmentFromCallable` mutation requires an argument of type `CreateBookingPaymentAdjustmentFromCallableVariables`:
 const createBookingPaymentAdjustmentFromCallableVars: CreateBookingPaymentAdjustmentFromCallableVariables = {
-  revisionBookingId: ...,
-  supersededBookingId: ...,
-  deltaAmountMinor: ...,
-  status: ...,
-  orchestrationKey: ...,
+  revisionBookingId: ..., 
+  supersededBookingId: ..., 
+  deltaAmountMinor: ..., 
+  status: ..., 
+  orchestrationKey: ..., 
 };
 
 // Call the `createBookingPaymentAdjustmentFromCallable()` function to execute the mutation.
@@ -8718,11 +8719,11 @@ import { connectorConfig, createBookingPaymentAdjustmentFromCallableRef, CreateB
 
 // The `CreateBookingPaymentAdjustmentFromCallable` mutation requires an argument of type `CreateBookingPaymentAdjustmentFromCallableVariables`:
 const createBookingPaymentAdjustmentFromCallableVars: CreateBookingPaymentAdjustmentFromCallableVariables = {
-  revisionBookingId: ...,
-  supersededBookingId: ...,
-  deltaAmountMinor: ...,
-  status: ...,
-  orchestrationKey: ...,
+  revisionBookingId: ..., 
+  supersededBookingId: ..., 
+  deltaAmountMinor: ..., 
+  status: ..., 
+  orchestrationKey: ..., 
 };
 
 // Call the `createBookingPaymentAdjustmentFromCallableRef()` function to get a reference to the mutation.
@@ -8806,12 +8807,12 @@ import { connectorConfig, addBookingLineFromCallable, AddBookingLineFromCallable
 
 // The `AddBookingLineFromCallable` mutation requires an argument of type `AddBookingLineFromCallableVariables`:
 const addBookingLineFromCallableVars: AddBookingLineFromCallableVariables = {
-  bookingId: ...,
-  ticketTypeId: ...,
+  bookingId: ..., 
+  ticketTypeId: ..., 
   guestUserId: ..., // optional
   guestDisplayName: ..., // optional
   dietaryNote: ..., // optional
-  sortOrder: ...,
+  sortOrder: ..., 
 };
 
 // Call the `addBookingLineFromCallable()` function to execute the mutation.
@@ -8841,12 +8842,12 @@ import { connectorConfig, addBookingLineFromCallableRef, AddBookingLineFromCalla
 
 // The `AddBookingLineFromCallable` mutation requires an argument of type `AddBookingLineFromCallableVariables`:
 const addBookingLineFromCallableVars: AddBookingLineFromCallableVariables = {
-  bookingId: ...,
-  ticketTypeId: ...,
+  bookingId: ..., 
+  ticketTypeId: ..., 
   guestUserId: ..., // optional
   guestDisplayName: ..., // optional
   dietaryNote: ..., // optional
-  sortOrder: ...,
+  sortOrder: ..., 
 };
 
 // Call the `addBookingLineFromCallableRef()` function to get a reference to the mutation.
@@ -8926,8 +8927,8 @@ import { connectorConfig, updateBookingStatusFromCallable, UpdateBookingStatusFr
 
 // The `UpdateBookingStatusFromCallable` mutation requires an argument of type `UpdateBookingStatusFromCallableVariables`:
 const updateBookingStatusFromCallableVars: UpdateBookingStatusFromCallableVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
 };
 
 // Call the `updateBookingStatusFromCallable()` function to execute the mutation.
@@ -8957,8 +8958,8 @@ import { connectorConfig, updateBookingStatusFromCallableRef, UpdateBookingStatu
 
 // The `UpdateBookingStatusFromCallable` mutation requires an argument of type `UpdateBookingStatusFromCallableVariables`:
 const updateBookingStatusFromCallableVars: UpdateBookingStatusFromCallableVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
 };
 
 // Call the `updateBookingStatusFromCallableRef()` function to get a reference to the mutation.
@@ -9043,13 +9044,13 @@ import { connectorConfig, createTicketOrderForCheckout, CreateTicketOrderForChec
 
 // The `CreateTicketOrderForCheckout` mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`:
 const createTicketOrderForCheckoutVars: CreateTicketOrderForCheckoutVariables = {
-  userId: ...,
-  eventId: ...,
-  ticketTypeId: ...,
-  quantity: ...,
-  unitAmountMinor: ...,
-  totalAmountMinor: ...,
-  currency: ...,
+  userId: ..., 
+  eventId: ..., 
+  ticketTypeId: ..., 
+  quantity: ..., 
+  unitAmountMinor: ..., 
+  totalAmountMinor: ..., 
+  currency: ..., 
 };
 
 // Call the `createTicketOrderForCheckout()` function to execute the mutation.
@@ -9079,13 +9080,13 @@ import { connectorConfig, createTicketOrderForCheckoutRef, CreateTicketOrderForC
 
 // The `CreateTicketOrderForCheckout` mutation requires an argument of type `CreateTicketOrderForCheckoutVariables`:
 const createTicketOrderForCheckoutVars: CreateTicketOrderForCheckoutVariables = {
-  userId: ...,
-  eventId: ...,
-  ticketTypeId: ...,
-  quantity: ...,
-  unitAmountMinor: ...,
-  totalAmountMinor: ...,
-  currency: ...,
+  userId: ..., 
+  eventId: ..., 
+  ticketTypeId: ..., 
+  quantity: ..., 
+  unitAmountMinor: ..., 
+  totalAmountMinor: ..., 
+  currency: ..., 
 };
 
 // Call the `createTicketOrderForCheckoutRef()` function to get a reference to the mutation.
@@ -9170,13 +9171,13 @@ import { connectorConfig, createPaymentWebhookEvent, CreatePaymentWebhookEventVa
 
 // The `CreatePaymentWebhookEvent` mutation requires an argument of type `CreatePaymentWebhookEventVariables`:
 const createPaymentWebhookEventVars: CreatePaymentWebhookEventVariables = {
-  stripeEventId: ...,
-  eventType: ...,
-  outcome: ...,
+  stripeEventId: ..., 
+  eventType: ..., 
+  outcome: ..., 
   reason: ..., // optional
   ticketOrderId: ..., // optional
   stripeObjectId: ..., // optional
-  livemode: ...,
+  livemode: ..., 
 };
 
 // Call the `createPaymentWebhookEvent()` function to execute the mutation.
@@ -9206,13 +9207,13 @@ import { connectorConfig, createPaymentWebhookEventRef, CreatePaymentWebhookEven
 
 // The `CreatePaymentWebhookEvent` mutation requires an argument of type `CreatePaymentWebhookEventVariables`:
 const createPaymentWebhookEventVars: CreatePaymentWebhookEventVariables = {
-  stripeEventId: ...,
-  eventType: ...,
-  outcome: ...,
+  stripeEventId: ..., 
+  eventType: ..., 
+  outcome: ..., 
   reason: ..., // optional
   ticketOrderId: ..., // optional
   stripeObjectId: ..., // optional
-  livemode: ...,
+  livemode: ..., 
 };
 
 // Call the `createPaymentWebhookEventRef()` function to get a reference to the mutation.
@@ -9300,15 +9301,15 @@ import { connectorConfig, createNotificationDelivery, CreateNotificationDelivery
 
 // The `CreateNotificationDelivery` mutation requires an argument of type `CreateNotificationDeliveryVariables`:
 const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
-  channel: ...,
-  notificationType: ...,
-  deliveryKey: ...,
-  status: ...,
+  channel: ..., 
+  notificationType: ..., 
+  deliveryKey: ..., 
+  status: ..., 
   ticketOrderId: ..., // optional
   bookingId: ..., // optional
   userId: ..., // optional
   provider: ..., // optional
-  attemptCount: ...,
+  attemptCount: ..., 
   lastAttemptedAt: ..., // optional
 };
 
@@ -9339,15 +9340,15 @@ import { connectorConfig, createNotificationDeliveryRef, CreateNotificationDeliv
 
 // The `CreateNotificationDelivery` mutation requires an argument of type `CreateNotificationDeliveryVariables`:
 const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
-  channel: ...,
-  notificationType: ...,
-  deliveryKey: ...,
-  status: ...,
+  channel: ..., 
+  notificationType: ..., 
+  deliveryKey: ..., 
+  status: ..., 
   ticketOrderId: ..., // optional
   bookingId: ..., // optional
   userId: ..., // optional
   provider: ..., // optional
-  attemptCount: ...,
+  attemptCount: ..., 
   lastAttemptedAt: ..., // optional
 };
 
@@ -9432,11 +9433,11 @@ import { connectorConfig, claimNotificationDeliveryById, ClaimNotificationDelive
 
 // The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
 const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
-  id: ...,
-  expectedStatus: ...,
-  expectedAttemptCount: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
+  id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
   provider: ..., // optional
 };
 
@@ -9467,11 +9468,11 @@ import { connectorConfig, claimNotificationDeliveryByIdRef, ClaimNotificationDel
 
 // The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
 const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
-  id: ...,
-  expectedStatus: ...,
-  expectedAttemptCount: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
+  id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
   provider: ..., // optional
 };
 
@@ -9558,10 +9559,10 @@ import { connectorConfig, markNotificationDeliverySentById, MarkNotificationDeli
 
 // The `MarkNotificationDeliverySentById` mutation requires an argument of type `MarkNotificationDeliverySentByIdVariables`:
 const markNotificationDeliverySentByIdVars: MarkNotificationDeliverySentByIdVariables = {
-  id: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
-  sentAt: ...,
+  id: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+  sentAt: ..., 
   provider: ..., // optional
   providerMessageId: ..., // optional
   lastErrorCode: ..., // optional
@@ -9595,10 +9596,10 @@ import { connectorConfig, markNotificationDeliverySentByIdRef, MarkNotificationD
 
 // The `MarkNotificationDeliverySentById` mutation requires an argument of type `MarkNotificationDeliverySentByIdVariables`:
 const markNotificationDeliverySentByIdVars: MarkNotificationDeliverySentByIdVariables = {
-  id: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
-  sentAt: ...,
+  id: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+  sentAt: ..., 
   provider: ..., // optional
   providerMessageId: ..., // optional
   lastErrorCode: ..., // optional
@@ -9686,9 +9687,9 @@ import { connectorConfig, markNotificationDeliveryFailedById, MarkNotificationDe
 
 // The `MarkNotificationDeliveryFailedById` mutation requires an argument of type `MarkNotificationDeliveryFailedByIdVariables`:
 const markNotificationDeliveryFailedByIdVars: MarkNotificationDeliveryFailedByIdVariables = {
-  id: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
+  id: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
   provider: ..., // optional
   lastErrorCode: ..., // optional
   lastErrorMessage: ..., // optional
@@ -9721,9 +9722,9 @@ import { connectorConfig, markNotificationDeliveryFailedByIdRef, MarkNotificatio
 
 // The `MarkNotificationDeliveryFailedById` mutation requires an argument of type `MarkNotificationDeliveryFailedByIdVariables`:
 const markNotificationDeliveryFailedByIdVars: MarkNotificationDeliveryFailedByIdVariables = {
-  id: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
+  id: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
   provider: ..., // optional
   lastErrorCode: ..., // optional
   lastErrorMessage: ..., // optional
@@ -9808,7 +9809,7 @@ import { connectorConfig, markTicketOrderPaidFromWebhook, MarkTicketOrderPaidFro
 
 // The `MarkTicketOrderPaidFromWebhook` mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`:
 const markTicketOrderPaidFromWebhookVars: MarkTicketOrderPaidFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   stripeCheckoutSessionId: ..., // optional
   stripePaymentIntentId: ..., // optional
   webhookEventId: ..., // optional
@@ -9841,7 +9842,7 @@ import { connectorConfig, markTicketOrderPaidFromWebhookRef, MarkTicketOrderPaid
 
 // The `MarkTicketOrderPaidFromWebhook` mutation requires an argument of type `MarkTicketOrderPaidFromWebhookVariables`:
 const markTicketOrderPaidFromWebhookVars: MarkTicketOrderPaidFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   stripeCheckoutSessionId: ..., // optional
   stripePaymentIntentId: ..., // optional
   webhookEventId: ..., // optional
@@ -9924,7 +9925,7 @@ import { connectorConfig, markTicketOrderFailedFromWebhook, MarkTicketOrderFaile
 
 // The `MarkTicketOrderFailedFromWebhook` mutation requires an argument of type `MarkTicketOrderFailedFromWebhookVariables`:
 const markTicketOrderFailedFromWebhookVars: MarkTicketOrderFailedFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   webhookEventId: ..., // optional
 };
 
@@ -9955,7 +9956,7 @@ import { connectorConfig, markTicketOrderFailedFromWebhookRef, MarkTicketOrderFa
 
 // The `MarkTicketOrderFailedFromWebhook` mutation requires an argument of type `MarkTicketOrderFailedFromWebhookVariables`:
 const markTicketOrderFailedFromWebhookVars: MarkTicketOrderFailedFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   webhookEventId: ..., // optional
 };
 
@@ -10039,7 +10040,7 @@ import { connectorConfig, markTicketOrderRefundedFromWebhook, MarkTicketOrderRef
 
 // The `MarkTicketOrderRefundedFromWebhook` mutation requires an argument of type `MarkTicketOrderRefundedFromWebhookVariables`:
 const markTicketOrderRefundedFromWebhookVars: MarkTicketOrderRefundedFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   webhookEventId: ..., // optional
   stripeRefundId: ..., // optional
   refundedAmountMinor: ..., // optional
@@ -10073,7 +10074,7 @@ import { connectorConfig, markTicketOrderRefundedFromWebhookRef, MarkTicketOrder
 
 // The `MarkTicketOrderRefundedFromWebhook` mutation requires an argument of type `MarkTicketOrderRefundedFromWebhookVariables`:
 const markTicketOrderRefundedFromWebhookVars: MarkTicketOrderRefundedFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   webhookEventId: ..., // optional
   stripeRefundId: ..., // optional
   refundedAmountMinor: ..., // optional
@@ -10164,7 +10165,7 @@ import { connectorConfig, upsertTicketOrderDisputeFromWebhook, UpsertTicketOrder
 
 // The `UpsertTicketOrderDisputeFromWebhook` mutation requires an argument of type `UpsertTicketOrderDisputeFromWebhookVariables`:
 const upsertTicketOrderDisputeFromWebhookVars: UpsertTicketOrderDisputeFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   webhookEventId: ..., // optional
   stripeDisputeId: ..., // optional
   disputeStatus: ..., // optional
@@ -10202,7 +10203,7 @@ import { connectorConfig, upsertTicketOrderDisputeFromWebhookRef, UpsertTicketOr
 
 // The `UpsertTicketOrderDisputeFromWebhook` mutation requires an argument of type `UpsertTicketOrderDisputeFromWebhookVariables`:
 const upsertTicketOrderDisputeFromWebhookVars: UpsertTicketOrderDisputeFromWebhookVariables = {
-  id: ...,
+  id: ..., 
   webhookEventId: ..., // optional
   stripeDisputeId: ..., // optional
   disputeStatus: ..., // optional
@@ -10295,9 +10296,9 @@ import { connectorConfig, createPaymentReconciliationException, CreatePaymentRec
 
 // The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
 const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
-  ticketOrderId: ...,
-  exceptionType: ...,
-  status: ...,
+  ticketOrderId: ..., 
+  exceptionType: ..., 
+  status: ..., 
   note: ..., // optional
   ownerUserId: ..., // optional
   lastAttemptedAt: ..., // optional
@@ -10331,9 +10332,9 @@ import { connectorConfig, createPaymentReconciliationExceptionRef, CreatePayment
 
 // The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
 const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
-  ticketOrderId: ...,
-  exceptionType: ...,
-  status: ...,
+  ticketOrderId: ..., 
+  exceptionType: ..., 
+  status: ..., 
   note: ..., // optional
   ownerUserId: ..., // optional
   lastAttemptedAt: ..., // optional
@@ -10421,8 +10422,8 @@ import { connectorConfig, updatePaymentReconciliationExceptionById, UpdatePaymen
 
 // The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
 const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
   note: ..., // optional
   ownerUserId: ..., // optional
   lastAttemptedAt: ..., // optional
@@ -10456,8 +10457,8 @@ import { connectorConfig, updatePaymentReconciliationExceptionByIdRef, UpdatePay
 
 // The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
 const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
   note: ..., // optional
   ownerUserId: ..., // optional
   lastAttemptedAt: ..., // optional
@@ -10544,10 +10545,10 @@ import { connectorConfig, updateBookingPreferencesFromCallable, UpdateBookingPre
 
 // The `UpdateBookingPreferencesFromCallable` mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
 const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
-  id: ...,
+  id: ..., 
   bookerDietaryNote: ..., // optional
   sitNextToUserIds: ..., // optional
-  accommodationRequested: ...,
+  accommodationRequested: ..., 
   accommodationNote: ..., // optional
 };
 
@@ -10578,10 +10579,10 @@ import { connectorConfig, updateBookingPreferencesFromCallableRef, UpdateBooking
 
 // The `UpdateBookingPreferencesFromCallable` mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
 const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
-  id: ...,
+  id: ..., 
   bookerDietaryNote: ..., // optional
   sitNextToUserIds: ..., // optional
-  accommodationRequested: ...,
+  accommodationRequested: ..., 
   accommodationNote: ..., // optional
 };
 
@@ -10661,7 +10662,7 @@ import { connectorConfig, deleteBookingLineFromCallable, DeleteBookingLineFromCa
 
 // The `DeleteBookingLineFromCallable` mutation requires an argument of type `DeleteBookingLineFromCallableVariables`:
 const deleteBookingLineFromCallableVars: DeleteBookingLineFromCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteBookingLineFromCallable()` function to execute the mutation.
@@ -10691,7 +10692,7 @@ import { connectorConfig, deleteBookingLineFromCallableRef, DeleteBookingLineFro
 
 // The `DeleteBookingLineFromCallable` mutation requires an argument of type `DeleteBookingLineFromCallableVariables`:
 const deleteBookingLineFromCallableVars: DeleteBookingLineFromCallableVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteBookingLineFromCallableRef()` function to get a reference to the mutation.
@@ -10778,12 +10779,12 @@ import { connectorConfig, createGuestTicketRequestFromCallable, CreateGuestTicke
 
 // The `CreateGuestTicketRequestFromCallable` mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
 const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
-  bookingId: ...,
-  requestedGuestCount: ...,
-  guestTicketTypeId: ...,
-  guestDisplayName: ...,
+  bookingId: ..., 
+  requestedGuestCount: ..., 
+  guestTicketTypeId: ..., 
+  guestDisplayName: ..., 
   dietaryNote: ..., // optional
-  status: ...,
+  status: ..., 
   reviewedById: ..., // optional
   reviewedAt: ..., // optional
   moderatorNote: ..., // optional
@@ -10816,12 +10817,12 @@ import { connectorConfig, createGuestTicketRequestFromCallableRef, CreateGuestTi
 
 // The `CreateGuestTicketRequestFromCallable` mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
 const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
-  bookingId: ...,
-  requestedGuestCount: ...,
-  guestTicketTypeId: ...,
-  guestDisplayName: ...,
+  bookingId: ..., 
+  requestedGuestCount: ..., 
+  guestTicketTypeId: ..., 
+  guestDisplayName: ..., 
   dietaryNote: ..., // optional
-  status: ...,
+  status: ..., 
   reviewedById: ..., // optional
   reviewedAt: ..., // optional
   moderatorNote: ..., // optional
@@ -10906,10 +10907,10 @@ import { connectorConfig, adminReviewGuestTicketRequestFromCallable, AdminReview
 
 // The `AdminReviewGuestTicketRequestFromCallable` mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`:
 const adminReviewGuestTicketRequestFromCallableVars: AdminReviewGuestTicketRequestFromCallableVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
   moderatorNote: ..., // optional
-  reviewedById: ...,
+  reviewedById: ..., 
 };
 
 // Call the `adminReviewGuestTicketRequestFromCallable()` function to execute the mutation.
@@ -10939,10 +10940,10 @@ import { connectorConfig, adminReviewGuestTicketRequestFromCallableRef, AdminRev
 
 // The `AdminReviewGuestTicketRequestFromCallable` mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`:
 const adminReviewGuestTicketRequestFromCallableVars: AdminReviewGuestTicketRequestFromCallableVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
   moderatorNote: ..., // optional
-  reviewedById: ...,
+  reviewedById: ..., 
 };
 
 // Call the `adminReviewGuestTicketRequestFromCallableRef()` function to get a reference to the mutation.
@@ -11028,14 +11029,14 @@ import { connectorConfig, createAnnouncementSend, CreateAnnouncementSendVariable
 
 // The `CreateAnnouncementSend` mutation requires an argument of type `CreateAnnouncementSendVariables`:
 const createAnnouncementSendVars: CreateAnnouncementSendVariables = {
-  id: ...,
-  sectionId: ...,
-  templateUuid: ...,
+  id: ..., 
+  sectionId: ..., 
+  templateUuid: ..., 
   templateName: ..., // optional
-  sentBy: ...,
-  recipientCount: ...,
-  skippedCount: ...,
-  failureCount: ...,
+  sentBy: ..., 
+  recipientCount: ..., 
+  skippedCount: ..., 
+  failureCount: ..., 
 };
 
 // Call the `createAnnouncementSend()` function to execute the mutation.
@@ -11065,14 +11066,14 @@ import { connectorConfig, createAnnouncementSendRef, CreateAnnouncementSendVaria
 
 // The `CreateAnnouncementSend` mutation requires an argument of type `CreateAnnouncementSendVariables`:
 const createAnnouncementSendVars: CreateAnnouncementSendVariables = {
-  id: ...,
-  sectionId: ...,
-  templateUuid: ...,
+  id: ..., 
+  sectionId: ..., 
+  templateUuid: ..., 
   templateName: ..., // optional
-  sentBy: ...,
-  recipientCount: ...,
-  skippedCount: ...,
-  failureCount: ...,
+  sentBy: ..., 
+  recipientCount: ..., 
+  skippedCount: ..., 
+  failureCount: ..., 
 };
 
 // Call the `createAnnouncementSendRef()` function to get a reference to the mutation.
@@ -11159,12 +11160,12 @@ import { connectorConfig, createAnnouncementRecipient, CreateAnnouncementRecipie
 
 // The `CreateAnnouncementRecipient` mutation requires an argument of type `CreateAnnouncementRecipientVariables`:
 const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
-  announcementSendId: ...,
-  userId: ...,
-  email: ...,
-  firstName: ...,
-  lastName: ...,
-  status: ...,
+  announcementSendId: ..., 
+  userId: ..., 
+  email: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  status: ..., 
   skippedReason: ..., // optional
   sentAt: ..., // optional
   failureReason: ..., // optional
@@ -11197,12 +11198,12 @@ import { connectorConfig, createAnnouncementRecipientRef, CreateAnnouncementReci
 
 // The `CreateAnnouncementRecipient` mutation requires an argument of type `CreateAnnouncementRecipientVariables`:
 const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
-  announcementSendId: ...,
-  userId: ...,
-  email: ...,
-  firstName: ...,
-  lastName: ...,
-  status: ...,
+  announcementSendId: ..., 
+  userId: ..., 
+  email: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  status: ..., 
   skippedReason: ..., // optional
   sentAt: ..., // optional
   failureReason: ..., // optional
@@ -11290,13 +11291,13 @@ import { connectorConfig, tryUpdateAnnouncementRecipientDeliveryStatus, TryUpdat
 
 // The `TryUpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`:
 const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRecipientDeliveryStatusVariables = {
-  id: ...,
-  expectedDeliveryVersion: ...,
-  deliveryVersion: ...,
-  status: ...,
+  id: ..., 
+  expectedDeliveryVersion: ..., 
+  deliveryVersion: ..., 
+  status: ..., 
   failureReason: ..., // optional
-  deliveryStatusUpdatedAt: ...,
-  deliveryReceiptId: ...,
+  deliveryStatusUpdatedAt: ..., 
+  deliveryReceiptId: ..., 
 };
 
 // Call the `tryUpdateAnnouncementRecipientDeliveryStatus()` function to execute the mutation.
@@ -11326,13 +11327,13 @@ import { connectorConfig, tryUpdateAnnouncementRecipientDeliveryStatusRef, TryUp
 
 // The `TryUpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`:
 const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRecipientDeliveryStatusVariables = {
-  id: ...,
-  expectedDeliveryVersion: ...,
-  deliveryVersion: ...,
-  status: ...,
+  id: ..., 
+  expectedDeliveryVersion: ..., 
+  deliveryVersion: ..., 
+  status: ..., 
   failureReason: ..., // optional
-  deliveryStatusUpdatedAt: ...,
-  deliveryReceiptId: ...,
+  deliveryStatusUpdatedAt: ..., 
+  deliveryReceiptId: ..., 
 };
 
 // Call the `tryUpdateAnnouncementRecipientDeliveryStatusRef()` function to get a reference to the mutation.
@@ -11418,14 +11419,14 @@ import { connectorConfig, tryApplyNotifyDeliveryUserState, TryApplyNotifyDeliver
 
 // The `TryApplyNotifyDeliveryUserState` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`:
 const tryApplyNotifyDeliveryUserStateVars: TryApplyNotifyDeliveryUserStateVariables = {
-  userId: ...,
-  expectedEmailDeliveryVersion: ...,
-  emailDeliveryVersion: ...,
-  emailBounceCount: ...,
+  userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
+  emailBounceCount: ..., 
   emailLastBounceAt: ..., // optional
-  emailDeliveryStatus: ...,
-  emailDeliveryStatusUpdatedAt: ...,
-  emailDeliveryReceiptId: ...,
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
 };
 
 // Call the `tryApplyNotifyDeliveryUserState()` function to execute the mutation.
@@ -11455,14 +11456,14 @@ import { connectorConfig, tryApplyNotifyDeliveryUserStateRef, TryApplyNotifyDeli
 
 // The `TryApplyNotifyDeliveryUserState` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`:
 const tryApplyNotifyDeliveryUserStateVars: TryApplyNotifyDeliveryUserStateVariables = {
-  userId: ...,
-  expectedEmailDeliveryVersion: ...,
-  emailDeliveryVersion: ...,
-  emailBounceCount: ...,
+  userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
+  emailBounceCount: ..., 
   emailLastBounceAt: ..., // optional
-  emailDeliveryStatus: ...,
-  emailDeliveryStatusUpdatedAt: ...,
-  emailDeliveryReceiptId: ...,
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
 };
 
 // Call the `tryApplyNotifyDeliveryUserStateRef()` function to get a reference to the mutation.
@@ -11548,14 +11549,14 @@ import { connectorConfig, tryApplyNotifyDeliveryUserStateAndMarkLost, TryApplyNo
 
 // The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
 const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
-  userId: ...,
-  expectedEmailDeliveryVersion: ...,
-  emailDeliveryVersion: ...,
-  emailBounceCount: ...,
+  userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
+  emailBounceCount: ..., 
   emailLastBounceAt: ..., // optional
-  emailDeliveryStatus: ...,
-  emailDeliveryStatusUpdatedAt: ...,
-  emailDeliveryReceiptId: ...,
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
 };
 
 // Call the `tryApplyNotifyDeliveryUserStateAndMarkLost()` function to execute the mutation.
@@ -11585,14 +11586,14 @@ import { connectorConfig, tryApplyNotifyDeliveryUserStateAndMarkLostRef, TryAppl
 
 // The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
 const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
-  userId: ...,
-  expectedEmailDeliveryVersion: ...,
-  emailDeliveryVersion: ...,
-  emailBounceCount: ...,
+  userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
+  emailBounceCount: ..., 
   emailLastBounceAt: ..., // optional
-  emailDeliveryStatus: ...,
-  emailDeliveryStatusUpdatedAt: ...,
-  emailDeliveryReceiptId: ...,
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
 };
 
 // Call the `tryApplyNotifyDeliveryUserStateAndMarkLostRef()` function to get a reference to the mutation.
@@ -11679,15 +11680,15 @@ import { connectorConfig, createNotifyDeliveryReceipt, CreateNotifyDeliveryRecei
 
 // The `CreateNotifyDeliveryReceipt` mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`:
 const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
-  id: ...,
-  notifyStatus: ...,
+  id: ..., 
+  notifyStatus: ..., 
   reference: ..., // optional
-  recipientHash: ...,
+  recipientHash: ..., 
   userId: ..., // optional
-  eventAt: ...,
-  eventOrderingKey: ...,
-  affectsBounceState: ...,
-  lastAttemptedAt: ...,
+  eventAt: ..., 
+  eventOrderingKey: ..., 
+  affectsBounceState: ..., 
+  lastAttemptedAt: ..., 
 };
 
 // Call the `createNotifyDeliveryReceipt()` function to execute the mutation.
@@ -11717,15 +11718,15 @@ import { connectorConfig, createNotifyDeliveryReceiptRef, CreateNotifyDeliveryRe
 
 // The `CreateNotifyDeliveryReceipt` mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`:
 const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
-  id: ...,
-  notifyStatus: ...,
+  id: ..., 
+  notifyStatus: ..., 
   reference: ..., // optional
-  recipientHash: ...,
+  recipientHash: ..., 
   userId: ..., // optional
-  eventAt: ...,
-  eventOrderingKey: ...,
-  affectsBounceState: ...,
-  lastAttemptedAt: ...,
+  eventAt: ..., 
+  eventOrderingKey: ..., 
+  affectsBounceState: ..., 
+  lastAttemptedAt: ..., 
 };
 
 // Call the `createNotifyDeliveryReceiptRef()` function to get a reference to the mutation.
@@ -11808,11 +11809,11 @@ import { connectorConfig, claimNotifyDeliveryReceipt, ClaimNotifyDeliveryReceipt
 
 // The `ClaimNotifyDeliveryReceipt` mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`:
 const claimNotifyDeliveryReceiptVars: ClaimNotifyDeliveryReceiptVariables = {
-  id: ...,
-  expectedProcessingStatus: ...,
-  expectedAttemptCount: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
+  id: ..., 
+  expectedProcessingStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
 };
 
 // Call the `claimNotifyDeliveryReceipt()` function to execute the mutation.
@@ -11842,11 +11843,11 @@ import { connectorConfig, claimNotifyDeliveryReceiptRef, ClaimNotifyDeliveryRece
 
 // The `ClaimNotifyDeliveryReceipt` mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`:
 const claimNotifyDeliveryReceiptVars: ClaimNotifyDeliveryReceiptVariables = {
-  id: ...,
-  expectedProcessingStatus: ...,
-  expectedAttemptCount: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
+  id: ..., 
+  expectedProcessingStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
 };
 
 // Call the `claimNotifyDeliveryReceiptRef()` function to get a reference to the mutation.
@@ -11928,10 +11929,10 @@ import { connectorConfig, markNotifyDeliveryReceiptProcessed, MarkNotifyDelivery
 
 // The `MarkNotifyDeliveryReceiptProcessed` mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`:
 const markNotifyDeliveryReceiptProcessedVars: MarkNotifyDeliveryReceiptProcessedVariables = {
-  id: ...,
-  attemptCount: ...,
-  outcome: ...,
-  processedAt: ...,
+  id: ..., 
+  attemptCount: ..., 
+  outcome: ..., 
+  processedAt: ..., 
 };
 
 // Call the `markNotifyDeliveryReceiptProcessed()` function to execute the mutation.
@@ -11961,10 +11962,10 @@ import { connectorConfig, markNotifyDeliveryReceiptProcessedRef, MarkNotifyDeliv
 
 // The `MarkNotifyDeliveryReceiptProcessed` mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`:
 const markNotifyDeliveryReceiptProcessedVars: MarkNotifyDeliveryReceiptProcessedVariables = {
-  id: ...,
-  attemptCount: ...,
-  outcome: ...,
-  processedAt: ...,
+  id: ..., 
+  attemptCount: ..., 
+  outcome: ..., 
+  processedAt: ..., 
 };
 
 // Call the `markNotifyDeliveryReceiptProcessedRef()` function to get a reference to the mutation.
@@ -12045,8 +12046,8 @@ import { connectorConfig, markNotifyDeliveryReceiptFailed, MarkNotifyDeliveryRec
 
 // The `MarkNotifyDeliveryReceiptFailed` mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`:
 const markNotifyDeliveryReceiptFailedVars: MarkNotifyDeliveryReceiptFailedVariables = {
-  id: ...,
-  attemptCount: ...,
+  id: ..., 
+  attemptCount: ..., 
   lastErrorMessage: ..., // optional
 };
 
@@ -12077,8 +12078,8 @@ import { connectorConfig, markNotifyDeliveryReceiptFailedRef, MarkNotifyDelivery
 
 // The `MarkNotifyDeliveryReceiptFailed` mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`:
 const markNotifyDeliveryReceiptFailedVars: MarkNotifyDeliveryReceiptFailedVariables = {
-  id: ...,
-  attemptCount: ...,
+  id: ..., 
+  attemptCount: ..., 
   lastErrorMessage: ..., // optional
 };
 
@@ -12159,8 +12160,8 @@ import { connectorConfig, adminOptOutSectionAnnouncement, AdminOptOutSectionAnno
 
 // The `AdminOptOutSectionAnnouncement` mutation requires an argument of type `AdminOptOutSectionAnnouncementVariables`:
 const adminOptOutSectionAnnouncementVars: AdminOptOutSectionAnnouncementVariables = {
-  userId: ...,
-  sectionId: ...,
+  userId: ..., 
+  sectionId: ..., 
 };
 
 // Call the `adminOptOutSectionAnnouncement()` function to execute the mutation.
@@ -12190,8 +12191,8 @@ import { connectorConfig, adminOptOutSectionAnnouncementRef, AdminOptOutSectionA
 
 // The `AdminOptOutSectionAnnouncement` mutation requires an argument of type `AdminOptOutSectionAnnouncementVariables`:
 const adminOptOutSectionAnnouncementVars: AdminOptOutSectionAnnouncementVariables = {
-  userId: ...,
-  sectionId: ...,
+  userId: ..., 
+  sectionId: ..., 
 };
 
 // Call the `adminOptOutSectionAnnouncementRef()` function to get a reference to the mutation.
@@ -12271,8 +12272,8 @@ import { connectorConfig, adminOptInSectionAnnouncement, AdminOptInSectionAnnoun
 
 // The `AdminOptInSectionAnnouncement` mutation requires an argument of type `AdminOptInSectionAnnouncementVariables`:
 const adminOptInSectionAnnouncementVars: AdminOptInSectionAnnouncementVariables = {
-  userId: ...,
-  sectionId: ...,
+  userId: ..., 
+  sectionId: ..., 
 };
 
 // Call the `adminOptInSectionAnnouncement()` function to execute the mutation.
@@ -12302,8 +12303,8 @@ import { connectorConfig, adminOptInSectionAnnouncementRef, AdminOptInSectionAnn
 
 // The `AdminOptInSectionAnnouncement` mutation requires an argument of type `AdminOptInSectionAnnouncementVariables`:
 const adminOptInSectionAnnouncementVars: AdminOptInSectionAnnouncementVariables = {
-  userId: ...,
-  sectionId: ...,
+  userId: ..., 
+  sectionId: ..., 
 };
 
 // Call the `adminOptInSectionAnnouncementRef()` function to get a reference to the mutation.
@@ -12385,10 +12386,10 @@ import { connectorConfig, upsertCallableInvocation, UpsertCallableInvocationVari
 
 // The `UpsertCallableInvocation` mutation requires an argument of type `UpsertCallableInvocationVariables`:
 const upsertCallableInvocationVars: UpsertCallableInvocationVariables = {
-  userId: ...,
-  functionName: ...,
-  windowStart: ...,
-  count: ...,
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  count: ..., 
 };
 
 // Call the `upsertCallableInvocation()` function to execute the mutation.
@@ -12418,10 +12419,10 @@ import { connectorConfig, upsertCallableInvocationRef, UpsertCallableInvocationV
 
 // The `UpsertCallableInvocation` mutation requires an argument of type `UpsertCallableInvocationVariables`:
 const upsertCallableInvocationVars: UpsertCallableInvocationVariables = {
-  userId: ...,
-  functionName: ...,
-  windowStart: ...,
-  count: ...,
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  count: ..., 
 };
 
 // Call the `upsertCallableInvocationRef()` function to get a reference to the mutation.
@@ -12443,6 +12444,134 @@ console.log(data.callableInvocation_upsert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.callableInvocation_upsert);
+});
+```
+
+## ConsumeCallableRateLimit
+You can execute the `ConsumeCallableRateLimit` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+
+interface ConsumeCallableRateLimitRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConsumeCallableRateLimitVariables): MutationRef<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+}
+export const consumeCallableRateLimitRef: ConsumeCallableRateLimitRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+
+interface ConsumeCallableRateLimitRef {
+  ...
+  (dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationRef<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+}
+export const consumeCallableRateLimitRef: ConsumeCallableRateLimitRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the consumeCallableRateLimitRef:
+```typescript
+const name = consumeCallableRateLimitRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ConsumeCallableRateLimit` mutation requires an argument of type `ConsumeCallableRateLimitVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ConsumeCallableRateLimitVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ConsumeCallableRateLimit` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ConsumeCallableRateLimitData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ConsumeCallableRateLimitData {
+  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
+  consumed: number;
+  callableRateLimitBucket_deleteMany: number;
+}
+```
+### Using `ConsumeCallableRateLimit`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, consumeCallableRateLimit, ConsumeCallableRateLimitVariables } from '@dataconnect/generated';
+
+// The `ConsumeCallableRateLimit` mutation requires an argument of type `ConsumeCallableRateLimitVariables`:
+const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  limit: ..., 
+};
+
+// Call the `consumeCallableRateLimit()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await consumeCallableRateLimit(consumeCallableRateLimitVars);
+// Variables can be defined inline as well.
+const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await consumeCallableRateLimit(dataConnect, consumeCallableRateLimitVars);
+
+console.log(data.callableRateLimitBucket_upsert);
+console.log(data.consumed);
+console.log(data.callableRateLimitBucket_deleteMany);
+
+// Or, you can use the `Promise` API.
+consumeCallableRateLimit(consumeCallableRateLimitVars).then((response) => {
+  const data = response.data;
+  console.log(data.callableRateLimitBucket_upsert);
+  console.log(data.consumed);
+  console.log(data.callableRateLimitBucket_deleteMany);
+});
+```
+
+### Using `ConsumeCallableRateLimit`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, consumeCallableRateLimitRef, ConsumeCallableRateLimitVariables } from '@dataconnect/generated';
+
+// The `ConsumeCallableRateLimit` mutation requires an argument of type `ConsumeCallableRateLimitVariables`:
+const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  limit: ..., 
+};
+
+// Call the `consumeCallableRateLimitRef()` function to get a reference to the mutation.
+const ref = consumeCallableRateLimitRef(consumeCallableRateLimitVars);
+// Variables can be defined inline as well.
+const ref = consumeCallableRateLimitRef({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = consumeCallableRateLimitRef(dataConnect, consumeCallableRateLimitVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.callableRateLimitBucket_upsert);
+console.log(data.consumed);
+console.log(data.callableRateLimitBucket_deleteMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.callableRateLimitBucket_upsert);
+  console.log(data.consumed);
+  console.log(data.callableRateLimitBucket_deleteMany);
 });
 ```
 
@@ -12500,7 +12629,7 @@ import { connectorConfig, createBookingDraft, CreateBookingDraftVariables } from
 
 // The `CreateBookingDraft` mutation requires an argument of type `CreateBookingDraftVariables`:
 const createBookingDraftVars: CreateBookingDraftVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `createBookingDraft()` function to execute the mutation.
@@ -12530,7 +12659,7 @@ import { connectorConfig, createBookingDraftRef, CreateBookingDraftVariables } f
 
 // The `CreateBookingDraft` mutation requires an argument of type `CreateBookingDraftVariables`:
 const createBookingDraftVars: CreateBookingDraftVariables = {
-  eventId: ...,
+  eventId: ..., 
 };
 
 // Call the `createBookingDraftRef()` function to get a reference to the mutation.
@@ -12614,12 +12743,12 @@ import { connectorConfig, addBookingLine, AddBookingLineVariables } from '@datac
 
 // The `AddBookingLine` mutation requires an argument of type `AddBookingLineVariables`:
 const addBookingLineVars: AddBookingLineVariables = {
-  bookingId: ...,
-  ticketTypeId: ...,
+  bookingId: ..., 
+  ticketTypeId: ..., 
   guestUserId: ..., // optional
   guestDisplayName: ..., // optional
   dietaryNote: ..., // optional
-  sortOrder: ...,
+  sortOrder: ..., 
 };
 
 // Call the `addBookingLine()` function to execute the mutation.
@@ -12649,12 +12778,12 @@ import { connectorConfig, addBookingLineRef, AddBookingLineVariables } from '@da
 
 // The `AddBookingLine` mutation requires an argument of type `AddBookingLineVariables`:
 const addBookingLineVars: AddBookingLineVariables = {
-  bookingId: ...,
-  ticketTypeId: ...,
+  bookingId: ..., 
+  ticketTypeId: ..., 
   guestUserId: ..., // optional
   guestDisplayName: ..., // optional
   dietaryNote: ..., // optional
-  sortOrder: ...,
+  sortOrder: ..., 
 };
 
 // Call the `addBookingLineRef()` function to get a reference to the mutation.
@@ -12734,8 +12863,8 @@ import { connectorConfig, updateBookingStatus, UpdateBookingStatusVariables } fr
 
 // The `UpdateBookingStatus` mutation requires an argument of type `UpdateBookingStatusVariables`:
 const updateBookingStatusVars: UpdateBookingStatusVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
 };
 
 // Call the `updateBookingStatus()` function to execute the mutation.
@@ -12765,8 +12894,8 @@ import { connectorConfig, updateBookingStatusRef, UpdateBookingStatusVariables }
 
 // The `UpdateBookingStatus` mutation requires an argument of type `UpdateBookingStatusVariables`:
 const updateBookingStatusVars: UpdateBookingStatusVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
 };
 
 // Call the `updateBookingStatusRef()` function to get a reference to the mutation.
@@ -12849,10 +12978,10 @@ import { connectorConfig, createGuestTicketRequest, CreateGuestTicketRequestVari
 
 // The `CreateGuestTicketRequest` mutation requires an argument of type `CreateGuestTicketRequestVariables`:
 const createGuestTicketRequestVars: CreateGuestTicketRequestVariables = {
-  bookingId: ...,
-  requestedGuestCount: ...,
-  guestTicketTypeId: ...,
-  guestDisplayName: ...,
+  bookingId: ..., 
+  requestedGuestCount: ..., 
+  guestTicketTypeId: ..., 
+  guestDisplayName: ..., 
   dietaryNote: ..., // optional
 };
 
@@ -12883,10 +13012,10 @@ import { connectorConfig, createGuestTicketRequestRef, CreateGuestTicketRequestV
 
 // The `CreateGuestTicketRequest` mutation requires an argument of type `CreateGuestTicketRequestVariables`:
 const createGuestTicketRequestVars: CreateGuestTicketRequestVariables = {
-  bookingId: ...,
-  requestedGuestCount: ...,
-  guestTicketTypeId: ...,
-  guestDisplayName: ...,
+  bookingId: ..., 
+  requestedGuestCount: ..., 
+  guestTicketTypeId: ..., 
+  guestDisplayName: ..., 
   dietaryNote: ..., // optional
 };
 
@@ -12966,7 +13095,7 @@ import { connectorConfig, adminDeleteGuestTicketRequest, AdminDeleteGuestTicketR
 
 // The `AdminDeleteGuestTicketRequest` mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`:
 const adminDeleteGuestTicketRequestVars: AdminDeleteGuestTicketRequestVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `adminDeleteGuestTicketRequest()` function to execute the mutation.
@@ -12996,7 +13125,7 @@ import { connectorConfig, adminDeleteGuestTicketRequestRef, AdminDeleteGuestTick
 
 // The `AdminDeleteGuestTicketRequest` mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`:
 const adminDeleteGuestTicketRequestVars: AdminDeleteGuestTicketRequestVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `adminDeleteGuestTicketRequestRef()` function to get a reference to the mutation.
@@ -13077,8 +13206,8 @@ import { connectorConfig, adminReviewGuestTicketRequest, AdminReviewGuestTicketR
 
 // The `AdminReviewGuestTicketRequest` mutation requires an argument of type `AdminReviewGuestTicketRequestVariables`:
 const adminReviewGuestTicketRequestVars: AdminReviewGuestTicketRequestVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
   moderatorNote: ..., // optional
 };
 
@@ -13109,8 +13238,8 @@ import { connectorConfig, adminReviewGuestTicketRequestRef, AdminReviewGuestTick
 
 // The `AdminReviewGuestTicketRequest` mutation requires an argument of type `AdminReviewGuestTicketRequestVariables`:
 const adminReviewGuestTicketRequestVars: AdminReviewGuestTicketRequestVariables = {
-  id: ...,
-  status: ...,
+  id: ..., 
+  status: ..., 
   moderatorNote: ..., // optional
 };
 
@@ -13190,7 +13319,7 @@ import { connectorConfig, adminDeleteBookingLine, AdminDeleteBookingLineVariable
 
 // The `AdminDeleteBookingLine` mutation requires an argument of type `AdminDeleteBookingLineVariables`:
 const adminDeleteBookingLineVars: AdminDeleteBookingLineVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `adminDeleteBookingLine()` function to execute the mutation.
@@ -13220,7 +13349,7 @@ import { connectorConfig, adminDeleteBookingLineRef, AdminDeleteBookingLineVaria
 
 // The `AdminDeleteBookingLine` mutation requires an argument of type `AdminDeleteBookingLineVariables`:
 const adminDeleteBookingLineVars: AdminDeleteBookingLineVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `adminDeleteBookingLineRef()` function to get a reference to the mutation.
@@ -13299,7 +13428,7 @@ import { connectorConfig, adminDeleteBooking, AdminDeleteBookingVariables } from
 
 // The `AdminDeleteBooking` mutation requires an argument of type `AdminDeleteBookingVariables`:
 const adminDeleteBookingVars: AdminDeleteBookingVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `adminDeleteBooking()` function to execute the mutation.
@@ -13329,7 +13458,7 @@ import { connectorConfig, adminDeleteBookingRef, AdminDeleteBookingVariables } f
 
 // The `AdminDeleteBooking` mutation requires an argument of type `AdminDeleteBookingVariables`:
 const adminDeleteBookingVars: AdminDeleteBookingVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `adminDeleteBookingRef()` function to get a reference to the mutation.
@@ -13409,7 +13538,7 @@ import { connectorConfig, resolvePaymentReconciliationException, ResolvePaymentR
 
 // The `ResolvePaymentReconciliationException` mutation requires an argument of type `ResolvePaymentReconciliationExceptionVariables`:
 const resolvePaymentReconciliationExceptionVars: ResolvePaymentReconciliationExceptionVariables = {
-  id: ...,
+  id: ..., 
   note: ..., // optional
 };
 
@@ -13440,7 +13569,7 @@ import { connectorConfig, resolvePaymentReconciliationExceptionRef, ResolvePayme
 
 // The `ResolvePaymentReconciliationException` mutation requires an argument of type `ResolvePaymentReconciliationExceptionVariables`:
 const resolvePaymentReconciliationExceptionVars: ResolvePaymentReconciliationExceptionVariables = {
-  id: ...,
+  id: ..., 
   note: ..., // optional
 };
 
@@ -13522,8 +13651,8 @@ import { connectorConfig, createSection, CreateSectionVariables } from '@datacon
 
 // The `CreateSection` mutation requires an argument of type `CreateSectionVariables`:
 const createSectionVars: CreateSectionVariables = {
-  name: ...,
-  type: ...,
+  name: ..., 
+  type: ..., 
   description: ..., // optional
 };
 
@@ -13554,8 +13683,8 @@ import { connectorConfig, createSectionRef, CreateSectionVariables } from '@data
 
 // The `CreateSection` mutation requires an argument of type `CreateSectionVariables`:
 const createSectionVars: CreateSectionVariables = {
-  name: ...,
-  type: ...,
+  name: ..., 
+  type: ..., 
   description: ..., // optional
 };
 
@@ -13638,7 +13767,7 @@ import { connectorConfig, createUserGroup, CreateUserGroupVariables } from '@dat
 
 // The `CreateUserGroup` mutation requires an argument of type `CreateUserGroupVariables`:
 const createUserGroupVars: CreateUserGroupVariables = {
-  name: ...,
+  name: ..., 
   description: ..., // optional
   membershipStatuses: ..., // optional
   subscribable: ..., // optional
@@ -13671,7 +13800,7 @@ import { connectorConfig, createUserGroupRef, CreateUserGroupVariables } from '@
 
 // The `CreateUserGroup` mutation requires an argument of type `CreateUserGroupVariables`:
 const createUserGroupVars: CreateUserGroupVariables = {
-  name: ...,
+  name: ..., 
   description: ..., // optional
   membershipStatuses: ..., // optional
   subscribable: ..., // optional
@@ -13754,8 +13883,8 @@ import { connectorConfig, addUserToUserGroup, AddUserToUserGroupVariables } from
 
 // The `AddUserToUserGroup` mutation requires an argument of type `AddUserToUserGroupVariables`:
 const addUserToUserGroupVars: AddUserToUserGroupVariables = {
-  userId: ...,
-  userGroupId: ...,
+  userId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `addUserToUserGroup()` function to execute the mutation.
@@ -13785,8 +13914,8 @@ import { connectorConfig, addUserToUserGroupRef, AddUserToUserGroupVariables } f
 
 // The `AddUserToUserGroup` mutation requires an argument of type `AddUserToUserGroupVariables`:
 const addUserToUserGroupVars: AddUserToUserGroupVariables = {
-  userId: ...,
-  userGroupId: ...,
+  userId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `addUserToUserGroupRef()` function to get a reference to the mutation.
@@ -13866,8 +13995,8 @@ import { connectorConfig, removeUserFromUserGroup, RemoveUserFromUserGroupVariab
 
 // The `RemoveUserFromUserGroup` mutation requires an argument of type `RemoveUserFromUserGroupVariables`:
 const removeUserFromUserGroupVars: RemoveUserFromUserGroupVariables = {
-  userId: ...,
-  userGroupId: ...,
+  userId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `removeUserFromUserGroup()` function to execute the mutation.
@@ -13897,8 +14026,8 @@ import { connectorConfig, removeUserFromUserGroupRef, RemoveUserFromUserGroupVar
 
 // The `RemoveUserFromUserGroup` mutation requires an argument of type `RemoveUserFromUserGroupVariables`:
 const removeUserFromUserGroupVars: RemoveUserFromUserGroupVariables = {
-  userId: ...,
-  userGroupId: ...,
+  userId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `removeUserFromUserGroupRef()` function to get a reference to the mutation.
@@ -13979,8 +14108,8 @@ import { connectorConfig, grantUserGroupToSectionForPurpose, GrantUserGroupToSec
 
 // The `GrantUserGroupToSectionForPurpose` mutation requires an argument of type `GrantUserGroupToSectionForPurposeVariables`:
 const grantUserGroupToSectionForPurposeVars: GrantUserGroupToSectionForPurposeVariables = {
-  sectionId: ...,
-  userGroupId: ...,
+  sectionId: ..., 
+  userGroupId: ..., 
   purposes: ..., // optional
 };
 
@@ -14011,8 +14140,8 @@ import { connectorConfig, grantUserGroupToSectionForPurposeRef, GrantUserGroupTo
 
 // The `GrantUserGroupToSectionForPurpose` mutation requires an argument of type `GrantUserGroupToSectionForPurposeVariables`:
 const grantUserGroupToSectionForPurposeVars: GrantUserGroupToSectionForPurposeVariables = {
-  sectionId: ...,
-  userGroupId: ...,
+  sectionId: ..., 
+  userGroupId: ..., 
   purposes: ..., // optional
 };
 
@@ -14093,8 +14222,8 @@ import { connectorConfig, revokeUserGroupFromSectionForPurpose, RevokeUserGroupF
 
 // The `RevokeUserGroupFromSectionForPurpose` mutation requires an argument of type `RevokeUserGroupFromSectionForPurposeVariables`:
 const revokeUserGroupFromSectionForPurposeVars: RevokeUserGroupFromSectionForPurposeVariables = {
-  sectionId: ...,
-  userGroupId: ...,
+  sectionId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `revokeUserGroupFromSectionForPurpose()` function to execute the mutation.
@@ -14124,8 +14253,8 @@ import { connectorConfig, revokeUserGroupFromSectionForPurposeRef, RevokeUserGro
 
 // The `RevokeUserGroupFromSectionForPurpose` mutation requires an argument of type `RevokeUserGroupFromSectionForPurposeVariables`:
 const revokeUserGroupFromSectionForPurposeVars: RevokeUserGroupFromSectionForPurposeVariables = {
-  sectionId: ...,
-  userGroupId: ...,
+  sectionId: ..., 
+  userGroupId: ..., 
 };
 
 // Call the `revokeUserGroupFromSectionForPurposeRef()` function to get a reference to the mutation.
@@ -14208,8 +14337,8 @@ import { connectorConfig, updateUserGroup, UpdateUserGroupVariables } from '@dat
 
 // The `UpdateUserGroup` mutation requires an argument of type `UpdateUserGroupVariables`:
 const updateUserGroupVars: UpdateUserGroupVariables = {
-  id: ...,
-  name: ...,
+  id: ..., 
+  name: ..., 
   description: ..., // optional
   membershipStatuses: ..., // optional
   subscribable: ..., // optional
@@ -14242,8 +14371,8 @@ import { connectorConfig, updateUserGroupRef, UpdateUserGroupVariables } from '@
 
 // The `UpdateUserGroup` mutation requires an argument of type `UpdateUserGroupVariables`:
 const updateUserGroupVars: UpdateUserGroupVariables = {
-  id: ...,
-  name: ...,
+  id: ..., 
+  name: ..., 
   description: ..., // optional
   membershipStatuses: ..., // optional
   subscribable: ..., // optional
@@ -14325,7 +14454,7 @@ import { connectorConfig, deleteUserGroup, DeleteUserGroupVariables } from '@dat
 
 // The `DeleteUserGroup` mutation requires an argument of type `DeleteUserGroupVariables`:
 const deleteUserGroupVars: DeleteUserGroupVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteUserGroup()` function to execute the mutation.
@@ -14355,7 +14484,7 @@ import { connectorConfig, deleteUserGroupRef, DeleteUserGroupVariables } from '@
 
 // The `DeleteUserGroup` mutation requires an argument of type `DeleteUserGroupVariables`:
 const deleteUserGroupVars: DeleteUserGroupVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteUserGroupRef()` function to get a reference to the mutation.
@@ -14436,8 +14565,8 @@ import { connectorConfig, updateSection, UpdateSectionVariables } from '@datacon
 
 // The `UpdateSection` mutation requires an argument of type `UpdateSectionVariables`:
 const updateSectionVars: UpdateSectionVariables = {
-  id: ...,
-  name: ...,
+  id: ..., 
+  name: ..., 
   description: ..., // optional
 };
 
@@ -14468,8 +14597,8 @@ import { connectorConfig, updateSectionRef, UpdateSectionVariables } from '@data
 
 // The `UpdateSection` mutation requires an argument of type `UpdateSectionVariables`:
 const updateSectionVars: UpdateSectionVariables = {
-  id: ...,
-  name: ...,
+  id: ..., 
+  name: ..., 
   description: ..., // optional
 };
 
@@ -14549,7 +14678,7 @@ import { connectorConfig, deleteSection, DeleteSectionVariables } from '@datacon
 
 // The `DeleteSection` mutation requires an argument of type `DeleteSectionVariables`:
 const deleteSectionVars: DeleteSectionVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteSection()` function to execute the mutation.
@@ -14579,7 +14708,7 @@ import { connectorConfig, deleteSectionRef, DeleteSectionVariables } from '@data
 
 // The `DeleteSection` mutation requires an argument of type `DeleteSectionVariables`:
 const deleteSectionVars: DeleteSectionVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteSectionRef()` function to get a reference to the mutation.
@@ -14666,14 +14795,14 @@ import { connectorConfig, createEvent, CreateEventVariables } from '@dataconnect
 
 // The `CreateEvent` mutation requires an argument of type `CreateEventVariables`:
 const createEventVars: CreateEventVariables = {
-  sectionId: ...,
-  title: ...,
+  sectionId: ..., 
+  title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
-  startDateTime: ...,
-  endDateTime: ...,
-  bookingStartDateTime: ...,
-  bookingEndDateTime: ...,
+  startDateTime: ..., 
+  endDateTime: ..., 
+  bookingStartDateTime: ..., 
+  bookingEndDateTime: ..., 
   maxGuestsWithoutModeratorApproval: ..., // optional
 };
 
@@ -14704,14 +14833,14 @@ import { connectorConfig, createEventRef, CreateEventVariables } from '@dataconn
 
 // The `CreateEvent` mutation requires an argument of type `CreateEventVariables`:
 const createEventVars: CreateEventVariables = {
-  sectionId: ...,
-  title: ...,
+  sectionId: ..., 
+  title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
-  startDateTime: ...,
-  endDateTime: ...,
-  bookingStartDateTime: ...,
-  bookingEndDateTime: ...,
+  startDateTime: ..., 
+  endDateTime: ..., 
+  bookingStartDateTime: ..., 
+  bookingEndDateTime: ..., 
   maxGuestsWithoutModeratorApproval: ..., // optional
 };
 
@@ -14799,14 +14928,14 @@ import { connectorConfig, updateEvent, UpdateEventVariables } from '@dataconnect
 
 // The `UpdateEvent` mutation requires an argument of type `UpdateEventVariables`:
 const updateEventVars: UpdateEventVariables = {
-  id: ...,
-  title: ...,
+  id: ..., 
+  title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
-  startDateTime: ...,
-  endDateTime: ...,
-  bookingStartDateTime: ...,
-  bookingEndDateTime: ...,
+  startDateTime: ..., 
+  endDateTime: ..., 
+  bookingStartDateTime: ..., 
+  bookingEndDateTime: ..., 
   maxGuestsWithoutModeratorApproval: ..., // optional
 };
 
@@ -14837,14 +14966,14 @@ import { connectorConfig, updateEventRef, UpdateEventVariables } from '@dataconn
 
 // The `UpdateEvent` mutation requires an argument of type `UpdateEventVariables`:
 const updateEventVars: UpdateEventVariables = {
-  id: ...,
-  title: ...,
+  id: ..., 
+  title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
-  startDateTime: ...,
-  endDateTime: ...,
-  bookingStartDateTime: ...,
-  bookingEndDateTime: ...,
+  startDateTime: ..., 
+  endDateTime: ..., 
+  bookingStartDateTime: ..., 
+  bookingEndDateTime: ..., 
   maxGuestsWithoutModeratorApproval: ..., // optional
 };
 
@@ -14924,7 +15053,7 @@ import { connectorConfig, deleteEvent, DeleteEventVariables } from '@dataconnect
 
 // The `DeleteEvent` mutation requires an argument of type `DeleteEventVariables`:
 const deleteEventVars: DeleteEventVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteEvent()` function to execute the mutation.
@@ -14954,7 +15083,7 @@ import { connectorConfig, deleteEventRef, DeleteEventVariables } from '@dataconn
 
 // The `DeleteEvent` mutation requires an argument of type `DeleteEventVariables`:
 const deleteEventVars: DeleteEventVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteEventRef()` function to get a reference to the mutation.
@@ -15039,12 +15168,12 @@ import { connectorConfig, createTicketType, CreateTicketTypeVariables } from '@d
 
 // The `CreateTicketType` mutation requires an argument of type `CreateTicketTypeVariables`:
 const createTicketTypeVars: CreateTicketTypeVariables = {
-  eventId: ...,
-  userGroupId: ...,
-  audience: ...,
-  title: ...,
+  eventId: ..., 
+  userGroupId: ..., 
+  audience: ..., 
+  title: ..., 
   description: ..., // optional
-  price: ...,
+  price: ..., 
   sortOrder: ..., // optional
 };
 
@@ -15075,12 +15204,12 @@ import { connectorConfig, createTicketTypeRef, CreateTicketTypeVariables } from 
 
 // The `CreateTicketType` mutation requires an argument of type `CreateTicketTypeVariables`:
 const createTicketTypeVars: CreateTicketTypeVariables = {
-  eventId: ...,
-  userGroupId: ...,
-  audience: ...,
-  title: ...,
+  eventId: ..., 
+  userGroupId: ..., 
+  audience: ..., 
+  title: ..., 
   description: ..., // optional
-  price: ...,
+  price: ..., 
   sortOrder: ..., // optional
 };
 
@@ -15166,13 +15295,13 @@ import { connectorConfig, updateTicketType, UpdateTicketTypeVariables } from '@d
 
 // The `UpdateTicketType` mutation requires an argument of type `UpdateTicketTypeVariables`:
 const updateTicketTypeVars: UpdateTicketTypeVariables = {
-  id: ...,
-  userGroupId: ...,
-  audience: ...,
-  title: ...,
+  id: ..., 
+  userGroupId: ..., 
+  audience: ..., 
+  title: ..., 
   description: ..., // optional
-  price: ...,
-  sortOrder: ...,
+  price: ..., 
+  sortOrder: ..., 
 };
 
 // Call the `updateTicketType()` function to execute the mutation.
@@ -15202,13 +15331,13 @@ import { connectorConfig, updateTicketTypeRef, UpdateTicketTypeVariables } from 
 
 // The `UpdateTicketType` mutation requires an argument of type `UpdateTicketTypeVariables`:
 const updateTicketTypeVars: UpdateTicketTypeVariables = {
-  id: ...,
-  userGroupId: ...,
-  audience: ...,
-  title: ...,
+  id: ..., 
+  userGroupId: ..., 
+  audience: ..., 
+  title: ..., 
   description: ..., // optional
-  price: ...,
-  sortOrder: ...,
+  price: ..., 
+  sortOrder: ..., 
 };
 
 // Call the `updateTicketTypeRef()` function to get a reference to the mutation.
@@ -15287,7 +15416,7 @@ import { connectorConfig, deleteTicketType, DeleteTicketTypeVariables } from '@d
 
 // The `DeleteTicketType` mutation requires an argument of type `DeleteTicketTypeVariables`:
 const deleteTicketTypeVars: DeleteTicketTypeVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteTicketType()` function to execute the mutation.
@@ -15317,7 +15446,7 @@ import { connectorConfig, deleteTicketTypeRef, DeleteTicketTypeVariables } from 
 
 // The `DeleteTicketType` mutation requires an argument of type `DeleteTicketTypeVariables`:
 const deleteTicketTypeVars: DeleteTicketTypeVariables = {
-  id: ...,
+  id: ..., 
 };
 
 // Call the `deleteTicketTypeRef()` function to get a reference to the mutation.
@@ -15405,10 +15534,10 @@ import { connectorConfig, createUserProfile, CreateUserProfileVariables } from '
 
 // The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`:
 const createUserProfileVars: CreateUserProfileVariables = {
-  firstName: ...,
-  lastName: ...,
-  serviceNumber: ...,
-  requestedMembershipStatus: ...,
+  firstName: ..., 
+  lastName: ..., 
+  serviceNumber: ..., 
+  requestedMembershipStatus: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -15444,10 +15573,10 @@ import { connectorConfig, createUserProfileRef, CreateUserProfileVariables } fro
 
 // The `CreateUserProfile` mutation requires an argument of type `CreateUserProfileVariables`:
 const createUserProfileVars: CreateUserProfileVariables = {
-  firstName: ...,
-  lastName: ...,
-  serviceNumber: ...,
-  requestedMembershipStatus: ...,
+  firstName: ..., 
+  lastName: ..., 
+  serviceNumber: ..., 
+  requestedMembershipStatus: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -15540,9 +15669,9 @@ import { connectorConfig, upsertUser, UpsertUserVariables } from '@dataconnect/g
 
 // The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`:
 const upsertUserVars: UpsertUserVariables = {
-  firstName: ...,
-  lastName: ...,
-  serviceNumber: ...,
+  firstName: ..., 
+  lastName: ..., 
+  serviceNumber: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -15578,9 +15707,9 @@ import { connectorConfig, upsertUserRef, UpsertUserVariables } from '@dataconnec
 
 // The `UpsertUser` mutation requires an argument of type `UpsertUserVariables`:
 const upsertUserVars: UpsertUserVariables = {
-  firstName: ...,
-  lastName: ...,
-  serviceNumber: ...,
+  firstName: ..., 
+  lastName: ..., 
+  serviceNumber: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -15673,11 +15802,11 @@ import { connectorConfig, updateUser, UpdateUserVariables } from '@dataconnect/g
 
 // The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`:
 const updateUserVars: UpdateUserVariables = {
-  userId: ...,
-  firstName: ...,
-  lastName: ...,
-  email: ...,
-  serviceNumber: ...,
+  userId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -15711,11 +15840,11 @@ import { connectorConfig, updateUserRef, UpdateUserVariables } from '@dataconnec
 
 // The `UpdateUser` mutation requires an argument of type `UpdateUserVariables`:
 const updateUserVars: UpdateUserVariables = {
-  userId: ...,
-  firstName: ...,
-  lastName: ...,
-  email: ...,
-  serviceNumber: ...,
+  userId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
   isRegular: ..., // optional
   isReserve: ..., // optional
   isCivilServant: ..., // optional
@@ -15798,7 +15927,7 @@ import { connectorConfig, registerForSection, RegisterForSectionVariables } from
 
 // The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
 const registerForSectionVars: RegisterForSectionVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `registerForSection()` function to execute the mutation.
@@ -15828,7 +15957,7 @@ import { connectorConfig, registerForSectionRef, RegisterForSectionVariables } f
 
 // The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
 const registerForSectionVars: RegisterForSectionVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `registerForSectionRef()` function to get a reference to the mutation.
@@ -15907,7 +16036,7 @@ import { connectorConfig, unregisterFromSection, UnregisterFromSectionVariables 
 
 // The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`:
 const unregisterFromSectionVars: UnregisterFromSectionVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `unregisterFromSection()` function to execute the mutation.
@@ -15937,7 +16066,7 @@ import { connectorConfig, unregisterFromSectionRef, UnregisterFromSectionVariabl
 
 // The `UnregisterFromSection` mutation requires an argument of type `UnregisterFromSectionVariables`:
 const unregisterFromSectionVars: UnregisterFromSectionVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `unregisterFromSectionRef()` function to get a reference to the mutation.
@@ -16016,7 +16145,7 @@ import { connectorConfig, subscribeToUserGroup, SubscribeToUserGroupVariables } 
 
 // The `SubscribeToUserGroup` mutation requires an argument of type `SubscribeToUserGroupVariables`:
 const subscribeToUserGroupVars: SubscribeToUserGroupVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `subscribeToUserGroup()` function to execute the mutation.
@@ -16046,7 +16175,7 @@ import { connectorConfig, subscribeToUserGroupRef, SubscribeToUserGroupVariables
 
 // The `SubscribeToUserGroup` mutation requires an argument of type `SubscribeToUserGroupVariables`:
 const subscribeToUserGroupVars: SubscribeToUserGroupVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `subscribeToUserGroupRef()` function to get a reference to the mutation.
@@ -16125,7 +16254,7 @@ import { connectorConfig, unsubscribeFromUserGroup, UnsubscribeFromUserGroupVari
 
 // The `UnsubscribeFromUserGroup` mutation requires an argument of type `UnsubscribeFromUserGroupVariables`:
 const unsubscribeFromUserGroupVars: UnsubscribeFromUserGroupVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `unsubscribeFromUserGroup()` function to execute the mutation.
@@ -16155,7 +16284,7 @@ import { connectorConfig, unsubscribeFromUserGroupRef, UnsubscribeFromUserGroupV
 
 // The `UnsubscribeFromUserGroup` mutation requires an argument of type `UnsubscribeFromUserGroupVariables`:
 const unsubscribeFromUserGroupVars: UnsubscribeFromUserGroupVariables = {
-  userGroupId: ...,
+  userGroupId: ..., 
 };
 
 // Call the `unsubscribeFromUserGroupRef()` function to get a reference to the mutation.
@@ -16234,7 +16363,7 @@ import { connectorConfig, optOutSectionAnnouncement, OptOutSectionAnnouncementVa
 
 // The `OptOutSectionAnnouncement` mutation requires an argument of type `OptOutSectionAnnouncementVariables`:
 const optOutSectionAnnouncementVars: OptOutSectionAnnouncementVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `optOutSectionAnnouncement()` function to execute the mutation.
@@ -16264,7 +16393,7 @@ import { connectorConfig, optOutSectionAnnouncementRef, OptOutSectionAnnouncemen
 
 // The `OptOutSectionAnnouncement` mutation requires an argument of type `OptOutSectionAnnouncementVariables`:
 const optOutSectionAnnouncementVars: OptOutSectionAnnouncementVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `optOutSectionAnnouncementRef()` function to get a reference to the mutation.
@@ -16343,7 +16472,7 @@ import { connectorConfig, optInSectionAnnouncement, OptInSectionAnnouncementVari
 
 // The `OptInSectionAnnouncement` mutation requires an argument of type `OptInSectionAnnouncementVariables`:
 const optInSectionAnnouncementVars: OptInSectionAnnouncementVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `optInSectionAnnouncement()` function to execute the mutation.
@@ -16373,7 +16502,7 @@ import { connectorConfig, optInSectionAnnouncementRef, OptInSectionAnnouncementV
 
 // The `OptInSectionAnnouncement` mutation requires an argument of type `OptInSectionAnnouncementVariables`:
 const optInSectionAnnouncementVars: OptInSectionAnnouncementVariables = {
-  sectionId: ...,
+  sectionId: ..., 
 };
 
 // Call the `optInSectionAnnouncementRef()` function to get a reference to the mutation.
@@ -16397,3 +16526,4 @@ executeMutation(ref).then((response) => {
   console.log(data.sectionAnnouncementOptOut_delete);
 });
 ```
+

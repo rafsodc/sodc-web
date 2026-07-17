@@ -1,50 +1,93 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import { getCallableInvocation, upsertCallableInvocation } from "@dataconnect/admin-generated";
+import { consumeCallableRateLimit } from "@dataconnect/admin-generated";
 
-export interface RateLimitOptions {
-  /** Max calls allowed per window. */
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const RATE_LIMIT_EXCEEDED_MARKER = "RATE_LIMIT_EXCEEDED";
+
+export interface RateLimitPolicy {
+  /** Max calls allowed per fixed window. */
   limit: number;
   /** Window size in milliseconds. */
   windowMs: number;
 }
 
 /**
- * Per-user fixed-window rate limit for high-risk callable functions (see #344).
+ * Canonical per-user limits for callable functions with material abuse, enumeration,
+ * external-API, or fan-out cost. Call sites reference these by name so limits cannot
+ * drift into inline magic numbers.
+ */
+export const CALLABLE_RATE_LIMITS = {
+  grantAdmin: { limit: 20, windowMs: HOUR_MS },
+  revokeAdmin: { limit: 20, windowMs: HOUR_MS },
+  listAdminUsers: { limit: 30, windowMs: 5 * MINUTE_MS },
+  updateDisplayName: { limit: 5, windowMs: HOUR_MS },
+  updateUserDisplayName: { limit: 30, windowMs: HOUR_MS },
+  searchUsers: { limit: 60, windowMs: 5 * MINUTE_MS },
+  listUsersWithoutDataConnectProfile: { limit: 30, windowMs: 5 * MINUTE_MS },
+  listUsersPendingApproval: { limit: 30, windowMs: 5 * MINUTE_MS },
+  syncPendingUserClaims: { limit: 10, windowMs: HOUR_MS },
+  submitEventBooking: { limit: 20, windowMs: HOUR_MS },
+  submitGuestTicketRequest: { limit: 20, windowMs: HOUR_MS },
+  reviewGuestTicketRequest: { limit: 30, windowMs: HOUR_MS },
+  updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
+  resignMembership: { limit: 3, windowMs: HOUR_MS },
+  getSectionMembersMerged: { limit: 60, windowMs: 5 * MINUTE_MS },
+  createTicketCheckoutSession: { limit: 10, windowMs: 15 * MINUTE_MS },
+  createEventBookingCheckoutSession: { limit: 10, windowMs: 15 * MINUTE_MS },
+  reconcileMyCheckoutSessionOrders: { limit: 20, windowMs: 15 * MINUTE_MS },
+  getMyTicketOrderStripeArtifactsBatch: { limit: 10, windowMs: 15 * MINUTE_MS },
+  getTemplateSyncStatus: { limit: 10, windowMs: 5 * MINUTE_MS },
+  getAnnouncementTemplates: { limit: 30, windowMs: 5 * MINUTE_MS },
+  previewAnnouncementTemplate: { limit: 30, windowMs: 5 * MINUTE_MS },
+  sendSectionAnnouncement: { limit: 5, windowMs: HOUR_MS },
+  getAnnouncementSendRecipients: { limit: 60, windowMs: 5 * MINUTE_MS },
+} as const satisfies Record<string, RateLimitPolicy>;
+
+export type RateLimitedCallableName = keyof typeof CALLABLE_RATE_LIMITS;
+
+function isRateLimitExceeded(error: unknown): boolean {
+  if (error instanceof Error && error.message.includes(RATE_LIMIT_EXCEEDED_MARKER)) {
+    return true;
+  }
+  if (String(error).includes(RATE_LIMIT_EXCEEDED_MARKER)) {
+    return true;
+  }
+  try {
+    return JSON.stringify(error).includes(RATE_LIMIT_EXCEEDED_MARKER);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Consume one request from a callable's per-user fixed-window allowance.
  *
- * Throws HttpsError("resource-exhausted") once callerUid has made `limit` calls to
- * `functionName` within the current window. One row per (userId, functionName) is kept in
- * Data Connect, overwritten every window — there's no per-window accumulation to clean up.
- *
- * Not perfectly atomic under concurrent requests from the same user (read-then-write can
- * race), which is an accepted tradeoff for a coarse abuse-prevention control rather than a
- * hard billing-critical cap.
+ * Data Connect performs the increment and threshold check in one transaction. The
+ * window start is part of the counter key, `count_update: { inc: 1 }` serializes
+ * concurrent increments, and a failed in-transaction check rolls the increment back.
  */
 export async function enforceRateLimit(
-  functionName: string,
-  callerUid: string,
-  { limit, windowMs }: RateLimitOptions
+  functionName: RateLimitedCallableName,
+  callerUid: string
 ): Promise<void> {
+  const { limit, windowMs } = CALLABLE_RATE_LIMITS[functionName];
   const windowStartMs = Math.floor(Date.now() / windowMs) * windowMs;
-  const windowStart = new Date(windowStartMs).toISOString();
 
-  const existing = await getCallableInvocation({ userId: callerUid, functionName });
-  const row = existing.data?.callableInvocation;
-  // Compare parsed timestamps rather than exact strings — Postgres/Data Connect may not
-  // round-trip the same ISO string formatting (precision, offset) that toISOString() produces.
-  const inCurrentWindow = row ? new Date(row.windowStart).getTime() === windowStartMs : false;
-  const currentCount = inCurrentWindow ? row!.count : 0;
-
-  if (currentCount >= limit) {
-    throw new HttpsError(
-      "resource-exhausted",
-      "Too many requests — please slow down and try again later."
-    );
+  try {
+    await consumeCallableRateLimit({
+      userId: callerUid,
+      functionName,
+      windowStart: new Date(windowStartMs).toISOString(),
+      limit,
+    });
+  } catch (error: unknown) {
+    if (isRateLimitExceeded(error)) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "Too many requests — please slow down and try again later."
+      );
+    }
+    throw error;
   }
-
-  await upsertCallableInvocation({
-    userId: callerUid,
-    functionName,
-    windowStart,
-    count: currentCount + 1,
-  });
 }

@@ -464,14 +464,22 @@ type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# Per-user fixed-window rate-limit counter for high-risk callable functions (see #344,
-# functions/src/rateLimiter.ts). SDK-only — never exposed to the client. One row per
-# (userId, functionName) pair, overwritten every window rather than accumulating a row
-# per window, so the table stays bounded by (active users) x (rate-limited functions)
-# with no cleanup job needed.
+# Legacy read-then-write counters retained so the connector can be deployed before the
+# #369 Functions rollout. New code uses CallableRateLimitBucket below.
 type CallableInvocation @table(key: ["userId", "functionName"]) {
   userId: String!
   functionName: String!
   windowStart: Timestamp!
   count: Int!
+}
+
+# Concurrency-safe per-user fixed-window counter for high-risk callable functions (see
+# #369 and functions/src/rateLimiter.ts). The window is part of the key so increments can
+# use PostgreSQL's atomic integer update. Successful consumption deletes older buckets
+# for the same user and function to keep the table bounded.
+type CallableRateLimitBucket @table(key: ["userId", "functionName", "windowStart"]) {
+  userId: String!
+  functionName: String!
+  windowStart: Timestamp!
+  count: Int! @default(value: 0)
 }

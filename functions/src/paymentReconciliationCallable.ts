@@ -4,12 +4,14 @@ import { requireEnabled, validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { stripeSecret } from "./paymentConfig";
 import { reconcilePaidCheckoutSessionOrders } from "./paymentReconciliationService";
+import { enforceRateLimit } from "./rateLimiter";
 
 export const reconcileMyCheckoutSessionOrders = onCall(
   { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
   async (request) => {
     requireEnabled(request);
     const uid = request.auth!.uid;
+    await enforceRateLimit("reconcileMyCheckoutSessionOrders", uid);
     const orderId = validateUUID(String(request.data?.orderId), "orderId") as UUIDString;
     const result = await reconcilePaidCheckoutSessionOrders({
       uid,

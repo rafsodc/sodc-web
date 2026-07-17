@@ -18,6 +18,7 @@ import {
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
 import { requireEnabled, requireString } from "./helpers";
+import { enforceRateLimit } from "./rateLimiter";
 import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
@@ -241,6 +242,7 @@ export const getAnnouncementTemplates = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request): Promise<{ templates: AnnouncementTemplate[] }> => {
     requireEnabled(request);
+    await enforceRateLimit("getAnnouncementTemplates", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
@@ -282,6 +284,7 @@ export const previewAnnouncementTemplate = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request): Promise<{ html: string; subject: string }> => {
     requireEnabled(request);
+    await enforceRateLimit("previewAnnouncementTemplate", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
@@ -350,6 +353,7 @@ export const sendSectionAnnouncement = onCall(
   { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret, govNotifyApiKey] },
   async (request): Promise<SendAnnouncementResult> => {
     requireEnabled(request);
+    await enforceRateLimit("sendSectionAnnouncement", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
     const templateName: string | null = typeof request.data?.templateName === "string"
@@ -563,6 +567,7 @@ export const getAnnouncementSendRecipients = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<{ recipients: AnnouncementRecipient[] }> => {
     requireEnabled(request);
+    await enforceRateLimit("getAnnouncementSendRecipients", request.auth!.uid);
     const sendId = requireString(request.data?.sendId, "sendId");
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);

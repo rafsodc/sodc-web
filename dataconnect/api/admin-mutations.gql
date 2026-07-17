@@ -1448,6 +1448,7 @@ mutation AdminOptInSectionAnnouncement($userId: String!, $sectionId: UUID!) @aut
 
 # ── Rate limiting (functions/src/rateLimiter.ts) ─────────────────────────────
 
+# Legacy operations retained for a safe connector-first rollout of #369.
 query GetCallableInvocation($userId: String!, $functionName: String!) @auth(level: NO_ACCESS) {
   callableInvocation(key: { userId: $userId, functionName: $functionName }) {
     windowStart
@@ -1463,5 +1464,38 @@ mutation UpsertCallableInvocation(
 ) @auth(level: NO_ACCESS) {
   callableInvocation_upsert(
     data: { userId: $userId, functionName: $functionName, windowStart: $windowStart, count: $count }
+  )
+}
+
+mutation ConsumeCallableRateLimit(
+  $userId: String!
+  $functionName: String!
+  $windowStart: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) @transaction {
+  callableRateLimitBucket_upsert(
+    data: {
+      userId: $userId
+      functionName: $functionName
+      windowStart: $windowStart
+    }
+  )
+
+  consumed: callableRateLimitBucket_updateMany(
+    where: {
+      userId: { eq: $userId }
+      functionName: { eq: $functionName }
+      windowStart: { eq: $windowStart }
+      count: { lt: $limit }
+    }
+    data: { count_update: { inc: 1 } }
+  ) @check(expr: "this == 1", message: "RATE_LIMIT_EXCEEDED")
+
+  callableRateLimitBucket_deleteMany(
+    where: {
+      userId: { eq: $userId }
+      functionName: { eq: $functionName }
+      windowStart: { lt: $windowStart }
+    }
   )
 }

@@ -619,6 +619,13 @@ function upsertCallableInvocation(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.upsertCallableInvocation = upsertCallableInvocation;
 
+function consumeCallableRateLimit(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConsumeCallableRateLimit', inputVars, inputOpts);
+}
+exports.consumeCallableRateLimit = consumeCallableRateLimit;
+
 function createBookingDraft(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

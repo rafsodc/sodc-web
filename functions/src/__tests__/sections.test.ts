@@ -10,6 +10,11 @@ const mockGetEventsForSection = vi.spyOn(admin, "getEventsForSection");
 const mockGetEventById = vi.spyOn(admin, "getEventById");
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+
+beforeEach(() => {
+  mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
+});
 
 const sectionId = "00000000-0000-4000-8000-000000000001";
 const accessGroupId = "00000000-0000-4000-8000-0000000000a1";

@@ -63,7 +63,7 @@ describe("function entry guard contracts", () => {
       "getAnnouncementSendRecipients",
     ]) {
       assertOnCallGuard(announcements, fn, "requireEnabled(request);");
-      assertOnCallGuard(announcements, fn, "requireSectionModerator(", 600);
+      assertOnCallGuard(announcements, fn, "requireSectionModerator(", 700);
     }
   });
 
@@ -81,21 +81,87 @@ describe("function entry guard contracts", () => {
     expect(guardedSources).not.toContain("requireAuth(request);");
   });
 
-  it("applies enforceRateLimit to the high-risk callables named in #344", () => {
+  it("applies centralized rate limits to the high-risk callables named in #344 and #369", () => {
+    const admin = readSource("admin.ts");
+    for (const fn of ["grantAdmin", "revokeAdmin", "listAdminUsers"]) {
+      assertOnCallGuard(admin, fn, `enforceRateLimit("${fn}"`, 300);
+    }
+
     const users = readSource("users.ts");
-    assertOnCallGuard(users, "updateDisplayName", "enforceRateLimit(\"updateDisplayName\"", 200);
-    assertOnCallGuard(users, "searchUsers", "enforceRateLimit(\"searchUsers\"", 200);
+    for (const fn of [
+      "updateDisplayName",
+      "updateUserDisplayName",
+      "searchUsers",
+      "listUsersWithoutDataConnectProfile",
+      "listUsersPendingApproval",
+      "syncPendingUserClaims",
+    ]) {
+      assertOnCallGuard(users, fn, `enforceRateLimit("${fn}"`, 300);
+    }
 
     const bookings = readSource("bookings.ts");
     assertOnCallGuard(bookings, "submitEventBooking", "enforceRateLimit(\"submitEventBooking\"", 200);
 
     const guestTicketRequests = readSource("guestTicketRequests.ts");
+    for (const fn of ["submitGuestTicketRequest", "reviewGuestTicketRequest"]) {
+      assertOnCallGuard(guestTicketRequests, fn, `enforceRateLimit("${fn}"`, 300);
+    }
+
+    const membership = readSource("membershipStatus.ts");
     assertOnCallGuard(
-      guestTicketRequests,
-      "submitGuestTicketRequest",
-      "enforceRateLimit(\"submitGuestTicketRequest\"",
+      membership,
+      "updateMembershipStatus",
+      "enforceRateLimit(\"updateMembershipStatus\"",
       250
     );
+    assertOnCallGuard(
+      membership,
+      "resignMembership",
+      "enforceRateLimit(\"resignMembership\"",
+      250
+    );
+
+    const sections = readSource("sections.ts");
+    assertOnCallGuard(
+      sections,
+      "getSectionMembersMerged",
+      "enforceRateLimit(\"getSectionMembersMerged\"",
+      250
+    );
+
+    const checkout = readSource("paymentCheckoutCallables.ts");
+    for (const fn of ["createTicketCheckoutSession", "createEventBookingCheckoutSession"]) {
+      assertOnCallGuard(checkout, fn, `enforceRateLimit("${fn}"`, 300);
+    }
+
+    const reconciliation = readSource("paymentReconciliationCallable.ts");
+    assertOnCallGuard(
+      reconciliation,
+      "reconcileMyCheckoutSessionOrders",
+      "enforceRateLimit(\"reconcileMyCheckoutSessionOrders\"",
+      300
+    );
+
+    const artifacts = readSource("paymentStripeArtifacts.ts");
+    assertOnCallGuard(
+      artifacts,
+      "getMyTicketOrderStripeArtifactsBatch",
+      "enforceRateLimit(\"getMyTicketOrderStripeArtifactsBatch\"",
+      300
+    );
+
+    const templateSync = readSource("emailTemplateSync.ts");
+    assertOnCallGuard(templateSync, "getTemplateSyncStatus", "enforceRateLimit(\"getTemplateSyncStatus\"", 300);
+
+    const announcements = readSource("announcements.ts");
+    for (const fn of [
+      "getAnnouncementTemplates",
+      "previewAnnouncementTemplate",
+      "sendSectionAnnouncement",
+      "getAnnouncementSendRecipients",
+    ]) {
+      assertOnCallGuard(announcements, fn, `enforceRateLimit("${fn}"`, 350);
+    }
   });
 
   it("keeps Stripe webhook signature verification in place", () => {

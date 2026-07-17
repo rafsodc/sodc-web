@@ -72,6 +72,8 @@ The only callable entry points intentionally using authentication without an ena
 
 These exceptions must not return member-directory data, announcement data, or other enabled-member content. Adding another authentication-only callable requires an explicit security review and a contract-test update.
 
+Callable abuse, enumeration, external-API, and fan-out risks are classified in [Callable abuse protection](./callable-abuse-protection.md). That document also records the centralized limits and concurrency-safe counter design.
+
 ## Webhook security
 
 Stripe webhook uses signature verification in `functions/src/paymentWebhook.ts` (re-exported by `functions/src/payments.ts`):

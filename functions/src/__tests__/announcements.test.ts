@@ -13,6 +13,11 @@ import {
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
 const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipients");
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
+const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+
+beforeEach(() => {
+  mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
+});
 
 const sectionAId = "00000000-0000-4000-8000-00000000000a";
 const sectionBId = "00000000-0000-4000-8000-00000000000b";
