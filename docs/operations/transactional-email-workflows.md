@@ -31,19 +31,59 @@ flowchart LR
 
 `PENDING` is a time-bounded processing lease, not a permanent skip state. A claim is considered active for **10 minutes** from `lastAttemptedAt`. During that window, another invocation returns `duplicate / in_progress`. After the lease expires, the next invocation with the same channel and delivery key may take over the row, increment `attemptCount`, and retry the send.
 
-Takeover uses a conditional Data Connect update matching the row's status and previous attempt count. Only one concurrent invocation can win. `SENT` and `FAILED` completion updates also match the owning attempt count, so an expired invocation cannot overwrite a newer attempt if it resumes late. A `FAILED` delivery is eligible for immediate retry.
+Takeover uses a conditional Data Connect update matching the row's status and previous attempt count. Only one concurrent invocation can win. `SENT` and `FAILED` completion updates also match the owning attempt count, so an expired invocation cannot overwrite a newer attempt if it resumes late. A direct domain retry can reclaim `FAILED` immediately; scheduled recovery applies a cooldown to avoid hammering the provider.
 
 Before sending an email with a stable Notify reference, the mailer queries GOV.UK Notify for an existing notification with that reference. If Notify accepted the earlier attempt but the function terminated before recording `SENT`, recovery adopts the existing provider notification ID and completes the ledger instead of sending a duplicate email.
 
-Operational recovery:
+Every new delivery stores a versioned `recoveryPayload` containing the minimum routing
+context needed to reconstruct its dispatcher. Fan-out workflows also store the original
+recipient address so recovery cannot silently target a newly resolved audience. These
+ledger operations are server-only (`NO_ACCESS`), and recovery logs never include the
+payload, delivery key, or recipient. Before recovery, the worker derives the expected
+notification type and delivery key from that payload and requires both to match the
+ledger row.
 
-1. Locate the `NotificationDelivery` row by channel and delivery key and inspect `status`, `attemptCount`, and `lastAttemptedAt`.
-2. For `SENT`, do not replay the notification.
-3. For `FAILED`, rerun the same domain dispatcher with the original delivery key.
-4. For `PENDING` younger than 10 minutes, allow the current invocation to finish.
-5. For `PENDING` older than 10 minutes, replay the originating domain action or dispatcher with the same stable key. The compare-and-swap claim prevents concurrent recovery attempts from both sending.
+The `recoverNotificationDeliveries` scheduled function runs every **5 minutes**:
 
-Do not invent a new delivery key during recovery: that bypasses idempotency. Check Functions logs for `notification delivery failed`, `notification delivery sent after its lease was replaced`, or `notification delivery failure occurred after its lease was replaced`. Because every server entry path awaits its dispatcher, ordinary provider errors are normally recorded as `FAILED` within the originating invocation; stale recovery is primarily for process termination after a claim.
+- `FAILED` rows are eligible after a **15-minute cooldown**.
+- `PENDING` rows are eligible after their **10-minute lease** expires.
+- At most **25 rows** are processed per invocation.
+- A delivery stops being selected after **6 attempts** and requires investigation.
+- `SENT`, fresh `PENDING`, malformed, mismatched, or payload-free legacy rows are never sent.
+
+Malformed, mismatched, and dispatcher no-op attempts are recorded with a compare-and-set
+failure update. This advances the same bounded attempt count without overwriting a row
+that another invocation has claimed or completed.
+
+The worker re-enters the normal domain dispatcher. `sendNotificationOnce` then claims
+the original row and increments `attemptCount`; concurrent workers or manual retries
+still cannot both own the attempt.
+
+### Monitoring and manual operation
+
+1. Monitor the `notification recovery job completed` structured log. Alert on a
+   non-zero `failed` or `invalid` count, or on repeated scheduler failure. Periodically
+   inspect `NotificationDelivery` for `FAILED` rows at the 6-attempt limit, because
+   exhausted rows are intentionally excluded from scheduler batches.
+2. Use `deliveryId`, `notificationType`, `status`, and `attemptCount` from logs to inspect
+   the corresponding `NotificationDelivery` row. Recovery logs deliberately omit raw
+   delivery keys and recipient addresses.
+3. For `SENT`, take no action. For fresh `PENDING`, wait for lease expiry.
+4. For an exhausted or invalid row, verify the domain state and recovery payload before
+   replaying the domain dispatcher. Always preserve the original delivery key.
+5. To run recovery immediately, use **Run now** for
+   `recoverNotificationDeliveries` in Google Cloud Scheduler. The same eligibility,
+   cooldown, lease, batch, and attempt-limit checks still apply.
+
+Rows created before `recoveryPayload` was deployed are not automatically selected.
+Recover those legacy rows through a reviewed domain-specific replay; a new-code retry
+backfills the recovery payload when it reclaims the existing row.
+
+Deploy the Data Connect schema and generated connector operations before deploying the
+scheduled Function. Confirm `GOV_NOTIFY_API_KEY` is available to the Function in each
+environment.
+
+Check Functions logs for `notification delivery failed`, `notification recovery attempt failed`, `notification delivery sent after its lease was replaced`, or `notification delivery failure occurred after its lease was replaced`. Because every server entry path awaits its dispatcher, ordinary provider errors are normally recorded as `FAILED` within the originating invocation; stale recovery is primarily for process termination after a claim.
 
 ## GOV.UK Notify delivery receipts
 

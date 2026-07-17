@@ -441,6 +441,32 @@ export function getNotificationDeliveryByChannelAndKey(dcOrVars, varsOrOptions, 
   return executeQuery(getNotificationDeliveryByChannelAndKeyRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
+export const listFailedNotificationDeliveriesForRecoveryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListFailedNotificationDeliveriesForRecovery', inputVars);
+}
+listFailedNotificationDeliveriesForRecoveryRef.operationName = 'ListFailedNotificationDeliveriesForRecovery';
+
+export function listFailedNotificationDeliveriesForRecovery(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listFailedNotificationDeliveriesForRecoveryRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const listStalePendingNotificationDeliveriesForRecoveryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListStalePendingNotificationDeliveriesForRecovery', inputVars);
+}
+listStalePendingNotificationDeliveriesForRecoveryRef.operationName = 'ListStalePendingNotificationDeliveriesForRecovery';
+
+export function listStalePendingNotificationDeliveriesForRecovery(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listStalePendingNotificationDeliveriesForRecoveryRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
 export const createNotificationDeliveryRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -463,6 +489,18 @@ claimNotificationDeliveryByIdRef.operationName = 'ClaimNotificationDeliveryById'
 export function claimNotificationDeliveryById(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(claimNotificationDeliveryByIdRef(dcInstance, inputVars));
+}
+
+export const recordNotificationRecoveryFailureByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RecordNotificationRecoveryFailureById', inputVars);
+}
+recordNotificationRecoveryFailureByIdRef.operationName = 'RecordNotificationRecoveryFailureById';
+
+export function recordNotificationRecoveryFailureById(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(recordNotificationRecoveryFailureByIdRef(dcInstance, inputVars));
 }
 
 export const markNotificationDeliverySentByIdRef = (dcOrVars, vars) => {

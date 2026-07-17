@@ -147,6 +147,13 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
       deliveryKey,
       userId: args.userId,
       provider: GOV_NOTIFY_PROVIDER,
+      recoveryPayload: {
+        version: 1,
+        kind: "MEMBERSHIP_STATUS",
+        userId: args.userId,
+        previousStatus: args.previousStatus,
+        newStatus: args.newStatus,
+      },
       send: async () => {
         if (kind === "activation") {
           const personalisation: MembershipEmailTemplates["membershipActivated"] = {

@@ -55,6 +55,23 @@ export function createPaymentOpsInternalMailer(): ReturnType<
   return createConfiguredGovNotifyMailer([...PAYMENT_OPS_ALERT_TEMPLATE_KEYS]);
 }
 
+export function paymentReconciliationOpsDeliveryKey(args: {
+  orderId: string;
+  exceptionType: string;
+  stripeEventId: string;
+  recipientEmail: string;
+}): string {
+  return `reconciliation-ops:${args.orderId}:${args.exceptionType}:${args.stripeEventId}:${args.recipientEmail}`;
+}
+
+export function paymentDisputeOpsDeliveryKey(args: {
+  orderId: string;
+  stripeEventId: string;
+  recipientEmail: string;
+}): string {
+  return `dispute-ops:${args.orderId}:${args.stripeEventId}:${args.recipientEmail}`;
+}
+
 async function loadOrderOpsContext(orderId: UUIDString): Promise<{
   eventTitle: string;
   customerDisplay: string;
@@ -79,9 +96,18 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
   exceptionNote: string;
   stripeEventId: string;
   appBaseUrl: string;
+  recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
 }): Promise<void> {
-  const recipients = parsePaymentOpsAlertEmails();
+  const recipients = args.recipientEmails
+    ? Array.from(
+        new Set(
+          args.recipientEmails
+            .map((email) => email.trim().toLowerCase())
+            .filter((email) => email.length > 0)
+        )
+      )
+    : parsePaymentOpsAlertEmails();
   if (recipients.length === 0) {
     return;
   }
@@ -110,7 +136,12 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
     };
 
     for (const to of recipients) {
-      const deliveryKey = `reconciliation-ops:${args.orderId}:${args.exceptionType}:${args.stripeEventId}:${to}`;
+      const deliveryKey = paymentReconciliationOpsDeliveryKey({
+        orderId: args.orderId,
+        exceptionType: args.exceptionType,
+        stripeEventId: args.stripeEventId,
+        recipientEmail: to,
+      });
       try {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
@@ -119,6 +150,15 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
+          recoveryPayload: {
+            version: 1,
+            kind: "PAYMENT_RECONCILIATION_OPS",
+            orderId: args.orderId,
+            exceptionType: args.exceptionType,
+            exceptionNote: args.exceptionNote,
+            stripeEventId: args.stripeEventId,
+            recipientEmail: to,
+          },
           send: async () => {
             const r = await mailer.sendEmail({
               templateName: "paymentReconciliationExceptionAlert",
@@ -155,9 +195,18 @@ export async function notifyPaymentOpsDisputeSideState(args: {
   disputeLocalState: string;
   stripeDisputeId: string;
   appBaseUrl: string;
+  recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
 }): Promise<void> {
-  const recipients = parsePaymentOpsAlertEmails();
+  const recipients = args.recipientEmails
+    ? Array.from(
+        new Set(
+          args.recipientEmails
+            .map((email) => email.trim().toLowerCase())
+            .filter((email) => email.length > 0)
+        )
+      )
+    : parsePaymentOpsAlertEmails();
   if (recipients.length === 0) {
     return;
   }
@@ -186,7 +235,11 @@ export async function notifyPaymentOpsDisputeSideState(args: {
     };
 
     for (const to of recipients) {
-      const deliveryKey = `dispute-ops:${args.orderId}:${args.stripeEventId}:${to}`;
+      const deliveryKey = paymentDisputeOpsDeliveryKey({
+        orderId: args.orderId,
+        stripeEventId: args.stripeEventId,
+        recipientEmail: to,
+      });
       try {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
@@ -195,6 +248,18 @@ export async function notifyPaymentOpsDisputeSideState(args: {
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
+          recoveryPayload: {
+            version: 1,
+            kind: "PAYMENT_DISPUTE_OPS",
+            orderId: args.orderId,
+            stripeEventId: args.stripeEventId,
+            stripeEventType: args.stripeEventType,
+            disputeStripeStatus: args.disputeStripeStatus,
+            disputeReason: args.disputeReason,
+            disputeLocalState: args.disputeLocalState,
+            stripeDisputeId: args.stripeDisputeId,
+            recipientEmail: to,
+          },
           send: async () => {
             const r = await mailer.sendEmail({
               templateName: "paymentDisputeOpsAlert",

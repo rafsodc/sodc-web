@@ -277,6 +277,7 @@ export interface ClaimNotificationDeliveryByIdVariables {
   attemptCount: number;
   lastAttemptedAt: TimestampString;
   provider?: string | null;
+  recoveryPayload?: string | null;
 }
 
 export interface ClaimNotifyDeliveryReceiptData {
@@ -430,6 +431,7 @@ export interface CreateNotificationDeliveryVariables {
   channel: NotificationChannel;
   notificationType: string;
   deliveryKey: string;
+  recoveryPayload?: string | null;
   status: NotificationDeliveryStatus;
   ticketOrderId?: UUIDString | null;
   bookingId?: UUIDString | null;
@@ -1248,6 +1250,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     channel: NotificationChannel;
     deliveryKey: string;
     notificationType: string;
+    recoveryPayload?: string | null;
     status: NotificationDeliveryStatus;
     provider?: string | null;
     providerMessageId?: string | null;
@@ -1888,6 +1891,26 @@ export interface ListEventBookingsForAdminVariables {
   eventId: UUIDString;
 }
 
+export interface ListFailedNotificationDeliveriesForRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface ListFailedNotificationDeliveriesForRecoveryVariables {
+  attemptedBefore: TimestampString;
+  maxAttemptCount: number;
+  limit: number;
+}
+
 export interface ListGuestTicketRequestsForAdminData {
   event?: {
     id: UUIDString;
@@ -1996,6 +2019,26 @@ export interface ListStaleDraftBookingsForSchedulerData {
 
 export interface ListStaleDraftBookingsForSchedulerVariables {
   updatedBefore: TimestampString;
+  limit: number;
+}
+
+export interface ListStalePendingNotificationDeliveriesForRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface ListStalePendingNotificationDeliveriesForRecoveryVariables {
+  attemptedBefore: TimestampString;
+  maxAttemptCount: number;
   limit: number;
 }
 
@@ -2216,6 +2259,20 @@ export interface PaymentReconciliationException_Key {
 export interface PaymentWebhookEvent_Key {
   id: UUIDString;
   __typename?: 'PaymentWebhookEvent_Key';
+}
+
+export interface RecordNotificationRecoveryFailureByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface RecordNotificationRecoveryFailureByIdVariables {
+  id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
 }
 
 export interface RegisterForSectionData {
@@ -2869,6 +2926,30 @@ export const getNotificationDeliveryByChannelAndKeyRef: GetNotificationDeliveryB
 export function getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
 export function getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
 
+interface ListFailedNotificationDeliveriesForRecoveryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListFailedNotificationDeliveriesForRecoveryVariables): QueryRef<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables): QueryRef<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+  operationName: string;
+}
+export const listFailedNotificationDeliveriesForRecoveryRef: ListFailedNotificationDeliveriesForRecoveryRef;
+
+export function listFailedNotificationDeliveriesForRecovery(vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+export function listFailedNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+
+interface ListStalePendingNotificationDeliveriesForRecoveryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStalePendingNotificationDeliveriesForRecoveryVariables): QueryRef<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForRecoveryVariables): QueryRef<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+  operationName: string;
+}
+export const listStalePendingNotificationDeliveriesForRecoveryRef: ListStalePendingNotificationDeliveriesForRecoveryRef;
+
+export function listStalePendingNotificationDeliveriesForRecovery(vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+export function listStalePendingNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+
 interface CreateNotificationDeliveryRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: CreateNotificationDeliveryVariables): MutationRef<CreateNotificationDeliveryData, CreateNotificationDeliveryVariables>;
@@ -2892,6 +2973,18 @@ export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 
 export function claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 export function claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
+
+interface RecordNotificationRecoveryFailureByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordNotificationRecoveryFailureByIdVariables): MutationRef<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables): MutationRef<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+  operationName: string;
+}
+export const recordNotificationRecoveryFailureByIdRef: RecordNotificationRecoveryFailureByIdRef;
+
+export function recordNotificationRecoveryFailureById(vars: RecordNotificationRecoveryFailureByIdVariables): MutationPromise<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+export function recordNotificationRecoveryFailureById(dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables): MutationPromise<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
 
 interface MarkNotificationDeliverySentByIdRef {
   /* Allow users to create refs without passing in DataConnect */
