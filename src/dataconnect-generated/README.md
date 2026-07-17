@@ -82,7 +82,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
-  - [*MarkNotificationDeliveryPendingById*](#marknotificationdeliverypendingbyid)
+  - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliveryFailedById*](#marknotificationdeliveryfailedbyid)
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
@@ -8885,121 +8885,127 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## MarkNotificationDeliveryPendingById
-You can execute the `MarkNotificationDeliveryPendingById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## ClaimNotificationDeliveryById
+You can execute the `ClaimNotificationDeliveryById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-markNotificationDeliveryPendingById(vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 
-interface MarkNotificationDeliveryPendingByIdRef {
+interface ClaimNotificationDeliveryByIdRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  (vars: ClaimNotificationDeliveryByIdVariables): MutationRef<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 }
-export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
 ```typescript
-markNotificationDeliveryPendingById(dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 
-interface MarkNotificationDeliveryPendingByIdRef {
+interface ClaimNotificationDeliveryByIdRef {
   ...
-  (dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  (dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationRef<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 }
-export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markNotificationDeliveryPendingByIdRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the claimNotificationDeliveryByIdRef:
 ```typescript
-const name = markNotificationDeliveryPendingByIdRef.operationName;
+const name = claimNotificationDeliveryByIdRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `MarkNotificationDeliveryPendingById` mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface MarkNotificationDeliveryPendingByIdVariables {
+export interface ClaimNotificationDeliveryByIdVariables {
   id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
   provider?: string | null;
 }
 ```
 ### Return Type
-Recall that executing the `MarkNotificationDeliveryPendingById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `ClaimNotificationDeliveryById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `MarkNotificationDeliveryPendingByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `ClaimNotificationDeliveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface MarkNotificationDeliveryPendingByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+export interface ClaimNotificationDeliveryByIdData {
+  notificationDelivery_updateMany: number;
 }
 ```
-### Using `MarkNotificationDeliveryPendingById`'s action shortcut function
+### Using `ClaimNotificationDeliveryById`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, markNotificationDeliveryPendingById, MarkNotificationDeliveryPendingByIdVariables } from '@dataconnect/generated';
+import { connectorConfig, claimNotificationDeliveryById, ClaimNotificationDeliveryByIdVariables } from '@dataconnect/generated';
 
-// The `MarkNotificationDeliveryPendingById` mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`:
-const markNotificationDeliveryPendingByIdVars: MarkNotificationDeliveryPendingByIdVariables = {
+// The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
+const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
   id: ..., 
+  expectedStatus: ...,
+  expectedAttemptCount: ...,
   attemptCount: ..., 
   lastAttemptedAt: ..., 
   provider: ..., // optional
 };
 
-// Call the `markNotificationDeliveryPendingById()` function to execute the mutation.
+// Call the `claimNotificationDeliveryById()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await markNotificationDeliveryPendingById(markNotificationDeliveryPendingByIdVars);
+const { data } = await claimNotificationDeliveryById(claimNotificationDeliveryByIdVars);
 // Variables can be defined inline as well.
-const { data } = await markNotificationDeliveryPendingById({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+const { data } = await claimNotificationDeliveryById({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await markNotificationDeliveryPendingById(dataConnect, markNotificationDeliveryPendingByIdVars);
+const { data } = await claimNotificationDeliveryById(dataConnect, claimNotificationDeliveryByIdVars);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
-markNotificationDeliveryPendingById(markNotificationDeliveryPendingByIdVars).then((response) => {
+claimNotificationDeliveryById(claimNotificationDeliveryByIdVars).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
-### Using `MarkNotificationDeliveryPendingById`'s `MutationRef` function
+### Using `ClaimNotificationDeliveryById`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, markNotificationDeliveryPendingByIdRef, MarkNotificationDeliveryPendingByIdVariables } from '@dataconnect/generated';
+import { connectorConfig, claimNotificationDeliveryByIdRef, ClaimNotificationDeliveryByIdVariables } from '@dataconnect/generated';
 
-// The `MarkNotificationDeliveryPendingById` mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`:
-const markNotificationDeliveryPendingByIdVars: MarkNotificationDeliveryPendingByIdVariables = {
+// The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
+const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
   id: ..., 
+  expectedStatus: ...,
+  expectedAttemptCount: ...,
   attemptCount: ..., 
   lastAttemptedAt: ..., 
   provider: ..., // optional
 };
 
-// Call the `markNotificationDeliveryPendingByIdRef()` function to get a reference to the mutation.
-const ref = markNotificationDeliveryPendingByIdRef(markNotificationDeliveryPendingByIdVars);
+// Call the `claimNotificationDeliveryByIdRef()` function to get a reference to the mutation.
+const ref = claimNotificationDeliveryByIdRef(claimNotificationDeliveryByIdVars);
 // Variables can be defined inline as well.
-const ref = markNotificationDeliveryPendingByIdRef({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+const ref = claimNotificationDeliveryByIdRef({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = markNotificationDeliveryPendingByIdRef(dataConnect, markNotificationDeliveryPendingByIdVars);
+const ref = claimNotificationDeliveryByIdRef(dataConnect, claimNotificationDeliveryByIdVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9053,7 +9059,7 @@ Recall that executing the `MarkNotificationDeliverySentById` mutation returns a 
 The `data` property is an object of type `MarkNotificationDeliverySentByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface MarkNotificationDeliverySentByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 ```
 ### Using `MarkNotificationDeliverySentById`'s action shortcut function
@@ -9084,12 +9090,12 @@ const { data } = await markNotificationDeliverySentById({ id: ..., attemptCount:
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await markNotificationDeliverySentById(dataConnect, markNotificationDeliverySentByIdVars);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 markNotificationDeliverySentById(markNotificationDeliverySentByIdVars).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9124,12 +9130,12 @@ const ref = markNotificationDeliverySentByIdRef(dataConnect, markNotificationDel
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9181,7 +9187,7 @@ Recall that executing the `MarkNotificationDeliveryFailedById` mutation returns 
 The `data` property is an object of type `MarkNotificationDeliveryFailedByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface MarkNotificationDeliveryFailedByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 ```
 ### Using `MarkNotificationDeliveryFailedById`'s action shortcut function
@@ -9210,12 +9216,12 @@ const { data } = await markNotificationDeliveryFailedById({ id: ..., attemptCoun
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await markNotificationDeliveryFailedById(dataConnect, markNotificationDeliveryFailedByIdVars);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 markNotificationDeliveryFailedById(markNotificationDeliveryFailedByIdVars).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9248,12 +9254,12 @@ const ref = markNotificationDeliveryFailedByIdRef(dataConnect, markNotificationD
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -15259,4 +15265,3 @@ executeMutation(ref).then((response) => {
   console.log(data.sectionAnnouncementOptOut_delete);
 });
 ```
-

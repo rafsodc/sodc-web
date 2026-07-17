@@ -20,8 +20,8 @@ export default defineConfig({
         'src/generatedEmailTemplateManifest.ts',
       ],
       thresholds: {
-        statements: 45,
-        branches: 41,
+        statements: 46,
+        branches: 42,
         functions: 57,
         lines: 46,
         'src/{helpers,rateLimiter,sections,validation}.ts': {
@@ -41,6 +41,12 @@ export default defineConfig({
           branches: 68,
           functions: 69,
           lines: 82,
+        },
+        'src/notificationDelivery.ts': {
+          statements: 65,
+          branches: 50,
+          functions: 57,
+          lines: 64,
         },
       },
     },

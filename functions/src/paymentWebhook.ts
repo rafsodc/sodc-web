@@ -260,7 +260,7 @@ async function handleStripeWebhookRequest(args: {
         stripeEventId: event.id,
         fromDisputeWebhook: true,
       });
-      void notifyPaymentOpsDisputeSideState({
+      await notifyPaymentOpsDisputeSideState({
         orderId: canonicalOrderId,
         stripeEventId: event.id,
         stripeEventType: event.type,

@@ -584,14 +584,20 @@ mutation CreateNotificationDelivery(
   )
 }
 
-mutation MarkNotificationDeliveryPendingById(
+mutation ClaimNotificationDeliveryById(
   $id: UUID!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
   $attemptCount: Int!
   $lastAttemptedAt: Timestamp!
   $provider: String
 ) @auth(level: NO_ACCESS) {
-  notificationDelivery_update(
-    id: $id
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: $expectedStatus }
+      attemptCount: { eq: $expectedAttemptCount }
+    }
     data: {
       status: PENDING
       attemptCount: $attemptCount
@@ -613,8 +619,12 @@ mutation MarkNotificationDeliverySentById(
   $lastErrorCode: String
   $lastErrorMessage: String
 ) @auth(level: NO_ACCESS) {
-  notificationDelivery_update(
-    id: $id
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
     data: {
       status: SENT
       attemptCount: $attemptCount
@@ -638,8 +648,12 @@ mutation MarkNotificationDeliveryFailedById(
   $lastErrorCode: String
   $lastErrorMessage: String
 ) @auth(level: NO_ACCESS) {
-  notificationDelivery_update(
-    id: $id
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
     data: {
       status: FAILED
       attemptCount: $attemptCount

@@ -28,22 +28,22 @@ const APP_BASE_URL = (() => {
   return url;
 })();
 
-export function scheduleGuestTicketRequestSubmittedEmails(args: {
+export async function sendGuestTicketRequestSubmittedEmails(args: {
   requestId: string;
   appBaseUrl: string;
-}): void {
-  void notifyModeratorsGuestTicketRequestSubmitted({
+}): Promise<void> {
+  await notifyModeratorsGuestTicketRequestSubmitted({
     requestId: args.requestId,
     appBaseUrl: args.appBaseUrl,
   });
 }
 
-export function scheduleGuestTicketRequestReviewedEmails(args: {
+export async function sendGuestTicketRequestReviewedEmails(args: {
   requestId: string;
   status: typeof GuestTicketRequestStatus.APPROVED | typeof GuestTicketRequestStatus.REJECTED;
   appBaseUrl: string;
-}): void {
-  void notifyBookerGuestTicketRequestReviewed({
+}): Promise<void> {
+  await notifyBookerGuestTicketRequestReviewed({
     requestId: args.requestId,
     status: args.status,
     appBaseUrl: args.appBaseUrl,
@@ -121,7 +121,7 @@ export const submitGuestTicketRequest = onCall(
       }
 
       if (decision.kind === "create_pending") {
-        scheduleGuestTicketRequestSubmittedEmails({
+        await sendGuestTicketRequestSubmittedEmails({
           requestId,
           appBaseUrl: APP_BASE_URL,
         });
@@ -168,7 +168,7 @@ export const reviewGuestTicketRequest = onCall(
         reviewedById: request.auth!.uid,
       });
 
-      scheduleGuestTicketRequestReviewedEmails({
+      await sendGuestTicketRequestReviewedEmails({
         requestId: id,
         status,
         appBaseUrl: APP_BASE_URL,

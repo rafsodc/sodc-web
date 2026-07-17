@@ -230,6 +230,19 @@ export interface CheckUserProfileExistsData {
   } & User_Key;
 }
 
+export interface ClaimNotificationDeliveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface ClaimNotificationDeliveryByIdVariables {
+  id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
 export interface CreateAnnouncementRecipientData {
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
@@ -1937,7 +1950,7 @@ export interface MarkBookingSupersededFromCallableVariables {
 }
 
 export interface MarkNotificationDeliveryFailedByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 
 export interface MarkNotificationDeliveryFailedByIdVariables {
@@ -1949,19 +1962,8 @@ export interface MarkNotificationDeliveryFailedByIdVariables {
   lastErrorMessage?: string | null;
 }
 
-export interface MarkNotificationDeliveryPendingByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
-}
-
-export interface MarkNotificationDeliveryPendingByIdVariables {
-  id: UUIDString;
-  attemptCount: number;
-  lastAttemptedAt: TimestampString;
-  provider?: string | null;
-}
-
 export interface MarkNotificationDeliverySentByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 
 export interface MarkNotificationDeliverySentByIdVariables {
@@ -2481,10 +2483,10 @@ export function createNotificationDelivery(dc: DataConnect, vars: CreateNotifica
 /** Generated Node Admin SDK operation action function for the 'CreateNotificationDelivery' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createNotificationDelivery(vars: CreateNotificationDeliveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotificationDeliveryData>>;
 
-/** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliveryPendingById' Mutation. Allow users to execute without passing in DataConnect. */
-export function markNotificationDeliveryPendingById(dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliveryPendingByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliveryPendingById' Mutation. Allow users to pass in custom DataConnect instances. */
-export function markNotificationDeliveryPendingById(vars: MarkNotificationDeliveryPendingByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliveryPendingByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryById' Mutation. Allow users to execute without passing in DataConnect. */
+export function claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryByIdData>>;
 
 /** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliverySentById' Mutation. Allow users to execute without passing in DataConnect. */
 export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliverySentByIdData>>;

@@ -151,7 +151,7 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetGuestTicketRequestForNotification", mustInclude: NO_ACCESS },
       { op: "query GetNotificationDeliveryByChannelAndKey", mustInclude: NO_ACCESS },
       { op: "mutation CreateNotificationDelivery", mustInclude: NO_ACCESS },
-      { op: "mutation MarkNotificationDeliveryPendingById", mustInclude: NO_ACCESS },
+      { op: "mutation ClaimNotificationDeliveryById", mustInclude: NO_ACCESS },
       { op: "mutation MarkNotificationDeliverySentById", mustInclude: NO_ACCESS },
       { op: "mutation MarkNotificationDeliveryFailedById", mustInclude: NO_ACCESS },
     ]);

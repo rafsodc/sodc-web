@@ -290,9 +290,9 @@ export const syncPendingUserClaims = onCall(
       });
       logger.info(`syncPendingUserClaims: enabled=false for uid=${uid}`);
 
-      // Non-blocking: no-ops unless this call is what actually put the user into the approval
-      // queue (verified email + profile submitted + awaiting approval) — see #271.
-      void notifyAdminsUserPendingApproval({
+      // No-ops unless this call is what actually put the user into the approval queue
+      // (verified email + profile submitted + awaiting approval) — see #271.
+      await notifyAdminsUserPendingApproval({
         userId: uid,
         emailVerified: userRecord.emailVerified,
         appBaseUrl: APP_BASE_URL,
@@ -304,4 +304,3 @@ export const syncPendingUserClaims = onCall(
     }
   }
 );
-

@@ -260,10 +260,10 @@ export function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, opt
   return dcInstance.executeMutation('CreateNotificationDelivery', inputVars, inputOpts);
 }
 
-export function markNotificationDeliveryPendingById(dcOrVarsOrOptions, varsOrOptions, options) {
+export function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('MarkNotificationDeliveryPendingById', inputVars, inputOpts);
+  return dcInstance.executeMutation('ClaimNotificationDeliveryById', inputVars, inputOpts);
 }
 
 export function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {

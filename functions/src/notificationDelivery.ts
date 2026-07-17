@@ -1,9 +1,9 @@
 import * as logger from "firebase-functions/logger";
 import {
+  claimNotificationDeliveryById,
   createNotificationDelivery,
   getNotificationDeliveryByChannelAndKey,
   markNotificationDeliveryFailedById,
-  markNotificationDeliveryPendingById,
   markNotificationDeliverySentById,
   NotificationChannel,
   NotificationDeliveryStatus,
@@ -12,6 +12,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 
 const MAX_ERROR_CODE_LENGTH = 120;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
+export const DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS = 10 * 60 * 1000;
 
 export interface NotificationSendResult {
   providerMessageId?: string | null;
@@ -39,6 +40,7 @@ interface NotificationDeliveryRecord {
   id: UUIDString;
   status: NotificationDeliveryStatus;
   attemptCount: number;
+  lastAttemptedAt: string | null;
 }
 
 export interface NotificationDeliveryRepository {
@@ -57,12 +59,14 @@ export interface NotificationDeliveryRepository {
     attemptCount: number;
     lastAttemptedAt: string;
   }): Promise<NotificationDeliveryRecord>;
-  markPending(args: {
+  tryMarkPending(args: {
     id: UUIDString;
+    expectedStatus: NotificationDeliveryStatus;
+    expectedAttemptCount: number;
     attemptCount: number;
     lastAttemptedAt: string;
     provider?: string | null;
-  }): Promise<void>;
+  }): Promise<boolean>;
   markSent(args: {
     id: UUIDString;
     attemptCount: number;
@@ -70,7 +74,7 @@ export interface NotificationDeliveryRepository {
     sentAt: string;
     provider?: string | null;
     providerMessageId?: string | null;
-  }): Promise<void>;
+  }): Promise<boolean>;
   markFailed(args: {
     id: UUIDString;
     attemptCount: number;
@@ -78,12 +82,13 @@ export interface NotificationDeliveryRepository {
     provider?: string | null;
     lastErrorCode?: string | null;
     lastErrorMessage?: string | null;
-  }): Promise<void>;
+  }): Promise<boolean>;
 }
 
 interface SendNotificationOnceDependencies {
   repository?: NotificationDeliveryRepository;
   now?: () => string;
+  leaseMs?: number;
 }
 
 const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository = {
@@ -100,6 +105,7 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       id: row.id,
       status: row.status,
       attemptCount: row.attemptCount,
+      lastAttemptedAt: row.lastAttemptedAt ?? null,
     };
   },
 
@@ -120,20 +126,24 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       id: created.data.notificationDelivery_insert.id,
       status: NotificationDeliveryStatus.PENDING,
       attemptCount: args.attemptCount,
+      lastAttemptedAt: args.lastAttemptedAt,
     };
   },
 
-  async markPending(args) {
-    await markNotificationDeliveryPendingById({
+  async tryMarkPending(args) {
+    const claimed = await claimNotificationDeliveryById({
       id: args.id,
+      expectedStatus: args.expectedStatus,
+      expectedAttemptCount: args.expectedAttemptCount,
       attemptCount: args.attemptCount,
       lastAttemptedAt: args.lastAttemptedAt,
       provider: args.provider ?? null,
     });
+    return claimed.data.notificationDelivery_updateMany === 1;
   },
 
   async markSent(args) {
-    await markNotificationDeliverySentById({
+    const completed = await markNotificationDeliverySentById({
       id: args.id,
       attemptCount: args.attemptCount,
       lastAttemptedAt: args.lastAttemptedAt,
@@ -143,10 +153,11 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       lastErrorCode: null,
       lastErrorMessage: null,
     });
+    return completed.data.notificationDelivery_updateMany === 1;
   },
 
   async markFailed(args) {
-    await markNotificationDeliveryFailedById({
+    const completed = await markNotificationDeliveryFailedById({
       id: args.id,
       attemptCount: args.attemptCount,
       lastAttemptedAt: args.lastAttemptedAt,
@@ -154,6 +165,7 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       lastErrorCode: args.lastErrorCode ?? null,
       lastErrorMessage: args.lastErrorMessage ?? null,
     });
+    return completed.data.notificationDelivery_updateMany === 1;
   },
 };
 
@@ -207,37 +219,90 @@ function duplicateResult(
   };
 }
 
-async function claimNotificationDelivery(
+export function isNotificationDeliveryLeaseExpired(
+  lastAttemptedAt: string | null,
+  currentTime: string,
+  leaseMs: number = DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS
+): boolean {
+  if (!Number.isFinite(leaseMs) || leaseMs <= 0) {
+    throw new Error("Notification delivery lease duration must be a positive number");
+  }
+  const currentTimeMs = Date.parse(currentTime);
+  if (!Number.isFinite(currentTimeMs)) {
+    throw new Error(`Invalid notification delivery current time: ${currentTime}`);
+  }
+  if (!lastAttemptedAt) {
+    return true;
+  }
+  const lastAttemptedAtMs = Date.parse(lastAttemptedAt);
+  if (!Number.isFinite(lastAttemptedAtMs)) {
+    return true;
+  }
+  return currentTimeMs - lastAttemptedAtMs >= leaseMs;
+}
+
+async function claimExistingNotificationDelivery(
   request: SendNotificationOnceRequest,
   repository: NotificationDeliveryRepository,
-  attemptStartedAt: string
+  existing: NotificationDeliveryRecord,
+  attemptStartedAt: string,
+  leaseMs: number
 ): Promise<SendNotificationOnceResult | { delivery: NotificationDeliveryRecord; attemptCount: number }> {
-  const existing = await repository.getByChannelAndKey({
-    channel: request.channel,
-    deliveryKey: request.deliveryKey,
-  });
-  if (existing?.status === NotificationDeliveryStatus.SENT) {
+  if (existing.status === NotificationDeliveryStatus.SENT) {
     return duplicateResult("already_sent", existing);
   }
-  if (existing?.status === NotificationDeliveryStatus.PENDING) {
+  if (
+    existing.status === NotificationDeliveryStatus.PENDING &&
+    !isNotificationDeliveryLeaseExpired(existing.lastAttemptedAt, attemptStartedAt, leaseMs)
+  ) {
     return duplicateResult("in_progress", existing);
   }
-  if (existing?.status === NotificationDeliveryStatus.FAILED) {
-    const attemptCount = existing.attemptCount + 1;
-    await repository.markPending({
-      id: existing.id,
-      attemptCount,
-      lastAttemptedAt: attemptStartedAt,
-      provider: request.provider ?? null,
-    });
+
+  const attemptCount = existing.attemptCount + 1;
+  const claimed = await repository.tryMarkPending({
+    id: existing.id,
+    expectedStatus: existing.status,
+    expectedAttemptCount: existing.attemptCount,
+    attemptCount,
+    lastAttemptedAt: attemptStartedAt,
+    provider: request.provider ?? null,
+  });
+  if (claimed) {
     return {
       delivery: {
         id: existing.id,
         status: NotificationDeliveryStatus.PENDING,
         attemptCount,
+        lastAttemptedAt: attemptStartedAt,
       },
       attemptCount,
     };
+  }
+
+  const winner = await repository.getByChannelAndKey({
+    channel: request.channel,
+    deliveryKey: request.deliveryKey,
+  });
+  if (!winner) {
+    throw new Error(`Notification delivery claim for ${request.channel}:${request.deliveryKey} lost its row`);
+  }
+  return winner.status === NotificationDeliveryStatus.SENT
+    ? duplicateResult("already_sent", winner)
+    : duplicateResult("in_progress", winner);
+}
+
+async function claimNotificationDelivery(
+  request: SendNotificationOnceRequest,
+  repository: NotificationDeliveryRepository,
+  attemptStartedAt: string,
+  leaseMs: number
+): Promise<SendNotificationOnceResult | { delivery: NotificationDeliveryRecord; attemptCount: number }> {
+  const existing = await repository.getByChannelAndKey({
+    channel: request.channel,
+    deliveryKey: request.deliveryKey,
+  });
+  if (existing) {
+    return claimExistingNotificationDelivery(request, repository, existing, attemptStartedAt, leaseMs);
   }
 
   try {
@@ -266,28 +331,7 @@ async function claimNotificationDelivery(
   if (!raced) {
     throw new Error(`Notification delivery race for ${request.channel}:${request.deliveryKey} but no row was found`);
   }
-  if (raced.status === NotificationDeliveryStatus.SENT) {
-    return duplicateResult("already_sent", raced);
-  }
-  if (raced.status === NotificationDeliveryStatus.PENDING) {
-    return duplicateResult("in_progress", raced);
-  }
-
-  const attemptCount = raced.attemptCount + 1;
-  await repository.markPending({
-    id: raced.id,
-    attemptCount,
-    lastAttemptedAt: attemptStartedAt,
-    provider: request.provider ?? null,
-  });
-  return {
-    delivery: {
-      id: raced.id,
-      status: NotificationDeliveryStatus.PENDING,
-      attemptCount,
-    },
-    attemptCount,
-  };
+  return claimExistingNotificationDelivery(request, repository, raced, attemptStartedAt, leaseMs);
 }
 
 export async function sendNotificationOnce(
@@ -296,8 +340,9 @@ export async function sendNotificationOnce(
 ): Promise<SendNotificationOnceResult> {
   const repository = dependencies.repository ?? dataConnectNotificationDeliveryRepository;
   const now = dependencies.now ?? (() => new Date().toISOString());
+  const leaseMs = dependencies.leaseMs ?? DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS;
   const attemptStartedAt = now();
-  const claimResult = await claimNotificationDelivery(request, repository, attemptStartedAt);
+  const claimResult = await claimNotificationDelivery(request, repository, attemptStartedAt, leaseMs);
 
   if ("outcome" in claimResult) {
     return claimResult;
@@ -305,7 +350,7 @@ export async function sendNotificationOnce(
 
   try {
     const sendResult = await request.send();
-    await repository.markSent({
+    const completed = await repository.markSent({
       id: claimResult.delivery.id,
       attemptCount: claimResult.attemptCount,
       lastAttemptedAt: attemptStartedAt,
@@ -313,6 +358,15 @@ export async function sendNotificationOnce(
       provider: request.provider ?? null,
       providerMessageId: sendResult?.providerMessageId ?? null,
     });
+    if (!completed) {
+      logger.warn("notification delivery sent after its lease was replaced", {
+        channel: request.channel,
+        notificationType: request.notificationType,
+        deliveryKey: request.deliveryKey,
+        deliveryId: claimResult.delivery.id,
+        attemptCount: claimResult.attemptCount,
+      });
+    }
     return {
       outcome: "sent",
       deliveryId: claimResult.delivery.id,
@@ -320,7 +374,7 @@ export async function sendNotificationOnce(
     };
   } catch (error) {
     const errorDetails = extractErrorDetails(error);
-    await repository.markFailed({
+    const completed = await repository.markFailed({
       id: claimResult.delivery.id,
       attemptCount: claimResult.attemptCount,
       lastAttemptedAt: attemptStartedAt,
@@ -328,6 +382,15 @@ export async function sendNotificationOnce(
       lastErrorCode: errorDetails.code,
       lastErrorMessage: errorDetails.message,
     });
+    if (!completed) {
+      logger.warn("notification delivery failure occurred after its lease was replaced", {
+        channel: request.channel,
+        notificationType: request.notificationType,
+        deliveryKey: request.deliveryKey,
+        deliveryId: claimResult.delivery.id,
+        attemptCount: claimResult.attemptCount,
+      });
+    }
     logger.error("notification delivery failed", {
       channel: request.channel,
       notificationType: request.notificationType,
