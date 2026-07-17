@@ -2,6 +2,8 @@
 
 `My Payments` can show Stripe-hosted artifacts per order when Stripe provides them.
 
+The callable and Stripe lookup fallback chain are implemented in `functions/src/paymentStripeArtifacts.ts` and re-exported through the stable `functions/src/payments.ts` barrel.
+
 ## Supported links
 
 - Receipt link (`receiptUrl`) from the latest charge.
