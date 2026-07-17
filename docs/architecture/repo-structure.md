@@ -12,6 +12,17 @@ This document defines where code should live and how to keep structure changes l
 - `dataconnect/api/`: source-of-truth GraphQL operations.
 - `docs/architecture/`: technical architecture and process docs.
 
+## Stable module boundaries
+
+Public barrels preserve import and deployment contracts while domain code stays focused:
+
+- `src/shared/utils/firebaseFunctions.ts` is the frontend callable-client barrel. Implementations under `src/shared/utils/firebaseFunctions/` are grouped into user/admin, section access, booking/payments, guest tickets, and announcements.
+- `src/features/admin/components/SectionEventsManagerSurfaces.tsx` is the section-event admin surface barrel. Individual list, dialog, ticket-admin, and ticket-type views live under `sectionEventsManagerSurfaces/`.
+- `src/features/sections/hooks/useBookingWizardState.ts` owns React orchestration. Pure validation, submission-line construction, constants, and types live in `bookingWizardModel.ts`.
+- `functions/src/payments.ts` is the stable backend payment export barrel. Checkout callables, Stripe artifacts, reconciliation, webhook processing, and shared Stripe configuration live in their corresponding `payment*.ts` modules.
+
+Generated SDK imports remain at domain-module boundaries; generated files are never re-exported through these barrels.
+
 ## Testing layout
 
 - Frontend tests live near domain code in `src/**/__tests__/`.
@@ -39,3 +50,4 @@ When performing structure cleanup:
 2. Avoid broad moves and behavior changes in one step.
 3. Preserve import boundaries (`features` -> `shared`, not the reverse for domain-specific logic).
 4. Keep tests updated in the same PR as file moves/refactors.
+5. Prefer feature-owned utilities over a parallel root `src/utils/` copy. Shared behavior belongs under `src/shared/` only when multiple features actively consume it.
