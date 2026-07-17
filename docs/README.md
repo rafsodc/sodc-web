@@ -15,6 +15,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/govuk-notify-template-copy.md`: draft subject/body for all Notify templates; `govuk-notify-template-registration.md`: per-environment UUID checklist.
 - `operations/transactional-email-policy.md`: operational vs optional/marketing email policy (#191).
 - `operations/section-announcement-audiences.md`: explicit and membership-status-derived audience, eligibility, deduplication, and opt-out rules for section announcements.
+- `operations/firebase-hosting-security-headers.md`: production CSP and browser hardening policy, HSTS ownership, and post-deploy verification.
 
 ## User Guides
 
