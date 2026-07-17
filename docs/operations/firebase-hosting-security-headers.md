@@ -49,7 +49,7 @@ subdomains before adding `includeSubDomains` or `preload`.
 
 ## Deployment verification
 
-Deploy to Beta first:
+For a full-stack release, complete the Data Connect and Functions checkpoints in the [central rollout runbook](./environments-dev-beta-prod.md#full-stack-rollout-sequence) before this Hosting step. For a Hosting-only change, deploy to Beta first:
 
 ```bash
 npm run build

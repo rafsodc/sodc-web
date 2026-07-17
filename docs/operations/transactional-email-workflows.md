@@ -80,8 +80,9 @@ Recover those legacy rows through a reviewed domain-specific replay; a new-code 
 backfills the recovery payload when it reclaims the existing row.
 
 Deploy the Data Connect schema and generated connector operations before deploying the
-scheduled Function. Confirm `GOV_NOTIFY_API_KEY` is available to the Function in each
-environment.
+scheduled Function. Use the SDK compatibility, Data Connect, and Function checkpoints in
+the [central rollout runbook](./environments-dev-beta-prod.md#full-stack-rollout-sequence).
+Confirm `GOV_NOTIFY_API_KEY` is available to the Function in each environment.
 
 Check Functions logs for `notification delivery failed`, `notification recovery attempt failed`, `notification delivery sent after its lease was replaced`, or `notification delivery failure occurred after its lease was replaced`. Because every server entry path awaits its dispatcher, ordinary provider errors are normally recorded as `FAILED` within the originating invocation; stale recovery is primarily for process termination after a claim.
 
