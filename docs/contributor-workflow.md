@@ -46,6 +46,7 @@ npm run test
 # Functions
 npm --prefix functions run lint
 npm --prefix functions run test
+npm --prefix functions run test:coverage
 
 # Full functions suite (includes mailers, dispatchers, wiring tests)
 cd functions
@@ -55,6 +56,27 @@ npm run test
 cd functions
 npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
 ```
+
+### Functions coverage
+
+`npm --prefix functions run test:coverage` reports on every hand-authored TypeScript file under `functions/src`, including files that no test imports. Build output, generated Data Connect code, generated email-template manifests, declarations, tests, and test helpers are excluded. HTML and JSON summary reports are written to `functions/coverage/`, which is ignored by Git and ESLint.
+
+The initial global floors preserve the measured baseline while allowing coverage to improve incrementally:
+
+| Metric | Global minimum |
+| --- | ---: |
+| Statements | 44% |
+| Branches | 40% |
+| Functions | 57% |
+| Lines | 45% |
+
+Higher grouped thresholds protect code at critical boundaries:
+
+- authorization, validation, and rate limiting (`helpers`, `rateLimiter`, `sections`, `validation`): 77% statements, 66% branches, 80% functions, 77% lines
+- deterministic payment, Stripe webhook, and state-transition logic: 90% statements, 73% branches, 100% functions, 94% lines
+- notification delivery and callback handling: 81% statements, 68% branches, 69% functions, 82% lines
+
+Treat these values as ratchets. Raise the relevant whole-number threshold when a change creates durable headroom; do not lower one without explaining the coverage loss and follow-up plan in the PR. Large callable wrappers such as `payments.ts` remain covered by the global gate until more logic can be extracted into focused, testable modules.
 
 When changing transactional email (callables, webhooks, dispatchers), run the **full** functions suite and update [`operations/transactional-email-workflows.md`](operations/transactional-email-workflows.md) when triggers or delivery keys change.
 
@@ -70,6 +92,7 @@ After CI workflows are in place, configure these as required in branch protectio
 - `Frontend and functions build checks`
 - `Frontend full test suite`
 - `Functions full test suite`
+- `Functions coverage gate (ratcheted)`
 - `Functions security tests`
 
 Set in GitHub repository settings:

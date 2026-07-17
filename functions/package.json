@@ -13,6 +13,7 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js"
   },
@@ -28,6 +29,7 @@
     "stripe": "^22.0.2"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.9",
     "firebase-functions-test": "^0.3.3",
     "ts-node": "^10.9.2",
