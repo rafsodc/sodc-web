@@ -3,6 +3,7 @@ import * as admin from "@dataconnect/admin-generated";
 import { CALLABLE_RATE_LIMITS, enforceRateLimit } from "../rateLimiter";
 
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 const uid = "user-1";
 
 describe("enforceRateLimit", () => {
@@ -10,6 +11,7 @@ describe("enforceRateLimit", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-17T12:07:30.000Z"));
+    mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
     mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
   });
 
@@ -26,6 +28,27 @@ describe("enforceRateLimit", () => {
       windowStart: "2026-07-17T12:00:00.000Z",
       limit: CALLABLE_RATE_LIMITS.updateDisplayName.limit,
     });
+  });
+
+  it("ensures the bucket row exists in a prior, separately-committed call before consuming it (#401)", async () => {
+    const callOrder: string[] = [];
+    mockEnsureCallableRateLimitBucket.mockImplementation(async () => {
+      callOrder.push("ensure");
+      return { data: {} } as never;
+    });
+    mockConsumeCallableRateLimit.mockImplementation(async () => {
+      callOrder.push("consume");
+      return { data: {} } as never;
+    });
+
+    await enforceRateLimit("updateDisplayName", uid);
+
+    expect(mockEnsureCallableRateLimitBucket).toHaveBeenCalledWith({
+      userId: uid,
+      functionName: "updateDisplayName",
+      windowStart: "2026-07-17T12:00:00.000Z",
+    });
+    expect(callOrder).toEqual(["ensure", "consume"]);
   });
 
   it("starts a fresh bucket after the window rolls over", async () => {

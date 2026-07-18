@@ -1,5 +1,5 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import { consumeCallableRateLimit } from "@dataconnect/admin-generated";
+import { consumeCallableRateLimit, ensureCallableRateLimitBucket } from "@dataconnect/admin-generated";
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -63,9 +63,14 @@ function isRateLimitExceeded(error: unknown): boolean {
 /**
  * Consume one request from a callable's per-user fixed-window allowance.
  *
- * Data Connect performs the increment and threshold check in one transaction. The
- * window start is part of the counter key, `count_update: { inc: 1 }` serializes
- * concurrent increments, and a failed in-transaction check rolls the increment back.
+ * Two sequential Data Connect calls, not one: EnsureCallableRateLimitBucket first
+ * guarantees the current window's row exists (idempotent upsert, always committed
+ * before the next call starts), then ConsumeCallableRateLimit conditionally
+ * increments it in its own transaction. `count_update: { inc: 1 }` serializes
+ * concurrent increments and a failed in-transaction check rolls the increment back.
+ * These cannot be combined into one @transaction — a row created by the upsert is
+ * not visible to a same-transaction updateMany's `where` filter, which previously
+ * made every call reject unconditionally (see #401).
  */
 export async function enforceRateLimit(
   functionName: RateLimitedCallableName,
@@ -73,12 +78,15 @@ export async function enforceRateLimit(
 ): Promise<void> {
   const { limit, windowMs } = CALLABLE_RATE_LIMITS[functionName];
   const windowStartMs = Math.floor(Date.now() / windowMs) * windowMs;
+  const windowStart = new Date(windowStartMs).toISOString();
+
+  await ensureCallableRateLimitBucket({ userId: callerUid, functionName, windowStart });
 
   try {
     await consumeCallableRateLimit({
       userId: callerUid,
       functionName,
-      windowStart: new Date(windowStartMs).toISOString(),
+      windowStart,
       limit,
     });
   } catch (error: unknown) {

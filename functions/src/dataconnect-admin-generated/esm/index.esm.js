@@ -544,6 +544,12 @@ export function upsertCallableInvocation(dcOrVarsOrOptions, varsOrOptions, optio
   return dcInstance.executeMutation('UpsertCallableInvocation', inputVars, inputOpts);
 }
 
+export function ensureCallableRateLimitBucket(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('EnsureCallableRateLimitBucket', inputVars, inputOpts);
+}
+
 export function consumeCallableRateLimit(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

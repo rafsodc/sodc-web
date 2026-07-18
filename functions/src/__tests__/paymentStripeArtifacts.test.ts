@@ -30,6 +30,7 @@ const USER_ID = "user-1";
 const ORDER_1 = "11111111-1111-4111-8111-111111111111";
 const ORDER_2 = "22222222-2222-4222-8222-222222222222";
 const consumeRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const ensureRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 const getOrder = vi.spyOn(admin, "getTicketOrderStripeArtifactsForCallable");
 
 type Handler = (request: {
@@ -132,6 +133,7 @@ describe("fetchStripeArtifactsForOrder", () => {
 describe("getMyTicketOrderStripeArtifactsBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    ensureRateLimitBucket.mockResolvedValue({ data: {} } as never);
     consumeRateLimit.mockResolvedValue({ data: {} } as never);
   });
 

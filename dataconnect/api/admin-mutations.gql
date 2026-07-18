@@ -1533,12 +1533,19 @@ mutation UpsertCallableInvocation(
   )
 }
 
-mutation ConsumeCallableRateLimit(
+## Ensures the current window's bucket row exists before ConsumeCallableRateLimit
+## conditionally increments it. Kept as its own operation, and always committed
+## before ConsumeCallableRateLimit runs: a row created by callableRateLimitBucket_upsert
+## in the SAME transaction as a subsequent callableRateLimitBucket_updateMany's `where`
+## filter is not visible to that filter, so the two cannot be combined into one
+## @transaction (see #401 — this previously made every rate-limited callable reject
+## every request, because @transaction rolls the upsert back too when the update's
+## affected-row @check fails).
+mutation EnsureCallableRateLimitBucket(
   $userId: String!
   $functionName: String!
   $windowStart: Timestamp!
-  $limit: Int!
-) @auth(level: NO_ACCESS) @transaction {
+) @auth(level: NO_ACCESS) {
   callableRateLimitBucket_upsert(
     data: {
       userId: $userId
@@ -1546,7 +1553,14 @@ mutation ConsumeCallableRateLimit(
       windowStart: $windowStart
     }
   )
+}
 
+mutation ConsumeCallableRateLimit(
+  $userId: String!
+  $functionName: String!
+  $windowStart: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) @transaction {
   consumed: callableRateLimitBucket_updateMany(
     where: {
       userId: { eq: $userId }

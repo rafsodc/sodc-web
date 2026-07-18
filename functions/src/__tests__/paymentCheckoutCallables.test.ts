@@ -41,6 +41,7 @@ const ORDER_ID = "55555555-5555-4555-8555-555555555555";
 const STALE_ORDER_ID = "66666666-6666-4666-8666-666666666666";
 
 const consumeRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const ensureRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 const getUser = vi.spyOn(admin, "getUserForCheckout");
 const getTicketType = vi.spyOn(admin, "getTicketTypeForCheckout");
 const getSection = vi.spyOn(admin, "getSectionByIdForCallable");
@@ -102,6 +103,7 @@ function enabledRequest(data: Record<string, unknown>) {
 describe("payment checkout callables", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    ensureRateLimitBucket.mockResolvedValue({ data: {} } as never);
     consumeRateLimit.mockResolvedValue({ data: {} } as never);
     getUser.mockResolvedValue({
       data: {
