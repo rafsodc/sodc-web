@@ -125,7 +125,7 @@ Operational recovery:
 | **Trigger** | Stripe webhook applies `PAID`, `FAILED`, or `REFUNDED` to a `TicketOrder` |
 | **Entrypoint** | [`paymentWebhook.ts`](../../functions/src/paymentWebhook.ts) → [`paymentReconciliationService.ts`](../../functions/src/paymentReconciliationService.ts) → [`emitPaymentLifecycleNotification`](../../functions/src/paymentNotifications.ts) → [`paymentLifecycleEmailDispatcher.ts`](../../functions/src/paymentLifecycleEmailDispatcher.ts) |
 | **Recipient** | Purchaser email from order query |
-| **No send** | Transition not applied (`noop_replay`, illegal transition); dispute side-state path |
+| **No send** | Illegal transition; same-target event whose id does not match the order's stored `webhookEventId`; dispute side-state path. An exact-event replay re-enters the delivery ledger only to recover missing/failed work, and an already-sent key remains a no-op. |
 | **Delivery key** | `payment:{orderId}:{type}:{stripeEventId}` |
 | **Templates** | `ticketOrderPaid`, `ticketOrderFailed`, `ticketOrderRefunded` |
 | **Deep dive** | [govuk-notify-ticket-order-templates.md](./govuk-notify-ticket-order-templates.md) |

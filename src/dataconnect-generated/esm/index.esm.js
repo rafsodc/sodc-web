@@ -449,7 +449,7 @@ export const listFailedNotificationDeliveriesForRecoveryRef = (dcOrVars, vars) =
 listFailedNotificationDeliveriesForRecoveryRef.operationName = 'ListFailedNotificationDeliveriesForRecovery';
 
 export function listFailedNotificationDeliveriesForRecovery(dcOrVars, varsOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(listFailedNotificationDeliveriesForRecoveryRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -462,7 +462,7 @@ export const listStalePendingNotificationDeliveriesForRecoveryRef = (dcOrVars, v
 listStalePendingNotificationDeliveriesForRecoveryRef.operationName = 'ListStalePendingNotificationDeliveriesForRecovery';
 
 export function listStalePendingNotificationDeliveriesForRecovery(dcOrVars, varsOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(listStalePendingNotificationDeliveriesForRecoveryRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -588,28 +588,16 @@ export function getPaymentReconciliationExceptionByOrderAndType(dcOrVars, varsOr
   return executeQuery(getPaymentReconciliationExceptionByOrderAndTypeRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
-export const createPaymentReconciliationExceptionRef = (dcOrVars, vars) => {
+export const upsertPaymentReconciliationExceptionRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreatePaymentReconciliationException', inputVars);
+  return mutationRef(dcInstance, 'UpsertPaymentReconciliationException', inputVars);
 }
-createPaymentReconciliationExceptionRef.operationName = 'CreatePaymentReconciliationException';
+upsertPaymentReconciliationExceptionRef.operationName = 'UpsertPaymentReconciliationException';
 
-export function createPaymentReconciliationException(dcOrVars, vars) {
+export function upsertPaymentReconciliationException(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createPaymentReconciliationExceptionRef(dcInstance, inputVars));
-}
-
-export const updatePaymentReconciliationExceptionByIdRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdatePaymentReconciliationExceptionById', inputVars);
-}
-updatePaymentReconciliationExceptionByIdRef.operationName = 'UpdatePaymentReconciliationExceptionById';
-
-export function updatePaymentReconciliationExceptionById(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updatePaymentReconciliationExceptionByIdRef(dcInstance, inputVars));
+  return executeMutation(upsertPaymentReconciliationExceptionRef(dcInstance, inputVars));
 }
 
 export const updateBookingPreferencesFromCallableRef = (dcOrVars, vars) => {

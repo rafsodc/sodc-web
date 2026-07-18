@@ -171,8 +171,7 @@ describe("Data Connect auth contracts", () => {
     // Payment reconciliation
     assertAuth(adminSdk, [
       { op: "query GetPaymentReconciliationExceptionByOrderAndType", mustInclude: NO_ACCESS },
-      { op: "mutation CreatePaymentReconciliationException", mustInclude: NO_ACCESS },
-      { op: "mutation UpdatePaymentReconciliationExceptionById", mustInclude: NO_ACCESS },
+      { op: "mutation UpsertPaymentReconciliationException", mustInclude: NO_ACCESS },
     ]);
   });
 

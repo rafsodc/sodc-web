@@ -440,20 +440,6 @@ export interface CreateNotifyDeliveryReceiptVariables {
   lastAttemptedAt: TimestampString;
 }
 
-export interface CreatePaymentReconciliationExceptionData {
-  paymentReconciliationException_insert: PaymentReconciliationException_Key;
-}
-
-export interface CreatePaymentReconciliationExceptionVariables {
-  ticketOrderId: UUIDString;
-  exceptionType: PaymentReconciliationExceptionType;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-
 export interface CreatePaymentWebhookEventData {
   paymentWebhookEvent_insert: PaymentWebhookEvent_Key;
 }
@@ -2443,19 +2429,6 @@ export interface UpdateEventVariables {
   maxGuestsWithoutModeratorApproval?: number | null;
 }
 
-export interface UpdatePaymentReconciliationExceptionByIdData {
-  paymentReconciliationException_update?: PaymentReconciliationException_Key | null;
-}
-
-export interface UpdatePaymentReconciliationExceptionByIdVariables {
-  id: UUIDString;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-
 export interface UpdateSectionData {
   section_update?: Section_Key | null;
 }
@@ -2535,6 +2508,21 @@ export interface UpsertCallableInvocationVariables {
   functionName: string;
   windowStart: TimestampString;
   count: number;
+}
+
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
+}
+
+export interface UpsertPaymentReconciliationExceptionVariables {
+  id: UUIDString;
+  ticketOrderId: UUIDString;
+  exceptionType: PaymentReconciliationExceptionType;
+  status: PaymentReconciliationExceptionStatus;
+  note?: string | null;
+  ownerUserId?: string | null;
+  lastAttemptedAt?: TimestampString | null;
+  resolvedAt?: TimestampString | null;
 }
 
 export interface UpsertTicketOrderDisputeFromWebhookData {
@@ -2780,15 +2768,10 @@ export function getPaymentReconciliationExceptionByOrderAndType(dc: DataConnect,
 /** Generated Node Admin SDK operation action function for the 'GetPaymentReconciliationExceptionByOrderAndType' Query. Allow users to pass in custom DataConnect instances. */
 export function getPaymentReconciliationExceptionByOrderAndType(vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPaymentReconciliationExceptionByOrderAndTypeData>>;
 
-/** Generated Node Admin SDK operation action function for the 'CreatePaymentReconciliationException' Mutation. Allow users to execute without passing in DataConnect. */
-export function createPaymentReconciliationException(dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePaymentReconciliationExceptionData>>;
-/** Generated Node Admin SDK operation action function for the 'CreatePaymentReconciliationException' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createPaymentReconciliationException(vars: CreatePaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePaymentReconciliationExceptionData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdatePaymentReconciliationExceptionById' Mutation. Allow users to execute without passing in DataConnect. */
-export function updatePaymentReconciliationExceptionById(dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdatePaymentReconciliationExceptionByIdData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdatePaymentReconciliationExceptionById' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updatePaymentReconciliationExceptionById(vars: UpdatePaymentReconciliationExceptionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdatePaymentReconciliationExceptionByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertPaymentReconciliationException' Mutation. Allow users to execute without passing in DataConnect. */
+export function upsertPaymentReconciliationException(dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertPaymentReconciliationExceptionData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertPaymentReconciliationException' Mutation. Allow users to pass in custom DataConnect instances. */
+export function upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertPaymentReconciliationExceptionData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingPreferencesFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateBookingPreferencesFromCallable(dc: DataConnect, vars: UpdateBookingPreferencesFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPreferencesFromCallableData>>;

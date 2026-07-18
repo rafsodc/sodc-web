@@ -52,7 +52,8 @@ Functions maintain an explicit Stripe event allowlist in code (`SUPPORTED_STRIPE
 
 - Missing `orderId` metadata: acknowledge webhook (2xx), no mutation.
 - Unknown order: acknowledge webhook (2xx), no mutation.
-- Replay transition: acknowledge webhook (2xx), no mutation.
+- Replay of the same Stripe event: do not mutate the order; reconcile any missing post-transition notification and exception state before acknowledging.
+- Same-target transition from a different event: acknowledge webhook (2xx), no mutation or customer notification.
 - Illegal transition: acknowledge webhook (2xx), no mutation.
 - Valid transition: apply mutation and acknowledge webhook (2xx).
 
@@ -78,7 +79,8 @@ Webhook handling continues to treat disputes as side-state metadata (no `TicketO
 
 - These are additive nullable fields on `TicketOrder`; existing rows remain valid without backfill.
 - Existing `TicketOrderStatus` semantics are unchanged.
-- Existing webhook idempotency behavior (event ledger keyed by Stripe event id) remains the source of replay protection.
+- The webhook event ledger remains the source of event-level replay detection.
+- Exact-event recovery also requires `TicketOrder.webhookEventId` to match the replayed Stripe event, preventing a different same-target event from creating another customer notification.
 
 ## Reconciliation Primitives
 
@@ -88,7 +90,17 @@ The payment domain exposes deterministic exception signals for operator triage:
 - `REFUND_AMOUNT_MISMATCH`
 - `ACTIVE_DISPUTE`
 
-Signals are evaluated from persisted order metadata and upserted to reconciliation exception records with remediation metadata (`status`, `ownerUserId`, `lastAttemptedAt`, `resolvedAt`).
+Signals are evaluated from persisted order metadata and upserted to reconciliation exception records with remediation metadata (`status`, `ownerUserId`, `lastAttemptedAt`, `resolvedAt`). New records use a deterministic primary UUID derived from `(ticketOrder, exceptionType)`; existing records retain their current ID. Concurrent snapshot retries therefore converge on the same record without requiring a data migration.
+
+## Post-transition side-effect recovery
+
+Order state is committed before external notification and reconciliation work. If notification-delivery setup or exception persistence fails after that commit, the webhook returns an error so Stripe can retry. On an exact retry, Functions detects that the target status and stored `webhookEventId` already match, then reruns only the post-transition work:
+
+- customer email uses the original deterministic `NotificationDelivery` key, so sent or in-progress deliveries are not duplicated and failed deliveries can be reclaimed;
+- reconciliation exceptions use the deterministic order/type-derived primary ID and an upsert, so partial or concurrent retries converge;
+- once both steps complete, the event ledger is recorded or the existing duplicate event is acknowledged.
+
+The member checkout reconciliation callable uses the same rule with its deterministic synthetic event id, allowing it to recover its own partial completion without replaying side effects from a different Stripe event.
 
 ## Customer notification emails (issue #186)
 

@@ -103,8 +103,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*MarkTicketOrderFailedFromWebhook*](#markticketorderfailedfromwebhook)
   - [*MarkTicketOrderRefundedFromWebhook*](#markticketorderrefundedfromwebhook)
   - [*UpsertTicketOrderDisputeFromWebhook*](#upsertticketorderdisputefromwebhook)
-  - [*CreatePaymentReconciliationException*](#createpaymentreconciliationexception)
-  - [*UpdatePaymentReconciliationExceptionById*](#updatepaymentreconciliationexceptionbyid)
+  - [*UpsertPaymentReconciliationException*](#upsertpaymentreconciliationexception)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
   - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
   - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
@@ -1499,9 +1498,9 @@ import { useListFailedNotificationDeliveriesForRecovery } from '@dataconnect/gen
 export default function ListFailedNotificationDeliveriesForRecoveryComponent() {
   // The `useListFailedNotificationDeliveriesForRecovery` Query hook requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`:
   const listFailedNotificationDeliveriesForRecoveryVars: ListFailedNotificationDeliveriesForRecoveryVariables = {
-    attemptedBefore: ...,
-    maxAttemptCount: ...,
-    limit: ...,
+    attemptedBefore: ..., 
+    maxAttemptCount: ..., 
+    limit: ..., 
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -1595,9 +1594,9 @@ import { useListStalePendingNotificationDeliveriesForRecovery } from '@dataconne
 export default function ListStalePendingNotificationDeliveriesForRecoveryComponent() {
   // The `useListStalePendingNotificationDeliveriesForRecovery` Query hook requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`:
   const listStalePendingNotificationDeliveriesForRecoveryVars: ListStalePendingNotificationDeliveriesForRecoveryVariables = {
-    attemptedBefore: ...,
-    maxAttemptCount: ...,
-    limit: ...,
+    attemptedBefore: ..., 
+    maxAttemptCount: ..., 
+    limit: ..., 
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -7974,13 +7973,13 @@ export default function RecordNotificationRecoveryFailureByIdComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useRecordNotificationRecoveryFailureById` Mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
   const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
-    id: ...,
-    expectedStatus: ...,
-    expectedAttemptCount: ...,
-    attemptCount: ...,
-    lastAttemptedAt: ...,
-    lastErrorCode: ...,
-    lastErrorMessage: ...,
+    id: ..., 
+    expectedStatus: ..., 
+    expectedAttemptCount: ..., 
+    attemptCount: ..., 
+    lastAttemptedAt: ..., 
+    lastErrorCode: ..., 
+    lastErrorMessage: ..., 
   };
   mutation.mutate(recordNotificationRecoveryFailureByIdVars);
   // Variables can be defined inline as well.
@@ -8629,21 +8628,22 @@ export default function UpsertTicketOrderDisputeFromWebhookComponent() {
 }
 ```
 
-## CreatePaymentReconciliationException
-You can execute the `CreatePaymentReconciliationException` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+## UpsertPaymentReconciliationException
+You can execute the `UpsertPaymentReconciliationException` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
-useCreatePaymentReconciliationException(options?: useDataConnectMutationOptions<CreatePaymentReconciliationExceptionData, FirebaseError, CreatePaymentReconciliationExceptionVariables>): UseDataConnectMutationResult<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+useUpsertPaymentReconciliationException(options?: useDataConnectMutationOptions<UpsertPaymentReconciliationExceptionData, FirebaseError, UpsertPaymentReconciliationExceptionVariables>): UseDataConnectMutationResult<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 ```
 You can also pass in a `DataConnect` instance to the Mutation hook function.
 ```javascript
-useCreatePaymentReconciliationException(dc: DataConnect, options?: useDataConnectMutationOptions<CreatePaymentReconciliationExceptionData, FirebaseError, CreatePaymentReconciliationExceptionVariables>): UseDataConnectMutationResult<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+useUpsertPaymentReconciliationException(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertPaymentReconciliationExceptionData, FirebaseError, UpsertPaymentReconciliationExceptionVariables>): UseDataConnectMutationResult<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 ```
 
 ### Variables
-The `CreatePaymentReconciliationException` Mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+The `UpsertPaymentReconciliationException` Mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 
 ```javascript
-export interface CreatePaymentReconciliationExceptionVariables {
+export interface UpsertPaymentReconciliationExceptionVariables {
+  id: UUIDString;
   ticketOrderId: UUIDString;
   exceptionType: PaymentReconciliationExceptionType;
   status: PaymentReconciliationExceptionStatus;
@@ -8654,52 +8654,53 @@ export interface CreatePaymentReconciliationExceptionVariables {
 }
 ```
 ### Return Type
-Recall that calling the `CreatePaymentReconciliationException` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+Recall that calling the `UpsertPaymentReconciliationException` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
 
 To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
 
 To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
 
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreatePaymentReconciliationException` Mutation is of type `CreatePaymentReconciliationExceptionData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpsertPaymentReconciliationException` Mutation is of type `UpsertPaymentReconciliationExceptionData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
-export interface CreatePaymentReconciliationExceptionData {
-  paymentReconciliationException_insert: PaymentReconciliationException_Key;
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
 }
 ```
 
 To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
 
-### Using `CreatePaymentReconciliationException`'s Mutation hook function
+### Using `UpsertPaymentReconciliationException`'s Mutation hook function
 
 ```javascript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreatePaymentReconciliationExceptionVariables } from '@dataconnect/generated';
-import { useCreatePaymentReconciliationException } from '@dataconnect/generated/react'
+import { connectorConfig, UpsertPaymentReconciliationExceptionVariables } from '@dataconnect/generated';
+import { useUpsertPaymentReconciliationException } from '@dataconnect/generated/react'
 
-export default function CreatePaymentReconciliationExceptionComponent() {
+export default function UpsertPaymentReconciliationExceptionComponent() {
   // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreatePaymentReconciliationException();
+  const mutation = useUpsertPaymentReconciliationException();
 
   // You can also pass in a `DataConnect` instance to the Mutation hook function.
   const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreatePaymentReconciliationException(dataConnect);
+  const mutation = useUpsertPaymentReconciliationException(dataConnect);
 
   // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useCreatePaymentReconciliationException(options);
+  const mutation = useUpsertPaymentReconciliationException(options);
 
   // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
   const dataConnect = getDataConnect(connectorConfig);
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  const mutation = useCreatePaymentReconciliationException(dataConnect, options);
+  const mutation = useUpsertPaymentReconciliationException(dataConnect, options);
 
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreatePaymentReconciliationException` Mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
-  const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
+  // The `useUpsertPaymentReconciliationException` Mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`:
+  const upsertPaymentReconciliationExceptionVars: UpsertPaymentReconciliationExceptionVariables = {
+    id: ..., 
     ticketOrderId: ..., 
     exceptionType: ..., 
     status: ..., 
@@ -8708,15 +8709,15 @@ export default function CreatePaymentReconciliationExceptionComponent() {
     lastAttemptedAt: ..., // optional
     resolvedAt: ..., // optional
   };
-  mutation.mutate(createPaymentReconciliationExceptionVars);
+  mutation.mutate(upsertPaymentReconciliationExceptionVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
+  mutation.mutate({ id: ..., ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(createPaymentReconciliationExceptionVars, options);
+  mutation.mutate(upsertPaymentReconciliationExceptionVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -8729,111 +8730,7 @@ export default function CreatePaymentReconciliationExceptionComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.paymentReconciliationException_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## UpdatePaymentReconciliationExceptionById
-You can execute the `UpdatePaymentReconciliationExceptionById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useUpdatePaymentReconciliationExceptionById(options?: useDataConnectMutationOptions<UpdatePaymentReconciliationExceptionByIdData, FirebaseError, UpdatePaymentReconciliationExceptionByIdVariables>): UseDataConnectMutationResult<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useUpdatePaymentReconciliationExceptionById(dc: DataConnect, options?: useDataConnectMutationOptions<UpdatePaymentReconciliationExceptionByIdData, FirebaseError, UpdatePaymentReconciliationExceptionByIdVariables>): UseDataConnectMutationResult<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-```
-
-### Variables
-The `UpdatePaymentReconciliationExceptionById` Mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface UpdatePaymentReconciliationExceptionByIdVariables {
-  id: UUIDString;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-```
-### Return Type
-Recall that calling the `UpdatePaymentReconciliationExceptionById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdatePaymentReconciliationExceptionById` Mutation is of type `UpdatePaymentReconciliationExceptionByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface UpdatePaymentReconciliationExceptionByIdData {
-  paymentReconciliationException_update?: PaymentReconciliationException_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `UpdatePaymentReconciliationExceptionById`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdatePaymentReconciliationExceptionByIdVariables } from '@dataconnect/generated';
-import { useUpdatePaymentReconciliationExceptionById } from '@dataconnect/generated/react'
-
-export default function UpdatePaymentReconciliationExceptionByIdComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdatePaymentReconciliationExceptionById();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdatePaymentReconciliationExceptionById(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdatePaymentReconciliationExceptionById(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdatePaymentReconciliationExceptionById(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdatePaymentReconciliationExceptionById` Mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
-  const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-    id: ..., 
-    status: ..., 
-    note: ..., // optional
-    ownerUserId: ..., // optional
-    lastAttemptedAt: ..., // optional
-    resolvedAt: ..., // optional
-  };
-  mutation.mutate(updatePaymentReconciliationExceptionByIdVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(updatePaymentReconciliationExceptionByIdVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.paymentReconciliationException_update);
+    console.log(mutation.data.paymentReconciliationException_upsert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

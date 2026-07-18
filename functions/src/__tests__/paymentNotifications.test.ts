@@ -74,7 +74,7 @@ describe("paymentNotifications", () => {
     );
   });
 
-  it("swallows delivery helper failures after awaiting them", async () => {
+  it("propagates delivery setup failures so webhook processing can retry", async () => {
     const dispatcher = vi.fn(async () => undefined);
     const notificationSender = vi.fn(async () => {
       throw new Error("delivery failed for buyer@example.com");
@@ -92,7 +92,7 @@ describe("paymentNotifications", () => {
         dispatcher,
         notificationSender
       )
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("delivery failed for buyer@example.com");
 
     const loggedMetadata = JSON.stringify(vi.mocked(logger.error).mock.calls[0][1]);
     expect(loggedMetadata).not.toContain("buyer@example.com");

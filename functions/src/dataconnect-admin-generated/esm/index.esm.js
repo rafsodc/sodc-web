@@ -340,16 +340,10 @@ export function getPaymentReconciliationExceptionByOrderAndType(dcOrVarsOrOption
   return dcInstance.executeQuery('GetPaymentReconciliationExceptionByOrderAndType', inputVars, inputOpts);
 }
 
-export function createPaymentReconciliationException(dcOrVarsOrOptions, varsOrOptions, options) {
+export function upsertPaymentReconciliationException(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreatePaymentReconciliationException', inputVars, inputOpts);
-}
-
-export function updatePaymentReconciliationExceptionById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdatePaymentReconciliationExceptionById', inputVars, inputOpts);
+  return dcInstance.executeMutation('UpsertPaymentReconciliationException', inputVars, inputOpts);
 }
 
 export function updateBookingPreferencesFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {

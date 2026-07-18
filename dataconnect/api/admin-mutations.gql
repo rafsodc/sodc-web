@@ -852,7 +852,8 @@ query GetPaymentReconciliationExceptionByOrderAndType(
   }
 }
 
-mutation CreatePaymentReconciliationException(
+mutation UpsertPaymentReconciliationException(
+  $id: UUID!
   $ticketOrderId: UUID!
   $exceptionType: PaymentReconciliationExceptionType!
   $status: PaymentReconciliationExceptionStatus!
@@ -861,8 +862,9 @@ mutation CreatePaymentReconciliationException(
   $lastAttemptedAt: Timestamp
   $resolvedAt: Timestamp
 ) @auth(level: NO_ACCESS) {
-  paymentReconciliationException_insert(
+  paymentReconciliationException_upsert(
     data: {
+      id: $id
       ticketOrderId: $ticketOrderId
       exceptionType: $exceptionType
       status: $status
@@ -871,28 +873,6 @@ mutation CreatePaymentReconciliationException(
       lastAttemptedAt: $lastAttemptedAt
       resolvedAt: $resolvedAt
       createdBy: "system"
-      updatedAt_expr: "request.time"
-      updatedBy: "system"
-    }
-  )
-}
-
-mutation UpdatePaymentReconciliationExceptionById(
-  $id: UUID!
-  $status: PaymentReconciliationExceptionStatus!
-  $note: String
-  $ownerUserId: String
-  $lastAttemptedAt: Timestamp
-  $resolvedAt: Timestamp
-) @auth(level: NO_ACCESS) {
-  paymentReconciliationException_update(
-    id: $id
-    data: {
-      status: $status
-      note: $note
-      ownerUserId: $ownerUserId
-      lastAttemptedAt: $lastAttemptedAt
-      resolvedAt: $resolvedAt
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
