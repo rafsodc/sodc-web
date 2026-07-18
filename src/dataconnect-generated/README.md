@@ -113,6 +113,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*AdminOptOutSectionAnnouncement*](#adminoptoutsectionannouncement)
   - [*AdminOptInSectionAnnouncement*](#adminoptinsectionannouncement)
   - [*UpsertCallableInvocation*](#upsertcallableinvocation)
+  - [*EnsureCallableRateLimitBucket*](#ensurecallableratelimitbucket)
   - [*ConsumeCallableRateLimit*](#consumecallableratelimit)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
@@ -12712,6 +12713,121 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## EnsureCallableRateLimitBucket
+You can execute the `EnsureCallableRateLimitBucket` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+ensureCallableRateLimitBucket(vars: EnsureCallableRateLimitBucketVariables): MutationPromise<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+
+interface EnsureCallableRateLimitBucketRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: EnsureCallableRateLimitBucketVariables): MutationRef<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+}
+export const ensureCallableRateLimitBucketRef: EnsureCallableRateLimitBucketRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+ensureCallableRateLimitBucket(dc: DataConnect, vars: EnsureCallableRateLimitBucketVariables): MutationPromise<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+
+interface EnsureCallableRateLimitBucketRef {
+  ...
+  (dc: DataConnect, vars: EnsureCallableRateLimitBucketVariables): MutationRef<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+}
+export const ensureCallableRateLimitBucketRef: EnsureCallableRateLimitBucketRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the ensureCallableRateLimitBucketRef:
+```typescript
+const name = ensureCallableRateLimitBucketRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `EnsureCallableRateLimitBucket` mutation requires an argument of type `EnsureCallableRateLimitBucketVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface EnsureCallableRateLimitBucketVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `EnsureCallableRateLimitBucket` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `EnsureCallableRateLimitBucketData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface EnsureCallableRateLimitBucketData {
+  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
+}
+```
+### Using `EnsureCallableRateLimitBucket`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ensureCallableRateLimitBucket, EnsureCallableRateLimitBucketVariables } from '@dataconnect/generated';
+
+// The `EnsureCallableRateLimitBucket` mutation requires an argument of type `EnsureCallableRateLimitBucketVariables`:
+const ensureCallableRateLimitBucketVars: EnsureCallableRateLimitBucketVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+};
+
+// Call the `ensureCallableRateLimitBucket()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await ensureCallableRateLimitBucket(ensureCallableRateLimitBucketVars);
+// Variables can be defined inline as well.
+const { data } = await ensureCallableRateLimitBucket({ userId: ..., functionName: ..., windowStart: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await ensureCallableRateLimitBucket(dataConnect, ensureCallableRateLimitBucketVars);
+
+console.log(data.callableRateLimitBucket_upsert);
+
+// Or, you can use the `Promise` API.
+ensureCallableRateLimitBucket(ensureCallableRateLimitBucketVars).then((response) => {
+  const data = response.data;
+  console.log(data.callableRateLimitBucket_upsert);
+});
+```
+
+### Using `EnsureCallableRateLimitBucket`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, ensureCallableRateLimitBucketRef, EnsureCallableRateLimitBucketVariables } from '@dataconnect/generated';
+
+// The `EnsureCallableRateLimitBucket` mutation requires an argument of type `EnsureCallableRateLimitBucketVariables`:
+const ensureCallableRateLimitBucketVars: EnsureCallableRateLimitBucketVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+};
+
+// Call the `ensureCallableRateLimitBucketRef()` function to get a reference to the mutation.
+const ref = ensureCallableRateLimitBucketRef(ensureCallableRateLimitBucketVars);
+// Variables can be defined inline as well.
+const ref = ensureCallableRateLimitBucketRef({ userId: ..., functionName: ..., windowStart: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = ensureCallableRateLimitBucketRef(dataConnect, ensureCallableRateLimitBucketVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.callableRateLimitBucket_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.callableRateLimitBucket_upsert);
+});
+```
+
 ## ConsumeCallableRateLimit
 You can execute the `ConsumeCallableRateLimit` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -12758,7 +12874,6 @@ Recall that executing the `ConsumeCallableRateLimit` mutation returns a `Mutatio
 The `data` property is an object of type `ConsumeCallableRateLimitData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface ConsumeCallableRateLimitData {
-  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
   consumed: number;
   callableRateLimitBucket_deleteMany: number;
 }
@@ -12787,14 +12902,12 @@ const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ...
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await consumeCallableRateLimit(dataConnect, consumeCallableRateLimitVars);
 
-console.log(data.callableRateLimitBucket_upsert);
 console.log(data.consumed);
 console.log(data.callableRateLimitBucket_deleteMany);
 
 // Or, you can use the `Promise` API.
 consumeCallableRateLimit(consumeCallableRateLimitVars).then((response) => {
   const data = response.data;
-  console.log(data.callableRateLimitBucket_upsert);
   console.log(data.consumed);
   console.log(data.callableRateLimitBucket_deleteMany);
 });
@@ -12827,14 +12940,12 @@ const ref = consumeCallableRateLimitRef(dataConnect, consumeCallableRateLimitVar
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.callableRateLimitBucket_upsert);
 console.log(data.consumed);
 console.log(data.callableRateLimitBucket_deleteMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.callableRateLimitBucket_upsert);
   console.log(data.consumed);
   console.log(data.callableRateLimitBucket_deleteMany);
 });

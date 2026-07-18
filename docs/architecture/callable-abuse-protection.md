@@ -6,13 +6,14 @@ Firebase callable functions use authentication and authorization as the first ac
 
 ## Concurrency model
 
-`ConsumeCallableRateLimit` is a Data Connect `@transaction` that:
+`enforceRateLimit` makes two sequential Data Connect calls, not one:
 
-1. upserts the current `CallableRateLimitBucket`, whose count has a database default of zero;
-2. conditionally increments it with `count_update: { inc: 1 }` only while `count < limit`, requiring exactly one affected row and rolling the transaction back with `RATE_LIMIT_EXCEEDED` otherwise; and
-3. deletes older buckets for the same user and callable after a successful consumption.
+1. `EnsureCallableRateLimitBucket` — an idempotent upsert that guarantees the current window's `CallableRateLimitBucket` row exists, whose count has a database default of zero. Not wrapped in `@transaction`; always fully committed before the next call starts.
+2. `ConsumeCallableRateLimit` — a Data Connect `@transaction` that conditionally increments the now-guaranteed-to-exist row with `count_update: { inc: 1 }` only while `count < limit`, requiring exactly one affected row and rolling the transaction back with `RATE_LIMIT_EXCEEDED` otherwise, then deletes older buckets for the same user and callable after a successful consumption.
 
-The bucket key is `(userId, functionName, windowStart)`. PostgreSQL serializes concurrent updates to the same bucket, so parallel function instances cannot overwrite one another's counts. `CallableInvocation` and its old operations remain temporarily available only to permit a connector-first rollout; new Functions code does not use them.
+These two steps cannot be combined into a single `@transaction`. A row created by `callableRateLimitBucket_upsert` is not visible to a same-transaction `callableRateLimitBucket_updateMany`'s `where` filter — the original single-mutation design (upsert then conditionally update, both in one `@transaction`) rejected every request unconditionally, because the update's affected-row count came back 0 against a same-transaction sibling row, tripping the `@check` and rolling the upsert back too, on every window boundary, for every user, forever (#401). Splitting bucket creation into its own already-committed call fixes this: `ConsumeCallableRateLimit`'s conditional update now only ever runs against a row from a prior, separately-committed transaction, which is the scenario Postgres actually guarantees correct visibility for.
+
+The bucket key is `(userId, functionName, windowStart)`. PostgreSQL serializes concurrent updates to the same bucket, so parallel function instances cannot overwrite one another's counts — splitting the ensure step out does not weaken this: two concurrent `EnsureCallableRateLimitBucket` calls racing to create the same row are idempotent (`ON CONFLICT DO NOTHING`-equivalent upsert semantics), and the actual limit enforcement still happens entirely inside `ConsumeCallableRateLimit`'s single conditional `UPDATE`. `CallableInvocation` and its old operations remain temporarily available only to permit a connector-first rollout; new Functions code does not use them.
 
 Deploy Data Connect schema and connector changes before deploying Functions. Generated frontend and Admin SDKs must be regenerated and both consumers compiled before that deployment. Follow the per-environment checkpoints in the [central rollout runbook](../operations/environments-dev-beta-prod.md#full-stack-rollout-sequence). After all environments run the new Functions version, the legacy counter can be removed in a separate cleanup.
 

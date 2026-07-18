@@ -21,6 +21,7 @@ vi.mock("../paymentReconciliationService", () => ({
 import { reconcileMyCheckoutSessionOrders } from "../paymentReconciliationCallable";
 
 const consumeRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const ensureRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 const ORDER_ID = "11111111-1111-4111-8111-111111111111";
 
 type Handler = (request: {
@@ -33,6 +34,7 @@ const handler = reconcileMyCheckoutSessionOrders as unknown as Handler;
 describe("reconcileMyCheckoutSessionOrders", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    ensureRateLimitBucket.mockResolvedValue({ data: {} } as never);
     consumeRateLimit.mockResolvedValue({ data: {} } as never);
     reconciliationMocks.reconcile.mockResolvedValue({
       appliedCount: 1,

@@ -33,6 +33,26 @@ describe("rate limiter persistence contracts", () => {
     );
     expect(operation).toContain("callableRateLimitBucket_deleteMany(");
     expect(operation).toContain("windowStart: { lt: $windowStart }");
+
+    // ConsumeCallableRateLimit must NOT also upsert the bucket in the same transaction:
+    // a row created by callableRateLimitBucket_upsert is not visible to a same-transaction
+    // updateMany's `where` filter, which previously made every call reject unconditionally
+    // regardless of actual usage (#401). Bucket creation must be a separate, already-committed
+    // EnsureCallableRateLimitBucket call instead.
+    const consumeOnly = operation.slice(0, operation.indexOf("\nmutation ", 1));
+    expect(consumeOnly).not.toContain("callableRateLimitBucket_upsert(");
+  });
+
+  it("ensures the bucket row exists via its own prior operation, not inside ConsumeCallableRateLimit (#401)", () => {
+    const operations = readRepoFile("dataconnect/api/admin-mutations.gql");
+    const start = operations.indexOf("mutation EnsureCallableRateLimitBucket(");
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(start).toBeLessThan(operations.indexOf("mutation ConsumeCallableRateLimit("));
+
+    const operation = operations.slice(start, operations.indexOf("\nmutation ", start + 1));
+    expect(operation).toContain("@auth(level: NO_ACCESS)");
+    expect(operation).not.toContain("@transaction");
+    expect(operation).toContain("callableRateLimitBucket_upsert(");
   });
 
   it("defines valid limits and windows in one canonical policy map", () => {

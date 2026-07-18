@@ -1013,6 +1013,18 @@ export function upsertCallableInvocation(dcOrVars, vars) {
   return executeMutation(upsertCallableInvocationRef(dcInstance, inputVars));
 }
 
+export const ensureCallableRateLimitBucketRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'EnsureCallableRateLimitBucket', inputVars);
+}
+ensureCallableRateLimitBucketRef.operationName = 'EnsureCallableRateLimitBucket';
+
+export function ensureCallableRateLimitBucket(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(ensureCallableRateLimitBucketRef(dcInstance, inputVars));
+}
+
 export const consumeCallableRateLimitRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

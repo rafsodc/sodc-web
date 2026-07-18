@@ -17,8 +17,10 @@ const mockGetSectionById = vi.spyOn(admin, "getSectionById");
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 
 beforeEach(() => {
+  mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
   mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
 });
 

@@ -19,6 +19,7 @@ vi.mock("firebase-functions/logger", () => ({
 const mockDcListUsers = vi.spyOn(admin, "listUsers");
 const mockListAllAuthUsers = vi.spyOn(helpers, "listAllAuthUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 
 import { searchUsers, invalidateDcProfileCache } from "../users.js";
 
@@ -51,6 +52,7 @@ describe("searchUsers — membership status enrichment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     invalidateDcProfileCache();
+    mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
     mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
   });
 

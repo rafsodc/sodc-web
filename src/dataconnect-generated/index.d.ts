@@ -293,7 +293,6 @@ export interface ClaimNotifyDeliveryReceiptVariables {
 }
 
 export interface ConsumeCallableRateLimitData {
-  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
   consumed: number;
   callableRateLimitBucket_deleteMany: number;
 }
@@ -611,6 +610,16 @@ export interface DeleteUserGroupVariables {
 
 export interface DeleteUserVariables {
   userId: string;
+}
+
+export interface EnsureCallableRateLimitBucketData {
+  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
+}
+
+export interface EnsureCallableRateLimitBucketVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
 }
 
 export interface Event_Key {
@@ -3465,6 +3474,18 @@ export const upsertCallableInvocationRef: UpsertCallableInvocationRef;
 
 export function upsertCallableInvocation(vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
 export function upsertCallableInvocation(dc: DataConnect, vars: UpsertCallableInvocationVariables): MutationPromise<UpsertCallableInvocationData, UpsertCallableInvocationVariables>;
+
+interface EnsureCallableRateLimitBucketRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: EnsureCallableRateLimitBucketVariables): MutationRef<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: EnsureCallableRateLimitBucketVariables): MutationRef<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+  operationName: string;
+}
+export const ensureCallableRateLimitBucketRef: EnsureCallableRateLimitBucketRef;
+
+export function ensureCallableRateLimitBucket(vars: EnsureCallableRateLimitBucketVariables): MutationPromise<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+export function ensureCallableRateLimitBucket(dc: DataConnect, vars: EnsureCallableRateLimitBucketVariables): MutationPromise<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
 
 interface ConsumeCallableRateLimitRef {
   /* Allow users to create refs without passing in DataConnect */
