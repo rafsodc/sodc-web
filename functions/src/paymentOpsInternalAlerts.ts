@@ -5,7 +5,11 @@ import {
   PaymentReconciliationExceptionType,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
-import { createConfiguredGovNotifyMailer, GOV_NOTIFY_PROVIDER } from "./mailer";
+import {
+  createConfiguredGovNotifyMailer,
+  GOV_NOTIFY_PROVIDER,
+  recipientScopedNotifyReference,
+} from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
@@ -164,7 +168,7 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
               templateName: "paymentReconciliationExceptionAlert",
               to,
               personalisation,
-              reference,
+              reference: recipientScopedNotifyReference(reference, to),
             });
             return { providerMessageId: r.providerNotificationId ?? null };
           },
@@ -265,7 +269,7 @@ export async function notifyPaymentOpsDisputeSideState(args: {
               templateName: "paymentDisputeOpsAlert",
               to,
               personalisation,
-              reference,
+              reference: recipientScopedNotifyReference(reference, to),
             });
             return { providerMessageId: r.providerNotificationId ?? null };
           },

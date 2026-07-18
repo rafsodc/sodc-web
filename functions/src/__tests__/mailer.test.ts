@@ -14,6 +14,7 @@ import {
   govNotifyTemplateEnvVarName,
   MailerConfigurationError,
   readGovNotifyTemplateIds,
+  recipientScopedNotifyReference,
   type NotifyEmailClient,
 } from "../mailer";
 
@@ -59,6 +60,17 @@ describe("mailer", () => {
         GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id",
       })
     ).toHaveProperty("sendEmail");
+  });
+
+  it("builds stable recipient-scoped references without exposing recipient PII", () => {
+    const first = recipientScopedNotifyReference("event-123", " First@Example.com ");
+    const sameRecipient = recipientScopedNotifyReference("event-123", "first@example.com");
+    const second = recipientScopedNotifyReference("event-123", "second@example.com");
+
+    expect(first).toBe(sameRecipient);
+    expect(first).not.toBe(second);
+    expect(first).toMatch(/^event-123:[0-9a-f]{24}$/);
+    expect(first).not.toContain("example.com");
   });
 
   it("fails with a typed configuration error before contacting Notify", async () => {
@@ -162,6 +174,64 @@ describe("mailer", () => {
     });
 
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("sends every fan-out recipient while still deduplicating retries", async () => {
+    const accepted: Array<{ id: string; reference: string }> = [];
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(
+      async (_templateType, _status, reference) => ({
+        data: {
+          notifications: accepted.filter((notification) => notification.reference === reference),
+        },
+      })
+    );
+    const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>(
+      async (_templateId, _emailAddress, options) => {
+        const notification = {
+          id: `notify-${accepted.length + 1}`,
+          reference: options?.reference ?? "",
+        };
+        accepted.push(notification);
+        return { data: notification };
+      }
+    );
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      apiKey: "notify-api-key",
+      templateIds: { paymentConfirmation: "template-paid" },
+      clientFactory: () => ({ getNotifications, sendEmail }),
+      logger: fakeLogger(),
+    });
+    const personalisation = {
+      event_title: "Annual Dinner",
+      amount_paid: "GBP 10.00",
+    };
+    const firstReference = recipientScopedNotifyReference("order-123", "first@example.com");
+    const secondReference = recipientScopedNotifyReference("order-123", "second@example.com");
+
+    await mailer.sendEmail({
+      templateName: "paymentConfirmation",
+      to: "first@example.com",
+      personalisation,
+      reference: firstReference,
+    });
+    await mailer.sendEmail({
+      templateName: "paymentConfirmation",
+      to: "second@example.com",
+      personalisation,
+      reference: secondReference,
+    });
+    await mailer.sendEmail({
+      templateName: "paymentConfirmation",
+      to: "first@example.com",
+      personalisation,
+      reference: firstReference,
+    });
+
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+    expect(accepted.map((notification) => notification.reference)).toEqual([
+      firstReference,
+      secondReference,
+    ]);
   });
 
   it("logs provider failures without recipient PII", async () => {

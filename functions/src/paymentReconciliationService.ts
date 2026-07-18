@@ -195,6 +195,21 @@ export interface PaymentTransitionOrchestrationDependencies {
   now: () => string;
 }
 
+export interface PaymentTransitionOrderFailure {
+  orderId: UUIDString;
+  error: unknown;
+}
+
+export class PaymentTransitionBatchError extends Error {
+  constructor(public readonly failures: readonly PaymentTransitionOrderFailure[]) {
+    const details = failures
+      .map(({ orderId, error }) => `${orderId}: ${error instanceof Error ? error.message : String(error)}`)
+      .join("; ");
+    super(`Payment transition processing failed for ${failures.length} order(s): ${details}`);
+    this.name = "PaymentTransitionBatchError";
+  }
+}
+
 const defaultPaymentTransitionDependencies: PaymentTransitionOrchestrationDependencies = {
   getOrder: getTicketOrderForWebhook,
   runTransition: runTicketOrderTransition,
@@ -227,70 +242,83 @@ export async function applyPaymentTransitionToOrders(
 ): Promise<{ appliedCount: number; reconciledOrderIds: UUIDString[] }> {
   let appliedCount = 0;
   const reconciledOrderIds: UUIDString[] = [];
+  const failures: PaymentTransitionOrderFailure[] = [];
 
   for (const [orderIndex, orderId] of args.orderIds.entries()) {
-    const orderRow = await dependencies.getOrder({ id: orderId });
-    const currentOrder = orderRow.data?.ticketOrder;
-    if (!currentOrder) {
-      continue;
-    }
-    const transitionResult = await dependencies.runTransition(
-      {
-        orderId,
-        currentStatus: currentOrder.status,
-        intent: args.intent,
-        webhookEventId: args.webhookEventId,
-        recoverFailedCheckoutPayment: args.recoverFailedCheckoutPayment,
-        paidContext:
-          args.intent === "MARK_PAID" && args.paidContext
-            ? paidContextForMultiOrderWebhook(orderIndex, args.paidContext)
-            : undefined,
-        refundContext: args.refundContext,
-      },
-      {
-        markPaid: markTicketOrderPaidFromWebhook,
-        markFailed: markTicketOrderFailedFromWebhook,
-        markRefunded: markTicketOrderRefundedFromWebhook,
+    try {
+      const orderRow = await dependencies.getOrder({ id: orderId });
+      const currentOrder = orderRow.data?.ticketOrder;
+      if (!currentOrder) {
+        continue;
       }
-    );
-    const isApplied = transitionResult.action === "applied";
-    const isRecoverableReplay =
-      transitionResult.action === "noop_replay" &&
-      args.recoverPostTransitionSideEffects === true &&
-      currentOrder.webhookEventId === args.webhookEventId;
-    if (!isApplied && !isRecoverableReplay) {
-      continue;
-    }
-    if (isApplied) {
-      appliedCount += 1;
-    }
-    reconciledOrderIds.push(orderId);
-    const notificationType =
-      args.intent === "MARK_PAID" ? "PAYMENT_PAID" : args.intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
-    await dependencies.emitNotification(
-      {
-        type: notificationType,
+      const transitionResult = await dependencies.runTransition(
+        {
+          orderId,
+          currentStatus: currentOrder.status,
+          intent: args.intent,
+          webhookEventId: args.webhookEventId,
+          recoverFailedCheckoutPayment: args.recoverFailedCheckoutPayment,
+          paidContext:
+            args.intent === "MARK_PAID" && args.paidContext
+              ? paidContextForMultiOrderWebhook(orderIndex, args.paidContext)
+              : undefined,
+          refundContext: args.refundContext,
+        },
+        {
+          markPaid: markTicketOrderPaidFromWebhook,
+          markFailed: markTicketOrderFailedFromWebhook,
+          markRefunded: markTicketOrderRefundedFromWebhook,
+        }
+      );
+      const isApplied = transitionResult.action === "applied";
+      const isRecoverableReplay =
+        transitionResult.action === "noop_replay" &&
+        args.recoverPostTransitionSideEffects === true &&
+        currentOrder.webhookEventId === args.webhookEventId;
+      if (!isApplied && !isRecoverableReplay) {
+        continue;
+      }
+      if (isApplied) {
+        appliedCount += 1;
+      }
+      reconciledOrderIds.push(orderId);
+      const notificationType =
+        args.intent === "MARK_PAID"
+          ? "PAYMENT_PAID"
+          : args.intent === "MARK_FAILED"
+            ? "PAYMENT_FAILED"
+            : "PAYMENT_REFUNDED";
+      await dependencies.emitNotification(
+        {
+          type: notificationType,
+          orderId,
+          eventId: currentOrder.event.id,
+          stripeEventId: args.webhookEventId,
+          status: transitionResult.targetStatus,
+          occurredAt: dependencies.now(),
+        },
+        govNotifyTicketOrderDispatcher,
+        sendNotificationOnce,
+        { userId: currentOrder.user.id, provider: GOV_NOTIFY_PROVIDER }
+      );
+      await dependencies.upsertSnapshot({
         orderId,
-        eventId: currentOrder.event.id,
+        snapshot: {
+          status: transitionResult.targetStatus,
+          totalAmountMinor: currentOrder.totalAmountMinor,
+          refundedAmountMinor: args.refundAmountFromEvent ?? currentOrder.refundedAmountMinor ?? null,
+          stripePaymentIntentId: args.paymentIntentIdFromEvent ?? currentOrder.stripePaymentIntentId ?? null,
+          disputeStatus: currentOrder.disputeStatus ?? null,
+        },
         stripeEventId: args.webhookEventId,
-        status: transitionResult.targetStatus,
-        occurredAt: dependencies.now(),
-      },
-      govNotifyTicketOrderDispatcher,
-      sendNotificationOnce,
-      { userId: currentOrder.user.id, provider: GOV_NOTIFY_PROVIDER }
-    );
-    await dependencies.upsertSnapshot({
-      orderId,
-      snapshot: {
-        status: transitionResult.targetStatus,
-        totalAmountMinor: currentOrder.totalAmountMinor,
-        refundedAmountMinor: args.refundAmountFromEvent ?? currentOrder.refundedAmountMinor ?? null,
-        stripePaymentIntentId: args.paymentIntentIdFromEvent ?? currentOrder.stripePaymentIntentId ?? null,
-        disputeStatus: currentOrder.disputeStatus ?? null,
-      },
-      stripeEventId: args.webhookEventId,
-    });
+      });
+    } catch (error) {
+      failures.push({ orderId, error });
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new PaymentTransitionBatchError(failures);
   }
 
   return { appliedCount, reconciledOrderIds };

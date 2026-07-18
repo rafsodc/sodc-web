@@ -1,6 +1,10 @@
 import * as logger from "firebase-functions/logger";
 import { getUserById, NotificationChannel } from "@dataconnect/admin-generated";
-import { createConfiguredGovNotifyMailer, GOV_NOTIFY_PROVIDER } from "./mailer";
+import {
+  createConfiguredGovNotifyMailer,
+  GOV_NOTIFY_PROVIDER,
+  recipientScopedNotifyReference,
+} from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
@@ -133,7 +137,7 @@ export async function notifyAdminsUserPendingApproval(args: {
               templateName: "newUserPendingApprovalAlert",
               to,
               personalisation,
-              reference,
+              reference: recipientScopedNotifyReference(reference, to),
             });
             return { providerMessageId: r.providerNotificationId ?? null };
           },

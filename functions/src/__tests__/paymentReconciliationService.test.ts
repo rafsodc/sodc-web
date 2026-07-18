@@ -7,6 +7,7 @@ import {
 } from "@dataconnect/admin-generated";
 import {
   applyPaymentTransitionToOrders,
+  PaymentTransitionBatchError,
   paymentReconciliationExceptionId,
   reconcilePaidCheckoutSessionOrders,
   upsertReconciliationSnapshot,
@@ -283,6 +284,47 @@ describe("applyPaymentTransitionToOrders", () => {
     });
     expect(harness.emitNotification).toHaveBeenCalledTimes(2);
     expect(harness.upsertSnapshot).toHaveBeenCalledTimes(2);
+  });
+
+  it("continues processing sibling orders before reporting a per-order failure", async () => {
+    const failure = new Error("delivery ledger permanently unavailable for order 1");
+    const harness = transitionDependencies();
+    harness.getOrder.mockImplementation(async ({ id }: { id: UUIDString }) => ({
+      data: { ticketOrder: order(id) },
+    }) as never);
+    harness.runTransition.mockImplementation(async ({ orderId }) => ({
+      action: "applied" as const,
+      reason: "legal_transition",
+      orderId,
+      fromStatus: TicketOrderStatus.PENDING,
+      targetStatus: TicketOrderStatus.PAID,
+      intent: "MARK_PAID" as const,
+    }));
+    harness.emitNotification.mockImplementation(async ({ orderId }) => {
+      if (orderId === ORDER_1) {
+        throw failure;
+      }
+    });
+
+    const result = applyPaymentTransitionToOrders(
+      {
+        orderIds: [ORDER_1, ORDER_2],
+        intent: "MARK_PAID",
+        webhookEventId: "evt_partial_failure",
+      },
+      harness.dependencies
+    );
+
+    await expect(result).rejects.toBeInstanceOf(PaymentTransitionBatchError);
+    await expect(result).rejects.toMatchObject({
+      failures: [{ orderId: ORDER_1, error: failure }],
+    });
+    expect(harness.runTransition).toHaveBeenCalledTimes(2);
+    expect(harness.emitNotification).toHaveBeenCalledTimes(2);
+    expect(harness.upsertSnapshot).toHaveBeenCalledOnce();
+    expect(harness.upsertSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: ORDER_2 })
+    );
   });
 
   it("retries notification setup and snapshot work after the transition committed", async () => {

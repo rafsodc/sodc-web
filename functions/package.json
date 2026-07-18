@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "scripts": {
-    "lint": "cd .. && ./node_modules/.bin/eslint functions/src functions/scripts functions/vitest.config.ts",
+    "lint": "eslint src scripts vitest.config.ts eslint.config.mjs",
     "generate:templates": "ts-node --project tsconfig.scripts.json scripts/generate-template-manifest.ts",
     "check:template-sync": "ts-node --project tsconfig.scripts.json scripts/check-template-sync.ts",
     "prebuild": "npm run generate:templates",
@@ -29,11 +29,15 @@
     "stripe": "^22.0.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.9",
+    "eslint": "^9.39.1",
     "firebase-functions-test": "^0.3.3",
+    "globals": "^16.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.46.4",
     "vitest": "^4.1.9"
   },
   "private": true,

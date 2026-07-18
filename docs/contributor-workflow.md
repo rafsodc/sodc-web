@@ -57,6 +57,15 @@ cd functions
 npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
 ```
 
+Functions linting is self-contained: its ESLint dependencies and flat configuration live in
+`functions/`, so the same check also works after a Functions-only install:
+
+```sh
+cd functions
+npm ci
+npm run lint
+```
+
 ### Functions coverage
 
 `npm --prefix functions run test:coverage` reports on every hand-authored TypeScript file under `functions/src`, including files that no test imports. Build output, generated Data Connect code, generated email-template manifests, declarations, tests, and test helpers are excluded. HTML and JSON summary reports are written to `functions/coverage/`, which is ignored by Git and ESLint.
@@ -74,6 +83,7 @@ Higher grouped thresholds protect code at critical boundaries:
 
 - authorization, validation, and rate limiting (`helpers`, `rateLimiter`, `sections`, `validation`): 77% statements, 66% branches, 80% functions, 77% lines
 - deterministic payment, Stripe webhook, and state-transition logic: 90% statements, 73% branches, 100% functions, 94% lines
+- member-facing Stripe artifact retrieval: 95% statements, 78% branches, 100% functions, 95% lines
 - notification delivery and callback handling: 81% statements, 68% branches, 69% functions, 82% lines
 - notification delivery lease and idempotency logic: 65% statements, 50% branches, 57% functions, 64% lines
 
