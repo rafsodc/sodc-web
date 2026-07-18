@@ -6,6 +6,10 @@ import {
 } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
 import * as logger from "firebase-functions/logger";
+import {
+  stripeWebhookPaymentsSecret,
+  stripeWebhookSecret,
+} from "../paymentConfig";
 
 const serviceMocks = vi.hoisted(() => ({
   applyTransitions: vi.fn(),
@@ -138,14 +142,23 @@ describe("stripe payment webhook orchestration", () => {
   });
 
   it("fails closed when neither webhook secret is configured", async () => {
-    delete process.env.STRIPE_WEBHOOK_SECRET_PAYMENTS;
-    delete process.env.STRIPE_WEBHOOK_SECRET;
+    const paymentsSecretValue = vi
+      .spyOn(stripeWebhookPaymentsSecret, "value")
+      .mockReturnValue("");
+    const legacySecretValue = vi
+      .spyOn(stripeWebhookSecret, "value")
+      .mockReturnValue("");
     const response = responseHarness();
 
-    await handler(
-      { headers: {}, rawBody: Buffer.from("{}") },
-      response.res
-    );
+    try {
+      await handler(
+        { headers: {}, rawBody: Buffer.from("{}") },
+        response.res
+      );
+    } finally {
+      paymentsSecretValue.mockRestore();
+      legacySecretValue.mockRestore();
+    }
 
     expect(response.send).toHaveBeenCalledWith(500, "Webhook secret not configured");
     expect(getWebhookEvent).not.toHaveBeenCalled();
