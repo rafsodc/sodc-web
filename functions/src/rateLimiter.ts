@@ -37,7 +37,7 @@ export const CALLABLE_RATE_LIMITS = {
   createEventBookingCheckoutSession: { limit: 10, windowMs: 15 * MINUTE_MS },
   reconcileMyCheckoutSessionOrders: { limit: 20, windowMs: 15 * MINUTE_MS },
   getMyTicketOrderStripeArtifactsBatch: { limit: 10, windowMs: 15 * MINUTE_MS },
-  getTemplateSyncStatus: { limit: 10, windowMs: 5 * MINUTE_MS },
+  getTemplateSyncStatus: { limit: 30, windowMs: 5 * MINUTE_MS },
   getAnnouncementTemplates: { limit: 30, windowMs: 5 * MINUTE_MS },
   previewAnnouncementTemplate: { limit: 30, windowMs: 5 * MINUTE_MS },
   sendSectionAnnouncement: { limit: 5, windowMs: HOUR_MS },
