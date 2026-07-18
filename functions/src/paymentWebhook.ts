@@ -14,6 +14,7 @@ import { FUNCTIONS_REGION } from "./constants";
 import {
   isSupportedStripeEventType,
   normalizeStripeEvent,
+  type PaymentTransitionIntent,
 } from "./paymentStateMachine";
 import { classifyStripeWebhookDomain } from "./stripeWebhookRouting";
 import { govNotifyApiKey } from "./mailer";
@@ -41,6 +42,58 @@ function isoTimestampFromStripeEpochSeconds(value: unknown): string | null {
     return null;
   }
   return new Date(value * 1000).toISOString();
+}
+
+type PaymentTransitionEventContext = Pick<
+  Parameters<typeof applyPaymentTransitionToOrders>[0],
+  | "paidContext"
+  | "refundContext"
+  | "paymentIntentIdFromEvent"
+  | "refundAmountFromEvent"
+>;
+
+function paymentTransitionContextFromEvent(
+  event: { data: { object: unknown }; created?: unknown },
+  intent: PaymentTransitionIntent
+): PaymentTransitionEventContext {
+  const paidContext =
+    intent === "MARK_PAID"
+      ? paidContextFromCheckoutSessionObject(
+          event.data.object as {
+            id?: string;
+            payment_intent?: string | { id?: string };
+          }
+        )
+      : undefined;
+  const refundContext =
+    intent === "MARK_REFUNDED"
+      ? (() => {
+          const charge = event.data.object as {
+            id?: string;
+            amount_refunded?: number;
+            refunds?: { data?: Array<{ id?: string }> };
+          };
+          return {
+            stripeRefundId: charge.refunds?.data?.[0]?.id ?? null,
+            refundedAmountMinor:
+              typeof charge.amount_refunded === "number"
+                ? charge.amount_refunded
+                : null,
+            refundedAt: isoTimestampFromStripeEpochSeconds(event.created),
+          };
+        })()
+      : undefined;
+
+  return {
+    paidContext,
+    refundContext,
+    paymentIntentIdFromEvent:
+      intent === "MARK_PAID" ? paidContext?.stripePaymentIntentId ?? null : null,
+    refundAmountFromEvent:
+      intent === "MARK_REFUNDED"
+        ? refundContext?.refundedAmountMinor ?? null
+        : null,
+  };
 }
 
 async function appendWebhookLedgerEvent(args: {
@@ -131,24 +184,32 @@ async function handleStripeWebhookRequest(args: {
     const normalized = normalizeStripeEvent(event);
     const existingWebhookEvent = await getPaymentWebhookEventByStripeEventId({ stripeEventId: event.id });
     if ((existingWebhookEvent.data?.paymentWebhookEvents?.length ?? 0) > 0) {
-      if (event.type === "checkout.session.completed" && normalized.orderIds?.length) {
-        const paidContext = paidContextFromCheckoutSessionObject(
-          event.data.object as { id?: string; payment_intent?: string | { id?: string } }
-        );
+      if (
+        normalized.kind === "payment_transition" &&
+        normalized.intent &&
+        normalized.orderIds?.length
+      ) {
         const duplicateOrderIds = normalized.orderIds.map((id) => validateUUID(id, "orderId") as UUIDString);
-        const { appliedCount: duplicateAppliedCount } = await applyPaymentTransitionToOrders({
+        const context = paymentTransitionContextFromEvent(event, normalized.intent);
+        const {
+          appliedCount: duplicateAppliedCount,
+          reconciledOrderIds: duplicateReconciledOrderIds,
+        } = await applyPaymentTransitionToOrders({
           orderIds: duplicateOrderIds,
-          intent: "MARK_PAID",
-          webhookEventId: `${event.id}:reconcile`,
-          paidContext,
-          recoverFailedCheckoutPayment: true,
-          paymentIntentIdFromEvent: paidContext.stripePaymentIntentId,
+          intent: normalized.intent,
+          webhookEventId: event.id,
+          ...context,
+          recoverFailedCheckoutPayment:
+            normalized.intent === "MARK_PAID" &&
+            event.type === "checkout.session.completed",
+          recoverPostTransitionSideEffects: true,
         });
         logger.info(`${endpointName} duplicate delivery reconciliation`, {
           eventType: event.type,
           eventId: event.id,
           stripeObjectId,
           duplicateAppliedCount,
+          duplicateReconciledCount: duplicateReconciledOrderIds.length,
         });
       } else {
         logger.info(`${endpointName} duplicate delivery`, {
@@ -294,53 +355,18 @@ async function handleStripeWebhookRequest(args: {
       return;
     }
 
-    const paidContext =
-      intent === "MARK_PAID"
-        ? paidContextFromCheckoutSessionObject(
-            event.data.object as { id?: string; payment_intent?: string | { id?: string } }
-          )
-        : undefined;
-    const refundContext =
-      intent === "MARK_REFUNDED"
-        ? (() => {
-            const charge = event.data.object as {
-              id?: string;
-              amount_refunded?: number;
-              refunds?: { data?: Array<{ id?: string }> };
-            };
-            const latestRefundId = charge.refunds?.data?.[0]?.id ?? null;
-            return {
-              stripeRefundId: latestRefundId,
-              refundedAmountMinor: typeof charge.amount_refunded === "number" ? charge.amount_refunded : null,
-              refundedAt: isoTimestampFromStripeEpochSeconds((event as { created?: unknown }).created),
-            };
-          })()
-        : undefined;
+    const context = paymentTransitionContextFromEvent(event, intent);
 
-    const paymentIntentIdFromEvent =
-      intent === "MARK_PAID"
-        ? paidContext?.stripePaymentIntentId ?? null
-        : null;
-    const refundAmountFromEvent =
-      intent === "MARK_REFUNDED"
-        ? (() => {
-            const charge = event.data.object as { amount_refunded?: number };
-            return typeof charge.amount_refunded === "number" ? charge.amount_refunded : null;
-          })()
-        : null;
-
-    const { appliedCount } = await applyPaymentTransitionToOrders({
+    const { appliedCount, reconciledOrderIds } = await applyPaymentTransitionToOrders({
       orderIds,
       intent,
       webhookEventId: event.id,
-      paidContext,
-      refundContext,
+      ...context,
       recoverFailedCheckoutPayment: intent === "MARK_PAID" && event.type === "checkout.session.completed",
-      paymentIntentIdFromEvent,
-      refundAmountFromEvent,
+      recoverPostTransitionSideEffects: true,
     });
 
-    if (appliedCount === 0) {
+    if (reconciledOrderIds.length === 0) {
       await appendWebhookLedgerEvent({
         stripeEventId: event.id,
         eventType: event.type,
@@ -358,7 +384,10 @@ async function handleStripeWebhookRequest(args: {
       stripeEventId: event.id,
       eventType: event.type,
       outcome: PaymentWebhookEventOutcome.PROCESSED,
-      reason: `transition_applied:${intent}:${appliedCount}_orders`,
+      reason:
+        appliedCount > 0
+          ? `transition_applied:${intent}:${appliedCount}_orders`
+          : `transition_side_effects_reconciled:${intent}:${reconciledOrderIds.length}_orders`,
       ticketOrderId: canonicalOrderId,
       stripeObjectId,
       livemode: event.livemode,

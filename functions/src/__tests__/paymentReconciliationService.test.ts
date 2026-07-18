@@ -7,6 +7,7 @@ import {
 } from "@dataconnect/admin-generated";
 import {
   applyPaymentTransitionToOrders,
+  paymentReconciliationExceptionId,
   reconcilePaidCheckoutSessionOrders,
   upsertReconciliationSnapshot,
   type PaidCheckoutReconciliationDependencies,
@@ -27,6 +28,7 @@ interface TestOrder {
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
   disputeStatus: string | null;
+  webhookEventId: string | null;
   user: { id: string };
   event: { id: string };
 }
@@ -34,7 +36,8 @@ interface TestOrder {
 function order(
   id: UUIDString,
   userId = "user-1",
-  status = TicketOrderStatus.PENDING
+  status = TicketOrderStatus.PENDING,
+  webhookEventId: string | null = null
 ): TestOrder {
   return {
     id,
@@ -44,6 +47,7 @@ function order(
     stripeCheckoutSessionId: "cs_test_1",
     stripePaymentIntentId: null,
     disputeStatus: null,
+    webhookEventId,
     user: { id: userId },
     event: { id: EVENT_ID },
   };
@@ -61,8 +65,12 @@ function transitionDependencies(overrides: Partial<PaymentTransitionOrchestratio
     targetStatus: TicketOrderStatus.PAID,
     intent: "MARK_PAID" as const,
   });
-  const emitNotification = vi.fn(async () => ({ outcome: "sent" as const }));
-  const upsertSnapshot = vi.fn(async () => undefined);
+  const emitNotification = vi.fn<
+    PaymentTransitionOrchestrationDependencies["emitNotification"]
+  >(async () => undefined);
+  const upsertSnapshot = vi.fn<
+    PaymentTransitionOrchestrationDependencies["upsertSnapshot"]
+  >(async () => undefined);
   const dependencies = {
     getOrder,
     runTransition,
@@ -122,7 +130,7 @@ describe("applyPaymentTransitionToOrders", () => {
     );
   });
 
-  it("skips missing and idempotent orders without external side effects", async () => {
+  it("skips missing and idempotent orders when side-effect recovery is not requested", async () => {
     const harness = transitionDependencies();
     harness.getOrder
       .mockResolvedValueOnce({ data: { ticketOrder: null } })
@@ -151,6 +159,249 @@ describe("applyPaymentTransitionToOrders", () => {
     expect(harness.upsertSnapshot).not.toHaveBeenCalled();
   });
 
+  it("reconciles post-transition side effects for an exact event replay", async () => {
+    const harness = transitionDependencies();
+    harness.getOrder.mockResolvedValueOnce({
+      data: {
+        ticketOrder: order(
+          ORDER_1,
+          "user-1",
+          TicketOrderStatus.PAID,
+          "evt_replay"
+        ),
+      },
+    });
+    harness.runTransition.mockResolvedValueOnce({
+      action: "noop_replay",
+      reason: "already_in_target_state",
+      orderId: ORDER_1,
+      fromStatus: TicketOrderStatus.PAID,
+      targetStatus: TicketOrderStatus.PAID,
+      intent: "MARK_PAID",
+    });
+
+    const result = await applyPaymentTransitionToOrders(
+      {
+        orderIds: [ORDER_1],
+        intent: "MARK_PAID",
+        webhookEventId: "evt_replay",
+        recoverPostTransitionSideEffects: true,
+      },
+      harness.dependencies
+    );
+
+    expect(result).toEqual({
+      appliedCount: 0,
+      reconciledOrderIds: [ORDER_1],
+    });
+    expect(harness.emitNotification).toHaveBeenCalledOnce();
+    expect(harness.upsertSnapshot).toHaveBeenCalledOnce();
+  });
+
+  it("does not emit replay side effects for a different event", async () => {
+    const harness = transitionDependencies();
+    harness.getOrder.mockResolvedValueOnce({
+      data: {
+        ticketOrder: order(
+          ORDER_1,
+          "user-1",
+          TicketOrderStatus.PAID,
+          "evt_original"
+        ),
+      },
+    });
+    harness.runTransition.mockResolvedValueOnce({
+      action: "noop_replay",
+      reason: "already_in_target_state",
+      orderId: ORDER_1,
+      fromStatus: TicketOrderStatus.PAID,
+      targetStatus: TicketOrderStatus.PAID,
+      intent: "MARK_PAID",
+    });
+
+    const result = await applyPaymentTransitionToOrders(
+      {
+        orderIds: [ORDER_1],
+        intent: "MARK_PAID",
+        webhookEventId: "evt_distinct",
+        recoverPostTransitionSideEffects: true,
+      },
+      harness.dependencies
+    );
+
+    expect(result).toEqual({ appliedCount: 0, reconciledOrderIds: [] });
+    expect(harness.emitNotification).not.toHaveBeenCalled();
+    expect(harness.upsertSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("recovers one order and continues applying later orders in the same event", async () => {
+    const harness = transitionDependencies();
+    harness.getOrder.mockImplementation(async ({ id }: { id: UUIDString }) => ({
+      data: {
+        ticketOrder:
+          id === ORDER_1
+            ? order(
+                ORDER_1,
+                "user-1",
+                TicketOrderStatus.PAID,
+                "evt_multi"
+              )
+            : order(ORDER_2),
+      },
+    }) as never);
+    harness.runTransition
+      .mockResolvedValueOnce({
+        action: "noop_replay",
+        reason: "already_in_target_state",
+        orderId: ORDER_1,
+        fromStatus: TicketOrderStatus.PAID,
+        targetStatus: TicketOrderStatus.PAID,
+        intent: "MARK_PAID",
+      })
+      .mockResolvedValueOnce({
+        action: "applied",
+        reason: "legal_transition",
+        orderId: ORDER_2,
+        fromStatus: TicketOrderStatus.PENDING,
+        targetStatus: TicketOrderStatus.PAID,
+        intent: "MARK_PAID",
+      });
+
+    const result = await applyPaymentTransitionToOrders(
+      {
+        orderIds: [ORDER_1, ORDER_2],
+        intent: "MARK_PAID",
+        webhookEventId: "evt_multi",
+        recoverPostTransitionSideEffects: true,
+      },
+      harness.dependencies
+    );
+
+    expect(result).toEqual({
+      appliedCount: 1,
+      reconciledOrderIds: [ORDER_1, ORDER_2],
+    });
+    expect(harness.emitNotification).toHaveBeenCalledTimes(2);
+    expect(harness.upsertSnapshot).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries notification setup and snapshot work after the transition committed", async () => {
+    let storedOrder = order(ORDER_1);
+    const harness = transitionDependencies();
+    harness.getOrder.mockImplementation(async () => ({
+      data: { ticketOrder: storedOrder },
+    }) as never);
+    harness.runTransition
+      .mockImplementationOnce(async () => {
+        storedOrder = order(
+          ORDER_1,
+          "user-1",
+          TicketOrderStatus.PAID,
+          "evt_retry"
+        );
+        return {
+          action: "applied" as const,
+          reason: "legal_transition",
+          orderId: ORDER_1,
+          fromStatus: TicketOrderStatus.PENDING,
+          targetStatus: TicketOrderStatus.PAID,
+          intent: "MARK_PAID" as const,
+        };
+      })
+      .mockResolvedValueOnce({
+        action: "noop_replay",
+        reason: "already_in_target_state",
+        orderId: ORDER_1,
+        fromStatus: TicketOrderStatus.PAID,
+        targetStatus: TicketOrderStatus.PAID,
+        intent: "MARK_PAID",
+      });
+    harness.emitNotification
+      .mockRejectedValueOnce(new Error("delivery ledger unavailable"))
+      .mockResolvedValueOnce(undefined);
+
+    const request = {
+      orderIds: [ORDER_1],
+      intent: "MARK_PAID" as const,
+      webhookEventId: "evt_retry",
+      recoverPostTransitionSideEffects: true,
+    };
+    await expect(
+      applyPaymentTransitionToOrders(request, harness.dependencies)
+    ).rejects.toThrow("delivery ledger unavailable");
+    expect(harness.upsertSnapshot).not.toHaveBeenCalled();
+
+    await expect(
+      applyPaymentTransitionToOrders(request, harness.dependencies)
+    ).resolves.toEqual({
+      appliedCount: 0,
+      reconciledOrderIds: [ORDER_1],
+    });
+    expect(harness.emitNotification).toHaveBeenCalledTimes(2);
+    expect(harness.upsertSnapshot).toHaveBeenCalledOnce();
+  });
+
+  it("retries a failed snapshot without changing the notification delivery key", async () => {
+    let storedOrder = order(ORDER_1);
+    const harness = transitionDependencies();
+    harness.getOrder.mockImplementation(async () => ({
+      data: { ticketOrder: storedOrder },
+    }) as never);
+    harness.runTransition
+      .mockImplementationOnce(async () => {
+        storedOrder = order(
+          ORDER_1,
+          "user-1",
+          TicketOrderStatus.PAID,
+          "evt_snapshot_retry"
+        );
+        return {
+          action: "applied" as const,
+          reason: "legal_transition",
+          orderId: ORDER_1,
+          fromStatus: TicketOrderStatus.PENDING,
+          targetStatus: TicketOrderStatus.PAID,
+          intent: "MARK_PAID" as const,
+        };
+      })
+      .mockResolvedValueOnce({
+        action: "noop_replay",
+        reason: "already_in_target_state",
+        orderId: ORDER_1,
+        fromStatus: TicketOrderStatus.PAID,
+        targetStatus: TicketOrderStatus.PAID,
+        intent: "MARK_PAID",
+      });
+    harness.upsertSnapshot
+      .mockRejectedValueOnce(new Error("snapshot unavailable"))
+      .mockResolvedValueOnce(undefined);
+
+    const request = {
+      orderIds: [ORDER_1],
+      intent: "MARK_PAID" as const,
+      webhookEventId: "evt_snapshot_retry",
+      recoverPostTransitionSideEffects: true,
+    };
+    await expect(
+      applyPaymentTransitionToOrders(request, harness.dependencies)
+    ).rejects.toThrow("snapshot unavailable");
+    await expect(
+      applyPaymentTransitionToOrders(request, harness.dependencies)
+    ).resolves.toEqual({
+      appliedCount: 0,
+      reconciledOrderIds: [ORDER_1],
+    });
+
+    expect(harness.emitNotification).toHaveBeenCalledTimes(2);
+    expect(harness.emitNotification.mock.calls[0][0].stripeEventId).toBe(
+      "evt_snapshot_retry"
+    );
+    expect(harness.emitNotification.mock.calls[1][0].stripeEventId).toBe(
+      "evt_snapshot_retry"
+    );
+    expect(harness.upsertSnapshot).toHaveBeenCalledTimes(2);
+  });
+
   it("does not notify or reconcile when the state mutation fails", async () => {
     const harness = transitionDependencies();
     harness.runTransition.mockRejectedValueOnce(new Error("database unavailable"));
@@ -176,26 +427,48 @@ function snapshotDependencies() {
   getException.mockResolvedValue({
     data: { paymentReconciliationExceptions: [] },
   });
-  const createException = vi.fn(async () => ({ data: {} }));
-  const updateException = vi.fn(async () => ({ data: {} }));
+  const upsertException = vi.fn<
+    ReconciliationSnapshotDependencies["upsertException"]
+  >(async () => ({ data: {} } as never));
   const notifyExceptionOpened = vi.fn(async () => undefined);
   const dependencies = {
     getException,
-    createException,
-    updateException,
+    upsertException,
     notifyExceptionOpened,
     now: () => NOW,
   } as unknown as ReconciliationSnapshotDependencies;
   return {
     dependencies,
     getException,
-    createException,
-    updateException,
+    upsertException,
     notifyExceptionOpened,
   };
 }
 
 describe("upsertReconciliationSnapshot", () => {
+  it("derives stable, type-specific UUIDs for new exception rows", () => {
+    const missingId = paymentReconciliationExceptionId(
+      ORDER_1,
+      PaymentReconciliationExceptionType.MISSING_PAYMENT_INTENT
+    );
+
+    expect(missingId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+    expect(
+      paymentReconciliationExceptionId(
+        ORDER_1,
+        PaymentReconciliationExceptionType.MISSING_PAYMENT_INTENT
+      )
+    ).toBe(missingId);
+    expect(
+      paymentReconciliationExceptionId(
+        ORDER_1,
+        PaymentReconciliationExceptionType.ACTIVE_DISPUTE
+      )
+    ).not.toBe(missingId);
+  });
+
   it("persists all exception states before alerting on a newly opened signal", async () => {
     const harness = snapshotDependencies();
 
@@ -212,8 +485,7 @@ describe("upsertReconciliationSnapshot", () => {
       harness.dependencies
     );
 
-    expect(harness.createException).toHaveBeenCalledTimes(3);
-    expect(harness.updateException).not.toHaveBeenCalled();
+    expect(harness.upsertException).toHaveBeenCalledTimes(3);
     expect(harness.notifyExceptionOpened).toHaveBeenCalledOnce();
     expect(harness.notifyExceptionOpened).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -222,10 +494,10 @@ describe("upsertReconciliationSnapshot", () => {
         stripeEventId: "evt_missing_pi",
       })
     );
-    const latestCreate = Math.max(
-      ...harness.createException.mock.invocationCallOrder
+    const latestUpsert = Math.max(
+      ...harness.upsertException.mock.invocationCallOrder
     );
-    expect(latestCreate).toBeLessThan(
+    expect(latestUpsert).toBeLessThan(
       harness.notifyExceptionOpened.mock.invocationCallOrder[0]
     );
   });
@@ -261,8 +533,44 @@ describe("upsertReconciliationSnapshot", () => {
       harness.dependencies
     );
 
-    expect(harness.updateException).toHaveBeenCalledTimes(3);
+    expect(harness.upsertException).toHaveBeenCalledTimes(3);
+    expect(harness.upsertException).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: `exception-${PaymentReconciliationExceptionType.MISSING_PAYMENT_INTENT}`,
+        exceptionType:
+          PaymentReconciliationExceptionType.MISSING_PAYMENT_INTENT,
+      })
+    );
     expect(harness.notifyExceptionOpened).not.toHaveBeenCalled();
+  });
+
+  it("uses the same primary IDs across concurrent snapshot retries", async () => {
+    const harness = snapshotDependencies();
+    const request = {
+      orderId: ORDER_1,
+      snapshot: {
+        status: TicketOrderStatus.PAID,
+        totalAmountMinor: 5000,
+        stripePaymentIntentId: null,
+      },
+      stripeEventId: "evt_concurrent",
+    };
+
+    await Promise.all([
+      upsertReconciliationSnapshot(request, harness.dependencies),
+      upsertReconciliationSnapshot(request, harness.dependencies),
+    ]);
+
+    for (const exceptionType of Object.values(
+      PaymentReconciliationExceptionType
+    )) {
+      const ids = harness.upsertException.mock.calls
+        .map(([variables]) => variables)
+        .filter((variables) => variables.exceptionType === exceptionType)
+        .map((variables) => variables.id);
+      expect(ids).toHaveLength(2);
+      expect(new Set(ids).size).toBe(1);
+    }
   });
 
   it("suppresses the duplicate active-dispute alert on the dispute webhook path", async () => {
@@ -282,13 +590,13 @@ describe("upsertReconciliationSnapshot", () => {
       harness.dependencies
     );
 
-    expect(harness.createException).toHaveBeenCalledTimes(3);
+    expect(harness.upsertException).toHaveBeenCalledTimes(3);
     expect(harness.notifyExceptionOpened).not.toHaveBeenCalled();
   });
 
   it("does not alert when exception persistence fails", async () => {
     const harness = snapshotDependencies();
-    harness.createException.mockRejectedValueOnce(new Error("write failed"));
+    harness.upsertException.mockRejectedValueOnce(new Error("write failed"));
 
     await expect(
       upsertReconciliationSnapshot(

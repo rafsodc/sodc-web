@@ -240,19 +240,84 @@ describe("stripe payment webhook orchestration", () => {
 
     await handler(signedRequest(event), response.res);
 
-    expect(serviceMocks.applyTransitions).toHaveBeenCalledWith({
-      orderIds: [ORDER_ID],
-      intent: "MARK_PAID",
-      webhookEventId: "evt_duplicate:reconcile",
-      paidContext: {
-        stripeCheckoutSessionId: "cs_test_1",
-        stripePaymentIntentId: "pi_test_1",
-      },
-      recoverFailedCheckoutPayment: true,
-      paymentIntentIdFromEvent: "pi_test_1",
-    });
+    expect(serviceMocks.applyTransitions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderIds: [ORDER_ID],
+        intent: "MARK_PAID",
+        webhookEventId: "evt_duplicate",
+        paidContext: {
+          stripeCheckoutSessionId: "cs_test_1",
+          stripePaymentIntentId: "pi_test_1",
+        },
+        recoverFailedCheckoutPayment: true,
+        recoverPostTransitionSideEffects: true,
+        paymentIntentIdFromEvent: "pi_test_1",
+      })
+    );
     expect(createWebhookEvent).not.toHaveBeenCalled();
     expect(response.send).toHaveBeenCalledWith(200, "Duplicate event");
+  });
+
+  it("reconciles duplicate failed and refunded events using the original event id", async () => {
+    getWebhookEvent.mockResolvedValue({
+      data: { paymentWebhookEvents: [{ id: "existing" }] },
+    } as never);
+
+    const failedResponse = responseHarness();
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_failed_duplicate",
+          type: "checkout.session.expired",
+          object: {
+            id: "cs_expired",
+            metadata: { orderIds: ORDER_ID },
+          },
+        })
+      ),
+      failedResponse.res
+    );
+
+    const refundResponse = responseHarness();
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_refund_duplicate",
+          type: "charge.refunded",
+          object: {
+            id: "ch_1",
+            amount_refunded: 5000,
+            refunds: { data: [{ id: "re_1" }] },
+            metadata: { orderIds: ORDER_ID },
+          },
+        })
+      ),
+      refundResponse.res
+    );
+
+    expect(serviceMocks.applyTransitions).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        intent: "MARK_FAILED",
+        webhookEventId: "evt_failed_duplicate",
+        recoverPostTransitionSideEffects: true,
+      })
+    );
+    expect(serviceMocks.applyTransitions).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        intent: "MARK_REFUNDED",
+        webhookEventId: "evt_refund_duplicate",
+        refundContext: expect.objectContaining({
+          stripeRefundId: "re_1",
+          refundedAmountMinor: 5000,
+        }),
+        recoverPostTransitionSideEffects: true,
+      })
+    );
+    expect(createWebhookEvent).not.toHaveBeenCalled();
+    expect(failedResponse.send).toHaveBeenCalledWith(200, "Duplicate event");
+    expect(refundResponse.send).toHaveBeenCalledWith(200, "Duplicate event");
   });
 
   it("applies a payment transition before recording the processed event", async () => {
@@ -349,6 +414,30 @@ describe("stripe payment webhook orchestration", () => {
       })
     );
     expect(response.send).toHaveBeenCalledWith(200, "No transitions applied");
+  });
+
+  it("records recovered post-transition side effects as processed", async () => {
+    serviceMocks.applyTransitions.mockResolvedValueOnce({
+      appliedCount: 0,
+      reconciledOrderIds: [ORDER_ID],
+    });
+    const response = responseHarness();
+    const event = stripeEvent({
+      id: "evt_side_effect_retry",
+      type: "checkout.session.expired",
+      object: { id: "cs_expired", metadata: { orderIds: ORDER_ID } },
+    });
+
+    await handler(signedRequest(event), response.res);
+
+    expect(createWebhookEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stripeEventId: "evt_side_effect_retry",
+        outcome: PaymentWebhookEventOutcome.PROCESSED,
+        reason: "transition_side_effects_reconciled:MARK_FAILED:1_orders",
+      })
+    );
+    expect(response.send).toHaveBeenCalledWith(200, "ok");
   });
 
   it("persists dispute state and ledger data before reconciliation and ops email", async () => {

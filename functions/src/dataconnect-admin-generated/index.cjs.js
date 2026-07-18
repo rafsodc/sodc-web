@@ -395,19 +395,12 @@ function getPaymentReconciliationExceptionByOrderAndType(dcOrVarsOrOptions, vars
 }
 exports.getPaymentReconciliationExceptionByOrderAndType = getPaymentReconciliationExceptionByOrderAndType;
 
-function createPaymentReconciliationException(dcOrVarsOrOptions, varsOrOptions, options) {
+function upsertPaymentReconciliationException(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreatePaymentReconciliationException', inputVars, inputOpts);
+  return dcInstance.executeMutation('UpsertPaymentReconciliationException', inputVars, inputOpts);
 }
-exports.createPaymentReconciliationException = createPaymentReconciliationException;
-
-function updatePaymentReconciliationExceptionById(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdatePaymentReconciliationExceptionById', inputVars, inputOpts);
-}
-exports.updatePaymentReconciliationExceptionById = updatePaymentReconciliationExceptionById;
+exports.upsertPaymentReconciliationException = upsertPaymentReconciliationException;
 
 function updateBookingPreferencesFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

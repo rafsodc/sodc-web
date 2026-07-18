@@ -457,20 +457,6 @@ export interface CreateNotifyDeliveryReceiptVariables {
   lastAttemptedAt: TimestampString;
 }
 
-export interface CreatePaymentReconciliationExceptionData {
-  paymentReconciliationException_insert: PaymentReconciliationException_Key;
-}
-
-export interface CreatePaymentReconciliationExceptionVariables {
-  ticketOrderId: UUIDString;
-  exceptionType: PaymentReconciliationExceptionType;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-
 export interface CreatePaymentWebhookEventData {
   paymentWebhookEvent_insert: PaymentWebhookEvent_Key;
 }
@@ -2460,19 +2446,6 @@ export interface UpdateEventVariables {
   maxGuestsWithoutModeratorApproval?: number | null;
 }
 
-export interface UpdatePaymentReconciliationExceptionByIdData {
-  paymentReconciliationException_update?: PaymentReconciliationException_Key | null;
-}
-
-export interface UpdatePaymentReconciliationExceptionByIdVariables {
-  id: UUIDString;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-
 export interface UpdateSectionData {
   section_update?: Section_Key | null;
 }
@@ -2552,6 +2525,21 @@ export interface UpsertCallableInvocationVariables {
   functionName: string;
   windowStart: TimestampString;
   count: number;
+}
+
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
+}
+
+export interface UpsertPaymentReconciliationExceptionVariables {
+  id: UUIDString;
+  ticketOrderId: UUIDString;
+  exceptionType: PaymentReconciliationExceptionType;
+  status: PaymentReconciliationExceptionStatus;
+  note?: string | null;
+  ownerUserId?: string | null;
+  lastAttemptedAt?: TimestampString | null;
+  resolvedAt?: TimestampString | null;
 }
 
 export interface UpsertTicketOrderDisputeFromWebhookData {
@@ -3070,29 +3058,17 @@ export const getPaymentReconciliationExceptionByOrderAndTypeRef: GetPaymentRecon
 export function getPaymentReconciliationExceptionByOrderAndType(vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetPaymentReconciliationExceptionByOrderAndTypeData, GetPaymentReconciliationExceptionByOrderAndTypeVariables>;
 export function getPaymentReconciliationExceptionByOrderAndType(dc: DataConnect, vars: GetPaymentReconciliationExceptionByOrderAndTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetPaymentReconciliationExceptionByOrderAndTypeData, GetPaymentReconciliationExceptionByOrderAndTypeVariables>;
 
-interface CreatePaymentReconciliationExceptionRef {
+interface UpsertPaymentReconciliationExceptionRef {
   /* Allow users to create refs without passing in DataConnect */
-  (vars: CreatePaymentReconciliationExceptionVariables): MutationRef<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+  (vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
   /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables): MutationRef<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+  (dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
   operationName: string;
 }
-export const createPaymentReconciliationExceptionRef: CreatePaymentReconciliationExceptionRef;
+export const upsertPaymentReconciliationExceptionRef: UpsertPaymentReconciliationExceptionRef;
 
-export function createPaymentReconciliationException(vars: CreatePaymentReconciliationExceptionVariables): MutationPromise<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
-export function createPaymentReconciliationException(dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables): MutationPromise<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
-
-interface UpdatePaymentReconciliationExceptionByIdRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationRef<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationRef<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-  operationName: string;
-}
-export const updatePaymentReconciliationExceptionByIdRef: UpdatePaymentReconciliationExceptionByIdRef;
-
-export function updatePaymentReconciliationExceptionById(vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationPromise<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-export function updatePaymentReconciliationExceptionById(dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationPromise<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
+export function upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
+export function upsertPaymentReconciliationException(dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 
 interface UpdateBookingPreferencesFromCallableRef {
   /* Allow users to create refs without passing in DataConnect */

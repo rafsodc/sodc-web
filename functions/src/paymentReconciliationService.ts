@@ -1,12 +1,12 @@
 import { HttpsError } from "firebase-functions/v2/https";
+import { createHash } from "node:crypto";
 import {
-  createPaymentReconciliationException,
   getPaymentReconciliationExceptionByOrderAndType,
   getTicketOrderForWebhook,
   markTicketOrderFailedFromWebhook,
   markTicketOrderPaidFromWebhook,
   markTicketOrderRefundedFromWebhook,
-  updatePaymentReconciliationExceptionById,
+  upsertPaymentReconciliationException,
   PaymentReconciliationExceptionStatus,
   PaymentReconciliationExceptionType,
   TicketOrderStatus,
@@ -43,6 +43,23 @@ const RECONCILIATION_EXCEPTION_TYPES = [
   PaymentReconciliationExceptionType.ACTIVE_DISPUTE,
 ] as const;
 
+/** Stable primary key so concurrent retries upsert the same exception row. */
+export function paymentReconciliationExceptionId(
+  orderId: UUIDString,
+  exceptionType: PaymentReconciliationExceptionType
+): UUIDString {
+  const digest = createHash("sha256")
+    .update(`payment-reconciliation:${orderId}:${exceptionType}`)
+    .digest("hex");
+  return [
+    digest.slice(0, 8),
+    digest.slice(8, 12),
+    `5${digest.slice(13, 16)}`,
+    `8${digest.slice(17, 20)}`,
+    digest.slice(20, 32),
+  ].join("-") as UUIDString;
+}
+
 /** Whether to send the internal ops email when a reconciliation exception is open. */
 export function shouldSendReconciliationExceptionOpenedAlert(args: {
   status: PaymentReconciliationExceptionStatus;
@@ -69,16 +86,14 @@ export function shouldSendReconciliationExceptionOpenedAlert(args: {
 
 export interface ReconciliationSnapshotDependencies {
   getException: typeof getPaymentReconciliationExceptionByOrderAndType;
-  createException: typeof createPaymentReconciliationException;
-  updateException: typeof updatePaymentReconciliationExceptionById;
+  upsertException: typeof upsertPaymentReconciliationException;
   notifyExceptionOpened: typeof notifyPaymentOpsReconciliationExceptionOpened;
   now: () => string;
 }
 
 const defaultReconciliationSnapshotDependencies: ReconciliationSnapshotDependencies = {
   getException: getPaymentReconciliationExceptionByOrderAndType,
-  createException: createPaymentReconciliationException,
-  updateException: updatePaymentReconciliationExceptionById,
+  upsertException: upsertPaymentReconciliationException,
   notifyExceptionOpened: notifyPaymentOpsReconciliationExceptionOpened,
   now: () => new Date().toISOString(),
 };
@@ -117,26 +132,18 @@ export async function upsertReconciliationSnapshot(
     const existingRow = existing.data?.paymentReconciliationExceptions?.[0];
     const previousStatus = existingRow?.status;
 
-    if (existingRow?.id) {
-      await dependencies.updateException({
-        id: existingRow.id,
-        status,
-        note,
-        ownerUserId: null,
-        lastAttemptedAt: nowIso,
-        resolvedAt: signal ? null : nowIso,
-      });
-    } else {
-      await dependencies.createException({
-        ticketOrderId: args.orderId,
-        exceptionType: type,
-        status,
-        note,
-        ownerUserId: null,
-        lastAttemptedAt: nowIso,
-        resolvedAt: signal ? null : nowIso,
-      });
-    }
+    await dependencies.upsertException({
+      id:
+        existingRow?.id ??
+        paymentReconciliationExceptionId(args.orderId, type),
+      ticketOrderId: args.orderId,
+      exceptionType: type,
+      status,
+      note,
+      ownerUserId: null,
+      lastAttemptedAt: nowIso,
+      resolvedAt: signal ? null : nowIso,
+    });
 
     const isNewOpen = !existingRow?.id;
     const reopenedFromResolved =
@@ -211,6 +218,7 @@ export async function applyPaymentTransitionToOrders(
       refundedAt?: string | null;
     };
     recoverFailedCheckoutPayment?: boolean;
+    recoverPostTransitionSideEffects?: boolean;
     paymentIntentIdFromEvent?: string | null;
     refundAmountFromEvent?: number | null;
   },
@@ -245,10 +253,17 @@ export async function applyPaymentTransitionToOrders(
         markRefunded: markTicketOrderRefundedFromWebhook,
       }
     );
-    if (transitionResult.action !== "applied") {
+    const isApplied = transitionResult.action === "applied";
+    const isRecoverableReplay =
+      transitionResult.action === "noop_replay" &&
+      args.recoverPostTransitionSideEffects === true &&
+      currentOrder.webhookEventId === args.webhookEventId;
+    if (!isApplied && !isRecoverableReplay) {
       continue;
     }
-    appliedCount += 1;
+    if (isApplied) {
+      appliedCount += 1;
+    }
     reconciledOrderIds.push(orderId);
     const notificationType =
       args.intent === "MARK_PAID" ? "PAYMENT_PAID" : args.intent === "MARK_FAILED" ? "PAYMENT_FAILED" : "PAYMENT_REFUNDED";
@@ -358,6 +373,7 @@ export async function reconcilePaidCheckoutSessionOrders(
     webhookEventId: args.webhookEventId,
     paidContext,
     recoverFailedCheckoutPayment: true,
+    recoverPostTransitionSideEffects: true,
     paymentIntentIdFromEvent: paidContext.stripePaymentIntentId,
   });
 

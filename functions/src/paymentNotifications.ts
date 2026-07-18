@@ -68,5 +68,6 @@ export async function emitPaymentLifecycleNotification(
       stripeEventId: notification.stripeEventId,
       error: sanitizeMailerError(error),
     });
+    throw error;
   }
 }

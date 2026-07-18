@@ -96,8 +96,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*MarkTicketOrderFailedFromWebhook*](#markticketorderfailedfromwebhook)
   - [*MarkTicketOrderRefundedFromWebhook*](#markticketorderrefundedfromwebhook)
   - [*UpsertTicketOrderDisputeFromWebhook*](#upsertticketorderdisputefromwebhook)
-  - [*CreatePaymentReconciliationException*](#createpaymentreconciliationexception)
-  - [*UpdatePaymentReconciliationExceptionById*](#updatepaymentreconciliationexceptionbyid)
+  - [*UpsertPaymentReconciliationException*](#upsertpaymentreconciliationexception)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
   - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
   - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
@@ -1785,9 +1784,9 @@ import { connectorConfig, listFailedNotificationDeliveriesForRecovery, ListFaile
 
 // The `ListFailedNotificationDeliveriesForRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`:
 const listFailedNotificationDeliveriesForRecoveryVars: ListFailedNotificationDeliveriesForRecoveryVariables = {
-  attemptedBefore: ...,
-  maxAttemptCount: ...,
-  limit: ...,
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
 };
 
 // Call the `listFailedNotificationDeliveriesForRecovery()` function to execute the query.
@@ -1817,9 +1816,9 @@ import { connectorConfig, listFailedNotificationDeliveriesForRecoveryRef, ListFa
 
 // The `ListFailedNotificationDeliveriesForRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`:
 const listFailedNotificationDeliveriesForRecoveryVars: ListFailedNotificationDeliveriesForRecoveryVariables = {
-  attemptedBefore: ...,
-  maxAttemptCount: ...,
-  limit: ...,
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
 };
 
 // Call the `listFailedNotificationDeliveriesForRecoveryRef()` function to get a reference to the query.
@@ -1910,9 +1909,9 @@ import { connectorConfig, listStalePendingNotificationDeliveriesForRecovery, Lis
 
 // The `ListStalePendingNotificationDeliveriesForRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`:
 const listStalePendingNotificationDeliveriesForRecoveryVars: ListStalePendingNotificationDeliveriesForRecoveryVariables = {
-  attemptedBefore: ...,
-  maxAttemptCount: ...,
-  limit: ...,
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
 };
 
 // Call the `listStalePendingNotificationDeliveriesForRecovery()` function to execute the query.
@@ -1942,9 +1941,9 @@ import { connectorConfig, listStalePendingNotificationDeliveriesForRecoveryRef, 
 
 // The `ListStalePendingNotificationDeliveriesForRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`:
 const listStalePendingNotificationDeliveriesForRecoveryVars: ListStalePendingNotificationDeliveriesForRecoveryVariables = {
-  attemptedBefore: ...,
-  maxAttemptCount: ...,
-  limit: ...,
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
 };
 
 // Call the `listStalePendingNotificationDeliveriesForRecoveryRef()` function to get a reference to the query.
@@ -9818,13 +9817,13 @@ import { connectorConfig, recordNotificationRecoveryFailureById, RecordNotificat
 
 // The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
 const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
-  id: ...,
-  expectedStatus: ...,
-  expectedAttemptCount: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
-  lastErrorCode: ...,
-  lastErrorMessage: ...,
+  id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+  lastErrorCode: ..., 
+  lastErrorMessage: ..., 
 };
 
 // Call the `recordNotificationRecoveryFailureById()` function to execute the mutation.
@@ -9854,13 +9853,13 @@ import { connectorConfig, recordNotificationRecoveryFailureByIdRef, RecordNotifi
 
 // The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
 const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
-  id: ...,
-  expectedStatus: ...,
-  expectedAttemptCount: ...,
-  attemptCount: ...,
-  lastAttemptedAt: ...,
-  lastErrorCode: ...,
-  lastErrorMessage: ...,
+  id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+  lastErrorCode: ..., 
+  lastErrorMessage: ..., 
 };
 
 // Call the `recordNotificationRecoveryFailureByIdRef()` function to get a reference to the mutation.
@@ -10623,40 +10622,41 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## CreatePaymentReconciliationException
-You can execute the `CreatePaymentReconciliationException` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## UpsertPaymentReconciliationException
+You can execute the `UpsertPaymentReconciliationException` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-createPaymentReconciliationException(vars: CreatePaymentReconciliationExceptionVariables): MutationPromise<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 
-interface CreatePaymentReconciliationExceptionRef {
+interface UpsertPaymentReconciliationExceptionRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: CreatePaymentReconciliationExceptionVariables): MutationRef<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+  (vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 }
-export const createPaymentReconciliationExceptionRef: CreatePaymentReconciliationExceptionRef;
+export const upsertPaymentReconciliationExceptionRef: UpsertPaymentReconciliationExceptionRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
 ```typescript
-createPaymentReconciliationException(dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables): MutationPromise<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+upsertPaymentReconciliationException(dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 
-interface CreatePaymentReconciliationExceptionRef {
+interface UpsertPaymentReconciliationExceptionRef {
   ...
-  (dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables): MutationRef<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+  (dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 }
-export const createPaymentReconciliationExceptionRef: CreatePaymentReconciliationExceptionRef;
+export const upsertPaymentReconciliationExceptionRef: UpsertPaymentReconciliationExceptionRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createPaymentReconciliationExceptionRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertPaymentReconciliationExceptionRef:
 ```typescript
-const name = createPaymentReconciliationExceptionRef.operationName;
+const name = upsertPaymentReconciliationExceptionRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `UpsertPaymentReconciliationException` mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface CreatePaymentReconciliationExceptionVariables {
+export interface UpsertPaymentReconciliationExceptionVariables {
+  id: UUIDString;
   ticketOrderId: UUIDString;
   exceptionType: PaymentReconciliationExceptionType;
   status: PaymentReconciliationExceptionStatus;
@@ -10667,22 +10667,23 @@ export interface CreatePaymentReconciliationExceptionVariables {
 }
 ```
 ### Return Type
-Recall that executing the `CreatePaymentReconciliationException` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `UpsertPaymentReconciliationException` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `CreatePaymentReconciliationExceptionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `UpsertPaymentReconciliationExceptionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface CreatePaymentReconciliationExceptionData {
-  paymentReconciliationException_insert: PaymentReconciliationException_Key;
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
 }
 ```
-### Using `CreatePaymentReconciliationException`'s action shortcut function
+### Using `UpsertPaymentReconciliationException`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, createPaymentReconciliationException, CreatePaymentReconciliationExceptionVariables } from '@dataconnect/generated';
+import { connectorConfig, upsertPaymentReconciliationException, UpsertPaymentReconciliationExceptionVariables } from '@dataconnect/generated';
 
-// The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
-const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
+// The `UpsertPaymentReconciliationException` mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`:
+const upsertPaymentReconciliationExceptionVars: UpsertPaymentReconciliationExceptionVariables = {
+  id: ..., 
   ticketOrderId: ..., 
   exceptionType: ..., 
   status: ..., 
@@ -10692,33 +10693,34 @@ const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExcep
   resolvedAt: ..., // optional
 };
 
-// Call the `createPaymentReconciliationException()` function to execute the mutation.
+// Call the `upsertPaymentReconciliationException()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await createPaymentReconciliationException(createPaymentReconciliationExceptionVars);
+const { data } = await upsertPaymentReconciliationException(upsertPaymentReconciliationExceptionVars);
 // Variables can be defined inline as well.
-const { data } = await createPaymentReconciliationException({ ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
+const { data } = await upsertPaymentReconciliationException({ id: ..., ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await createPaymentReconciliationException(dataConnect, createPaymentReconciliationExceptionVars);
+const { data } = await upsertPaymentReconciliationException(dataConnect, upsertPaymentReconciliationExceptionVars);
 
-console.log(data.paymentReconciliationException_insert);
+console.log(data.paymentReconciliationException_upsert);
 
 // Or, you can use the `Promise` API.
-createPaymentReconciliationException(createPaymentReconciliationExceptionVars).then((response) => {
+upsertPaymentReconciliationException(upsertPaymentReconciliationExceptionVars).then((response) => {
   const data = response.data;
-  console.log(data.paymentReconciliationException_insert);
+  console.log(data.paymentReconciliationException_upsert);
 });
 ```
 
-### Using `CreatePaymentReconciliationException`'s `MutationRef` function
+### Using `UpsertPaymentReconciliationException`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, createPaymentReconciliationExceptionRef, CreatePaymentReconciliationExceptionVariables } from '@dataconnect/generated';
+import { connectorConfig, upsertPaymentReconciliationExceptionRef, UpsertPaymentReconciliationExceptionVariables } from '@dataconnect/generated';
 
-// The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
-const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
+// The `UpsertPaymentReconciliationException` mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`:
+const upsertPaymentReconciliationExceptionVars: UpsertPaymentReconciliationExceptionVariables = {
+  id: ..., 
   ticketOrderId: ..., 
   exceptionType: ..., 
   status: ..., 
@@ -10728,149 +10730,25 @@ const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExcep
   resolvedAt: ..., // optional
 };
 
-// Call the `createPaymentReconciliationExceptionRef()` function to get a reference to the mutation.
-const ref = createPaymentReconciliationExceptionRef(createPaymentReconciliationExceptionVars);
+// Call the `upsertPaymentReconciliationExceptionRef()` function to get a reference to the mutation.
+const ref = upsertPaymentReconciliationExceptionRef(upsertPaymentReconciliationExceptionVars);
 // Variables can be defined inline as well.
-const ref = createPaymentReconciliationExceptionRef({ ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
+const ref = upsertPaymentReconciliationExceptionRef({ id: ..., ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = createPaymentReconciliationExceptionRef(dataConnect, createPaymentReconciliationExceptionVars);
+const ref = upsertPaymentReconciliationExceptionRef(dataConnect, upsertPaymentReconciliationExceptionVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.paymentReconciliationException_insert);
+console.log(data.paymentReconciliationException_upsert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.paymentReconciliationException_insert);
-});
-```
-
-## UpdatePaymentReconciliationExceptionById
-You can execute the `UpdatePaymentReconciliationExceptionById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-updatePaymentReconciliationExceptionById(vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationPromise<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-
-interface UpdatePaymentReconciliationExceptionByIdRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationRef<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-}
-export const updatePaymentReconciliationExceptionByIdRef: UpdatePaymentReconciliationExceptionByIdRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-updatePaymentReconciliationExceptionById(dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationPromise<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-
-interface UpdatePaymentReconciliationExceptionByIdRef {
-  ...
-  (dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationRef<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-}
-export const updatePaymentReconciliationExceptionByIdRef: UpdatePaymentReconciliationExceptionByIdRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updatePaymentReconciliationExceptionByIdRef:
-```typescript
-const name = updatePaymentReconciliationExceptionByIdRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UpdatePaymentReconciliationExceptionByIdVariables {
-  id: UUIDString;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-```
-### Return Type
-Recall that executing the `UpdatePaymentReconciliationExceptionById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UpdatePaymentReconciliationExceptionByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UpdatePaymentReconciliationExceptionByIdData {
-  paymentReconciliationException_update?: PaymentReconciliationException_Key | null;
-}
-```
-### Using `UpdatePaymentReconciliationExceptionById`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updatePaymentReconciliationExceptionById, UpdatePaymentReconciliationExceptionByIdVariables } from '@dataconnect/generated';
-
-// The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
-const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-  id: ..., 
-  status: ..., 
-  note: ..., // optional
-  ownerUserId: ..., // optional
-  lastAttemptedAt: ..., // optional
-  resolvedAt: ..., // optional
-};
-
-// Call the `updatePaymentReconciliationExceptionById()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updatePaymentReconciliationExceptionById(updatePaymentReconciliationExceptionByIdVars);
-// Variables can be defined inline as well.
-const { data } = await updatePaymentReconciliationExceptionById({ id: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updatePaymentReconciliationExceptionById(dataConnect, updatePaymentReconciliationExceptionByIdVars);
-
-console.log(data.paymentReconciliationException_update);
-
-// Or, you can use the `Promise` API.
-updatePaymentReconciliationExceptionById(updatePaymentReconciliationExceptionByIdVars).then((response) => {
-  const data = response.data;
-  console.log(data.paymentReconciliationException_update);
-});
-```
-
-### Using `UpdatePaymentReconciliationExceptionById`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updatePaymentReconciliationExceptionByIdRef, UpdatePaymentReconciliationExceptionByIdVariables } from '@dataconnect/generated';
-
-// The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
-const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-  id: ..., 
-  status: ..., 
-  note: ..., // optional
-  ownerUserId: ..., // optional
-  lastAttemptedAt: ..., // optional
-  resolvedAt: ..., // optional
-};
-
-// Call the `updatePaymentReconciliationExceptionByIdRef()` function to get a reference to the mutation.
-const ref = updatePaymentReconciliationExceptionByIdRef(updatePaymentReconciliationExceptionByIdVars);
-// Variables can be defined inline as well.
-const ref = updatePaymentReconciliationExceptionByIdRef({ id: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = updatePaymentReconciliationExceptionByIdRef(dataConnect, updatePaymentReconciliationExceptionByIdVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.paymentReconciliationException_update);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.paymentReconciliationException_update);
+  console.log(data.paymentReconciliationException_upsert);
 });
 ```
 
