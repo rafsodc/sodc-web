@@ -27,6 +27,18 @@ export default defineConfig([
     files: ['src/**/*.{ts,tsx}'],
   },
   {
+    files: [
+      '*.config.{js,mjs,cjs,ts,mts,cts}',
+      '.github/scripts/**/*.{js,mjs,cjs}',
+      'functions/*.config.{js,mjs,cjs,ts,mts,cts}',
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+      sourceType: 'module',
+    },
+  },
+  {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
