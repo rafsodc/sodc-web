@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "scripts": {
-    "lint": "cd .. && ./node_modules/.bin/eslint functions/src functions/scripts",
+    "lint": "cd .. && ./node_modules/.bin/eslint functions/src functions/scripts functions/vitest.config.ts",
     "generate:templates": "ts-node --project tsconfig.scripts.json scripts/generate-template-manifest.ts",
     "check:template-sync": "ts-node --project tsconfig.scripts.json scripts/check-template-sync.ts",
     "prebuild": "npm run generate:templates",
