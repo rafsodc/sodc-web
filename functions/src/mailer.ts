@@ -1,6 +1,7 @@
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { NotifyClient } from "notifications-node-client";
+import { createHash } from "node:crypto";
 import { sanitizeMailerError } from "./mailerErrors";
 
 export const govNotifyApiKey = defineSecret("GOV_NOTIFY_API_KEY");
@@ -125,6 +126,18 @@ export function readGovNotifyTemplateIds<TTemplateName extends string>(
 
 export function getGovNotifyEmailReplyToId(env: NodeJS.ProcessEnv = process.env): string | undefined {
   return maybeNonEmpty(env[GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV]);
+}
+
+/**
+ * Keeps provider-side idempotency scoped to one recipient without placing their
+ * email address in GOV.UK Notify metadata.
+ */
+export function recipientScopedNotifyReference(reference: string, recipientEmail: string): string {
+  const recipientHash = createHash("sha256")
+    .update(recipientEmail.trim().toLowerCase())
+    .digest("hex")
+    .slice(0, 24);
+  return `${reference}:${recipientHash}`;
 }
 
 export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloads<TPayloads>>(

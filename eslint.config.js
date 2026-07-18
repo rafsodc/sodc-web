@@ -30,7 +30,6 @@ export default defineConfig([
     files: [
       '*.config.{js,mjs,cjs,ts,mts,cts}',
       '.github/scripts/**/*.{js,mjs,cjs}',
-      'functions/*.config.{js,mjs,cjs,ts,mts,cts}',
     ],
     languageOptions: {
       ecmaVersion: 2022,
@@ -61,26 +60,6 @@ export default defineConfig([
       'react-hooks/refs': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/set-state-in-render': 'off',
-    },
-  },
-  {
-    files: ['functions/src/**/*.ts', 'functions/scripts/**/*.ts'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      globals: globals.node,
-      sourceType: 'module',
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-        },
-      ],
-      quotes: ['error', 'double'],
     },
   },
   {

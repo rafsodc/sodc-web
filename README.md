@@ -56,6 +56,7 @@ npm run dev
 ```sh
 cd functions
 npm install
+npm run lint
 npm run build
 ```
 

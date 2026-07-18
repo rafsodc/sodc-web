@@ -33,7 +33,7 @@ flowchart LR
 
 Takeover uses a conditional Data Connect update matching the row's status and previous attempt count. Only one concurrent invocation can win. `SENT` and `FAILED` completion updates also match the owning attempt count, so an expired invocation cannot overwrite a newer attempt if it resumes late. A direct domain retry can reclaim `FAILED` immediately; scheduled recovery applies a cooldown to avoid hammering the provider.
 
-Before sending an email with a stable Notify reference, the mailer queries GOV.UK Notify for an existing notification with that reference. If Notify accepted the earlier attempt but the function terminated before recording `SENT`, recovery adopts the existing provider notification ID and completes the ledger instead of sending a duplicate email.
+Before sending an email with a stable Notify reference, the mailer queries GOV.UK Notify for an existing notification with that reference. Multi-recipient dispatchers scope that reference to one recipient using a stable hash, so provider-side deduplication cannot suppress later recipients in the fan-out. If Notify accepted the earlier attempt but the function terminated before recording `SENT`, recovery adopts the existing provider notification ID and completes the ledger instead of sending a duplicate email.
 
 Every new delivery stores a versioned `recoveryPayload` containing the minimum routing
 context needed to reconstruct its dispatcher. Fan-out workflows also store the original

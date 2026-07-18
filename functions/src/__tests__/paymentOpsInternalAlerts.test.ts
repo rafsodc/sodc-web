@@ -85,7 +85,9 @@ describe("payment ops internal alert orchestration", () => {
   });
 
   it("deduplicates recipients and sends reconciliation context through the ledger", async () => {
-    const sendEmail = vi.fn(async () => ({ providerNotificationId: "notify-1" }));
+    const sendEmail = vi.fn(async (_request: { reference?: string }) => ({
+      providerNotificationId: "notify-1",
+    }));
 
     await notifyPaymentOpsReconciliationExceptionOpened({
       orderId: ORDER_ID,
@@ -120,6 +122,9 @@ describe("payment ops internal alert orchestration", () => {
         }),
       })
     );
+    const references = sendEmail.mock.calls.map(([request]) => request.reference);
+    expect(new Set(references)).toHaveLength(2);
+    expect(references.every((reference) => !reference?.includes("example.com"))).toBe(true);
   });
 
   it("continues to the next recipient after one ledger delivery fails", async () => {
@@ -175,7 +180,9 @@ describe("payment ops internal alert orchestration", () => {
   });
 
   it("sends complete dispute state to the targeted recipient", async () => {
-    const sendEmail = vi.fn(async () => ({ providerNotificationId: "notify-dispute" }));
+    const sendEmail = vi.fn(async (_request: { reference?: string }) => ({
+      providerNotificationId: "notify-dispute",
+    }));
 
     await notifyPaymentOpsDisputeSideState({
       orderId: ORDER_ID,
@@ -186,7 +193,7 @@ describe("payment ops internal alert orchestration", () => {
       disputeLocalState: "DISPUTE_UPDATED",
       stripeDisputeId: "dp_1",
       appBaseUrl: "https://app.example/",
-      recipientEmails: ["OPS@example.com"],
+      recipientEmails: ["OPS@example.com", "finance@example.com"],
       getMailer: () => ({ sendEmail } as never),
     });
 
@@ -211,5 +218,8 @@ describe("payment ops internal alert orchestration", () => {
         }),
       })
     );
+    const references = sendEmail.mock.calls.map(([request]) => request.reference);
+    expect(new Set(references)).toHaveLength(2);
+    expect(references.every((reference) => !reference?.includes("example.com"))).toBe(true);
   });
 });

@@ -78,6 +78,12 @@ export default defineConfig({
           functions: 70,
           lines: 93,
         },
+        'src/paymentStripeArtifacts.ts': {
+          statements: 95,
+          branches: 78,
+          functions: 100,
+          lines: 95,
+        },
         'src/paymentWebhook.ts': {
           statements: 85,
           branches: 65,
