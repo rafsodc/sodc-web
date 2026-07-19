@@ -49,7 +49,7 @@ const PublicHomePage = lazy(() => import("./features/welcome/components/PublicHo
 const AccountSettingsPage = lazy(() => import("./features/account/components/AccountSettingsPage"));
 const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"));
 const PasswordResetRequestPage = lazy(() => import("./features/auth/components/PasswordResetRequestPage"));
-const PasswordResetActionPage = lazy(() => import("./features/auth/components/PasswordResetActionPage"));
+const EmailActionPage = lazy(() => import("./features/auth/components/EmailActionPage"));
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
 const UnsubscribeConfirmedPage = lazy(() => import("./features/account/components/UnsubscribeConfirmedPage"));
 
@@ -86,7 +86,6 @@ function AppContent() {
     authInitialized,
     logoutSuccess,
     setLogoutSuccess,
-    triggerEmailCheck,
   } = useAppAuthSession(handleLoggedOut);
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
@@ -192,10 +191,7 @@ function AppContent() {
           >
             <Suspense fallback={<LoadingFallback />}>
               <OnboardingShell activeStep="verify">
-                <EmailVerificationMessage
-                  user={user}
-                  onVerified={async () => triggerEmailCheck()}
-                />
+                <EmailVerificationMessage user={user} />
               </OnboardingShell>
             </Suspense>
           </Box>
@@ -447,7 +443,7 @@ function AppContent() {
                   path={ROUTES.AUTH_ACTION}
                   element={
                     <Suspense fallback={<LoadingFallback />}>
-                      <PasswordResetActionPage />
+                      <EmailActionPage />
                     </Suspense>
                   }
                 />

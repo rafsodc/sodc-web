@@ -1,84 +1,47 @@
-import { useState, useEffect } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { sendEmailVerification, reload, type User } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { sendEmailVerification, type User } from "firebase/auth";
+import { buildEmailVerificationActionCodeSettings } from "../utils/emailAction";
+import { getEmailVerificationSendError } from "../utils/emailVerificationErrors";
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 interface EmailVerificationMessageProps {
   user: User;
-  onVerified?: () => void;
 }
 
-export default function EmailVerificationMessage({
-  user,
-  onVerified,
-}: EmailVerificationMessageProps) {
+export default function EmailVerificationMessage({ user }: EmailVerificationMessageProps) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const cooldownActive = cooldownSeconds > 0;
+
+  useEffect(() => {
+    if (!cooldownActive) return;
+    const interval = window.setInterval(() => {
+      setCooldownSeconds((remaining) => Math.max(0, remaining - 1));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [cooldownActive]);
 
   const handleResend = async () => {
+    if (sending || cooldownActive) return;
     setError(null);
     setSending(true);
     try {
-      await sendEmailVerification(user);
+      await sendEmailVerification(
+        user,
+        buildEmailVerificationActionCodeSettings(window.location.origin),
+      );
       setSent(true);
-      setTimeout(() => setSent(false), 5000);
-    } catch (e: any) {
-      setError(e?.message || "Failed to resend verification email");
+      setCooldownSeconds(RESEND_COOLDOWN_SECONDS);
+    } catch (sendError) {
+      setError(getEmailVerificationSendError(sendError));
     } finally {
       setSending(false);
     }
   };
-
-  const checkVerification = async () => {
-    setChecking(true);
-    setError(null);
-    try {
-      await reload(user);
-      await user.getIdToken(true);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      if (user.emailVerified) {
-        if (onVerified) {
-          await onVerified();
-        }
-      } else {
-        setError("Email not yet verified. Please check your inbox and click the verification link.");
-      }
-    } catch (e: any) {
-      setError(e?.message || "Failed to check verification status");
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.emailVerified) {
-      return;
-    }
-
-    const interval = setInterval(async () => {
-      if (user && !user.emailVerified) {
-        try {
-          await reload(user);
-          if (user.emailVerified && onVerified) {
-            onVerified();
-          }
-        } catch {
-          // Silently fail auto-checks
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [user, onVerified]);
 
   return (
     <Box sx={{ textAlign: "left" }}>
@@ -86,44 +49,34 @@ export default function EmailVerificationMessage({
         Verify your email
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-        We sent a link to <strong>{user.email}</strong>. Click the link in that email, then come
-        back here to continue.
+        We sent a link to <strong>{user.email}</strong>. Open it to verify your address and continue
+        account setup in the app.
       </Typography>
 
       <Alert severity="info" sx={{ mb: 2 }}>
         Check your spam folder if the message does not arrive within a few minutes.
       </Alert>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {sent && (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Verification email sent!
+          Verification email sent. The link will open this application.
         </Alert>
       )}
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-        <Button
-          variant="contained"
-          onClick={checkVerification}
-          disabled={checking}
-          sx={{
-            backgroundColor: "secondary.main",
-            color: "white",
-            "&:hover": {
-              backgroundColor: "secondary.main",
-              opacity: 0.9,
-            },
-          }}
-        >
-          {checking ? <CircularProgress size={24} /> : "I've clicked the link"}
+      <Stack spacing={1}>
+        <Button variant="outlined" onClick={handleResend} disabled={sending || cooldownActive}>
+          {sending ? (
+            <CircularProgress size={24} color="inherit" aria-label="Sending verification email" />
+          ) : cooldownActive ? (
+            `Resend available in ${cooldownSeconds}s`
+          ) : (
+            "Resend verification email"
+          )}
         </Button>
-        <Button variant="outlined" onClick={handleResend} disabled={sending || sent}>
-          {sending ? <CircularProgress size={24} /> : "Resend email"}
-        </Button>
+        <Typography variant="caption" color="text.secondary">
+          You can safely close this page after opening the verification link.
+        </Typography>
       </Stack>
     </Box>
   );

@@ -16,6 +16,8 @@ import {
   validateRegistrationPassword,
 } from "../utils/passwordValidation";
 import { REGISTRATION_MIN_PASSWORD_LENGTH } from "../../../constants/auth";
+import { buildEmailVerificationActionCodeSettings } from "../utils/emailAction";
+import { getEmailVerificationSendError } from "../utils/emailVerificationErrors";
 
 interface RegisterProps {
   onSuccess?: () => void;
@@ -75,7 +77,10 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
       }
       await userCredential.user.getIdToken(true);
 
-      await sendEmailVerification(userCredential.user);
+      await sendEmailVerification(
+        userCredential.user,
+        buildEmailVerificationActionCodeSettings(window.location.origin),
+      );
 
       setSuccess(true);
       setPassword("");
@@ -92,7 +97,9 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
         errorMessage = "Invalid email address";
       } else if (e?.code === "auth/weak-password") {
         errorMessage = "Password is too weak";
-      } else if (e?.message) {
+      } else if (e?.code?.startsWith("auth/")) {
+        errorMessage = getEmailVerificationSendError(e);
+      } else if (e instanceof Error) {
         errorMessage = e.message;
       }
       setError(errorMessage);
@@ -108,8 +115,8 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
           You&apos;re in — now check your inbox.
         </Alert>
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          We sent a verification link to <strong>{email}</strong>. Click the link in that email,
-          then come back here to complete your profile. We look forward to welcoming you to SODC.
+          We sent a verification link to <strong>{email}</strong>. Open the link to verify your
+          address and continue your profile in the app. We look forward to welcoming you to SODC.
         </Typography>
         {onSignInClick && (
           <Button variant="contained" onClick={onSignInClick}>

@@ -26,6 +26,8 @@ vi.mock('../config/firebase', () => ({
     signOut: vi.fn(),
     createUserWithEmailAndPassword: vi.fn(),
     sendEmailVerification: vi.fn(),
+    checkActionCode: vi.fn(),
+    applyActionCode: vi.fn(),
     sendPasswordResetEmail: vi.fn(),
     verifyPasswordResetCode: vi.fn(),
     confirmPasswordReset: vi.fn(),
