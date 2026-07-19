@@ -292,6 +292,7 @@ export interface CreateAnnouncementRecipientData {
 }
 
 export interface CreateAnnouncementRecipientVariables {
+  id: UUIDString;
   announcementSendId: UUIDString;
   userId: string;
   email: string;
@@ -315,7 +316,7 @@ export interface CreateAnnouncementSendVariables {
   sentBy: string;
   recipientCount: number;
   skippedCount: number;
-  failureCount: number;
+  recipientSnapshot: string;
 }
 
 export interface CreateBookingDraftData {
@@ -623,6 +624,9 @@ export interface GetAnnouncementRecipientBySendAndUserData {
     id: UUIDString;
     status: string;
     failureReason?: string | null;
+    processingVersion: number;
+    processingStartedAt?: TimestampString | null;
+    providerNotificationId?: string | null;
     deliveryVersion: number;
     deliveryStatusUpdatedAt?: TimestampString | null;
     deliveryReceiptId?: string | null;
@@ -634,13 +638,25 @@ export interface GetAnnouncementRecipientBySendAndUserVariables {
   userId: string;
 }
 
-export interface GetAnnouncementRecipientCountData {
+export interface GetAnnouncementRecipientProgressData {
+  announcementRecipients: ({
+    status: string;
+  })[];
+}
+
+export interface GetAnnouncementRecipientProgressVariables {
+  sendId: UUIDString;
+}
+
+export interface GetAnnouncementRecipientsForResumeData {
   announcementRecipients: ({
     id: UUIDString;
+    userId: string;
+    status: string;
   } & AnnouncementRecipient_Key)[];
 }
 
-export interface GetAnnouncementRecipientCountVariables {
+export interface GetAnnouncementRecipientsForResumeVariables {
   sendId: UUIDString;
 }
 
@@ -648,6 +664,12 @@ export interface GetAnnouncementSendByIdData {
   announcementSend?: {
     id: UUIDString;
     sectionId: UUIDString;
+    templateUuid: string;
+    templateName?: string | null;
+    sentBy: string;
+    recipientCount: number;
+    skippedCount: number;
+    recipientSnapshot?: string | null;
   } & AnnouncementSend_Key;
 }
 
@@ -664,7 +686,6 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
-    failureCount: number;
   } & AnnouncementSend_Key)[];
 }
 
@@ -2362,6 +2383,15 @@ export interface TryApplyNotifyDeliveryUserStateVariables {
   emailDeliveryReceiptId: string;
 }
 
+export interface TryMarkAnnouncementRecipientEnqueueFailedData {
+  announcementRecipient_updateMany: number;
+}
+
+export interface TryMarkAnnouncementRecipientEnqueueFailedVariables {
+  id: UUIDString;
+  failureReason: string;
+}
+
 export interface TryUpdateAnnouncementRecipientDeliveryStatusData {
   announcementRecipient_updateMany: number;
 }
@@ -2374,6 +2404,22 @@ export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
   failureReason?: string | null;
   deliveryStatusUpdatedAt: TimestampString;
   deliveryReceiptId: string;
+}
+
+export interface TryUpdateAnnouncementRecipientProcessingStatusData {
+  announcementRecipient_updateMany: number;
+}
+
+export interface TryUpdateAnnouncementRecipientProcessingStatusVariables {
+  id: UUIDString;
+  expectedStatus: string;
+  expectedProcessingVersion: number;
+  status: string;
+  processingVersion: number;
+  processingStartedAt?: TimestampString | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  providerNotificationId?: string | null;
 }
 
 export interface UnregisterFromSectionData {
@@ -2842,10 +2888,15 @@ export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnounc
 /** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipient' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientData>>;
 
-/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientCount' Query. Allow users to execute without passing in DataConnect. */
-export function getAnnouncementRecipientCount(dc: DataConnect, vars: GetAnnouncementRecipientCountVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientCountData>>;
-/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientCount' Query. Allow users to pass in custom DataConnect instances. */
-export function getAnnouncementRecipientCount(vars: GetAnnouncementRecipientCountVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientCountData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientProgress' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementRecipientProgress(dc: DataConnect, vars: GetAnnouncementRecipientProgressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientProgressData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientProgress' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementRecipientProgress(vars: GetAnnouncementRecipientProgressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientProgressData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientsForResume' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementRecipientsForResume(dc: DataConnect, vars: GetAnnouncementRecipientsForResumeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientsForResumeData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientsForResume' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementRecipientsForResume(vars: GetAnnouncementRecipientsForResumeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientsForResumeData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendHistory' Query. Allow users to execute without passing in DataConnect. */
 export function getAnnouncementSendHistory(dc: DataConnect, vars: GetAnnouncementSendHistoryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendHistoryData>>;
@@ -2866,6 +2917,16 @@ export function getAnnouncementSendById(vars: GetAnnouncementSendByIdVariables, 
 export function getAnnouncementRecipientBySendAndUser(dc: DataConnect, vars: GetAnnouncementRecipientBySendAndUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientBySendAndUserData>>;
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientBySendAndUser' Query. Allow users to pass in custom DataConnect instances. */
 export function getAnnouncementRecipientBySendAndUser(vars: GetAnnouncementRecipientBySendAndUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientBySendAndUserData>>;
+
+/** Generated Node Admin SDK operation action function for the 'TryUpdateAnnouncementRecipientProcessingStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function tryUpdateAnnouncementRecipientProcessingStatus(dc: DataConnect, vars: TryUpdateAnnouncementRecipientProcessingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryUpdateAnnouncementRecipientProcessingStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'TryUpdateAnnouncementRecipientProcessingStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function tryUpdateAnnouncementRecipientProcessingStatus(vars: TryUpdateAnnouncementRecipientProcessingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryUpdateAnnouncementRecipientProcessingStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'TryMarkAnnouncementRecipientEnqueueFailed' Mutation. Allow users to execute without passing in DataConnect. */
+export function tryMarkAnnouncementRecipientEnqueueFailed(dc: DataConnect, vars: TryMarkAnnouncementRecipientEnqueueFailedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryMarkAnnouncementRecipientEnqueueFailedData>>;
+/** Generated Node Admin SDK operation action function for the 'TryMarkAnnouncementRecipientEnqueueFailed' Mutation. Allow users to pass in custom DataConnect instances. */
+export function tryMarkAnnouncementRecipientEnqueueFailed(vars: TryMarkAnnouncementRecipientEnqueueFailedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryMarkAnnouncementRecipientEnqueueFailedData>>;
 
 /** Generated Node Admin SDK operation action function for the 'TryUpdateAnnouncementRecipientDeliveryStatus' Mutation. Allow users to execute without passing in DataConnect. */
 export function tryUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryUpdateAnnouncementRecipientDeliveryStatusData>>;

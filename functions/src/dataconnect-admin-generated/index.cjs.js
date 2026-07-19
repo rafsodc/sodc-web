@@ -486,12 +486,19 @@ function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) 
 }
 exports.createAnnouncementRecipient = createAnnouncementRecipient;
 
-function getAnnouncementRecipientCount(dcOrVarsOrOptions, varsOrOptions, options) {
+function getAnnouncementRecipientProgress(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAnnouncementRecipientCount', inputVars, inputOpts);
+  return dcInstance.executeQuery('GetAnnouncementRecipientProgress', inputVars, inputOpts);
 }
-exports.getAnnouncementRecipientCount = getAnnouncementRecipientCount;
+exports.getAnnouncementRecipientProgress = getAnnouncementRecipientProgress;
+
+function getAnnouncementRecipientsForResume(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientsForResume', inputVars, inputOpts);
+}
+exports.getAnnouncementRecipientsForResume = getAnnouncementRecipientsForResume;
 
 function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -520,6 +527,20 @@ function getAnnouncementRecipientBySendAndUser(dcOrVarsOrOptions, varsOrOptions,
   return dcInstance.executeQuery('GetAnnouncementRecipientBySendAndUser', inputVars, inputOpts);
 }
 exports.getAnnouncementRecipientBySendAndUser = getAnnouncementRecipientBySendAndUser;
+
+function tryUpdateAnnouncementRecipientProcessingStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('TryUpdateAnnouncementRecipientProcessingStatus', inputVars, inputOpts);
+}
+exports.tryUpdateAnnouncementRecipientProcessingStatus = tryUpdateAnnouncementRecipientProcessingStatus;
+
+function tryMarkAnnouncementRecipientEnqueueFailed(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('TryMarkAnnouncementRecipientEnqueueFailed', inputVars, inputOpts);
+}
+exports.tryMarkAnnouncementRecipientEnqueueFailed = tryMarkAnnouncementRecipientEnqueueFailed;
 
 function tryUpdateAnnouncementRecipientDeliveryStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

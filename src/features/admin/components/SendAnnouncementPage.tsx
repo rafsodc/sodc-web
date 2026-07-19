@@ -22,6 +22,7 @@ import {
   previewAnnouncementTemplate,
   sendSectionAnnouncement,
   type AnnouncementTemplate,
+  type SendAnnouncementResult,
 } from "../../../shared/utils/firebaseFunctions";
 import TemplateEditor from "./TemplateEditor";
 import AnnouncementSendHistory from "./AnnouncementSendHistory";
@@ -56,11 +57,8 @@ export default function SendAnnouncementPage({
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{
-    sendId: string;
-    queuedCount: number;
-    skippedCount: number;
-  } | null>(null);
+  const [sendResult, setSendResult] = useState<SendAnnouncementResult | null>(null);
+  const [sendRequestId, setSendRequestId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyTrigger, setHistoryTrigger] = useState(0);
   const [templatesTrigger, setTemplatesTrigger] = useState(0);
@@ -82,6 +80,7 @@ export default function SendAnnouncementPage({
     setPreviewError(null);
     setSendResult(null);
     setSendError(null);
+    setSendRequestId(null);
     if (!id) return;
     setLoadingPreview(true);
     try {
@@ -102,7 +101,9 @@ export default function SendAnnouncementPage({
     setSendResult(null);
     try {
       const selectedTemplate = templates.find((t) => t.id === selectedId);
-      const result = await sendSectionAnnouncement(sectionId, selectedId, selectedTemplate?.name);
+      const requestId = sendRequestId ?? crypto.randomUUID();
+      setSendRequestId(requestId);
+      const result = await sendSectionAnnouncement(sectionId, selectedId, requestId, selectedTemplate?.name);
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
     } catch {
@@ -216,11 +217,26 @@ export default function SendAnnouncementPage({
       {selectedId && (
         <>
           {sendResult ? (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {sendResult.queuedCount} email{sendResult.queuedCount !== 1 ? "s" : ""} queued for delivery.
-              {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped (opted out).`}
-              {" "}Check send history below to track progress.
-            </Alert>
+            <>
+              <Alert severity={sendResult.failedToEnqueueCount > 0 ? "warning" : "success"} sx={{ mb: 2 }}>
+                {sendResult.queuedCount} email{sendResult.queuedCount !== 1 ? "s" : ""} queued for delivery.
+                {sendResult.failedToEnqueueCount > 0 &&
+                  ` ${sendResult.failedToEnqueueCount} could not be queued and can be retried.`}
+                {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped (opted out).`}
+                {sendResult.resumed && " This send was resumed from its original recipient list."}
+                {" "}Check send history below to track progress.
+              </Alert>
+              {sendResult.failedToEnqueueCount > 0 && (
+                <Button
+                  variant="outlined"
+                  onClick={() => void handleSend()}
+                  disabled={sending}
+                  sx={{ mb: 2 }}
+                >
+                  {sending ? "Retrying…" : `Retry ${sendResult.failedToEnqueueCount} failed enqueue${sendResult.failedToEnqueueCount === 1 ? "" : "s"}`}
+                </Button>
+              )}
+            </>
           ) : (
             <>
               {sendError && <Alert severity="error" sx={{ mb: 2 }}>{sendError}</Alert>}
@@ -230,7 +246,7 @@ export default function SendAnnouncementPage({
                 onClick={() => void handleSend()}
                 disabled={sending}
               >
-                {sending ? "Sending…" : `Send to ${sectionName} members`}
+                {sending ? "Sending…" : sendRequestId ? "Resume announcement send" : `Send to ${sectionName} members`}
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 Members who have opted out of announcements will not receive this email.

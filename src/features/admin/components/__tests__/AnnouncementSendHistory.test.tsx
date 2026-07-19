@@ -22,6 +22,7 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     recipientCount: 3,
     skippedCount: 1,
     processedCount: 3,
+    failureCount: 1,
   },
   {
     id: "send-2",
@@ -33,6 +34,7 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     recipientCount: 2,
     skippedCount: 0,
     processedCount: 2,
+    failureCount: 0,
   },
 ];
 
@@ -88,6 +90,24 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     sentAt: "2026-07-01T10:00:05.000Z",
     failureReason: "GOV Notify reported permanent-failure",
   },
+  {
+    id: "rec-6",
+    sendId: "send-1",
+    userId: "user-f",
+    email: "frank@example.com",
+    firstName: "Frank",
+    lastName: "Green",
+    status: "queued",
+  },
+  {
+    id: "rec-7",
+    sendId: "send-1",
+    userId: "user-g",
+    email: "grace@example.com",
+    firstName: "Grace",
+    lastName: "Blue",
+    status: "delivery_unknown",
+  },
 ];
 
 describe("AnnouncementSendHistory", () => {
@@ -129,7 +149,7 @@ describe("AnnouncementSendHistory", () => {
 
     // Counts visible (send-1: 3 processed, 1 skipped; send-2: 2 processed, 0 skipped)
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument(); // skippedCount for send-1
+    expect(screen.getAllByText("1")).toHaveLength(2); // skipped and attention counts for send-1
   });
 
   it("expands a row and loads recipients", async () => {
@@ -154,6 +174,8 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.getByText("Carol Brown")).toBeInTheDocument();
     expect(screen.getByText("Dave White")).toBeInTheDocument();
     expect(screen.getByText("Eve Black")).toBeInTheDocument();
+    expect(screen.getByText("Frank Green")).toBeInTheDocument();
+    expect(screen.getByText("Grace Blue")).toBeInTheDocument();
     expect(screen.getByText("opted_out")).toBeInTheDocument();
     expect(screen.getByText("GOV Notify rejected")).toBeInTheDocument();
     expect(screen.getByText("GOV Notify reported permanent-failure")).toBeInTheDocument();
@@ -164,6 +186,8 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.getAllByText("Failed").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Delivered")).toBeInTheDocument();
     expect(screen.getByText("Bounced")).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(screen.getByText("Checking delivery")).toBeInTheDocument();
   });
 
   it("shows an error when recipients fail to load", async () => {

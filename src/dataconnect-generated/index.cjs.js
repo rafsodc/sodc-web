@@ -871,18 +871,33 @@ exports.createAnnouncementRecipient = function createAnnouncementRecipient(dcOrV
 }
 ;
 
-const getAnnouncementRecipientCountRef = (dcOrVars, vars) => {
+const getAnnouncementRecipientProgressRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetAnnouncementRecipientCount', inputVars);
+  return queryRef(dcInstance, 'GetAnnouncementRecipientProgress', inputVars);
 }
-getAnnouncementRecipientCountRef.operationName = 'GetAnnouncementRecipientCount';
-exports.getAnnouncementRecipientCountRef = getAnnouncementRecipientCountRef;
+getAnnouncementRecipientProgressRef.operationName = 'GetAnnouncementRecipientProgress';
+exports.getAnnouncementRecipientProgressRef = getAnnouncementRecipientProgressRef;
 
-exports.getAnnouncementRecipientCount = function getAnnouncementRecipientCount(dcOrVars, varsOrOptions, options) {
+exports.getAnnouncementRecipientProgress = function getAnnouncementRecipientProgress(dcOrVars, varsOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getAnnouncementRecipientCountRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  return executeQuery(getAnnouncementRecipientProgressRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementRecipientsForResumeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementRecipientsForResume', inputVars);
+}
+getAnnouncementRecipientsForResumeRef.operationName = 'GetAnnouncementRecipientsForResume';
+exports.getAnnouncementRecipientsForResumeRef = getAnnouncementRecipientsForResumeRef;
+
+exports.getAnnouncementRecipientsForResume = function getAnnouncementRecipientsForResume(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementRecipientsForResumeRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -943,6 +958,34 @@ exports.getAnnouncementRecipientBySendAndUser = function getAnnouncementRecipien
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getAnnouncementRecipientBySendAndUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const tryUpdateAnnouncementRecipientProcessingStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'TryUpdateAnnouncementRecipientProcessingStatus', inputVars);
+}
+tryUpdateAnnouncementRecipientProcessingStatusRef.operationName = 'TryUpdateAnnouncementRecipientProcessingStatus';
+exports.tryUpdateAnnouncementRecipientProcessingStatusRef = tryUpdateAnnouncementRecipientProcessingStatusRef;
+
+exports.tryUpdateAnnouncementRecipientProcessingStatus = function tryUpdateAnnouncementRecipientProcessingStatus(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(tryUpdateAnnouncementRecipientProcessingStatusRef(dcInstance, inputVars));
+}
+;
+
+const tryMarkAnnouncementRecipientEnqueueFailedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'TryMarkAnnouncementRecipientEnqueueFailed', inputVars);
+}
+tryMarkAnnouncementRecipientEnqueueFailedRef.operationName = 'TryMarkAnnouncementRecipientEnqueueFailed';
+exports.tryMarkAnnouncementRecipientEnqueueFailedRef = tryMarkAnnouncementRecipientEnqueueFailedRef;
+
+exports.tryMarkAnnouncementRecipientEnqueueFailed = function tryMarkAnnouncementRecipientEnqueueFailed(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(tryMarkAnnouncementRecipientEnqueueFailedRef(dcInstance, inputVars));
 }
 ;
 

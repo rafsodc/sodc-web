@@ -1135,7 +1135,7 @@ mutation CreateAnnouncementSend(
   $sentBy: String!
   $recipientCount: Int!
   $skippedCount: Int!
-  $failureCount: Int!
+  $recipientSnapshot: String!
 ) @auth(level: NO_ACCESS) {
   announcementSend_insert(data: {
     id: $id
@@ -1145,11 +1145,12 @@ mutation CreateAnnouncementSend(
     sentBy: $sentBy
     recipientCount: $recipientCount
     skippedCount: $skippedCount
-    failureCount: $failureCount
+    recipientSnapshot: $recipientSnapshot
   })
 }
 
 mutation CreateAnnouncementRecipient(
+  $id: UUID!
   $announcementSendId: UUID!
   $userId: String!
   $email: String!
@@ -1161,6 +1162,7 @@ mutation CreateAnnouncementRecipient(
   $failureReason: String
 ) @auth(level: NO_ACCESS) {
   announcementRecipient_insert(data: {
+    id: $id
     announcementSendId: $announcementSendId
     userId: $userId
     email: $email
@@ -1173,9 +1175,17 @@ mutation CreateAnnouncementRecipient(
   })
 }
 
-query GetAnnouncementRecipientCount($sendId: UUID!) @auth(level: NO_ACCESS) {
+query GetAnnouncementRecipientProgress($sendId: UUID!) @auth(level: NO_ACCESS) {
+  announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
+    status
+  }
+}
+
+query GetAnnouncementRecipientsForResume($sendId: UUID!) @auth(level: NO_ACCESS) {
   announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
     id
+    userId
+    status
   }
 }
 
@@ -1192,7 +1202,6 @@ query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
     sentAt
     recipientCount
     skippedCount
-    failureCount
   }
 }
 
@@ -1219,6 +1228,12 @@ query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
   announcementSend(id: $id) {
     id
     sectionId
+    templateUuid
+    templateName
+    sentBy
+    recipientCount
+    skippedCount
+    recipientSnapshot
   }
 }
 
@@ -1233,10 +1248,58 @@ query GetAnnouncementRecipientBySendAndUser($announcementSendId: UUID!, $userId:
     id
     status
     failureReason
+    processingVersion
+    processingStartedAt
+    providerNotificationId
     deliveryVersion
     deliveryStatusUpdatedAt
     deliveryReceiptId
   }
+}
+
+mutation TryUpdateAnnouncementRecipientProcessingStatus(
+  $id: UUID!
+  $expectedStatus: String!
+  $expectedProcessingVersion: Int!
+  $status: String!
+  $processingVersion: Int!
+  $processingStartedAt: Timestamp
+  $sentAt: Timestamp
+  $failureReason: String
+  $providerNotificationId: String
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: $expectedStatus }
+      processingVersion: { eq: $expectedProcessingVersion }
+    }
+    data: {
+      status: $status
+      processingVersion: $processingVersion
+      processingStartedAt: $processingStartedAt
+      sentAt: $sentAt
+      failureReason: $failureReason
+      providerNotificationId: $providerNotificationId
+    }
+  )
+}
+
+mutation TryMarkAnnouncementRecipientEnqueueFailed(
+  $id: UUID!
+  $failureReason: String!
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: "queued" }
+      processingVersion: { eq: 0 }
+    }
+    data: {
+      status: "enqueue_failed"
+      failureReason: $failureReason
+    }
+  )
 }
 
 mutation TryUpdateAnnouncementRecipientDeliveryStatus(
