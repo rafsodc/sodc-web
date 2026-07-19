@@ -137,8 +137,15 @@ export function extractTemplateVariables(body: string, subject: string): string[
   const found = new Set<string>();
   let index = 0;
   while (index < text.length) {
-    const start = text.indexOf("((", index);
+    let start = text.indexOf("((", index);
     if (start === -1) break;
+    // A run of more than two consecutive "(" — e.g. a placeholder URL wrapped in markdown
+    // link syntax, "[Unsubscribe](((unsubscribeUrl)))" — means the genuine "((" delimiter is
+    // the last pair in the run, not the first. Slide forward through the run so a leading,
+    // unrelated "(" (from the markdown link itself) doesn't get swept into the extracted name.
+    while (text[start + 2] === "(") {
+      start += 1;
+    }
     const end = text.indexOf("))", start + 2);
     if (end === -1) break;
     const name = text.slice(start + 2, end).trim();

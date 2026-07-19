@@ -362,6 +362,30 @@ describe("extractTemplateVariables", () => {
     expect(result).toEqual([]);
     expect(elapsedMs).toBeLessThan(200);
   });
+
+  it("extracts a placeholder wrapped in markdown link syntax, e.g. [Unsubscribe](((unsubscribeUrl))) (#421)", () => {
+    const body =
+      "Dear ((firstName)),\n\nYou are a member of the ((section)) section.\n\n" +
+      "[Unsubscribe](((unsubscribeUrl)))\n\nSODC";
+
+    expect(extractTemplateVariables(body, "Test Message")).toEqual(
+      expect.arrayContaining(["firstName", "section", "unsubscribeUrl"])
+    );
+    // The historical bug produced a corrupted name with a leading "(" instead.
+    expect(extractTemplateVariables(body, "Test Message")).not.toEqual(
+      expect.arrayContaining(["(unsubscribeUrl"])
+    );
+  });
+
+  it("stays linear time with many placeholders each preceded by an extra '(' (#421)", () => {
+    const adversarial = "[link](((placeholder)))".repeat(20_000);
+    const start = performance.now();
+    const result = extractTemplateVariables(adversarial, "");
+    const elapsedMs = performance.now() - start;
+
+    expect(result).toEqual(["placeholder"]);
+    expect(elapsedMs).toBeLessThan(200);
+  });
 });
 
 describe("buildRecipientPersonalisation (#362)", () => {
