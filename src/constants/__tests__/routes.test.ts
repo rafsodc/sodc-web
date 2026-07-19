@@ -11,6 +11,8 @@ describe('routes', () => {
     expect(ROUTES.MANAGE_USERS).toBe('/admin/users');
     expect(ROUTES.APPROVE_USERS).toBe('/admin/users/approvals');
     expect(ROUTES.REGISTER).toBe('/register');
+    expect(ROUTES.PASSWORD_RESET_REQUEST).toBe('/account/password-reset');
+    expect(ROUTES.AUTH_ACTION).toBe('/auth/action');
     expect(ROUTES.PROFILE_COMPLETION).toBe('/profile-completion');
   });
 
@@ -23,6 +25,8 @@ describe('routes', () => {
       ROUTES.MANAGE_USERS,
       ROUTES.APPROVE_USERS,
       ROUTES.REGISTER,
+      ROUTES.PASSWORD_RESET_REQUEST,
+      ROUTES.AUTH_ACTION,
       ROUTES.PROFILE_COMPLETION,
     ];
     
@@ -32,4 +36,3 @@ describe('routes', () => {
     });
   });
 });
-

@@ -164,6 +164,14 @@ vi.mock("../features/auth/components/RegisterPage", () => ({
   default: () => <h1>Register Page</h1>,
 }));
 
+vi.mock("../features/auth/components/PasswordResetRequestPage", () => ({
+  default: () => <h1>Password Reset Request Page</h1>,
+}));
+
+vi.mock("../features/auth/components/PasswordResetActionPage", () => ({
+  default: () => <h1>Password Reset Action Page</h1>,
+}));
+
 vi.mock("../features/auth/components/OnboardingShell", () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -328,6 +336,25 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.ACCOUNT);
+  });
+
+  it("renders password reset request and action routes while logged out", async () => {
+    const requestRender = renderApp([ROUTES.PASSWORD_RESET_REQUEST]);
+    expect(await screen.findByRole("heading", { name: "Password Reset Request Page" })).toBeInTheDocument();
+    requestRender.unmount();
+
+    renderApp([`${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=test-code`]);
+    expect(await screen.findByRole("heading", { name: "Password Reset Action Page" })).toBeInTheDocument();
+  });
+
+  it("does not let the unverified-account gate hide the public action route", async () => {
+    currentUser = createMockUser({ emailVerified: false });
+    enabledClaim = false;
+
+    renderApp([`${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=test-code`]);
+
+    expect(await screen.findByRole("heading", { name: "Password Reset Action Page" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Email Verification Page" })).not.toBeInTheDocument();
   });
 
   it("renders welcome dashboard for enabled users at home", async () => {

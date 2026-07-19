@@ -142,6 +142,10 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
             fullWidth
           />
 
+          <Link component={RouterLink} to={ROUTES.PASSWORD_RESET_REQUEST} sx={{ alignSelf: "flex-end" }}>
+            Forgot password?
+          </Link>
+
           <Button
             type="submit"
             variant="contained"

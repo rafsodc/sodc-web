@@ -26,6 +26,9 @@ vi.mock('../config/firebase', () => ({
     signOut: vi.fn(),
     createUserWithEmailAndPassword: vi.fn(),
     sendEmailVerification: vi.fn(),
+    sendPasswordResetEmail: vi.fn(),
+    verifyPasswordResetCode: vi.fn(),
+    confirmPasswordReset: vi.fn(),
     reload: vi.fn(),
   },
   dataConnect: {},
@@ -45,4 +48,3 @@ vi.mock('firebase/functions', () => ({
   getFunctions: vi.fn(),
   httpsCallable: vi.fn(),
 }));
-

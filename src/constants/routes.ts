@@ -21,6 +21,8 @@ export const ROUTES = {
   SECTION_ADMIN: "/admin/section/:sectionId",
   EMAIL_TEMPLATES: "/admin/email-templates",
   REGISTER: "/register",
+  PASSWORD_RESET_REQUEST: "/account/password-reset",
+  AUTH_ACTION: "/auth/action",
   PROFILE_COMPLETION: "/profile-completion",
   UNSUBSCRIBE_CONFIRMED: "/unsubscribe/confirmed",
 } as const;
@@ -29,4 +31,3 @@ export const ROUTES = {
  * Route type
  */
 export type Route = typeof ROUTES[keyof typeof ROUTES];
-
