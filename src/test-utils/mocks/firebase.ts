@@ -46,6 +46,8 @@ export const mockAuth = {
   signOut: vi.fn(),
   createUserWithEmailAndPassword: vi.fn(),
   sendEmailVerification: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
+  verifyPasswordResetCode: vi.fn(),
+  confirmPasswordReset: vi.fn(),
   reload: vi.fn(),
 };
-

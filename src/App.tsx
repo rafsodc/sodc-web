@@ -48,6 +48,8 @@ const MemberWelcomePage = lazy(() => import("./features/welcome/components/Membe
 const PublicHomePage = lazy(() => import("./features/welcome/components/PublicHomePage"));
 const AccountSettingsPage = lazy(() => import("./features/account/components/AccountSettingsPage"));
 const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"));
+const PasswordResetRequestPage = lazy(() => import("./features/auth/components/PasswordResetRequestPage"));
+const PasswordResetActionPage = lazy(() => import("./features/auth/components/PasswordResetActionPage"));
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
 const UnsubscribeConfirmedPage = lazy(() => import("./features/account/components/UnsubscribeConfirmedPage"));
 
@@ -116,6 +118,8 @@ function AppContent() {
 
   // Check if email is verified
   const emailNotVerified = user && !user.emailVerified;
+  const isPublicAuthActionRoute =
+    location.pathname === ROUTES.PASSWORD_RESET_REQUEST || location.pathname === ROUTES.AUTH_ACTION;
 
   const navigationLinks = useMemo(
     () => buildNavigationLinks({ isEnabled, isAdmin, sectionsData: userSectionsData }),
@@ -166,7 +170,7 @@ function AppContent() {
     );
   }
 
-  if (emailNotVerified) {
+  if (emailNotVerified && !isPublicAuthActionRoute) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -214,7 +218,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabledClaimResolved) {
+  if (user && !isEnabledClaimResolved && !isPublicAuthActionRoute) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -225,7 +229,12 @@ function AppContent() {
     );
   }
 
-  if (user && needsProfileCompletion && location.pathname !== ROUTES.PROFILE_COMPLETION) {
+  if (
+    user &&
+    needsProfileCompletion &&
+    location.pathname !== ROUTES.PROFILE_COMPLETION &&
+    !isPublicAuthActionRoute
+  ) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -234,7 +243,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabled && !needsProfileCompletion) {
+  if (user && !isEnabled && !needsProfileCompletion && !isPublicAuthActionRoute) {
     const inactiveUserData =
       userData ||
       (membershipStatusForUnenabled
@@ -424,6 +433,22 @@ function AppContent() {
                         </Suspense>
                       )}
                     </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.PASSWORD_RESET_REQUEST}
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <PasswordResetRequestPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path={ROUTES.AUTH_ACTION}
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <PasswordResetActionPage />
+                    </Suspense>
                   }
                 />
                 <Route
