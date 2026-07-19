@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onTaskDispatched } from "firebase-functions/v2/tasks";
 import { getFunctions } from "firebase-admin/functions";
@@ -13,8 +13,11 @@ import {
   getSectionAnnouncementOptOuts,
   createAnnouncementSend,
   createAnnouncementRecipient,
-  getAnnouncementRecipientCount,
+  getAnnouncementRecipientProgress,
+  getAnnouncementRecipientsForResume,
   getAnnouncementSendById,
+  tryMarkAnnouncementRecipientEnqueueFailed,
+  tryUpdateAnnouncementRecipientProcessingStatus,
   getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
 } from "@dataconnect/admin-generated";
@@ -23,7 +26,11 @@ import { enforceRateLimit } from "./rateLimiter";
 import { govNotifyApiKey } from "./mailer";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
-import { buildAnnouncementReference } from "./announcementReference";
+import {
+  processAnnouncementEmailTask,
+  type AnnouncementEmailTask,
+  type AnnouncementRecipientStatus,
+} from "./announcementDelivery";
 import {
   getAnnouncementStatusFilters,
   mergeAnnouncementRecipients,
@@ -256,7 +263,9 @@ export const previewAnnouncementTemplate = onCall(
 export interface SendAnnouncementResult {
   sendId: string;
   queuedCount: number;
+  failedToEnqueueCount: number;
   skippedCount: number;
+  resumed: boolean;
 }
 
 export interface AnnouncementSend {
@@ -269,6 +278,7 @@ export interface AnnouncementSend {
   recipientCount: number;
   skippedCount: number;
   processedCount: number;
+  failureCount: number;
 }
 
 export interface AnnouncementRecipient {
@@ -278,153 +288,316 @@ export interface AnnouncementRecipient {
   email: string;
   firstName: string;
   lastName: string;
-  status: "skipped" | "sent" | "failed" | "delivered" | "bounced";
+  status: AnnouncementRecipientStatus;
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;
 }
 
-interface AnnouncementEmailTask {
-  sendId: string;
-  recipientId: string;
+interface SkippedAnnouncementRecipient {
+  userId: string;
   firstName: string;
   lastName: string;
   email: string;
-  personalisation: Record<string, string>;
-  /**
-   * Always present regardless of whether the template's visible text references
-   * ((unsubscribeUrl)) — GOV Notify requires a one-click-unsubscribe URL for bulk email
-   * independent of what the template body displays. Kept separate from `personalisation`
-   * (which is filtered down to only what the template references) so filtering can never
-   * silently disable this.
-   */
-  unsubscribeUrl: string;
-  templateUuid: string;
+}
+
+interface AnnouncementRecipientSnapshot {
+  version: 1;
+  tasks: AnnouncementEmailTask[];
+  skippedRecipients: SkippedAnnouncementRecipient[];
+}
+
+const WRITE_CHUNK_SIZE = 10;
+const ENQUEUE_CHUNK_SIZE = 20;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isDuplicateKeyError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /unique|duplicate|already exists|violates/i.test(message);
+}
+
+function isTaskAlreadyExists(error: unknown): boolean {
+  if (typeof error === "object" && error !== null) {
+    const code = (error as { code?: unknown }).code;
+    if (code === "functions/task-already-exists" || code === 6 || code === "6") return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /task-already-exists|already exists/i.test(message);
+}
+
+export function announcementTaskId(sendId: string, recipientId: string): string {
+  return createHash("sha256").update(`${sendId}:${recipientId}`).digest("hex");
+}
+
+function parseRecipientSnapshot(value: string | null | undefined): AnnouncementRecipientSnapshot {
+  if (!value) throw new HttpsError("failed-precondition", "Announcement send cannot be resumed");
+  try {
+    const parsed = JSON.parse(value) as Partial<AnnouncementRecipientSnapshot>;
+    if (parsed.version !== 1 || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.skippedRecipients)) {
+      throw new Error("Unsupported announcement recipient snapshot");
+    }
+    return parsed as AnnouncementRecipientSnapshot;
+  } catch (error) {
+    logger.error("Invalid announcement recipient snapshot", { error });
+    throw new HttpsError("internal", "Announcement send snapshot is invalid");
+  }
+}
+
+async function ensureRecipientRows(
+  sendId: string,
+  snapshot: AnnouncementRecipientSnapshot,
+): Promise<Map<string, { id: string; status: string }>> {
+  const current = await getAnnouncementRecipientsForResume({ sendId });
+  const existing = new Map(
+    (current.data?.announcementRecipients ?? []).map((row) => [row.userId, { id: row.id, status: row.status }]),
+  );
+  const missing = [
+    ...snapshot.tasks
+      .filter((task) => !existing.has(task.recipientId))
+      .map((task) => ({
+        id: randomUUID(),
+        userId: task.recipientId,
+        email: task.email,
+        firstName: task.firstName,
+        lastName: task.lastName,
+        status: "queued",
+        skippedReason: null,
+      })),
+    ...snapshot.skippedRecipients
+      .filter((recipient) => !existing.has(recipient.userId))
+      .map((recipient) => ({
+        id: randomUUID(),
+        ...recipient,
+        status: "skipped",
+        skippedReason: "opted_out",
+      })),
+  ];
+
+  for (let i = 0; i < missing.length; i += WRITE_CHUNK_SIZE) {
+    const results = await Promise.allSettled(
+      missing.slice(i, i + WRITE_CHUNK_SIZE).map((recipient) =>
+        createAnnouncementRecipient({
+          id: recipient.id,
+          announcementSendId: sendId,
+          userId: recipient.userId,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          status: recipient.status,
+          skippedReason: recipient.skippedReason,
+          sentAt: null,
+          failureReason: null,
+        }),
+      ),
+    );
+    const failure = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected" && !isDuplicateKeyError(result.reason),
+    );
+    if (failure) throw failure.reason;
+  }
+
+  const refreshed = await getAnnouncementRecipientsForResume({ sendId });
+  return new Map(
+    (refreshed.data?.announcementRecipients ?? []).map((row) => [row.userId, { id: row.id, status: row.status }]),
+  );
+}
+
+async function enqueueSnapshot(
+  sendId: string,
+  snapshot: AnnouncementRecipientSnapshot,
+): Promise<{ queuedCount: number; failedToEnqueueCount: number }> {
+  const queue = getFunctions().taskQueue(
+    `locations/${FUNCTIONS_REGION}/functions/processAnnouncementEmail`,
+  );
+  let rows = await ensureRecipientRows(sendId, snapshot);
+  const candidates = snapshot.tasks.filter((task) => {
+    const status = rows.get(task.recipientId)?.status;
+    return status === "queued" || status === "enqueue_failed";
+  });
+
+  for (let i = 0; i < candidates.length; i += ENQUEUE_CHUNK_SIZE) {
+    const chunk = candidates.slice(i, i + ENQUEUE_CHUNK_SIZE);
+    const results = await Promise.allSettled(
+      chunk.map((task) => queue.enqueue(task, {
+        id: announcementTaskId(sendId, task.recipientId),
+        dispatchDeadlineSeconds: 60,
+      })),
+    );
+    await Promise.all(
+      results.map(async (result, index) => {
+        const task = chunk[index]!;
+        const row = rows.get(task.recipientId);
+        if (result.status === "fulfilled" || isTaskAlreadyExists(result.reason)) {
+          if (row?.status === "enqueue_failed") {
+            await tryUpdateAnnouncementRecipientProcessingStatus({
+              id: row.id,
+              expectedStatus: "enqueue_failed",
+              expectedProcessingVersion: 0,
+              status: "queued",
+              processingVersion: 0,
+              processingStartedAt: null,
+              sentAt: null,
+              failureReason: null,
+              providerNotificationId: null,
+            });
+          }
+          return;
+        }
+        if (!row || row.status !== "queued") return;
+        const message = result.reason instanceof Error ? result.reason.message : "Cloud Task enqueue failed";
+        await tryMarkAnnouncementRecipientEnqueueFailed({
+          id: row.id,
+          failureReason: message.slice(0, 500),
+        });
+      }),
+    );
+  }
+
+  rows = await ensureRecipientRows(sendId, snapshot);
+  const failedToEnqueueCount = snapshot.tasks.filter(
+    (task) => rows.get(task.recipientId)?.status === "enqueue_failed",
+  ).length;
+  return {
+    queuedCount: snapshot.tasks.length - failedToEnqueueCount,
+    failedToEnqueueCount,
+  };
 }
 
 export const sendSectionAnnouncement = onCall(
-  { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret, govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret, govNotifyApiKey], timeoutSeconds: 120 },
   async (request): Promise<SendAnnouncementResult> => {
     requireEnabled(request);
     await enforceRateLimit("sendSectionAnnouncement", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
+    const callerUid = request.auth!.uid;
+    await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
+
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
+    const requestId = requireString(request.data?.requestId, "requestId");
+    if (!UUID_PATTERN.test(requestId)) {
+      throw new HttpsError("invalid-argument", "requestId must be a UUID");
+    }
     const templateName: string | null = typeof request.data?.templateName === "string"
       ? request.data.templateName
       : null;
-    const callerUid = request.auth!.uid;
 
-    await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
+    let resumed = false;
+    let existingResult = await getAnnouncementSendById({ id: requestId });
+    let existing = existingResult.data?.announcementSend;
+    let snapshot: AnnouncementRecipientSnapshot;
 
-    const apiKey = govNotifyApiKey.value();
-    if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
-    const client = new NotifyClient(apiKey);
-    const templateResponse = await client.getTemplateById(templateUuid);
-    const template = templateResponse.data as { body?: string; subject?: string };
-    const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
+    if (existing) {
+      if (
+        existing.sectionId !== sectionId ||
+        existing.templateUuid !== templateUuid ||
+        existing.sentBy !== callerUid
+      ) {
+        throw new HttpsError("already-exists", "requestId is already in use");
+      }
+      resumed = true;
+      snapshot = parseRecipientSnapshot(existing.recipientSnapshot);
+    } else {
+      const apiKey = govNotifyApiKey.value();
+      if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
+      const client = new NotifyClient(apiKey);
+      const templateResponse = await client.getTemplateById(templateUuid);
+      const template = templateResponse.data as { body?: string; subject?: string };
+      const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
-    const [{ recipients, sectionName }, optOutResult] = await Promise.all([
-      resolveAnnouncementRecipients(sectionId),
-      getSectionAnnouncementOptOuts({ sectionId }),
-    ]);
-
-    const sectionOptOutIds = new Set(
-      (optOutResult.data?.sectionAnnouncementOptOuts ?? []).map(
-        (r: { user: { id: string } }) => r.user.id
-      )
-    );
-    const { deliverable, optedOut } = partitionAnnouncementRecipients(
-      recipients,
-      sectionOptOutIds
-    );
-
-    const secret = unsubscribeSecret.value();
-    const skippedRecipients = optedOut.map((recipient) => ({
-      userId: recipient.id,
-      email: recipient.email,
-      firstName: recipient.firstName,
-      lastName: recipient.lastName,
-    }));
-    const tasks: AnnouncementEmailTask[] = [];
-
-    for (const recipient of deliverable) {
-      const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
-        {
-          userId: recipient.id,
-          sectionId,
-          sectionName,
-          exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
-        },
-        secret
-      )}`;
-
-      const personalisation = buildRecipientPersonalisation(
-        recipient,
-        sectionName,
-        unsubscribeUrl,
-        requiredPersonalisation
+      const [{ recipients, sectionName }, optOutResult] = await Promise.all([
+        resolveAnnouncementRecipients(sectionId),
+        getSectionAnnouncementOptOuts({ sectionId }),
+      ]);
+      const sectionOptOutIds = new Set(
+        (optOutResult.data?.sectionAnnouncementOptOuts ?? []).map(
+          (row: { user: { id: string } }) => row.user.id,
+        ),
       );
-
-      tasks.push({
-        sendId: "",  // filled in after createAnnouncementSend
-        recipientId: recipient.id,
-        firstName: recipient.firstName,
-        lastName: recipient.lastName,
-        email: recipient.email,
-        personalisation,
-        unsubscribeUrl,
-        templateUuid,
+      const { deliverable, optedOut } = partitionAnnouncementRecipients(recipients, sectionOptOutIds);
+      const secret = unsubscribeSecret.value();
+      const tasks = deliverable.map((recipient): AnnouncementEmailTask => {
+        const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+          {
+            userId: recipient.id,
+            sectionId,
+            sectionName,
+            exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
+          },
+          secret,
+        )}`;
+        return {
+          sendId: requestId,
+          recipientId: recipient.id,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+          email: recipient.email,
+          personalisation: buildRecipientPersonalisation(
+            recipient,
+            sectionName,
+            unsubscribeUrl,
+            requiredPersonalisation,
+          ),
+          unsubscribeUrl,
+          templateUuid,
+        };
       });
+      snapshot = {
+        version: 1,
+        tasks,
+        skippedRecipients: optedOut.map((recipient) => ({
+          userId: recipient.id,
+          email: recipient.email,
+          firstName: recipient.firstName,
+          lastName: recipient.lastName,
+        })),
+      };
+
+      try {
+        await createAnnouncementSend({
+          id: requestId,
+          sectionId,
+          templateUuid,
+          templateName,
+          sentBy: callerUid,
+          recipientCount: snapshot.tasks.length,
+          skippedCount: snapshot.skippedRecipients.length,
+          recipientSnapshot: JSON.stringify(snapshot),
+        });
+      } catch (error) {
+        if (!isDuplicateKeyError(error)) throw error;
+        existingResult = await getAnnouncementSendById({ id: requestId });
+        existing = existingResult.data?.announcementSend;
+        if (
+          !existing ||
+          existing.sectionId !== sectionId ||
+          existing.templateUuid !== templateUuid ||
+          existing.sentBy !== callerUid
+        ) {
+          throw new HttpsError("already-exists", "requestId is already in use");
+        }
+        resumed = true;
+        snapshot = parseRecipientSnapshot(existing.recipientSnapshot);
+      }
     }
 
-    const announcementSendId = randomUUID();
-    await createAnnouncementSend({
-      id: announcementSendId,
-      sectionId,
-      templateUuid,
-      templateName,
-      sentBy: callerUid,
-      recipientCount: tasks.length,
-      skippedCount: skippedRecipients.length,
-      failureCount: 0,
-    });
-
-    // Write skipped recipients
-    const CHUNK_SIZE = 10;
-    for (let i = 0; i < skippedRecipients.length; i += CHUNK_SIZE) {
-      await Promise.all(
-        skippedRecipients.slice(i, i + CHUNK_SIZE).map((r) =>
-          createAnnouncementRecipient({
-            announcementSendId,
-            userId: r.userId,
-            email: r.email,
-            firstName: r.firstName,
-            lastName: r.lastName,
-            status: "skipped",
-            skippedReason: "opted_out",
-            sentAt: null,
-            failureReason: null,
-          })
-        )
-      );
-    }
-
-    // Enqueue one task per recipient
-    const queue = getFunctions().taskQueue(
-      `locations/${FUNCTIONS_REGION}/functions/processAnnouncementEmail`
-    );
-    await Promise.all(
-      tasks.map((t) => queue.enqueue({ ...t, sendId: announcementSendId }))
-    );
+    const enqueueResult = await enqueueSnapshot(requestId, snapshot);
 
     logger.info("Announcement queued", {
-      announcementSendId,
+      announcementSendId: requestId,
       sectionId,
       templateUuid,
-      queuedCount: tasks.length,
-      skippedCount: skippedRecipients.length,
+      queuedCount: enqueueResult.queuedCount,
+      failedToEnqueueCount: enqueueResult.failedToEnqueueCount,
+      skippedCount: snapshot.skippedRecipients.length,
+      resumed,
     });
-    return { sendId: announcementSendId, queuedCount: tasks.length, skippedCount: skippedRecipients.length };
+    return {
+      sendId: requestId,
+      queuedCount: enqueueResult.queuedCount,
+      failedToEnqueueCount: enqueueResult.failedToEnqueueCount,
+      skippedCount: snapshot.skippedRecipients.length,
+      resumed,
+    };
   }
 );
 
@@ -433,43 +606,9 @@ export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
     region: FUNCTIONS_REGION,
     secrets: [govNotifyApiKey],
     rateLimits: { maxDispatchesPerSecond: 20 },
-    retryConfig: { maxAttempts: 3, minBackoffSeconds: 10, maxBackoffSeconds: 60 },
+    retryConfig: { maxAttempts: 4, minBackoffSeconds: 30, maxBackoffSeconds: 120 },
   },
-  async (req) => {
-    const { sendId, recipientId, firstName, lastName, email, personalisation, unsubscribeUrl, templateUuid } = req.data;
-
-    const client = new NotifyClient(govNotifyApiKey.value());
-    let status: "sent" | "failed" = "sent";
-    let failureReason: string | null = null;
-
-    try {
-      await client.sendEmail(templateUuid, email, {
-        personalisation,
-        reference: buildAnnouncementReference(sendId, recipientId),
-        oneClickUnsubscribeURL: unsubscribeUrl,
-      } as Parameters<typeof client.sendEmail>[2]);
-    } catch (err) {
-      status = "failed";
-      failureReason = err instanceof Error ? err.message : "Unknown error";
-      logger.error("Failed to send announcement email", { sendId, recipientId, err });
-    }
-
-    await createAnnouncementRecipient({
-      announcementSendId: sendId,
-      userId: recipientId,
-      email,
-      firstName,
-      lastName,
-      status,
-      skippedReason: null,
-      sentAt: status === "sent" ? new Date().toISOString() : null,
-      failureReason,
-    });
-
-    // Re-throw on failure so Cloud Tasks retries (recipient record will be duplicate on retry,
-    // but GOV Notify's idempotent reference prevents duplicate sends)
-    if (status === "failed") throw new Error(failureReason ?? "Send failed");
-  }
+  async (req) => processAnnouncementEmailTask(req.data, { retryCount: req.retryCount })
 );
 
 export const getAnnouncementSendHistory = onCall(
@@ -488,13 +627,22 @@ export const getAnnouncementSendHistory = onCall(
     }
     const rawSends = result.data?.announcementSends ?? [];
 
-    const processedCounts = await Promise.all(
+    const progress = await Promise.all(
       rawSends.map(async (s) => {
         try {
-          const r = await getAnnouncementRecipientCount({ sendId: s.id });
-          return r.data?.announcementRecipients?.length ?? 0;
+          const result = await getAnnouncementRecipientProgress({ sendId: s.id });
+          const statuses = (result.data?.announcementRecipients ?? []).map((row) => row.status);
+          return {
+            processedCount: statuses.filter((status) =>
+              status === "sent" || status === "delivered" || status === "bounced" || status === "failed"
+            ).length,
+            failureCount: statuses.filter((status) =>
+              status === "failed" || status === "bounced" || status === "enqueue_failed" ||
+              status === "delivery_unknown"
+            ).length,
+          };
         } catch {
-          return 0;
+          return { processedCount: 0, failureCount: 0 };
         }
       })
     );
@@ -508,7 +656,8 @@ export const getAnnouncementSendHistory = onCall(
       sentAt: s.sentAt,
       recipientCount: s.recipientCount,
       skippedCount: s.skippedCount,
-      processedCount: processedCounts[i],
+      processedCount: progress[i]!.processedCount,
+      failureCount: progress[i]!.failureCount,
     }));
 
     return { sends };
@@ -548,7 +697,7 @@ export const getAnnouncementSendRecipients = onCall(
       email: r.email,
       firstName: r.firstName,
       lastName: r.lastName,
-      status: r.status as "skipped" | "sent" | "failed" | "delivered" | "bounced",
+      status: r.status as AnnouncementRecipientStatus,
       skippedReason: r.skippedReason ?? undefined,
       sentAt: r.sentAt ?? undefined,
       failureReason: r.failureReason ?? undefined,

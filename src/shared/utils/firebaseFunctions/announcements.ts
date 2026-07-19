@@ -62,19 +62,22 @@ export async function previewAnnouncementTemplate(
 export interface SendAnnouncementResult {
   sendId: string;
   queuedCount: number;
+  failedToEnqueueCount: number;
   skippedCount: number;
+  resumed: boolean;
 }
 
 export async function sendSectionAnnouncement(
   sectionId: string,
   templateUuid: string,
+  requestId: string,
   templateName?: string
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
-    { sectionId: string; templateUuid: string; templateName?: string },
+    { sectionId: string; templateUuid: string; requestId: string; templateName?: string },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
-  const result = await callable({ sectionId, templateUuid, templateName });
+  const result = await callable({ sectionId, templateUuid, requestId, templateName });
   return result.data;
 }
 
@@ -88,7 +91,20 @@ export interface AnnouncementSend {
   recipientCount: number;
   skippedCount: number;
   processedCount: number;
+  failureCount: number;
 }
+
+export type AnnouncementRecipientStatus =
+  | "queued"
+  | "enqueue_failed"
+  | "sending"
+  | "retrying"
+  | "delivery_unknown"
+  | "sent"
+  | "delivered"
+  | "bounced"
+  | "failed"
+  | "skipped";
 
 export interface AnnouncementRecipient {
   id: string;
@@ -97,7 +113,7 @@ export interface AnnouncementRecipient {
   email: string;
   firstName: string;
   lastName: string;
-  status: "skipped" | "sent" | "failed" | "delivered" | "bounced";
+  status: AnnouncementRecipientStatus;
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;

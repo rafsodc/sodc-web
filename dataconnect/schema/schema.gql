@@ -403,11 +403,13 @@ type AnnouncementSend @table {
   sentAt: Timestamp! @default(expr: "request.time")
   recipientCount: Int!
   skippedCount: Int!
-  failureCount: Int!
+  # Immutable versioned snapshot used to resume a partially-enqueued send without
+  # re-resolving an audience that may have changed since the moderator clicked send.
+  recipientSnapshot: String
 }
 
 # Per-recipient audit row for a bulk announcement send.
-type AnnouncementRecipient @table {
+type AnnouncementRecipient @table @unique(fields: ["announcementSend", "userId"]) {
   id: UUID! @default(expr: "uuidV4()")
   announcementSend: AnnouncementSend!
   userId: String!
@@ -418,6 +420,11 @@ type AnnouncementRecipient @table {
   skippedReason: String
   sentAt: Timestamp
   failureReason: String
+  # Compare-and-swap processing lease. processingStartedAt makes an abandoned
+  # `sending` claim reclaimable after the worker lease expires.
+  processingVersion: Int! @default(value: 0)
+  processingStartedAt: Timestamp
+  providerNotificationId: String
   # Latest GOV.UK Notify receipt applied to this recipient. The version supports
   # compare-and-swap updates when callbacks arrive concurrently or out of order.
   deliveryVersion: Int! @default(value: 0)

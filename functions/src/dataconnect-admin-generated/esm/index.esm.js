@@ -418,10 +418,16 @@ export function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
 }
 
-export function getAnnouncementRecipientCount(dcOrVarsOrOptions, varsOrOptions, options) {
+export function getAnnouncementRecipientProgress(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetAnnouncementRecipientCount', inputVars, inputOpts);
+  return dcInstance.executeQuery('GetAnnouncementRecipientProgress', inputVars, inputOpts);
+}
+
+export function getAnnouncementRecipientsForResume(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientsForResume', inputVars, inputOpts);
 }
 
 export function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
@@ -446,6 +452,18 @@ export function getAnnouncementRecipientBySendAndUser(dcOrVarsOrOptions, varsOrO
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeQuery('GetAnnouncementRecipientBySendAndUser', inputVars, inputOpts);
+}
+
+export function tryUpdateAnnouncementRecipientProcessingStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('TryUpdateAnnouncementRecipientProcessingStatus', inputVars, inputOpts);
+}
+
+export function tryMarkAnnouncementRecipientEnqueueFailed(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('TryMarkAnnouncementRecipientEnqueueFailed', inputVars, inputOpts);
 }
 
 export function tryUpdateAnnouncementRecipientDeliveryStatus(dcOrVarsOrOptions, varsOrOptions, options) {

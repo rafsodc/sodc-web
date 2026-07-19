@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
+import { NotifyClient } from "notifications-node-client";
+
+const taskQueueMocks = vi.hoisted(() => ({ enqueue: vi.fn() }));
+vi.mock("firebase-admin/functions", () => ({
+  getFunctions: vi.fn(() => ({
+    taskQueue: vi.fn(() => ({ enqueue: taskQueueMocks.enqueue })),
+  })),
+}));
+
 import {
   getAnnouncementTemplates,
   previewAnnouncementTemplate,
@@ -10,6 +19,8 @@ import {
   extractTemplateVariables,
   buildRecipientPersonalisation,
 } from "../announcements";
+import { govNotifyApiKey } from "../mailer";
+import { unsubscribeSecret } from "../unsubscribe";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
 const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipients");
@@ -18,6 +29,12 @@ const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
+const mockGetSectionAnnouncementOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOuts");
+const mockCreateAnnouncementSend = vi.spyOn(admin, "createAnnouncementSend");
+const mockCreateAnnouncementRecipient = vi.spyOn(admin, "createAnnouncementRecipient");
+const mockGetAnnouncementRecipientsForResume = vi.spyOn(admin, "getAnnouncementRecipientsForResume");
+const mockTryMarkAnnouncementRecipientEnqueueFailed = vi.spyOn(admin, "tryMarkAnnouncementRecipientEnqueueFailed");
+const mockTryUpdateAnnouncementRecipientProcessingStatus = vi.spyOn(admin, "tryUpdateAnnouncementRecipientProcessingStatus");
 
 beforeEach(() => {
   mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
@@ -106,6 +123,132 @@ describe("resolveAnnouncementRecipients", () => {
       sectionName: "Signals",
     });
     expect(mockListUsers).not.toHaveBeenCalled();
+  });
+});
+
+describe("sendSectionAnnouncement durable enqueue", () => {
+  const requestId = "00000000-0000-4000-8000-000000000408";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(govNotifyApiKey, "value").mockReturnValue("notify-key");
+    vi.spyOn(unsubscribeSecret, "value").mockReturnValue("unsubscribe-secret-that-is-long-enough");
+    vi.spyOn(NotifyClient.prototype, "getTemplateById").mockResolvedValue({
+      data: { body: "Hello ((firstName))", subject: "Section update" },
+    } as never);
+  });
+
+  it("persists and enqueues a large audience, reports one failure, then resumes the same snapshot", async () => {
+    const audience = Array.from({ length: 800 }, (_, index) => ({
+      id: `user-${index}`,
+      firstName: `First${index}`,
+      lastName: `Last${index}`,
+      email: `user-${index}@example.com`,
+      serviceNumber: `S${index}`,
+      membershipStatus: "REGULAR",
+    }));
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionAId,
+          name: "Signals",
+          purposeLinks: [{
+            purposes: ["ACCESS"],
+            userGroup: {
+              id: "direct-members",
+              membershipStatuses: [],
+              users: audience.map((user) => ({ user })),
+            },
+          }],
+        },
+      },
+    } as never);
+    mockGetSectionAnnouncementOptOuts.mockResolvedValue({
+      data: { sectionAnnouncementOptOuts: [] },
+    } as never);
+
+    let sendRecord: Record<string, unknown> | undefined;
+    const rows: Array<{ id: string; userId: string; status: string }> = [];
+    mockGetAnnouncementSendById.mockImplementation(async () => ({
+      data: { announcementSend: sendRecord },
+    }) as never);
+    mockCreateAnnouncementSend.mockImplementation(async (variables) => {
+      sendRecord = {
+        id: variables.id,
+        sectionId: variables.sectionId,
+        templateUuid: variables.templateUuid,
+        templateName: variables.templateName,
+        sentBy: variables.sentBy,
+        recipientCount: variables.recipientCount,
+        skippedCount: variables.skippedCount,
+        recipientSnapshot: variables.recipientSnapshot,
+      };
+      return { data: {} } as never;
+    });
+    mockGetAnnouncementRecipientsForResume.mockImplementation(async () => ({
+      data: { announcementRecipients: rows.map((row) => ({ ...row })) },
+    }) as never);
+    mockCreateAnnouncementRecipient.mockImplementation(async (variables) => {
+      rows.push({ id: variables.id, userId: variables.userId, status: variables.status });
+      return { data: { announcementRecipient_insert: { id: variables.id } } } as never;
+    });
+    mockTryMarkAnnouncementRecipientEnqueueFailed.mockImplementation(async ({ id }) => {
+      const row = rows.find((candidate) => candidate.id === id);
+      if (row?.status === "queued") row.status = "enqueue_failed";
+      return { data: { announcementRecipient_updateMany: row ? 1 : 0 } } as never;
+    });
+    mockTryUpdateAnnouncementRecipientProcessingStatus.mockImplementation(async (variables) => {
+      const row = rows.find((candidate) => candidate.id === variables.id);
+      if (row && row.status === variables.expectedStatus) row.status = variables.status;
+      return { data: { announcementRecipient_updateMany: row ? 1 : 0 } } as never;
+    });
+
+    const acceptedTaskIds = new Set<string>();
+    let failUserFive = true;
+    taskQueueMocks.enqueue.mockImplementation(async (data, options) => {
+      const taskData = data as { recipientId: string };
+      const taskId = (options as { id: string }).id;
+      if (taskData.recipientId === "user-5" && failUserFive) {
+        failUserFive = false;
+        throw new Error("transient enqueue failure");
+      }
+      if (acceptedTaskIds.has(taskId)) {
+        throw Object.assign(new Error("Task already exists"), {
+          code: "functions/task-already-exists",
+        });
+      }
+      acceptedTaskIds.add(taskId);
+    });
+
+    const call = () => sendSectionAnnouncement.run({
+      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      data: {
+        sectionId: sectionAId,
+        templateUuid: "template-1",
+        templateName: "BULK: Update",
+        requestId,
+      },
+    } as never);
+
+    await expect(call()).resolves.toMatchObject({
+      sendId: requestId,
+      queuedCount: 799,
+      failedToEnqueueCount: 1,
+      resumed: false,
+    });
+    expect(rows).toHaveLength(800);
+    expect(new Set(taskQueueMocks.enqueue.mock.calls.map((call) => (call[1] as { id: string }).id)).size)
+      .toBe(800);
+
+    await expect(call()).resolves.toMatchObject({
+      sendId: requestId,
+      queuedCount: 800,
+      failedToEnqueueCount: 0,
+      resumed: true,
+    });
+    expect(mockGetSectionMembers).toHaveBeenCalledOnce();
+    expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+    expect(rows).toHaveLength(800);
   });
 });
 
