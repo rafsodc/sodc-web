@@ -124,7 +124,9 @@ describe("payment ops internal alert orchestration", () => {
     );
     const references = sendEmail.mock.calls.map(([request]) => request.reference);
     expect(new Set(references)).toHaveLength(2);
-    expect(references.every((reference) => !reference?.includes("example.com"))).toBe(true);
+    for (const reference of references) {
+      expect(reference).toMatch(/^reconciliation-ops:[0-9a-f-]+:[A-Z_]+:[a-z0-9_]+:[0-9a-f]{24}$/);
+    }
   });
 
   it("continues to the next recipient after one ledger delivery fails", async () => {
@@ -220,6 +222,8 @@ describe("payment ops internal alert orchestration", () => {
     );
     const references = sendEmail.mock.calls.map(([request]) => request.reference);
     expect(new Set(references)).toHaveLength(2);
-    expect(references.every((reference) => !reference?.includes("example.com"))).toBe(true);
+    for (const reference of references) {
+      expect(reference).toMatch(/^dispute-ops:[0-9a-f-]+:[a-z0-9_]+:[0-9a-f]{24}$/);
+    }
   });
 });

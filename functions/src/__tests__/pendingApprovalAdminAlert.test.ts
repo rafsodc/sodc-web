@@ -149,7 +149,9 @@ describe("notifyAdminsUserPendingApproval", () => {
     );
     const references = sendEmail.mock.calls.map(([request]) => request.reference);
     expect(new Set(references)).toHaveLength(2);
-    expect(references.every((reference) => !reference?.includes("example.com"))).toBe(true);
+    for (const reference of references) {
+      expect(reference).toMatch(/^PENDING_APPROVAL:[0-9a-f-]+:[0-9a-f]{24}$/);
+    }
   });
 
   it("skips sending (without throwing) when there are no admin recipients", async () => {
