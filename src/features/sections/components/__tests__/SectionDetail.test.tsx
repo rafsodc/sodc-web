@@ -1552,6 +1552,77 @@ describe('SectionDetail', () => {
     // If the callback fires without throwing, the test passes
   });
 
+  it('does not let a stale section-1 response overwrite section-2 data when sectionId changes mid-fetch (#404)', async () => {
+    const sectionOne = { id: 'section-1', name: 'Section One', type: 'MEMBERS', purposeLinks: [] } as unknown as NonNullable<
+      Awaited<ReturnType<typeof getSectionForUser>>['section']
+    >;
+    const sectionTwo = { id: 'section-2', name: 'Section Two', type: 'MEMBERS', purposeLinks: [] } as unknown as NonNullable<
+      Awaited<ReturnType<typeof getSectionForUser>>['section']
+    >;
+
+    let resolveSectionOne!: (value: Awaited<ReturnType<typeof getSectionForUser>>) => void;
+    const sectionOnePromise = new Promise<Awaited<ReturnType<typeof getSectionForUser>>>((resolve) => {
+      resolveSectionOne = resolve;
+    });
+    let resolveMembersOne!: (value: Awaited<ReturnType<typeof getSectionMembersMerged>>) => void;
+    const membersOnePromise = new Promise<Awaited<ReturnType<typeof getSectionMembersMerged>>>((resolve) => {
+      resolveMembersOne = resolve;
+    });
+
+    vi.mocked(getSectionForUser).mockImplementation(async (id: string) => {
+      if (id === 'section-1') return sectionOnePromise;
+      return { section: sectionTwo, hasAccess: true, canModerate: false };
+    });
+    vi.mocked(getSectionMembersMerged).mockImplementation(async (id: string) => {
+      if (id === 'section-1') return membersOnePromise;
+      return {
+        members: [
+          { id: 'user-2', firstName: 'Two', lastName: 'Member', email: null, membershipStatus: 'REGULAR', rank: null, sharesContactInfo: false },
+        ],
+      };
+    });
+
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <SectionDetail sectionId="section-1" onBack={mockOnBack} />
+      </MemoryRouter>
+    );
+
+    // Switch sections before section-1's requests resolve
+    rerender(
+      <MemoryRouter>
+        <SectionDetail sectionId="section-2" onBack={mockOnBack} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Section Two', level: 4 })).toBeInTheDocument();
+    });
+    expect(screen.getByText('Two Member')).toBeInTheDocument();
+
+    // Now let the stale section-1 responses resolve
+    resolveSectionOne({ section: sectionOne, hasAccess: true, canModerate: false });
+    resolveMembersOne({
+      members: [
+        { id: 'user-1', firstName: 'One', lastName: 'Member', email: null, membershipStatus: 'REGULAR', rank: null, sharesContactInfo: false },
+      ],
+    });
+
+    // Give the (would-be, pre-fix) stale updates a chance to apply, then confirm they didn't
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Section Two', level: 4 })).toBeInTheDocument();
+    });
+    expect(screen.getByText('Two Member')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Section One', level: 4 })).not.toBeInTheDocument();
+    expect(screen.queryByText('One Member')).not.toBeInTheDocument();
+  });
+
   it('should navigate back to upcoming events from past events view', async () => {
     const mockSectionData = {
       section: {

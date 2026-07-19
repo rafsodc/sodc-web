@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Alert,
@@ -79,18 +79,28 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingSection, setLoadingSection] = useState(true);
   const [errorSection, setErrorSection] = useState(false);
 
+  // Guards against a superseded call (effect re-run on a sectionId change, a remount, or a
+  // manual refetchSection() from a retry/subscribe handler racing an in-flight one) overwriting
+  // state with a stale response. Only the most recently started call may still be pending when
+  // its own result arrives.
+  const sectionRequestIdRef = useRef(0);
   const refetchSection = useCallback(async () => {
     if (!sectionId) return;
+    const requestId = ++sectionRequestIdRef.current;
     setLoadingSection(true);
     setErrorSection(false);
     try {
       const result = await getSectionForUser(sectionId);
+      if (sectionRequestIdRef.current !== requestId) return;
       setSectionData({ section: result.section });
     } catch {
+      if (sectionRequestIdRef.current !== requestId) return;
       setSectionData(undefined);
       setErrorSection(true);
     } finally {
-      setLoadingSection(false);
+      if (sectionRequestIdRef.current === requestId) {
+        setLoadingSection(false);
+      }
     }
   }, [sectionId]);
 
@@ -98,11 +108,14 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     void refetchSection();
   }, [refetchSection]);
 
+  const membersRequestIdRef = useRef(0);
   const fetchMembers = useCallback(async () => {
+    const requestId = ++membersRequestIdRef.current;
     setLoadingMembers(true);
     setErrorMembers(null);
     try {
       const res = await getSectionMembersMerged(sectionId);
+      if (membersRequestIdRef.current !== requestId) return;
       const members: SectionMember[] = (res.members || []).map((m) => ({
         userId: m.id,
         firstName: m.firstName,
@@ -114,13 +127,16 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       }));
       setSectionMembers(members);
     } catch (err: unknown) {
+      if (membersRequestIdRef.current !== requestId) return;
       const message = err && typeof (err as { message?: string }).message === "string"
         ? (err as { message: string }).message
         : "Failed to load section members";
       setErrorMembers(message);
       setSectionMembers([]);
     } finally {
-      setLoadingMembers(false);
+      if (membersRequestIdRef.current === requestId) {
+        setLoadingMembers(false);
+      }
     }
   }, [sectionId]);
 
@@ -145,18 +161,24 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [errorEvents, setErrorEvents] = useState(false);
 
+  const eventsRequestIdRef = useRef(0);
   const refetchEvents = useCallback(async () => {
     if (!sectionId) return;
+    const requestId = ++eventsRequestIdRef.current;
     setLoadingEvents(true);
     setErrorEvents(false);
     try {
       const result = await getSectionEventsForUser(sectionId);
+      if (eventsRequestIdRef.current !== requestId) return;
       setEventsData({ section: { events: result.events } });
     } catch {
+      if (eventsRequestIdRef.current !== requestId) return;
       setEventsData(undefined);
       setErrorEvents(true);
     } finally {
-      setLoadingEvents(false);
+      if (eventsRequestIdRef.current === requestId) {
+        setLoadingEvents(false);
+      }
     }
   }, [sectionId]);
 
