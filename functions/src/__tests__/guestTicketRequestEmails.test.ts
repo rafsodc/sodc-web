@@ -143,6 +143,8 @@ describe("notifyModeratorsGuestTicketRequestSubmitted", () => {
     await mockSendOnce.mock.calls[1][0].send();
     const references = sendEmail.mock.calls.map(([request]) => request.reference);
     expect(new Set(references)).toHaveLength(2);
-    expect(references.every((reference) => !reference?.includes("example.com"))).toBe(true);
+    for (const reference of references) {
+      expect(reference).toMatch(/^GUEST_REQUEST_SUBMITTED:[0-9a-f-]+:[0-9a-f]{24}$/);
+    }
   });
 });
