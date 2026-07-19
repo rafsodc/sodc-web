@@ -28,22 +28,22 @@ const APP_BASE_URL = (() => {
   return url;
 })();
 
-export function scheduleGuestTicketRequestSubmittedEmails(args: {
+export async function sendGuestTicketRequestSubmittedEmails(args: {
   requestId: string;
   appBaseUrl: string;
-}): void {
-  void notifyModeratorsGuestTicketRequestSubmitted({
+}): Promise<void> {
+  await notifyModeratorsGuestTicketRequestSubmitted({
     requestId: args.requestId,
     appBaseUrl: args.appBaseUrl,
   });
 }
 
-export function scheduleGuestTicketRequestReviewedEmails(args: {
+export async function sendGuestTicketRequestReviewedEmails(args: {
   requestId: string;
   status: typeof GuestTicketRequestStatus.APPROVED | typeof GuestTicketRequestStatus.REJECTED;
   appBaseUrl: string;
-}): void {
-  void notifyBookerGuestTicketRequestReviewed({
+}): Promise<void> {
+  await notifyBookerGuestTicketRequestReviewed({
     requestId: args.requestId,
     status: args.status,
     appBaseUrl: args.appBaseUrl,
@@ -55,7 +55,7 @@ export const submitGuestTicketRequest = onCall(
   async (request) => {
     requireEnabled(request);
     const callerUid = request.auth!.uid;
-    await enforceRateLimit("submitGuestTicketRequest", callerUid, { limit: 20, windowMs: 60 * 60 * 1000 });
+    await enforceRateLimit("submitGuestTicketRequest", callerUid);
 
     const bookingId = validateUUID(request.data?.bookingId, "bookingId") as UUIDString;
     const guestTicketTypeId = validateUUID(request.data?.guestTicketTypeId, "guestTicketTypeId") as UUIDString;
@@ -121,7 +121,7 @@ export const submitGuestTicketRequest = onCall(
       }
 
       if (decision.kind === "create_pending") {
-        scheduleGuestTicketRequestSubmittedEmails({
+        await sendGuestTicketRequestSubmittedEmails({
           requestId,
           appBaseUrl: APP_BASE_URL,
         });
@@ -145,9 +145,7 @@ export const reviewGuestTicketRequest = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
     requireAdmin(request);
-    if (request.auth!.token.enabled !== true) {
-      throw new HttpsError("permission-denied", "Account must be enabled");
-    }
+    await enforceRateLimit("reviewGuestTicketRequest", request.auth!.uid);
 
     const id = validateUUID(request.data?.id, "id") as UUIDString;
     const status = request.data?.status;
@@ -168,7 +166,7 @@ export const reviewGuestTicketRequest = onCall(
         reviewedById: request.auth!.uid,
       });
 
-      scheduleGuestTicketRequestReviewedEmails({
+      await sendGuestTicketRequestReviewedEmails({
         requestId: id,
         status,
         appBaseUrl: APP_BASE_URL,

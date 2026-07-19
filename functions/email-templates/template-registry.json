@@ -63,5 +63,10 @@
     "dev": "da2fccf1-d5e2-44c4-a730-dabaafc95d60",
     "beta": "",
     "production": ""
+  },
+  "newUserPendingApprovalAlert": {
+    "dev": "",
+    "beta": "",
+    "production": ""
   }
 }

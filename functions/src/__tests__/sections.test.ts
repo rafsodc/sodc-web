@@ -10,20 +10,27 @@ const mockGetEventsForSection = vi.spyOn(admin, "getEventsForSection");
 const mockGetEventById = vi.spyOn(admin, "getEventById");
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
+
+beforeEach(() => {
+  mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
+  mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
+});
 
 const sectionId = "00000000-0000-4000-8000-000000000001";
 const accessGroupId = "00000000-0000-4000-8000-0000000000a1";
 const moderatorGroupId = "00000000-0000-4000-8000-0000000000a2";
 
 function callAs<T>(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fn: { run: (request: any) => Promise<T> },
   uid: string,
   isAdmin: boolean,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  enabled = true
 ): Promise<T> {
   return fn.run({
-    auth: { uid, token: { admin: isAdmin, enabled: true } },
+    auth: { uid, token: { admin: isAdmin, enabled } },
     data,
   });
 }
@@ -65,6 +72,13 @@ describe("getSectionForUser", () => {
 
     expect(result.hasAccess).toBe(true);
     expect(result.section?.id).toBe(sectionId);
+  });
+
+  it("rejects a disabled admin before the admin bypass or section lookup", async () => {
+    await expect(
+      callAs(getSectionForUser, "admin-1", true, { sectionId }, false)
+    ).rejects.toMatchObject({ code: "permission-denied", message: "Account must be enabled" });
+    expect(mockGetSectionById).not.toHaveBeenCalled();
   });
 
   it("returns hasAccess and canModerate for a non-admin with a MODERATOR group", async () => {
@@ -233,6 +247,16 @@ describe("getSectionMembersMerged", () => {
       },
     } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
   }
+
+  it("rejects a disabled caller before retained group membership can grant directory access", async () => {
+    await expect(
+      callAs(getSectionMembersMerged, "member-1", false, { sectionId }, false)
+    ).rejects.toMatchObject({ code: "permission-denied", message: "Account must be enabled" });
+
+    expect(mockGetSectionById).not.toHaveBeenCalled();
+    expect(mockGetSectionMembers).not.toHaveBeenCalled();
+    expect(mockGetUserAccessGroupsById).not.toHaveBeenCalled();
+  });
 
   it("includes email and rank for a member who shares contact info", async () => {
     mockMembers([member({ rank: "Wing Commander", shareContactInfo: true })]);

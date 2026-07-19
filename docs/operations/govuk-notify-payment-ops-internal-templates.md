@@ -1,6 +1,6 @@
 # GOV.UK Notify: internal payment ops templates
 
-These templates send **internal** email to finance/ops when payment reconciliation exceptions open or when Stripe dispute side-state webhooks are processed. Implementation: [`functions/src/paymentOpsInternalAlerts.ts`](../../functions/src/paymentOpsInternalAlerts.ts), wired from [`functions/src/payments.ts`](../../functions/src/payments.ts).
+These templates send **internal** email to finance/ops when payment reconciliation exceptions open or when Stripe dispute side-state webhooks are processed. Implementation: [`functions/src/paymentOpsInternalAlerts.ts`](../../functions/src/paymentOpsInternalAlerts.ts), wired from [`functions/src/paymentReconciliationService.ts`](../../functions/src/paymentReconciliationService.ts) and [`functions/src/paymentWebhook.ts`](../../functions/src/paymentWebhook.ts).
 
 Recipients are **`PAYMENT_OPS_ALERT_EMAILS`** (comma-separated). If unset or empty, no internal emails are sent.
 

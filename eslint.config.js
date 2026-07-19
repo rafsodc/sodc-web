@@ -6,13 +6,39 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'src/dataconnect-generated']),
+  globalIgnores([
+    '.firebase',
+    'dist',
+    'coverage',
+    'src/dataconnect-generated',
+    'functions/coverage',
+    'functions/lib',
+    'functions/src/dataconnect-admin-generated',
+    'functions/src/generatedEmailTemplateManifest.ts',
+  ]),
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  reactHooks.configs.flat.recommended,
-  reactRefresh.configs.vite,
   {
-    files: ['**/*.{ts,tsx}'],
+    ...reactHooks.configs.flat.recommended,
+    files: ['src/**/*.{ts,tsx}'],
+  },
+  {
+    ...reactRefresh.configs.vite,
+    files: ['src/**/*.{ts,tsx}'],
+  },
+  {
+    files: [
+      '*.config.{js,mjs,cjs,ts,mts,cts}',
+      '.github/scripts/**/*.{js,mjs,cjs}',
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+      sourceType: 'module',
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

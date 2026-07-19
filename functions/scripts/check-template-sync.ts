@@ -157,7 +157,7 @@ async function run(): Promise<void> {
       lines.push(`_${inSync} template(s) in sync. ${unconfigured} unconfigured (skipped)._`);
     }
     lines.push("");
-    lines.push(`<!-- template-drift-check -->`);
+    lines.push("<!-- template-drift-check -->");
     fs.writeFileSync(OUTPUT_FILE, lines.join("\n"), "utf-8");
     console.log(`\nWrote summary to ${OUTPUT_FILE}`);
   }

@@ -30,7 +30,7 @@ async function defaultDispatcher(notification: PaymentLifecycleNotification): Pr
   logger.info("payment lifecycle notification", notification);
 }
 
-function paymentLifecycleDeliveryKey(notification: PaymentLifecycleNotification): string {
+export function paymentLifecycleDeliveryKey(notification: PaymentLifecycleNotification): string {
   return `payment:${notification.orderId}:${notification.type}:${notification.stripeEventId}`;
 }
 
@@ -48,6 +48,17 @@ export async function emitPaymentLifecycleNotification(
       ticketOrderId: notification.orderId,
       userId: extras?.userId ?? null,
       provider: extras?.provider ?? null,
+      recoveryPayload: {
+        version: 1,
+        kind: "PAYMENT_LIFECYCLE",
+        type: notification.type,
+        orderId: notification.orderId,
+        eventId: notification.eventId ?? null,
+        stripeEventId: notification.stripeEventId,
+        status: notification.status ?? null,
+        occurredAt: notification.occurredAt,
+        userId: extras?.userId ?? null,
+      },
       send: async () => dispatcher(notification),
     });
   } catch (error) {
@@ -57,5 +68,6 @@ export async function emitPaymentLifecycleNotification(
       stripeEventId: notification.stripeEventId,
       error: sanitizeMailerError(error),
     });
+    throw error;
   }
 }

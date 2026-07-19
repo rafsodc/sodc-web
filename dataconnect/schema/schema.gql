@@ -81,6 +81,20 @@ enum NotificationDeliveryStatus {
   FAILED
 }
 
+enum NotifyDeliveryReceiptProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum NotifyDeliveryReceiptOutcome {
+  APPLIED
+  IGNORED_STATUS
+  IGNORED_NO_USER
+  IGNORED_NO_RECIPIENT
+  NO_STATE_CHANGE
+}
+
 # User table is keyed by Firebase Auth UID.
 # Includes HasAudit fields for tracking creation and update metadata
 type User @table {
@@ -106,6 +120,13 @@ type User @table {
   stripeCustomerId: String
   emailBounceCount: Int! @default(value: 0)
   emailLastBounceAt: Timestamp
+  # Optimistic-concurrency and ordering metadata for GOV.UK Notify callbacks.
+  # The version is advanced only by the callback processor, allowing updateMany
+  # mutations to compare-and-swap the complete derived delivery state safely.
+  emailDeliveryVersion: Int! @default(value: 0)
+  emailDeliveryStatus: String
+  emailDeliveryStatusUpdatedAt: Timestamp
+  emailDeliveryReceiptId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -352,6 +373,8 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   channel: NotificationChannel!
   notificationType: String!
   deliveryKey: String!
+  # Versioned minimal domain context used by the scheduled recovery dispatcher.
+  recoveryPayload: String
   status: NotificationDeliveryStatus! @default(value: PENDING)
   ticketOrder: TicketOrder
   booking: Booking
@@ -380,11 +403,13 @@ type AnnouncementSend @table {
   sentAt: Timestamp! @default(expr: "request.time")
   recipientCount: Int!
   skippedCount: Int!
-  failureCount: Int!
+  # Immutable versioned snapshot used to resume a partially-enqueued send without
+  # re-resolving an audience that may have changed since the moderator clicked send.
+  recipientSnapshot: String
 }
 
 # Per-recipient audit row for a bulk announcement send.
-type AnnouncementRecipient @table {
+type AnnouncementRecipient @table @unique(fields: ["announcementSend", "userId"]) {
   id: UUID! @default(expr: "uuidV4()")
   announcementSend: AnnouncementSend!
   userId: String!
@@ -395,6 +420,43 @@ type AnnouncementRecipient @table {
   skippedReason: String
   sentAt: Timestamp
   failureReason: String
+  # Compare-and-swap processing lease. processingStartedAt makes an abandoned
+  # `sending` claim reclaimable after the worker lease expires.
+  processingVersion: Int! @default(value: 0)
+  processingStartedAt: Timestamp
+  providerNotificationId: String
+  # Latest GOV.UK Notify receipt applied to this recipient. The version supports
+  # compare-and-swap updates when callbacks arrive concurrently or out of order.
+  deliveryVersion: Int! @default(value: 0)
+  deliveryStatusUpdatedAt: Timestamp
+  deliveryReceiptId: String
+}
+
+# Durable receipt ledger for GOV.UK Notify callbacks. The provider receipt ID is
+# the primary key, which makes callback insertion idempotent. Processing leases
+# allow an abandoned PENDING receipt to be reclaimed safely.
+type NotifyDeliveryReceipt @table {
+  id: String!
+  notifyStatus: String!
+  reference: String
+  recipientHash: String!
+  user: User
+  eventAt: Timestamp!
+  # ISO timestamp followed by receipt ID; provides deterministic total ordering
+  # even if two provider events have the same timestamp.
+  eventOrderingKey: String!
+  affectsBounceState: Boolean!
+  processingStatus: NotifyDeliveryReceiptProcessingStatus! @default(value: PENDING)
+  outcome: NotifyDeliveryReceiptOutcome
+  attemptCount: Int! @default(value: 1)
+  lastAttemptedAt: Timestamp!
+  processedAt: Timestamp
+  lastErrorMessage: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
 }
 
 type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking"]) {
@@ -411,14 +473,22 @@ type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# Per-user fixed-window rate-limit counter for high-risk callable functions (see #344,
-# functions/src/rateLimiter.ts). SDK-only — never exposed to the client. One row per
-# (userId, functionName) pair, overwritten every window rather than accumulating a row
-# per window, so the table stays bounded by (active users) x (rate-limited functions)
-# with no cleanup job needed.
+# Legacy read-then-write counters retained so the connector can be deployed before the
+# #369 Functions rollout. New code uses CallableRateLimitBucket below.
 type CallableInvocation @table(key: ["userId", "functionName"]) {
   userId: String!
   functionName: String!
   windowStart: Timestamp!
   count: Int!
+}
+
+# Concurrency-safe per-user fixed-window counter for high-risk callable functions (see
+# #369 and functions/src/rateLimiter.ts). The window is part of the key so increments can
+# use PostgreSQL's atomic integer update. Successful consumption deletes older buckets
+# for the same user and function to keep the table bounded.
+type CallableRateLimitBucket @table(key: ["userId", "functionName", "windowStart"]) {
+  userId: String!
+  functionName: String!
+  windowStart: Timestamp!
+  count: Int! @default(value: 0)
 }

@@ -27,9 +27,9 @@ function assertAuth(source: string, checks: AuthExpectation[]): void {
   }
 }
 
-const ADMIN_EXPR = '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")';
-const USER_EXPR = '@auth(expr: "auth.token.enabled == true")';
-const EMAIL_VERIFIED_EXPR = '@auth(expr: "auth.token.email_verified == true")';
+const ADMIN_EXPR = "@auth(expr: \"auth.token.admin == true && auth.token.enabled == true\")";
+const USER_EXPR = "@auth(expr: \"auth.token.enabled == true\")";
+const EMAIL_VERIFIED_EXPR = "@auth(expr: \"auth.token.email_verified == true\")";
 const NO_ACCESS = "@auth(level: NO_ACCESS)";
 
 describe("Data Connect auth contracts", () => {
@@ -150,8 +150,11 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetBookingForNotification", mustInclude: NO_ACCESS },
       { op: "query GetGuestTicketRequestForNotification", mustInclude: NO_ACCESS },
       { op: "query GetNotificationDeliveryByChannelAndKey", mustInclude: NO_ACCESS },
+      { op: "query ListFailedNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
+      { op: "query ListStalePendingNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
       { op: "mutation CreateNotificationDelivery", mustInclude: NO_ACCESS },
-      { op: "mutation MarkNotificationDeliveryPendingById", mustInclude: NO_ACCESS },
+      { op: "mutation ClaimNotificationDeliveryById", mustInclude: NO_ACCESS },
+      { op: "mutation RecordNotificationRecoveryFailureById", mustInclude: NO_ACCESS },
       { op: "mutation MarkNotificationDeliverySentById", mustInclude: NO_ACCESS },
       { op: "mutation MarkNotificationDeliveryFailedById", mustInclude: NO_ACCESS },
     ]);
@@ -168,8 +171,7 @@ describe("Data Connect auth contracts", () => {
     // Payment reconciliation
     assertAuth(adminSdk, [
       { op: "query GetPaymentReconciliationExceptionByOrderAndType", mustInclude: NO_ACCESS },
-      { op: "mutation CreatePaymentReconciliationException", mustInclude: NO_ACCESS },
-      { op: "mutation UpdatePaymentReconciliationExceptionById", mustInclude: NO_ACCESS },
+      { op: "mutation UpsertPaymentReconciliationException", mustInclude: NO_ACCESS },
     ]);
   });
 

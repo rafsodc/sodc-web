@@ -33,6 +33,9 @@ jobs:
       - name: Install functions dependencies
         run: npm ci --prefix functions
 
+      - name: Run functions lint
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run lint
+
       - name: Run functions build
         run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run build
 
@@ -93,6 +96,35 @@ jobs:
 
       - name: Run frontend coverage (enforces thresholds)
         run: node .github/scripts/fail-on-warning-output.mjs -- npm run test:coverage
+
+  functions-coverage:
+    name: Functions coverage gate (ratcheted)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Run functions coverage (enforces thresholds)
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test:coverage
+
+      - name: Upload functions coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-coverage
+          path: functions/coverage
+          if-no-files-found: ignore
+          retention-days: 7
 
   functions-security-tests:
     name: Functions security tests

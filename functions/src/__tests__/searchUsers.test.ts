@@ -18,8 +18,8 @@ vi.mock("firebase-functions/logger", () => ({
 
 const mockDcListUsers = vi.spyOn(admin, "listUsers");
 const mockListAllAuthUsers = vi.spyOn(helpers, "listAllAuthUsers");
-const mockGetCallableInvocation = vi.spyOn(admin, "getCallableInvocation");
-const mockUpsertCallableInvocation = vi.spyOn(admin, "upsertCallableInvocation");
+const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
+const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 
 import { searchUsers, invalidateDcProfileCache } from "../users.js";
 
@@ -31,7 +31,7 @@ const handler = searchUsers as unknown as Handler;
 
 function adminRequest(data: Record<string, unknown> = {}) {
   return {
-    auth: { uid: "admin-uid", token: { admin: true } },
+    auth: { uid: "admin-uid", token: { admin: true, enabled: true } },
     data: { searchTerm: "alice", ...data },
   };
 }
@@ -52,10 +52,8 @@ describe("searchUsers — membership status enrichment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     invalidateDcProfileCache();
-    mockGetCallableInvocation.mockResolvedValue({ data: { callableInvocation: undefined } } as never);
-    mockUpsertCallableInvocation.mockResolvedValue({
-      data: { callableInvocation_upsert: { userId: "admin-uid", functionName: "searchUsers" } },
-    } as never);
+    mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
+    mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
   });
 
   it("attaches membershipStatus from DC profile when user has a profile", async () => {

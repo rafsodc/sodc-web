@@ -40,11 +40,13 @@ Common commands:
 
 ```sh
 # Frontend
+npm run lint
 npm run test
 
 # Functions
-cd functions
-npm run test
+npm --prefix functions run lint
+npm --prefix functions run test
+npm --prefix functions run test:coverage
 
 # Full functions suite (includes mailers, dispatchers, wiring tests)
 cd functions
@@ -54,6 +56,38 @@ npm run test
 cd functions
 npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
 ```
+
+Functions linting is self-contained: its ESLint dependencies and flat configuration live in
+`functions/`, so the same check also works after a Functions-only install:
+
+```sh
+cd functions
+npm ci
+npm run lint
+```
+
+### Functions coverage
+
+`npm --prefix functions run test:coverage` reports on every hand-authored TypeScript file under `functions/src`, including files that no test imports. Build output, generated Data Connect code, generated email-template manifests, declarations, tests, and test helpers are excluded. HTML and JSON summary reports are written to `functions/coverage/`, which is ignored by Git and ESLint.
+
+The initial global floors preserve the measured baseline while allowing coverage to improve incrementally:
+
+| Metric | Global minimum |
+| --- | ---: |
+| Statements | 46% |
+| Branches | 42% |
+| Functions | 57% |
+| Lines | 46% |
+
+Higher grouped thresholds protect code at critical boundaries:
+
+- authorization, validation, and rate limiting (`helpers`, `rateLimiter`, `sections`, `validation`): 77% statements, 66% branches, 80% functions, 77% lines
+- deterministic payment, Stripe webhook, and state-transition logic: 90% statements, 73% branches, 100% functions, 94% lines
+- member-facing Stripe artifact retrieval: 95% statements, 78% branches, 100% functions, 95% lines
+- notification delivery and callback handling: 81% statements, 68% branches, 69% functions, 82% lines
+- notification delivery lease and idempotency logic: 65% statements, 50% branches, 57% functions, 64% lines
+
+Treat these values as ratchets. Raise the relevant whole-number threshold when a change creates durable headroom; do not lower one without explaining the coverage loss and follow-up plan in the PR. Integration-heavy callable and webhook entry points remain covered by the global gate and security contract tests, while extracted deterministic payment and state-transition modules use the higher grouped thresholds above.
 
 When changing transactional email (callables, webhooks, dispatchers), run the **full** functions suite and update [`operations/transactional-email-workflows.md`](operations/transactional-email-workflows.md) when triggers or delivery keys change.
 
@@ -69,6 +103,7 @@ After CI workflows are in place, configure these as required in branch protectio
 - `Frontend and functions build checks`
 - `Frontend full test suite`
 - `Functions full test suite`
+- `Functions coverage gate (ratcheted)`
 - `Functions security tests`
 
 Set in GitHub repository settings:

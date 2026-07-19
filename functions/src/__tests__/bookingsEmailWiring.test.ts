@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingPaymentAdjustmentStatus } from "@dataconnect/admin-generated";
-import { scheduleBookingSubmitNotificationEmails } from "../bookings";
+import { sendBookingSubmitNotificationEmails } from "../bookings";
 import {
   notifyBookingConfirmationEmail,
   notifyBookingRevisionEmail,
@@ -11,13 +11,13 @@ vi.mock("../bookingEmailDispatcher", () => ({
   notifyBookingRevisionEmail: vi.fn(),
 }));
 
-describe("scheduleBookingSubmitNotificationEmails", () => {
+describe("sendBookingSubmitNotificationEmails", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("sends confirmation email for a new booking", () => {
-    scheduleBookingSubmitNotificationEmails({
+  it("sends confirmation email for a new booking", async () => {
+    await sendBookingSubmitNotificationEmails({
       bookingId: "00000000-0000-0000-0000-000000000001",
       idempotencyKey: "key-1",
       appBaseUrl: "https://app.example",
@@ -32,8 +32,8 @@ describe("scheduleBookingSubmitNotificationEmails", () => {
     });
   });
 
-  it("sends revision email when superseding a booking", () => {
-    scheduleBookingSubmitNotificationEmails({
+  it("sends revision email when superseding a booking", async () => {
+    await sendBookingSubmitNotificationEmails({
       bookingId: "00000000-0000-0000-0000-000000000002",
       idempotencyKey: "key-2",
       appBaseUrl: "https://app.example",
@@ -50,8 +50,8 @@ describe("scheduleBookingSubmitNotificationEmails", () => {
     expect(notifyBookingConfirmationEmail).not.toHaveBeenCalled();
   });
 
-  it("falls back to confirmation when superseded id is set without payment delta", () => {
-    scheduleBookingSubmitNotificationEmails({
+  it("falls back to confirmation when superseded id is set without payment delta", async () => {
+    await sendBookingSubmitNotificationEmails({
       bookingId: "00000000-0000-0000-0000-000000000003",
       idempotencyKey: "key-3",
       appBaseUrl: "https://app.example",

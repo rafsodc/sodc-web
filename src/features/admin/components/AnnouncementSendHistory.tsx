@@ -30,6 +30,11 @@ interface Props {
 }
 
 function statusChip(status: AnnouncementRecipient["status"]) {
+  if (status === "queued") return <Chip label="Queued" size="small" variant="outlined" />;
+  if (status === "sending") return <Chip label="Sending" color="info" size="small" />;
+  if (status === "retrying") return <Chip label="Retrying" color="warning" size="small" />;
+  if (status === "delivery_unknown") return <Chip label="Checking delivery" color="warning" size="small" />;
+  if (status === "enqueue_failed") return <Chip label="Queue failed" color="error" size="small" />;
   if (status === "delivered") return <Chip label="Delivered" color="success" size="small" />;
   if (status === "sent") return <Chip label="Sent" color="success" size="small" variant="outlined" />;
   if (status === "bounced") return <Chip label="Bounced" color="error" size="small" />;
@@ -113,9 +118,14 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
         <TableCell align="right">
           <Typography variant="body2" color="text.secondary">{send.skippedCount}</Typography>
         </TableCell>
+        <TableCell align="right">
+          <Typography variant="body2" color={send.failureCount > 0 ? "error.main" : "text.secondary"}>
+            {send.failureCount}
+          </Typography>
+        </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={5} sx={{ py: 0 }}>
+        <TableCell colSpan={6} sx={{ py: 0 }}>
           <Collapse in={open} unmountOnExit>
             <Box sx={{ px: 2, py: 1 }}>
               {loading && <CircularProgress size={20} sx={{ my: 1 }} />}
@@ -202,6 +212,7 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
               <TableCell>Template</TableCell>
               <TableCell align="right">Sent</TableCell>
               <TableCell align="right">Skipped</TableCell>
+              <TableCell align="right">Attention</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

@@ -43,23 +43,23 @@ const APP_BASE_URL = (() => {
   return url;
 })();
 
-/** Schedules confirmation or revision email after a successful submit (not on idempotent replay). */
-export function scheduleBookingSubmitNotificationEmails(args: {
+/** Sends confirmation or revision email after a successful submit (not on idempotent replay). */
+export async function sendBookingSubmitNotificationEmails(args: {
   bookingId: UUIDString;
   idempotencyKey: string;
   appBaseUrl: string;
   supersededBookingId?: string | null;
   paymentDelta?: BookingPaymentDelta;
-}): void {
+}): Promise<void> {
   if (args.supersededBookingId && args.paymentDelta) {
-    void notifyBookingRevisionEmail({
+    await notifyBookingRevisionEmail({
       bookingId: args.bookingId,
       idempotencyKey: args.idempotencyKey,
       appBaseUrl: args.appBaseUrl,
       paymentDelta: args.paymentDelta,
     });
   } else {
-    void notifyBookingConfirmationEmail({
+    await notifyBookingConfirmationEmail({
       bookingId: args.bookingId,
       idempotencyKey: args.idempotencyKey,
       appBaseUrl: args.appBaseUrl,
@@ -158,7 +158,7 @@ function isDuplicateKeyError(err: unknown): boolean {
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
-  await enforceRateLimit("submitEventBooking", uid, { limit: 20, windowMs: 60 * 60 * 1000 });
+  await enforceRateLimit("submitEventBooking", uid);
 
   const idempotencyKey = validateUUID(
     requireString(request.data?.idempotencyKey, "idempotencyKey"),
@@ -415,7 +415,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [g
       });
     }
 
-    scheduleBookingSubmitNotificationEmails({
+    await sendBookingSubmitNotificationEmails({
       bookingId: bookingId as UUIDString,
       idempotencyKey,
       appBaseUrl: APP_BASE_URL,

@@ -542,6 +542,7 @@ query GetNotificationDeliveryByChannelAndKey(
     channel
     deliveryKey
     notificationType
+    recoveryPayload
     status
     provider
     providerMessageId
@@ -554,10 +555,65 @@ query GetNotificationDeliveryByChannelAndKey(
   }
 }
 
+query ListFailedNotificationDeliveriesForRecovery(
+  $attemptedBefore: Timestamp!
+  $maxAttemptCount: Int!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: {
+      status: { eq: FAILED }
+      recoveryPayload: { isNull: false }
+      attemptCount: { lt: $maxAttemptCount }
+      lastAttemptedAt: { lt: $attemptedBefore }
+    }
+    orderBy: { lastAttemptedAt: ASC }
+    limit: $limit
+  ) {
+    id
+    channel
+    notificationType
+    deliveryKey
+    recoveryPayload
+    status
+    attemptCount
+    lastAttemptedAt
+    createdAt
+  }
+}
+
+query ListStalePendingNotificationDeliveriesForRecovery(
+  $attemptedBefore: Timestamp!
+  $maxAttemptCount: Int!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: {
+      status: { eq: PENDING }
+      recoveryPayload: { isNull: false }
+      attemptCount: { lt: $maxAttemptCount }
+      lastAttemptedAt: { lt: $attemptedBefore }
+    }
+    orderBy: { lastAttemptedAt: ASC }
+    limit: $limit
+  ) {
+    id
+    channel
+    notificationType
+    deliveryKey
+    recoveryPayload
+    status
+    attemptCount
+    lastAttemptedAt
+    createdAt
+  }
+}
+
 mutation CreateNotificationDelivery(
   $channel: NotificationChannel!
   $notificationType: String!
   $deliveryKey: String!
+  $recoveryPayload: String
   $status: NotificationDeliveryStatus!
   $ticketOrderId: UUID
   $bookingId: UUID
@@ -571,6 +627,7 @@ mutation CreateNotificationDelivery(
       channel: $channel
       notificationType: $notificationType
       deliveryKey: $deliveryKey
+      recoveryPayload: $recoveryPayload
       status: $status
       ticketOrderId: $ticketOrderId
       bookingId: $bookingId
@@ -584,19 +641,54 @@ mutation CreateNotificationDelivery(
   )
 }
 
-mutation MarkNotificationDeliveryPendingById(
+mutation ClaimNotificationDeliveryById(
   $id: UUID!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
   $attemptCount: Int!
   $lastAttemptedAt: Timestamp!
   $provider: String
+  $recoveryPayload: String
 ) @auth(level: NO_ACCESS) {
-  notificationDelivery_update(
-    id: $id
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: $expectedStatus }
+      attemptCount: { eq: $expectedAttemptCount }
+    }
     data: {
       status: PENDING
       attemptCount: $attemptCount
       lastAttemptedAt: $lastAttemptedAt
       provider: $provider
+      recoveryPayload: $recoveryPayload
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation RecordNotificationRecoveryFailureById(
+  $id: UUID!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $lastErrorCode: String!
+  $lastErrorMessage: String!
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: $expectedStatus }
+      attemptCount: { eq: $expectedAttemptCount }
+    }
+    data: {
+      status: FAILED
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      lastErrorCode: $lastErrorCode
+      lastErrorMessage: $lastErrorMessage
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
@@ -613,8 +705,12 @@ mutation MarkNotificationDeliverySentById(
   $lastErrorCode: String
   $lastErrorMessage: String
 ) @auth(level: NO_ACCESS) {
-  notificationDelivery_update(
-    id: $id
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
     data: {
       status: SENT
       attemptCount: $attemptCount
@@ -638,8 +734,12 @@ mutation MarkNotificationDeliveryFailedById(
   $lastErrorCode: String
   $lastErrorMessage: String
 ) @auth(level: NO_ACCESS) {
-  notificationDelivery_update(
-    id: $id
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
     data: {
       status: FAILED
       attemptCount: $attemptCount
@@ -752,7 +852,8 @@ query GetPaymentReconciliationExceptionByOrderAndType(
   }
 }
 
-mutation CreatePaymentReconciliationException(
+mutation UpsertPaymentReconciliationException(
+  $id: UUID!
   $ticketOrderId: UUID!
   $exceptionType: PaymentReconciliationExceptionType!
   $status: PaymentReconciliationExceptionStatus!
@@ -761,8 +862,9 @@ mutation CreatePaymentReconciliationException(
   $lastAttemptedAt: Timestamp
   $resolvedAt: Timestamp
 ) @auth(level: NO_ACCESS) {
-  paymentReconciliationException_insert(
+  paymentReconciliationException_upsert(
     data: {
+      id: $id
       ticketOrderId: $ticketOrderId
       exceptionType: $exceptionType
       status: $status
@@ -771,28 +873,6 @@ mutation CreatePaymentReconciliationException(
       lastAttemptedAt: $lastAttemptedAt
       resolvedAt: $resolvedAt
       createdBy: "system"
-      updatedAt_expr: "request.time"
-      updatedBy: "system"
-    }
-  )
-}
-
-mutation UpdatePaymentReconciliationExceptionById(
-  $id: UUID!
-  $status: PaymentReconciliationExceptionStatus!
-  $note: String
-  $ownerUserId: String
-  $lastAttemptedAt: Timestamp
-  $resolvedAt: Timestamp
-) @auth(level: NO_ACCESS) {
-  paymentReconciliationException_update(
-    id: $id
-    data: {
-      status: $status
-      note: $note
-      ownerUserId: $ownerUserId
-      lastAttemptedAt: $lastAttemptedAt
-      resolvedAt: $resolvedAt
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
@@ -1055,7 +1135,7 @@ mutation CreateAnnouncementSend(
   $sentBy: String!
   $recipientCount: Int!
   $skippedCount: Int!
-  $failureCount: Int!
+  $recipientSnapshot: String!
 ) @auth(level: NO_ACCESS) {
   announcementSend_insert(data: {
     id: $id
@@ -1065,11 +1145,12 @@ mutation CreateAnnouncementSend(
     sentBy: $sentBy
     recipientCount: $recipientCount
     skippedCount: $skippedCount
-    failureCount: $failureCount
+    recipientSnapshot: $recipientSnapshot
   })
 }
 
 mutation CreateAnnouncementRecipient(
+  $id: UUID!
   $announcementSendId: UUID!
   $userId: String!
   $email: String!
@@ -1081,6 +1162,7 @@ mutation CreateAnnouncementRecipient(
   $failureReason: String
 ) @auth(level: NO_ACCESS) {
   announcementRecipient_insert(data: {
+    id: $id
     announcementSendId: $announcementSendId
     userId: $userId
     email: $email
@@ -1093,9 +1175,17 @@ mutation CreateAnnouncementRecipient(
   })
 }
 
-query GetAnnouncementRecipientCount($sendId: UUID!) @auth(level: NO_ACCESS) {
+query GetAnnouncementRecipientProgress($sendId: UUID!) @auth(level: NO_ACCESS) {
+  announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
+    status
+  }
+}
+
+query GetAnnouncementRecipientsForResume($sendId: UUID!) @auth(level: NO_ACCESS) {
   announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
     id
+    userId
+    status
   }
 }
 
@@ -1112,7 +1202,6 @@ query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
     sentAt
     recipientCount
     skippedCount
-    failureCount
   }
 }
 
@@ -1139,6 +1228,12 @@ query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
   announcementSend(id: $id) {
     id
     sectionId
+    templateUuid
+    templateName
+    sentBy
+    recipientCount
+    skippedCount
+    recipientSnapshot
   }
 }
 
@@ -1151,15 +1246,84 @@ query GetAnnouncementRecipientBySendAndUser($announcementSendId: UUID!, $userId:
     limit: 1
   ) {
     id
+    status
+    failureReason
+    processingVersion
+    processingStartedAt
+    providerNotificationId
+    deliveryVersion
+    deliveryStatusUpdatedAt
+    deliveryReceiptId
   }
 }
 
-mutation UpdateAnnouncementRecipientDeliveryStatus(
+mutation TryUpdateAnnouncementRecipientProcessingStatus(
   $id: UUID!
+  $expectedStatus: String!
+  $expectedProcessingVersion: Int!
+  $status: String!
+  $processingVersion: Int!
+  $processingStartedAt: Timestamp
+  $sentAt: Timestamp
+  $failureReason: String
+  $providerNotificationId: String
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: $expectedStatus }
+      processingVersion: { eq: $expectedProcessingVersion }
+    }
+    data: {
+      status: $status
+      processingVersion: $processingVersion
+      processingStartedAt: $processingStartedAt
+      sentAt: $sentAt
+      failureReason: $failureReason
+      providerNotificationId: $providerNotificationId
+    }
+  )
+}
+
+mutation TryMarkAnnouncementRecipientEnqueueFailed(
+  $id: UUID!
+  $failureReason: String!
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: "queued" }
+      processingVersion: { eq: 0 }
+    }
+    data: {
+      status: "enqueue_failed"
+      failureReason: $failureReason
+    }
+  )
+}
+
+mutation TryUpdateAnnouncementRecipientDeliveryStatus(
+  $id: UUID!
+  $expectedDeliveryVersion: Int!
+  $deliveryVersion: Int!
   $status: String!
   $failureReason: String
+  $deliveryStatusUpdatedAt: Timestamp!
+  $deliveryReceiptId: String!
 ) @auth(level: NO_ACCESS) {
-  announcementRecipient_update(id: $id, data: { status: $status, failureReason: $failureReason })
+  announcementRecipient_updateMany(
+    where: {
+      id: { eq: $id }
+      deliveryVersion: { eq: $expectedDeliveryVersion }
+    }
+    data: {
+      status: $status
+      failureReason: $failureReason
+      deliveryVersion: $deliveryVersion
+      deliveryStatusUpdatedAt: $deliveryStatusUpdatedAt
+      deliveryReceiptId: $deliveryReceiptId
+    }
+  )
 }
 
 # ── Email bounce tracking ────────────────────────────────────────────────────
@@ -1169,23 +1333,231 @@ query GetUserByEmail($email: String!) @auth(level: NO_ACCESS) {
     id
     membershipStatus
     emailBounceCount
+    emailLastBounceAt
+    emailDeliveryVersion
+    emailDeliveryStatus
+    emailDeliveryStatusUpdatedAt
+    emailDeliveryReceiptId
   }
 }
 
-mutation UpdateEmailBounceStats(
+query GetNotifyCallbackUserById($userId: String!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    membershipStatus
+    emailBounceCount
+    emailLastBounceAt
+    emailDeliveryVersion
+    emailDeliveryStatus
+    emailDeliveryStatusUpdatedAt
+    emailDeliveryReceiptId
+  }
+}
+
+mutation TryApplyNotifyDeliveryUserState(
   $userId: String!
+  $expectedEmailDeliveryVersion: Int!
+  $emailDeliveryVersion: Int!
   $emailBounceCount: Int!
   $emailLastBounceAt: Timestamp
+  $emailDeliveryStatus: String!
+  $emailDeliveryStatusUpdatedAt: Timestamp!
+  $emailDeliveryReceiptId: String!
 ) @auth(level: NO_ACCESS) {
-  user_update(
-    id: $userId
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
+    }
     data: {
       emailBounceCount: $emailBounceCount
       emailLastBounceAt: $emailLastBounceAt
+      emailDeliveryVersion: $emailDeliveryVersion
+      emailDeliveryStatus: $emailDeliveryStatus
+      emailDeliveryStatusUpdatedAt: $emailDeliveryStatusUpdatedAt
+      emailDeliveryReceiptId: $emailDeliveryReceiptId
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
   )
+}
+
+mutation TryApplyNotifyDeliveryUserStateAndMarkLost(
+  $userId: String!
+  $expectedEmailDeliveryVersion: Int!
+  $emailDeliveryVersion: Int!
+  $emailBounceCount: Int!
+  $emailLastBounceAt: Timestamp
+  $emailDeliveryStatus: String!
+  $emailDeliveryStatusUpdatedAt: Timestamp!
+  $emailDeliveryReceiptId: String!
+) @auth(level: NO_ACCESS) {
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
+    }
+    data: {
+      membershipStatus: LOST
+      emailBounceCount: $emailBounceCount
+      emailLastBounceAt: $emailLastBounceAt
+      emailDeliveryVersion: $emailDeliveryVersion
+      emailDeliveryStatus: $emailDeliveryStatus
+      emailDeliveryStatusUpdatedAt: $emailDeliveryStatusUpdatedAt
+      emailDeliveryReceiptId: $emailDeliveryReceiptId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# ── GOV.UK Notify callback receipt ledger ────────────────────────────────────
+
+query GetNotifyDeliveryReceipt($id: String!) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt(id: $id) {
+    id
+    notifyStatus
+    reference
+    recipientHash
+    userId
+    eventAt
+    eventOrderingKey
+    affectsBounceState
+    processingStatus
+    outcome
+    attemptCount
+    lastAttemptedAt
+    processedAt
+  }
+}
+
+mutation CreateNotifyDeliveryReceipt(
+  $id: String!
+  $notifyStatus: String!
+  $reference: String
+  $recipientHash: String!
+  $userId: String
+  $eventAt: Timestamp!
+  $eventOrderingKey: String!
+  $affectsBounceState: Boolean!
+  $lastAttemptedAt: Timestamp!
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_insert(
+    data: {
+      id: $id
+      notifyStatus: $notifyStatus
+      reference: $reference
+      recipientHash: $recipientHash
+      userId: $userId
+      eventAt: $eventAt
+      eventOrderingKey: $eventOrderingKey
+      affectsBounceState: $affectsBounceState
+      processingStatus: PENDING
+      attemptCount: 1
+      lastAttemptedAt: $lastAttemptedAt
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation ClaimNotifyDeliveryReceipt(
+  $id: String!
+  $expectedProcessingStatus: NotifyDeliveryReceiptProcessingStatus!
+  $expectedAttemptCount: Int!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_updateMany(
+    where: {
+      id: { eq: $id }
+      processingStatus: { eq: $expectedProcessingStatus }
+      attemptCount: { eq: $expectedAttemptCount }
+    }
+    data: {
+      processingStatus: PENDING
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      lastErrorMessage: null
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotifyDeliveryReceiptProcessed(
+  $id: String!
+  $attemptCount: Int!
+  $outcome: NotifyDeliveryReceiptOutcome!
+  $processedAt: Timestamp!
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_updateMany(
+    where: {
+      id: { eq: $id }
+      processingStatus: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
+    data: {
+      processingStatus: PROCESSED
+      outcome: $outcome
+      processedAt: $processedAt
+      lastErrorMessage: null
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation MarkNotifyDeliveryReceiptFailed(
+  $id: String!
+  $attemptCount: Int!
+  $lastErrorMessage: String
+) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipt_updateMany(
+    where: {
+      id: { eq: $id }
+      processingStatus: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+    }
+    data: {
+      processingStatus: FAILED
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+query GetRecentNotifyDeliveryReceiptsForUser($userId: String!) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipts(
+    where: {
+      userId: { eq: $userId }
+      affectsBounceState: { eq: true }
+    }
+    orderBy: { eventOrderingKey: DESC }
+    limit: 3
+  ) {
+    id
+    notifyStatus
+    eventAt
+    eventOrderingKey
+  }
+}
+
+query GetLatestNotifyDeliveryReceiptForReference($reference: String!) @auth(level: NO_ACCESS) {
+  notifyDeliveryReceipts(
+    where: {
+      reference: { eq: $reference }
+      affectsBounceState: { eq: true }
+    }
+    orderBy: { eventOrderingKey: DESC }
+    limit: 1
+  ) {
+    id
+    notifyStatus
+    eventAt
+    eventOrderingKey
+  }
 }
 
 # ── Unsubscribe ───────────────────────────────────────────────────────────────
@@ -1205,6 +1577,7 @@ mutation AdminOptInSectionAnnouncement($userId: String!, $sectionId: UUID!) @aut
 
 # ── Rate limiting (functions/src/rateLimiter.ts) ─────────────────────────────
 
+# Legacy operations retained for a safe connector-first rollout of #369.
 query GetCallableInvocation($userId: String!, $functionName: String!) @auth(level: NO_ACCESS) {
   callableInvocation(key: { userId: $userId, functionName: $functionName }) {
     windowStart
@@ -1220,5 +1593,52 @@ mutation UpsertCallableInvocation(
 ) @auth(level: NO_ACCESS) {
   callableInvocation_upsert(
     data: { userId: $userId, functionName: $functionName, windowStart: $windowStart, count: $count }
+  )
+}
+
+## Ensures the current window's bucket row exists before ConsumeCallableRateLimit
+## conditionally increments it. Kept as its own operation, and always committed
+## before ConsumeCallableRateLimit runs: a row created by callableRateLimitBucket_upsert
+## in the SAME transaction as a subsequent callableRateLimitBucket_updateMany's `where`
+## filter is not visible to that filter, so the two cannot be combined into one
+## @transaction (see #401 — this previously made every rate-limited callable reject
+## every request, because @transaction rolls the upsert back too when the update's
+## affected-row @check fails).
+mutation EnsureCallableRateLimitBucket(
+  $userId: String!
+  $functionName: String!
+  $windowStart: Timestamp!
+) @auth(level: NO_ACCESS) {
+  callableRateLimitBucket_upsert(
+    data: {
+      userId: $userId
+      functionName: $functionName
+      windowStart: $windowStart
+    }
+  )
+}
+
+mutation ConsumeCallableRateLimit(
+  $userId: String!
+  $functionName: String!
+  $windowStart: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) @transaction {
+  consumed: callableRateLimitBucket_updateMany(
+    where: {
+      userId: { eq: $userId }
+      functionName: { eq: $functionName }
+      windowStart: { eq: $windowStart }
+      count: { lt: $limit }
+    }
+    data: { count_update: { inc: 1 } }
+  ) @check(expr: "this == 1", message: "RATE_LIMIT_EXCEEDED")
+
+  callableRateLimitBucket_deleteMany(
+    where: {
+      userId: { eq: $userId }
+      functionName: { eq: $functionName }
+      windowStart: { lt: $windowStart }
+    }
   )
 }

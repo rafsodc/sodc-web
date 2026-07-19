@@ -41,8 +41,8 @@ function renderDialog(overrides: {
 
 const WARNING_TEXT = /no members/i;
 
-describe("SectionEditorDialogSurface — MEMBER-purpose warning (#322)", () => {
-  it("warns when a MEMBERS section has ACCESS-only groups and no MEMBER group", () => {
+describe("SectionEditorDialogSurface — MEMBER-purpose guidance (#322)", () => {
+  it("shows guidance when a MEMBERS section has ACCESS-only groups and no MEMBER group", () => {
     renderDialog({
       sectionUserGroups: [
         { id: "group-1", name: "Access Group", description: null, purpose: SectionUserGroupPurpose.ACCESS },
@@ -52,7 +52,7 @@ describe("SectionEditorDialogSurface — MEMBER-purpose warning (#322)", () => {
     expect(screen.getByText(WARNING_TEXT)).toBeInTheDocument();
   });
 
-  it("does not warn when the section has a MEMBER-purpose group", () => {
+  it("omits guidance when the section has a MEMBER-purpose group", () => {
     renderDialog({
       sectionUserGroups: [
         { id: "group-1", name: "Access Group", description: null, purpose: SectionUserGroupPurpose.ACCESS },
@@ -63,13 +63,13 @@ describe("SectionEditorDialogSurface — MEMBER-purpose warning (#322)", () => {
     expect(screen.queryByText(WARNING_TEXT)).not.toBeInTheDocument();
   });
 
-  it("does not warn when the section has no user groups at all", () => {
+  it("omits guidance when the section has no user groups at all", () => {
     renderDialog({ sectionUserGroups: [] });
 
     expect(screen.queryByText(WARNING_TEXT)).not.toBeInTheDocument();
   });
 
-  it("does not warn for an EVENTS section without a MEMBER group", () => {
+  it("omits guidance for an EVENTS section without a MEMBER group", () => {
     renderDialog({
       sectionType: "EVENTS" as SectionWithDetails["type"],
       sectionUserGroups: [

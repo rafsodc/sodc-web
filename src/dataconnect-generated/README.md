@@ -22,6 +22,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetNotificationDeliveryByChannelAndKey*](#getnotificationdeliverybychannelandkey)
+  - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
+  - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
   - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
@@ -29,12 +31,17 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListStalePendingTicketOrdersForScheduler*](#liststalependingticketordersforscheduler)
   - [*GetGuestTicketRequestForNotification*](#getguestticketrequestfornotification)
   - [*GetSectionAnnouncementOptOuts*](#getsectionannouncementoptouts)
-  - [*GetAnnouncementRecipientCount*](#getannouncementrecipientcount)
+  - [*GetAnnouncementRecipientProgress*](#getannouncementrecipientprogress)
+  - [*GetAnnouncementRecipientsForResume*](#getannouncementrecipientsforresume)
   - [*GetAnnouncementSendHistory*](#getannouncementsendhistory)
   - [*GetAnnouncementSendRecipients*](#getannouncementsendrecipients)
   - [*GetAnnouncementSendById*](#getannouncementsendbyid)
   - [*GetAnnouncementRecipientBySendAndUser*](#getannouncementrecipientbysendanduser)
   - [*GetUserByEmail*](#getuserbyemail)
+  - [*GetNotifyCallbackUserById*](#getnotifycallbackuserbyid)
+  - [*GetNotifyDeliveryReceipt*](#getnotifydeliveryreceipt)
+  - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
+  - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
@@ -82,26 +89,35 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
-  - [*MarkNotificationDeliveryPendingById*](#marknotificationdeliverypendingbyid)
+  - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
+  - [*RecordNotificationRecoveryFailureById*](#recordnotificationrecoveryfailurebyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliveryFailedById*](#marknotificationdeliveryfailedbyid)
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
   - [*MarkTicketOrderFailedFromWebhook*](#markticketorderfailedfromwebhook)
   - [*MarkTicketOrderRefundedFromWebhook*](#markticketorderrefundedfromwebhook)
   - [*UpsertTicketOrderDisputeFromWebhook*](#upsertticketorderdisputefromwebhook)
-  - [*CreatePaymentReconciliationException*](#createpaymentreconciliationexception)
-  - [*UpdatePaymentReconciliationExceptionById*](#updatepaymentreconciliationexceptionbyid)
+  - [*UpsertPaymentReconciliationException*](#upsertpaymentreconciliationexception)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
   - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
   - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
   - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateAnnouncementSend*](#createannouncementsend)
   - [*CreateAnnouncementRecipient*](#createannouncementrecipient)
-  - [*UpdateAnnouncementRecipientDeliveryStatus*](#updateannouncementrecipientdeliverystatus)
-  - [*UpdateEmailBounceStats*](#updateemailbouncestats)
+  - [*TryUpdateAnnouncementRecipientProcessingStatus*](#tryupdateannouncementrecipientprocessingstatus)
+  - [*TryMarkAnnouncementRecipientEnqueueFailed*](#trymarkannouncementrecipientenqueuefailed)
+  - [*TryUpdateAnnouncementRecipientDeliveryStatus*](#tryupdateannouncementrecipientdeliverystatus)
+  - [*TryApplyNotifyDeliveryUserState*](#tryapplynotifydeliveryuserstate)
+  - [*TryApplyNotifyDeliveryUserStateAndMarkLost*](#tryapplynotifydeliveryuserstateandmarklost)
+  - [*CreateNotifyDeliveryReceipt*](#createnotifydeliveryreceipt)
+  - [*ClaimNotifyDeliveryReceipt*](#claimnotifydeliveryreceipt)
+  - [*MarkNotifyDeliveryReceiptProcessed*](#marknotifydeliveryreceiptprocessed)
+  - [*MarkNotifyDeliveryReceiptFailed*](#marknotifydeliveryreceiptfailed)
   - [*AdminOptOutSectionAnnouncement*](#adminoptoutsectionannouncement)
   - [*AdminOptInSectionAnnouncement*](#adminoptinsectionannouncement)
   - [*UpsertCallableInvocation*](#upsertcallableinvocation)
+  - [*EnsureCallableRateLimitBucket*](#ensurecallableratelimitbucket)
+  - [*ConsumeCallableRateLimit*](#consumecallableratelimit)
   - [*CreateBookingDraft*](#createbookingdraft)
   - [*AddBookingLine*](#addbookingline)
   - [*UpdateBookingStatus*](#updatebookingstatus)
@@ -1628,6 +1644,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     channel: NotificationChannel;
     deliveryKey: string;
     notificationType: string;
+    recoveryPayload?: string | null;
     status: NotificationDeliveryStatus;
     provider?: string | null;
     providerMessageId?: string | null;
@@ -1691,6 +1708,256 @@ const ref = getNotificationDeliveryByChannelAndKeyRef({ channel: ..., deliveryKe
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getNotificationDeliveryByChannelAndKeyRef(dataConnect, getNotificationDeliveryByChannelAndKeyVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+## ListFailedNotificationDeliveriesForRecovery
+You can execute the `ListFailedNotificationDeliveriesForRecovery` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listFailedNotificationDeliveriesForRecovery(vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+
+interface ListFailedNotificationDeliveriesForRecoveryRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListFailedNotificationDeliveriesForRecoveryVariables): QueryRef<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+}
+export const listFailedNotificationDeliveriesForRecoveryRef: ListFailedNotificationDeliveriesForRecoveryRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listFailedNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+
+interface ListFailedNotificationDeliveriesForRecoveryRef {
+  ...
+  (dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables): QueryRef<ListFailedNotificationDeliveriesForRecoveryData, ListFailedNotificationDeliveriesForRecoveryVariables>;
+}
+export const listFailedNotificationDeliveriesForRecoveryRef: ListFailedNotificationDeliveriesForRecoveryRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listFailedNotificationDeliveriesForRecoveryRef:
+```typescript
+const name = listFailedNotificationDeliveriesForRecoveryRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListFailedNotificationDeliveriesForRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListFailedNotificationDeliveriesForRecoveryVariables {
+  attemptedBefore: TimestampString;
+  maxAttemptCount: number;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListFailedNotificationDeliveriesForRecovery` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListFailedNotificationDeliveriesForRecoveryData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListFailedNotificationDeliveriesForRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+### Using `ListFailedNotificationDeliveriesForRecovery`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listFailedNotificationDeliveriesForRecovery, ListFailedNotificationDeliveriesForRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListFailedNotificationDeliveriesForRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`:
+const listFailedNotificationDeliveriesForRecoveryVars: ListFailedNotificationDeliveriesForRecoveryVariables = {
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
+};
+
+// Call the `listFailedNotificationDeliveriesForRecovery()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listFailedNotificationDeliveriesForRecovery(listFailedNotificationDeliveriesForRecoveryVars);
+// Variables can be defined inline as well.
+const { data } = await listFailedNotificationDeliveriesForRecovery({ attemptedBefore: ..., maxAttemptCount: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listFailedNotificationDeliveriesForRecovery(dataConnect, listFailedNotificationDeliveriesForRecoveryVars);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+listFailedNotificationDeliveriesForRecovery(listFailedNotificationDeliveriesForRecoveryVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+### Using `ListFailedNotificationDeliveriesForRecovery`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listFailedNotificationDeliveriesForRecoveryRef, ListFailedNotificationDeliveriesForRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListFailedNotificationDeliveriesForRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForRecoveryVariables`:
+const listFailedNotificationDeliveriesForRecoveryVars: ListFailedNotificationDeliveriesForRecoveryVariables = {
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
+};
+
+// Call the `listFailedNotificationDeliveriesForRecoveryRef()` function to get a reference to the query.
+const ref = listFailedNotificationDeliveriesForRecoveryRef(listFailedNotificationDeliveriesForRecoveryVars);
+// Variables can be defined inline as well.
+const ref = listFailedNotificationDeliveriesForRecoveryRef({ attemptedBefore: ..., maxAttemptCount: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listFailedNotificationDeliveriesForRecoveryRef(dataConnect, listFailedNotificationDeliveriesForRecoveryVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+## ListStalePendingNotificationDeliveriesForRecovery
+You can execute the `ListStalePendingNotificationDeliveriesForRecovery` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStalePendingNotificationDeliveriesForRecovery(vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+
+interface ListStalePendingNotificationDeliveriesForRecoveryRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStalePendingNotificationDeliveriesForRecoveryVariables): QueryRef<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+}
+export const listStalePendingNotificationDeliveriesForRecoveryRef: ListStalePendingNotificationDeliveriesForRecoveryRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStalePendingNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+
+interface ListStalePendingNotificationDeliveriesForRecoveryRef {
+  ...
+  (dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForRecoveryVariables): QueryRef<ListStalePendingNotificationDeliveriesForRecoveryData, ListStalePendingNotificationDeliveriesForRecoveryVariables>;
+}
+export const listStalePendingNotificationDeliveriesForRecoveryRef: ListStalePendingNotificationDeliveriesForRecoveryRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStalePendingNotificationDeliveriesForRecoveryRef:
+```typescript
+const name = listStalePendingNotificationDeliveriesForRecoveryRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStalePendingNotificationDeliveriesForRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStalePendingNotificationDeliveriesForRecoveryVariables {
+  attemptedBefore: TimestampString;
+  maxAttemptCount: number;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStalePendingNotificationDeliveriesForRecovery` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStalePendingNotificationDeliveriesForRecoveryData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStalePendingNotificationDeliveriesForRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+### Using `ListStalePendingNotificationDeliveriesForRecovery`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingNotificationDeliveriesForRecovery, ListStalePendingNotificationDeliveriesForRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingNotificationDeliveriesForRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`:
+const listStalePendingNotificationDeliveriesForRecoveryVars: ListStalePendingNotificationDeliveriesForRecoveryVariables = {
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
+};
+
+// Call the `listStalePendingNotificationDeliveriesForRecovery()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStalePendingNotificationDeliveriesForRecovery(listStalePendingNotificationDeliveriesForRecoveryVars);
+// Variables can be defined inline as well.
+const { data } = await listStalePendingNotificationDeliveriesForRecovery({ attemptedBefore: ..., maxAttemptCount: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStalePendingNotificationDeliveriesForRecovery(dataConnect, listStalePendingNotificationDeliveriesForRecoveryVars);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+listStalePendingNotificationDeliveriesForRecovery(listStalePendingNotificationDeliveriesForRecoveryVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+### Using `ListStalePendingNotificationDeliveriesForRecovery`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingNotificationDeliveriesForRecoveryRef, ListStalePendingNotificationDeliveriesForRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingNotificationDeliveriesForRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForRecoveryVariables`:
+const listStalePendingNotificationDeliveriesForRecoveryVars: ListStalePendingNotificationDeliveriesForRecoveryVariables = {
+  attemptedBefore: ..., 
+  maxAttemptCount: ..., 
+  limit: ..., 
+};
+
+// Call the `listStalePendingNotificationDeliveriesForRecoveryRef()` function to get a reference to the query.
+const ref = listStalePendingNotificationDeliveriesForRecoveryRef(listStalePendingNotificationDeliveriesForRecoveryVars);
+// Variables can be defined inline as well.
+const ref = listStalePendingNotificationDeliveriesForRecoveryRef({ attemptedBefore: ..., maxAttemptCount: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStalePendingNotificationDeliveriesForRecoveryRef(dataConnect, listStalePendingNotificationDeliveriesForRecoveryVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -2601,103 +2868,216 @@ executeQuery(ref).then((response) => {
 });
 ```
 
-## GetAnnouncementRecipientCount
-You can execute the `GetAnnouncementRecipientCount` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## GetAnnouncementRecipientProgress
+You can execute the `GetAnnouncementRecipientProgress` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getAnnouncementRecipientCount(vars: GetAnnouncementRecipientCountVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+getAnnouncementRecipientProgress(vars: GetAnnouncementRecipientProgressVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressData, GetAnnouncementRecipientProgressVariables>;
 
-interface GetAnnouncementRecipientCountRef {
+interface GetAnnouncementRecipientProgressRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: GetAnnouncementRecipientCountVariables): QueryRef<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+  (vars: GetAnnouncementRecipientProgressVariables): QueryRef<GetAnnouncementRecipientProgressData, GetAnnouncementRecipientProgressVariables>;
 }
-export const getAnnouncementRecipientCountRef: GetAnnouncementRecipientCountRef;
+export const getAnnouncementRecipientProgressRef: GetAnnouncementRecipientProgressRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getAnnouncementRecipientCount(dc: DataConnect, vars: GetAnnouncementRecipientCountVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+getAnnouncementRecipientProgress(dc: DataConnect, vars: GetAnnouncementRecipientProgressVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressData, GetAnnouncementRecipientProgressVariables>;
 
-interface GetAnnouncementRecipientCountRef {
+interface GetAnnouncementRecipientProgressRef {
   ...
-  (dc: DataConnect, vars: GetAnnouncementRecipientCountVariables): QueryRef<GetAnnouncementRecipientCountData, GetAnnouncementRecipientCountVariables>;
+  (dc: DataConnect, vars: GetAnnouncementRecipientProgressVariables): QueryRef<GetAnnouncementRecipientProgressData, GetAnnouncementRecipientProgressVariables>;
 }
-export const getAnnouncementRecipientCountRef: GetAnnouncementRecipientCountRef;
+export const getAnnouncementRecipientProgressRef: GetAnnouncementRecipientProgressRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementRecipientCountRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementRecipientProgressRef:
 ```typescript
-const name = getAnnouncementRecipientCountRef.operationName;
+const name = getAnnouncementRecipientProgressRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `GetAnnouncementRecipientCount` query requires an argument of type `GetAnnouncementRecipientCountVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `GetAnnouncementRecipientProgress` query requires an argument of type `GetAnnouncementRecipientProgressVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface GetAnnouncementRecipientCountVariables {
+export interface GetAnnouncementRecipientProgressVariables {
   sendId: UUIDString;
 }
 ```
 ### Return Type
-Recall that executing the `GetAnnouncementRecipientCount` query returns a `QueryPromise` that resolves to an object with a `data` property.
+Recall that executing the `GetAnnouncementRecipientProgress` query returns a `QueryPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `GetAnnouncementRecipientCountData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `GetAnnouncementRecipientProgressData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface GetAnnouncementRecipientCountData {
+export interface GetAnnouncementRecipientProgressData {
   announcementRecipients: ({
-    id: UUIDString;
-  } & AnnouncementRecipient_Key)[];
+    status: string;
+  })[];
 }
 ```
-### Using `GetAnnouncementRecipientCount`'s action shortcut function
+### Using `GetAnnouncementRecipientProgress`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, getAnnouncementRecipientCount, GetAnnouncementRecipientCountVariables } from '@dataconnect/generated';
+import { connectorConfig, getAnnouncementRecipientProgress, GetAnnouncementRecipientProgressVariables } from '@dataconnect/generated';
 
-// The `GetAnnouncementRecipientCount` query requires an argument of type `GetAnnouncementRecipientCountVariables`:
-const getAnnouncementRecipientCountVars: GetAnnouncementRecipientCountVariables = {
+// The `GetAnnouncementRecipientProgress` query requires an argument of type `GetAnnouncementRecipientProgressVariables`:
+const getAnnouncementRecipientProgressVars: GetAnnouncementRecipientProgressVariables = {
   sendId: ..., 
 };
 
-// Call the `getAnnouncementRecipientCount()` function to execute the query.
+// Call the `getAnnouncementRecipientProgress()` function to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await getAnnouncementRecipientCount(getAnnouncementRecipientCountVars);
+const { data } = await getAnnouncementRecipientProgress(getAnnouncementRecipientProgressVars);
 // Variables can be defined inline as well.
-const { data } = await getAnnouncementRecipientCount({ sendId: ..., });
+const { data } = await getAnnouncementRecipientProgress({ sendId: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await getAnnouncementRecipientCount(dataConnect, getAnnouncementRecipientCountVars);
+const { data } = await getAnnouncementRecipientProgress(dataConnect, getAnnouncementRecipientProgressVars);
 
 console.log(data.announcementRecipients);
 
 // Or, you can use the `Promise` API.
-getAnnouncementRecipientCount(getAnnouncementRecipientCountVars).then((response) => {
+getAnnouncementRecipientProgress(getAnnouncementRecipientProgressVars).then((response) => {
   const data = response.data;
   console.log(data.announcementRecipients);
 });
 ```
 
-### Using `GetAnnouncementRecipientCount`'s `QueryRef` function
+### Using `GetAnnouncementRecipientProgress`'s `QueryRef` function
 
 ```typescript
 import { getDataConnect, executeQuery } from 'firebase/data-connect';
-import { connectorConfig, getAnnouncementRecipientCountRef, GetAnnouncementRecipientCountVariables } from '@dataconnect/generated';
+import { connectorConfig, getAnnouncementRecipientProgressRef, GetAnnouncementRecipientProgressVariables } from '@dataconnect/generated';
 
-// The `GetAnnouncementRecipientCount` query requires an argument of type `GetAnnouncementRecipientCountVariables`:
-const getAnnouncementRecipientCountVars: GetAnnouncementRecipientCountVariables = {
+// The `GetAnnouncementRecipientProgress` query requires an argument of type `GetAnnouncementRecipientProgressVariables`:
+const getAnnouncementRecipientProgressVars: GetAnnouncementRecipientProgressVariables = {
   sendId: ..., 
 };
 
-// Call the `getAnnouncementRecipientCountRef()` function to get a reference to the query.
-const ref = getAnnouncementRecipientCountRef(getAnnouncementRecipientCountVars);
+// Call the `getAnnouncementRecipientProgressRef()` function to get a reference to the query.
+const ref = getAnnouncementRecipientProgressRef(getAnnouncementRecipientProgressVars);
 // Variables can be defined inline as well.
-const ref = getAnnouncementRecipientCountRef({ sendId: ..., });
+const ref = getAnnouncementRecipientProgressRef({ sendId: ..., });
 
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = getAnnouncementRecipientCountRef(dataConnect, getAnnouncementRecipientCountVars);
+const ref = getAnnouncementRecipientProgressRef(dataConnect, getAnnouncementRecipientProgressVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.announcementRecipients);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipients);
+});
+```
+
+## GetAnnouncementRecipientsForResume
+You can execute the `GetAnnouncementRecipientsForResume` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementRecipientsForResume(vars: GetAnnouncementRecipientsForResumeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
+
+interface GetAnnouncementRecipientsForResumeRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientsForResumeVariables): QueryRef<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
+}
+export const getAnnouncementRecipientsForResumeRef: GetAnnouncementRecipientsForResumeRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementRecipientsForResume(dc: DataConnect, vars: GetAnnouncementRecipientsForResumeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
+
+interface GetAnnouncementRecipientsForResumeRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementRecipientsForResumeVariables): QueryRef<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
+}
+export const getAnnouncementRecipientsForResumeRef: GetAnnouncementRecipientsForResumeRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementRecipientsForResumeRef:
+```typescript
+const name = getAnnouncementRecipientsForResumeRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementRecipientsForResume` query requires an argument of type `GetAnnouncementRecipientsForResumeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementRecipientsForResumeVariables {
+  sendId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementRecipientsForResume` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementRecipientsForResumeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementRecipientsForResumeData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    status: string;
+  } & AnnouncementRecipient_Key)[];
+}
+```
+### Using `GetAnnouncementRecipientsForResume`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementRecipientsForResume, GetAnnouncementRecipientsForResumeVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementRecipientsForResume` query requires an argument of type `GetAnnouncementRecipientsForResumeVariables`:
+const getAnnouncementRecipientsForResumeVars: GetAnnouncementRecipientsForResumeVariables = {
+  sendId: ..., 
+};
+
+// Call the `getAnnouncementRecipientsForResume()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementRecipientsForResume(getAnnouncementRecipientsForResumeVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementRecipientsForResume({ sendId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementRecipientsForResume(dataConnect, getAnnouncementRecipientsForResumeVars);
+
+console.log(data.announcementRecipients);
+
+// Or, you can use the `Promise` API.
+getAnnouncementRecipientsForResume(getAnnouncementRecipientsForResumeVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipients);
+});
+```
+
+### Using `GetAnnouncementRecipientsForResume`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementRecipientsForResumeRef, GetAnnouncementRecipientsForResumeVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementRecipientsForResume` query requires an argument of type `GetAnnouncementRecipientsForResumeVariables`:
+const getAnnouncementRecipientsForResumeVars: GetAnnouncementRecipientsForResumeVariables = {
+  sendId: ..., 
+};
+
+// Call the `getAnnouncementRecipientsForResumeRef()` function to get a reference to the query.
+const ref = getAnnouncementRecipientsForResumeRef(getAnnouncementRecipientsForResumeVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementRecipientsForResumeRef({ sendId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementRecipientsForResumeRef(dataConnect, getAnnouncementRecipientsForResumeVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -2763,7 +3143,6 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
-    failureCount: number;
   } & AnnouncementSend_Key)[];
 }
 ```
@@ -2995,6 +3374,12 @@ export interface GetAnnouncementSendByIdData {
   announcementSend?: {
     id: UUIDString;
     sectionId: UUIDString;
+    templateUuid: string;
+    templateName?: string | null;
+    sentBy: string;
+    recipientCount: number;
+    skippedCount: number;
+    recipientSnapshot?: string | null;
   } & AnnouncementSend_Key;
 }
 ```
@@ -3107,6 +3492,14 @@ The `data` property is an object of type `GetAnnouncementRecipientBySendAndUserD
 export interface GetAnnouncementRecipientBySendAndUserData {
   announcementRecipients: ({
     id: UUIDString;
+    status: string;
+    failureReason?: string | null;
+    processingVersion: number;
+    processingStartedAt?: TimestampString | null;
+    providerNotificationId?: string | null;
+    deliveryVersion: number;
+    deliveryStatusUpdatedAt?: TimestampString | null;
+    deliveryReceiptId?: string | null;
   } & AnnouncementRecipient_Key)[];
 }
 ```
@@ -3222,6 +3615,11 @@ export interface GetUserByEmailData {
     id: string;
     membershipStatus: MembershipStatus;
     emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
   } & User_Key)[];
 }
 ```
@@ -3285,6 +3683,475 @@ console.log(data.users);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.users);
+});
+```
+
+## GetNotifyCallbackUserById
+You can execute the `GetNotifyCallbackUserById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNotifyCallbackUserById(vars: GetNotifyCallbackUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+
+interface GetNotifyCallbackUserByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotifyCallbackUserByIdVariables): QueryRef<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+}
+export const getNotifyCallbackUserByIdRef: GetNotifyCallbackUserByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNotifyCallbackUserById(dc: DataConnect, vars: GetNotifyCallbackUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+
+interface GetNotifyCallbackUserByIdRef {
+  ...
+  (dc: DataConnect, vars: GetNotifyCallbackUserByIdVariables): QueryRef<GetNotifyCallbackUserByIdData, GetNotifyCallbackUserByIdVariables>;
+}
+export const getNotifyCallbackUserByIdRef: GetNotifyCallbackUserByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNotifyCallbackUserByIdRef:
+```typescript
+const name = getNotifyCallbackUserByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNotifyCallbackUserById` query requires an argument of type `GetNotifyCallbackUserByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetNotifyCallbackUserByIdVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that executing the `GetNotifyCallbackUserById` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNotifyCallbackUserByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNotifyCallbackUserByIdData {
+  user?: {
+    id: string;
+    membershipStatus: MembershipStatus;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+    emailDeliveryStatus?: string | null;
+    emailDeliveryStatusUpdatedAt?: TimestampString | null;
+    emailDeliveryReceiptId?: string | null;
+  } & User_Key;
+}
+```
+### Using `GetNotifyCallbackUserById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNotifyCallbackUserById, GetNotifyCallbackUserByIdVariables } from '@dataconnect/generated';
+
+// The `GetNotifyCallbackUserById` query requires an argument of type `GetNotifyCallbackUserByIdVariables`:
+const getNotifyCallbackUserByIdVars: GetNotifyCallbackUserByIdVariables = {
+  userId: ..., 
+};
+
+// Call the `getNotifyCallbackUserById()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNotifyCallbackUserById(getNotifyCallbackUserByIdVars);
+// Variables can be defined inline as well.
+const { data } = await getNotifyCallbackUserById({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNotifyCallbackUserById(dataConnect, getNotifyCallbackUserByIdVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getNotifyCallbackUserById(getNotifyCallbackUserByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetNotifyCallbackUserById`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNotifyCallbackUserByIdRef, GetNotifyCallbackUserByIdVariables } from '@dataconnect/generated';
+
+// The `GetNotifyCallbackUserById` query requires an argument of type `GetNotifyCallbackUserByIdVariables`:
+const getNotifyCallbackUserByIdVars: GetNotifyCallbackUserByIdVariables = {
+  userId: ..., 
+};
+
+// Call the `getNotifyCallbackUserByIdRef()` function to get a reference to the query.
+const ref = getNotifyCallbackUserByIdRef(getNotifyCallbackUserByIdVars);
+// Variables can be defined inline as well.
+const ref = getNotifyCallbackUserByIdRef({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNotifyCallbackUserByIdRef(dataConnect, getNotifyCallbackUserByIdVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+## GetNotifyDeliveryReceipt
+You can execute the `GetNotifyDeliveryReceipt` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNotifyDeliveryReceipt(vars: GetNotifyDeliveryReceiptVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+
+interface GetNotifyDeliveryReceiptRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotifyDeliveryReceiptVariables): QueryRef<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+}
+export const getNotifyDeliveryReceiptRef: GetNotifyDeliveryReceiptRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNotifyDeliveryReceipt(dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+
+interface GetNotifyDeliveryReceiptRef {
+  ...
+  (dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables): QueryRef<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+}
+export const getNotifyDeliveryReceiptRef: GetNotifyDeliveryReceiptRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNotifyDeliveryReceiptRef:
+```typescript
+const name = getNotifyDeliveryReceiptRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNotifyDeliveryReceipt` query requires an argument of type `GetNotifyDeliveryReceiptVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetNotifyDeliveryReceiptVariables {
+  id: string;
+}
+```
+### Return Type
+Recall that executing the `GetNotifyDeliveryReceipt` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt?: {
+    id: string;
+    notifyStatus: string;
+    reference?: string | null;
+    recipientHash: string;
+    userId?: string | null;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+    affectsBounceState: boolean;
+    processingStatus: NotifyDeliveryReceiptProcessingStatus;
+    outcome?: NotifyDeliveryReceiptOutcome | null;
+    attemptCount: number;
+    lastAttemptedAt: TimestampString;
+    processedAt?: TimestampString | null;
+  } & NotifyDeliveryReceipt_Key;
+}
+```
+### Using `GetNotifyDeliveryReceipt`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNotifyDeliveryReceipt, GetNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+
+// The `GetNotifyDeliveryReceipt` query requires an argument of type `GetNotifyDeliveryReceiptVariables`:
+const getNotifyDeliveryReceiptVars: GetNotifyDeliveryReceiptVariables = {
+  id: ..., 
+};
+
+// Call the `getNotifyDeliveryReceipt()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNotifyDeliveryReceipt(getNotifyDeliveryReceiptVars);
+// Variables can be defined inline as well.
+const { data } = await getNotifyDeliveryReceipt({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNotifyDeliveryReceipt(dataConnect, getNotifyDeliveryReceiptVars);
+
+console.log(data.notifyDeliveryReceipt);
+
+// Or, you can use the `Promise` API.
+getNotifyDeliveryReceipt(getNotifyDeliveryReceiptVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt);
+});
+```
+
+### Using `GetNotifyDeliveryReceipt`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNotifyDeliveryReceiptRef, GetNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+
+// The `GetNotifyDeliveryReceipt` query requires an argument of type `GetNotifyDeliveryReceiptVariables`:
+const getNotifyDeliveryReceiptVars: GetNotifyDeliveryReceiptVariables = {
+  id: ..., 
+};
+
+// Call the `getNotifyDeliveryReceiptRef()` function to get a reference to the query.
+const ref = getNotifyDeliveryReceiptRef(getNotifyDeliveryReceiptVars);
+// Variables can be defined inline as well.
+const ref = getNotifyDeliveryReceiptRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNotifyDeliveryReceiptRef(dataConnect, getNotifyDeliveryReceiptVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyDeliveryReceipt);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt);
+});
+```
+
+## GetRecentNotifyDeliveryReceiptsForUser
+You can execute the `GetRecentNotifyDeliveryReceiptsForUser` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getRecentNotifyDeliveryReceiptsForUser(vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+
+interface GetRecentNotifyDeliveryReceiptsForUserRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetRecentNotifyDeliveryReceiptsForUserVariables): QueryRef<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+}
+export const getRecentNotifyDeliveryReceiptsForUserRef: GetRecentNotifyDeliveryReceiptsForUserRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getRecentNotifyDeliveryReceiptsForUser(dc: DataConnect, vars: GetRecentNotifyDeliveryReceiptsForUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+
+interface GetRecentNotifyDeliveryReceiptsForUserRef {
+  ...
+  (dc: DataConnect, vars: GetRecentNotifyDeliveryReceiptsForUserVariables): QueryRef<GetRecentNotifyDeliveryReceiptsForUserData, GetRecentNotifyDeliveryReceiptsForUserVariables>;
+}
+export const getRecentNotifyDeliveryReceiptsForUserRef: GetRecentNotifyDeliveryReceiptsForUserRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getRecentNotifyDeliveryReceiptsForUserRef:
+```typescript
+const name = getRecentNotifyDeliveryReceiptsForUserRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetRecentNotifyDeliveryReceiptsForUser` query requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetRecentNotifyDeliveryReceiptsForUserVariables {
+  userId: string;
+}
+```
+### Return Type
+Recall that executing the `GetRecentNotifyDeliveryReceiptsForUser` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetRecentNotifyDeliveryReceiptsForUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetRecentNotifyDeliveryReceiptsForUserData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+```
+### Using `GetRecentNotifyDeliveryReceiptsForUser`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getRecentNotifyDeliveryReceiptsForUser, GetRecentNotifyDeliveryReceiptsForUserVariables } from '@dataconnect/generated';
+
+// The `GetRecentNotifyDeliveryReceiptsForUser` query requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`:
+const getRecentNotifyDeliveryReceiptsForUserVars: GetRecentNotifyDeliveryReceiptsForUserVariables = {
+  userId: ..., 
+};
+
+// Call the `getRecentNotifyDeliveryReceiptsForUser()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getRecentNotifyDeliveryReceiptsForUser(getRecentNotifyDeliveryReceiptsForUserVars);
+// Variables can be defined inline as well.
+const { data } = await getRecentNotifyDeliveryReceiptsForUser({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getRecentNotifyDeliveryReceiptsForUser(dataConnect, getRecentNotifyDeliveryReceiptsForUserVars);
+
+console.log(data.notifyDeliveryReceipts);
+
+// Or, you can use the `Promise` API.
+getRecentNotifyDeliveryReceiptsForUser(getRecentNotifyDeliveryReceiptsForUserVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipts);
+});
+```
+
+### Using `GetRecentNotifyDeliveryReceiptsForUser`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getRecentNotifyDeliveryReceiptsForUserRef, GetRecentNotifyDeliveryReceiptsForUserVariables } from '@dataconnect/generated';
+
+// The `GetRecentNotifyDeliveryReceiptsForUser` query requires an argument of type `GetRecentNotifyDeliveryReceiptsForUserVariables`:
+const getRecentNotifyDeliveryReceiptsForUserVars: GetRecentNotifyDeliveryReceiptsForUserVariables = {
+  userId: ..., 
+};
+
+// Call the `getRecentNotifyDeliveryReceiptsForUserRef()` function to get a reference to the query.
+const ref = getRecentNotifyDeliveryReceiptsForUserRef(getRecentNotifyDeliveryReceiptsForUserVars);
+// Variables can be defined inline as well.
+const ref = getRecentNotifyDeliveryReceiptsForUserRef({ userId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getRecentNotifyDeliveryReceiptsForUserRef(dataConnect, getRecentNotifyDeliveryReceiptsForUserVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyDeliveryReceipts);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipts);
+});
+```
+
+## GetLatestNotifyDeliveryReceiptForReference
+You can execute the `GetLatestNotifyDeliveryReceiptForReference` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getLatestNotifyDeliveryReceiptForReference(vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+
+interface GetLatestNotifyDeliveryReceiptForReferenceRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetLatestNotifyDeliveryReceiptForReferenceVariables): QueryRef<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+}
+export const getLatestNotifyDeliveryReceiptForReferenceRef: GetLatestNotifyDeliveryReceiptForReferenceRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getLatestNotifyDeliveryReceiptForReference(dc: DataConnect, vars: GetLatestNotifyDeliveryReceiptForReferenceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+
+interface GetLatestNotifyDeliveryReceiptForReferenceRef {
+  ...
+  (dc: DataConnect, vars: GetLatestNotifyDeliveryReceiptForReferenceVariables): QueryRef<GetLatestNotifyDeliveryReceiptForReferenceData, GetLatestNotifyDeliveryReceiptForReferenceVariables>;
+}
+export const getLatestNotifyDeliveryReceiptForReferenceRef: GetLatestNotifyDeliveryReceiptForReferenceRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getLatestNotifyDeliveryReceiptForReferenceRef:
+```typescript
+const name = getLatestNotifyDeliveryReceiptForReferenceRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetLatestNotifyDeliveryReceiptForReference` query requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetLatestNotifyDeliveryReceiptForReferenceVariables {
+  reference: string;
+}
+```
+### Return Type
+Recall that executing the `GetLatestNotifyDeliveryReceiptForReference` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetLatestNotifyDeliveryReceiptForReferenceData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetLatestNotifyDeliveryReceiptForReferenceData {
+  notifyDeliveryReceipts: ({
+    id: string;
+    notifyStatus: string;
+    eventAt: TimestampString;
+    eventOrderingKey: string;
+  } & NotifyDeliveryReceipt_Key)[];
+}
+```
+### Using `GetLatestNotifyDeliveryReceiptForReference`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getLatestNotifyDeliveryReceiptForReference, GetLatestNotifyDeliveryReceiptForReferenceVariables } from '@dataconnect/generated';
+
+// The `GetLatestNotifyDeliveryReceiptForReference` query requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`:
+const getLatestNotifyDeliveryReceiptForReferenceVars: GetLatestNotifyDeliveryReceiptForReferenceVariables = {
+  reference: ..., 
+};
+
+// Call the `getLatestNotifyDeliveryReceiptForReference()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getLatestNotifyDeliveryReceiptForReference(getLatestNotifyDeliveryReceiptForReferenceVars);
+// Variables can be defined inline as well.
+const { data } = await getLatestNotifyDeliveryReceiptForReference({ reference: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getLatestNotifyDeliveryReceiptForReference(dataConnect, getLatestNotifyDeliveryReceiptForReferenceVars);
+
+console.log(data.notifyDeliveryReceipts);
+
+// Or, you can use the `Promise` API.
+getLatestNotifyDeliveryReceiptForReference(getLatestNotifyDeliveryReceiptForReferenceVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipts);
+});
+```
+
+### Using `GetLatestNotifyDeliveryReceiptForReference`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getLatestNotifyDeliveryReceiptForReferenceRef, GetLatestNotifyDeliveryReceiptForReferenceVariables } from '@dataconnect/generated';
+
+// The `GetLatestNotifyDeliveryReceiptForReference` query requires an argument of type `GetLatestNotifyDeliveryReceiptForReferenceVariables`:
+const getLatestNotifyDeliveryReceiptForReferenceVars: GetLatestNotifyDeliveryReceiptForReferenceVariables = {
+  reference: ..., 
+};
+
+// Call the `getLatestNotifyDeliveryReceiptForReferenceRef()` function to get a reference to the query.
+const ref = getLatestNotifyDeliveryReceiptForReferenceRef(getLatestNotifyDeliveryReceiptForReferenceVars);
+// Variables can be defined inline as well.
+const ref = getLatestNotifyDeliveryReceiptForReferenceRef({ reference: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getLatestNotifyDeliveryReceiptForReferenceRef(dataConnect, getLatestNotifyDeliveryReceiptForReferenceVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyDeliveryReceipts);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipts);
 });
 ```
 
@@ -8786,6 +9653,7 @@ export interface CreateNotificationDeliveryVariables {
   channel: NotificationChannel;
   notificationType: string;
   deliveryKey: string;
+  recoveryPayload?: string | null;
   status: NotificationDeliveryStatus;
   ticketOrderId?: UUIDString | null;
   bookingId?: UUIDString | null;
@@ -8815,6 +9683,7 @@ const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
   channel: ..., 
   notificationType: ..., 
   deliveryKey: ..., 
+  recoveryPayload: ..., // optional
   status: ..., 
   ticketOrderId: ..., // optional
   bookingId: ..., // optional
@@ -8828,7 +9697,7 @@ const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createNotificationDelivery(createNotificationDeliveryVars);
 // Variables can be defined inline as well.
-const { data } = await createNotificationDelivery({ channel: ..., notificationType: ..., deliveryKey: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
+const { data } = await createNotificationDelivery({ channel: ..., notificationType: ..., deliveryKey: ..., recoveryPayload: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -8854,6 +9723,7 @@ const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
   channel: ..., 
   notificationType: ..., 
   deliveryKey: ..., 
+  recoveryPayload: ..., // optional
   status: ..., 
   ticketOrderId: ..., // optional
   bookingId: ..., // optional
@@ -8866,7 +9736,7 @@ const createNotificationDeliveryVars: CreateNotificationDeliveryVariables = {
 // Call the `createNotificationDeliveryRef()` function to get a reference to the mutation.
 const ref = createNotificationDeliveryRef(createNotificationDeliveryVars);
 // Variables can be defined inline as well.
-const ref = createNotificationDeliveryRef({ channel: ..., notificationType: ..., deliveryKey: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
+const ref = createNotificationDeliveryRef({ channel: ..., notificationType: ..., deliveryKey: ..., recoveryPayload: ..., status: ..., ticketOrderId: ..., bookingId: ..., userId: ..., provider: ..., attemptCount: ..., lastAttemptedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -8885,121 +9755,257 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## MarkNotificationDeliveryPendingById
-You can execute the `MarkNotificationDeliveryPendingById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## ClaimNotificationDeliveryById
+You can execute the `ClaimNotificationDeliveryById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-markNotificationDeliveryPendingById(vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 
-interface MarkNotificationDeliveryPendingByIdRef {
+interface ClaimNotificationDeliveryByIdRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  (vars: ClaimNotificationDeliveryByIdVariables): MutationRef<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 }
-export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
 ```typescript
-markNotificationDeliveryPendingById(dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationPromise<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 
-interface MarkNotificationDeliveryPendingByIdRef {
+interface ClaimNotificationDeliveryByIdRef {
   ...
-  (dc: DataConnect, vars: MarkNotificationDeliveryPendingByIdVariables): MutationRef<MarkNotificationDeliveryPendingByIdData, MarkNotificationDeliveryPendingByIdVariables>;
+  (dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationRef<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 }
-export const markNotificationDeliveryPendingByIdRef: MarkNotificationDeliveryPendingByIdRef;
+export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markNotificationDeliveryPendingByIdRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the claimNotificationDeliveryByIdRef:
 ```typescript
-const name = markNotificationDeliveryPendingByIdRef.operationName;
+const name = claimNotificationDeliveryByIdRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `MarkNotificationDeliveryPendingById` mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface MarkNotificationDeliveryPendingByIdVariables {
+export interface ClaimNotificationDeliveryByIdVariables {
   id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
   provider?: string | null;
+  recoveryPayload?: string | null;
 }
 ```
 ### Return Type
-Recall that executing the `MarkNotificationDeliveryPendingById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `ClaimNotificationDeliveryById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `MarkNotificationDeliveryPendingByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `ClaimNotificationDeliveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface MarkNotificationDeliveryPendingByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+export interface ClaimNotificationDeliveryByIdData {
+  notificationDelivery_updateMany: number;
 }
 ```
-### Using `MarkNotificationDeliveryPendingById`'s action shortcut function
+### Using `ClaimNotificationDeliveryById`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, markNotificationDeliveryPendingById, MarkNotificationDeliveryPendingByIdVariables } from '@dataconnect/generated';
+import { connectorConfig, claimNotificationDeliveryById, ClaimNotificationDeliveryByIdVariables } from '@dataconnect/generated';
 
-// The `MarkNotificationDeliveryPendingById` mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`:
-const markNotificationDeliveryPendingByIdVars: MarkNotificationDeliveryPendingByIdVariables = {
+// The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
+const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
   id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
   attemptCount: ..., 
   lastAttemptedAt: ..., 
   provider: ..., // optional
+  recoveryPayload: ..., // optional
 };
 
-// Call the `markNotificationDeliveryPendingById()` function to execute the mutation.
+// Call the `claimNotificationDeliveryById()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await markNotificationDeliveryPendingById(markNotificationDeliveryPendingByIdVars);
+const { data } = await claimNotificationDeliveryById(claimNotificationDeliveryByIdVars);
 // Variables can be defined inline as well.
-const { data } = await markNotificationDeliveryPendingById({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+const { data } = await claimNotificationDeliveryById({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., recoveryPayload: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await markNotificationDeliveryPendingById(dataConnect, markNotificationDeliveryPendingByIdVars);
+const { data } = await claimNotificationDeliveryById(dataConnect, claimNotificationDeliveryByIdVars);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
-markNotificationDeliveryPendingById(markNotificationDeliveryPendingByIdVars).then((response) => {
+claimNotificationDeliveryById(claimNotificationDeliveryByIdVars).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
-### Using `MarkNotificationDeliveryPendingById`'s `MutationRef` function
+### Using `ClaimNotificationDeliveryById`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, markNotificationDeliveryPendingByIdRef, MarkNotificationDeliveryPendingByIdVariables } from '@dataconnect/generated';
+import { connectorConfig, claimNotificationDeliveryByIdRef, ClaimNotificationDeliveryByIdVariables } from '@dataconnect/generated';
 
-// The `MarkNotificationDeliveryPendingById` mutation requires an argument of type `MarkNotificationDeliveryPendingByIdVariables`:
-const markNotificationDeliveryPendingByIdVars: MarkNotificationDeliveryPendingByIdVariables = {
+// The `ClaimNotificationDeliveryById` mutation requires an argument of type `ClaimNotificationDeliveryByIdVariables`:
+const claimNotificationDeliveryByIdVars: ClaimNotificationDeliveryByIdVariables = {
   id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
   attemptCount: ..., 
   lastAttemptedAt: ..., 
   provider: ..., // optional
+  recoveryPayload: ..., // optional
 };
 
-// Call the `markNotificationDeliveryPendingByIdRef()` function to get a reference to the mutation.
-const ref = markNotificationDeliveryPendingByIdRef(markNotificationDeliveryPendingByIdVars);
+// Call the `claimNotificationDeliveryByIdRef()` function to get a reference to the mutation.
+const ref = claimNotificationDeliveryByIdRef(claimNotificationDeliveryByIdVars);
 // Variables can be defined inline as well.
-const ref = markNotificationDeliveryPendingByIdRef({ id: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., });
+const ref = claimNotificationDeliveryByIdRef({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., provider: ..., recoveryPayload: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = markNotificationDeliveryPendingByIdRef(dataConnect, markNotificationDeliveryPendingByIdVars);
+const ref = claimNotificationDeliveryByIdRef(dataConnect, claimNotificationDeliveryByIdVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+## RecordNotificationRecoveryFailureById
+You can execute the `RecordNotificationRecoveryFailureById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+recordNotificationRecoveryFailureById(vars: RecordNotificationRecoveryFailureByIdVariables): MutationPromise<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+
+interface RecordNotificationRecoveryFailureByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordNotificationRecoveryFailureByIdVariables): MutationRef<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+}
+export const recordNotificationRecoveryFailureByIdRef: RecordNotificationRecoveryFailureByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+recordNotificationRecoveryFailureById(dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables): MutationPromise<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+
+interface RecordNotificationRecoveryFailureByIdRef {
+  ...
+  (dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables): MutationRef<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+}
+export const recordNotificationRecoveryFailureByIdRef: RecordNotificationRecoveryFailureByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the recordNotificationRecoveryFailureByIdRef:
+```typescript
+const name = recordNotificationRecoveryFailureByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RecordNotificationRecoveryFailureByIdVariables {
+  id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+```
+### Return Type
+Recall that executing the `RecordNotificationRecoveryFailureById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RecordNotificationRecoveryFailureByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RecordNotificationRecoveryFailureByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+### Using `RecordNotificationRecoveryFailureById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, recordNotificationRecoveryFailureById, RecordNotificationRecoveryFailureByIdVariables } from '@dataconnect/generated';
+
+// The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
+const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
+  id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+  lastErrorCode: ..., 
+  lastErrorMessage: ..., 
+};
+
+// Call the `recordNotificationRecoveryFailureById()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await recordNotificationRecoveryFailureById(recordNotificationRecoveryFailureByIdVars);
+// Variables can be defined inline as well.
+const { data } = await recordNotificationRecoveryFailureById({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await recordNotificationRecoveryFailureById(dataConnect, recordNotificationRecoveryFailureByIdVars);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+recordNotificationRecoveryFailureById(recordNotificationRecoveryFailureByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+### Using `RecordNotificationRecoveryFailureById`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, recordNotificationRecoveryFailureByIdRef, RecordNotificationRecoveryFailureByIdVariables } from '@dataconnect/generated';
+
+// The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
+const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
+  id: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+  lastErrorCode: ..., 
+  lastErrorMessage: ..., 
+};
+
+// Call the `recordNotificationRecoveryFailureByIdRef()` function to get a reference to the mutation.
+const ref = recordNotificationRecoveryFailureByIdRef(recordNotificationRecoveryFailureByIdVars);
+// Variables can be defined inline as well.
+const ref = recordNotificationRecoveryFailureByIdRef({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = recordNotificationRecoveryFailureByIdRef(dataConnect, recordNotificationRecoveryFailureByIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9053,7 +10059,7 @@ Recall that executing the `MarkNotificationDeliverySentById` mutation returns a 
 The `data` property is an object of type `MarkNotificationDeliverySentByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface MarkNotificationDeliverySentByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 ```
 ### Using `MarkNotificationDeliverySentById`'s action shortcut function
@@ -9084,12 +10090,12 @@ const { data } = await markNotificationDeliverySentById({ id: ..., attemptCount:
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await markNotificationDeliverySentById(dataConnect, markNotificationDeliverySentByIdVars);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 markNotificationDeliverySentById(markNotificationDeliverySentByIdVars).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9124,12 +10130,12 @@ const ref = markNotificationDeliverySentByIdRef(dataConnect, markNotificationDel
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9181,7 +10187,7 @@ Recall that executing the `MarkNotificationDeliveryFailedById` mutation returns 
 The `data` property is an object of type `MarkNotificationDeliveryFailedByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface MarkNotificationDeliveryFailedByIdData {
-  notificationDelivery_update?: NotificationDelivery_Key | null;
+  notificationDelivery_updateMany: number;
 }
 ```
 ### Using `MarkNotificationDeliveryFailedById`'s action shortcut function
@@ -9210,12 +10216,12 @@ const { data } = await markNotificationDeliveryFailedById({ id: ..., attemptCoun
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await markNotificationDeliveryFailedById(dataConnect, markNotificationDeliveryFailedByIdVars);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 markNotificationDeliveryFailedById(markNotificationDeliveryFailedByIdVars).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9248,12 +10254,12 @@ const ref = markNotificationDeliveryFailedByIdRef(dataConnect, markNotificationD
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.notificationDelivery_update);
+console.log(data.notificationDelivery_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.notificationDelivery_update);
+  console.log(data.notificationDelivery_updateMany);
 });
 ```
 
@@ -9741,40 +10747,41 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## CreatePaymentReconciliationException
-You can execute the `CreatePaymentReconciliationException` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## UpsertPaymentReconciliationException
+You can execute the `UpsertPaymentReconciliationException` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-createPaymentReconciliationException(vars: CreatePaymentReconciliationExceptionVariables): MutationPromise<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 
-interface CreatePaymentReconciliationExceptionRef {
+interface UpsertPaymentReconciliationExceptionRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: CreatePaymentReconciliationExceptionVariables): MutationRef<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+  (vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 }
-export const createPaymentReconciliationExceptionRef: CreatePaymentReconciliationExceptionRef;
+export const upsertPaymentReconciliationExceptionRef: UpsertPaymentReconciliationExceptionRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
 ```typescript
-createPaymentReconciliationException(dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables): MutationPromise<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+upsertPaymentReconciliationException(dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationPromise<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 
-interface CreatePaymentReconciliationExceptionRef {
+interface UpsertPaymentReconciliationExceptionRef {
   ...
-  (dc: DataConnect, vars: CreatePaymentReconciliationExceptionVariables): MutationRef<CreatePaymentReconciliationExceptionData, CreatePaymentReconciliationExceptionVariables>;
+  (dc: DataConnect, vars: UpsertPaymentReconciliationExceptionVariables): MutationRef<UpsertPaymentReconciliationExceptionData, UpsertPaymentReconciliationExceptionVariables>;
 }
-export const createPaymentReconciliationExceptionRef: CreatePaymentReconciliationExceptionRef;
+export const upsertPaymentReconciliationExceptionRef: UpsertPaymentReconciliationExceptionRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createPaymentReconciliationExceptionRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertPaymentReconciliationExceptionRef:
 ```typescript
-const name = createPaymentReconciliationExceptionRef.operationName;
+const name = upsertPaymentReconciliationExceptionRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `UpsertPaymentReconciliationException` mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface CreatePaymentReconciliationExceptionVariables {
+export interface UpsertPaymentReconciliationExceptionVariables {
+  id: UUIDString;
   ticketOrderId: UUIDString;
   exceptionType: PaymentReconciliationExceptionType;
   status: PaymentReconciliationExceptionStatus;
@@ -9785,22 +10792,23 @@ export interface CreatePaymentReconciliationExceptionVariables {
 }
 ```
 ### Return Type
-Recall that executing the `CreatePaymentReconciliationException` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `UpsertPaymentReconciliationException` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `CreatePaymentReconciliationExceptionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `UpsertPaymentReconciliationExceptionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface CreatePaymentReconciliationExceptionData {
-  paymentReconciliationException_insert: PaymentReconciliationException_Key;
+export interface UpsertPaymentReconciliationExceptionData {
+  paymentReconciliationException_upsert: PaymentReconciliationException_Key;
 }
 ```
-### Using `CreatePaymentReconciliationException`'s action shortcut function
+### Using `UpsertPaymentReconciliationException`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, createPaymentReconciliationException, CreatePaymentReconciliationExceptionVariables } from '@dataconnect/generated';
+import { connectorConfig, upsertPaymentReconciliationException, UpsertPaymentReconciliationExceptionVariables } from '@dataconnect/generated';
 
-// The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
-const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
+// The `UpsertPaymentReconciliationException` mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`:
+const upsertPaymentReconciliationExceptionVars: UpsertPaymentReconciliationExceptionVariables = {
+  id: ..., 
   ticketOrderId: ..., 
   exceptionType: ..., 
   status: ..., 
@@ -9810,33 +10818,34 @@ const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExcep
   resolvedAt: ..., // optional
 };
 
-// Call the `createPaymentReconciliationException()` function to execute the mutation.
+// Call the `upsertPaymentReconciliationException()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await createPaymentReconciliationException(createPaymentReconciliationExceptionVars);
+const { data } = await upsertPaymentReconciliationException(upsertPaymentReconciliationExceptionVars);
 // Variables can be defined inline as well.
-const { data } = await createPaymentReconciliationException({ ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
+const { data } = await upsertPaymentReconciliationException({ id: ..., ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await createPaymentReconciliationException(dataConnect, createPaymentReconciliationExceptionVars);
+const { data } = await upsertPaymentReconciliationException(dataConnect, upsertPaymentReconciliationExceptionVars);
 
-console.log(data.paymentReconciliationException_insert);
+console.log(data.paymentReconciliationException_upsert);
 
 // Or, you can use the `Promise` API.
-createPaymentReconciliationException(createPaymentReconciliationExceptionVars).then((response) => {
+upsertPaymentReconciliationException(upsertPaymentReconciliationExceptionVars).then((response) => {
   const data = response.data;
-  console.log(data.paymentReconciliationException_insert);
+  console.log(data.paymentReconciliationException_upsert);
 });
 ```
 
-### Using `CreatePaymentReconciliationException`'s `MutationRef` function
+### Using `UpsertPaymentReconciliationException`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, createPaymentReconciliationExceptionRef, CreatePaymentReconciliationExceptionVariables } from '@dataconnect/generated';
+import { connectorConfig, upsertPaymentReconciliationExceptionRef, UpsertPaymentReconciliationExceptionVariables } from '@dataconnect/generated';
 
-// The `CreatePaymentReconciliationException` mutation requires an argument of type `CreatePaymentReconciliationExceptionVariables`:
-const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExceptionVariables = {
+// The `UpsertPaymentReconciliationException` mutation requires an argument of type `UpsertPaymentReconciliationExceptionVariables`:
+const upsertPaymentReconciliationExceptionVars: UpsertPaymentReconciliationExceptionVariables = {
+  id: ..., 
   ticketOrderId: ..., 
   exceptionType: ..., 
   status: ..., 
@@ -9846,149 +10855,25 @@ const createPaymentReconciliationExceptionVars: CreatePaymentReconciliationExcep
   resolvedAt: ..., // optional
 };
 
-// Call the `createPaymentReconciliationExceptionRef()` function to get a reference to the mutation.
-const ref = createPaymentReconciliationExceptionRef(createPaymentReconciliationExceptionVars);
+// Call the `upsertPaymentReconciliationExceptionRef()` function to get a reference to the mutation.
+const ref = upsertPaymentReconciliationExceptionRef(upsertPaymentReconciliationExceptionVars);
 // Variables can be defined inline as well.
-const ref = createPaymentReconciliationExceptionRef({ ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
+const ref = upsertPaymentReconciliationExceptionRef({ id: ..., ticketOrderId: ..., exceptionType: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = createPaymentReconciliationExceptionRef(dataConnect, createPaymentReconciliationExceptionVars);
+const ref = upsertPaymentReconciliationExceptionRef(dataConnect, upsertPaymentReconciliationExceptionVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.paymentReconciliationException_insert);
+console.log(data.paymentReconciliationException_upsert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.paymentReconciliationException_insert);
-});
-```
-
-## UpdatePaymentReconciliationExceptionById
-You can execute the `UpdatePaymentReconciliationExceptionById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-updatePaymentReconciliationExceptionById(vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationPromise<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-
-interface UpdatePaymentReconciliationExceptionByIdRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationRef<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-}
-export const updatePaymentReconciliationExceptionByIdRef: UpdatePaymentReconciliationExceptionByIdRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-updatePaymentReconciliationExceptionById(dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationPromise<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-
-interface UpdatePaymentReconciliationExceptionByIdRef {
-  ...
-  (dc: DataConnect, vars: UpdatePaymentReconciliationExceptionByIdVariables): MutationRef<UpdatePaymentReconciliationExceptionByIdData, UpdatePaymentReconciliationExceptionByIdVariables>;
-}
-export const updatePaymentReconciliationExceptionByIdRef: UpdatePaymentReconciliationExceptionByIdRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updatePaymentReconciliationExceptionByIdRef:
-```typescript
-const name = updatePaymentReconciliationExceptionByIdRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UpdatePaymentReconciliationExceptionByIdVariables {
-  id: UUIDString;
-  status: PaymentReconciliationExceptionStatus;
-  note?: string | null;
-  ownerUserId?: string | null;
-  lastAttemptedAt?: TimestampString | null;
-  resolvedAt?: TimestampString | null;
-}
-```
-### Return Type
-Recall that executing the `UpdatePaymentReconciliationExceptionById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UpdatePaymentReconciliationExceptionByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UpdatePaymentReconciliationExceptionByIdData {
-  paymentReconciliationException_update?: PaymentReconciliationException_Key | null;
-}
-```
-### Using `UpdatePaymentReconciliationExceptionById`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updatePaymentReconciliationExceptionById, UpdatePaymentReconciliationExceptionByIdVariables } from '@dataconnect/generated';
-
-// The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
-const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-  id: ..., 
-  status: ..., 
-  note: ..., // optional
-  ownerUserId: ..., // optional
-  lastAttemptedAt: ..., // optional
-  resolvedAt: ..., // optional
-};
-
-// Call the `updatePaymentReconciliationExceptionById()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updatePaymentReconciliationExceptionById(updatePaymentReconciliationExceptionByIdVars);
-// Variables can be defined inline as well.
-const { data } = await updatePaymentReconciliationExceptionById({ id: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updatePaymentReconciliationExceptionById(dataConnect, updatePaymentReconciliationExceptionByIdVars);
-
-console.log(data.paymentReconciliationException_update);
-
-// Or, you can use the `Promise` API.
-updatePaymentReconciliationExceptionById(updatePaymentReconciliationExceptionByIdVars).then((response) => {
-  const data = response.data;
-  console.log(data.paymentReconciliationException_update);
-});
-```
-
-### Using `UpdatePaymentReconciliationExceptionById`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updatePaymentReconciliationExceptionByIdRef, UpdatePaymentReconciliationExceptionByIdVariables } from '@dataconnect/generated';
-
-// The `UpdatePaymentReconciliationExceptionById` mutation requires an argument of type `UpdatePaymentReconciliationExceptionByIdVariables`:
-const updatePaymentReconciliationExceptionByIdVars: UpdatePaymentReconciliationExceptionByIdVariables = {
-  id: ..., 
-  status: ..., 
-  note: ..., // optional
-  ownerUserId: ..., // optional
-  lastAttemptedAt: ..., // optional
-  resolvedAt: ..., // optional
-};
-
-// Call the `updatePaymentReconciliationExceptionByIdRef()` function to get a reference to the mutation.
-const ref = updatePaymentReconciliationExceptionByIdRef(updatePaymentReconciliationExceptionByIdVars);
-// Variables can be defined inline as well.
-const ref = updatePaymentReconciliationExceptionByIdRef({ id: ..., status: ..., note: ..., ownerUserId: ..., lastAttemptedAt: ..., resolvedAt: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = updatePaymentReconciliationExceptionByIdRef(dataConnect, updatePaymentReconciliationExceptionByIdVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.paymentReconciliationException_update);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.paymentReconciliationException_update);
+  console.log(data.paymentReconciliationException_upsert);
 });
 ```
 
@@ -10514,7 +11399,7 @@ export interface CreateAnnouncementSendVariables {
   sentBy: string;
   recipientCount: number;
   skippedCount: number;
-  failureCount: number;
+  recipientSnapshot: string;
 }
 ```
 ### Return Type
@@ -10541,14 +11426,14 @@ const createAnnouncementSendVars: CreateAnnouncementSendVariables = {
   sentBy: ..., 
   recipientCount: ..., 
   skippedCount: ..., 
-  failureCount: ..., 
+  recipientSnapshot: ..., 
 };
 
 // Call the `createAnnouncementSend()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementSend(createAnnouncementSendVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementSend({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., failureCount: ..., });
+const { data } = await createAnnouncementSend({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10578,13 +11463,13 @@ const createAnnouncementSendVars: CreateAnnouncementSendVariables = {
   sentBy: ..., 
   recipientCount: ..., 
   skippedCount: ..., 
-  failureCount: ..., 
+  recipientSnapshot: ..., 
 };
 
 // Call the `createAnnouncementSendRef()` function to get a reference to the mutation.
 const ref = createAnnouncementSendRef(createAnnouncementSendVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementSendRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., failureCount: ..., });
+const ref = createAnnouncementSendRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10637,6 +11522,7 @@ The `CreateAnnouncementRecipient` mutation requires an argument of type `CreateA
 
 ```typescript
 export interface CreateAnnouncementRecipientVariables {
+  id: UUIDString;
   announcementSendId: UUIDString;
   userId: string;
   email: string;
@@ -10665,6 +11551,7 @@ import { connectorConfig, createAnnouncementRecipient, CreateAnnouncementRecipie
 
 // The `CreateAnnouncementRecipient` mutation requires an argument of type `CreateAnnouncementRecipientVariables`:
 const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
+  id: ..., 
   announcementSendId: ..., 
   userId: ..., 
   email: ..., 
@@ -10680,7 +11567,7 @@ const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementRecipient(createAnnouncementRecipientVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementRecipient({ announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., });
+const { data } = await createAnnouncementRecipient({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10703,6 +11590,7 @@ import { connectorConfig, createAnnouncementRecipientRef, CreateAnnouncementReci
 
 // The `CreateAnnouncementRecipient` mutation requires an argument of type `CreateAnnouncementRecipientVariables`:
 const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
+  id: ..., 
   announcementSendId: ..., 
   userId: ..., 
   email: ..., 
@@ -10717,7 +11605,7 @@ const createAnnouncementRecipientVars: CreateAnnouncementRecipientVariables = {
 // Call the `createAnnouncementRecipientRef()` function to get a reference to the mutation.
 const ref = createAnnouncementRecipientRef(createAnnouncementRecipientVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementRecipientRef({ announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., });
+const ref = createAnnouncementRecipientRef({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10736,233 +11624,1122 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## UpdateAnnouncementRecipientDeliveryStatus
-You can execute the `UpdateAnnouncementRecipientDeliveryStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## TryUpdateAnnouncementRecipientProcessingStatus
+You can execute the `TryUpdateAnnouncementRecipientProcessingStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-updateAnnouncementRecipientDeliveryStatus(vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+tryUpdateAnnouncementRecipientProcessingStatus(vars: TryUpdateAnnouncementRecipientProcessingStatusVariables): MutationPromise<TryUpdateAnnouncementRecipientProcessingStatusData, TryUpdateAnnouncementRecipientProcessingStatusVariables>;
 
-interface UpdateAnnouncementRecipientDeliveryStatusRef {
+interface TryUpdateAnnouncementRecipientProcessingStatusRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+  (vars: TryUpdateAnnouncementRecipientProcessingStatusVariables): MutationRef<TryUpdateAnnouncementRecipientProcessingStatusData, TryUpdateAnnouncementRecipientProcessingStatusVariables>;
 }
-export const updateAnnouncementRecipientDeliveryStatusRef: UpdateAnnouncementRecipientDeliveryStatusRef;
+export const tryUpdateAnnouncementRecipientProcessingStatusRef: TryUpdateAnnouncementRecipientProcessingStatusRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
 ```typescript
-updateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+tryUpdateAnnouncementRecipientProcessingStatus(dc: DataConnect, vars: TryUpdateAnnouncementRecipientProcessingStatusVariables): MutationPromise<TryUpdateAnnouncementRecipientProcessingStatusData, TryUpdateAnnouncementRecipientProcessingStatusVariables>;
 
-interface UpdateAnnouncementRecipientDeliveryStatusRef {
+interface TryUpdateAnnouncementRecipientProcessingStatusRef {
   ...
-  (dc: DataConnect, vars: UpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<UpdateAnnouncementRecipientDeliveryStatusData, UpdateAnnouncementRecipientDeliveryStatusVariables>;
+  (dc: DataConnect, vars: TryUpdateAnnouncementRecipientProcessingStatusVariables): MutationRef<TryUpdateAnnouncementRecipientProcessingStatusData, TryUpdateAnnouncementRecipientProcessingStatusVariables>;
 }
-export const updateAnnouncementRecipientDeliveryStatusRef: UpdateAnnouncementRecipientDeliveryStatusRef;
+export const tryUpdateAnnouncementRecipientProcessingStatusRef: TryUpdateAnnouncementRecipientProcessingStatusRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateAnnouncementRecipientDeliveryStatusRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the tryUpdateAnnouncementRecipientProcessingStatusRef:
 ```typescript
-const name = updateAnnouncementRecipientDeliveryStatusRef.operationName;
+const name = tryUpdateAnnouncementRecipientProcessingStatusRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `UpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `TryUpdateAnnouncementRecipientProcessingStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientProcessingStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface UpdateAnnouncementRecipientDeliveryStatusVariables {
+export interface TryUpdateAnnouncementRecipientProcessingStatusVariables {
   id: UUIDString;
+  expectedStatus: string;
+  expectedProcessingVersion: number;
+  status: string;
+  processingVersion: number;
+  processingStartedAt?: TimestampString | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  providerNotificationId?: string | null;
+}
+```
+### Return Type
+Recall that executing the `TryUpdateAnnouncementRecipientProcessingStatus` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `TryUpdateAnnouncementRecipientProcessingStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface TryUpdateAnnouncementRecipientProcessingStatusData {
+  announcementRecipient_updateMany: number;
+}
+```
+### Using `TryUpdateAnnouncementRecipientProcessingStatus`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, tryUpdateAnnouncementRecipientProcessingStatus, TryUpdateAnnouncementRecipientProcessingStatusVariables } from '@dataconnect/generated';
+
+// The `TryUpdateAnnouncementRecipientProcessingStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientProcessingStatusVariables`:
+const tryUpdateAnnouncementRecipientProcessingStatusVars: TryUpdateAnnouncementRecipientProcessingStatusVariables = {
+  id: ..., 
+  expectedStatus: ..., 
+  expectedProcessingVersion: ..., 
+  status: ..., 
+  processingVersion: ..., 
+  processingStartedAt: ..., // optional
+  sentAt: ..., // optional
+  failureReason: ..., // optional
+  providerNotificationId: ..., // optional
+};
+
+// Call the `tryUpdateAnnouncementRecipientProcessingStatus()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await tryUpdateAnnouncementRecipientProcessingStatus(tryUpdateAnnouncementRecipientProcessingStatusVars);
+// Variables can be defined inline as well.
+const { data } = await tryUpdateAnnouncementRecipientProcessingStatus({ id: ..., expectedStatus: ..., expectedProcessingVersion: ..., status: ..., processingVersion: ..., processingStartedAt: ..., sentAt: ..., failureReason: ..., providerNotificationId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await tryUpdateAnnouncementRecipientProcessingStatus(dataConnect, tryUpdateAnnouncementRecipientProcessingStatusVars);
+
+console.log(data.announcementRecipient_updateMany);
+
+// Or, you can use the `Promise` API.
+tryUpdateAnnouncementRecipientProcessingStatus(tryUpdateAnnouncementRecipientProcessingStatusVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipient_updateMany);
+});
+```
+
+### Using `TryUpdateAnnouncementRecipientProcessingStatus`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, tryUpdateAnnouncementRecipientProcessingStatusRef, TryUpdateAnnouncementRecipientProcessingStatusVariables } from '@dataconnect/generated';
+
+// The `TryUpdateAnnouncementRecipientProcessingStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientProcessingStatusVariables`:
+const tryUpdateAnnouncementRecipientProcessingStatusVars: TryUpdateAnnouncementRecipientProcessingStatusVariables = {
+  id: ..., 
+  expectedStatus: ..., 
+  expectedProcessingVersion: ..., 
+  status: ..., 
+  processingVersion: ..., 
+  processingStartedAt: ..., // optional
+  sentAt: ..., // optional
+  failureReason: ..., // optional
+  providerNotificationId: ..., // optional
+};
+
+// Call the `tryUpdateAnnouncementRecipientProcessingStatusRef()` function to get a reference to the mutation.
+const ref = tryUpdateAnnouncementRecipientProcessingStatusRef(tryUpdateAnnouncementRecipientProcessingStatusVars);
+// Variables can be defined inline as well.
+const ref = tryUpdateAnnouncementRecipientProcessingStatusRef({ id: ..., expectedStatus: ..., expectedProcessingVersion: ..., status: ..., processingVersion: ..., processingStartedAt: ..., sentAt: ..., failureReason: ..., providerNotificationId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = tryUpdateAnnouncementRecipientProcessingStatusRef(dataConnect, tryUpdateAnnouncementRecipientProcessingStatusVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.announcementRecipient_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipient_updateMany);
+});
+```
+
+## TryMarkAnnouncementRecipientEnqueueFailed
+You can execute the `TryMarkAnnouncementRecipientEnqueueFailed` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+tryMarkAnnouncementRecipientEnqueueFailed(vars: TryMarkAnnouncementRecipientEnqueueFailedVariables): MutationPromise<TryMarkAnnouncementRecipientEnqueueFailedData, TryMarkAnnouncementRecipientEnqueueFailedVariables>;
+
+interface TryMarkAnnouncementRecipientEnqueueFailedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: TryMarkAnnouncementRecipientEnqueueFailedVariables): MutationRef<TryMarkAnnouncementRecipientEnqueueFailedData, TryMarkAnnouncementRecipientEnqueueFailedVariables>;
+}
+export const tryMarkAnnouncementRecipientEnqueueFailedRef: TryMarkAnnouncementRecipientEnqueueFailedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+tryMarkAnnouncementRecipientEnqueueFailed(dc: DataConnect, vars: TryMarkAnnouncementRecipientEnqueueFailedVariables): MutationPromise<TryMarkAnnouncementRecipientEnqueueFailedData, TryMarkAnnouncementRecipientEnqueueFailedVariables>;
+
+interface TryMarkAnnouncementRecipientEnqueueFailedRef {
+  ...
+  (dc: DataConnect, vars: TryMarkAnnouncementRecipientEnqueueFailedVariables): MutationRef<TryMarkAnnouncementRecipientEnqueueFailedData, TryMarkAnnouncementRecipientEnqueueFailedVariables>;
+}
+export const tryMarkAnnouncementRecipientEnqueueFailedRef: TryMarkAnnouncementRecipientEnqueueFailedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the tryMarkAnnouncementRecipientEnqueueFailedRef:
+```typescript
+const name = tryMarkAnnouncementRecipientEnqueueFailedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `TryMarkAnnouncementRecipientEnqueueFailed` mutation requires an argument of type `TryMarkAnnouncementRecipientEnqueueFailedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface TryMarkAnnouncementRecipientEnqueueFailedVariables {
+  id: UUIDString;
+  failureReason: string;
+}
+```
+### Return Type
+Recall that executing the `TryMarkAnnouncementRecipientEnqueueFailed` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `TryMarkAnnouncementRecipientEnqueueFailedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface TryMarkAnnouncementRecipientEnqueueFailedData {
+  announcementRecipient_updateMany: number;
+}
+```
+### Using `TryMarkAnnouncementRecipientEnqueueFailed`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, tryMarkAnnouncementRecipientEnqueueFailed, TryMarkAnnouncementRecipientEnqueueFailedVariables } from '@dataconnect/generated';
+
+// The `TryMarkAnnouncementRecipientEnqueueFailed` mutation requires an argument of type `TryMarkAnnouncementRecipientEnqueueFailedVariables`:
+const tryMarkAnnouncementRecipientEnqueueFailedVars: TryMarkAnnouncementRecipientEnqueueFailedVariables = {
+  id: ..., 
+  failureReason: ..., 
+};
+
+// Call the `tryMarkAnnouncementRecipientEnqueueFailed()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await tryMarkAnnouncementRecipientEnqueueFailed(tryMarkAnnouncementRecipientEnqueueFailedVars);
+// Variables can be defined inline as well.
+const { data } = await tryMarkAnnouncementRecipientEnqueueFailed({ id: ..., failureReason: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await tryMarkAnnouncementRecipientEnqueueFailed(dataConnect, tryMarkAnnouncementRecipientEnqueueFailedVars);
+
+console.log(data.announcementRecipient_updateMany);
+
+// Or, you can use the `Promise` API.
+tryMarkAnnouncementRecipientEnqueueFailed(tryMarkAnnouncementRecipientEnqueueFailedVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipient_updateMany);
+});
+```
+
+### Using `TryMarkAnnouncementRecipientEnqueueFailed`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, tryMarkAnnouncementRecipientEnqueueFailedRef, TryMarkAnnouncementRecipientEnqueueFailedVariables } from '@dataconnect/generated';
+
+// The `TryMarkAnnouncementRecipientEnqueueFailed` mutation requires an argument of type `TryMarkAnnouncementRecipientEnqueueFailedVariables`:
+const tryMarkAnnouncementRecipientEnqueueFailedVars: TryMarkAnnouncementRecipientEnqueueFailedVariables = {
+  id: ..., 
+  failureReason: ..., 
+};
+
+// Call the `tryMarkAnnouncementRecipientEnqueueFailedRef()` function to get a reference to the mutation.
+const ref = tryMarkAnnouncementRecipientEnqueueFailedRef(tryMarkAnnouncementRecipientEnqueueFailedVars);
+// Variables can be defined inline as well.
+const ref = tryMarkAnnouncementRecipientEnqueueFailedRef({ id: ..., failureReason: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = tryMarkAnnouncementRecipientEnqueueFailedRef(dataConnect, tryMarkAnnouncementRecipientEnqueueFailedVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.announcementRecipient_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipient_updateMany);
+});
+```
+
+## TryUpdateAnnouncementRecipientDeliveryStatus
+You can execute the `TryUpdateAnnouncementRecipientDeliveryStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+tryUpdateAnnouncementRecipientDeliveryStatus(vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
+
+interface TryUpdateAnnouncementRecipientDeliveryStatusRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
+}
+export const tryUpdateAnnouncementRecipientDeliveryStatusRef: TryUpdateAnnouncementRecipientDeliveryStatusRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+tryUpdateAnnouncementRecipientDeliveryStatus(dc: DataConnect, vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationPromise<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
+
+interface TryUpdateAnnouncementRecipientDeliveryStatusRef {
+  ...
+  (dc: DataConnect, vars: TryUpdateAnnouncementRecipientDeliveryStatusVariables): MutationRef<TryUpdateAnnouncementRecipientDeliveryStatusData, TryUpdateAnnouncementRecipientDeliveryStatusVariables>;
+}
+export const tryUpdateAnnouncementRecipientDeliveryStatusRef: TryUpdateAnnouncementRecipientDeliveryStatusRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the tryUpdateAnnouncementRecipientDeliveryStatusRef:
+```typescript
+const name = tryUpdateAnnouncementRecipientDeliveryStatusRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `TryUpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
+  id: UUIDString;
+  expectedDeliveryVersion: number;
+  deliveryVersion: number;
   status: string;
   failureReason?: string | null;
+  deliveryStatusUpdatedAt: TimestampString;
+  deliveryReceiptId: string;
 }
 ```
 ### Return Type
-Recall that executing the `UpdateAnnouncementRecipientDeliveryStatus` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `TryUpdateAnnouncementRecipientDeliveryStatus` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `UpdateAnnouncementRecipientDeliveryStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `TryUpdateAnnouncementRecipientDeliveryStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface UpdateAnnouncementRecipientDeliveryStatusData {
-  announcementRecipient_update?: AnnouncementRecipient_Key | null;
+export interface TryUpdateAnnouncementRecipientDeliveryStatusData {
+  announcementRecipient_updateMany: number;
 }
 ```
-### Using `UpdateAnnouncementRecipientDeliveryStatus`'s action shortcut function
+### Using `TryUpdateAnnouncementRecipientDeliveryStatus`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updateAnnouncementRecipientDeliveryStatus, UpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
+import { connectorConfig, tryUpdateAnnouncementRecipientDeliveryStatus, TryUpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
 
-// The `UpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`:
-const updateAnnouncementRecipientDeliveryStatusVars: UpdateAnnouncementRecipientDeliveryStatusVariables = {
+// The `TryUpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`:
+const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRecipientDeliveryStatusVariables = {
   id: ..., 
+  expectedDeliveryVersion: ..., 
+  deliveryVersion: ..., 
   status: ..., 
   failureReason: ..., // optional
+  deliveryStatusUpdatedAt: ..., 
+  deliveryReceiptId: ..., 
 };
 
-// Call the `updateAnnouncementRecipientDeliveryStatus()` function to execute the mutation.
+// Call the `tryUpdateAnnouncementRecipientDeliveryStatus()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updateAnnouncementRecipientDeliveryStatus(updateAnnouncementRecipientDeliveryStatusVars);
+const { data } = await tryUpdateAnnouncementRecipientDeliveryStatus(tryUpdateAnnouncementRecipientDeliveryStatusVars);
 // Variables can be defined inline as well.
-const { data } = await updateAnnouncementRecipientDeliveryStatus({ id: ..., status: ..., failureReason: ..., });
+const { data } = await tryUpdateAnnouncementRecipientDeliveryStatus({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updateAnnouncementRecipientDeliveryStatus(dataConnect, updateAnnouncementRecipientDeliveryStatusVars);
+const { data } = await tryUpdateAnnouncementRecipientDeliveryStatus(dataConnect, tryUpdateAnnouncementRecipientDeliveryStatusVars);
 
-console.log(data.announcementRecipient_update);
+console.log(data.announcementRecipient_updateMany);
 
 // Or, you can use the `Promise` API.
-updateAnnouncementRecipientDeliveryStatus(updateAnnouncementRecipientDeliveryStatusVars).then((response) => {
+tryUpdateAnnouncementRecipientDeliveryStatus(tryUpdateAnnouncementRecipientDeliveryStatusVars).then((response) => {
   const data = response.data;
-  console.log(data.announcementRecipient_update);
+  console.log(data.announcementRecipient_updateMany);
 });
 ```
 
-### Using `UpdateAnnouncementRecipientDeliveryStatus`'s `MutationRef` function
+### Using `TryUpdateAnnouncementRecipientDeliveryStatus`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updateAnnouncementRecipientDeliveryStatusRef, UpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
+import { connectorConfig, tryUpdateAnnouncementRecipientDeliveryStatusRef, TryUpdateAnnouncementRecipientDeliveryStatusVariables } from '@dataconnect/generated';
 
-// The `UpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `UpdateAnnouncementRecipientDeliveryStatusVariables`:
-const updateAnnouncementRecipientDeliveryStatusVars: UpdateAnnouncementRecipientDeliveryStatusVariables = {
+// The `TryUpdateAnnouncementRecipientDeliveryStatus` mutation requires an argument of type `TryUpdateAnnouncementRecipientDeliveryStatusVariables`:
+const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRecipientDeliveryStatusVariables = {
   id: ..., 
+  expectedDeliveryVersion: ..., 
+  deliveryVersion: ..., 
   status: ..., 
   failureReason: ..., // optional
+  deliveryStatusUpdatedAt: ..., 
+  deliveryReceiptId: ..., 
 };
 
-// Call the `updateAnnouncementRecipientDeliveryStatusRef()` function to get a reference to the mutation.
-const ref = updateAnnouncementRecipientDeliveryStatusRef(updateAnnouncementRecipientDeliveryStatusVars);
+// Call the `tryUpdateAnnouncementRecipientDeliveryStatusRef()` function to get a reference to the mutation.
+const ref = tryUpdateAnnouncementRecipientDeliveryStatusRef(tryUpdateAnnouncementRecipientDeliveryStatusVars);
 // Variables can be defined inline as well.
-const ref = updateAnnouncementRecipientDeliveryStatusRef({ id: ..., status: ..., failureReason: ..., });
+const ref = tryUpdateAnnouncementRecipientDeliveryStatusRef({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = updateAnnouncementRecipientDeliveryStatusRef(dataConnect, updateAnnouncementRecipientDeliveryStatusVars);
+const ref = tryUpdateAnnouncementRecipientDeliveryStatusRef(dataConnect, tryUpdateAnnouncementRecipientDeliveryStatusVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.announcementRecipient_update);
+console.log(data.announcementRecipient_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.announcementRecipient_update);
+  console.log(data.announcementRecipient_updateMany);
 });
 ```
 
-## UpdateEmailBounceStats
-You can execute the `UpdateEmailBounceStats` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+## TryApplyNotifyDeliveryUserState
+You can execute the `TryApplyNotifyDeliveryUserState` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-updateEmailBounceStats(vars: UpdateEmailBounceStatsVariables): MutationPromise<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+tryApplyNotifyDeliveryUserState(vars: TryApplyNotifyDeliveryUserStateVariables): MutationPromise<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 
-interface UpdateEmailBounceStatsRef {
+interface TryApplyNotifyDeliveryUserStateRef {
   ...
   /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateEmailBounceStatsVariables): MutationRef<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+  (vars: TryApplyNotifyDeliveryUserStateVariables): MutationRef<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 }
-export const updateEmailBounceStatsRef: UpdateEmailBounceStatsRef;
+export const tryApplyNotifyDeliveryUserStateRef: TryApplyNotifyDeliveryUserStateRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
 ```typescript
-updateEmailBounceStats(dc: DataConnect, vars: UpdateEmailBounceStatsVariables): MutationPromise<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+tryApplyNotifyDeliveryUserState(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateVariables): MutationPromise<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 
-interface UpdateEmailBounceStatsRef {
+interface TryApplyNotifyDeliveryUserStateRef {
   ...
-  (dc: DataConnect, vars: UpdateEmailBounceStatsVariables): MutationRef<UpdateEmailBounceStatsData, UpdateEmailBounceStatsVariables>;
+  (dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateVariables): MutationRef<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 }
-export const updateEmailBounceStatsRef: UpdateEmailBounceStatsRef;
+export const tryApplyNotifyDeliveryUserStateRef: TryApplyNotifyDeliveryUserStateRef;
 ```
 
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateEmailBounceStatsRef:
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the tryApplyNotifyDeliveryUserStateRef:
 ```typescript
-const name = updateEmailBounceStatsRef.operationName;
+const name = tryApplyNotifyDeliveryUserStateRef.operationName;
 console.log(name);
 ```
 
 ### Variables
-The `UpdateEmailBounceStats` mutation requires an argument of type `UpdateEmailBounceStatsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `TryApplyNotifyDeliveryUserState` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 
 ```typescript
-export interface UpdateEmailBounceStatsVariables {
+export interface TryApplyNotifyDeliveryUserStateVariables {
   userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
   emailBounceCount: number;
   emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
 }
 ```
 ### Return Type
-Recall that executing the `UpdateEmailBounceStats` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+Recall that executing the `TryApplyNotifyDeliveryUserState` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
 
-The `data` property is an object of type `UpdateEmailBounceStatsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+The `data` property is an object of type `TryApplyNotifyDeliveryUserStateData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
-export interface UpdateEmailBounceStatsData {
-  user_update?: User_Key | null;
+export interface TryApplyNotifyDeliveryUserStateData {
+  user_updateMany: number;
 }
 ```
-### Using `UpdateEmailBounceStats`'s action shortcut function
+### Using `TryApplyNotifyDeliveryUserState`'s action shortcut function
 
 ```typescript
 import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updateEmailBounceStats, UpdateEmailBounceStatsVariables } from '@dataconnect/generated';
+import { connectorConfig, tryApplyNotifyDeliveryUserState, TryApplyNotifyDeliveryUserStateVariables } from '@dataconnect/generated';
 
-// The `UpdateEmailBounceStats` mutation requires an argument of type `UpdateEmailBounceStatsVariables`:
-const updateEmailBounceStatsVars: UpdateEmailBounceStatsVariables = {
+// The `TryApplyNotifyDeliveryUserState` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`:
+const tryApplyNotifyDeliveryUserStateVars: TryApplyNotifyDeliveryUserStateVariables = {
   userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
   emailBounceCount: ..., 
   emailLastBounceAt: ..., // optional
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
 };
 
-// Call the `updateEmailBounceStats()` function to execute the mutation.
+// Call the `tryApplyNotifyDeliveryUserState()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updateEmailBounceStats(updateEmailBounceStatsVars);
+const { data } = await tryApplyNotifyDeliveryUserState(tryApplyNotifyDeliveryUserStateVars);
 // Variables can be defined inline as well.
-const { data } = await updateEmailBounceStats({ userId: ..., emailBounceCount: ..., emailLastBounceAt: ..., });
+const { data } = await tryApplyNotifyDeliveryUserState({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updateEmailBounceStats(dataConnect, updateEmailBounceStatsVars);
+const { data } = await tryApplyNotifyDeliveryUserState(dataConnect, tryApplyNotifyDeliveryUserStateVars);
 
-console.log(data.user_update);
+console.log(data.user_updateMany);
 
 // Or, you can use the `Promise` API.
-updateEmailBounceStats(updateEmailBounceStatsVars).then((response) => {
+tryApplyNotifyDeliveryUserState(tryApplyNotifyDeliveryUserStateVars).then((response) => {
   const data = response.data;
-  console.log(data.user_update);
+  console.log(data.user_updateMany);
 });
 ```
 
-### Using `UpdateEmailBounceStats`'s `MutationRef` function
+### Using `TryApplyNotifyDeliveryUserState`'s `MutationRef` function
 
 ```typescript
 import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updateEmailBounceStatsRef, UpdateEmailBounceStatsVariables } from '@dataconnect/generated';
+import { connectorConfig, tryApplyNotifyDeliveryUserStateRef, TryApplyNotifyDeliveryUserStateVariables } from '@dataconnect/generated';
 
-// The `UpdateEmailBounceStats` mutation requires an argument of type `UpdateEmailBounceStatsVariables`:
-const updateEmailBounceStatsVars: UpdateEmailBounceStatsVariables = {
+// The `TryApplyNotifyDeliveryUserState` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateVariables`:
+const tryApplyNotifyDeliveryUserStateVars: TryApplyNotifyDeliveryUserStateVariables = {
   userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
   emailBounceCount: ..., 
   emailLastBounceAt: ..., // optional
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
 };
 
-// Call the `updateEmailBounceStatsRef()` function to get a reference to the mutation.
-const ref = updateEmailBounceStatsRef(updateEmailBounceStatsVars);
+// Call the `tryApplyNotifyDeliveryUserStateRef()` function to get a reference to the mutation.
+const ref = tryApplyNotifyDeliveryUserStateRef(tryApplyNotifyDeliveryUserStateVars);
 // Variables can be defined inline as well.
-const ref = updateEmailBounceStatsRef({ userId: ..., emailBounceCount: ..., emailLastBounceAt: ..., });
+const ref = tryApplyNotifyDeliveryUserStateRef({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
-const ref = updateEmailBounceStatsRef(dataConnect, updateEmailBounceStatsVars);
+const ref = tryApplyNotifyDeliveryUserStateRef(dataConnect, tryApplyNotifyDeliveryUserStateVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.user_update);
+console.log(data.user_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.user_update);
+  console.log(data.user_updateMany);
+});
+```
+
+## TryApplyNotifyDeliveryUserStateAndMarkLost
+You can execute the `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+tryApplyNotifyDeliveryUserStateAndMarkLost(vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+
+interface TryApplyNotifyDeliveryUserStateAndMarkLostRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+}
+export const tryApplyNotifyDeliveryUserStateAndMarkLostRef: TryApplyNotifyDeliveryUserStateAndMarkLostRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+tryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+
+interface TryApplyNotifyDeliveryUserStateAndMarkLostRef {
+  ...
+  (dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
+}
+export const tryApplyNotifyDeliveryUserStateAndMarkLostRef: TryApplyNotifyDeliveryUserStateAndMarkLostRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the tryApplyNotifyDeliveryUserStateAndMarkLostRef:
+```typescript
+const name = tryApplyNotifyDeliveryUserStateAndMarkLostRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
+  userId: string;
+  expectedEmailDeliveryVersion: number;
+  emailDeliveryVersion: number;
+  emailBounceCount: number;
+  emailLastBounceAt?: TimestampString | null;
+  emailDeliveryStatus: string;
+  emailDeliveryStatusUpdatedAt: TimestampString;
+  emailDeliveryReceiptId: string;
+}
+```
+### Return Type
+Recall that executing the `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `TryApplyNotifyDeliveryUserStateAndMarkLostData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
+  user_updateMany: number;
+}
+```
+### Using `TryApplyNotifyDeliveryUserStateAndMarkLost`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, tryApplyNotifyDeliveryUserStateAndMarkLost, TryApplyNotifyDeliveryUserStateAndMarkLostVariables } from '@dataconnect/generated';
+
+// The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
+const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
+  userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
+  emailBounceCount: ..., 
+  emailLastBounceAt: ..., // optional
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
+};
+
+// Call the `tryApplyNotifyDeliveryUserStateAndMarkLost()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await tryApplyNotifyDeliveryUserStateAndMarkLost(tryApplyNotifyDeliveryUserStateAndMarkLostVars);
+// Variables can be defined inline as well.
+const { data } = await tryApplyNotifyDeliveryUserStateAndMarkLost({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await tryApplyNotifyDeliveryUserStateAndMarkLost(dataConnect, tryApplyNotifyDeliveryUserStateAndMarkLostVars);
+
+console.log(data.user_updateMany);
+
+// Or, you can use the `Promise` API.
+tryApplyNotifyDeliveryUserStateAndMarkLost(tryApplyNotifyDeliveryUserStateAndMarkLostVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+});
+```
+
+### Using `TryApplyNotifyDeliveryUserStateAndMarkLost`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, tryApplyNotifyDeliveryUserStateAndMarkLostRef, TryApplyNotifyDeliveryUserStateAndMarkLostVariables } from '@dataconnect/generated';
+
+// The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
+const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
+  userId: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  emailDeliveryVersion: ..., 
+  emailBounceCount: ..., 
+  emailLastBounceAt: ..., // optional
+  emailDeliveryStatus: ..., 
+  emailDeliveryStatusUpdatedAt: ..., 
+  emailDeliveryReceiptId: ..., 
+};
+
+// Call the `tryApplyNotifyDeliveryUserStateAndMarkLostRef()` function to get a reference to the mutation.
+const ref = tryApplyNotifyDeliveryUserStateAndMarkLostRef(tryApplyNotifyDeliveryUserStateAndMarkLostVars);
+// Variables can be defined inline as well.
+const ref = tryApplyNotifyDeliveryUserStateAndMarkLostRef({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = tryApplyNotifyDeliveryUserStateAndMarkLostRef(dataConnect, tryApplyNotifyDeliveryUserStateAndMarkLostVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+});
+```
+
+## CreateNotifyDeliveryReceipt
+You can execute the `CreateNotifyDeliveryReceipt` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createNotifyDeliveryReceipt(vars: CreateNotifyDeliveryReceiptVariables): MutationPromise<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+
+interface CreateNotifyDeliveryReceiptRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateNotifyDeliveryReceiptVariables): MutationRef<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+}
+export const createNotifyDeliveryReceiptRef: CreateNotifyDeliveryReceiptRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createNotifyDeliveryReceipt(dc: DataConnect, vars: CreateNotifyDeliveryReceiptVariables): MutationPromise<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+
+interface CreateNotifyDeliveryReceiptRef {
+  ...
+  (dc: DataConnect, vars: CreateNotifyDeliveryReceiptVariables): MutationRef<CreateNotifyDeliveryReceiptData, CreateNotifyDeliveryReceiptVariables>;
+}
+export const createNotifyDeliveryReceiptRef: CreateNotifyDeliveryReceiptRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createNotifyDeliveryReceiptRef:
+```typescript
+const name = createNotifyDeliveryReceiptRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateNotifyDeliveryReceipt` mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateNotifyDeliveryReceiptVariables {
+  id: string;
+  notifyStatus: string;
+  reference?: string | null;
+  recipientHash: string;
+  userId?: string | null;
+  eventAt: TimestampString;
+  eventOrderingKey: string;
+  affectsBounceState: boolean;
+  lastAttemptedAt: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `CreateNotifyDeliveryReceipt` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
+}
+```
+### Using `CreateNotifyDeliveryReceipt`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createNotifyDeliveryReceipt, CreateNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+
+// The `CreateNotifyDeliveryReceipt` mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`:
+const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
+  id: ..., 
+  notifyStatus: ..., 
+  reference: ..., // optional
+  recipientHash: ..., 
+  userId: ..., // optional
+  eventAt: ..., 
+  eventOrderingKey: ..., 
+  affectsBounceState: ..., 
+  lastAttemptedAt: ..., 
+};
+
+// Call the `createNotifyDeliveryReceipt()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createNotifyDeliveryReceipt(createNotifyDeliveryReceiptVars);
+// Variables can be defined inline as well.
+const { data } = await createNotifyDeliveryReceipt({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createNotifyDeliveryReceipt(dataConnect, createNotifyDeliveryReceiptVars);
+
+console.log(data.notifyDeliveryReceipt_insert);
+
+// Or, you can use the `Promise` API.
+createNotifyDeliveryReceipt(createNotifyDeliveryReceiptVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_insert);
+});
+```
+
+### Using `CreateNotifyDeliveryReceipt`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createNotifyDeliveryReceiptRef, CreateNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+
+// The `CreateNotifyDeliveryReceipt` mutation requires an argument of type `CreateNotifyDeliveryReceiptVariables`:
+const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
+  id: ..., 
+  notifyStatus: ..., 
+  reference: ..., // optional
+  recipientHash: ..., 
+  userId: ..., // optional
+  eventAt: ..., 
+  eventOrderingKey: ..., 
+  affectsBounceState: ..., 
+  lastAttemptedAt: ..., 
+};
+
+// Call the `createNotifyDeliveryReceiptRef()` function to get a reference to the mutation.
+const ref = createNotifyDeliveryReceiptRef(createNotifyDeliveryReceiptVars);
+// Variables can be defined inline as well.
+const ref = createNotifyDeliveryReceiptRef({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createNotifyDeliveryReceiptRef(dataConnect, createNotifyDeliveryReceiptVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyDeliveryReceipt_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_insert);
+});
+```
+
+## ClaimNotifyDeliveryReceipt
+You can execute the `ClaimNotifyDeliveryReceipt` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+claimNotifyDeliveryReceipt(vars: ClaimNotifyDeliveryReceiptVariables): MutationPromise<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+
+interface ClaimNotifyDeliveryReceiptRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClaimNotifyDeliveryReceiptVariables): MutationRef<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+}
+export const claimNotifyDeliveryReceiptRef: ClaimNotifyDeliveryReceiptRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+claimNotifyDeliveryReceipt(dc: DataConnect, vars: ClaimNotifyDeliveryReceiptVariables): MutationPromise<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+
+interface ClaimNotifyDeliveryReceiptRef {
+  ...
+  (dc: DataConnect, vars: ClaimNotifyDeliveryReceiptVariables): MutationRef<ClaimNotifyDeliveryReceiptData, ClaimNotifyDeliveryReceiptVariables>;
+}
+export const claimNotifyDeliveryReceiptRef: ClaimNotifyDeliveryReceiptRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the claimNotifyDeliveryReceiptRef:
+```typescript
+const name = claimNotifyDeliveryReceiptRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ClaimNotifyDeliveryReceipt` mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ClaimNotifyDeliveryReceiptVariables {
+  id: string;
+  expectedProcessingStatus: NotifyDeliveryReceiptProcessingStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `ClaimNotifyDeliveryReceipt` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ClaimNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ClaimNotifyDeliveryReceiptData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+```
+### Using `ClaimNotifyDeliveryReceipt`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, claimNotifyDeliveryReceipt, ClaimNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+
+// The `ClaimNotifyDeliveryReceipt` mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`:
+const claimNotifyDeliveryReceiptVars: ClaimNotifyDeliveryReceiptVariables = {
+  id: ..., 
+  expectedProcessingStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+};
+
+// Call the `claimNotifyDeliveryReceipt()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await claimNotifyDeliveryReceipt(claimNotifyDeliveryReceiptVars);
+// Variables can be defined inline as well.
+const { data } = await claimNotifyDeliveryReceipt({ id: ..., expectedProcessingStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await claimNotifyDeliveryReceipt(dataConnect, claimNotifyDeliveryReceiptVars);
+
+console.log(data.notifyDeliveryReceipt_updateMany);
+
+// Or, you can use the `Promise` API.
+claimNotifyDeliveryReceipt(claimNotifyDeliveryReceiptVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_updateMany);
+});
+```
+
+### Using `ClaimNotifyDeliveryReceipt`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, claimNotifyDeliveryReceiptRef, ClaimNotifyDeliveryReceiptVariables } from '@dataconnect/generated';
+
+// The `ClaimNotifyDeliveryReceipt` mutation requires an argument of type `ClaimNotifyDeliveryReceiptVariables`:
+const claimNotifyDeliveryReceiptVars: ClaimNotifyDeliveryReceiptVariables = {
+  id: ..., 
+  expectedProcessingStatus: ..., 
+  expectedAttemptCount: ..., 
+  attemptCount: ..., 
+  lastAttemptedAt: ..., 
+};
+
+// Call the `claimNotifyDeliveryReceiptRef()` function to get a reference to the mutation.
+const ref = claimNotifyDeliveryReceiptRef(claimNotifyDeliveryReceiptVars);
+// Variables can be defined inline as well.
+const ref = claimNotifyDeliveryReceiptRef({ id: ..., expectedProcessingStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = claimNotifyDeliveryReceiptRef(dataConnect, claimNotifyDeliveryReceiptVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyDeliveryReceipt_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_updateMany);
+});
+```
+
+## MarkNotifyDeliveryReceiptProcessed
+You can execute the `MarkNotifyDeliveryReceiptProcessed` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markNotifyDeliveryReceiptProcessed(vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationPromise<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+
+interface MarkNotifyDeliveryReceiptProcessedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationRef<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+}
+export const markNotifyDeliveryReceiptProcessedRef: MarkNotifyDeliveryReceiptProcessedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markNotifyDeliveryReceiptProcessed(dc: DataConnect, vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationPromise<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+
+interface MarkNotifyDeliveryReceiptProcessedRef {
+  ...
+  (dc: DataConnect, vars: MarkNotifyDeliveryReceiptProcessedVariables): MutationRef<MarkNotifyDeliveryReceiptProcessedData, MarkNotifyDeliveryReceiptProcessedVariables>;
+}
+export const markNotifyDeliveryReceiptProcessedRef: MarkNotifyDeliveryReceiptProcessedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markNotifyDeliveryReceiptProcessedRef:
+```typescript
+const name = markNotifyDeliveryReceiptProcessedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkNotifyDeliveryReceiptProcessed` mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkNotifyDeliveryReceiptProcessedVariables {
+  id: string;
+  attemptCount: number;
+  outcome: NotifyDeliveryReceiptOutcome;
+  processedAt: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `MarkNotifyDeliveryReceiptProcessed` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkNotifyDeliveryReceiptProcessedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkNotifyDeliveryReceiptProcessedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+```
+### Using `MarkNotifyDeliveryReceiptProcessed`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markNotifyDeliveryReceiptProcessed, MarkNotifyDeliveryReceiptProcessedVariables } from '@dataconnect/generated';
+
+// The `MarkNotifyDeliveryReceiptProcessed` mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`:
+const markNotifyDeliveryReceiptProcessedVars: MarkNotifyDeliveryReceiptProcessedVariables = {
+  id: ..., 
+  attemptCount: ..., 
+  outcome: ..., 
+  processedAt: ..., 
+};
+
+// Call the `markNotifyDeliveryReceiptProcessed()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markNotifyDeliveryReceiptProcessed(markNotifyDeliveryReceiptProcessedVars);
+// Variables can be defined inline as well.
+const { data } = await markNotifyDeliveryReceiptProcessed({ id: ..., attemptCount: ..., outcome: ..., processedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markNotifyDeliveryReceiptProcessed(dataConnect, markNotifyDeliveryReceiptProcessedVars);
+
+console.log(data.notifyDeliveryReceipt_updateMany);
+
+// Or, you can use the `Promise` API.
+markNotifyDeliveryReceiptProcessed(markNotifyDeliveryReceiptProcessedVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_updateMany);
+});
+```
+
+### Using `MarkNotifyDeliveryReceiptProcessed`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markNotifyDeliveryReceiptProcessedRef, MarkNotifyDeliveryReceiptProcessedVariables } from '@dataconnect/generated';
+
+// The `MarkNotifyDeliveryReceiptProcessed` mutation requires an argument of type `MarkNotifyDeliveryReceiptProcessedVariables`:
+const markNotifyDeliveryReceiptProcessedVars: MarkNotifyDeliveryReceiptProcessedVariables = {
+  id: ..., 
+  attemptCount: ..., 
+  outcome: ..., 
+  processedAt: ..., 
+};
+
+// Call the `markNotifyDeliveryReceiptProcessedRef()` function to get a reference to the mutation.
+const ref = markNotifyDeliveryReceiptProcessedRef(markNotifyDeliveryReceiptProcessedVars);
+// Variables can be defined inline as well.
+const ref = markNotifyDeliveryReceiptProcessedRef({ id: ..., attemptCount: ..., outcome: ..., processedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markNotifyDeliveryReceiptProcessedRef(dataConnect, markNotifyDeliveryReceiptProcessedVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyDeliveryReceipt_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_updateMany);
+});
+```
+
+## MarkNotifyDeliveryReceiptFailed
+You can execute the `MarkNotifyDeliveryReceiptFailed` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markNotifyDeliveryReceiptFailed(vars: MarkNotifyDeliveryReceiptFailedVariables): MutationPromise<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+
+interface MarkNotifyDeliveryReceiptFailedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotifyDeliveryReceiptFailedVariables): MutationRef<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+}
+export const markNotifyDeliveryReceiptFailedRef: MarkNotifyDeliveryReceiptFailedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markNotifyDeliveryReceiptFailed(dc: DataConnect, vars: MarkNotifyDeliveryReceiptFailedVariables): MutationPromise<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+
+interface MarkNotifyDeliveryReceiptFailedRef {
+  ...
+  (dc: DataConnect, vars: MarkNotifyDeliveryReceiptFailedVariables): MutationRef<MarkNotifyDeliveryReceiptFailedData, MarkNotifyDeliveryReceiptFailedVariables>;
+}
+export const markNotifyDeliveryReceiptFailedRef: MarkNotifyDeliveryReceiptFailedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markNotifyDeliveryReceiptFailedRef:
+```typescript
+const name = markNotifyDeliveryReceiptFailedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkNotifyDeliveryReceiptFailed` mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkNotifyDeliveryReceiptFailedVariables {
+  id: string;
+  attemptCount: number;
+  lastErrorMessage?: string | null;
+}
+```
+### Return Type
+Recall that executing the `MarkNotifyDeliveryReceiptFailed` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkNotifyDeliveryReceiptFailedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkNotifyDeliveryReceiptFailedData {
+  notifyDeliveryReceipt_updateMany: number;
+}
+```
+### Using `MarkNotifyDeliveryReceiptFailed`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markNotifyDeliveryReceiptFailed, MarkNotifyDeliveryReceiptFailedVariables } from '@dataconnect/generated';
+
+// The `MarkNotifyDeliveryReceiptFailed` mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`:
+const markNotifyDeliveryReceiptFailedVars: MarkNotifyDeliveryReceiptFailedVariables = {
+  id: ..., 
+  attemptCount: ..., 
+  lastErrorMessage: ..., // optional
+};
+
+// Call the `markNotifyDeliveryReceiptFailed()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markNotifyDeliveryReceiptFailed(markNotifyDeliveryReceiptFailedVars);
+// Variables can be defined inline as well.
+const { data } = await markNotifyDeliveryReceiptFailed({ id: ..., attemptCount: ..., lastErrorMessage: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markNotifyDeliveryReceiptFailed(dataConnect, markNotifyDeliveryReceiptFailedVars);
+
+console.log(data.notifyDeliveryReceipt_updateMany);
+
+// Or, you can use the `Promise` API.
+markNotifyDeliveryReceiptFailed(markNotifyDeliveryReceiptFailedVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_updateMany);
+});
+```
+
+### Using `MarkNotifyDeliveryReceiptFailed`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markNotifyDeliveryReceiptFailedRef, MarkNotifyDeliveryReceiptFailedVariables } from '@dataconnect/generated';
+
+// The `MarkNotifyDeliveryReceiptFailed` mutation requires an argument of type `MarkNotifyDeliveryReceiptFailedVariables`:
+const markNotifyDeliveryReceiptFailedVars: MarkNotifyDeliveryReceiptFailedVariables = {
+  id: ..., 
+  attemptCount: ..., 
+  lastErrorMessage: ..., // optional
+};
+
+// Call the `markNotifyDeliveryReceiptFailedRef()` function to get a reference to the mutation.
+const ref = markNotifyDeliveryReceiptFailedRef(markNotifyDeliveryReceiptFailedVars);
+// Variables can be defined inline as well.
+const ref = markNotifyDeliveryReceiptFailedRef({ id: ..., attemptCount: ..., lastErrorMessage: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markNotifyDeliveryReceiptFailedRef(dataConnect, markNotifyDeliveryReceiptFailedVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyDeliveryReceipt_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyDeliveryReceipt_updateMany);
 });
 ```
 
@@ -11305,6 +13082,244 @@ console.log(data.callableInvocation_upsert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.callableInvocation_upsert);
+});
+```
+
+## EnsureCallableRateLimitBucket
+You can execute the `EnsureCallableRateLimitBucket` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+ensureCallableRateLimitBucket(vars: EnsureCallableRateLimitBucketVariables): MutationPromise<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+
+interface EnsureCallableRateLimitBucketRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: EnsureCallableRateLimitBucketVariables): MutationRef<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+}
+export const ensureCallableRateLimitBucketRef: EnsureCallableRateLimitBucketRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+ensureCallableRateLimitBucket(dc: DataConnect, vars: EnsureCallableRateLimitBucketVariables): MutationPromise<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+
+interface EnsureCallableRateLimitBucketRef {
+  ...
+  (dc: DataConnect, vars: EnsureCallableRateLimitBucketVariables): MutationRef<EnsureCallableRateLimitBucketData, EnsureCallableRateLimitBucketVariables>;
+}
+export const ensureCallableRateLimitBucketRef: EnsureCallableRateLimitBucketRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the ensureCallableRateLimitBucketRef:
+```typescript
+const name = ensureCallableRateLimitBucketRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `EnsureCallableRateLimitBucket` mutation requires an argument of type `EnsureCallableRateLimitBucketVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface EnsureCallableRateLimitBucketVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `EnsureCallableRateLimitBucket` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `EnsureCallableRateLimitBucketData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface EnsureCallableRateLimitBucketData {
+  callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
+}
+```
+### Using `EnsureCallableRateLimitBucket`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ensureCallableRateLimitBucket, EnsureCallableRateLimitBucketVariables } from '@dataconnect/generated';
+
+// The `EnsureCallableRateLimitBucket` mutation requires an argument of type `EnsureCallableRateLimitBucketVariables`:
+const ensureCallableRateLimitBucketVars: EnsureCallableRateLimitBucketVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+};
+
+// Call the `ensureCallableRateLimitBucket()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await ensureCallableRateLimitBucket(ensureCallableRateLimitBucketVars);
+// Variables can be defined inline as well.
+const { data } = await ensureCallableRateLimitBucket({ userId: ..., functionName: ..., windowStart: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await ensureCallableRateLimitBucket(dataConnect, ensureCallableRateLimitBucketVars);
+
+console.log(data.callableRateLimitBucket_upsert);
+
+// Or, you can use the `Promise` API.
+ensureCallableRateLimitBucket(ensureCallableRateLimitBucketVars).then((response) => {
+  const data = response.data;
+  console.log(data.callableRateLimitBucket_upsert);
+});
+```
+
+### Using `EnsureCallableRateLimitBucket`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, ensureCallableRateLimitBucketRef, EnsureCallableRateLimitBucketVariables } from '@dataconnect/generated';
+
+// The `EnsureCallableRateLimitBucket` mutation requires an argument of type `EnsureCallableRateLimitBucketVariables`:
+const ensureCallableRateLimitBucketVars: EnsureCallableRateLimitBucketVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+};
+
+// Call the `ensureCallableRateLimitBucketRef()` function to get a reference to the mutation.
+const ref = ensureCallableRateLimitBucketRef(ensureCallableRateLimitBucketVars);
+// Variables can be defined inline as well.
+const ref = ensureCallableRateLimitBucketRef({ userId: ..., functionName: ..., windowStart: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = ensureCallableRateLimitBucketRef(dataConnect, ensureCallableRateLimitBucketVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.callableRateLimitBucket_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.callableRateLimitBucket_upsert);
+});
+```
+
+## ConsumeCallableRateLimit
+You can execute the `ConsumeCallableRateLimit` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+
+interface ConsumeCallableRateLimitRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConsumeCallableRateLimitVariables): MutationRef<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+}
+export const consumeCallableRateLimitRef: ConsumeCallableRateLimitRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+
+interface ConsumeCallableRateLimitRef {
+  ...
+  (dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationRef<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+}
+export const consumeCallableRateLimitRef: ConsumeCallableRateLimitRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the consumeCallableRateLimitRef:
+```typescript
+const name = consumeCallableRateLimitRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ConsumeCallableRateLimit` mutation requires an argument of type `ConsumeCallableRateLimitVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ConsumeCallableRateLimitVariables {
+  userId: string;
+  functionName: string;
+  windowStart: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ConsumeCallableRateLimit` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ConsumeCallableRateLimitData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ConsumeCallableRateLimitData {
+  consumed: number;
+  callableRateLimitBucket_deleteMany: number;
+}
+```
+### Using `ConsumeCallableRateLimit`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, consumeCallableRateLimit, ConsumeCallableRateLimitVariables } from '@dataconnect/generated';
+
+// The `ConsumeCallableRateLimit` mutation requires an argument of type `ConsumeCallableRateLimitVariables`:
+const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  limit: ..., 
+};
+
+// Call the `consumeCallableRateLimit()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await consumeCallableRateLimit(consumeCallableRateLimitVars);
+// Variables can be defined inline as well.
+const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await consumeCallableRateLimit(dataConnect, consumeCallableRateLimitVars);
+
+console.log(data.consumed);
+console.log(data.callableRateLimitBucket_deleteMany);
+
+// Or, you can use the `Promise` API.
+consumeCallableRateLimit(consumeCallableRateLimitVars).then((response) => {
+  const data = response.data;
+  console.log(data.consumed);
+  console.log(data.callableRateLimitBucket_deleteMany);
+});
+```
+
+### Using `ConsumeCallableRateLimit`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, consumeCallableRateLimitRef, ConsumeCallableRateLimitVariables } from '@dataconnect/generated';
+
+// The `ConsumeCallableRateLimit` mutation requires an argument of type `ConsumeCallableRateLimitVariables`:
+const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
+  userId: ..., 
+  functionName: ..., 
+  windowStart: ..., 
+  limit: ..., 
+};
+
+// Call the `consumeCallableRateLimitRef()` function to get a reference to the mutation.
+const ref = consumeCallableRateLimitRef(consumeCallableRateLimitVars);
+// Variables can be defined inline as well.
+const ref = consumeCallableRateLimitRef({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = consumeCallableRateLimitRef(dataConnect, consumeCallableRateLimitVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.consumed);
+console.log(data.callableRateLimitBucket_deleteMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.consumed);
+  console.log(data.callableRateLimitBucket_deleteMany);
 });
 ```
 

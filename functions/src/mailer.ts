@@ -1,6 +1,7 @@
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { NotifyClient } from "notifications-node-client";
+import { createHash } from "node:crypto";
 import { sanitizeMailerError } from "./mailerErrors";
 
 export const govNotifyApiKey = defineSecret("GOV_NOTIFY_API_KEY");
@@ -38,6 +39,19 @@ export interface TransactionalMailer<TPayloads extends TransactionalEmailPayload
 }
 
 export interface NotifyEmailClient {
+  getNotifications(
+    templateType?: string,
+    status?: string,
+    reference?: string,
+    olderThanId?: string,
+  ): Promise<{
+    data?: {
+      notifications?: Array<{
+        id?: string;
+        reference?: string;
+      }>;
+    };
+  }>;
   sendEmail(
     templateId: string,
     emailAddress: string,
@@ -114,6 +128,18 @@ export function getGovNotifyEmailReplyToId(env: NodeJS.ProcessEnv = process.env)
   return maybeNonEmpty(env[GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV]);
 }
 
+/**
+ * Keeps provider-side idempotency scoped to one recipient without placing their
+ * email address in GOV.UK Notify metadata.
+ */
+export function recipientScopedNotifyReference(reference: string, recipientEmail: string): string {
+  const recipientHash = createHash("sha256")
+    .update(recipientEmail.trim().toLowerCase())
+    .digest("hex")
+    .slice(0, 24);
+  return `${reference}:${recipientHash}`;
+}
+
 export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloads<TPayloads>>(
   options: GovNotifyMailerOptions<TPayloads>,
 ): TransactionalMailer<TPayloads> {
@@ -131,6 +157,26 @@ export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloa
           govNotifyTemplateEnvVarName(request.templateName),
         );
         const client = clientFactory(apiKey);
+        if (request.reference) {
+          const existing = await client.getNotifications("email", undefined, request.reference);
+          const existingNotification = existing.data?.notifications?.find(
+            (notification) => notification.reference === request.reference,
+          );
+          const existingNotificationId = maybeNonEmpty(existingNotification?.id);
+          if (existingNotificationId) {
+            activeLogger.info("transactional email already accepted by provider", {
+              provider: GOV_NOTIFY_PROVIDER,
+              templateName: request.templateName,
+              reference: request.reference,
+              providerNotificationId: existingNotificationId,
+            });
+            return {
+              provider: GOV_NOTIFY_PROVIDER,
+              providerNotificationId: existingNotificationId,
+              reference: request.reference,
+            };
+          }
+        }
         const response = await client.sendEmail(templateId, request.to, {
           personalisation: request.personalisation,
           reference: request.reference,

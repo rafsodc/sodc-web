@@ -6,6 +6,7 @@ import {
   guestTicketBookerDeliveryKey,
   guestTicketModeratorDeliveryKey,
   notifyBookerGuestTicketRequestReviewed,
+  notifyModeratorsGuestTicketRequestSubmitted,
 } from "../guestTicketRequestEmails";
 import * as notificationDelivery from "../notificationDelivery";
 
@@ -87,5 +88,63 @@ describe("notifyBookerGuestTicketRequestReviewed", () => {
         }),
       })
     );
+  });
+});
+
+describe("notifyModeratorsGuestTicketRequestSubmitted", () => {
+  beforeEach(() => {
+    mockGetRequest.mockReset();
+    mockSendOnce.mockReset();
+    mockSendOnce.mockResolvedValue({ outcome: "sent" });
+  });
+
+  it("uses a distinct provider reference for every moderator", async () => {
+    mockGetRequest.mockResolvedValue({
+      data: {
+        guestTicketRequest: {
+          id: "00000000-0000-4000-8000-000000000001",
+          status: GuestTicketRequestStatus.PENDING,
+          requestedGuestCount: 2,
+          guestDisplayName: "Guest One",
+          dietaryNote: null,
+          moderatorNote: null,
+          guestTicketType: { id: "tt", title: "Guest ticket" },
+          booking: {
+            id: "00000000-0000-4000-8000-000000000002",
+            booker: {
+              id: "booker-1",
+              firstName: "Sam",
+              lastName: "Booker",
+              email: "sam@example.com",
+            },
+            event: {
+              id: "evt",
+              title: "Annual dinner",
+              section: { id: "sec-1", name: "Events" },
+            },
+          },
+        },
+      },
+    } as Awaited<ReturnType<typeof admin.getGuestTicketRequestForNotification>>);
+    const sendEmail = vi.fn().mockResolvedValue({
+      provider: "govuk_notify",
+      providerNotificationId: "n-1",
+    });
+
+    await notifyModeratorsGuestTicketRequestSubmitted({
+      requestId: "00000000-0000-4000-8000-000000000001",
+      appBaseUrl: "https://app.example/",
+      recipientEmails: ["first@example.com", "second@example.com"],
+      getMailer: () => ({ sendEmail }),
+    });
+
+    expect(mockSendOnce).toHaveBeenCalledTimes(2);
+    await mockSendOnce.mock.calls[0][0].send();
+    await mockSendOnce.mock.calls[1][0].send();
+    const references = sendEmail.mock.calls.map(([request]) => request.reference);
+    expect(new Set(references)).toHaveLength(2);
+    for (const reference of references) {
+      expect(reference).toMatch(/^GUEST_REQUEST_SUBMITTED:[0-9a-f-]+:[0-9a-f]{24}$/);
+    }
   });
 });

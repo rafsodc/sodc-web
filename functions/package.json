@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint src scripts vitest.config.ts eslint.config.mjs",
     "generate:templates": "ts-node --project tsconfig.scripts.json scripts/generate-template-manifest.ts",
     "check:template-sync": "ts-node --project tsconfig.scripts.json scripts/check-template-sync.ts",
     "prebuild": "npm run generate:templates",
@@ -13,6 +13,7 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js"
   },
@@ -28,15 +29,15 @@
     "stripe": "^22.0.2"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.12.0",
-    "@typescript-eslint/parser": "^5.12.0",
+    "@eslint/js": "^9.39.1",
+    "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.9",
-    "eslint": "^8.9.0",
-    "eslint-config-google": "^0.14.0",
-    "eslint-plugin-import": "^2.25.4",
+    "eslint": "^9.39.1",
     "firebase-functions-test": "^0.3.3",
+    "globals": "^16.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.46.4",
     "vitest": "^4.1.9"
   },
   "private": true,

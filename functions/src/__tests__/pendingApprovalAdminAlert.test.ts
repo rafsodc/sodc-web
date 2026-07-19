@@ -134,6 +134,7 @@ describe("notifyAdminsUserPendingApproval", () => {
     expect(mockSendOnce.mock.calls[0][0].notificationType).toBe("USER_PENDING_APPROVAL");
 
     await mockSendOnce.mock.calls[0][0].send();
+    await mockSendOnce.mock.calls[1][0].send();
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         templateName: "newUserPendingApprovalAlert",
@@ -146,6 +147,11 @@ describe("notifyAdminsUserPendingApproval", () => {
         }),
       })
     );
+    const references = sendEmail.mock.calls.map(([request]) => request.reference);
+    expect(new Set(references)).toHaveLength(2);
+    for (const reference of references) {
+      expect(reference).toMatch(/^PENDING_APPROVAL:[0-9a-f-]+:[0-9a-f]{24}$/);
+    }
   });
 
   it("skips sending (without throwing) when there are no admin recipients", async () => {

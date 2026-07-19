@@ -83,12 +83,12 @@ function requireEnvAllowed(projectId: string): void {
     console.error("🚨 PRODUCTION PROJECT DETECTED - SCRIPT BLOCKED FOR SAFETY 🚨");
     console.error("=".repeat(70));
     console.error(`\nDetected project ID: "${projectId}"`);
-    console.error(`\nThis project is marked as PRODUCTION in .firebaserc and cannot be reset.`);
-    console.error(`\nProduction projects detected:`);
+    console.error("\nThis project is marked as PRODUCTION in .firebaserc and cannot be reset.");
+    console.error("\nProduction projects detected:");
     productionProjects.forEach((prodId) => {
       console.error(`  - ${prodId}`);
     });
-    console.error(`\nIf you believe this is an error, check your .firebaserc file.`);
+    console.error("\nIf you believe this is an error, check your .firebaserc file.");
     console.error("\n" + "=".repeat(70));
     throw new Error("Production project detected - script execution blocked");
   }
@@ -104,7 +104,7 @@ function requireEnvAllowed(projectId: string): void {
       `Project ${projectInfo} is not allowed.\n` +
       `\nAllowed projects (from .firebaserc with "dev" or "stage" alias): ${allowedInfo}\n` +
       `Production projects (blocked): [${productionProjects.join(", ")}]\n` +
-      `\nTo allow this project, add it to .firebaserc with a "dev" or "stage" alias.`
+      "\nTo allow this project, add it to .firebaserc with a \"dev\" or \"stage\" alias."
     );
   }
 }
@@ -122,16 +122,16 @@ function confirmBeforeProceeding(projectId: string): Promise<boolean> {
     console.log("\n" + "=".repeat(70));
     console.log("⚠️  DESTRUCTIVE OPERATION WARNING ⚠️");
     console.log("=".repeat(70));
-    console.log(`\nThis script will:`);
-    console.log(`  • DELETE ALL Firebase Auth users`);
-    console.log(`  • DELETE ALL DataConnect user rows`);
-    console.log(`  • CREATE a new admin user with profile`);
+    console.log("\nThis script will:");
+    console.log("  • DELETE ALL Firebase Auth users");
+    console.log("  • DELETE ALL DataConnect user rows");
+    console.log("  • CREATE a new admin user with profile");
     console.log(`\nTarget Project: ${projectId}`);
     console.log("\n" + "=".repeat(70));
     console.log("\n⚠️  THIS CANNOT BE UNDONE ⚠️\n");
 
     rl.question(
-      `Type "yes" to confirm and proceed: `,
+      "Type \"yes\" to confirm and proceed: ",
       (answer) => {
         rl.close();
         const trimmed = answer.trim().toLowerCase();
@@ -224,7 +224,7 @@ async function main() {
     console.error("\nOptional environment variable:");
     console.error("  - GCLOUD_PROJECT=your-project-id (if .firebaserc is not available)");
     console.error("\nExample:");
-    console.error('  npm run dev-reset -- admin@example.com');
+    console.error("  npm run dev-reset -- admin@example.com");
     process.exit(1);
   }
 
@@ -320,15 +320,15 @@ async function main() {
     };
     
     try {
-      console.log('\n🔄 Creating user profile...');
+      console.log("\n🔄 Creating user profile...");
       await createUser(mutationVars);
-      console.log('✅ User created successfully');
+      console.log("✅ User created successfully");
     } catch (error: any) {
-      console.error('\n❌ Error creating user profile:', error?.message);
+      console.error("\n❌ Error creating user profile:", error?.message);
       throw error;
     }
 
-    console.log(`\n✅ Successfully seeded dev admin user:`);
+    console.log("\n✅ Successfully seeded dev admin user:");
     console.log(`   Email: ${validatedEmail}`);
     console.log(`   UID: ${userRecord.uid}`);
     console.log(`   Password: ${DEFAULT_PASSWORD}`);

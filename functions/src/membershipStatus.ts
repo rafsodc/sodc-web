@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { requireAuth, handleFunctionError } from "./helpers";
+import { requireEnabled, handleFunctionError } from "./helpers";
 import { canUserChangeStatus, canUserResignMembership, isNonRestrictedStatus, type MembershipStatus } from "./validation";
 import { FUNCTIONS_REGION } from "./constants";
 import {
@@ -12,6 +12,8 @@ import {
 import { govNotifyApiKey } from "./mailer";
 import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDispatcher";
 import { invalidateDcProfileCache } from "./users";
+import { enforceRateLimit } from "./rateLimiter";
+import { reconcileEnabledClaim } from "./enabledClaimReconciliation";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -20,21 +22,64 @@ const APP_BASE_URL = (() => {
 })();
 
 /** Sends membership access email when the stored status value changes. */
-export function scheduleMembershipStatusEmailIfChanged(args: {
+export async function sendMembershipStatusEmailIfChanged(args: {
   userId: string;
   previousStatus: MembershipStatus | null;
   newStatus: MembershipStatus;
   appBaseUrl: string;
-}): void {
+}): Promise<void> {
   if (args.previousStatus === args.newStatus) {
     return;
   }
-  void notifyMembershipStatusEmailIfNeeded({
+  await notifyMembershipStatusEmailIfNeeded({
     userId: args.userId,
     previousStatus: args.previousStatus,
     newStatus: args.newStatus,
     appBaseUrl: args.appBaseUrl,
   });
+}
+
+interface MembershipStatusPersistenceDependencies {
+  updateMembershipStatus?: (
+    userId: string,
+    membershipStatus: MembershipStatus
+  ) => Promise<void>;
+  reconcileEnabledClaim?: typeof reconcileEnabledClaim;
+}
+
+/**
+ * Keeps status and access changes fail-closed across Data Connect and Firebase Auth.
+ * Restrictions revoke access before the status write; activations persist the status
+ * before granting access. Either partial failure can then be repaired by an admin
+ * re-submitting the stored status through updateMembershipStatus.
+ */
+export async function persistMembershipStatusWithEnabledClaim(
+  userId: string,
+  membershipStatus: MembershipStatus,
+  dependencies: MembershipStatusPersistenceDependencies = {}
+): Promise<void> {
+  const persistStatus =
+    dependencies.updateMembershipStatus ?? updateMembershipStatusInDataConnect;
+  const reconcileClaim =
+    dependencies.reconcileEnabledClaim ?? reconcileEnabledClaim;
+
+  if (isNonRestrictedStatus(membershipStatus)) {
+    await persistStatus(userId, membershipStatus);
+    await reconcileClaim(userId, membershipStatus);
+    return;
+  }
+
+  await reconcileClaim(userId, membershipStatus);
+  try {
+    await persistStatus(userId, membershipStatus);
+  } catch (error: unknown) {
+    logger.error("Membership access was revoked but the status write failed", {
+      userId,
+      membershipStatus,
+      errorType: error instanceof Error ? error.name : typeof error,
+    });
+    throw error;
+  }
 }
 
 // User groups may include membershipStatuses. Status-based membership is inherited (computed in
@@ -48,7 +93,8 @@ export function scheduleMembershipStatusEmailIfChanged(args: {
 export const updateMembershipStatus = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
-  requireAuth(request);
+  requireEnabled(request);
+  await enforceRateLimit("updateMembershipStatus", request.auth!.uid);
 
   const { userId, newStatus } = request.data;
 
@@ -72,6 +118,29 @@ export const updateMembershipStatus = onCall(
     const targetUserIsAdmin = targetUser.customClaims?.admin === true;
     
     const currentStatus = await fetchCurrentStatusFromDataConnect(userId);
+
+    // Re-submitting the stored status is the supported admin recovery path for
+    // Auth/Data Connect claim drift. It is intentionally allowed even when the
+    // target retains an admin claim with a restricted membership status.
+    if (isAdmin && currentStatus === newStatus) {
+      const reconciliation = await reconcileEnabledClaim(
+        userId,
+        currentStatus as MembershipStatus
+      );
+      logger.info("Reconciled enabled claim from unchanged membership status", {
+        userId,
+        membershipStatus: currentStatus,
+        enabled: reconciliation.enabled,
+        updated: reconciliation.updated,
+        callerId: request.auth!.uid,
+      });
+      return {
+        success: true,
+        message: reconciliation.updated
+          ? "Account access claim reconciled successfully"
+          : "Account access claim already matched membership status",
+      };
+    }
     
     const validation = canUserChangeStatus(
       currentStatus,
@@ -86,15 +155,15 @@ export const updateMembershipStatus = onCall(
       throw new HttpsError("permission-denied", validation.error || "Invalid membership status transition");
     }
     
-    await updateMembershipStatusInDataConnect(userId, newStatus as MembershipStatus);
-    
-    // Automatically update the enabled claim based on membership status
-    await updateEnabledClaim(userId, newStatus as MembershipStatus);
+    await persistMembershipStatusWithEnabledClaim(
+      userId,
+      newStatus as MembershipStatus
+    );
     
     // Access group membership by status is computed at read time (admin UI and getSectionMembersMerged)
     // — we do not write UserAccessGroup rows when status changes.
 
-    scheduleMembershipStatusEmailIfChanged({
+    await sendMembershipStatusEmailIfChanged({
       userId,
       previousStatus: currentStatus,
       newStatus: newStatus as MembershipStatus,
@@ -115,7 +184,8 @@ export const updateMembershipStatus = onCall(
 export const resignMembership = onCall(
   { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
   async (request) => {
-    requireAuth(request);
+    requireEnabled(request);
+    await enforceRateLimit("resignMembership", request.auth!.uid);
 
     const userId = request.auth!.uid;
     const callerEnabled = request.auth!.token.enabled === true;
@@ -139,10 +209,9 @@ export const resignMembership = onCall(
         throw new HttpsError("permission-denied", validation.error || "Cannot resign membership");
       }
 
-      await updateMembershipStatusInDataConnect(userId, newStatus);
-      await updateEnabledClaim(userId, newStatus);
+      await persistMembershipStatusWithEnabledClaim(userId, newStatus);
 
-      scheduleMembershipStatusEmailIfChanged({
+      await sendMembershipStatusEmailIfChanged({
         userId,
         previousStatus: currentStatus,
         newStatus,
@@ -196,40 +265,5 @@ async function fetchCurrentStatusFromDataConnect(
       "internal",
       "Could not verify membership status"
     );
-  }
-}
-
-/**
- * Updates the enabled claim based on membership status
- * - enabled: true for non-restricted statuses (REGULAR, RETIRED, RESERVE, INDUSTRY, CIVIL_SERVICE)
- * - enabled: false for restricted statuses (PENDING, RESIGNED, LOST, DECEASED)
- * - enabled: always true for admins (admins cannot have restricted statuses)
- * Preserves existing claims (like admin) when updating
- */
-async function updateEnabledClaim(
-  userId: string,
-  membershipStatus: MembershipStatus
-): Promise<void> {
-  try {
-    // Get current user to preserve existing claims
-    const userRecord = await admin.auth().getUser(userId);
-    const currentClaims = userRecord.customClaims || {};
-    const isAdmin = currentClaims.admin === true;
-    
-    // Determine if account should be enabled based on membership status
-    // Admins must always be enabled (they cannot have restricted statuses)
-    const shouldBeEnabled = isAdmin ? true : isNonRestrictedStatus(membershipStatus);
-    
-    // Update claims, preserving existing ones
-    const updatedClaims = {
-      ...currentClaims,
-      enabled: shouldBeEnabled,
-    };
-    
-    await admin.auth().setCustomUserClaims(userId, updatedClaims);
-    logger.info(`Updated enabled claim for userId=${userId}: enabled=${shouldBeEnabled} (status=${membershipStatus}, admin=${isAdmin})`);
-  } catch (error: any) {
-    logger.error(`Could not update enabled claim for userId=${userId}:`, error);
-    // Don't throw - this is a side effect, we don't want to fail the status update if claim update fails
   }
 }

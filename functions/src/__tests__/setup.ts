@@ -1,7 +1,7 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Mock firebase-admin
-vi.mock('firebase-admin', () => ({
+vi.mock("firebase-admin", () => ({
   auth: () => ({
     getUser: vi.fn(),
     listUsers: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock('firebase-admin', () => ({
 }));
 
 // Mock firebase-functions
-vi.mock('firebase-functions/logger', () => ({
+vi.mock("firebase-functions/logger", () => ({
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),

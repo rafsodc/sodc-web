@@ -1,6 +1,10 @@
 import * as logger from "firebase-functions/logger";
 import { getUserById, NotificationChannel } from "@dataconnect/admin-generated";
-import { createConfiguredGovNotifyMailer, GOV_NOTIFY_PROVIDER } from "./mailer";
+import {
+  createConfiguredGovNotifyMailer,
+  GOV_NOTIFY_PROVIDER,
+  recipientScopedNotifyReference,
+} from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
@@ -58,6 +62,7 @@ export async function notifyAdminsUserPendingApproval(args: {
   userId: string;
   emailVerified: boolean;
   appBaseUrl: string;
+  recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPendingApprovalAlertMailer>;
 }): Promise<void> {
   try {
@@ -76,14 +81,21 @@ export async function notifyAdminsUserPendingApproval(args: {
       return;
     }
 
-    const admins = await getAdminUsers();
-    const recipients = Array.from(
-      new Set(
-        admins
-          .map((a) => a.email?.trim().toLowerCase())
-          .filter((email): email is string => !!email)
-      )
-    );
+    const recipients = args.recipientEmails
+      ? Array.from(
+          new Set(
+            args.recipientEmails
+              .map((email) => email.trim().toLowerCase())
+              .filter((email) => email.length > 0)
+          )
+        )
+      : Array.from(
+          new Set(
+            (await getAdminUsers())
+              .map((a) => a.email?.trim().toLowerCase())
+              .filter((email): email is string => !!email)
+          )
+        );
     if (recipients.length === 0) {
       logger.warn("pending approval admin alert skipped (no admin recipients)", { userId: args.userId });
       return;
@@ -113,12 +125,19 @@ export async function notifyAdminsUserPendingApproval(args: {
           deliveryKey,
           userId: args.userId,
           provider: GOV_NOTIFY_PROVIDER,
+          recoveryPayload: {
+            version: 1,
+            kind: "USER_PENDING_APPROVAL",
+            userId: args.userId,
+            emailVerified: args.emailVerified,
+            recipientEmail: to,
+          },
           send: async () => {
             const r = await mailer.sendEmail({
               templateName: "newUserPendingApprovalAlert",
               to,
               personalisation,
-              reference,
+              reference: recipientScopedNotifyReference(reference, to),
             });
             return { providerMessageId: r.providerNotificationId ?? null };
           },

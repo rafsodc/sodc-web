@@ -74,12 +74,12 @@ describe("GQL schema integrity", () => {
       expect(
         header,
         `admin-mutations.gql: ${name} must not use enabled-user auth expression`,
-      ).not.toContain('"auth.token.enabled == true"');
+      ).not.toContain("\"auth.token.enabled == true\"");
 
       expect(
         header,
         `admin-mutations.gql: ${name} must not use email_verified auth expression`,
-      ).not.toContain('"auth.token.email_verified == true"');
+      ).not.toContain("\"auth.token.email_verified == true\"");
     }
   });
 
@@ -91,12 +91,12 @@ describe("GQL schema integrity", () => {
 
     // Section and group self-service mutations must bind userId to auth.uid server-side
     expect(userMutations).toContain(
-      'userId_expr: "auth.uid"',
+      "userId_expr: \"auth.uid\"",
     );
 
     // CreateUserProfile must bind the profile id to auth.uid so users can't
     // create profiles for arbitrary auth UIDs
-    expect(userMutations).toContain('id_expr: "auth.uid"');
+    expect(userMutations).toContain("id_expr: \"auth.uid\"");
 
     // Verify each self-service mutation explicitly uses the server expression
     const selfServiceMutations = [
@@ -114,7 +114,7 @@ describe("GQL schema integrity", () => {
       expect(
         block,
         `${mutName} must use userId_expr: "auth.uid" to prevent acting on behalf of other users`,
-      ).toContain('userId_expr: "auth.uid"');
+      ).toContain("userId_expr: \"auth.uid\"");
     }
   });
 
@@ -130,8 +130,8 @@ describe("GQL schema integrity", () => {
 
     expect(
       block,
-      'CreateBookingDraft must use bookerId_expr: "auth.uid" — not a client-supplied bookerId',
-    ).toContain('bookerId_expr: "auth.uid"');
+      "CreateBookingDraft must use bookerId_expr: \"auth.uid\" — not a client-supplied bookerId",
+    ).toContain("bookerId_expr: \"auth.uid\"");
   });
 
   it("admin-only operations in user-group-mutations.gql require both admin and enabled claims", () => {

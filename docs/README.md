@@ -10,10 +10,12 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `architecture/booking-submission-api.md`: callable contract for `submitEventBooking`.
 - `architecture/security-and-permissions.md`: auth model across Data Connect and Cloud Functions.
 - `operations/environment-and-secrets.md`: environment variables and secrets matrix.
-- `operations/environments-dev-beta-prod.md`: Dev / Beta / Prod Firebase projects, deploy flow, and local setup (cloud-backed dev; no emulators).
+- `operations/environments-dev-beta-prod.md`: Dev / Beta / Prod Firebase projects, schema-first deploy flow, smoke-test and rollback checkpoints, and local setup (cloud-backed dev; no emulators).
 - `operations/transactional-email-workflows.md`: transactional email triggers by domain (payments, bookings, membership, guest tickets, ops alerts) with links to GOV.UK Notify template specs.
 - `operations/govuk-notify-template-copy.md`: draft subject/body for all Notify templates; `govuk-notify-template-registration.md`: per-environment UUID checklist.
 - `operations/transactional-email-policy.md`: operational vs optional/marketing email policy (#191).
+- `operations/section-announcement-audiences.md`: explicit and membership-status-derived audience, eligibility, deduplication, and opt-out rules for section announcements.
+- `operations/firebase-hosting-security-headers.md`: production CSP and browser hardening policy, HSTS ownership, and post-deploy verification.
 
 ## User Guides
 

@@ -55,17 +55,36 @@ Guard helpers in `functions/src/helpers.ts`:
 - `requireEnabled(request)`:
   - requires authenticated caller with `enabled: true`.
 - `requireAdmin(request)`:
-  - requires authenticated caller with `admin: true`.
+  - requires authenticated caller with both `admin: true` and `enabled: true`.
+  - an admin claim never bypasses account revocation.
 
 Typical usage:
 
-- Member flows (`submitEventBooking`, checkout start): `requireEnabled`.
-- Admin-only operations: `requireAdmin`.
-- Mixed/self-service operations (`updateMembershipStatus`, section member rollups): `requireAuth` + in-function ownership checks.
+- Member flows (`submitEventBooking`, checkout start, membership self-service): `requireEnabled`.
+- PII-bearing member directories and all announcement template, preview, send, history, and recipient callables: `requireEnabled` before section/group checks.
+- Admin-only operations: `requireAdmin`, which also enforces `enabled: true`.
+- A caller with `admin: true` but `enabled !== true` is rejected; admin status is not an access-revocation bypass.
+
+The Data Connect membership status is the source of truth for the `enabled` claim,
+including for users who retain an `admin` claim. Restricted statuses always reconcile
+to `enabled: false`. Status changes use fail-closed cross-system write ordering, and an
+admin can repair drift by re-submitting the stored status. Notify-derived `LOST`
+transitions reuse the durable receipt retry when claim reconciliation fails. See
+[Enabled-claim reconciliation](../operations/enabled-claim-reconciliation.md) for the
+status mapping, failure modes, and recovery procedure.
+
+The only callable entry points intentionally using authentication without an enabled claim are pre-approval setup flows:
+
+- `updateDisplayName`, used while establishing the account profile.
+- `syncPendingUserClaims`, used to reconcile the pre-approval Auth/profile state.
+
+These exceptions must not return member-directory data, announcement data, or other enabled-member content. Adding another authentication-only callable requires an explicit security review and a contract-test update.
+
+Callable abuse, enumeration, external-API, and fan-out risks are classified in [Callable abuse protection](./callable-abuse-protection.md). That document also records the centralized limits and concurrency-safe counter design.
 
 ## Webhook security
 
-Stripe webhook uses signature verification in `functions/src/payments.ts`:
+Stripe webhook uses signature verification in `functions/src/paymentWebhook.ts` (re-exported by `functions/src/payments.ts`):
 
 - requires `stripe-signature` header
 - verifies payload via `constructEvent(req.rawBody, signature, webhookSecret)`
@@ -96,6 +115,8 @@ npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts 
 
 - **Permission denied on callables**
   - Check auth token claims (`enabled`, `admin`) and entry guard expectations.
+  - If `enabled` disagrees with the Data Connect membership status, follow the
+    [enabled-claim reconciliation procedure](../operations/enabled-claim-reconciliation.md).
 - **Data Connect operation unexpectedly accessible/restricted**
   - Verify `@auth(...)` directive in source `.gql` and regenerate SDKs after changes.
 - **Webhook processing failures**

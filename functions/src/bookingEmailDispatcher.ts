@@ -226,6 +226,12 @@ export async function notifyBookingConfirmationEmail(args: {
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
+      recoveryPayload: {
+        version: 1,
+        kind: "BOOKING_CONFIRMATION",
+        bookingId: args.bookingId,
+        idempotencyKey: args.idempotencyKey,
+      },
       send: async () => {
         const r = await mailer.sendEmail({
           templateName: "bookingConfirmation",
@@ -285,6 +291,13 @@ export async function notifyBookingRevisionEmail(args: {
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
+      recoveryPayload: {
+        version: 1,
+        kind: "BOOKING_REVISION",
+        bookingId: args.bookingId,
+        idempotencyKey: args.idempotencyKey,
+        paymentDelta: args.paymentDelta,
+      },
       send: async () => {
         const r = await mailer.sendEmail({
           templateName: "bookingRevision",
