@@ -109,6 +109,19 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     ],
     body: "Dear ((customerFirstName)),\n\nYour SODC membership is now active. Your membership status is ((membershipStatusLabel)).\n\nYou can now access sections, view upcoming events, and make bookings.\n\nSign in to get started:\n\n((appUrl))\n\nWe recommend completing your profile before making your first booking:\n\n((profileUrl))\n\nWelcome aboard.\n\nSODC",
   },
+  newUserPendingApprovalAlert: {
+    subject: "[SODC] New member awaiting approval — ((firstName)) ((lastName))",
+    variables: [
+    "firstName",
+    "lastName",
+    "email",
+    "serviceNumber",
+    "serviceBackgroundSummary",
+    "requestedMembershipStatus",
+    "approveUsersUrl"
+    ],
+    body: "A new member has completed their profile and is awaiting approval.\n\nName: ((firstName)) ((lastName))\nEmail: ((email))\nService number: ((serviceNumber))\nService background: ((serviceBackgroundSummary))\nRequested status: ((requestedMembershipStatus))\n\nReview in Approve Users:\n((approveUsersUrl))",
+  },
   paymentDisputeOpsAlert: {
     subject: "[SODC OPS] Payment dispute — ((orderId))",
     variables: [
