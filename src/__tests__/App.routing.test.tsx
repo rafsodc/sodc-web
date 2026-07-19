@@ -168,8 +168,8 @@ vi.mock("../features/auth/components/PasswordResetRequestPage", () => ({
   default: () => <h1>Password Reset Request Page</h1>,
 }));
 
-vi.mock("../features/auth/components/PasswordResetActionPage", () => ({
-  default: () => <h1>Password Reset Action Page</h1>,
+vi.mock("../features/auth/components/EmailActionPage", () => ({
+  default: () => <h1>Email Action Page</h1>,
 }));
 
 vi.mock("../features/auth/components/OnboardingShell", () => ({
@@ -344,16 +344,16 @@ describe("App routing", () => {
     requestRender.unmount();
 
     renderApp([`${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=test-code`]);
-    expect(await screen.findByRole("heading", { name: "Password Reset Action Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Email Action Page" })).toBeInTheDocument();
   });
 
   it("does not let the unverified-account gate hide the public action route", async () => {
     currentUser = createMockUser({ emailVerified: false });
     enabledClaim = false;
 
-    renderApp([`${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=test-code`]);
+    renderApp([`${ROUTES.AUTH_ACTION}?mode=verifyEmail&oobCode=test-code`]);
 
-    expect(await screen.findByRole("heading", { name: "Password Reset Action Page" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Email Action Page" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Email Verification Page" })).not.toBeInTheDocument();
   });
 

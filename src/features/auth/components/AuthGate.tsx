@@ -23,10 +23,9 @@ import { canAttemptSignIn } from "../utils/passwordValidation";
 interface AuthGateProps {
   userData?: UserData | null;
   onRegisterComplete?: () => void;
-  onProfileComplete?: () => void;
 }
 
-export default function AuthGate({ userData, onRegisterComplete, onProfileComplete }: AuthGateProps) {
+export default function AuthGate({ userData, onRegisterComplete }: AuthGateProps) {
   const [user, setUser] = useState<User | null>(null);
   const [initialising, setInitialising] = useState(true);
 
@@ -74,14 +73,7 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
     if (!user.emailVerified) {
       return (
         <OnboardingShell activeStep="verify">
-          <EmailVerificationMessage
-            user={user}
-            onVerified={() => {
-              if (onProfileComplete) {
-                onProfileComplete();
-              }
-            }}
-          />
+          <EmailVerificationMessage user={user} />
         </OnboardingShell>
       );
     }

@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, fireEvent } from "../../../../test-utils";
 import Register from "../Register";
 import { REGISTRATION_MIN_PASSWORD_LENGTH } from "../../../../constants/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { syncPendingUserClaims } from "../../../../shared/utils/firebaseFunctions";
+import { createMockUser } from "../../../../test-utils/mocks/firebase";
 
 vi.mock("firebase/auth", () => ({
   createUserWithEmailAndPassword: vi.fn(),
@@ -20,6 +23,27 @@ async function fillForm(user: ReturnType<typeof userEvent.setup>, password: stri
 }
 
 describe("Register", () => {
+  it("sends the initial verification email with fixed application settings", async () => {
+    const user = userEvent.setup();
+    const newUser = createMockUser({ email: "new@example.com", emailVerified: false });
+    vi.mocked(createUserWithEmailAndPassword).mockResolvedValue({ user: newUser } as never);
+    vi.mocked(syncPendingUserClaims).mockResolvedValue({ success: true });
+    vi.mocked(sendEmailVerification).mockResolvedValue(undefined);
+    render(<Register />);
+
+    await fillForm(user, "a".repeat(REGISTRATION_MIN_PASSWORD_LENGTH));
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(await screen.findByText(/now check your inbox/i)).toBeInTheDocument();
+    expect(sendEmailVerification).toHaveBeenCalledWith(
+      newUser,
+      {
+        url: `${window.location.origin}/profile-completion`,
+        handleCodeInApp: false,
+      },
+    );
+  });
+
   it(`shows the ${REGISTRATION_MIN_PASSWORD_LENGTH}-character minimum in the password helper text`, () => {
     render(<Register />);
 
