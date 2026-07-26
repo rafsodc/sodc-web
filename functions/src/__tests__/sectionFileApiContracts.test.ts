@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 const source = fs.readFileSync(path.resolve(process.cwd(), "src", "sectionFiles.ts"), "utf8");
 
 describe("section file API security contracts", () => {
+  it("returns stable application URLs built from APP_BASE_URL", () => {
+    expect(source).toContain("canonicalUrl:");
+    expect(source).toContain("APP_BASE_URL");
+    expect(source).toContain("/sections/${file.sectionId}/files/${file.id}");
+  });
+
   it("derives all object paths from trusted section and file identifiers", () => {
     expect(source).toContain("`section-file-uploads/${sectionId}/${fileId}/${uploadId}`");
     expect(source).toContain("`section-files/${sectionId}/${fileId}/${inspected.generation}`");

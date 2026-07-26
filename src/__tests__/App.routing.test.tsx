@@ -196,6 +196,12 @@ vi.mock("../features/sections/components/SectionDetail", () => ({
   ),
 }));
 
+vi.mock("../features/sections/components/SectionFileDownloadPage", () => ({
+  default: ({ sectionId, fileId }: { sectionId: string; fileId: string }) => (
+    <h1>Section File {sectionId} {fileId}</h1>
+  ),
+}));
+
 vi.mock("../features/sections/components/MyPayments", () => ({
   default: ({ onBack }: { onBack: () => void }) => (
     <div>
@@ -362,6 +368,37 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/sections/section-1");
+  });
+
+  it("preserves a logged-out canonical file link through sign-in", async () => {
+    renderApp(["/sections/section-1/files/file-1"]);
+
+    expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/account?returnTo=%2Fsections%2Fsection-1%2Ffiles%2Ffile-1",
+    );
+  });
+
+  it("returns an enabled user from account to the canonical file route", async () => {
+    signInEnabledUser();
+    renderApp([
+      "/account?returnTo=%2Fsections%2Fsection-1%2Ffiles%2Ffile-1",
+    ]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Section File section-1 file-1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/sections/section-1/files/file-1",
+    );
+  });
+
+  it("does not follow an external return target", async () => {
+    signInEnabledUser();
+    renderApp(["/account?returnTo=https%3A%2F%2Fevil.example%2Ffile"]);
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
   });
 
   it("renders member payment history from a direct deep link for enabled users", async () => {

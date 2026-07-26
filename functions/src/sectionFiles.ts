@@ -33,6 +33,16 @@ const MAX_FILENAME_LENGTH = 255;
 const MAX_DISPLAY_NAME_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 1000;
 const LIST_LIMIT = 500;
+const APP_BASE_URL = (() => {
+  const value = process.env.APP_BASE_URL || "http://localhost:5173";
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error("invalid protocol");
+    return url.origin;
+  } catch {
+    throw new Error(`APP_BASE_URL is not a valid HTTP(S) URL: "${value}"`);
+  }
+})();
 
 const ALLOWED_CONTENT_TYPES = new Set([
   "application/pdf",
@@ -212,6 +222,7 @@ function fileResponse(file: SectionFileRecord) {
     uploadedBy: file.uploadedBy,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
+    canonicalUrl: `${APP_BASE_URL}/sections/${file.sectionId}/files/${file.id}`,
   };
 }
 
