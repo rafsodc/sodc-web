@@ -42,6 +42,14 @@ export const CALLABLE_RATE_LIMITS = {
   previewAnnouncementTemplate: { limit: 30, windowMs: 5 * MINUTE_MS },
   sendSectionAnnouncement: { limit: 5, windowMs: HOUR_MS },
   getAnnouncementSendRecipients: { limit: 60, windowMs: 5 * MINUTE_MS },
+  requestSectionFileUpload: { limit: 20, windowMs: HOUR_MS },
+  finalizeSectionFileUpload: { limit: 30, windowMs: HOUR_MS },
+  listSectionFiles: { limit: 60, windowMs: 5 * MINUTE_MS },
+  requestSectionFileDownload: { limit: 120, windowMs: 5 * MINUTE_MS },
+  updateSectionFileMetadata: { limit: 60, windowMs: HOUR_MS },
+  requestSectionFileReplacement: { limit: 20, windowMs: HOUR_MS },
+  finalizeSectionFileReplacement: { limit: 30, windowMs: HOUR_MS },
+  deleteSectionFile: { limit: 30, windowMs: HOUR_MS },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitedCallableName = keyof typeof CALLABLE_RATE_LIMITS;

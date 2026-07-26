@@ -67,6 +67,25 @@ describe("function entry guard contracts", () => {
     }
   });
 
+  it("keeps section-file callables behind enabled-user and section authorization", () => {
+    const sectionFiles = readSource("sectionFiles.ts");
+    expect(sectionFiles).toContain("requireEnabled(request);");
+    for (const fn of [
+      "requestSectionFileUpload",
+      "finalizeSectionFileUpload",
+      "listSectionFiles",
+      "requestSectionFileDownload",
+      "updateSectionFileMetadata",
+      "requestSectionFileReplacement",
+      "finalizeSectionFileReplacement",
+      "deleteSectionFile",
+    ]) {
+      assertOnCallGuard(sectionFiles, fn, `requestContext(request, "${fn}"`, 450);
+    }
+    expect(sectionFiles).toContain("requireSectionAccess(");
+    expect(sectionFiles).toContain("requireSectionModerator(");
+  });
+
   it("keeps only intentional pre-approval entry points authentication-only", () => {
     const users = readSource("users.ts");
     for (const fn of ["updateDisplayName", "syncPendingUserClaims"]) {
@@ -161,6 +180,20 @@ describe("function entry guard contracts", () => {
       "getAnnouncementSendRecipients",
     ]) {
       assertOnCallGuard(announcements, fn, `enforceRateLimit("${fn}"`, 350);
+    }
+
+    const sectionFiles = readSource("sectionFiles.ts");
+    for (const fn of [
+      "requestSectionFileUpload",
+      "finalizeSectionFileUpload",
+      "listSectionFiles",
+      "requestSectionFileDownload",
+      "updateSectionFileMetadata",
+      "requestSectionFileReplacement",
+      "finalizeSectionFileReplacement",
+      "deleteSectionFile",
+    ]) {
+      assertOnCallGuard(sectionFiles, fn, `requestContext(request, "${fn}"`, 450);
     }
   });
 

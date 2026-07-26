@@ -686,6 +686,7 @@ export interface FinalizeSectionFileReplacementData {
 export interface FinalizeSectionFileReplacementVariables {
   id: UUIDString;
   pendingStorageObjectPath: string;
+  storageObjectPath: string;
   originalFilename: string;
   objectGeneration: string;
   checksumSha256: string;

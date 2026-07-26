@@ -1,0 +1,42 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+const source = fs.readFileSync(path.resolve(process.cwd(), "src", "sectionFiles.ts"), "utf8");
+
+describe("section file API security contracts", () => {
+  it("derives all object paths from trusted section and file identifiers", () => {
+    expect(source).toContain("`section-file-uploads/${sectionId}/${fileId}/${uploadId}`");
+    expect(source).toContain("`section-files/${sectionId}/${fileId}/${inspected.generation}`");
+    expect(source).not.toMatch(/request\.data\?\.(?:storageObjectPath|pendingStorageObjectPath)/);
+  });
+
+  it("cross-checks file metadata against the authorized section", () => {
+    expect(source).toContain("file.sectionId !== sectionId");
+    expect(source).toContain("await requireSectionAccess(sectionId, uid, isAdmin)");
+    expect(source).toContain("await requireSectionModerator(sectionId, uid, isAdmin)");
+  });
+
+  it("validates stored object properties before lifecycle promotion", () => {
+    expect(source).toContain("actualSize !== expected.sizeBytes");
+    expect(source).toContain("actualType !== expected.contentType");
+    expect(source).toContain("validateFileSignature(bytes, actualType)");
+    expect(source).toContain("createHash(\"sha256\")");
+    expect(source).toContain("ensureTransition(result.data.sectionFile_updateMany)");
+  });
+
+  it("uses short-lived V4 upload and download grants", () => {
+    expect(source).toContain("SIGNED_UPLOAD_TTL_MS = 15 * 60 * 1000");
+    expect(source).toContain("SIGNED_DOWNLOAD_TTL_MS = 5 * 60 * 1000");
+    expect(source).toContain("action: \"write\"");
+    expect(source).toContain("action: \"read\"");
+  });
+
+  it("never includes internal object paths in member-facing file responses", () => {
+    const start = source.indexOf("function fileResponse(");
+    const end = source.indexOf("\n}", start);
+    const responseBlock = source.slice(start, end);
+    expect(responseBlock).not.toContain("storageObjectPath");
+    expect(responseBlock).not.toContain("pendingStorageObjectPath");
+  });
+});

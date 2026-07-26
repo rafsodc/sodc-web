@@ -77,4 +77,39 @@ describe("section file storage foundation", () => {
     expect(lifecycle.rule).toHaveLength(1);
     expect(lifecycle.rule[0].condition.matchesPrefix).toEqual(["section-file-uploads/"]);
   });
+
+  it("documents gcloud's standardized bucket verification fields", () => {
+    const docs = readRepoFile("docs/operations/section-file-storage.md");
+
+    expect(docs).toContain("uniform_bucket_level_access");
+    expect(docs).toContain("public_access_prevention");
+    expect(docs).toContain("lifecycle_config");
+    expect(docs).toContain("cors_config");
+    expect(docs).toContain("--raw");
+    expect(docs).toContain("--format=\"yaml(iamConfiguration)\"");
+  });
+
+  it("documents exact runtime object and signed-URL IAM requirements", () => {
+    const docs = readRepoFile("docs/operations/section-file-storage.md");
+    const prod = readRepoFile("docs/operations/new-production-instance.md");
+
+    for (const marker of [
+      "roles/storage.objectAdmin",
+      "iamcredentials.googleapis.com",
+      "roles/iam.serviceAccountTokenCreator",
+      "iam.serviceAccounts.signBlob",
+      "serviceConfig.serviceAccountEmail",
+    ]) {
+      expect(docs).toContain(marker);
+    }
+    expect(prod).toContain("roles/storage.objectAdmin");
+    expect(prod).toContain("roles/iam.serviceAccountTokenCreator");
+    expect(prod).toContain("IAM Credentials API is enabled");
+    expect(prod).toContain("gcloud functions describe requestSectionFileUpload");
+    expect(prod).toContain("gcloud storage buckets add-iam-policy-binding");
+    expect(prod).toContain("gcloud services enable iamcredentials.googleapis.com");
+    expect(prod).toContain("gcloud iam service-accounts add-iam-policy-binding");
+    expect(prod).toContain("gcloud storage buckets get-iam-policy");
+    expect(prod).toContain("gcloud iam service-accounts get-iam-policy");
+  });
 });

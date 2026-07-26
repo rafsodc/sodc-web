@@ -64,11 +64,24 @@ only a safety net; the backend should delete rejected objects immediately and
 the reconciliation work in #432 must report stale metadata and orphaned
 objects.
 
+This includes fully uploaded temporary objects whose browser never completed
+the finalization call—for example after a closed tab, network failure, rejected
+validation, failed replacement, or Function interruption. An HTTP upload that
+never completes normally does not create a complete object, but any completed
+temporary object left under `section-file-uploads/` is eligible for deletion
+after one day. Permanent objects under `section-files/` do not match this rule.
+
 Finalization must inspect the stored object rather than trusting browser
 metadata. It must verify the expected temporary path, object generation,
 actual byte size, approved content type, and checksum before atomically
 promoting the Data Connect row. A zero-row compare-and-swap result means the
 lifecycle changed and the caller must not continue.
+
+The #429 backend enforces a 25 MiB per-file limit and an explicit content-type
+allowlist. Upload grants expire after 15 minutes and download grants after 5
+minutes. Available metadata never exposes either internal object path, and a
+requested `sectionId` is always cross-checked against the file's authoritative
+Data Connect relationship before a grant or mutation is issued.
 
 ## Enable Firebase Storage in each project
 
@@ -128,13 +141,54 @@ gcloud storage buckets update "gs://${SECTION_FILES_BUCKET_NAME}" \
 gcloud storage buckets add-iam-policy-binding "gs://${SECTION_FILES_BUCKET_NAME}" \
   --member="serviceAccount:${FUNCTIONS_SERVICE_ACCOUNT}" \
   --role="roles/storage.objectAdmin"
+
+gcloud services enable iamcredentials.googleapis.com \
+  --project="${PROJECT_ID}"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  "${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}" \
+  --member="serviceAccount:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --role="roles/iam.serviceAccountTokenCreator"
 ```
 
 Resolve the deployed Functions runtime service account from the Firebase/GCP
-configuration; do not assume the example address. If the implementation signs
-URLs through IAM credentials rather than a local private key, grant only the
-additional service-account signing permission required by that implementation
-and document the exact principal.
+configuration; do not assume the example address. For a deployed Gen 2
+function:
+
+```sh
+gcloud functions describe requestSectionFileUpload \
+  --gen2 \
+  --region="europe-west2" \
+  --project="${PROJECT_ID}" \
+  --format="value(serviceConfig.serviceAccountEmail)"
+```
+
+`roles/storage.objectAdmin` is scoped to the section-file bucket and permits the
+runtime to inspect, copy, read, and delete objects without administering the
+bucket. The self-binding for `roles/iam.serviceAccountTokenCreator` supplies
+`iam.serviceAccounts.signBlob`, which lets that runtime identity create V4
+signed URLs without a downloaded private key. Do not create a service-account
+JSON key.
+
+Verify both explicit grants:
+
+```sh
+gcloud storage buckets get-iam-policy \
+  "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --format="table(bindings.role,bindings.members)"
+
+gcloud iam service-accounts get-iam-policy \
+  "${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}"
+```
+
+The first output must include `roles/storage.objectAdmin`; the second must bind
+the runtime identity to `roles/iam.serviceAccountTokenCreator`. Bucket policy
+output does not include project-inherited roles, so require and verify these
+explicit bindings for each environment.
 
 Set `SECTION_FILES_BUCKET` in the project-specific ignored Functions env file,
 for example:
@@ -175,8 +229,30 @@ gcloud storage buckets update "gs://${SECTION_FILES_BUCKET_NAME}" \
   --cors-file="/secure/path/section-files-cors.json"
 
 gcloud storage buckets describe "gs://${SECTION_FILES_BUCKET_NAME}" \
-  --format="yaml(name,location,iamConfiguration,lifecycle,cors)"
+  --format="yaml(name,location,uniform_bucket_level_access,public_access_prevention,lifecycle_config,cors_config)"
 ```
+
+The standardized output must include:
+
+```text
+uniform_bucket_level_access: true
+public_access_prevention: enforced
+```
+
+Do not use `iamConfiguration`, `lifecycle`, or `cors` in the normal
+`gcloud storage` format expression. Those are raw JSON API field names and may
+silently produce no output in the standardized view. If the access fields are
+missing or need deeper inspection, use:
+
+```sh
+gcloud storage buckets describe "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --raw \
+  --format="yaml(iamConfiguration)"
+```
+
+The raw result must show
+`iamConfiguration.uniformBucketLevelAccess.enabled: true` and
+`iamConfiguration.publicAccessPrevention: enforced`.
 
 Changing the application domain requires adding the new exact origin before
 cutover. Remove the old origin after traffic and rollback windows have ended.
@@ -211,6 +287,8 @@ bucket IAM.
 - [ ] Direct Firebase Storage SDK reads/writes are denied.
 - [ ] The Functions identity can create, inspect, copy, sign, and delete only
       the intended bucket objects.
+- [ ] IAM Credentials API is enabled and the runtime identity has an explicit
+      self-binding for `roles/iam.serviceAccountTokenCreator`.
 - [ ] The lifecycle rule applies only to `section-file-uploads/`.
 - [ ] CORS contains exact approved origins and only the required upload method.
 - [ ] `PENDING`, `REPLACING`, `DELETING`, and `DELETED` records never appear in
