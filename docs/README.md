@@ -1,5 +1,9 @@
 # Documentation Index
 
+## Member guidance
+
+- [Section files](member-section-files.md)
+
 This folder captures architecture, domain decisions, and contributor-facing guidance.
 
 ## Architecture

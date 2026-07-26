@@ -12,6 +12,7 @@ describe('routes', () => {
     expect(ROUTES.APPROVE_USERS).toBe('/admin/users/approvals');
     expect(ROUTES.REGISTER).toBe('/register');
     expect(ROUTES.PROFILE_COMPLETION).toBe('/profile-completion');
+    expect(ROUTES.SECTION_FILE).toBe('/sections/:sectionId/files/:fileId');
   });
 
   it('should have Route type that matches route values', () => {
@@ -24,6 +25,7 @@ describe('routes', () => {
       ROUTES.APPROVE_USERS,
       ROUTES.REGISTER,
       ROUTES.PROFILE_COMPLETION,
+      ROUTES.SECTION_FILE,
     ];
     
     routes.forEach((route) => {
@@ -32,4 +34,3 @@ describe('routes', () => {
     });
   });
 });
-
