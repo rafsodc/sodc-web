@@ -70,24 +70,59 @@ actual byte size, approved content type, and checksum before atomically
 promoting the Data Connect row. A zero-row compare-and-swap result means the
 lifecycle changed and the caller must not continue.
 
-## Provision one bucket per environment
+## Enable Firebase Storage in each project
 
-Choose a dedicated globally unique bucket name for each Firebase project. Keep
-the bucket in `europe-west2` unless the environment's approved data-location
-decision says otherwise.
+Cloud Storage for Firebase must be initialized separately in Dev, Beta, and
+Prod. Creating a Firebase project, Hosting site, or web app does not create its
+default Storage bucket.
+
+1. Confirm the project is linked to a billing account and uses the Blaze plan.
+   Firebase requires Blaze for Cloud Storage.
+2. In Firebase console, select the exact project, then open **Databases &
+   Storage → Storage**.
+3. Select **Get started**.
+4. Choose `europe-west2` unless the environment's approved data-location
+   decision says otherwise. A bucket's location cannot be changed later.
+5. Complete the wizard. Do not rely on the wizard's initial rules for release;
+   deploy the repository's deny-all `storage.rules` immediately.
+6. Record the generated default bucket name. New default buckets normally use
+   `PROJECT_ID.firebasestorage.app`; older projects may use
+   `PROJECT_ID.appspot.com`.
+
+Verify that Firebase recognizes Storage and deploy the checked-in rules:
+
+```sh
+firebase use dev
+firebase deploy --only storage --project dev
+```
+
+Repeat with `beta` and `prod` only at the corresponding promotion stage. A
+Storage rules deployment replaces the rules currently edited in the Firebase
+console, so the repository is authoritative.
+
+## Configure the environment bucket
+
+Use the Firebase project's default Storage bucket for section files unless an
+approved architecture decision requires a separate bucket. This project does
+not otherwise use browser-accessible Firebase Storage, and the repository rules
+deny all client SDK access.
+
+Set the exact bucket name in both locations:
+
+- `VITE_FIREBASE_STORAGE_BUCKET` in the environment's ignored frontend config;
+- `SECTION_FILES_BUCKET` in `functions/.env.<project-id>`.
+
+The backend value must not be inferred from the project ID because legacy and
+new default buckets use different suffixes.
 
 ```sh
 export PROJECT_ID="sodc-web"
-export SECTION_FILES_BUCKET_NAME="sodc-web-section-files"
+export SECTION_FILES_BUCKET_NAME="sodc-web.firebasestorage.app"
 export FUNCTIONS_SERVICE_ACCOUNT="runtime-service-account@${PROJECT_ID}.iam.gserviceaccount.com"
 
-gcloud storage buckets create "gs://${SECTION_FILES_BUCKET_NAME}" \
-  --project="${PROJECT_ID}" \
-  --location="europe-west2" \
-  --uniform-bucket-level-access \
-  --public-access-prevention
-
 gcloud storage buckets update "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --uniform-bucket-level-access \
+  --public-access-prevention \
   --lifecycle-file="config/storage/section-files-lifecycle.json"
 
 gcloud storage buckets add-iam-policy-binding "gs://${SECTION_FILES_BUCKET_NAME}" \
@@ -105,11 +140,15 @@ Set `SECTION_FILES_BUCKET` in the project-specific ignored Functions env file,
 for example:
 
 ```text
-SECTION_FILES_BUCKET=sodc-web-section-files
+SECTION_FILES_BUCKET=sodc-web.firebasestorage.app
 ```
 
+Replace the example with the exact bucket shown in the target Firebase console.
 Repeat with independent names and identities for Dev, Beta, and Prod. Never
-point two environments at the same bucket.
+point two environments at the same bucket. If a separate additional bucket is
+approved, create/import it through Firebase Storage first, bind its rules
+release explicitly, and document that variance rather than assuming the
+default `firebase deploy --only storage` target covers it.
 
 ## CORS
 
@@ -144,11 +183,12 @@ cutover. Remove the old origin after traffic and rollback windows have ended.
 
 ## Deployment order
 
-1. Provision and verify the private bucket, IAM, lifecycle, and CORS.
-2. Deploy the additive Data Connect schema and connector operations.
-3. Regenerate both SDKs and confirm there is no generated drift.
-4. Deploy #429 Functions only after the schema and bucket checkpoints pass.
-5. Deploy the #430/#431 Hosting interfaces last.
+1. Enable Firebase Storage and create the default bucket in the target project.
+2. Deploy and verify deny-all Storage rules, IAM, lifecycle, and CORS.
+3. Deploy the additive Data Connect schema and connector operations.
+4. Regenerate both SDKs and confirm there is no generated drift.
+5. Deploy #429 Functions only after the schema and bucket checkpoints pass.
+6. Deploy the #430/#431 Hosting interfaces last.
 
 Deploy the repository's deny-all Firebase Storage rules when using the
 project's Firebase-managed default bucket:
@@ -157,12 +197,14 @@ project's Firebase-managed default bucket:
 firebase deploy --only storage --project dev
 ```
 
-If the dedicated bucket is managed only through GCS IAM, verify its IAM policy
-and public access prevention directly; Firebase rules do not replace bucket
-IAM.
+If an approved additional bucket is managed through GCS IAM, verify its IAM
+policy and public access prevention directly; Firebase rules do not replace
+bucket IAM.
 
 ## Verification checklist
 
+- [ ] Firebase Storage is initialized in Dev, Beta, and Prod on Blaze billing.
+- [ ] The exact default bucket name is recorded in frontend and Functions configuration.
 - [ ] Dev, Beta, and Prod have different bucket names and service identities.
 - [ ] Public access prevention and uniform bucket-level access are enabled.
 - [ ] No public or broadly authenticated IAM principal can read objects.
