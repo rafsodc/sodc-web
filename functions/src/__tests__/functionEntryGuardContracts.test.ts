@@ -78,6 +78,7 @@ describe("function entry guard contracts", () => {
       "updateSectionFileMetadata",
       "requestSectionFileReplacement",
       "finalizeSectionFileReplacement",
+      "cancelSectionFileReplacement",
       "deleteSectionFile",
     ]) {
       assertOnCallGuard(sectionFiles, fn, `requestContext(request, "${fn}"`, 450);
@@ -191,6 +192,7 @@ describe("function entry guard contracts", () => {
       "updateSectionFileMetadata",
       "requestSectionFileReplacement",
       "finalizeSectionFileReplacement",
+      "cancelSectionFileReplacement",
       "deleteSectionFile",
     ]) {
       assertOnCallGuard(sectionFiles, fn, `requestContext(request, "${fn}"`, 450);

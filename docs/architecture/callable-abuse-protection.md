@@ -52,6 +52,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `updateSectionFileMetadata` | 60 | 1 hour | Restricted metadata mutation |
 | `requestSectionFileReplacement` | 20 | 1 hour | Signed upload capability and lifecycle mutation |
 | `finalizeSectionFileReplacement` | 30 | 1 hour | Object validation, copy, cleanup, and metadata mutation |
+| `cancelSectionFileReplacement` | 30 | 1 hour | Replacement rollback and temporary-object cleanup |
 | `deleteSectionFile` | 30 | 1 hour | Object deletion and lifecycle mutation |
 
 ## Complete callable classification
@@ -97,6 +98,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `updateSectionFileMetadata` | Medium | None | None | Low | Enabled + section moderator/admin; 60/hour; lifecycle CAS |
 | `requestSectionFileReplacement` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 20/hour; generated temporary path |
 | `finalizeSectionFileReplacement` | High | None | Cloud Storage | Very high | Enabled + section moderator/admin; 30/hour; validation, CAS, deferred cleanup |
+| `cancelSectionFileReplacement` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 30/hour; trusted pending-path rollback |
 | `deleteSectionFile` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 30/hour; metadata hidden before cleanup |
 
 ## App Check relationship
