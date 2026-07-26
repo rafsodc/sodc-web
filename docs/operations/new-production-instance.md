@@ -196,6 +196,30 @@ procedure before holding irreplaceable production data.
 
 Do not load `dataconnect/seed_data.gql` into Prod.
 
+### 6a. Enable Firebase Storage and provision section-file storage
+
+Before enabling the section-file feature:
+
+1. confirm Prod is on Blaze billing;
+2. in Firebase console, open **Databases & Storage → Storage**, select
+   **Get started**, and create the default bucket in the approved location
+   (`europe-west2` unless the data-location decision says otherwise);
+3. record the exact generated bucket name—normally
+   `sodc-web-production.firebasestorage.app` for a new project;
+4. set that exact name as `VITE_FIREBASE_STORAGE_BUCKET` and
+   `SECTION_FILES_BUCKET`;
+5. deploy the repository's deny-all rules:
+
+   ```sh
+   firebase deploy --only storage --project prod
+   ```
+
+6. complete the IAM, public-access prevention, lifecycle, CORS, and verification
+   steps in [section-file-storage.md](./section-file-storage.md).
+
+Do not continue if Storage has not been initialized or if the CLI deploy targets
+a Dev/Beta bucket. Do not share the Dev or Beta bucket with Prod.
+
 ## 7. Configure Functions environment and secrets
 
 Cloud Functions loads project-specific non-secret values from
@@ -207,6 +231,7 @@ Cloud Functions loads project-specific non-secret values from
 APP_BASE_URL=https://sodc-web-production.web.app
 ENV_NAME=prod
 PERMITTED_PROJECT_IDS=
+SECTION_FILES_BUCKET=
 
 # Add the GOV_NOTIFY_TEMPLATE_* values for every enabled template.
 # Add optional reply-to, payment-ops recipients, and expiry tuning only when used.
@@ -410,6 +435,8 @@ Connect or user data.
 - [ ] Operators understand that users moving from `web.app` to the custom domain may need to sign in again.
 - [ ] App Check tokens are valid; enforcement decision and metrics are recorded.
 - [ ] Data Connect read and a non-destructive callable action succeed.
+- [ ] Firebase Storage is initialized in Prod and the exact bucket name is recorded in both frontend and Functions configuration.
+- [ ] Section-file bucket isolation, IAM, lifecycle, CORS, deployed deny-all rules, and direct-access denial are verified before the feature is enabled.
 - [ ] Stripe live Checkout redirect/return and signed webhook delivery succeed.
 - [ ] Notify template drift check and one send per email domain succeed.
 - [ ] First and second administrators can sign in; an ordinary member cannot access Admin routes/actions.

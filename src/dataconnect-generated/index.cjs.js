@@ -86,6 +86,15 @@ const PaymentWebhookEventOutcome = {
 }
 exports.PaymentWebhookEventOutcome = PaymentWebhookEventOutcome;
 
+const SectionFileStatus = {
+  PENDING: "PENDING",
+  AVAILABLE: "AVAILABLE",
+  REPLACING: "REPLACING",
+  DELETING: "DELETING",
+  DELETED: "DELETED",
+}
+exports.SectionFileStatus = SectionFileStatus;
+
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
@@ -121,6 +130,148 @@ const connectorConfig = {
   location: 'europe-west2'
 };
 exports.connectorConfig = connectorConfig;
+
+const createPendingSectionFileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreatePendingSectionFile', inputVars);
+}
+createPendingSectionFileRef.operationName = 'CreatePendingSectionFile';
+exports.createPendingSectionFileRef = createPendingSectionFileRef;
+
+exports.createPendingSectionFile = function createPendingSectionFile(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createPendingSectionFileRef(dcInstance, inputVars));
+}
+;
+
+const getSectionFileByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionFileById', inputVars);
+}
+getSectionFileByIdRef.operationName = 'GetSectionFileById';
+exports.getSectionFileByIdRef = getSectionFileByIdRef;
+
+exports.getSectionFileById = function getSectionFileById(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getSectionFileByIdRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listSectionFilesByStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSectionFilesByStatus', inputVars);
+}
+listSectionFilesByStatusRef.operationName = 'ListSectionFilesByStatus';
+exports.listSectionFilesByStatusRef = listSectionFilesByStatusRef;
+
+exports.listSectionFilesByStatus = function listSectionFilesByStatus(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listSectionFilesByStatusRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const finalizePendingSectionFileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'FinalizePendingSectionFile', inputVars);
+}
+finalizePendingSectionFileRef.operationName = 'FinalizePendingSectionFile';
+exports.finalizePendingSectionFileRef = finalizePendingSectionFileRef;
+
+exports.finalizePendingSectionFile = function finalizePendingSectionFile(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(finalizePendingSectionFileRef(dcInstance, inputVars));
+}
+;
+
+const updateAvailableSectionFileMetadataRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAvailableSectionFileMetadata', inputVars);
+}
+updateAvailableSectionFileMetadataRef.operationName = 'UpdateAvailableSectionFileMetadata';
+exports.updateAvailableSectionFileMetadataRef = updateAvailableSectionFileMetadataRef;
+
+exports.updateAvailableSectionFileMetadata = function updateAvailableSectionFileMetadata(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateAvailableSectionFileMetadataRef(dcInstance, inputVars));
+}
+;
+
+const beginSectionFileReplacementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'BeginSectionFileReplacement', inputVars);
+}
+beginSectionFileReplacementRef.operationName = 'BeginSectionFileReplacement';
+exports.beginSectionFileReplacementRef = beginSectionFileReplacementRef;
+
+exports.beginSectionFileReplacement = function beginSectionFileReplacement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(beginSectionFileReplacementRef(dcInstance, inputVars));
+}
+;
+
+const finalizeSectionFileReplacementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'FinalizeSectionFileReplacement', inputVars);
+}
+finalizeSectionFileReplacementRef.operationName = 'FinalizeSectionFileReplacement';
+exports.finalizeSectionFileReplacementRef = finalizeSectionFileReplacementRef;
+
+exports.finalizeSectionFileReplacement = function finalizeSectionFileReplacement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(finalizeSectionFileReplacementRef(dcInstance, inputVars));
+}
+;
+
+const abortSectionFileReplacementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AbortSectionFileReplacement', inputVars);
+}
+abortSectionFileReplacementRef.operationName = 'AbortSectionFileReplacement';
+exports.abortSectionFileReplacementRef = abortSectionFileReplacementRef;
+
+exports.abortSectionFileReplacement = function abortSectionFileReplacement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(abortSectionFileReplacementRef(dcInstance, inputVars));
+}
+;
+
+const beginSectionFileDeletionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'BeginSectionFileDeletion', inputVars);
+}
+beginSectionFileDeletionRef.operationName = 'BeginSectionFileDeletion';
+exports.beginSectionFileDeletionRef = beginSectionFileDeletionRef;
+
+exports.beginSectionFileDeletion = function beginSectionFileDeletion(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(beginSectionFileDeletionRef(dcInstance, inputVars));
+}
+;
+
+const markSectionFileDeletedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkSectionFileDeleted', inputVars);
+}
+markSectionFileDeletedRef.operationName = 'MarkSectionFileDeleted';
+exports.markSectionFileDeletedRef = markSectionFileDeletedRef;
+
+exports.markSectionFileDeleted = function markSectionFileDeleted(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markSectionFileDeletedRef(dcInstance, inputVars));
+}
+;
 
 const updateUserMembershipStatusRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);

@@ -86,6 +86,15 @@ const PaymentWebhookEventOutcome = {
 }
 exports.PaymentWebhookEventOutcome = PaymentWebhookEventOutcome;
 
+const SectionFileStatus = {
+  PENDING: "PENDING",
+  AVAILABLE: "AVAILABLE",
+  REPLACING: "REPLACING",
+  DELETING: "DELETING",
+  DELETED: "DELETED",
+}
+exports.SectionFileStatus = SectionFileStatus;
+
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
@@ -121,6 +130,76 @@ const connectorConfig = {
   location: 'europe-west2'
 };
 exports.connectorConfig = connectorConfig;
+
+function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreatePendingSectionFile', inputVars, inputOpts);
+}
+exports.createPendingSectionFile = createPendingSectionFile;
+
+function getSectionFileById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionFileById', inputVars, inputOpts);
+}
+exports.getSectionFileById = getSectionFileById;
+
+function listSectionFilesByStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSectionFilesByStatus', inputVars, inputOpts);
+}
+exports.listSectionFilesByStatus = listSectionFilesByStatus;
+
+function finalizePendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('FinalizePendingSectionFile', inputVars, inputOpts);
+}
+exports.finalizePendingSectionFile = finalizePendingSectionFile;
+
+function updateAvailableSectionFileMetadata(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateAvailableSectionFileMetadata', inputVars, inputOpts);
+}
+exports.updateAvailableSectionFileMetadata = updateAvailableSectionFileMetadata;
+
+function beginSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('BeginSectionFileReplacement', inputVars, inputOpts);
+}
+exports.beginSectionFileReplacement = beginSectionFileReplacement;
+
+function finalizeSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('FinalizeSectionFileReplacement', inputVars, inputOpts);
+}
+exports.finalizeSectionFileReplacement = finalizeSectionFileReplacement;
+
+function abortSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AbortSectionFileReplacement', inputVars, inputOpts);
+}
+exports.abortSectionFileReplacement = abortSectionFileReplacement;
+
+function beginSectionFileDeletion(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('BeginSectionFileDeletion', inputVars, inputOpts);
+}
+exports.beginSectionFileDeletion = beginSectionFileDeletion;
+
+function markSectionFileDeleted(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkSectionFileDeleted', inputVars, inputOpts);
+}
+exports.markSectionFileDeleted = markSectionFileDeleted;
 
 function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

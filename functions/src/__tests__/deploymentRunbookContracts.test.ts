@@ -51,7 +51,7 @@ describe("deployment runbook contracts", () => {
     );
 
     expect(runbook).toContain("Before continuing:");
-    expect(runbook).toContain("Only after the Data Connect checkpoint passes:");
+    expect(runbook).toContain("Only after the Data Connect and Storage checkpoints pass:");
     expect(rollback).toContain("Do not deploy Functions or Hosting");
     expect(rollback).toContain("Do not deploy Hosting");
     expect(rollback).toContain("destructive migration");

@@ -75,6 +75,14 @@ export const PaymentWebhookEventOutcome = {
   FAILED: "FAILED",
 }
 
+export const SectionFileStatus = {
+  PENDING: "PENDING",
+  AVAILABLE: "AVAILABLE",
+  REPLACING: "REPLACING",
+  DELETING: "DELETING",
+  DELETED: "DELETED",
+}
+
 export const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
@@ -105,6 +113,66 @@ export const connectorConfig = {
   serviceId: 'sodc-web-service',
   location: 'europe-west2'
 };
+
+export function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreatePendingSectionFile', inputVars, inputOpts);
+}
+
+export function getSectionFileById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionFileById', inputVars, inputOpts);
+}
+
+export function listSectionFilesByStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSectionFilesByStatus', inputVars, inputOpts);
+}
+
+export function finalizePendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('FinalizePendingSectionFile', inputVars, inputOpts);
+}
+
+export function updateAvailableSectionFileMetadata(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateAvailableSectionFileMetadata', inputVars, inputOpts);
+}
+
+export function beginSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('BeginSectionFileReplacement', inputVars, inputOpts);
+}
+
+export function finalizeSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('FinalizeSectionFileReplacement', inputVars, inputOpts);
+}
+
+export function abortSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AbortSectionFileReplacement', inputVars, inputOpts);
+}
+
+export function beginSectionFileDeletion(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('BeginSectionFileDeletion', inputVars, inputOpts);
+}
+
+export function markSectionFileDeleted(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkSectionFileDeleted', inputVars, inputOpts);
+}
 
 export function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
