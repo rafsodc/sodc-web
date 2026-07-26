@@ -217,8 +217,89 @@ Before enabling the section-file feature:
 6. complete the IAM, public-access prevention, lifecycle, CORS, and verification
    steps in [section-file-storage.md](./section-file-storage.md).
 
+Use the real production values below. Do not copy the Dev project number,
+bucket, or service account:
+
+```sh
+export PROJECT_ID="sodc-web-production"
+export SECTION_FILES_BUCKET_NAME="sodc-web-production.firebasestorage.app"
+
+gcloud storage buckets update "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --uniform-bucket-level-access \
+  --public-access-prevention \
+  --lifecycle-file="config/storage/section-files-lifecycle.json"
+
+firebase deploy --only storage --project prod
+```
+
+After the #429 Functions have been deployed—but before invoking an upload or
+download—resolve the actual Gen 2 runtime service account:
+
+```sh
+gcloud functions describe requestSectionFileUpload \
+  --gen2 \
+  --region="europe-west2" \
+  --project="${PROJECT_ID}" \
+  --format="value(serviceConfig.serviceAccountEmail)"
+```
+
+Copy the exact returned address into this variable:
+
+```sh
+export FUNCTIONS_SERVICE_ACCOUNT="<returned-runtime-service-account>"
+```
+
+Grant only the required object and keyless-signing permissions:
+
+```sh
+gcloud storage buckets add-iam-policy-binding \
+  "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --member="serviceAccount:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --role="roles/storage.objectAdmin"
+
+gcloud services enable iamcredentials.googleapis.com \
+  --project="${PROJECT_ID}"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  "${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}" \
+  --member="serviceAccount:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --role="roles/iam.serviceAccountTokenCreator"
+```
+
+Verify the bucket configuration and both explicit IAM grants:
+
+```sh
+gcloud storage buckets describe "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --format="yaml(name,location,uniform_bucket_level_access,public_access_prevention,lifecycle_config,cors_config)"
+
+gcloud storage buckets get-iam-policy \
+  "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --format="table(bindings.role,bindings.members)"
+
+gcloud iam service-accounts get-iam-policy \
+  "${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}"
+```
+
+The bucket policy must show `roles/storage.objectAdmin`; the service-account
+policy must show the runtime identity bound to
+`roles/iam.serviceAccountTokenCreator`. The bucket description must show
+uniform access enabled, public-access prevention enforced, and lifecycle
+deletion restricted to `section-file-uploads/`. Apply the exact production CORS
+file using the command in [section-file-storage.md](./section-file-storage.md);
+never use a wildcard origin.
+
 Do not continue if Storage has not been initialized or if the CLI deploy targets
-a Dev/Beta bucket. Do not share the Dev or Beta bucket with Prod.
+a Dev/Beta bucket. Resolve the actual production Functions runtime service
+account and explicitly grant it `roles/storage.objectAdmin` on the production
+bucket. Enable `iamcredentials.googleapis.com` and grant that same identity
+`roles/iam.serviceAccountTokenCreator` on itself for keyless V4 signed URLs.
+Verify both policies before the upload/download smoke test. Do not share the Dev
+or Beta bucket or runtime identity with Prod, and do not create a downloaded
+service-account key.
 
 ## 7. Configure Functions environment and secrets
 
@@ -437,6 +518,7 @@ Connect or user data.
 - [ ] Data Connect read and a non-destructive callable action succeed.
 - [ ] Firebase Storage is initialized in Prod and the exact bucket name is recorded in both frontend and Functions configuration.
 - [ ] Section-file bucket isolation, IAM, lifecycle, CORS, deployed deny-all rules, and direct-access denial are verified before the feature is enabled.
+- [ ] Production Functions runtime has explicit bucket `roles/storage.objectAdmin` and self `roles/iam.serviceAccountTokenCreator` grants; IAM Credentials API is enabled.
 - [ ] Stripe live Checkout redirect/return and signed webhook delivery succeed.
 - [ ] Notify template drift check and one send per email domain succeed.
 - [ ] First and second administrators can sign in; an ordinary member cannot access Admin routes/actions.

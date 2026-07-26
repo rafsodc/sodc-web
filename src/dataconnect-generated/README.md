@@ -8310,7 +8310,7 @@ import { connectorConfig, finalizePendingSectionFile, FinalizePendingSectionFile
 const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
   id: ..., 
   pendingStorageObjectPath: ..., 
-  storageObjectPath: ..., 
+  storageObjectPath: ...,
   objectGeneration: ..., 
   checksumSha256: ..., 
   contentType: ..., 
@@ -8347,7 +8347,7 @@ import { connectorConfig, finalizePendingSectionFileRef, FinalizePendingSectionF
 const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
   id: ..., 
   pendingStorageObjectPath: ..., 
-  storageObjectPath: ..., 
+  storageObjectPath: ...,
   objectGeneration: ..., 
   checksumSha256: ..., 
   contentType: ..., 
@@ -8646,6 +8646,7 @@ The `FinalizeSectionFileReplacement` mutation requires an argument of type `Fina
 export interface FinalizeSectionFileReplacementVariables {
   id: UUIDString;
   pendingStorageObjectPath: string;
+  storageObjectPath: string;
   originalFilename: string;
   objectGeneration: string;
   checksumSha256: string;
@@ -8673,6 +8674,7 @@ import { connectorConfig, finalizeSectionFileReplacement, FinalizeSectionFileRep
 const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
   id: ..., 
   pendingStorageObjectPath: ..., 
+  storageObjectPath: ...,
   originalFilename: ..., 
   objectGeneration: ..., 
   checksumSha256: ..., 
@@ -8685,7 +8687,7 @@ const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariable
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await finalizeSectionFileReplacement(finalizeSectionFileReplacementVars);
 // Variables can be defined inline as well.
-const { data } = await finalizeSectionFileReplacement({ id: ..., pendingStorageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+const { data } = await finalizeSectionFileReplacement({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -8710,6 +8712,7 @@ import { connectorConfig, finalizeSectionFileReplacementRef, FinalizeSectionFile
 const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
   id: ..., 
   pendingStorageObjectPath: ..., 
+  storageObjectPath: ...,
   originalFilename: ..., 
   objectGeneration: ..., 
   checksumSha256: ..., 
@@ -8721,7 +8724,7 @@ const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariable
 // Call the `finalizeSectionFileReplacementRef()` function to get a reference to the mutation.
 const ref = finalizeSectionFileReplacementRef(finalizeSectionFileReplacementVars);
 // Variables can be defined inline as well.
-const ref = finalizeSectionFileReplacementRef({ id: ..., pendingStorageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+const ref = finalizeSectionFileReplacementRef({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -18513,4 +18516,3 @@ executeMutation(ref).then((response) => {
   console.log(data.sectionAnnouncementOptOut_delete);
 });
 ```
-

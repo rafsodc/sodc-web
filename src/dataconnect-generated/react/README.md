@@ -6676,7 +6676,7 @@ export default function FinalizePendingSectionFileComponent() {
   const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
     id: ..., 
     pendingStorageObjectPath: ..., 
-    storageObjectPath: ..., 
+    storageObjectPath: ...,
     objectGeneration: ..., 
     checksumSha256: ..., 
     contentType: ..., 
@@ -6925,6 +6925,7 @@ The `FinalizeSectionFileReplacement` Mutation requires an argument of type `Fina
 export interface FinalizeSectionFileReplacementVariables {
   id: UUIDString;
   pendingStorageObjectPath: string;
+  storageObjectPath: string;
   originalFilename: string;
   objectGeneration: string;
   checksumSha256: string;
@@ -6982,6 +6983,7 @@ export default function FinalizeSectionFileReplacementComponent() {
   const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
     id: ..., 
     pendingStorageObjectPath: ..., 
+    storageObjectPath: ...,
     originalFilename: ..., 
     objectGeneration: ..., 
     checksumSha256: ..., 
@@ -6991,7 +6993,7 @@ export default function FinalizeSectionFileReplacementComponent() {
   };
   mutation.mutate(finalizeSectionFileReplacementVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -15279,4 +15281,3 @@ export default function OptInSectionAnnouncementComponent() {
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
-
