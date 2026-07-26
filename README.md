@@ -62,6 +62,9 @@ npm run build
 
 See [docs/operations/environments-dev-beta-prod.md](docs/operations/environments-dev-beta-prod.md) for environment setup (cloud-backed dev; no emulators required).
 
+Provisioning a brand-new production Firebase project is covered by the
+[new production instance runbook](docs/operations/new-production-instance.md).
+
 ---
 
 ## Tests

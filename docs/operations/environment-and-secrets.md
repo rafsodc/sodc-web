@@ -30,7 +30,10 @@ Defined via `.env*` files and read from `import.meta.env`:
 |---|---|---|---|
 | `STRIPE_SECRET` | Firebase secret | `createTicketCheckoutSession`, `stripeWebhook` | yes for payments |
 | `STRIPE_WEBHOOK_SECRET` | Firebase secret | `stripeWebhook` | yes for webhook processing |
+| `STRIPE_WEBHOOK_SECRET_PAYMENTS` | Firebase secret | `stripeWebhookPayments` (with legacy fallback during migration) | yes for the dedicated payments webhook |
 | `GOV_NOTIFY_API_KEY` | Firebase secret | Transactional mailer / payment webhook notification path | yes for app-owned transactional email |
+| `UNSUBSCRIBE_SECRET` | Firebase secret | Signed announcement unsubscribe links | yes when announcements are enabled |
+| `NOTIFY_CALLBACK_BEARER_TOKEN` | Firebase secret | Authenticates GOV.UK Notify delivery callbacks | yes when delivery callbacks are enabled |
 | `APP_BASE_URL` | env var | Checkout success/cancel URLs and internal ops email links | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
@@ -49,6 +52,10 @@ Defined via `.env*` files and read from `import.meta.env`:
 - **Notify template copy and registration** (paste into dashboard, record UUIDs per env): [govuk-notify-template-copy.md](./govuk-notify-template-copy.md), [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 - **Email policy** (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md).
 - Do not commit secret values to repo.
+- For project-specific non-secret Functions configuration, use the ignored file
+  `functions/.env.<project-id>` (for example,
+  `functions/.env.sodc-web-production`). Firebase selects it by project ID at
+  deploy time; verify the CLI reports the intended file before continuing.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
 - Rotate `GOV_NOTIFY_API_KEY` if compromised and update Firebase secrets before redeploy.
 - Keep environment docs and deployment settings aligned when adding new variables.
