@@ -583,6 +583,33 @@ export const finalizeSectionFileReplacement = onCall(
   },
 );
 
+export const cancelSectionFileReplacement = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request) => {
+    const { uid, isAdmin } = await requestContext(request, "cancelSectionFileReplacement");
+    const sectionId = validateUUID(requireString(request.data?.sectionId, "sectionId"), "sectionId");
+    const fileId = validateUUID(requireString(request.data?.fileId, "fileId"), "fileId");
+    try {
+      await requireSectionModerator(sectionId, uid, isAdmin);
+      const file = await trustedFile(fileId, sectionId);
+      if (file.status !== SectionFileStatus.REPLACING || !file.pendingStorageObjectPath) {
+        throw new HttpsError("failed-precondition", "The replacement is not pending");
+      }
+      const transition = await abortSectionFileReplacement({
+        id: fileId,
+        pendingStorageObjectPath: file.pendingStorageObjectPath,
+        updatedBy: uid,
+      });
+      ensureTransition(transition.data.sectionFile_updateMany);
+      await bestEffortDelete(file.pendingStorageObjectPath, { sectionId, fileId });
+      return { fileId };
+    } catch (error) {
+      if (error instanceof HttpsError) throw error;
+      handleFunctionError(error, "cancelling section file replacement");
+    }
+  },
+);
+
 export const deleteSectionFile = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   const { uid, isAdmin } = await requestContext(request, "deleteSectionFile");
   const sectionId = validateUUID(requireString(request.data?.sectionId, "sectionId"), "sectionId");

@@ -38,6 +38,12 @@ describe("section file API security contracts", () => {
     expect(source).toContain("action: \"read\"");
   });
 
+  it("provides a trusted rollback for interrupted replacements", () => {
+    expect(source).toContain("export const cancelSectionFileReplacement");
+    expect(source).toContain("abortSectionFileReplacement");
+    expect(source).toContain("bestEffortDelete(file.pendingStorageObjectPath");
+  });
+
   it("never includes internal object paths in member-facing file responses", () => {
     const start = source.indexOf("function fileResponse(");
     const end = source.indexOf("\n}", start);

@@ -10,11 +10,12 @@ import {
   CircularProgress,
   Typography,
 } from "@mui/material";
-import { Campaign, Event, Settings } from "@mui/icons-material";
+import { Campaign, Event, Folder, Settings } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import { ROUTES } from "../../../constants";
 import { useCanModerateSection } from "../../sections/hooks/useCanModerateSection";
 import SendAnnouncementPage from "./SendAnnouncementPage";
+import ManageSectionFiles from "./ManageSectionFiles";
 import "../../../shared/components/PageContainer.css";
 
 interface SectionAdminLocationState {
@@ -53,7 +54,7 @@ export default function SectionAdminPage() {
   const sectionType = state?.sectionType ?? "MEMBERS";
   const isEvents = sectionType === "EVENTS";
 
-  const [view, setView] = useState<"hub" | "announcement">("hub");
+  const [view, setView] = useState<"hub" | "announcement" | "files">("hub");
 
   const handleBack = () => {
     if (view !== "hub") {
@@ -97,6 +98,16 @@ export default function SectionAdminPage() {
     );
   }
 
+  if (view === "files") {
+    return (
+      <ManageSectionFiles
+        sectionId={sectionId}
+        sectionName={sectionName}
+        onBack={() => setView("hub")}
+      />
+    );
+  }
+
   return (
     <Box className="page-container">
       <PageHeader title={`Administer — ${sectionName}`} onBack={handleBack} />
@@ -106,6 +117,15 @@ export default function SectionAdminPage() {
       </Typography>
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        <Box sx={{ flex: "1 1 280px" }}>
+          <ActionCard
+            icon={<Folder fontSize="large" />}
+            title="Manage Files"
+            description="Upload, replace, rename, delete, and copy stable member links."
+            onClick={() => setView("files")}
+          />
+        </Box>
+
         <Box sx={{ flex: "1 1 280px" }}>
           <ActionCard
             icon={<Campaign fontSize="large" />}

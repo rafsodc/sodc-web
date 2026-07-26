@@ -49,6 +49,7 @@ export const CALLABLE_RATE_LIMITS = {
   updateSectionFileMetadata: { limit: 60, windowMs: HOUR_MS },
   requestSectionFileReplacement: { limit: 20, windowMs: HOUR_MS },
   finalizeSectionFileReplacement: { limit: 30, windowMs: HOUR_MS },
+  cancelSectionFileReplacement: { limit: 30, windowMs: HOUR_MS },
   deleteSectionFile: { limit: 30, windowMs: HOUR_MS },
 } as const satisfies Record<string, RateLimitPolicy>;
 

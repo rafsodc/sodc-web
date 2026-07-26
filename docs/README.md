@@ -4,6 +4,10 @@
 
 - [Section files](member-section-files.md)
 
+## Moderator guidance
+
+- [Managing section files](moderator-section-files.md)
+
 This folder captures architecture, domain decisions, and contributor-facing guidance.
 
 ## Architecture
