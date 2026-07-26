@@ -71,6 +71,13 @@ export enum PaymentWebhookEventOutcome {
   DUPLICATE = "DUPLICATE",
   FAILED = "FAILED",
 }
+export enum SectionFileStatus {
+  PENDING = "PENDING",
+  AVAILABLE = "AVAILABLE",
+  REPLACING = "REPLACING",
+  DELETING = "DELETING",
+  DELETED = "DELETED",
+}
 export enum SectionType {
   MEMBERS = "MEMBERS",
   EVENTS = "EVENTS",
@@ -91,6 +98,16 @@ export enum TicketOrderStatus {
   PAID = "PAID",
   FAILED = "FAILED",
   REFUNDED = "REFUNDED",
+}
+
+export interface AbortSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbortSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
 }
 
 export interface AddBookingLineData {
@@ -209,6 +226,25 @@ export interface AnnouncementRecipient_Key {
 export interface AnnouncementSend_Key {
   id: UUIDString;
   __typename?: 'AnnouncementSend_Key';
+}
+
+export interface BeginSectionFileDeletionData {
+  sectionFile_updateMany: number;
+}
+
+export interface BeginSectionFileDeletionVariables {
+  id: UUIDString;
+  updatedBy: string;
+}
+
+export interface BeginSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface BeginSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
 }
 
 export interface BookingLine_Key {
@@ -454,6 +490,23 @@ export interface CreatePaymentWebhookEventVariables {
   livemode: boolean;
 }
 
+export interface CreatePendingSectionFileData {
+  sectionFile_insert: SectionFile_Key;
+}
+
+export interface CreatePendingSectionFileVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  pendingStorageObjectPath: string;
+  displayName: string;
+  originalFilename: string;
+  description?: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  now: TimestampString;
+}
+
 export interface CreateSectionData {
   section_insert: Section_Key;
 }
@@ -609,6 +662,36 @@ export interface EnsureCallableRateLimitBucketVariables {
 export interface Event_Key {
   id: UUIDString;
   __typename?: 'Event_Key';
+}
+
+export interface FinalizePendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface FinalizePendingSectionFileVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+
+export interface FinalizeSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface FinalizeSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  originalFilename: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
 }
 
 export interface GetAllUserGroupsWithStatusesData {
@@ -1423,6 +1506,31 @@ export interface GetSectionByIdVariables {
   id: UUIDString;
 }
 
+export interface GetSectionFileByIdData {
+  sectionFile?: {
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key;
+}
+
+export interface GetSectionFileByIdVariables {
+  id: UUIDString;
+}
+
 export interface GetSectionMembersData {
   section?: {
     id: UUIDString;
@@ -1995,6 +2103,33 @@ export interface ListOpenPaymentReconciliationExceptionsData {
   } & PaymentReconciliationException_Key)[];
 }
 
+export interface ListSectionFilesByStatusData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesByStatusVariables {
+  sectionId: UUIDString;
+  status: SectionFileStatus;
+  limit: number;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -2192,6 +2327,16 @@ export interface MarkNotifyDeliveryReceiptProcessedVariables {
   processedAt: TimestampString;
 }
 
+export interface MarkSectionFileDeletedData {
+  sectionFile_updateMany: number;
+}
+
+export interface MarkSectionFileDeletedVariables {
+  id: UUIDString;
+  deletedAt: TimestampString;
+  updatedBy: string;
+}
+
 export interface MarkTicketOrderFailedFromWebhookData {
   ticketOrder_update?: TicketOrder_Key | null;
 }
@@ -2324,6 +2469,11 @@ export interface SectionAnnouncementOptOut_Key {
   __typename?: 'SectionAnnouncementOptOut_Key';
 }
 
+export interface SectionFile_Key {
+  id: UUIDString;
+  __typename?: 'SectionFile_Key';
+}
+
 export interface SectionUserGroupPurposeLink_Key {
   sectionId: UUIDString;
   userGroupId: UUIDString;
@@ -2436,6 +2586,17 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
+}
+
+export interface UpdateAvailableSectionFileMetadataData {
+  sectionFile_updateMany: number;
+}
+
+export interface UpdateAvailableSectionFileMetadataVariables {
+  id: UUIDString;
+  displayName: string;
+  description?: string | null;
+  updatedBy: string;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -2627,6 +2788,56 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
+
+/** Generated Node Admin SDK operation action function for the 'CreatePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
+export function createPendingSectionFile(dc: DataConnect, vars: CreatePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePendingSectionFileData>>;
+/** Generated Node Admin SDK operation action function for the 'CreatePendingSectionFile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createPendingSectionFile(vars: CreatePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePendingSectionFileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionFileById' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionFileById(dc: DataConnect, vars: GetSectionFileByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionFileByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionFileById' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionFileById(vars: GetSectionFileByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionFileByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesByStatus' Query. Allow users to execute without passing in DataConnect. */
+export function listSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesByStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesByStatus' Query. Allow users to pass in custom DataConnect instances. */
+export function listSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesByStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'FinalizePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
+export function finalizePendingSectionFile(dc: DataConnect, vars: FinalizePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizePendingSectionFileData>>;
+/** Generated Node Admin SDK operation action function for the 'FinalizePendingSectionFile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function finalizePendingSectionFile(vars: FinalizePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizePendingSectionFileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateAvailableSectionFileMetadata' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateAvailableSectionFileMetadata(dc: DataConnect, vars: UpdateAvailableSectionFileMetadataVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAvailableSectionFileMetadataData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateAvailableSectionFileMetadata' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateAvailableSectionFileMetadata(vars: UpdateAvailableSectionFileMetadataVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAvailableSectionFileMetadataData>>;
+
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileReplacement' Mutation. Allow users to execute without passing in DataConnect. */
+export function beginSectionFileReplacement(dc: DataConnect, vars: BeginSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileReplacementData>>;
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileReplacement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function beginSectionFileReplacement(vars: BeginSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileReplacementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'FinalizeSectionFileReplacement' Mutation. Allow users to execute without passing in DataConnect. */
+export function finalizeSectionFileReplacement(dc: DataConnect, vars: FinalizeSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizeSectionFileReplacementData>>;
+/** Generated Node Admin SDK operation action function for the 'FinalizeSectionFileReplacement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function finalizeSectionFileReplacement(vars: FinalizeSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizeSectionFileReplacementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AbortSectionFileReplacement' Mutation. Allow users to execute without passing in DataConnect. */
+export function abortSectionFileReplacement(dc: DataConnect, vars: AbortSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbortSectionFileReplacementData>>;
+/** Generated Node Admin SDK operation action function for the 'AbortSectionFileReplacement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function abortSectionFileReplacement(vars: AbortSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbortSectionFileReplacementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileDeletion' Mutation. Allow users to execute without passing in DataConnect. */
+export function beginSectionFileDeletion(dc: DataConnect, vars: BeginSectionFileDeletionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileDeletionData>>;
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileDeletion' Mutation. Allow users to pass in custom DataConnect instances. */
+export function beginSectionFileDeletion(vars: BeginSectionFileDeletionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileDeletionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkSectionFileDeleted' Mutation. Allow users to execute without passing in DataConnect. */
+export function markSectionFileDeleted(dc: DataConnect, vars: MarkSectionFileDeletedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkSectionFileDeletedData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkSectionFileDeleted' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markSectionFileDeleted(vars: MarkSectionFileDeletedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkSectionFileDeletedData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;

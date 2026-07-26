@@ -34,6 +34,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `GOV_NOTIFY_API_KEY` | Firebase secret | Transactional mailer / payment webhook notification path | yes for app-owned transactional email |
 | `UNSUBSCRIBE_SECRET` | Firebase secret | Signed announcement unsubscribe links | yes when announcements are enabled |
 | `NOTIFY_CALLBACK_BEARER_TOKEN` | Firebase secret | Authenticates GOV.UK Notify delivery callbacks | yes when delivery callbacks are enabled |
+| `SECTION_FILES_BUCKET` | env var | Private GCS bucket used by the section-file backend | required when section files are enabled |
 | `APP_BASE_URL` | env var | Checkout success/cancel URLs and internal ops email links | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
@@ -49,6 +50,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 ## Operational notes
 
 - **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
+- **Section file storage** (private bucket, IAM, lifecycle, CORS, and rollout): [section-file-storage.md](./section-file-storage.md).
 - **Notify template copy and registration** (paste into dashboard, record UUIDs per env): [govuk-notify-template-copy.md](./govuk-notify-template-copy.md), [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 - **Email policy** (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md).
 - Do not commit secret values to repo.

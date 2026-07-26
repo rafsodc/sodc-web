@@ -7,6 +7,258 @@
 # Auth Expression: @auth(level: NO_ACCESS)
 # See AUTH_EXPRESSIONS.md for complete documentation.
 
+# ── Section file storage lifecycle ───────────────────────────────────────────
+
+# The caller generates both the opaque file ID and object path. This makes it
+# possible to constrain a direct upload to section-files/{sectionId}/{fileId}/...
+# before metadata is inserted. Actual object properties are verified separately
+# before FinalizePendingSectionFile makes the file available.
+mutation CreatePendingSectionFile(
+  $id: UUID!
+  $sectionId: UUID!
+  $pendingStorageObjectPath: String!
+  $displayName: String!
+  $originalFilename: String!
+  $description: String
+  $contentType: String!
+  $sizeBytes: Int!
+  $uploadedBy: String!
+  $now: Timestamp!
+) @auth(level: NO_ACCESS) {
+  sectionFile_insert(
+    data: {
+      id: $id
+      sectionId: $sectionId
+      pendingStorageObjectPath: $pendingStorageObjectPath
+      displayName: $displayName
+      originalFilename: $originalFilename
+      description: $description
+      contentType: $contentType
+      sizeBytes: $sizeBytes
+      status: PENDING
+      uploadedBy: $uploadedBy
+      createdAt: $now
+      updatedAt: $now
+      createdBy: $uploadedBy
+      updatedBy: $uploadedBy
+    }
+  )
+}
+
+query GetSectionFileById($id: UUID!) @auth(level: NO_ACCESS) {
+  sectionFile(id: $id) {
+    id
+    sectionId
+    storageObjectPath
+    pendingStorageObjectPath
+    displayName
+    originalFilename
+    description
+    contentType
+    sizeBytes
+    objectGeneration
+    checksumSha256
+    status
+    uploadedBy
+    deletedAt
+    createdAt
+    updatedAt
+  }
+}
+
+query ListSectionFilesByStatus(
+  $sectionId: UUID!
+  $status: SectionFileStatus!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  sectionFiles(
+    where: {
+      sectionId: { eq: $sectionId }
+      status: { eq: $status }
+    }
+    orderBy: { createdAt: DESC }
+    limit: $limit
+  ) {
+    id
+    sectionId
+    storageObjectPath
+    pendingStorageObjectPath
+    displayName
+    originalFilename
+    description
+    contentType
+    sizeBytes
+    objectGeneration
+    checksumSha256
+    status
+    uploadedBy
+    deletedAt
+    createdAt
+    updatedAt
+  }
+}
+
+# Compare-and-swap finalization prevents a stale upload from promoting metadata
+# after a replacement or deletion transition has started.
+mutation FinalizePendingSectionFile(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $storageObjectPath: String!
+  $objectGeneration: String!
+  $checksumSha256: String!
+  $contentType: String!
+  $sizeBytes: Int!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      pendingStorageObjectPath: { eq: $pendingStorageObjectPath }
+    }
+    data: {
+      storageObjectPath: $storageObjectPath
+      pendingStorageObjectPath: null
+      objectGeneration: $objectGeneration
+      checksumSha256: $checksumSha256
+      contentType: $contentType
+      sizeBytes: $sizeBytes
+      status: AVAILABLE
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation UpdateAvailableSectionFileMetadata(
+  $id: UUID!
+  $displayName: String!
+  $description: String
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: AVAILABLE }
+    }
+    data: {
+      displayName: $displayName
+      description: $description
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+# A replacement upload uses a different immutable object path. The current
+# object metadata remains intact and can continue to be served until promotion.
+mutation BeginSectionFileReplacement(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: AVAILABLE }
+    }
+    data: {
+      pendingStorageObjectPath: $pendingStorageObjectPath
+      status: REPLACING
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation FinalizeSectionFileReplacement(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $originalFilename: String!
+  $objectGeneration: String!
+  $checksumSha256: String!
+  $contentType: String!
+  $sizeBytes: Int!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: REPLACING }
+      pendingStorageObjectPath: { eq: $pendingStorageObjectPath }
+    }
+    data: {
+      storageObjectPath: $pendingStorageObjectPath
+      pendingStorageObjectPath: null
+      originalFilename: $originalFilename
+      objectGeneration: $objectGeneration
+      checksumSha256: $checksumSha256
+      contentType: $contentType
+      sizeBytes: $sizeBytes
+      status: AVAILABLE
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation AbortSectionFileReplacement(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: REPLACING }
+      pendingStorageObjectPath: { eq: $pendingStorageObjectPath }
+    }
+    data: {
+      pendingStorageObjectPath: null
+      status: AVAILABLE
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation BeginSectionFileDeletion(
+  $id: UUID!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { in: [AVAILABLE, REPLACING] }
+    }
+    data: {
+      status: DELETING
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation MarkSectionFileDeleted(
+  $id: UUID!
+  $deletedAt: Timestamp!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: DELETING }
+    }
+    data: {
+      status: DELETED
+      deletedAt: $deletedAt
+      pendingStorageObjectPath: null
+      updatedAt: $deletedAt
+      updatedBy: $updatedBy
+    }
+  )
+}
+
 # Update user membership status (SDK only)
 # Used by Firebase Functions to update membership status with server-side validation
 mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: MembershipStatus!) @auth(level: NO_ACCESS) {

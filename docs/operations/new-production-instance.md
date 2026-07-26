@@ -196,6 +196,14 @@ procedure before holding irreplaceable production data.
 
 Do not load `dataconnect/seed_data.gql` into Prod.
 
+### 6a. Provision private section-file storage
+
+Before enabling the section-file feature, provision its dedicated production
+bucket using [section-file-storage.md](./section-file-storage.md). Verify public
+access prevention, uniform bucket-level access, least-privilege Functions IAM,
+the temporary-upload lifecycle rule, exact production CORS origins, and
+deny-all Firebase client rules. Do not share the Dev or Beta bucket.
+
 ## 7. Configure Functions environment and secrets
 
 Cloud Functions loads project-specific non-secret values from
@@ -207,6 +215,7 @@ Cloud Functions loads project-specific non-secret values from
 APP_BASE_URL=https://sodc-web-production.web.app
 ENV_NAME=prod
 PERMITTED_PROJECT_IDS=
+SECTION_FILES_BUCKET=
 
 # Add the GOV_NOTIFY_TEMPLATE_* values for every enabled template.
 # Add optional reply-to, payment-ops recipients, and expiry tuning only when used.
@@ -410,6 +419,7 @@ Connect or user data.
 - [ ] Operators understand that users moving from `web.app` to the custom domain may need to sign in again.
 - [ ] App Check tokens are valid; enforcement decision and metrics are recorded.
 - [ ] Data Connect read and a non-destructive callable action succeed.
+- [ ] Section-file bucket isolation, IAM, lifecycle, CORS, and direct-access denial are verified before the feature is enabled.
 - [ ] Stripe live Checkout redirect/return and signed webhook delivery succeed.
 - [ ] Notify template drift check and one send per email domain succeed.
 - [ ] First and second administrators can sign in; an ordinary member cannot access Admin routes/actions.

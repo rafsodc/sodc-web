@@ -17,6 +17,8 @@ You can also follow the instructions from the [Data Connect documentation](https
 - [**Accessing the connector**](#accessing-the-connector)
   - [*Connecting to the local Emulator*](#connecting-to-the-local-emulator)
 - [**Queries**](#queries)
+  - [*GetSectionFileById*](#getsectionfilebyid)
+  - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetUserForCheckout*](#getuserforcheckout)
@@ -80,6 +82,14 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
   - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
 - [**Mutations**](#mutations)
+  - [*CreatePendingSectionFile*](#creatependingsectionfile)
+  - [*FinalizePendingSectionFile*](#finalizependingsectionfile)
+  - [*UpdateAvailableSectionFileMetadata*](#updateavailablesectionfilemetadata)
+  - [*BeginSectionFileReplacement*](#beginsectionfilereplacement)
+  - [*FinalizeSectionFileReplacement*](#finalizesectionfilereplacement)
+  - [*AbortSectionFileReplacement*](#abortsectionfilereplacement)
+  - [*BeginSectionFileDeletion*](#beginsectionfiledeletion)
+  - [*MarkSectionFileDeleted*](#marksectionfiledeleted)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
@@ -249,6 +259,208 @@ Here's a general overview of how to use the generated Query hooks in your code:
   - ***Special case:***  If the Query has all optional variables and you would like to provide an `options` argument to the Query hook function without providing any variables, you must pass `undefined` where you would normally pass the Query's variables, and then may provide the `options` argument.
 
 Below are examples of how to use the `api` connector's generated Query hook functions to execute each Query. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#operations-react-angular).
+
+## GetSectionFileById
+You can execute the `GetSectionFileById` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetSectionFileById(dc: DataConnect, vars: GetSectionFileByIdVariables, options?: useDataConnectQueryOptions<GetSectionFileByIdData>): UseDataConnectQueryResult<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetSectionFileById(vars: GetSectionFileByIdVariables, options?: useDataConnectQueryOptions<GetSectionFileByIdData>): UseDataConnectQueryResult<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+```
+
+### Variables
+The `GetSectionFileById` Query requires an argument of type `GetSectionFileByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetSectionFileByIdVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetSectionFileById` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetSectionFileById` Query is of type `GetSectionFileByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetSectionFileByIdData {
+  sectionFile?: {
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetSectionFileById`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetSectionFileByIdVariables } from '@dataconnect/generated';
+import { useGetSectionFileById } from '@dataconnect/generated/react'
+
+export default function GetSectionFileByIdComponent() {
+  // The `useGetSectionFileById` Query hook requires an argument of type `GetSectionFileByIdVariables`:
+  const getSectionFileByIdVars: GetSectionFileByIdVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetSectionFileById(getSectionFileByIdVars);
+  // Variables can be defined inline as well.
+  const query = useGetSectionFileById({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetSectionFileById(dataConnect, getSectionFileByIdVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetSectionFileById(getSectionFileByIdVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetSectionFileById(dataConnect, getSectionFileByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.sectionFile);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListSectionFilesByStatus
+You can execute the `ListSectionFilesByStatus` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: useDataConnectQueryOptions<ListSectionFilesByStatusData>): UseDataConnectQueryResult<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: useDataConnectQueryOptions<ListSectionFilesByStatusData>): UseDataConnectQueryResult<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+```
+
+### Variables
+The `ListSectionFilesByStatus` Query requires an argument of type `ListSectionFilesByStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListSectionFilesByStatusVariables {
+  sectionId: UUIDString;
+  status: SectionFileStatus;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListSectionFilesByStatus` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListSectionFilesByStatus` Query is of type `ListSectionFilesByStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListSectionFilesByStatusData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListSectionFilesByStatus`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListSectionFilesByStatusVariables } from '@dataconnect/generated';
+import { useListSectionFilesByStatus } from '@dataconnect/generated/react'
+
+export default function ListSectionFilesByStatusComponent() {
+  // The `useListSectionFilesByStatus` Query hook requires an argument of type `ListSectionFilesByStatusVariables`:
+  const listSectionFilesByStatusVars: ListSectionFilesByStatusVariables = {
+    sectionId: ..., 
+    status: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListSectionFilesByStatus(listSectionFilesByStatusVars);
+  // Variables can be defined inline as well.
+  const query = useListSectionFilesByStatus({ sectionId: ..., status: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListSectionFilesByStatus(listSectionFilesByStatusVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.sectionFiles);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
 
 ## GetUserGroupByName
 You can execute the `GetUserGroupByName` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
@@ -6277,6 +6489,824 @@ Here's a general overview of how to use the generated Mutation hooks in your cod
   - ***Special case:*** If the Mutation has no arguments (or all optional arguments and you wish to provide none), and you want to pass `options` to `UseMutationResult.mutate()`, you must pass `undefined` where you would normally pass the Mutation's arguments, and then may provide the options argument.
 
 Below are examples of how to use the `api` connector's generated Mutation hook functions to execute each Mutation. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#operations-react-angular).
+
+## CreatePendingSectionFile
+You can execute the `CreatePendingSectionFile` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreatePendingSectionFile(options?: useDataConnectMutationOptions<CreatePendingSectionFileData, FirebaseError, CreatePendingSectionFileVariables>): UseDataConnectMutationResult<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreatePendingSectionFile(dc: DataConnect, options?: useDataConnectMutationOptions<CreatePendingSectionFileData, FirebaseError, CreatePendingSectionFileVariables>): UseDataConnectMutationResult<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+```
+
+### Variables
+The `CreatePendingSectionFile` Mutation requires an argument of type `CreatePendingSectionFileVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreatePendingSectionFileVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  pendingStorageObjectPath: string;
+  displayName: string;
+  originalFilename: string;
+  description?: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `CreatePendingSectionFile` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreatePendingSectionFile` Mutation is of type `CreatePendingSectionFileData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreatePendingSectionFileData {
+  sectionFile_insert: SectionFile_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreatePendingSectionFile`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreatePendingSectionFileVariables } from '@dataconnect/generated';
+import { useCreatePendingSectionFile } from '@dataconnect/generated/react'
+
+export default function CreatePendingSectionFileComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreatePendingSectionFile();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreatePendingSectionFile(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreatePendingSectionFile(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreatePendingSectionFile(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreatePendingSectionFile` Mutation requires an argument of type `CreatePendingSectionFileVariables`:
+  const createPendingSectionFileVars: CreatePendingSectionFileVariables = {
+    id: ..., 
+    sectionId: ..., 
+    pendingStorageObjectPath: ..., 
+    displayName: ..., 
+    originalFilename: ..., 
+    description: ..., // optional
+    contentType: ..., 
+    sizeBytes: ..., 
+    uploadedBy: ..., 
+    now: ..., 
+  };
+  mutation.mutate(createPendingSectionFileVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., sectionId: ..., pendingStorageObjectPath: ..., displayName: ..., originalFilename: ..., description: ..., contentType: ..., sizeBytes: ..., uploadedBy: ..., now: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createPendingSectionFileVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## FinalizePendingSectionFile
+You can execute the `FinalizePendingSectionFile` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useFinalizePendingSectionFile(options?: useDataConnectMutationOptions<FinalizePendingSectionFileData, FirebaseError, FinalizePendingSectionFileVariables>): UseDataConnectMutationResult<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useFinalizePendingSectionFile(dc: DataConnect, options?: useDataConnectMutationOptions<FinalizePendingSectionFileData, FirebaseError, FinalizePendingSectionFileVariables>): UseDataConnectMutationResult<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+```
+
+### Variables
+The `FinalizePendingSectionFile` Mutation requires an argument of type `FinalizePendingSectionFileVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface FinalizePendingSectionFileVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `FinalizePendingSectionFile` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `FinalizePendingSectionFile` Mutation is of type `FinalizePendingSectionFileData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface FinalizePendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `FinalizePendingSectionFile`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, FinalizePendingSectionFileVariables } from '@dataconnect/generated';
+import { useFinalizePendingSectionFile } from '@dataconnect/generated/react'
+
+export default function FinalizePendingSectionFileComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useFinalizePendingSectionFile();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useFinalizePendingSectionFile(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useFinalizePendingSectionFile(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useFinalizePendingSectionFile(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useFinalizePendingSectionFile` Mutation requires an argument of type `FinalizePendingSectionFileVariables`:
+  const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
+    id: ..., 
+    pendingStorageObjectPath: ..., 
+    storageObjectPath: ..., 
+    objectGeneration: ..., 
+    checksumSha256: ..., 
+    contentType: ..., 
+    sizeBytes: ..., 
+    updatedBy: ..., 
+  };
+  mutation.mutate(finalizePendingSectionFileVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(finalizePendingSectionFileVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateAvailableSectionFileMetadata
+You can execute the `UpdateAvailableSectionFileMetadata` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateAvailableSectionFileMetadata(options?: useDataConnectMutationOptions<UpdateAvailableSectionFileMetadataData, FirebaseError, UpdateAvailableSectionFileMetadataVariables>): UseDataConnectMutationResult<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateAvailableSectionFileMetadata(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateAvailableSectionFileMetadataData, FirebaseError, UpdateAvailableSectionFileMetadataVariables>): UseDataConnectMutationResult<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+```
+
+### Variables
+The `UpdateAvailableSectionFileMetadata` Mutation requires an argument of type `UpdateAvailableSectionFileMetadataVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateAvailableSectionFileMetadataVariables {
+  id: UUIDString;
+  displayName: string;
+  description?: string | null;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateAvailableSectionFileMetadata` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateAvailableSectionFileMetadata` Mutation is of type `UpdateAvailableSectionFileMetadataData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateAvailableSectionFileMetadataData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateAvailableSectionFileMetadata`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateAvailableSectionFileMetadataVariables } from '@dataconnect/generated';
+import { useUpdateAvailableSectionFileMetadata } from '@dataconnect/generated/react'
+
+export default function UpdateAvailableSectionFileMetadataComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateAvailableSectionFileMetadata();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateAvailableSectionFileMetadata(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateAvailableSectionFileMetadata(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateAvailableSectionFileMetadata(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateAvailableSectionFileMetadata` Mutation requires an argument of type `UpdateAvailableSectionFileMetadataVariables`:
+  const updateAvailableSectionFileMetadataVars: UpdateAvailableSectionFileMetadataVariables = {
+    id: ..., 
+    displayName: ..., 
+    description: ..., // optional
+    updatedBy: ..., 
+  };
+  mutation.mutate(updateAvailableSectionFileMetadataVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., displayName: ..., description: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateAvailableSectionFileMetadataVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## BeginSectionFileReplacement
+You can execute the `BeginSectionFileReplacement` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useBeginSectionFileReplacement(options?: useDataConnectMutationOptions<BeginSectionFileReplacementData, FirebaseError, BeginSectionFileReplacementVariables>): UseDataConnectMutationResult<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useBeginSectionFileReplacement(dc: DataConnect, options?: useDataConnectMutationOptions<BeginSectionFileReplacementData, FirebaseError, BeginSectionFileReplacementVariables>): UseDataConnectMutationResult<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+```
+
+### Variables
+The `BeginSectionFileReplacement` Mutation requires an argument of type `BeginSectionFileReplacementVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface BeginSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `BeginSectionFileReplacement` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `BeginSectionFileReplacement` Mutation is of type `BeginSectionFileReplacementData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface BeginSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `BeginSectionFileReplacement`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, BeginSectionFileReplacementVariables } from '@dataconnect/generated';
+import { useBeginSectionFileReplacement } from '@dataconnect/generated/react'
+
+export default function BeginSectionFileReplacementComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useBeginSectionFileReplacement();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useBeginSectionFileReplacement(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useBeginSectionFileReplacement(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useBeginSectionFileReplacement(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useBeginSectionFileReplacement` Mutation requires an argument of type `BeginSectionFileReplacementVariables`:
+  const beginSectionFileReplacementVars: BeginSectionFileReplacementVariables = {
+    id: ..., 
+    pendingStorageObjectPath: ..., 
+    updatedBy: ..., 
+  };
+  mutation.mutate(beginSectionFileReplacementVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(beginSectionFileReplacementVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## FinalizeSectionFileReplacement
+You can execute the `FinalizeSectionFileReplacement` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useFinalizeSectionFileReplacement(options?: useDataConnectMutationOptions<FinalizeSectionFileReplacementData, FirebaseError, FinalizeSectionFileReplacementVariables>): UseDataConnectMutationResult<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useFinalizeSectionFileReplacement(dc: DataConnect, options?: useDataConnectMutationOptions<FinalizeSectionFileReplacementData, FirebaseError, FinalizeSectionFileReplacementVariables>): UseDataConnectMutationResult<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+```
+
+### Variables
+The `FinalizeSectionFileReplacement` Mutation requires an argument of type `FinalizeSectionFileReplacementVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface FinalizeSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  originalFilename: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `FinalizeSectionFileReplacement` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `FinalizeSectionFileReplacement` Mutation is of type `FinalizeSectionFileReplacementData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface FinalizeSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `FinalizeSectionFileReplacement`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, FinalizeSectionFileReplacementVariables } from '@dataconnect/generated';
+import { useFinalizeSectionFileReplacement } from '@dataconnect/generated/react'
+
+export default function FinalizeSectionFileReplacementComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useFinalizeSectionFileReplacement();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useFinalizeSectionFileReplacement(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useFinalizeSectionFileReplacement(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useFinalizeSectionFileReplacement(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useFinalizeSectionFileReplacement` Mutation requires an argument of type `FinalizeSectionFileReplacementVariables`:
+  const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
+    id: ..., 
+    pendingStorageObjectPath: ..., 
+    originalFilename: ..., 
+    objectGeneration: ..., 
+    checksumSha256: ..., 
+    contentType: ..., 
+    sizeBytes: ..., 
+    updatedBy: ..., 
+  };
+  mutation.mutate(finalizeSectionFileReplacementVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(finalizeSectionFileReplacementVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## AbortSectionFileReplacement
+You can execute the `AbortSectionFileReplacement` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAbortSectionFileReplacement(options?: useDataConnectMutationOptions<AbortSectionFileReplacementData, FirebaseError, AbortSectionFileReplacementVariables>): UseDataConnectMutationResult<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAbortSectionFileReplacement(dc: DataConnect, options?: useDataConnectMutationOptions<AbortSectionFileReplacementData, FirebaseError, AbortSectionFileReplacementVariables>): UseDataConnectMutationResult<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+```
+
+### Variables
+The `AbortSectionFileReplacement` Mutation requires an argument of type `AbortSectionFileReplacementVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AbortSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `AbortSectionFileReplacement` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AbortSectionFileReplacement` Mutation is of type `AbortSectionFileReplacementData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AbortSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AbortSectionFileReplacement`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AbortSectionFileReplacementVariables } from '@dataconnect/generated';
+import { useAbortSectionFileReplacement } from '@dataconnect/generated/react'
+
+export default function AbortSectionFileReplacementComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAbortSectionFileReplacement();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAbortSectionFileReplacement(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAbortSectionFileReplacement(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAbortSectionFileReplacement(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAbortSectionFileReplacement` Mutation requires an argument of type `AbortSectionFileReplacementVariables`:
+  const abortSectionFileReplacementVars: AbortSectionFileReplacementVariables = {
+    id: ..., 
+    pendingStorageObjectPath: ..., 
+    updatedBy: ..., 
+  };
+  mutation.mutate(abortSectionFileReplacementVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(abortSectionFileReplacementVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## BeginSectionFileDeletion
+You can execute the `BeginSectionFileDeletion` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useBeginSectionFileDeletion(options?: useDataConnectMutationOptions<BeginSectionFileDeletionData, FirebaseError, BeginSectionFileDeletionVariables>): UseDataConnectMutationResult<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useBeginSectionFileDeletion(dc: DataConnect, options?: useDataConnectMutationOptions<BeginSectionFileDeletionData, FirebaseError, BeginSectionFileDeletionVariables>): UseDataConnectMutationResult<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+```
+
+### Variables
+The `BeginSectionFileDeletion` Mutation requires an argument of type `BeginSectionFileDeletionVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface BeginSectionFileDeletionVariables {
+  id: UUIDString;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `BeginSectionFileDeletion` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `BeginSectionFileDeletion` Mutation is of type `BeginSectionFileDeletionData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface BeginSectionFileDeletionData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `BeginSectionFileDeletion`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, BeginSectionFileDeletionVariables } from '@dataconnect/generated';
+import { useBeginSectionFileDeletion } from '@dataconnect/generated/react'
+
+export default function BeginSectionFileDeletionComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useBeginSectionFileDeletion();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useBeginSectionFileDeletion(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useBeginSectionFileDeletion(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useBeginSectionFileDeletion(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useBeginSectionFileDeletion` Mutation requires an argument of type `BeginSectionFileDeletionVariables`:
+  const beginSectionFileDeletionVars: BeginSectionFileDeletionVariables = {
+    id: ..., 
+    updatedBy: ..., 
+  };
+  mutation.mutate(beginSectionFileDeletionVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(beginSectionFileDeletionVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkSectionFileDeleted
+You can execute the `MarkSectionFileDeleted` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkSectionFileDeleted(options?: useDataConnectMutationOptions<MarkSectionFileDeletedData, FirebaseError, MarkSectionFileDeletedVariables>): UseDataConnectMutationResult<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkSectionFileDeleted(dc: DataConnect, options?: useDataConnectMutationOptions<MarkSectionFileDeletedData, FirebaseError, MarkSectionFileDeletedVariables>): UseDataConnectMutationResult<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+```
+
+### Variables
+The `MarkSectionFileDeleted` Mutation requires an argument of type `MarkSectionFileDeletedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkSectionFileDeletedVariables {
+  id: UUIDString;
+  deletedAt: TimestampString;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that calling the `MarkSectionFileDeleted` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkSectionFileDeleted` Mutation is of type `MarkSectionFileDeletedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkSectionFileDeletedData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkSectionFileDeleted`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkSectionFileDeletedVariables } from '@dataconnect/generated';
+import { useMarkSectionFileDeleted } from '@dataconnect/generated/react'
+
+export default function MarkSectionFileDeletedComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkSectionFileDeleted();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkSectionFileDeleted(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkSectionFileDeleted(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkSectionFileDeleted(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkSectionFileDeleted` Mutation requires an argument of type `MarkSectionFileDeletedVariables`:
+  const markSectionFileDeletedVars: MarkSectionFileDeletedVariables = {
+    id: ..., 
+    deletedAt: ..., 
+    updatedBy: ..., 
+  };
+  mutation.mutate(markSectionFileDeletedVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., deletedAt: ..., updatedBy: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markSectionFileDeletedVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
 
 ## UpdateUserMembershipStatus
 You can execute the `UpdateUserMembershipStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
