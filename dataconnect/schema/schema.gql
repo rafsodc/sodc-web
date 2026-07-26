@@ -179,8 +179,11 @@ type SectionFile @table @unique(fields: ["storageObjectPath"]) {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # SectionFile operations are NO_ACCESS Admin SDK operations. Admin requests
+  # do not impersonate an end user, so auth.uid defaults fail before explicit
+  # mutation values are applied. Every write supplies these trusted fields.
+  createdBy: String
+  updatedBy: String
 }
 
 # UserGroup - groups of users that can be linked to sections, ticket types, etc.

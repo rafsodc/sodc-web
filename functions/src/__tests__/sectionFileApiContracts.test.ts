@@ -3,8 +3,21 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = fs.readFileSync(path.resolve(process.cwd(), "src", "sectionFiles.ts"), "utf8");
+const schema = fs.readFileSync(
+  path.resolve(process.cwd(), "..", "dataconnect", "schema", "schema.gql"),
+  "utf8",
+);
 
 describe("section file API security contracts", () => {
+  it("does not evaluate auth.uid defaults for backend-only SectionFile writes", () => {
+    const start = schema.indexOf("type SectionFile ");
+    const end = schema.indexOf("\n}", start);
+    const sectionFileType = schema.slice(start, end);
+    expect(sectionFileType).not.toContain("@default(expr: \"auth.uid\")");
+    expect(source).toContain("uploadedBy: uid");
+    expect(source).toContain("updatedBy: uid");
+  });
+
   it("returns stable application URLs built from APP_BASE_URL", () => {
     expect(source).toContain("canonicalUrl:");
     expect(source).toContain("APP_BASE_URL");
@@ -18,7 +31,7 @@ describe("section file API security contracts", () => {
   });
 
   it("cross-checks file metadata against the authorized section", () => {
-    expect(source).toContain("file.sectionId !== sectionId");
+    expect(source).toContain("validateUUID(file.sectionId, \"stored sectionId\") !== sectionId");
     expect(source).toContain("await requireSectionAccess(sectionId, uid, isAdmin)");
     expect(source).toContain("await requireSectionModerator(sectionId, uid, isAdmin)");
   });
