@@ -7,6 +7,73 @@
 # Auth Expression: @auth(level: NO_ACCESS)
 # See AUTH_EXPRESSIONS.md for complete documentation.
 
+# ── GOV.UK Notify site-wide delivery mode ───────────────────────────────────
+
+query GetGovNotifyDeliveryConfiguration @auth(level: NO_ACCESS) {
+  govNotifyDeliveryConfiguration(key: { id: "site-wide" }) {
+    mode
+    version
+    updatedAt
+    updatedBy
+  }
+}
+
+query ListGovNotifyDeliveryModeAudits($limit: Int!) @auth(level: NO_ACCESS) {
+  govNotifyDeliveryModeAudits(orderBy: { changedAt: DESC }, limit: $limit) {
+    id
+    previousMode
+    newMode
+    deploymentCeiling
+    changedBy
+    reason
+    changedAt
+  }
+}
+
+mutation CreateGovNotifyDeliveryConfiguration @auth(level: NO_ACCESS) {
+  govNotifyDeliveryConfiguration_insert(
+    data: {
+      id: "site-wide"
+      mode: SIMULATION
+      version: 1
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation ChangeGovNotifyDeliveryMode(
+  $expectedVersion: Int!
+  $previousMode: GovNotifyDeliveryMode!
+  $newMode: GovNotifyDeliveryMode!
+  $deploymentCeiling: GovNotifyDeliveryMode!
+  $changedBy: String!
+  $reason: String!
+) @auth(level: NO_ACCESS) @transaction {
+  changed: govNotifyDeliveryConfiguration_updateMany(
+    where: {
+      id: { eq: "site-wide" }
+      version: { eq: $expectedVersion }
+      mode: { eq: $previousMode }
+    }
+    data: {
+      mode: $newMode
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "DELIVERY_MODE_CONFLICT")
+
+  govNotifyDeliveryModeAudit_insert(
+    data: {
+      previousMode: $previousMode
+      newMode: $newMode
+      deploymentCeiling: $deploymentCeiling
+      changedBy: $changedBy
+      reason: $reason
+    }
+  )
+}
+
 # ── Section file storage lifecycle ───────────────────────────────────────────
 
 # The caller generates both the opaque file ID and object path. This makes it
@@ -957,6 +1024,7 @@ mutation MarkNotificationDeliverySentById(
   $providerMessageId: String
   $lastErrorCode: String
   $lastErrorMessage: String
+  $deliveryMode: GovNotifyDeliveryMode
 ) @auth(level: NO_ACCESS) {
   notificationDelivery_updateMany(
     where: {
@@ -973,6 +1041,7 @@ mutation MarkNotificationDeliverySentById(
       providerMessageId: $providerMessageId
       lastErrorCode: $lastErrorCode
       lastErrorMessage: $lastErrorMessage
+      deliveryMode: $deliveryMode
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
@@ -1402,6 +1471,34 @@ mutation CreateAnnouncementSend(
   })
 }
 
+mutation CreateAnnouncementSendWithDeliveryMode(
+  $id: UUID!
+  $sectionId: UUID!
+  $templateUuid: String!
+  $templateName: String
+  $sentBy: String!
+  $recipientCount: Int!
+  $skippedCount: Int!
+  $recipientSnapshot: String!
+  $requestedDeliveryMode: GovNotifyDeliveryMode!
+  $siteDeliveryMode: GovNotifyDeliveryMode!
+  $effectiveDeliveryMode: GovNotifyDeliveryMode!
+) @auth(level: NO_ACCESS) {
+  announcementSend_insert(data: {
+    id: $id
+    sectionId: $sectionId
+    templateUuid: $templateUuid
+    templateName: $templateName
+    sentBy: $sentBy
+    recipientCount: $recipientCount
+    skippedCount: $skippedCount
+    recipientSnapshot: $recipientSnapshot
+    requestedDeliveryMode: $requestedDeliveryMode
+    siteDeliveryMode: $siteDeliveryMode
+    effectiveDeliveryMode: $effectiveDeliveryMode
+  })
+}
+
 mutation CreateAnnouncementRecipient(
   $id: UUID!
   $announcementSendId: UUID!
@@ -1425,6 +1522,34 @@ mutation CreateAnnouncementRecipient(
     skippedReason: $skippedReason
     sentAt: $sentAt
     failureReason: $failureReason
+  })
+}
+
+mutation CreateAnnouncementRecipientWithDeliveryMode(
+  $id: UUID!
+  $announcementSendId: UUID!
+  $userId: String!
+  $email: String!
+  $firstName: String!
+  $lastName: String!
+  $status: String!
+  $skippedReason: String
+  $sentAt: Timestamp
+  $failureReason: String
+  $effectiveDeliveryMode: GovNotifyDeliveryMode!
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_insert(data: {
+    id: $id
+    announcementSendId: $announcementSendId
+    userId: $userId
+    email: $email
+    firstName: $firstName
+    lastName: $lastName
+    status: $status
+    skippedReason: $skippedReason
+    sentAt: $sentAt
+    failureReason: $failureReason
+    effectiveDeliveryMode: $effectiveDeliveryMode
   })
 }
 
@@ -1455,6 +1580,9 @@ query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
     sentAt
     recipientCount
     skippedCount
+    requestedDeliveryMode
+    siteDeliveryMode
+    effectiveDeliveryMode
   }
 }
 
@@ -1472,6 +1600,7 @@ query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
     skippedReason
     sentAt
     failureReason
+    effectiveDeliveryMode
   }
 }
 
@@ -1487,6 +1616,9 @@ query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
     recipientCount
     skippedCount
     recipientSnapshot
+    requestedDeliveryMode
+    siteDeliveryMode
+    effectiveDeliveryMode
   }
 }
 
@@ -1504,6 +1636,7 @@ query GetAnnouncementRecipientBySendAndUser($announcementSendId: UUID!, $userId:
     processingVersion
     processingStartedAt
     providerNotificationId
+    effectiveDeliveryMode
     deliveryVersion
     deliveryStatusUpdatedAt
     deliveryReceiptId

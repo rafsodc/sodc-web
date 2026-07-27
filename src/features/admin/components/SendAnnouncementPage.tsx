@@ -19,10 +19,12 @@ import { Campaign, Refresh } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import {
   getAnnouncementTemplates,
+  getAnnouncementDeliveryConfiguration,
   previewAnnouncementTemplate,
   sendSectionAnnouncement,
   type AnnouncementTemplate,
   type SendAnnouncementResult,
+  type GovNotifyDeliveryMode,
 } from "../../../shared/utils/firebaseFunctions";
 import TemplateEditor from "./TemplateEditor";
 import AnnouncementSendHistory from "./AnnouncementSendHistory";
@@ -62,6 +64,9 @@ export default function SendAnnouncementPage({
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyTrigger, setHistoryTrigger] = useState(0);
   const [templatesTrigger, setTemplatesTrigger] = useState(0);
+  const [deliveryMode, setDeliveryMode] = useState<GovNotifyDeliveryMode>("SIMULATION");
+  const [siteDeliveryMode, setSiteDeliveryMode] = useState<GovNotifyDeliveryMode | null>(null);
+  const [deliveryModeError, setDeliveryModeError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoadingTemplates(true);
@@ -71,6 +76,16 @@ export default function SendAnnouncementPage({
       .catch(() => setTemplatesError("Failed to load templates from GOV Notify"))
       .finally(() => setLoadingTemplates(false));
   }, [sectionId, templatesTrigger]);
+
+  useEffect(() => {
+    setDeliveryModeError(null);
+    getAnnouncementDeliveryConfiguration(sectionId)
+      .then(({ siteDeliveryMode: configuredMode }) => {
+        setSiteDeliveryMode(configuredMode);
+        setDeliveryMode(configuredMode === "SIMULATION" ? "SIMULATION" : configuredMode);
+      })
+      .catch(() => setDeliveryModeError("The site-wide email delivery mode is unavailable."));
+  }, [sectionId]);
 
   const handleTemplateChange = async (e: SelectChangeEvent) => {
     const id = e.target.value;
@@ -103,7 +118,13 @@ export default function SendAnnouncementPage({
       const selectedTemplate = templates.find((t) => t.id === selectedId);
       const requestId = sendRequestId ?? crypto.randomUUID();
       setSendRequestId(requestId);
-      const result = await sendSectionAnnouncement(sectionId, selectedId, requestId, selectedTemplate?.name);
+      const result = await sendSectionAnnouncement(
+        sectionId,
+        selectedId,
+        requestId,
+        selectedTemplate?.name,
+        deliveryMode,
+      );
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
     } catch {
@@ -122,12 +143,20 @@ export default function SendAnnouncementPage({
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Select a GOV Notify template named starting with <strong>BULK:</strong>. Review the preview
-        carefully before sending — this will email all active members of this section who have not
-        opted out.
+        carefully, choose a delivery mode, and confirm the selected audience before submitting.
       </Typography>
 
       {templatesError && (
         <Alert severity="error" sx={{ mb: 2 }}>{templatesError}</Alert>
+      )}
+      {deliveryModeError && (
+        <Alert severity="error" sx={{ mb: 2 }}>{deliveryModeError}</Alert>
+      )}
+      {siteDeliveryMode && siteDeliveryMode !== "LIVE" && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Site-wide email mode is <strong>{siteDeliveryMode.replace("_", " ")}</strong>.
+          No announcement can use a more permissive delivery mode.
+        </Alert>
       )}
 
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
@@ -216,14 +245,39 @@ export default function SendAnnouncementPage({
 
       {selectedId && (
         <>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="delivery-mode-select-label">Delivery mode</InputLabel>
+            <Select
+              labelId="delivery-mode-select-label"
+              label="Delivery mode"
+              value={deliveryMode}
+              onChange={(event) => {
+                setDeliveryMode(event.target.value as GovNotifyDeliveryMode);
+                setSendRequestId(null);
+                setSendResult(null);
+              }}
+            >
+              <MenuItem value="LIVE">Live — deliver to the full selected audience</MenuItem>
+              <MenuItem value="TEAM_TEST">
+                Team test — deliver only to Notify team and guest-list recipients
+              </MenuItem>
+              <MenuItem value="SIMULATION">
+                Simulation — submit every recipient using the Notify test key; deliver none
+              </MenuItem>
+            </Select>
+          </FormControl>
           {sendResult ? (
             <>
               <Alert severity={sendResult.failedToEnqueueCount > 0 ? "warning" : "success"} sx={{ mb: 2 }}>
-                {sendResult.queuedCount} email{sendResult.queuedCount !== 1 ? "s" : ""} queued for delivery.
+                {sendResult.queuedCount} email{sendResult.queuedCount !== 1 ? "s" : ""} queued
+                {sendResult.effectiveDeliveryMode === "SIMULATION"
+                  ? " for simulated provider acceptance; no email will be delivered."
+                  : " for delivery."}
                 {sendResult.failedToEnqueueCount > 0 &&
                   ` ${sendResult.failedToEnqueueCount} could not be queued and can be retried.`}
                 {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped (opted out).`}
                 {sendResult.resumed && " This send was resumed from its original recipient list."}
+                {` Effective mode: ${sendResult.effectiveDeliveryMode.replace("_", " ")}.`}
                 {" "}Check send history below to track progress.
               </Alert>
               {sendResult.failedToEnqueueCount > 0 && (
@@ -244,7 +298,7 @@ export default function SendAnnouncementPage({
                 variant="contained"
                 startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <Campaign />}
                 onClick={() => void handleSend()}
-                disabled={sending}
+                disabled={sending || !siteDeliveryMode}
               >
                 {sending ? "Sending…" : sendRequestId ? "Resume announcement send" : `Send to ${sectionName} members`}
               </Button>

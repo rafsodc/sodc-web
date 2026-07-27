@@ -2,12 +2,17 @@ import { randomUUID } from "node:crypto";
 import { NotifyClient } from "notifications-node-client";
 import * as logger from "firebase-functions/logger";
 import {
-  createAnnouncementRecipient,
+  createAnnouncementRecipientWithDeliveryMode,
   getAnnouncementRecipientBySendAndUser,
   tryUpdateAnnouncementRecipientProcessingStatus,
+  GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
 } from "@dataconnect/admin-generated";
 import { buildAnnouncementReference } from "./announcementReference";
-import { govNotifyApiKey } from "./mailer";
+import {
+  govNotifyApiKeyForMode,
+  govNotifyReferenceForMode,
+  type GovNotifyDeliveryMode,
+} from "./govNotifyDeliveryMode";
 import { sanitizeMailerError } from "./mailerErrors";
 
 // A task dispatch has a 60-second deadline. Keep the lease long enough that a
@@ -40,6 +45,7 @@ export interface AnnouncementEmailTask {
   personalisation: Record<string, string>;
   unsubscribeUrl: string;
   templateUuid: string;
+  effectiveDeliveryMode?: GovNotifyDeliveryMode;
 }
 
 interface AnnouncementRecipientProcessingRecord {
@@ -129,7 +135,7 @@ const dataConnectAnnouncementDeliveryRepository: AnnouncementDeliveryRepository 
 
   async createLegacyTaskRow(task) {
     try {
-      await createAnnouncementRecipient({
+      await createAnnouncementRecipientWithDeliveryMode({
         id: randomUUID(),
         announcementSendId: task.sendId,
         userId: task.recipientId,
@@ -140,6 +146,8 @@ const dataConnectAnnouncementDeliveryRepository: AnnouncementDeliveryRepository 
         skippedReason: null,
         sentAt: null,
         failureReason: null,
+        effectiveDeliveryMode:
+          (task.effectiveDeliveryMode ?? "LIVE") as DataConnectGovNotifyDeliveryMode,
       });
     } catch (error) {
       if (!isDuplicateKeyError(error)) throw error;
@@ -289,12 +297,17 @@ export async function processAnnouncementEmailTask(
   dependencies: ProcessAnnouncementEmailDependencies = {},
 ): Promise<void> {
   const repository = dependencies.repository ?? dataConnectAnnouncementDeliveryRepository;
-  const client = dependencies.client ?? new NotifyClient(govNotifyApiKey.value());
+  const effectiveDeliveryMode = task.effectiveDeliveryMode ?? "LIVE";
+  const client = dependencies.client ??
+    new NotifyClient(govNotifyApiKeyForMode(effectiveDeliveryMode));
   const now = (dependencies.now ?? (() => new Date().toISOString()))();
   const leaseMs = dependencies.leaseMs ?? ANNOUNCEMENT_PROCESSING_LEASE_MS;
   const reconciliationDelayMs = dependencies.reconciliationDelayMs ??
     ANNOUNCEMENT_UNKNOWN_RECONCILIATION_DELAY_MS;
-  const reference = buildAnnouncementReference(task.sendId, task.recipientId);
+  const reference = govNotifyReferenceForMode(
+    buildAnnouncementReference(task.sendId, task.recipientId),
+    effectiveDeliveryMode,
+  );
 
   let row = await repository.get(task.sendId, task.recipientId);
   if (!row) {
@@ -347,6 +360,7 @@ export async function processAnnouncementEmailTask(
       sendId: task.sendId,
       recipientId: task.recipientId,
       retryCount: context.retryCount,
+      effectiveDeliveryMode,
       error: sanitizeMailerError(error),
     });
 

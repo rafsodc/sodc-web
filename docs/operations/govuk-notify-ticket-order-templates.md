@@ -16,7 +16,7 @@ These templates send **app-owned transactional email** when a `TicketOrder` is m
 
 Env var names follow [`govNotifyTemplateEnvVarName`](../../functions/src/mailer.ts) (`GOV_NOTIFY_TEMPLATE_` + upper snake case of the template key).
 
-Also required for sends: `GOV_NOTIFY_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and `APP_BASE_URL` for checkout links (see [environment-and-secrets.md](./environment-and-secrets.md)).
+Also required for sends: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and `APP_BASE_URL` for checkout links (see [environment-and-secrets.md](./environment-and-secrets.md)).
 
 ## Placeholder format
 

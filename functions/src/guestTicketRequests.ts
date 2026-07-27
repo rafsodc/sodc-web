@@ -10,7 +10,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireAdmin, requireEnabled, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
-import { govNotifyApiKey } from "./mailer";
+import { govNotifySecrets } from "./mailer";
 import {
   notifyBookerGuestTicketRequestReviewed,
   notifyModeratorsGuestTicketRequestSubmitted,
@@ -51,7 +51,7 @@ export async function sendGuestTicketRequestReviewedEmails(args: {
 }
 
 export const submitGuestTicketRequest = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
     requireEnabled(request);
     const callerUid = request.auth!.uid;
@@ -142,7 +142,7 @@ export const submitGuestTicketRequest = onCall(
 );
 
 export const reviewGuestTicketRequest = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
     requireAdmin(request);
     await enforceRateLimit("reviewGuestTicketRequest", request.auth!.uid);

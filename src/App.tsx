@@ -38,6 +38,7 @@ const ManageSections = lazy(() => import("./features/admin/components/ManageSect
 const SectionAdminPage = lazy(() => import("./features/admin/components/SectionAdminPage"));
 const PaymentReconciliationDashboard = lazy(() => import("./features/admin/components/PaymentReconciliationDashboard"));
 const EmailTemplateSyncPage = lazy(() => import("./features/admin/components/EmailTemplateSyncPage"));
+const EmailDeliverySettingsPage = lazy(() => import("./features/admin/components/EmailDeliverySettingsPage"));
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
 const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
 const MyPayments = lazy(() => import("./features/sections/components/MyPayments"));
@@ -559,6 +560,15 @@ function AppContent() {
                     "Email Templates",
                     <Suspense fallback={<LoadingFallback />}>
                       <EmailTemplateSyncPage onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
+                  )}
+                />
+                <Route
+                  path={ROUTES.EMAIL_DELIVERY}
+                  element={renderAdminOnly(
+                    "Email Delivery",
+                    <Suspense fallback={<LoadingFallback />}>
+                      <EmailDeliverySettingsPage onBack={() => navigateBackOr(ROUTES.HOME)} />
                     </Suspense>
                   )}
                 />

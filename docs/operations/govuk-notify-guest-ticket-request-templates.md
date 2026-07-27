@@ -14,7 +14,7 @@ Emails for **additional guest ticket** moderation: notify moderators/admins when
 | `guestTicketRequestApproved` | `GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_APPROVED` |
 | `guestTicketRequestRejected` | `GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_REJECTED` |
 
-Also required: `GOV_NOTIFY_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`**.
+Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`**.
 
 ## How moderator recipients are resolved
 

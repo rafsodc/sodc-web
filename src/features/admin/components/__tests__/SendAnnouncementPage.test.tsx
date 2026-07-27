@@ -5,6 +5,7 @@ import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import SendAnnouncementPage from "../SendAnnouncementPage";
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  getAnnouncementDeliveryConfiguration: vi.fn(),
   getAnnouncementTemplates: vi.fn(),
   previewAnnouncementTemplate: vi.fn(),
   sendSectionAnnouncement: vi.fn(),
@@ -15,6 +16,9 @@ vi.mock("../AnnouncementSendHistory", () => ({ default: () => null }));
 describe("SendAnnouncementPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(firebaseFunctions.getAnnouncementDeliveryConfiguration).mockResolvedValue({
+      siteDeliveryMode: "LIVE",
+    });
     vi.mocked(firebaseFunctions.getAnnouncementTemplates).mockResolvedValue([{
       id: "template-1",
       name: "BULK: Section update",
@@ -37,6 +41,9 @@ describe("SendAnnouncementPage", () => {
         failedToEnqueueCount: 1,
         skippedCount: 2,
         resumed: false,
+        requestedDeliveryMode: "LIVE",
+        siteDeliveryMode: "LIVE",
+        effectiveDeliveryMode: "LIVE",
       })
       .mockResolvedValueOnce({
         sendId: requestId,
@@ -44,6 +51,9 @@ describe("SendAnnouncementPage", () => {
         failedToEnqueueCount: 0,
         skippedCount: 2,
         resumed: true,
+        requestedDeliveryMode: "LIVE",
+        siteDeliveryMode: "LIVE",
+        effectiveDeliveryMode: "LIVE",
       });
     const user = userEvent.setup();
 
@@ -63,6 +73,7 @@ describe("SendAnnouncementPage", () => {
       "template-1",
       requestId,
       "BULK: Section update",
+      "LIVE",
     );
     expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenNthCalledWith(
       2,
@@ -70,6 +81,21 @@ describe("SendAnnouncementPage", () => {
       "template-1",
       requestId,
       "BULK: Section update",
+      "LIVE",
     );
+  });
+
+  it("shows and honours a restrictive site-wide mode", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementDeliveryConfiguration).mockResolvedValue({
+      siteDeliveryMode: "SIMULATION",
+    });
+
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} />);
+
+    expect(await screen.findByText(/Site-wide email mode is/)).toHaveTextContent("SIMULATION");
+    const user = userEvent.setup();
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
+    expect(await screen.findByLabelText("Delivery mode")).toHaveTextContent("Simulation");
   });
 });

@@ -21,6 +21,7 @@ export const ROUTES = {
   MANAGE_SECTIONS: "/admin/sections",
   SECTION_ADMIN: "/admin/section/:sectionId",
   EMAIL_TEMPLATES: "/admin/email-templates",
+  EMAIL_DELIVERY: "/admin/email-delivery",
   REGISTER: "/register",
   PROFILE_COMPLETION: "/profile-completion",
   UNSUBSCRIBE_CONFIRMED: "/unsubscribe/confirmed",

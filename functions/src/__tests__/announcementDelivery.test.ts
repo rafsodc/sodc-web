@@ -161,7 +161,8 @@ describe("processAnnouncementEmailTask", () => {
       data: {
         notifications: [{
           id: "notify-existing",
-          reference: "announcement:00000000-0000-4000-8000-000000000001:user-1",
+          reference:
+            "announcement:00000000-0000-4000-8000-000000000001:user-1:notify-live",
         }],
       },
     });

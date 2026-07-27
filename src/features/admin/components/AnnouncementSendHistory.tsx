@@ -29,14 +29,20 @@ interface Props {
   refreshTrigger?: number;
 }
 
-function statusChip(status: AnnouncementRecipient["status"]) {
+function statusChip(
+  status: AnnouncementRecipient["status"],
+  mode: AnnouncementRecipient["effectiveDeliveryMode"],
+) {
   if (status === "queued") return <Chip label="Queued" size="small" variant="outlined" />;
   if (status === "sending") return <Chip label="Sending" color="info" size="small" />;
   if (status === "retrying") return <Chip label="Retrying" color="warning" size="small" />;
   if (status === "delivery_unknown") return <Chip label="Checking delivery" color="warning" size="small" />;
   if (status === "enqueue_failed") return <Chip label="Queue failed" color="error" size="small" />;
   if (status === "delivered") return <Chip label="Delivered" color="success" size="small" />;
-  if (status === "sent") return <Chip label="Sent" color="success" size="small" variant="outlined" />;
+  if (status === "sent" && mode === "SIMULATION") {
+    return <Chip label="Simulated acceptance" color="info" size="small" variant="outlined" />;
+  }
+  if (status === "sent") return <Chip label="Accepted" color="success" size="small" variant="outlined" />;
   if (status === "bounced") return <Chip label="Bounced" color="error" size="small" />;
   if (status === "skipped") return <Chip label="Skipped" size="small" />;
   return <Chip label="Failed" color="error" size="small" />;
@@ -97,6 +103,14 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
             {send.templateName ?? send.templateUuid}
           </Typography>
         </TableCell>
+        <TableCell>
+          <Chip
+            label={send.effectiveDeliveryMode.replace("_", " ")}
+            size="small"
+            color={send.effectiveDeliveryMode === "LIVE" ? "error" : "warning"}
+            variant={send.effectiveDeliveryMode === "SIMULATION" ? "outlined" : "filled"}
+          />
+        </TableCell>
         <TableCell align="right">
           {send.processedCount < send.recipientCount ? (
             <Tooltip title={`${send.processedCount} of ${send.recipientCount} processed`}>
@@ -125,7 +139,7 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={6} sx={{ py: 0 }}>
+        <TableCell colSpan={7} sx={{ py: 0 }}>
           <Collapse in={open} unmountOnExit>
             <Box sx={{ px: 2, py: 1 }}>
               {loading && <CircularProgress size={20} sx={{ my: 1 }} />}
@@ -142,6 +156,7 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
                       <TableCell>Name</TableCell>
                       <TableCell>Email</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell>Mode</TableCell>
                       <TableCell>Detail</TableCell>
                     </TableRow>
                   </TableHead>
@@ -150,7 +165,8 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
                       <TableRow key={r.id}>
                         <TableCell>{r.firstName} {r.lastName}</TableCell>
                         <TableCell>{r.email}</TableCell>
-                        <TableCell>{statusChip(r.status)}</TableCell>
+                        <TableCell>{statusChip(r.status, r.effectiveDeliveryMode)}</TableCell>
+                        <TableCell>{r.effectiveDeliveryMode.replace("_", " ")}</TableCell>
                         <TableCell>
                           <Typography variant="caption" color="text.secondary">
                             {r.skippedReason ?? r.failureReason ?? ""}
@@ -210,6 +226,7 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
               <TableCell sx={{ width: 40 }} />
               <TableCell>Date</TableCell>
               <TableCell>Template</TableCell>
+              <TableCell>Mode</TableCell>
               <TableCell align="right">Sent</TableCell>
               <TableCell align="right">Skipped</TableCell>
               <TableCell align="right">Attention</TableCell>

@@ -13,7 +13,7 @@ User-facing email when **membership status** changes in ways that affect app acc
 | `membershipActivated` | `GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACTIVATED` |
 | `membershipAccessRestricted` | `GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACCESS_RESTRICTED` |
 
-Also required: `GOV_NOTIFY_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`** for links (see [environment-and-secrets.md](./environment-and-secrets.md)).
+Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`** for links (see [environment-and-secrets.md](./environment-and-secrets.md)).
 
 ## Triggers
 

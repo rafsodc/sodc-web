@@ -36,6 +36,18 @@ export interface AnnouncementTemplate {
   requiredPersonalisation: string[];
 }
 
+export type GovNotifyDeliveryMode = "SIMULATION" | "TEAM_TEST" | "LIVE";
+
+export async function getAnnouncementDeliveryConfiguration(
+  sectionId: string
+): Promise<{ siteDeliveryMode: GovNotifyDeliveryMode }> {
+  const callable = httpsCallable<
+    { sectionId: string },
+    { siteDeliveryMode: GovNotifyDeliveryMode }
+  >(functions, "getAnnouncementDeliveryConfiguration");
+  return (await callable({ sectionId })).data;
+}
+
 export async function getAnnouncementTemplates(
   sectionId: string
 ): Promise<AnnouncementTemplate[]> {
@@ -65,19 +77,35 @@ export interface SendAnnouncementResult {
   failedToEnqueueCount: number;
   skippedCount: number;
   resumed: boolean;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export async function sendSectionAnnouncement(
   sectionId: string,
   templateUuid: string,
   requestId: string,
-  templateName?: string
+  templateName: string | undefined,
+  deliveryMode: GovNotifyDeliveryMode
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
-    { sectionId: string; templateUuid: string; requestId: string; templateName?: string },
+    {
+      sectionId: string;
+      templateUuid: string;
+      requestId: string;
+      templateName?: string;
+      deliveryMode: GovNotifyDeliveryMode;
+    },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
-  const result = await callable({ sectionId, templateUuid, requestId, templateName });
+  const result = await callable({
+    sectionId,
+    templateUuid,
+    requestId,
+    templateName,
+    deliveryMode,
+  });
   return result.data;
 }
 
@@ -92,6 +120,9 @@ export interface AnnouncementSend {
   skippedCount: number;
   processedCount: number;
   failureCount: number;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export type AnnouncementRecipientStatus =
@@ -117,6 +148,7 @@ export interface AnnouncementRecipient {
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export async function getAnnouncementSendHistory(

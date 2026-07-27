@@ -81,6 +81,33 @@ enum NotificationDeliveryStatus {
   FAILED
 }
 
+enum GovNotifyDeliveryMode {
+  SIMULATION
+  TEAM_TEST
+  LIVE
+}
+
+# Singleton runtime safety control for all GOV.UK Notify email delivery. The
+# deployment environment setting remains an upper ceiling on this value.
+type GovNotifyDeliveryConfiguration @table {
+  id: String!
+  mode: GovNotifyDeliveryMode! @default(value: SIMULATION)
+  version: Int! @default(value: 1)
+  updatedAt: Timestamp! @default(expr: "request.time")
+  updatedBy: String
+}
+
+# Immutable audit trail for changes to the site-wide email delivery mode.
+type GovNotifyDeliveryModeAudit @table {
+  id: UUID! @default(expr: "uuidV4()")
+  previousMode: GovNotifyDeliveryMode!
+  newMode: GovNotifyDeliveryMode!
+  deploymentCeiling: GovNotifyDeliveryMode!
+  changedBy: String!
+  reason: String!
+  changedAt: Timestamp! @default(expr: "request.time")
+}
+
 enum NotifyDeliveryReceiptProcessingStatus {
   PENDING
   PROCESSED
@@ -418,6 +445,7 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   user: User
   provider: String
   providerMessageId: String
+  deliveryMode: GovNotifyDeliveryMode
   attemptCount: Int! @default(value: 1)
   lastAttemptedAt: Timestamp
   sentAt: Timestamp
@@ -440,6 +468,9 @@ type AnnouncementSend @table {
   sentAt: Timestamp! @default(expr: "request.time")
   recipientCount: Int!
   skippedCount: Int!
+  requestedDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
+  siteDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
+  effectiveDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
   # Immutable versioned snapshot used to resume a partially-enqueued send without
   # re-resolving an audience that may have changed since the moderator clicked send.
   recipientSnapshot: String
@@ -462,6 +493,7 @@ type AnnouncementRecipient @table @unique(fields: ["announcementSend", "userId"]
   processingVersion: Int! @default(value: 0)
   processingStartedAt: Timestamp
   providerNotificationId: String
+  effectiveDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
   # Latest GOV.UK Notify receipt applied to this recipient. The version supports
   # compare-and-swap updates when callbacks arrive concurrently or out of order.
   deliveryVersion: Int! @default(value: 0)
