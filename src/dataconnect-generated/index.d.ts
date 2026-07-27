@@ -124,6 +124,15 @@ export enum TicketOrderStatus {
 
 
 
+export interface AbandonPendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbandonPendingSectionFileVariables {
+  id: UUIDString;
+  updatedBefore: TimestampString;
+}
+
 export interface AbortSectionFileReplacementData {
   sectionFile_updateMany: number;
 }
@@ -2252,6 +2261,19 @@ export interface ListSectionFilesByStatusVariables {
   limit: number;
 }
 
+export interface ListSectionFilesForQuotaData {
+  sectionFiles: ({
+    id: UUIDString;
+    sizeBytes: number;
+    status: SectionFileStatus;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesForQuotaVariables {
+  sectionId: UUIDString;
+  limit: number;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -2308,6 +2330,22 @@ export interface ListStalePendingTicketOrdersForSchedulerData {
 
 export interface ListStalePendingTicketOrdersForSchedulerVariables {
   createdBefore: TimestampString;
+  limit: number;
+}
+
+export interface ListStaleSectionFilesData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    status: SectionFileStatus;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListStaleSectionFilesVariables {
+  updatedBefore: TimestampString;
   limit: number;
 }
 
@@ -2542,6 +2580,19 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastErrorMessage: string;
 }
 
+export interface RecordSectionFileAuditData {
+  sectionFileAudit_insert: SectionFileAudit_Key;
+}
+
+export interface RecordSectionFileAuditVariables {
+  sectionId: UUIDString;
+  fileId?: UUIDString | null;
+  actorUid: string;
+  action: string;
+  outcome: string;
+  detail?: string | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -2590,6 +2641,11 @@ export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
   __typename?: 'SectionAnnouncementOptOut_Key';
+}
+
+export interface SectionFileAudit_Key {
+  id: UUIDString;
+  __typename?: 'SectionFileAudit_Key';
 }
 
 export interface SectionFile_Key {
@@ -2995,6 +3051,54 @@ export const listSectionFilesByStatusRef: ListSectionFilesByStatusRef;
 
 export function listSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
 export function listSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+
+interface ListStaleSectionFilesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStaleSectionFilesVariables): QueryRef<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListStaleSectionFilesVariables): QueryRef<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+  operationName: string;
+}
+export const listStaleSectionFilesRef: ListStaleSectionFilesRef;
+
+export function listStaleSectionFiles(vars: ListStaleSectionFilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+export function listStaleSectionFiles(dc: DataConnect, vars: ListStaleSectionFilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+
+interface ListSectionFilesForQuotaRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListSectionFilesForQuotaVariables): QueryRef<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListSectionFilesForQuotaVariables): QueryRef<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+  operationName: string;
+}
+export const listSectionFilesForQuotaRef: ListSectionFilesForQuotaRef;
+
+export function listSectionFilesForQuota(vars: ListSectionFilesForQuotaVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+export function listSectionFilesForQuota(dc: DataConnect, vars: ListSectionFilesForQuotaVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+
+interface RecordSectionFileAuditRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordSectionFileAuditVariables): MutationRef<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RecordSectionFileAuditVariables): MutationRef<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+  operationName: string;
+}
+export const recordSectionFileAuditRef: RecordSectionFileAuditRef;
+
+export function recordSectionFileAudit(vars: RecordSectionFileAuditVariables): MutationPromise<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+export function recordSectionFileAudit(dc: DataConnect, vars: RecordSectionFileAuditVariables): MutationPromise<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+
+interface AbandonPendingSectionFileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AbandonPendingSectionFileVariables): MutationRef<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AbandonPendingSectionFileVariables): MutationRef<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+  operationName: string;
+}
+export const abandonPendingSectionFileRef: AbandonPendingSectionFileRef;
+
+export function abandonPendingSectionFile(vars: AbandonPendingSectionFileVariables): MutationPromise<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+export function abandonPendingSectionFile(dc: DataConnect, vars: AbandonPendingSectionFileVariables): MutationPromise<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
 
 interface FinalizePendingSectionFileRef {
   /* Allow users to create refs without passing in DataConnect */

@@ -105,6 +105,15 @@ export enum TicketOrderStatus {
   REFUNDED = "REFUNDED",
 }
 
+export interface AbandonPendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbandonPendingSectionFileVariables {
+  id: UUIDString;
+  updatedBefore: TimestampString;
+}
+
 export interface AbortSectionFileReplacementData {
   sectionFile_updateMany: number;
 }
@@ -2233,6 +2242,19 @@ export interface ListSectionFilesByStatusVariables {
   limit: number;
 }
 
+export interface ListSectionFilesForQuotaData {
+  sectionFiles: ({
+    id: UUIDString;
+    sizeBytes: number;
+    status: SectionFileStatus;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesForQuotaVariables {
+  sectionId: UUIDString;
+  limit: number;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -2289,6 +2311,22 @@ export interface ListStalePendingTicketOrdersForSchedulerData {
 
 export interface ListStalePendingTicketOrdersForSchedulerVariables {
   createdBefore: TimestampString;
+  limit: number;
+}
+
+export interface ListStaleSectionFilesData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    status: SectionFileStatus;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListStaleSectionFilesVariables {
+  updatedBefore: TimestampString;
   limit: number;
 }
 
@@ -2523,6 +2561,19 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastErrorMessage: string;
 }
 
+export interface RecordSectionFileAuditData {
+  sectionFileAudit_insert: SectionFileAudit_Key;
+}
+
+export interface RecordSectionFileAuditVariables {
+  sectionId: UUIDString;
+  fileId?: UUIDString | null;
+  actorUid: string;
+  action: string;
+  outcome: string;
+  detail?: string | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -2571,6 +2622,11 @@ export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
   __typename?: 'SectionAnnouncementOptOut_Key';
+}
+
+export interface SectionFileAudit_Key {
+  id: UUIDString;
+  __typename?: 'SectionFileAudit_Key';
 }
 
 export interface SectionFile_Key {
@@ -2927,6 +2983,26 @@ export function getSectionFileById(vars: GetSectionFileByIdVariables, options?: 
 export function listSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesByStatusData>>;
 /** Generated Node Admin SDK operation action function for the 'ListSectionFilesByStatus' Query. Allow users to pass in custom DataConnect instances. */
 export function listSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesByStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListStaleSectionFiles' Query. Allow users to execute without passing in DataConnect. */
+export function listStaleSectionFiles(dc: DataConnect, vars: ListStaleSectionFilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStaleSectionFilesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListStaleSectionFiles' Query. Allow users to pass in custom DataConnect instances. */
+export function listStaleSectionFiles(vars: ListStaleSectionFilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStaleSectionFilesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesForQuota' Query. Allow users to execute without passing in DataConnect. */
+export function listSectionFilesForQuota(dc: DataConnect, vars: ListSectionFilesForQuotaVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesForQuotaData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesForQuota' Query. Allow users to pass in custom DataConnect instances. */
+export function listSectionFilesForQuota(vars: ListSectionFilesForQuotaVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesForQuotaData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RecordSectionFileAudit' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordSectionFileAudit(dc: DataConnect, vars: RecordSectionFileAuditVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordSectionFileAuditData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordSectionFileAudit' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordSectionFileAudit(vars: RecordSectionFileAuditVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordSectionFileAuditData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AbandonPendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
+export function abandonPendingSectionFile(dc: DataConnect, vars: AbandonPendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbandonPendingSectionFileData>>;
+/** Generated Node Admin SDK operation action function for the 'AbandonPendingSectionFile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function abandonPendingSectionFile(vars: AbandonPendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbandonPendingSectionFileData>>;
 
 /** Generated Node Admin SDK operation action function for the 'FinalizePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
 export function finalizePendingSectionFile(dc: DataConnect, vars: FinalizePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizePendingSectionFileData>>;

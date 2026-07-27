@@ -306,3 +306,156 @@ current design does not promise user-facing undelete. Database backups do not
 contain object bytes, so backup/recovery requirements for restricted files
 must be approved before production; #432 owns the final quota, alert,
 reconciliation, malware-scanning, incident, and recovery sign-off.
+
+## Malware scanning policy
+
+Beta and Production require malware scanning before a newly uploaded or
+replacement object becomes available. A missing scanner, timeout, stale
+definitions, inconclusive result, or internal error fails closed: the candidate
+object remains private and the current clean object (for a replacement) remains
+authoritative.
+
+Use an authenticated ClamAV service on Cloud Run in `europe-west2` with:
+
+```text
+CPU:                 1 vCPU
+Memory:              4 GiB
+Billing:             request-based
+Minimum instances:   0
+Maximum instances:   1
+Unauthenticated:      disabled
+```
+
+Scaling to zero is intentional for this workload. It removes the material idle
+cost of a continuously warm ClamAV instance; the accepted trade-off is that the
+first scan after inactivity can take 30–120 seconds while the service starts
+and loads its definitions. The application must show a scanning state and must
+not issue a member download grant during that interval.
+
+The scanner operates on the exact immutable object generation recorded during
+upload validation. A result for any other bucket, path, generation, checksum,
+section, or file ID is ignored. Clean candidates are promoted by the trusted
+backend. Infected candidates are quarantined and never exposed. Scan errors are
+retried with a bounded policy and then require operator attention.
+
+ClamAV definitions are mirrored in private Cloud Storage and refreshed every
+two hours by Cloud Scheduler. Do not have every cold-started instance download
+the full database from ClamAV's public CDN; the CDN is rate-limited. Alert when
+the mirror or loaded definitions exceed the agreed maximum age.
+
+Dev may use an explicit mock-scanner configuration to exercise clean,
+infected, timeout, and error states. That configuration must be rejected when
+the Firebase project/environment is Beta or Production. EICAR is the required
+non-malicious detection smoke test; never upload real malware.
+
+Functions configuration:
+
+```dotenv
+SECTION_FILE_MALWARE_SCAN_MODE=REQUIRED
+SECTION_FILE_MALWARE_SCANNER_URL=https://SCANNER_SERVICE_URL
+```
+
+The Functions runtime service account must have `roles/run.invoker` on the
+scanner service. The scanner service account needs only
+`roles/storage.objectViewer` on `SECTION_FILES_BUCKET`; it cannot promote,
+replace, or delete objects.
+
+## Quotas and reconciliation
+
+The trusted backend enforces a maximum of 25 MiB per file, 200 active files per
+section, and 500 MiB of authoritative metadata allocation per section. A
+replacement is charged only for growth over the current file size. These limits
+are intentionally below infrastructure limits and must be reviewed before they
+are increased.
+
+`reconcileSectionFiles` runs every 30 minutes with one instance. After two
+hours it:
+
+- deletes and tombstones abandoned pending uploads;
+- removes a stale replacement candidate and restores the existing clean file;
+- completes stuck deletion object cleanup and tombstones the metadata.
+
+Each repair writes a `SectionFileAudit` row. Failures are logged and retained
+for the next run. Final-object orphan detection is report-only until an
+operator confirms that an object is not referenced by a current backup or an
+in-flight database deployment; never automatically delete a restricted final
+object solely because a single reconciliation query cannot find it.
+
+## Scanner deployment
+
+Build `services/section-file-malware-scanner` into Artifact Registry. Create
+separate scanner and definitions-updater service accounts, plus a private
+regional definitions bucket. The scanner receives
+`roles/storage.objectViewer` on the section-file and definitions buckets. The
+updater receives `roles/storage.objectAdmin` only on the definitions bucket.
+
+Seed and refresh definitions with the same image as a Cloud Run Job:
+
+```sh
+gcloud run jobs deploy section-file-clamav-definitions \
+  --project="${FIREBASE_PROJECT}" \
+  --region=europe-west2 \
+  --image="${SCANNER_IMAGE}" \
+  --service-account="${DEFINITIONS_UPDATER_SERVICE_ACCOUNT}" \
+  --command=/app/update-definitions.sh \
+  --memory=1Gi --cpu=1 --task-timeout=10m --max-retries=2 \
+  --add-volume="name=definitions,type=cloud-storage,bucket=${DEFINITIONS_BUCKET},mount-options=uid=1000;gid=1000" \
+  --add-volume-mount="volume=definitions,mount-path=/var/lib/clamav"
+
+gcloud run jobs execute section-file-clamav-definitions \
+  --project="${FIREBASE_PROJECT}" \
+  --region=europe-west2 \
+  --wait
+```
+
+Deploy the scanner with the seeded definitions bucket mounted read-only:
+
+```sh
+gcloud run deploy section-file-malware-scanner \
+  --project="${FIREBASE_PROJECT}" \
+  --region=europe-west2 \
+  --image="${SCANNER_IMAGE}" \
+  --service-account="${SCANNER_SERVICE_ACCOUNT}" \
+  --no-allow-unauthenticated \
+  --cpu=1 --memory=4Gi --concurrency=1 --min=0 --max=1 --timeout=240 \
+  --set-env-vars="SCANNER_SOURCE_BUCKET=${SECTION_FILES_BUCKET_NAME}" \
+  --add-volume="mount-path=/var/lib/clamav,type=cloud-storage,bucket=${DEFINITIONS_BUCKET},readonly=true"
+```
+
+Grant the deployed Functions runtime identity `roles/run.invoker` on this
+service. Schedule the definitions job every two hours. Record the scheduler
+identity, latest successful refresh and alert owner in the private environment
+record.
+
+## Rollback and incident response
+
+If scanning is unhealthy, leave scanning required and keep candidate objects
+private. Restore the previous known-good Cloud Run revision or image digest,
+refresh definitions, and retry finalization. Do not weaken Storage rules,
+public-access prevention or IAM during rollback. Deploy additive Data Connect
+changes before Functions; never roll back the schema first.
+
+For suspected malware, record only the audit ID, section/file identifiers,
+object generation, scanner revision and definitions version. Never paste a
+signed URL into a ticket or download the object to an unmanaged workstation.
+
+## Dev and Beta smoke-test sign-off
+
+Record tester, date, commit, domain, scanner revision and outcome:
+
+- [ ] Signed-out canonical link returns through sign-in to the same file.
+- [ ] Upload displays upload, verification and scanning stages.
+- [ ] EICAR is rejected and never appears in the member list.
+- [ ] Clean PDF and Office samples become downloadable.
+- [ ] Failed or infected replacement leaves the old clean file unchanged.
+- [ ] Revoked access and disabled administrators cannot use existing links.
+- [ ] Cross-section ID substitution returns a non-enumerating failure.
+- [ ] Direct Firebase SDK and public object URL access remain denied.
+- [ ] Expired upload/download grants fail.
+- [ ] Stale pending, replacement and deletion fixtures are reconciled.
+- [ ] Custom-domain canonical URLs and sign-in continuation are correct.
+- [ ] Audits contain actor, section, file, action, outcome and timestamp, but
+  no signed URL or content.
+
+Production requires recorded Dev and Beta sign-off and deployment in this
+order: Data Connect → Functions → Hosting.

@@ -187,6 +187,34 @@ function listSectionFilesByStatus(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.listSectionFilesByStatus = listSectionFilesByStatus;
 
+function listStaleSectionFiles(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStaleSectionFiles', inputVars, inputOpts);
+}
+exports.listStaleSectionFiles = listStaleSectionFiles;
+
+function listSectionFilesForQuota(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSectionFilesForQuota', inputVars, inputOpts);
+}
+exports.listSectionFilesForQuota = listSectionFilesForQuota;
+
+function recordSectionFileAudit(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordSectionFileAudit', inputVars, inputOpts);
+}
+exports.recordSectionFileAudit = recordSectionFileAudit;
+
+function abandonPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AbandonPendingSectionFile', inputVars, inputOpts);
+}
+exports.abandonPendingSectionFile = abandonPendingSectionFile;
+
 function finalizePendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

@@ -165,6 +165,79 @@ query ListSectionFilesByStatus(
   }
 }
 
+query ListStaleSectionFiles(
+  $updatedBefore: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  sectionFiles(
+    where: {
+      status: { in: [PENDING, REPLACING, DELETING] }
+      updatedAt: { lt: $updatedBefore }
+    }
+    orderBy: { updatedAt: ASC }
+    limit: $limit
+  ) {
+    id
+    sectionId
+    storageObjectPath
+    pendingStorageObjectPath
+    status
+    updatedAt
+  }
+}
+
+query ListSectionFilesForQuota($sectionId: UUID!, $limit: Int!) @auth(level: NO_ACCESS) {
+  sectionFiles(
+    where: {
+      sectionId: { eq: $sectionId }
+      status: { in: [PENDING, AVAILABLE, REPLACING, DELETING] }
+    }
+    limit: $limit
+  ) {
+    id
+    sizeBytes
+    status
+  }
+}
+
+mutation RecordSectionFileAudit(
+  $sectionId: UUID!
+  $fileId: UUID
+  $actorUid: String!
+  $action: String!
+  $outcome: String!
+  $detail: String
+) @auth(level: NO_ACCESS) {
+  sectionFileAudit_insert(data: {
+    sectionId: $sectionId
+    fileId: $fileId
+    actorUid: $actorUid
+    action: $action
+    outcome: $outcome
+    detail: $detail
+  })
+}
+
+mutation AbandonPendingSectionFile(
+  $id: UUID!
+  $updatedBefore: Timestamp!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      updatedAt: { lt: $updatedBefore }
+    }
+    data: {
+      pendingStorageObjectPath: null
+      status: DELETED
+      deletedAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "section-file-reconciliation"
+    }
+  )
+}
+
 # Compare-and-swap finalization prevents a stale upload from promoting metadata
 # after a replacement or deletion transition has started.
 mutation FinalizePendingSectionFile(

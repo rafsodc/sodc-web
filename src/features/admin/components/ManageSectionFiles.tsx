@@ -130,7 +130,7 @@ export default function ManageSectionFiles({
         sectionId,
         selectedFile,
         { displayName: displayName.trim(), description: description.trim() || null },
-        (value) => setStage(value === "uploading" ? "Uploading file…" : "Verifying file…"),
+        (value) => setStage(value === "uploading" ? "Uploading file…" : "Verifying and scanning file…"),
       );
       setSelectedFile(null);
       setDisplayName("");
@@ -157,7 +157,9 @@ export default function ManageSectionFiles({
         sectionId,
         target.id,
         file,
-        (value) => setStage(value === "uploading" ? "Uploading replacement…" : "Verifying replacement…"),
+        (value) => setStage(value === "uploading"
+          ? "Uploading replacement…"
+          : "Verifying and scanning replacement…"),
       ),
       "File replaced.",
     );

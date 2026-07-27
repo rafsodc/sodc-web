@@ -65,6 +65,39 @@ describe("section file storage foundation", () => {
     );
   });
 
+  it("defines immutable audits, enforceable quotas, and stale-state reconciliation", () => {
+    const schema = readRepoFile("dataconnect/schema/schema.gql");
+    const operations = readRepoFile("dataconnect/api/admin-mutations.gql");
+    const api = readRepoFile("functions/src/sectionFiles.ts");
+    const reconciliation = readRepoFile("functions/src/sectionFileReconciliation.ts");
+
+    expect(schema).toContain("type SectionFileAudit @table");
+    expect(extractOperationBlock(operations, "RecordSectionFileAudit")).toContain(
+      "@auth(level: NO_ACCESS)",
+    );
+    expect(extractOperationBlock(operations, "AbandonPendingSectionFile")).toContain(
+      "updatedAt: { lt: $updatedBefore }",
+    );
+    expect(api).toContain("MAX_SECTION_FILE_COUNT = 200");
+    expect(api).toContain("MAX_SECTION_FILE_TOTAL_BYTES = 500 * 1024 * 1024");
+    expect(api).toContain("await enforceSectionQuota(");
+    expect(api).toContain("await recordSectionFileAudit(");
+    expect(reconciliation).toContain("schedule: \"every 30 minutes\"");
+    expect(reconciliation).toContain("maxInstances: 1");
+    expect(reconciliation).toContain("SectionFileStatus.PENDING");
+    expect(reconciliation).toContain("SectionFileStatus.REPLACING");
+    expect(reconciliation).toContain("SectionFileStatus.DELETING");
+  });
+
+  it("documents fail-closed scale-to-zero scanning and release sign-off", () => {
+    const docs = readRepoFile("docs/operations/section-file-storage.md");
+    expect(docs).toContain("--no-allow-unauthenticated");
+    expect(docs).toContain("--min=0");
+    expect(docs).toContain("roles/run.invoker");
+    expect(docs).toContain("EICAR");
+    expect(docs).toContain("Data Connect → Functions → Hosting");
+  });
+
   it("denies Firebase client access and expires only temporary uploads", () => {
     const rules = readRepoFile("storage.rules");
     const lifecycle = JSON.parse(

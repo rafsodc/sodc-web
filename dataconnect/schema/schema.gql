@@ -213,6 +213,19 @@ type SectionFile @table @unique(fields: ["storageObjectPath"]) {
   updatedBy: String
 }
 
+# Immutable security/operations audit trail. Details must contain identifiers
+# and sanitized error categories only—never file contents or signed URLs.
+type SectionFileAudit @table {
+  id: UUID! @default(expr: "uuidV4()")
+  sectionId: UUID!
+  fileId: UUID
+  actorUid: String!
+  action: String!
+  outcome: String!
+  detail: String
+  occurredAt: Timestamp! @default(expr: "request.time")
+}
+
 # UserGroup - groups of users that can be linked to sections, ticket types, etc.
 # Can include both individual users (via UserUserGroup) and membership statuses (automatically includes all users with those statuses)
 type UserGroup @table {

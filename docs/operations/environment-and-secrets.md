@@ -38,6 +38,8 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `UNSUBSCRIBE_SECRET` | Firebase secret | Signed announcement unsubscribe links | yes when announcements are enabled |
 | `NOTIFY_CALLBACK_BEARER_TOKEN` | Firebase secret | Authenticates GOV.UK Notify delivery callbacks | yes when delivery callbacks are enabled |
 | `SECTION_FILES_BUCKET` | env var | Private GCS bucket used by the section-file backend | required when section files are enabled |
+| `SECTION_FILE_MALWARE_SCAN_MODE` | env var | `REQUIRED`; emulator-only tests may use `MOCK_CLEAN` or `MOCK_INFECTED` when `FUNCTIONS_EMULATOR=true` | required when section files are enabled |
+| `SECTION_FILE_MALWARE_SCANNER_URL` | env var | HTTPS URL of the authenticated scale-to-zero Cloud Run scanner | required when scan mode is `REQUIRED` |
 | `APP_BASE_URL` | env var | Checkout success/cancel URLs and internal ops email links | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
