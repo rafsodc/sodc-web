@@ -31,7 +31,7 @@ import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
-import { govNotifyApiKey } from "./mailer";
+import { govNotifySecrets } from "./mailer";
 import {
   notifyBookingConfirmationEmail,
   notifyBookingRevisionEmail,
@@ -155,7 +155,7 @@ function isDuplicateKeyError(err: unknown): boolean {
  * Validates booking policy and persists lines as a single SUBMITTED booking for the event.
  * Requires `idempotencyKey` (UUID) per submit attempt; enforced in DB via (event, booker, key) uniqueness.
  */
-export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] }, async (request) => {
+export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
   await enforceRateLimit("submitEventBooking", uid);

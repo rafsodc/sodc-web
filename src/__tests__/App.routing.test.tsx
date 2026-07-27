@@ -241,6 +241,10 @@ vi.mock("../features/admin/components/AuditLogs", () => ({
   default: () => <h1>Audit Logs Page</h1>,
 }));
 
+vi.mock("../features/admin/components/EmailDeliverySettingsPage", () => ({
+  default: () => <h1>Email Delivery Page</h1>,
+}));
+
 vi.mock("../features/admin/components/ManageSections", () => ({
   default: () => <h1>Manage Sections Page</h1>,
 }));
@@ -493,6 +497,7 @@ describe("App routing", () => {
     [ROUTES.APPROVE_USERS, "Approvals Page"],
     [ROUTES.USER_GROUPS, "User Groups Page"],
     [ROUTES.AUDIT_LOGS, "Audit Logs Page"],
+    [ROUTES.EMAIL_DELIVERY, "Email Delivery Page"],
     [ROUTES.MANAGE_SECTIONS, "Manage Sections Page"],
   ])("renders %s for admin deep links", async (route, heading) => {
     signInEnabledUser({ admin: true });

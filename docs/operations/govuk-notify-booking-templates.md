@@ -13,7 +13,7 @@ User-facing email after a successful **`submitEventBooking`** callable. Implemen
 | `bookingConfirmation` | `GOV_NOTIFY_TEMPLATE_BOOKING_CONFIRMATION` |
 | `bookingRevision` | `GOV_NOTIFY_TEMPLATE_BOOKING_REVISION` |
 
-Also required: `GOV_NOTIFY_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`**.
+Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`**.
 
 ## Triggers
 

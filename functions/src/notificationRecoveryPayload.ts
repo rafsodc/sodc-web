@@ -6,6 +6,10 @@ import {
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import {
+  GOV_NOTIFY_DELIVERY_MODES,
+  type GovNotifyDeliveryMode,
+} from "./govNotifyDeliveryMode";
+import {
   NON_RESTRICTED_STATUSES,
   RESTRICTED_STATUSES,
   type MembershipStatus,
@@ -16,6 +20,7 @@ const MAX_RECOVERY_PAYLOAD_LENGTH = 8_000;
 
 interface VersionedRecoveryPayload {
   version: typeof NOTIFICATION_RECOVERY_PAYLOAD_VERSION;
+  deliveryMode?: GovNotifyDeliveryMode;
 }
 
 export type NotificationRecoveryPayload =
@@ -184,7 +189,12 @@ export function parseNotificationRecoveryPayload(
   if (payload.version !== NOTIFICATION_RECOVERY_PAYLOAD_VERSION) {
     throw new NotificationRecoveryPayloadError("Recovery payload version is unsupported");
   }
-  const base = { version: NOTIFICATION_RECOVERY_PAYLOAD_VERSION };
+  const base = {
+    version: NOTIFICATION_RECOVERY_PAYLOAD_VERSION,
+    deliveryMode: payload.deliveryMode === undefined
+      ? undefined
+      : enumValue(payload.deliveryMode, GOV_NOTIFY_DELIVERY_MODES, "deliveryMode"),
+  };
   const kind = string(payload.kind, "kind");
 
   switch (kind) {

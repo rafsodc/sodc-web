@@ -3,6 +3,7 @@ import { NotificationChannel, TicketOrderStatus } from "@dataconnect/admin-gener
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { sanitizeMailerError } from "./mailerErrors";
 import { sendNotificationOnce, type NotificationSendResult } from "./notificationDelivery";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export type PaymentLifecycleNotificationType =
   | "PAYMENT_PAID"
@@ -21,9 +22,13 @@ export interface PaymentLifecycleNotification {
 export interface EmitPaymentLifecycleNotificationExtras {
   userId?: string | null;
   provider?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode;
 }
 
-type NotificationDispatcher = (notification: PaymentLifecycleNotification) => Promise<NotificationSendResult | void>;
+type NotificationDispatcher = (
+  notification: PaymentLifecycleNotification,
+  deliveryMode?: GovNotifyDeliveryMode,
+) => Promise<NotificationSendResult | void>;
 type NotificationSender = typeof sendNotificationOnce;
 
 async function defaultDispatcher(notification: PaymentLifecycleNotification): Promise<void> {
@@ -48,6 +53,7 @@ export async function emitPaymentLifecycleNotification(
       ticketOrderId: notification.orderId,
       userId: extras?.userId ?? null,
       provider: extras?.provider ?? null,
+      deliveryMode: extras?.deliveryMode,
       recoveryPayload: {
         version: 1,
         kind: "PAYMENT_LIFECYCLE",
@@ -59,7 +65,9 @@ export async function emitPaymentLifecycleNotification(
         occurredAt: notification.occurredAt,
         userId: extras?.userId ?? null,
       },
-      send: async () => dispatcher(notification),
+      send: async (deliveryMode) => deliveryMode
+        ? dispatcher(notification, deliveryMode)
+        : dispatcher(notification),
     });
   } catch (error) {
     logger.error("payment lifecycle notification failed", {

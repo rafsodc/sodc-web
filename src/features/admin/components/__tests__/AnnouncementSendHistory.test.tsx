@@ -10,9 +10,15 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
 }));
 
 const SECTION_ID = "section-abc";
+const LIVE_SEND_MODES = {
+  requestedDeliveryMode: "LIVE",
+  siteDeliveryMode: "LIVE",
+  effectiveDeliveryMode: "LIVE",
+} as const;
 
 const mockSends: firebaseFunctions.AnnouncementSend[] = [
   {
+    ...LIVE_SEND_MODES,
     id: "send-1",
     templateUuid: "uuid-1",
     templateName: "BULK: Alpha Update",
@@ -25,6 +31,7 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     failureCount: 1,
   },
   {
+    ...LIVE_SEND_MODES,
     id: "send-2",
     templateUuid: "uuid-2",
     templateName: null,
@@ -40,6 +47,7 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
 
 const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-1",
     sendId: "send-1",
     userId: "user-a",
@@ -50,6 +58,7 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     sentAt: "2026-07-01T10:00:05.000Z",
   },
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-2",
     sendId: "send-1",
     userId: "user-b",
@@ -60,6 +69,7 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     skippedReason: "opted_out",
   },
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-3",
     sendId: "send-1",
     userId: "user-c",
@@ -70,6 +80,7 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     failureReason: "GOV Notify rejected",
   },
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-4",
     sendId: "send-1",
     userId: "user-d",
@@ -80,6 +91,7 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     sentAt: "2026-07-01T10:00:05.000Z",
   },
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-5",
     sendId: "send-1",
     userId: "user-e",
@@ -91,6 +103,7 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     failureReason: "GOV Notify reported permanent-failure",
   },
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-6",
     sendId: "send-1",
     userId: "user-f",
@@ -100,6 +113,7 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     status: "queued",
   },
   {
+    effectiveDeliveryMode: "LIVE",
     id: "rec-7",
     sendId: "send-1",
     userId: "user-g",

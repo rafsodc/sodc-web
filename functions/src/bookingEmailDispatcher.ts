@@ -10,6 +10,7 @@ import { sanitizeMailerError } from "./mailerErrors";
 import { formatMinorCurrency, normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import type { BookingPaymentDelta } from "./bookingPaymentAdjustments";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export const BOOKING_MAIL_TEMPLATE_KEYS = ["bookingConfirmation", "bookingRevision"] as const;
 
@@ -201,6 +202,7 @@ export async function notifyBookingConfirmationEmail(args: {
   idempotencyKey: string;
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -226,20 +228,25 @@ export async function notifyBookingConfirmationEmail(args: {
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
+      deliveryMode: args.deliveryMode,
       recoveryPayload: {
         version: 1,
         kind: "BOOKING_CONFIRMATION",
         bookingId: args.bookingId,
         idempotencyKey: args.idempotencyKey,
       },
-      send: async () => {
+      send: async (deliveryMode) => {
         const r = await mailer.sendEmail({
           templateName: "bookingConfirmation",
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: r.providerNotificationId ?? null };
+        return {
+          providerMessageId: r.providerNotificationId ?? null,
+          deliveryMode: r.deliveryMode?.effectiveMode,
+        };
       },
     });
   } catch (error) {
@@ -256,6 +263,7 @@ export async function notifyBookingRevisionEmail(args: {
   appBaseUrl: string;
   paymentDelta: BookingPaymentDelta;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -291,6 +299,7 @@ export async function notifyBookingRevisionEmail(args: {
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
+      deliveryMode: args.deliveryMode,
       recoveryPayload: {
         version: 1,
         kind: "BOOKING_REVISION",
@@ -298,14 +307,18 @@ export async function notifyBookingRevisionEmail(args: {
         idempotencyKey: args.idempotencyKey,
         paymentDelta: args.paymentDelta,
       },
-      send: async () => {
+      send: async (deliveryMode) => {
         const r = await mailer.sendEmail({
           templateName: "bookingRevision",
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: r.providerNotificationId ?? null };
+        return {
+          providerMessageId: r.providerNotificationId ?? null,
+          deliveryMode: r.deliveryMode?.effectiveMode,
+        };
       },
     });
   } catch (error) {

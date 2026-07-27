@@ -21,6 +21,12 @@ export enum BookingStatus {
   CANCELLED = "CANCELLED",
 };
 
+export enum GovNotifyDeliveryMode {
+  SIMULATION = "SIMULATION",
+  TEAM_TEST = "TEAM_TEST",
+  LIVE = "LIVE",
+};
+
 export enum GuestTicketRequestStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
@@ -294,6 +300,20 @@ export interface CallableRateLimitBucket_Key {
   __typename?: 'CallableRateLimitBucket_Key';
 }
 
+export interface ChangeGovNotifyDeliveryModeData {
+  changed: number;
+  govNotifyDeliveryModeAudit_insert: GovNotifyDeliveryModeAudit_Key;
+}
+
+export interface ChangeGovNotifyDeliveryModeVariables {
+  expectedVersion: number;
+  previousMode: GovNotifyDeliveryMode;
+  newMode: GovNotifyDeliveryMode;
+  deploymentCeiling: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -358,6 +378,24 @@ export interface CreateAnnouncementRecipientVariables {
   failureReason?: string | null;
 }
 
+export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+
+export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
+  id: UUIDString;
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+
 export interface CreateAnnouncementSendData {
   announcementSend_insert: AnnouncementSend_Key;
 }
@@ -371,6 +409,24 @@ export interface CreateAnnouncementSendVariables {
   recipientCount: number;
   skippedCount: number;
   recipientSnapshot: string;
+}
+
+export interface CreateAnnouncementSendWithDeliveryModeData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+
+export interface CreateAnnouncementSendWithDeliveryModeVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  recipientSnapshot: string;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export interface CreateBookingDraftData {
@@ -430,6 +486,10 @@ export interface CreateEventVariables {
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
   maxGuestsWithoutModeratorApproval?: number | null;
+}
+
+export interface CreateGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration_insert: GovNotifyDeliveryConfiguration_Key;
 }
 
 export interface CreateGuestTicketRequestData {
@@ -729,6 +789,7 @@ export interface GetAnnouncementRecipientBySendAndUserData {
     processingVersion: number;
     processingStartedAt?: TimestampString | null;
     providerNotificationId?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
     deliveryVersion: number;
     deliveryStatusUpdatedAt?: TimestampString | null;
     deliveryReceiptId?: string | null;
@@ -772,6 +833,9 @@ export interface GetAnnouncementSendByIdData {
     recipientCount: number;
     skippedCount: number;
     recipientSnapshot?: string | null;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key;
 }
 
@@ -788,6 +852,9 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key)[];
 }
 
@@ -806,6 +873,7 @@ export interface GetAnnouncementSendRecipientsData {
     skippedReason?: string | null;
     sentAt?: TimestampString | null;
     failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementRecipient_Key)[];
 }
 
@@ -1082,6 +1150,15 @@ export interface GetEventsForSectionData {
 
 export interface GetEventsForSectionVariables {
   sectionId: UUIDString;
+}
+
+export interface GetGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration?: {
+    mode: GovNotifyDeliveryMode;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+  };
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -1912,6 +1989,16 @@ export interface GetUserWithAccessGroupsVariables {
   id: string;
 }
 
+export interface GovNotifyDeliveryConfiguration_Key {
+  id: string;
+  __typename?: 'GovNotifyDeliveryConfiguration_Key';
+}
+
+export interface GovNotifyDeliveryModeAudit_Key {
+  id: UUIDString;
+  __typename?: 'GovNotifyDeliveryModeAudit_Key';
+}
+
 export interface GrantUserGroupToSectionForPurposeData {
   sectionUserGroupPurposeLink_upsert: SectionUserGroupPurposeLink_Key;
 }
@@ -2034,6 +2121,22 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
 export interface ListFailedNotificationDeliveriesForRecoveryVariables {
   attemptedBefore: TimestampString;
   maxAttemptCount: number;
+  limit: number;
+}
+
+export interface ListGovNotifyDeliveryModeAuditsData {
+  govNotifyDeliveryModeAudits: ({
+    id: UUIDString;
+    previousMode: GovNotifyDeliveryMode;
+    newMode: GovNotifyDeliveryMode;
+    deploymentCeiling: GovNotifyDeliveryMode;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & GovNotifyDeliveryModeAudit_Key)[];
+}
+
+export interface ListGovNotifyDeliveryModeAuditsVariables {
   limit: number;
 }
 
@@ -2323,6 +2426,7 @@ export interface MarkNotificationDeliverySentByIdVariables {
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
 }
 
 export interface MarkNotifyDeliveryReceiptFailedData {
@@ -2807,6 +2911,54 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
+
+interface GetGovNotifyDeliveryConfigurationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetGovNotifyDeliveryConfigurationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetGovNotifyDeliveryConfigurationData, undefined>;
+  operationName: string;
+}
+export const getGovNotifyDeliveryConfigurationRef: GetGovNotifyDeliveryConfigurationRef;
+
+export function getGovNotifyDeliveryConfiguration(options?: ExecuteQueryOptions): QueryPromise<GetGovNotifyDeliveryConfigurationData, undefined>;
+export function getGovNotifyDeliveryConfiguration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetGovNotifyDeliveryConfigurationData, undefined>;
+
+interface ListGovNotifyDeliveryModeAuditsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListGovNotifyDeliveryModeAuditsVariables): QueryRef<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables): QueryRef<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+  operationName: string;
+}
+export const listGovNotifyDeliveryModeAuditsRef: ListGovNotifyDeliveryModeAuditsRef;
+
+export function listGovNotifyDeliveryModeAudits(vars: ListGovNotifyDeliveryModeAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+export function listGovNotifyDeliveryModeAudits(dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+
+interface CreateGovNotifyDeliveryConfigurationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<CreateGovNotifyDeliveryConfigurationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): MutationRef<CreateGovNotifyDeliveryConfigurationData, undefined>;
+  operationName: string;
+}
+export const createGovNotifyDeliveryConfigurationRef: CreateGovNotifyDeliveryConfigurationRef;
+
+export function createGovNotifyDeliveryConfiguration(): MutationPromise<CreateGovNotifyDeliveryConfigurationData, undefined>;
+export function createGovNotifyDeliveryConfiguration(dc: DataConnect): MutationPromise<CreateGovNotifyDeliveryConfigurationData, undefined>;
+
+interface ChangeGovNotifyDeliveryModeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ChangeGovNotifyDeliveryModeVariables): MutationRef<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationRef<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+  operationName: string;
+}
+export const changeGovNotifyDeliveryModeRef: ChangeGovNotifyDeliveryModeRef;
+
+export function changeGovNotifyDeliveryMode(vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+export function changeGovNotifyDeliveryMode(dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
 
 interface CreatePendingSectionFileRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -3540,6 +3692,18 @@ export const createAnnouncementSendRef: CreateAnnouncementSendRef;
 export function createAnnouncementSend(vars: CreateAnnouncementSendVariables): MutationPromise<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
 export function createAnnouncementSend(dc: DataConnect, vars: CreateAnnouncementSendVariables): MutationPromise<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
 
+interface CreateAnnouncementSendWithDeliveryModeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationRef<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationRef<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+  operationName: string;
+}
+export const createAnnouncementSendWithDeliveryModeRef: CreateAnnouncementSendWithDeliveryModeRef;
+
+export function createAnnouncementSendWithDeliveryMode(vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationPromise<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+export function createAnnouncementSendWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationPromise<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+
 interface CreateAnnouncementRecipientRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: CreateAnnouncementRecipientVariables): MutationRef<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
@@ -3551,6 +3715,18 @@ export const createAnnouncementRecipientRef: CreateAnnouncementRecipientRef;
 
 export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables): MutationPromise<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
 export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnouncementRecipientVariables): MutationPromise<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
+
+interface CreateAnnouncementRecipientWithDeliveryModeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationRef<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationRef<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+  operationName: string;
+}
+export const createAnnouncementRecipientWithDeliveryModeRef: CreateAnnouncementRecipientWithDeliveryModeRef;
+
+export function createAnnouncementRecipientWithDeliveryMode(vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationPromise<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+export function createAnnouncementRecipientWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationPromise<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
 
 interface GetAnnouncementRecipientProgressRef {
   /* Allow users to create refs without passing in DataConnect */

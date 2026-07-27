@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("firebase-functions/params", () => ({
   defineSecret: vi.fn((name: string) => ({
     name,
-    value: vi.fn(() => undefined),
+    value: vi.fn(() => `${name}-value`),
   })),
 }));
 
@@ -58,6 +58,7 @@ describe("mailer", () => {
       createConfiguredGovNotifyMailer<TestTemplates>(["paymentConfirmation"], {
         GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION: "template-paid",
         GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id",
+        GOV_NOTIFY_DELIVERY_MODE: "LIVE",
       })
     ).toHaveProperty("sendEmail");
   });
@@ -77,6 +78,7 @@ describe("mailer", () => {
     const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>();
     const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>();
     const mailer = createGovNotifyMailer<TestTemplates>({
+      siteMode: "LIVE",
       templateIds: { paymentConfirmation: "template-paid" },
       clientFactory: () => ({ getNotifications, sendEmail }),
       logger: fakeLogger(),
@@ -99,7 +101,7 @@ describe("mailer", () => {
     const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>(async () => ({
       data: {
         id: "notify-message-id",
-        reference: "order-123",
+        reference: "order-123:notify-live",
       },
     }));
     const logger = fakeLogger();
@@ -126,7 +128,12 @@ describe("mailer", () => {
     ).resolves.toEqual({
       provider: "govuk_notify",
       providerNotificationId: "notify-message-id",
-      reference: "order-123",
+      reference: "order-123:notify-live",
+      deliveryMode: {
+        requestedMode: "LIVE",
+        siteMode: "LIVE",
+        effectiveMode: "LIVE",
+      },
     });
 
     expect(sendEmail).toHaveBeenCalledWith("template-paid", "buyer@example.com", {
@@ -134,17 +141,67 @@ describe("mailer", () => {
         event_title: "Annual Dinner",
         amount_paid: "GBP 10.00",
       },
-      reference: "order-123",
+      reference: "order-123:notify-live",
       emailReplyToId: "reply-to-id",
     });
-    expect(getNotifications).toHaveBeenCalledWith("email", undefined, "order-123");
+    expect(getNotifications).toHaveBeenCalledWith(
+      "email",
+      undefined,
+      "order-123:notify-live",
+    );
     expect(JSON.stringify(logger.info.mock.calls)).not.toContain("buyer@example.com");
+  });
+
+  it("uses the most restrictive requested and site mode without key fallback", async () => {
+    const keys: string[] = [];
+    const client = {
+      getNotifications: vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
+        data: { notifications: [] },
+      })),
+      sendEmail: vi.fn<NotifyEmailClient["sendEmail"]>(async () => ({
+        data: { id: "notify-test-id" },
+      })),
+    };
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      apiKeys: {
+        LIVE: "live-key",
+        TEAM_TEST: "team-key",
+        SIMULATION: "test-key",
+      },
+      siteMode: "LIVE",
+      templateIds: { paymentConfirmation: "template-paid" },
+      clientFactory: (key) => {
+        keys.push(key);
+        return client;
+      },
+      logger: fakeLogger(),
+    });
+
+    const result = await mailer.sendEmail({
+      templateName: "paymentConfirmation",
+      to: "buyer@example.com",
+      personalisation: { event_title: "Dinner", amount_paid: "GBP 10.00" },
+      reference: "order-123",
+      requestedDeliveryMode: "SIMULATION",
+    });
+
+    expect(keys).toEqual(["test-key"]);
+    expect(result.deliveryMode).toEqual({
+      requestedMode: "SIMULATION",
+      siteMode: "LIVE",
+      effectiveMode: "SIMULATION",
+    });
+    expect(client.sendEmail).toHaveBeenCalledWith(
+      "template-paid",
+      "buyer@example.com",
+      expect.objectContaining({ reference: "order-123:notify-simulation" }),
+    );
   });
 
   it("adopts an existing provider notification with the same reference", async () => {
     const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
       data: {
-        notifications: [{ id: "existing-notify-id", reference: "order-123" }],
+        notifications: [{ id: "existing-notify-id", reference: "order-123:notify-live" }],
       },
     }));
     const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>();
@@ -170,7 +227,12 @@ describe("mailer", () => {
     ).resolves.toEqual({
       provider: "govuk_notify",
       providerNotificationId: "existing-notify-id",
-      reference: "order-123",
+      reference: "order-123:notify-live",
+      deliveryMode: {
+        requestedMode: "LIVE",
+        siteMode: "LIVE",
+        effectiveMode: "LIVE",
+      },
     });
 
     expect(sendEmail).not.toHaveBeenCalled();
@@ -229,8 +291,8 @@ describe("mailer", () => {
 
     expect(sendEmail).toHaveBeenCalledTimes(2);
     expect(accepted.map((notification) => notification.reference)).toEqual([
-      firstReference,
-      secondReference,
+      `${firstReference}:notify-live`,
+      `${secondReference}:notify-live`,
     ]);
   });
 

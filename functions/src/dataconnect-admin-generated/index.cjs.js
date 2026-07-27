@@ -15,6 +15,13 @@ const BookingStatus = {
 }
 exports.BookingStatus = BookingStatus;
 
+const GovNotifyDeliveryMode = {
+  SIMULATION: "SIMULATION",
+  TEAM_TEST: "TEAM_TEST",
+  LIVE: "LIVE",
+}
+exports.GovNotifyDeliveryMode = GovNotifyDeliveryMode;
+
 const GuestTicketRequestStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
@@ -130,6 +137,34 @@ const connectorConfig = {
   location: 'europe-west2'
 };
 exports.connectorConfig = connectorConfig;
+
+function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGovNotifyDeliveryConfiguration', undefined, inputOpts);
+}
+exports.getGovNotifyDeliveryConfiguration = getGovNotifyDeliveryConfiguration;
+
+function listGovNotifyDeliveryModeAudits(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListGovNotifyDeliveryModeAudits', inputVars, inputOpts);
+}
+exports.listGovNotifyDeliveryModeAudits = listGovNotifyDeliveryModeAudits;
+
+function createGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateGovNotifyDeliveryConfiguration', undefined, inputOpts);
+}
+exports.createGovNotifyDeliveryConfiguration = createGovNotifyDeliveryConfiguration;
+
+function changeGovNotifyDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ChangeGovNotifyDeliveryMode', inputVars, inputOpts);
+}
+exports.changeGovNotifyDeliveryMode = changeGovNotifyDeliveryMode;
 
 function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -558,12 +593,26 @@ function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.createAnnouncementSend = createAnnouncementSend;
 
+function createAnnouncementSendWithDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementSendWithDeliveryMode', inputVars, inputOpts);
+}
+exports.createAnnouncementSendWithDeliveryMode = createAnnouncementSendWithDeliveryMode;
+
 function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
 }
 exports.createAnnouncementRecipient = createAnnouncementRecipient;
+
+function createAnnouncementRecipientWithDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementRecipientWithDeliveryMode', inputVars, inputOpts);
+}
+exports.createAnnouncementRecipientWithDeliveryMode = createAnnouncementRecipientWithDeliveryMode;
 
 function getAnnouncementRecipientProgress(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

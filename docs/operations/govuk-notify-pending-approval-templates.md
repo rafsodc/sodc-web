@@ -16,7 +16,7 @@ Recipients are **all current Firebase Auth admins** (`getAdminUsers()`, same pat
 
 Env var name follows [`govNotifyTemplateEnvVarName`](../../functions/src/mailer.ts).
 
-Also required for sends: `GOV_NOTIFY_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`** for the Approve Users deep link (see [environment-and-secrets.md](./environment-and-secrets.md)).
+Also required for sends: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`** for the Approve Users deep link (see [environment-and-secrets.md](./environment-and-secrets.md)).
 
 ## Trigger
 

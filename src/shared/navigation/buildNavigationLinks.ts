@@ -159,6 +159,7 @@ function buildAdminLinks({
     });
     links.push({ label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION });
     links.push({ label: "Email Templates", to: ROUTES.EMAIL_TEMPLATES });
+    links.push({ label: "Email Delivery", to: ROUTES.EMAIL_DELIVERY });
     links.push({ label: "Audit Logs", to: ROUTES.AUDIT_LOGS });
   }
 

@@ -16,6 +16,7 @@ export * from "./unsubscribe";
 export * from "./notifyCallback";
 export * from "./notificationRecovery";
 export * from "./sectionFiles";
+export * from "./govNotifyDeliveryAdmin";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {

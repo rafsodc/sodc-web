@@ -9,7 +9,7 @@ import {
   getUserMembershipStatus,
   type MembershipStatus as AdminMembershipStatus,
 } from "@dataconnect/admin-generated";
-import { govNotifyApiKey } from "./mailer";
+import { govNotifySecrets } from "./mailer";
 import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDispatcher";
 import { invalidateDcProfileCache } from "./users";
 import { enforceRateLimit } from "./rateLimiter";
@@ -91,7 +91,7 @@ export async function persistMembershipStatusWithEnabledClaim(
  * Users can only update their own status unless they are an admin.
  */
 export const updateMembershipStatus = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
   requireEnabled(request);
   await enforceRateLimit("updateMembershipStatus", request.auth!.uid);
@@ -182,7 +182,7 @@ export const updateMembershipStatus = onCall(
  * Self-service resignation: transitions the caller from a non-restricted status to RESIGNED.
  */
 export const resignMembership = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
     requireEnabled(request);
     await enforceRateLimit("resignMembership", request.auth!.uid);

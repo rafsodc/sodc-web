@@ -201,6 +201,51 @@ describe("notificationDelivery", () => {
     });
   });
 
+  it("scopes GOV.UK Notify ledgers and recovery payloads to the effective mode", async () => {
+    const { repository, records } = createRepository();
+    const send = vi.fn(async () => ({
+      providerMessageId: "provider-message-1",
+      deliveryMode: "SIMULATION" as const,
+    }));
+
+    await sendNotificationOnce(
+      {
+        channel: NotificationChannel.EMAIL,
+        notificationType: "PAYMENT_PAID",
+        deliveryKey: "payment:order-1:PAYMENT_PAID:evt_1",
+        provider: "govuk_notify",
+        deliveryMode: "SIMULATION",
+        recoveryPayload: {
+          version: 1,
+          kind: "PAYMENT_LIFECYCLE",
+          type: "PAYMENT_PAID",
+          orderId: "00000000-0000-0000-0000-000000000001",
+          eventId: null,
+          stripeEventId: "evt_1",
+          status: null,
+          occurredAt: "2026-05-14T20:00:00.000Z",
+          userId: "user-1",
+        },
+        send,
+      },
+      {
+        repository,
+        now: vi.fn()
+          .mockReturnValueOnce("2026-05-14T20:00:00.000Z")
+          .mockReturnValueOnce("2026-05-14T20:00:01.000Z"),
+      },
+    );
+
+    const record = records.get(
+      "EMAIL:payment:order-1:PAYMENT_PAID:evt_1:notify-simulation",
+    );
+    expect(record).toBeDefined();
+    expect(parseNotificationRecoveryPayload(record!.recoveryPayload!)).toMatchObject({
+      deliveryMode: "SIMULATION",
+    });
+    expect(send).toHaveBeenCalledWith("SIMULATION");
+  });
+
   it("skips duplicates that were already sent", async () => {
     const { repository } = createRepository([
       {

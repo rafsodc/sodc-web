@@ -87,6 +87,9 @@ Risk levels are relative to other authenticated callables in this application. â
 | `registerForSectionCallable` | Medium | None | None | Low | Enabled; registration rules; idempotent upsert |
 | `getTemplateSyncStatus` | Medium | High | GOV.UK Notify | High | Admin + enabled; 10/5 minutes |
 | `getAnnouncementTemplates` | Medium | Medium | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
+| `getAnnouncementDeliveryConfiguration` | Low | None | None | Low | Enabled + moderator; returns non-secret site mode |
+| `getGovNotifyDeliveryAdminConfiguration` | Medium | Low | None | Low | Admin + enabled; bounded configuration and audit history |
+| `updateGovNotifyDeliveryMode` | High | None | None | Medium | Admin + enabled; deployment ceiling, optimistic lock, reason and immutable audit row |
 | `previewAnnouncementTemplate` | Medium | Low | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
 | `sendSectionAnnouncement` | High | High | GOV.UK Notify | Very high | Enabled + moderator; 5/hour; queued delivery |
 | `getAnnouncementSendHistory` | Low | Medium | None | Low | Enabled + moderator; bounded history query |

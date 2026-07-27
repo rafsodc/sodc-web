@@ -331,7 +331,9 @@ Set secrets interactively so values do not appear in command history:
 firebase functions:secrets:set STRIPE_SECRET --project prod
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET --project prod
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET_PAYMENTS --project prod
-firebase functions:secrets:set GOV_NOTIFY_API_KEY --project prod
+firebase functions:secrets:set GOV_NOTIFY_LIVE_API_KEY --project prod
+firebase functions:secrets:set GOV_NOTIFY_TEST_API_KEY --project prod
+firebase functions:secrets:set GOV_NOTIFY_TEAM_API_KEY --project prod
 firebase functions:secrets:set UNSUBSCRIBE_SECRET --project prod
 firebase functions:secrets:set NOTIFY_CALLBACK_BEARER_TOKEN --project prod
 ```
@@ -367,7 +369,13 @@ Use the production Notify service/API key and follow
 [GOV.UK Notify template registration](./govuk-notify-template-registration.md).
 Create and test every required template, record its UUID outside the repository,
 put each `GOV_NOTIFY_TEMPLATE_*` UUID in the production Functions environment
-file, and set `GOV_NOTIFY_API_KEY` as a Firebase secret.
+file, set `GOV_NOTIFY_DELIVERY_MODE=SIMULATION` for the initial rollout, and
+set all three mode-specific API keys as Firebase secrets. Follow
+[GOV.UK Notify delivery modes](./govuk-notify-delivery-modes.md) before making
+the production ceiling more permissive. After Data Connect and Functions are
+deployed, open **Admin → Email Delivery** and verify that the persisted runtime
+mode defaults to **Simulation**. Day-to-day mode changes are made there, with a
+reason and audit trail; the environment value remains the hard upper ceiling.
 
 Configure the optional reply-to ID, internal payment-alert recipients, and Notify
 callback using production values. Configure the callback to send the bearer token

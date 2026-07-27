@@ -13,6 +13,7 @@ import {
 import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export const PAYMENT_OPS_ALERT_EMAILS_ENV = "PAYMENT_OPS_ALERT_EMAILS";
 
@@ -102,6 +103,7 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
   appBaseUrl: string;
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   const recipients = args.recipientEmails
     ? Array.from(
@@ -154,6 +156,7 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
+          deliveryMode: args.deliveryMode,
           recoveryPayload: {
             version: 1,
             kind: "PAYMENT_RECONCILIATION_OPS",
@@ -163,14 +166,18 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
             stripeEventId: args.stripeEventId,
             recipientEmail: to,
           },
-          send: async () => {
+          send: async (deliveryMode) => {
             const r = await mailer.sendEmail({
               templateName: "paymentReconciliationExceptionAlert",
               to,
               personalisation,
               reference: recipientScopedNotifyReference(reference, to),
+              requestedDeliveryMode: deliveryMode,
             });
-            return { providerMessageId: r.providerNotificationId ?? null };
+            return {
+              providerMessageId: r.providerNotificationId ?? null,
+              deliveryMode: r.deliveryMode?.effectiveMode,
+            };
           },
         });
       } catch (error) {
@@ -201,6 +208,7 @@ export async function notifyPaymentOpsDisputeSideState(args: {
   appBaseUrl: string;
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   const recipients = args.recipientEmails
     ? Array.from(
@@ -252,6 +260,7 @@ export async function notifyPaymentOpsDisputeSideState(args: {
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
+          deliveryMode: args.deliveryMode,
           recoveryPayload: {
             version: 1,
             kind: "PAYMENT_DISPUTE_OPS",
@@ -264,14 +273,18 @@ export async function notifyPaymentOpsDisputeSideState(args: {
             stripeDisputeId: args.stripeDisputeId,
             recipientEmail: to,
           },
-          send: async () => {
+          send: async (deliveryMode) => {
             const r = await mailer.sendEmail({
               templateName: "paymentDisputeOpsAlert",
               to,
               personalisation,
               reference: recipientScopedNotifyReference(reference, to),
+              requestedDeliveryMode: deliveryMode,
             });
-            return { providerMessageId: r.providerNotificationId ?? null };
+            return {
+              providerMessageId: r.providerNotificationId ?? null,
+              deliveryMode: r.deliveryMode?.effectiveMode,
+            };
           },
         });
       } catch (error) {

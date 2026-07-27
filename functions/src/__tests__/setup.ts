@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 
+process.env.GOV_NOTIFY_DELIVERY_MODE = "LIVE";
+
 // Mock firebase-admin
 vi.mock("firebase-admin", () => ({
   auth: () => ({
@@ -17,4 +19,3 @@ vi.mock("firebase-functions/logger", () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
-

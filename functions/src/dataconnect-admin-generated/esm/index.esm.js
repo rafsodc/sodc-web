@@ -13,6 +13,12 @@ export const BookingStatus = {
   CANCELLED: "CANCELLED",
 }
 
+export const GovNotifyDeliveryMode = {
+  SIMULATION: "SIMULATION",
+  TEAM_TEST: "TEAM_TEST",
+  LIVE: "LIVE",
+}
+
 export const GuestTicketRequestStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
@@ -113,6 +119,30 @@ export const connectorConfig = {
   serviceId: 'sodc-web-service',
   location: 'europe-west2'
 };
+
+export function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGovNotifyDeliveryConfiguration', undefined, inputOpts);
+}
+
+export function listGovNotifyDeliveryModeAudits(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListGovNotifyDeliveryModeAudits', inputVars, inputOpts);
+}
+
+export function createGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateGovNotifyDeliveryConfiguration', undefined, inputOpts);
+}
+
+export function changeGovNotifyDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ChangeGovNotifyDeliveryMode', inputVars, inputOpts);
+}
 
 export function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -480,10 +510,22 @@ export function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options
   return dcInstance.executeMutation('CreateAnnouncementSend', inputVars, inputOpts);
 }
 
+export function createAnnouncementSendWithDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementSendWithDeliveryMode', inputVars, inputOpts);
+}
+
 export function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
+}
+
+export function createAnnouncementRecipientWithDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementRecipientWithDeliveryMode', inputVars, inputOpts);
 }
 
 export function getAnnouncementRecipientProgress(dcOrVarsOrOptions, varsOrOptions, options) {
