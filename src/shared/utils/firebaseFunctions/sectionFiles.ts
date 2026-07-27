@@ -61,7 +61,7 @@ export async function uploadSectionFile(
   sectionId: string,
   file: File,
   metadata: SectionFileMetadataInput,
-  onStage?: (stage: "uploading" | "verifying") => void,
+  onStage?: (stage: "uploading" | "scanning") => void,
 ): Promise<string> {
   const requestGrant = httpsCallable<
     {
@@ -83,7 +83,7 @@ export async function uploadSectionFile(
   })).data;
   onStage?.("uploading");
   await putFile(grant, file);
-  onStage?.("verifying");
+  onStage?.("scanning");
   const finalize = httpsCallable<{ sectionId: string; fileId: string }, { fileId: string }>(
     functions,
     "finalizeSectionFileUpload",
@@ -107,7 +107,7 @@ export async function replaceSectionFile(
   sectionId: string,
   fileId: string,
   file: File,
-  onStage?: (stage: "uploading" | "verifying") => void,
+  onStage?: (stage: "uploading" | "scanning") => void,
 ): Promise<void> {
   const requestGrant = httpsCallable<
     {
@@ -131,7 +131,7 @@ export async function replaceSectionFile(
   try {
     onStage?.("uploading");
     await putFile(grant, file);
-    onStage?.("verifying");
+    onStage?.("scanning");
     const finalize = httpsCallable<
       {
         sectionId: string;

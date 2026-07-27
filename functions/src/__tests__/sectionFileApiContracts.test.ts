@@ -42,6 +42,10 @@ describe("section file API security contracts", () => {
     expect(source).toContain("validateFileSignature(bytes, actualType)");
     expect(source).toContain("createHash(\"sha256\")");
     expect(source).toContain("ensureTransition(result.data.sectionFile_updateMany)");
+    expect(source).toContain("await requireCleanScan(inspected");
+    expect(source.indexOf("await requireCleanScan(inspected")).toBeLessThan(
+      source.indexOf("await inspected.file.copy(finalObject)"),
+    );
   });
 
   it("uses short-lived V4 upload and download grants", () => {

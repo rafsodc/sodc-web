@@ -10,8 +10,10 @@ import {
   finalizePendingSectionFile,
   finalizeSectionFileReplacement as finalizeReplacementMetadata,
   getSectionFileById,
+  listSectionFilesForQuota,
   listSectionFilesByStatus,
   markSectionFileDeleted,
+  recordSectionFileAudit,
   SectionFileStatus,
   updateAvailableSectionFileMetadata,
 } from "@dataconnect/admin-generated";
@@ -25,6 +27,7 @@ import {
 } from "./helpers";
 import { enforceRateLimit, type RateLimitedCallableName } from "./rateLimiter";
 import { requireSectionAccess, requireSectionModerator } from "./sectionAccess";
+import { scanSectionFileForMalware } from "./sectionFileMalwareScanner";
 
 const MAX_SECTION_FILE_BYTES = 25 * 1024 * 1024;
 const SIGNED_UPLOAD_TTL_MS = 15 * 60 * 1000;
@@ -33,6 +36,9 @@ const MAX_FILENAME_LENGTH = 255;
 const MAX_DISPLAY_NAME_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 1000;
 const LIST_LIMIT = 500;
+const MAX_SECTION_FILE_COUNT = 200;
+const MAX_SECTION_FILE_TOTAL_BYTES = 500 * 1024 * 1024;
+const QUOTA_QUERY_LIMIT = 1000;
 const APP_BASE_URL = (() => {
   const value = process.env.APP_BASE_URL || "http://localhost:5173";
   try {
@@ -287,6 +293,33 @@ async function inspectUpload(path: string, expected: ValidatedUpload) {
   };
 }
 
+async function requireCleanScan(
+  inspected: Awaited<ReturnType<typeof inspectUpload>>,
+  objectPath: string,
+  context: { sectionId: string; fileId: string; actorUid: string },
+): Promise<void> {
+  const scan = await scanSectionFileForMalware({
+    bucket: bucketName(),
+    objectPath,
+    generation: inspected.generation,
+    checksumSha256: inspected.checksumSha256,
+    sizeBytes: inspected.sizeBytes,
+    contentType: inspected.contentType,
+  });
+  logger.info("Section file malware scan completed", {
+    ...context,
+    result: scan.result,
+    engine: scan.engine,
+    engineVersion: scan.engineVersion,
+    definitionsVersion: scan.definitionsVersion,
+  });
+  if (scan.result === "INFECTED") {
+    await inspected.file.delete({ ignoreNotFound: true });
+    logger.warn("Section file rejected by malware scanner", context);
+    throw new HttpsError("invalid-argument", "The uploaded file did not pass malware scanning");
+  }
+}
+
 function ensureTransition(updated: number): void {
   if (updated !== 1) {
     throw new HttpsError("failed-precondition", "The file changed; refresh and try again");
@@ -304,6 +337,54 @@ async function bestEffortDelete(path: string, context: Record<string, string>): 
   }
 }
 
+async function enforceSectionQuota(
+  sectionId: string,
+  additionalBytes: number,
+  additionalFile = true,
+): Promise<void> {
+  const result = await listSectionFilesForQuota({ sectionId, limit: QUOTA_QUERY_LIMIT });
+  const files = result.data.sectionFiles ?? [];
+  if (files.length >= QUOTA_QUERY_LIMIT) {
+    throw new HttpsError("resource-exhausted", "Section file quota could not be verified");
+  }
+  if (additionalFile && files.length >= MAX_SECTION_FILE_COUNT) {
+    throw new HttpsError("resource-exhausted", "This section has reached its file-count limit");
+  }
+  const totalBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
+  if (totalBytes + additionalBytes > MAX_SECTION_FILE_TOTAL_BYTES) {
+    throw new HttpsError("resource-exhausted", "This section has reached its storage limit");
+  }
+}
+
+async function auditSectionFile(
+  sectionId: string,
+  fileId: string | null,
+  actorUid: string,
+  action: string,
+  outcome: "SUCCESS" | "DENIED" | "FAILED",
+  detail?: string,
+): Promise<void> {
+  try {
+    await recordSectionFileAudit({
+      sectionId,
+      fileId,
+      actorUid,
+      action,
+      outcome,
+      detail: detail?.slice(0, 160) ?? null,
+    });
+  } catch (error) {
+    logger.error("Section file audit write failed", {
+      sectionId,
+      fileId,
+      actorUid,
+      action,
+      outcome,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export const requestSectionFileUpload = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
@@ -312,6 +393,7 @@ export const requestSectionFileUpload = onCall(
     const input = validateUpload(request.data ?? {});
     try {
       await requireSectionModerator(sectionId, uid, isAdmin);
+      await enforceSectionQuota(sectionId, input.sizeBytes);
       const fileId = randomUUID();
       const uploadId = randomUUID();
       const pendingPath = `section-file-uploads/${sectionId}/${fileId}/${uploadId}`;
@@ -325,6 +407,7 @@ export const requestSectionFileUpload = onCall(
       });
       const uploadUrl = await signedUploadUrl(pendingPath, input.contentType);
       logger.info("Section file upload granted", { sectionId, fileId, actorUid: uid });
+      await auditSectionFile(sectionId, fileId, uid, "UPLOAD_GRANTED", "SUCCESS");
       return {
         fileId,
         uploadUrl,
@@ -339,7 +422,7 @@ export const requestSectionFileUpload = onCall(
 );
 
 export const finalizeSectionFileUpload = onCall(
-  { region: FUNCTIONS_REGION, timeoutSeconds: 120, memory: "512MiB" },
+  { region: FUNCTIONS_REGION, timeoutSeconds: 300, memory: "512MiB" },
   async (request) => {
     const { uid, isAdmin } = await requestContext(request, "finalizeSectionFileUpload");
     const sectionId = validateUUID(requireString(request.data?.sectionId, "sectionId"), "sectionId");
@@ -356,6 +439,11 @@ export const finalizeSectionFileUpload = onCall(
         description: file.description ?? null,
         contentType: file.contentType,
         sizeBytes: file.sizeBytes,
+      });
+      await requireCleanScan(inspected, file.pendingStorageObjectPath, {
+        sectionId,
+        fileId,
+        actorUid: uid,
       });
       const finalPath = `section-files/${sectionId}/${fileId}/${inspected.generation}`;
       const finalObject = getStorage().bucket(bucketName()).file(finalPath);
@@ -379,6 +467,7 @@ export const finalizeSectionFileUpload = onCall(
       }
       await bestEffortDelete(file.pendingStorageObjectPath, { sectionId, fileId });
       logger.info("Section file finalized", { sectionId, fileId, actorUid: uid });
+      await auditSectionFile(sectionId, fileId, uid, "UPLOAD_FINALIZED", "SUCCESS");
       return { fileId };
     } catch (error) {
       if (error instanceof HttpsError) throw error;
@@ -433,12 +522,23 @@ export const requestSectionFileDownload = onCall(
           responseType: file.contentType,
         });
       logger.info("Section file download granted", { sectionId, fileId, actorUid: uid });
+      await auditSectionFile(sectionId, fileId, uid, "DOWNLOAD_GRANTED", "SUCCESS");
       return {
         file: fileResponse(file),
         downloadUrl,
         expiresAt: new Date(Date.now() + SIGNED_DOWNLOAD_TTL_MS).toISOString(),
       };
     } catch (error) {
+      await auditSectionFile(
+        sectionId,
+        fileId,
+        uid,
+        "DOWNLOAD_REQUEST",
+        error instanceof HttpsError && ["permission-denied", "unauthenticated"].includes(error.code)
+          ? "DENIED"
+          : "FAILED",
+        error instanceof HttpsError ? error.code : "internal",
+      );
       if (error instanceof HttpsError) throw error;
       handleFunctionError(error, "requesting section file download");
     }
@@ -497,6 +597,7 @@ export const requestSectionFileReplacement = onCall(
       if (file.status !== SectionFileStatus.AVAILABLE) {
         throw new HttpsError("failed-precondition", "The file cannot be replaced in its current state");
       }
+      await enforceSectionQuota(sectionId, Math.max(0, sizeBytes - file.sizeBytes), false);
       const pendingPath = `section-file-uploads/${sectionId}/${fileId}/${randomUUID()}`;
       const transition = await beginSectionFileReplacement({
         id: fileId,
@@ -529,7 +630,7 @@ export const requestSectionFileReplacement = onCall(
 );
 
 export const finalizeSectionFileReplacement = onCall(
-  { region: FUNCTIONS_REGION, timeoutSeconds: 120, memory: "512MiB" },
+  { region: FUNCTIONS_REGION, timeoutSeconds: 300, memory: "512MiB" },
   async (request) => {
     const { uid, isAdmin } = await requestContext(request, "finalizeSectionFileReplacement");
     const sectionId = validateUUID(requireString(request.data?.sectionId, "sectionId"), "sectionId");
@@ -553,6 +654,11 @@ export const finalizeSectionFileReplacement = onCall(
         description: file.description ?? null,
         contentType,
         sizeBytes,
+      });
+      await requireCleanScan(inspected, file.pendingStorageObjectPath, {
+        sectionId,
+        fileId,
+        actorUid: uid,
       });
       const finalPath = `section-files/${sectionId}/${fileId}/${inspected.generation}`;
       const finalObject = getStorage().bucket(bucketName()).file(finalPath);
@@ -579,6 +685,7 @@ export const finalizeSectionFileReplacement = onCall(
         bestEffortDelete(file.pendingStorageObjectPath, { sectionId, fileId }),
         bestEffortDelete(file.storageObjectPath, { sectionId, fileId }),
       ]);
+      await auditSectionFile(sectionId, fileId, uid, "REPLACEMENT_FINALIZED", "SUCCESS");
       return { fileId };
     } catch (error) {
       if (error instanceof HttpsError) throw error;
@@ -633,6 +740,7 @@ export const deleteSectionFile = onCall({ region: FUNCTIONS_REGION }, async (req
     const marked = await markSectionFileDeleted({ id: fileId, deletedAt, updatedBy: uid });
     ensureTransition(marked.data.sectionFile_updateMany);
     logger.info("Section file deleted", { sectionId, fileId, actorUid: uid });
+    await auditSectionFile(sectionId, fileId, uid, "DELETED", "SUCCESS");
     return { fileId };
   } catch (error) {
     if (error instanceof HttpsError) throw error;

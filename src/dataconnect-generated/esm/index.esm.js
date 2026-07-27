@@ -207,6 +207,56 @@ export function listSectionFilesByStatus(dcOrVars, varsOrOptions, options) {
   return executeQuery(listSectionFilesByStatusRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
+export const listStaleSectionFilesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListStaleSectionFiles', inputVars);
+}
+listStaleSectionFilesRef.operationName = 'ListStaleSectionFiles';
+
+export function listStaleSectionFiles(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listStaleSectionFilesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const listSectionFilesForQuotaRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSectionFilesForQuota', inputVars);
+}
+listSectionFilesForQuotaRef.operationName = 'ListSectionFilesForQuota';
+
+export function listSectionFilesForQuota(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listSectionFilesForQuotaRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const recordSectionFileAuditRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RecordSectionFileAudit', inputVars);
+}
+recordSectionFileAuditRef.operationName = 'RecordSectionFileAudit';
+
+export function recordSectionFileAudit(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(recordSectionFileAuditRef(dcInstance, inputVars));
+}
+
+export const abandonPendingSectionFileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AbandonPendingSectionFile', inputVars);
+}
+abandonPendingSectionFileRef.operationName = 'AbandonPendingSectionFile';
+
+export function abandonPendingSectionFile(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(abandonPendingSectionFileRef(dcInstance, inputVars));
+}
+
 export const finalizePendingSectionFileRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
