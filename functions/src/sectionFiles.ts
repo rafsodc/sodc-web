@@ -229,7 +229,11 @@ function fileResponse(file: SectionFileRecord) {
 async function trustedFile(fileId: string, sectionId: string): Promise<SectionFileRecord> {
   const result = await getSectionFileById({ id: fileId });
   const file = result.data?.sectionFile;
-  if (!file || file.sectionId !== sectionId || file.status === SectionFileStatus.DELETED) {
+  if (
+    !file ||
+    validateUUID(file.sectionId, "stored sectionId") !== sectionId ||
+    file.status === SectionFileStatus.DELETED
+  ) {
     throw new HttpsError("not-found", "File not found");
   }
   return file;
