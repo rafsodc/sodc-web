@@ -109,6 +109,19 @@ describe("function entry guard contracts", () => {
     expect(guardedSources).not.toContain("requireAuth(request);");
   });
 
+  it("keeps password reset public, neutral, and rate limited", () => {
+    const authEmailActions = readSource("authEmailActions.ts");
+    assertOnCallGuard(
+      authEmailActions,
+      "requestPasswordReset",
+      "enforceRateLimit(\"requestPasswordReset\"",
+      700,
+    );
+    expect(authEmailActions).not.toContain("requireAuth(request);");
+    expect(authEmailActions).toContain("return neutralResponse();");
+    expect(authEmailActions).not.toContain("logger.warn(email");
+  });
+
   it("applies centralized rate limits to the high-risk callables named in #344 and #369", () => {
     const admin = readSource("admin.ts");
     for (const fn of ["grantAdmin", "revokeAdmin", "listAdminUsers"]) {

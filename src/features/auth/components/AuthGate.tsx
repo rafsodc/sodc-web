@@ -141,6 +141,9 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
             autoComplete="current-password"
             fullWidth
           />
+          <Link component={RouterLink} to={ROUTES.PASSWORD_RESET_REQUEST}>
+            Forgot password?
+          </Link>
 
           <Button
             type="submit"

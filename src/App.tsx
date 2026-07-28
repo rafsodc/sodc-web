@@ -53,6 +53,8 @@ const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
 const UnsubscribeConfirmedPage = lazy(() => import("./features/account/components/UnsubscribeConfirmedPage"));
 const SectionFileDownloadPage = lazy(() => import("./features/sections/components/SectionFileDownloadPage"));
+const PasswordResetRequestPage = lazy(() => import("./features/auth/components/PasswordResetRequestPage"));
+const AuthActionPage = lazy(() => import("./features/auth/components/AuthActionPage"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -103,6 +105,7 @@ function AppContent() {
   const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
   const checkoutReturn = isCheckoutReturnSearch(location.search);
   const authReturnTo = safeReturnTo(location.search);
+  const isPublicAuthAction = location.pathname === ROUTES.AUTH_ACTION;
   const isAdmin = useAdminClaim(user);
   const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const {
@@ -178,7 +181,7 @@ function AppContent() {
     );
   }
 
-  if (emailNotVerified) {
+  if (emailNotVerified && !isPublicAuthAction) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -226,7 +229,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabledClaimResolved) {
+  if (user && !isEnabledClaimResolved && !isPublicAuthAction) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -237,7 +240,12 @@ function AppContent() {
     );
   }
 
-  if (user && needsProfileCompletion && location.pathname !== ROUTES.PROFILE_COMPLETION) {
+  if (
+    user &&
+    needsProfileCompletion &&
+    location.pathname !== ROUTES.PROFILE_COMPLETION &&
+    !isPublicAuthAction
+  ) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -246,7 +254,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabled && !needsProfileCompletion) {
+  if (user && !isEnabled && !needsProfileCompletion && !isPublicAuthAction) {
     const inactiveUserData =
       userData ||
       (membershipStatusForUnenabled
@@ -461,6 +469,26 @@ function AppContent() {
                       ) : (
                         <Navigate to={ROUTES.ACCOUNT} replace />
                       )}
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.PASSWORD_RESET_REQUEST}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <PasswordResetRequestPage />
+                      </Suspense>
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.AUTH_ACTION}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <AuthActionPage />
+                      </Suspense>
                     </Box>
                   }
                 />

@@ -122,6 +122,13 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     ],
     body: "A new member has completed their profile and is awaiting approval.\n\nName: ((firstName)) ((lastName))\nEmail: ((email))\nService number: ((serviceNumber))\nService background: ((serviceBackgroundSummary))\nRequested status: ((requestedMembershipStatus))\n\nReview in Approve Users:\n((approveUsersUrl))",
   },
+  passwordReset: {
+    subject: "Reset your SODC password",
+    variables: [
+    "resetLink"
+    ],
+    body: "We received a request to reset the password for your SODC account.\n\nUse this secure link to choose a new password:\n\n((resetLink))\n\nIf you did not request this, you can ignore this email. Your password will not change.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+  },
   paymentDisputeOpsAlert: {
     subject: "[SODC OPS] Payment dispute — ((orderId))",
     variables: [

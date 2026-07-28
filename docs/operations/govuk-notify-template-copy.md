@@ -371,3 +371,31 @@ Review in Approve Users:
 ```
 
 **Placeholders used:** `firstName`, `lastName`, `email`, `serviceNumber`, `serviceBackgroundSummary`, `requestedMembershipStatus`, `approveUsersUrl`
+
+---
+
+## Account access
+
+### `passwordReset`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET`
+
+**Subject:** Reset your SODC password
+
+**Body:**
+
+```
+We received a request to reset the password for your SODC account.
+
+Use this secure link to choose a new password:
+
+((resetLink))
+
+If you did not request this, you can ignore this email. Your password will not change.
+
+For your security, do not forward this email or share the link.
+
+SODC
+```
+
+**Placeholders used:** `resetLink`

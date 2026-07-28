@@ -18,6 +18,7 @@ export * from "./notificationRecovery";
 export * from "./sectionFiles";
 export * from "./sectionFileReconciliation";
 export * from "./govNotifyDeliveryAdmin";
+export * from "./authEmailActions";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
