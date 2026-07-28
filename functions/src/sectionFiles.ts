@@ -602,6 +602,9 @@ export const requestSectionFileReplacement = onCall(
       const transition = await beginSectionFileReplacement({
         id: fileId,
         pendingStorageObjectPath: pendingPath,
+        pendingOriginalFilename: originalFilename,
+        pendingContentType: contentType,
+        pendingSizeBytes: sizeBytes,
         updatedBy: uid,
       });
       ensureTransition(transition.data.sectionFile_updateMany);
@@ -635,9 +638,6 @@ export const finalizeSectionFileReplacement = onCall(
     const { uid, isAdmin } = await requestContext(request, "finalizeSectionFileReplacement");
     const sectionId = validateUUID(requireString(request.data?.sectionId, "sectionId"), "sectionId");
     const fileId = validateUUID(requireString(request.data?.fileId, "fileId"), "fileId");
-    const originalFilename = validateFilename(request.data?.originalFilename);
-    const contentType = validateContentType(request.data?.contentType);
-    const sizeBytes = parseSize(request.data?.sizeBytes);
     try {
       await requireSectionModerator(sectionId, uid, isAdmin);
       const file = await trustedFile(fileId, sectionId);
@@ -648,12 +648,19 @@ export const finalizeSectionFileReplacement = onCall(
       ) {
         throw new HttpsError("failed-precondition", "The replacement is not pending");
       }
+      if (
+        !file.pendingOriginalFilename ||
+        !file.pendingContentType ||
+        !file.pendingSizeBytes
+      ) {
+        throw new HttpsError("failed-precondition", "The replacement metadata is incomplete");
+      }
       const inspected = await inspectUpload(file.pendingStorageObjectPath, {
         displayName: file.displayName,
-        originalFilename,
+        originalFilename: file.pendingOriginalFilename,
         description: file.description ?? null,
-        contentType,
-        sizeBytes,
+        contentType: file.pendingContentType,
+        sizeBytes: file.pendingSizeBytes,
       });
       await requireCleanScan(inspected, file.pendingStorageObjectPath, {
         sectionId,
@@ -668,7 +675,7 @@ export const finalizeSectionFileReplacement = onCall(
         id: fileId,
         pendingStorageObjectPath: file.pendingStorageObjectPath,
         storageObjectPath: finalPath,
-        originalFilename,
+        originalFilename: file.pendingOriginalFilename,
         objectGeneration: String(finalMetadata.generation ?? ""),
         checksumSha256: inspected.checksumSha256,
         contentType: inspected.contentType,

@@ -61,6 +61,24 @@ describe("section file API security contracts", () => {
     expect(source).toContain("bestEffortDelete(file.pendingStorageObjectPath");
   });
 
+  it("persists and trusts only quota-checked replacement metadata", () => {
+    const start = source.indexOf("export const finalizeSectionFileReplacement");
+    const end = source.indexOf("export const cancelSectionFileReplacement", start);
+    const finalizeReplacement = source.slice(start, end);
+    expect(schema).toContain("pendingOriginalFilename: String");
+    expect(schema).toContain("pendingContentType: String");
+    expect(schema).toContain("pendingSizeBytes: Int");
+    expect(source).toContain("pendingOriginalFilename: originalFilename");
+    expect(source).toContain("pendingContentType: contentType");
+    expect(source).toContain("pendingSizeBytes: sizeBytes");
+    expect(source).toContain("originalFilename: file.pendingOriginalFilename");
+    expect(source).toContain("contentType: file.pendingContentType");
+    expect(source).toContain("sizeBytes: file.pendingSizeBytes");
+    expect(finalizeReplacement).not.toMatch(
+      /request\.data\?\.(?:originalFilename|contentType|sizeBytes)/,
+    );
+  });
+
   it("never includes internal object paths in member-facing file responses", () => {
     const start = source.indexOf("function fileResponse(");
     const end = source.indexOf("\n}", start);

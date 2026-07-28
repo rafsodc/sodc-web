@@ -113,4 +113,20 @@ describe("ManageSectionFiles", () => {
     render(<ManageSectionFiles sectionId="section-1" sectionName="Test Section" onBack={vi.fn()} />);
     expect(await screen.findByText(/no longer have permission/i)).toBeInTheDocument();
   });
+
+  it("clears previously loaded metadata when a refresh loses access", async () => {
+    vi.mocked(listSectionFiles)
+      .mockResolvedValueOnce([file])
+      .mockRejectedValueOnce(new Error("permission-denied"));
+    vi.mocked(updateSectionFileMetadata).mockResolvedValue();
+    const user = userEvent.setup();
+    render(<ManageSectionFiles sectionId="section-1" sectionName="Test Section" onBack={vi.fn()} />);
+    await screen.findByText("Joining instructions");
+
+    await user.click(screen.getByRole("button", { name: "Edit Joining instructions" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText(/no longer have permission/i)).toBeInTheDocument();
+    expect(screen.queryByText("Joining instructions")).not.toBeInTheDocument();
+  });
 });

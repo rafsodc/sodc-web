@@ -258,6 +258,9 @@ export interface BeginSectionFileReplacementData {
 export interface BeginSectionFileReplacementVariables {
   id: UUIDString;
   pendingStorageObjectPath: string;
+  pendingOriginalFilename: string;
+  pendingContentType: string;
+  pendingSizeBytes: number;
   updatedBy: string;
 }
 
@@ -1598,6 +1601,9 @@ export interface GetSectionFileByIdData {
     sectionId: UUIDString;
     storageObjectPath?: string | null;
     pendingStorageObjectPath?: string | null;
+    pendingOriginalFilename?: string | null;
+    pendingContentType?: string | null;
+    pendingSizeBytes?: number | null;
     displayName: string;
     originalFilename: string;
     description?: string | null;

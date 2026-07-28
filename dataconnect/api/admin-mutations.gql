@@ -118,6 +118,9 @@ query GetSectionFileById($id: UUID!) @auth(level: NO_ACCESS) {
     sectionId
     storageObjectPath
     pendingStorageObjectPath
+    pendingOriginalFilename
+    pendingContentType
+    pendingSizeBytes
     displayName
     originalFilename
     description
@@ -295,6 +298,9 @@ mutation UpdateAvailableSectionFileMetadata(
 mutation BeginSectionFileReplacement(
   $id: UUID!
   $pendingStorageObjectPath: String!
+  $pendingOriginalFilename: String!
+  $pendingContentType: String!
+  $pendingSizeBytes: Int!
   $updatedBy: String!
 ) @auth(level: NO_ACCESS) {
   sectionFile_updateMany(
@@ -304,6 +310,9 @@ mutation BeginSectionFileReplacement(
     }
     data: {
       pendingStorageObjectPath: $pendingStorageObjectPath
+      pendingOriginalFilename: $pendingOriginalFilename
+      pendingContentType: $pendingContentType
+      pendingSizeBytes: $pendingSizeBytes
       status: REPLACING
       updatedAt_expr: "request.time"
       updatedBy: $updatedBy
@@ -331,6 +340,9 @@ mutation FinalizeSectionFileReplacement(
     data: {
       storageObjectPath: $storageObjectPath
       pendingStorageObjectPath: null
+      pendingOriginalFilename: null
+      pendingContentType: null
+      pendingSizeBytes: null
       originalFilename: $originalFilename
       objectGeneration: $objectGeneration
       checksumSha256: $checksumSha256
@@ -356,6 +368,9 @@ mutation AbortSectionFileReplacement(
     }
     data: {
       pendingStorageObjectPath: null
+      pendingOriginalFilename: null
+      pendingContentType: null
+      pendingSizeBytes: null
       status: AVAILABLE
       updatedAt_expr: "request.time"
       updatedBy: $updatedBy
@@ -394,6 +409,9 @@ mutation MarkSectionFileDeleted(
       status: DELETED
       deletedAt: $deletedAt
       pendingStorageObjectPath: null
+      pendingOriginalFilename: null
+      pendingContentType: null
+      pendingSizeBytes: null
       updatedAt: $deletedAt
       updatedBy: $updatedBy
     }

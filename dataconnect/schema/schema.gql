@@ -193,6 +193,9 @@ type SectionFile @table @unique(fields: ["storageObjectPath"]) {
   section: Section!
   storageObjectPath: String
   pendingStorageObjectPath: String
+  pendingOriginalFilename: String
+  pendingContentType: String
+  pendingSizeBytes: Int
   displayName: String!
   originalFilename: String!
   description: String

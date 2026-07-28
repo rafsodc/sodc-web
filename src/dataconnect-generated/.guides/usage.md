@@ -12,8 +12,16 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useCreatePendingSectionFile, useGetSectionFileById, useListSectionFilesByStatus, useFinalizePendingSectionFile, useUpdateAvailableSectionFileMetadata, useBeginSectionFileReplacement, useFinalizeSectionFileReplacement, useAbortSectionFileReplacement, useBeginSectionFileDeletion, useMarkSectionFileDeleted } from '@dataconnect/generated/react';
+import { useGetGovNotifyDeliveryConfiguration, useListGovNotifyDeliveryModeAudits, useCreateGovNotifyDeliveryConfiguration, useChangeGovNotifyDeliveryMode, useCreatePendingSectionFile, useGetSectionFileById, useListSectionFilesByStatus, useListStaleSectionFiles, useListSectionFilesForQuota, useRecordSectionFileAudit } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
+
+const { data, isPending, isSuccess, isError, error } = useGetGovNotifyDeliveryConfiguration();
+
+const { data, isPending, isSuccess, isError, error } = useListGovNotifyDeliveryModeAudits(listGovNotifyDeliveryModeAuditsVars);
+
+const { data, isPending, isSuccess, isError, error } = useCreateGovNotifyDeliveryConfiguration();
+
+const { data, isPending, isSuccess, isError, error } = useChangeGovNotifyDeliveryMode(changeGovNotifyDeliveryModeVars);
 
 const { data, isPending, isSuccess, isError, error } = useCreatePendingSectionFile(createPendingSectionFileVars);
 
@@ -21,19 +29,11 @@ const { data, isPending, isSuccess, isError, error } = useGetSectionFileById(get
 
 const { data, isPending, isSuccess, isError, error } = useListSectionFilesByStatus(listSectionFilesByStatusVars);
 
-const { data, isPending, isSuccess, isError, error } = useFinalizePendingSectionFile(finalizePendingSectionFileVars);
+const { data, isPending, isSuccess, isError, error } = useListStaleSectionFiles(listStaleSectionFilesVars);
 
-const { data, isPending, isSuccess, isError, error } = useUpdateAvailableSectionFileMetadata(updateAvailableSectionFileMetadataVars);
+const { data, isPending, isSuccess, isError, error } = useListSectionFilesForQuota(listSectionFilesForQuotaVars);
 
-const { data, isPending, isSuccess, isError, error } = useBeginSectionFileReplacement(beginSectionFileReplacementVars);
-
-const { data, isPending, isSuccess, isError, error } = useFinalizeSectionFileReplacement(finalizeSectionFileReplacementVars);
-
-const { data, isPending, isSuccess, isError, error } = useAbortSectionFileReplacement(abortSectionFileReplacementVars);
-
-const { data, isPending, isSuccess, isError, error } = useBeginSectionFileDeletion(beginSectionFileDeletionVars);
-
-const { data, isPending, isSuccess, isError, error } = useMarkSectionFileDeleted(markSectionFileDeletedVars);
+const { data, isPending, isSuccess, isError, error } = useRecordSectionFileAudit(recordSectionFileAuditVars);
 
 ```
 
@@ -72,8 +72,20 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { createPendingSectionFile, getSectionFileById, listSectionFilesByStatus, finalizePendingSectionFile, updateAvailableSectionFileMetadata, beginSectionFileReplacement, finalizeSectionFileReplacement, abortSectionFileReplacement, beginSectionFileDeletion, markSectionFileDeleted } from '@dataconnect/generated';
+import { getGovNotifyDeliveryConfiguration, listGovNotifyDeliveryModeAudits, createGovNotifyDeliveryConfiguration, changeGovNotifyDeliveryMode, createPendingSectionFile, getSectionFileById, listSectionFilesByStatus, listStaleSectionFiles, listSectionFilesForQuota, recordSectionFileAudit } from '@dataconnect/generated';
 
+
+// Operation GetGovNotifyDeliveryConfiguration: 
+const { data } = await GetGovNotifyDeliveryConfiguration(dataConnect);
+
+// Operation ListGovNotifyDeliveryModeAudits:  For variables, look at type ListGovNotifyDeliveryModeAuditsVars in ../index.d.ts
+const { data } = await ListGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars);
+
+// Operation CreateGovNotifyDeliveryConfiguration: 
+const { data } = await CreateGovNotifyDeliveryConfiguration(dataConnect);
+
+// Operation ChangeGovNotifyDeliveryMode:  For variables, look at type ChangeGovNotifyDeliveryModeVars in ../index.d.ts
+const { data } = await ChangeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
 
 // Operation CreatePendingSectionFile:  For variables, look at type CreatePendingSectionFileVars in ../index.d.ts
 const { data } = await CreatePendingSectionFile(dataConnect, createPendingSectionFileVars);
@@ -84,26 +96,14 @@ const { data } = await GetSectionFileById(dataConnect, getSectionFileByIdVars);
 // Operation ListSectionFilesByStatus:  For variables, look at type ListSectionFilesByStatusVars in ../index.d.ts
 const { data } = await ListSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
 
-// Operation FinalizePendingSectionFile:  For variables, look at type FinalizePendingSectionFileVars in ../index.d.ts
-const { data } = await FinalizePendingSectionFile(dataConnect, finalizePendingSectionFileVars);
+// Operation ListStaleSectionFiles:  For variables, look at type ListStaleSectionFilesVars in ../index.d.ts
+const { data } = await ListStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
 
-// Operation UpdateAvailableSectionFileMetadata:  For variables, look at type UpdateAvailableSectionFileMetadataVars in ../index.d.ts
-const { data } = await UpdateAvailableSectionFileMetadata(dataConnect, updateAvailableSectionFileMetadataVars);
+// Operation ListSectionFilesForQuota:  For variables, look at type ListSectionFilesForQuotaVars in ../index.d.ts
+const { data } = await ListSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
 
-// Operation BeginSectionFileReplacement:  For variables, look at type BeginSectionFileReplacementVars in ../index.d.ts
-const { data } = await BeginSectionFileReplacement(dataConnect, beginSectionFileReplacementVars);
-
-// Operation FinalizeSectionFileReplacement:  For variables, look at type FinalizeSectionFileReplacementVars in ../index.d.ts
-const { data } = await FinalizeSectionFileReplacement(dataConnect, finalizeSectionFileReplacementVars);
-
-// Operation AbortSectionFileReplacement:  For variables, look at type AbortSectionFileReplacementVars in ../index.d.ts
-const { data } = await AbortSectionFileReplacement(dataConnect, abortSectionFileReplacementVars);
-
-// Operation BeginSectionFileDeletion:  For variables, look at type BeginSectionFileDeletionVars in ../index.d.ts
-const { data } = await BeginSectionFileDeletion(dataConnect, beginSectionFileDeletionVars);
-
-// Operation MarkSectionFileDeleted:  For variables, look at type MarkSectionFileDeletedVars in ../index.d.ts
-const { data } = await MarkSectionFileDeleted(dataConnect, markSectionFileDeletedVars);
+// Operation RecordSectionFileAudit:  For variables, look at type RecordSectionFileAuditVars in ../index.d.ts
+const { data } = await RecordSectionFileAudit(dataConnect, recordSectionFileAuditVars);
 
 
 ```

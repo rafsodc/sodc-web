@@ -89,6 +89,7 @@ export default function ManageSectionFiles({
     try {
       setFiles(await listSectionFiles(sectionId));
     } catch (error) {
+      setFiles([]);
       setNotice({ severity: "error", text: errorMessage(error) });
     } finally {
       setLoading(false);

@@ -17,8 +17,12 @@ You can also follow the instructions from the [Data Connect documentation](https
 - [**Accessing the connector**](#accessing-the-connector)
   - [*Connecting to the local Emulator*](#connecting-to-the-local-emulator)
 - [**Queries**](#queries)
+  - [*GetGovNotifyDeliveryConfiguration*](#getgovnotifydeliveryconfiguration)
+  - [*ListGovNotifyDeliveryModeAudits*](#listgovnotifydeliverymodeaudits)
   - [*GetSectionFileById*](#getsectionfilebyid)
   - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
+  - [*ListStaleSectionFiles*](#liststalesectionfiles)
+  - [*ListSectionFilesForQuota*](#listsectionfilesforquota)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetUserForCheckout*](#getuserforcheckout)
@@ -82,7 +86,11 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
   - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
 - [**Mutations**](#mutations)
+  - [*CreateGovNotifyDeliveryConfiguration*](#creategovnotifydeliveryconfiguration)
+  - [*ChangeGovNotifyDeliveryMode*](#changegovnotifydeliverymode)
   - [*CreatePendingSectionFile*](#creatependingsectionfile)
+  - [*RecordSectionFileAudit*](#recordsectionfileaudit)
+  - [*AbandonPendingSectionFile*](#abandonpendingsectionfile)
   - [*FinalizePendingSectionFile*](#finalizependingsectionfile)
   - [*UpdateAvailableSectionFileMetadata*](#updateavailablesectionfilemetadata)
   - [*BeginSectionFileReplacement*](#beginsectionfilereplacement)
@@ -120,7 +128,9 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
   - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateAnnouncementSend*](#createannouncementsend)
+  - [*CreateAnnouncementSendWithDeliveryMode*](#createannouncementsendwithdeliverymode)
   - [*CreateAnnouncementRecipient*](#createannouncementrecipient)
+  - [*CreateAnnouncementRecipientWithDeliveryMode*](#createannouncementrecipientwithdeliverymode)
   - [*TryUpdateAnnouncementRecipientProcessingStatus*](#tryupdateannouncementrecipientprocessingstatus)
   - [*TryMarkAnnouncementRecipientEnqueueFailed*](#trymarkannouncementrecipientenqueuefailed)
   - [*TryUpdateAnnouncementRecipientDeliveryStatus*](#tryupdateannouncementrecipientdeliverystatus)
@@ -260,6 +270,170 @@ Here's a general overview of how to use the generated Query hooks in your code:
 
 Below are examples of how to use the `api` connector's generated Query hook functions to execute each Query. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#operations-react-angular).
 
+## GetGovNotifyDeliveryConfiguration
+You can execute the `GetGovNotifyDeliveryConfiguration` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetGovNotifyDeliveryConfiguration(dc: DataConnect, options?: useDataConnectQueryOptions<GetGovNotifyDeliveryConfigurationData>): UseDataConnectQueryResult<GetGovNotifyDeliveryConfigurationData, undefined>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetGovNotifyDeliveryConfiguration(options?: useDataConnectQueryOptions<GetGovNotifyDeliveryConfigurationData>): UseDataConnectQueryResult<GetGovNotifyDeliveryConfigurationData, undefined>;
+```
+
+### Variables
+The `GetGovNotifyDeliveryConfiguration` Query has no variables.
+### Return Type
+Recall that calling the `GetGovNotifyDeliveryConfiguration` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetGovNotifyDeliveryConfiguration` Query is of type `GetGovNotifyDeliveryConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration?: {
+    mode: GovNotifyDeliveryMode;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+  };
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetGovNotifyDeliveryConfiguration`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@dataconnect/generated';
+import { useGetGovNotifyDeliveryConfiguration } from '@dataconnect/generated/react'
+
+export default function GetGovNotifyDeliveryConfigurationComponent() {
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetGovNotifyDeliveryConfiguration();
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetGovNotifyDeliveryConfiguration(dataConnect);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetGovNotifyDeliveryConfiguration(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetGovNotifyDeliveryConfiguration(dataConnect, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.govNotifyDeliveryConfiguration);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListGovNotifyDeliveryModeAudits
+You can execute the `ListGovNotifyDeliveryModeAudits` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListGovNotifyDeliveryModeAudits(dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables, options?: useDataConnectQueryOptions<ListGovNotifyDeliveryModeAuditsData>): UseDataConnectQueryResult<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListGovNotifyDeliveryModeAudits(vars: ListGovNotifyDeliveryModeAuditsVariables, options?: useDataConnectQueryOptions<ListGovNotifyDeliveryModeAuditsData>): UseDataConnectQueryResult<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+```
+
+### Variables
+The `ListGovNotifyDeliveryModeAudits` Query requires an argument of type `ListGovNotifyDeliveryModeAuditsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListGovNotifyDeliveryModeAuditsVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListGovNotifyDeliveryModeAudits` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListGovNotifyDeliveryModeAudits` Query is of type `ListGovNotifyDeliveryModeAuditsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListGovNotifyDeliveryModeAuditsData {
+  govNotifyDeliveryModeAudits: ({
+    id: UUIDString;
+    previousMode: GovNotifyDeliveryMode;
+    newMode: GovNotifyDeliveryMode;
+    deploymentCeiling: GovNotifyDeliveryMode;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & GovNotifyDeliveryModeAudit_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListGovNotifyDeliveryModeAudits`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListGovNotifyDeliveryModeAuditsVariables } from '@dataconnect/generated';
+import { useListGovNotifyDeliveryModeAudits } from '@dataconnect/generated/react'
+
+export default function ListGovNotifyDeliveryModeAuditsComponent() {
+  // The `useListGovNotifyDeliveryModeAudits` Query hook requires an argument of type `ListGovNotifyDeliveryModeAuditsVariables`:
+  const listGovNotifyDeliveryModeAuditsVars: ListGovNotifyDeliveryModeAuditsVariables = {
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListGovNotifyDeliveryModeAudits(listGovNotifyDeliveryModeAuditsVars);
+  // Variables can be defined inline as well.
+  const query = useListGovNotifyDeliveryModeAudits({ limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListGovNotifyDeliveryModeAudits(listGovNotifyDeliveryModeAuditsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.govNotifyDeliveryModeAudits);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetSectionFileById
 You can execute the `GetSectionFileById` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -292,6 +466,9 @@ export interface GetSectionFileByIdData {
     sectionId: UUIDString;
     storageObjectPath?: string | null;
     pendingStorageObjectPath?: string | null;
+    pendingOriginalFilename?: string | null;
+    pendingContentType?: string | null;
+    pendingSizeBytes?: number | null;
     displayName: string;
     originalFilename: string;
     description?: string | null;
@@ -444,6 +621,185 @@ export default function ListSectionFilesByStatusComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useListSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.sectionFiles);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListStaleSectionFiles
+You can execute the `ListStaleSectionFiles` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListStaleSectionFiles(dc: DataConnect, vars: ListStaleSectionFilesVariables, options?: useDataConnectQueryOptions<ListStaleSectionFilesData>): UseDataConnectQueryResult<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListStaleSectionFiles(vars: ListStaleSectionFilesVariables, options?: useDataConnectQueryOptions<ListStaleSectionFilesData>): UseDataConnectQueryResult<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+```
+
+### Variables
+The `ListStaleSectionFiles` Query requires an argument of type `ListStaleSectionFilesVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListStaleSectionFilesVariables {
+  updatedBefore: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListStaleSectionFiles` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListStaleSectionFiles` Query is of type `ListStaleSectionFilesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListStaleSectionFilesData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    status: SectionFileStatus;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListStaleSectionFiles`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListStaleSectionFilesVariables } from '@dataconnect/generated';
+import { useListStaleSectionFiles } from '@dataconnect/generated/react'
+
+export default function ListStaleSectionFilesComponent() {
+  // The `useListStaleSectionFiles` Query hook requires an argument of type `ListStaleSectionFilesVariables`:
+  const listStaleSectionFilesVars: ListStaleSectionFilesVariables = {
+    updatedBefore: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListStaleSectionFiles(listStaleSectionFilesVars);
+  // Variables can be defined inline as well.
+  const query = useListStaleSectionFiles({ updatedBefore: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListStaleSectionFiles(listStaleSectionFilesVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListStaleSectionFiles(dataConnect, listStaleSectionFilesVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.sectionFiles);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListSectionFilesForQuota
+You can execute the `ListSectionFilesForQuota` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListSectionFilesForQuota(dc: DataConnect, vars: ListSectionFilesForQuotaVariables, options?: useDataConnectQueryOptions<ListSectionFilesForQuotaData>): UseDataConnectQueryResult<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListSectionFilesForQuota(vars: ListSectionFilesForQuotaVariables, options?: useDataConnectQueryOptions<ListSectionFilesForQuotaData>): UseDataConnectQueryResult<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+```
+
+### Variables
+The `ListSectionFilesForQuota` Query requires an argument of type `ListSectionFilesForQuotaVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListSectionFilesForQuotaVariables {
+  sectionId: UUIDString;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListSectionFilesForQuota` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListSectionFilesForQuota` Query is of type `ListSectionFilesForQuotaData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListSectionFilesForQuotaData {
+  sectionFiles: ({
+    id: UUIDString;
+    sizeBytes: number;
+    status: SectionFileStatus;
+  } & SectionFile_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListSectionFilesForQuota`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListSectionFilesForQuotaVariables } from '@dataconnect/generated';
+import { useListSectionFilesForQuota } from '@dataconnect/generated/react'
+
+export default function ListSectionFilesForQuotaComponent() {
+  // The `useListSectionFilesForQuota` Query hook requires an argument of type `ListSectionFilesForQuotaVariables`:
+  const listSectionFilesForQuotaVars: ListSectionFilesForQuotaVariables = {
+    sectionId: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListSectionFilesForQuota(listSectionFilesForQuotaVars);
+  // Variables can be defined inline as well.
+  const query = useListSectionFilesForQuota({ sectionId: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListSectionFilesForQuota(listSectionFilesForQuotaVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -2760,6 +3116,9 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key)[];
 }
 ```
@@ -2852,6 +3211,7 @@ export interface GetAnnouncementSendRecipientsData {
     skippedReason?: string | null;
     sentAt?: TimestampString | null;
     failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementRecipient_Key)[];
 }
 ```
@@ -2943,6 +3303,9 @@ export interface GetAnnouncementSendByIdData {
     recipientCount: number;
     skippedCount: number;
     recipientSnapshot?: string | null;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key;
 }
 ```
@@ -3033,6 +3396,7 @@ export interface GetAnnouncementRecipientBySendAndUserData {
     processingVersion: number;
     processingStartedAt?: TimestampString | null;
     providerNotificationId?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
     deliveryVersion: number;
     deliveryStatusUpdatedAt?: TimestampString | null;
     deliveryReceiptId?: string | null;
@@ -6490,6 +6854,195 @@ Here's a general overview of how to use the generated Mutation hooks in your cod
 
 Below are examples of how to use the `api` connector's generated Mutation hook functions to execute each Mutation. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#operations-react-angular).
 
+## CreateGovNotifyDeliveryConfiguration
+You can execute the `CreateGovNotifyDeliveryConfiguration` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateGovNotifyDeliveryConfiguration(options?: useDataConnectMutationOptions<CreateGovNotifyDeliveryConfigurationData, FirebaseError, void>): UseDataConnectMutationResult<CreateGovNotifyDeliveryConfigurationData, undefined>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateGovNotifyDeliveryConfiguration(dc: DataConnect, options?: useDataConnectMutationOptions<CreateGovNotifyDeliveryConfigurationData, FirebaseError, void>): UseDataConnectMutationResult<CreateGovNotifyDeliveryConfigurationData, undefined>;
+```
+
+### Variables
+The `CreateGovNotifyDeliveryConfiguration` Mutation has no variables.
+### Return Type
+Recall that calling the `CreateGovNotifyDeliveryConfiguration` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateGovNotifyDeliveryConfiguration` Mutation is of type `CreateGovNotifyDeliveryConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration_insert: GovNotifyDeliveryConfiguration_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateGovNotifyDeliveryConfiguration`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@dataconnect/generated';
+import { useCreateGovNotifyDeliveryConfiguration } from '@dataconnect/generated/react'
+
+export default function CreateGovNotifyDeliveryConfigurationComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateGovNotifyDeliveryConfiguration();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateGovNotifyDeliveryConfiguration(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateGovNotifyDeliveryConfiguration(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateGovNotifyDeliveryConfiguration(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  mutation.mutate();
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  // Since this Mutation accepts no variables, you must pass `undefined` where you would normally pass the variables.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(undefined, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.govNotifyDeliveryConfiguration_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ChangeGovNotifyDeliveryMode
+You can execute the `ChangeGovNotifyDeliveryMode` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useChangeGovNotifyDeliveryMode(options?: useDataConnectMutationOptions<ChangeGovNotifyDeliveryModeData, FirebaseError, ChangeGovNotifyDeliveryModeVariables>): UseDataConnectMutationResult<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useChangeGovNotifyDeliveryMode(dc: DataConnect, options?: useDataConnectMutationOptions<ChangeGovNotifyDeliveryModeData, FirebaseError, ChangeGovNotifyDeliveryModeVariables>): UseDataConnectMutationResult<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+```
+
+### Variables
+The `ChangeGovNotifyDeliveryMode` Mutation requires an argument of type `ChangeGovNotifyDeliveryModeVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ChangeGovNotifyDeliveryModeVariables {
+  expectedVersion: number;
+  previousMode: GovNotifyDeliveryMode;
+  newMode: GovNotifyDeliveryMode;
+  deploymentCeiling: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
+}
+```
+### Return Type
+Recall that calling the `ChangeGovNotifyDeliveryMode` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ChangeGovNotifyDeliveryMode` Mutation is of type `ChangeGovNotifyDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ChangeGovNotifyDeliveryModeData {
+  changed: number;
+  govNotifyDeliveryModeAudit_insert: GovNotifyDeliveryModeAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ChangeGovNotifyDeliveryMode`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ChangeGovNotifyDeliveryModeVariables } from '@dataconnect/generated';
+import { useChangeGovNotifyDeliveryMode } from '@dataconnect/generated/react'
+
+export default function ChangeGovNotifyDeliveryModeComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useChangeGovNotifyDeliveryMode();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useChangeGovNotifyDeliveryMode(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useChangeGovNotifyDeliveryMode(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useChangeGovNotifyDeliveryMode(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useChangeGovNotifyDeliveryMode` Mutation requires an argument of type `ChangeGovNotifyDeliveryModeVariables`:
+  const changeGovNotifyDeliveryModeVars: ChangeGovNotifyDeliveryModeVariables = {
+    expectedVersion: ..., 
+    previousMode: ..., 
+    newMode: ..., 
+    deploymentCeiling: ..., 
+    changedBy: ..., 
+    reason: ..., 
+  };
+  mutation.mutate(changeGovNotifyDeliveryModeVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ expectedVersion: ..., previousMode: ..., newMode: ..., deploymentCeiling: ..., changedBy: ..., reason: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(changeGovNotifyDeliveryModeVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
+    console.log(mutation.data.govNotifyDeliveryModeAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## CreatePendingSectionFile
 You can execute the `CreatePendingSectionFile` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -6602,6 +7155,206 @@ export default function CreatePendingSectionFileComponent() {
 }
 ```
 
+## RecordSectionFileAudit
+You can execute the `RecordSectionFileAudit` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useRecordSectionFileAudit(options?: useDataConnectMutationOptions<RecordSectionFileAuditData, FirebaseError, RecordSectionFileAuditVariables>): UseDataConnectMutationResult<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useRecordSectionFileAudit(dc: DataConnect, options?: useDataConnectMutationOptions<RecordSectionFileAuditData, FirebaseError, RecordSectionFileAuditVariables>): UseDataConnectMutationResult<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+```
+
+### Variables
+The `RecordSectionFileAudit` Mutation requires an argument of type `RecordSectionFileAuditVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface RecordSectionFileAuditVariables {
+  sectionId: UUIDString;
+  fileId?: UUIDString | null;
+  actorUid: string;
+  action: string;
+  outcome: string;
+  detail?: string | null;
+}
+```
+### Return Type
+Recall that calling the `RecordSectionFileAudit` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RecordSectionFileAudit` Mutation is of type `RecordSectionFileAuditData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface RecordSectionFileAuditData {
+  sectionFileAudit_insert: SectionFileAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `RecordSectionFileAudit`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, RecordSectionFileAuditVariables } from '@dataconnect/generated';
+import { useRecordSectionFileAudit } from '@dataconnect/generated/react'
+
+export default function RecordSectionFileAuditComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useRecordSectionFileAudit();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useRecordSectionFileAudit(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordSectionFileAudit(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordSectionFileAudit(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useRecordSectionFileAudit` Mutation requires an argument of type `RecordSectionFileAuditVariables`:
+  const recordSectionFileAuditVars: RecordSectionFileAuditVariables = {
+    sectionId: ..., 
+    fileId: ..., // optional
+    actorUid: ..., 
+    action: ..., 
+    outcome: ..., 
+    detail: ..., // optional
+  };
+  mutation.mutate(recordSectionFileAuditVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ sectionId: ..., fileId: ..., actorUid: ..., action: ..., outcome: ..., detail: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(recordSectionFileAuditVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFileAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## AbandonPendingSectionFile
+You can execute the `AbandonPendingSectionFile` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAbandonPendingSectionFile(options?: useDataConnectMutationOptions<AbandonPendingSectionFileData, FirebaseError, AbandonPendingSectionFileVariables>): UseDataConnectMutationResult<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAbandonPendingSectionFile(dc: DataConnect, options?: useDataConnectMutationOptions<AbandonPendingSectionFileData, FirebaseError, AbandonPendingSectionFileVariables>): UseDataConnectMutationResult<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+```
+
+### Variables
+The `AbandonPendingSectionFile` Mutation requires an argument of type `AbandonPendingSectionFileVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AbandonPendingSectionFileVariables {
+  id: UUIDString;
+  updatedBefore: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `AbandonPendingSectionFile` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AbandonPendingSectionFile` Mutation is of type `AbandonPendingSectionFileData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AbandonPendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AbandonPendingSectionFile`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AbandonPendingSectionFileVariables } from '@dataconnect/generated';
+import { useAbandonPendingSectionFile } from '@dataconnect/generated/react'
+
+export default function AbandonPendingSectionFileComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAbandonPendingSectionFile();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAbandonPendingSectionFile(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAbandonPendingSectionFile(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAbandonPendingSectionFile(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAbandonPendingSectionFile` Mutation requires an argument of type `AbandonPendingSectionFileVariables`:
+  const abandonPendingSectionFileVars: AbandonPendingSectionFileVariables = {
+    id: ..., 
+    updatedBefore: ..., 
+  };
+  mutation.mutate(abandonPendingSectionFileVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., updatedBefore: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(abandonPendingSectionFileVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.sectionFile_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## FinalizePendingSectionFile
 You can execute the `FinalizePendingSectionFile` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -6676,7 +7429,7 @@ export default function FinalizePendingSectionFileComponent() {
   const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
     id: ..., 
     pendingStorageObjectPath: ..., 
-    storageObjectPath: ...,
+    storageObjectPath: ..., 
     objectGeneration: ..., 
     checksumSha256: ..., 
     contentType: ..., 
@@ -6827,6 +7580,9 @@ The `BeginSectionFileReplacement` Mutation requires an argument of type `BeginSe
 export interface BeginSectionFileReplacementVariables {
   id: UUIDString;
   pendingStorageObjectPath: string;
+  pendingOriginalFilename: string;
+  pendingContentType: string;
+  pendingSizeBytes: number;
   updatedBy: string;
 }
 ```
@@ -6879,11 +7635,14 @@ export default function BeginSectionFileReplacementComponent() {
   const beginSectionFileReplacementVars: BeginSectionFileReplacementVariables = {
     id: ..., 
     pendingStorageObjectPath: ..., 
+    pendingOriginalFilename: ..., 
+    pendingContentType: ..., 
+    pendingSizeBytes: ..., 
     updatedBy: ..., 
   };
   mutation.mutate(beginSectionFileReplacementVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., updatedBy: ..., });
+  mutation.mutate({ id: ..., pendingStorageObjectPath: ..., pendingOriginalFilename: ..., pendingContentType: ..., pendingSizeBytes: ..., updatedBy: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -6983,7 +7742,7 @@ export default function FinalizeSectionFileReplacementComponent() {
   const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
     id: ..., 
     pendingStorageObjectPath: ..., 
-    storageObjectPath: ...,
+    storageObjectPath: ..., 
     originalFilename: ..., 
     objectGeneration: ..., 
     checksumSha256: ..., 
@@ -9161,6 +9920,7 @@ export interface MarkNotificationDeliverySentByIdVariables {
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
 }
 ```
 ### Return Type
@@ -9218,10 +9978,11 @@ export default function MarkNotificationDeliverySentByIdComponent() {
     providerMessageId: ..., // optional
     lastErrorCode: ..., // optional
     lastErrorMessage: ..., // optional
+    deliveryMode: ..., // optional
   };
   mutation.mutate(markNotificationDeliverySentByIdVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+  mutation.mutate({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., deliveryMode: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -10380,6 +11141,120 @@ export default function CreateAnnouncementSendComponent() {
 }
 ```
 
+## CreateAnnouncementSendWithDeliveryMode
+You can execute the `CreateAnnouncementSendWithDeliveryMode` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateAnnouncementSendWithDeliveryMode(options?: useDataConnectMutationOptions<CreateAnnouncementSendWithDeliveryModeData, FirebaseError, CreateAnnouncementSendWithDeliveryModeVariables>): UseDataConnectMutationResult<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateAnnouncementSendWithDeliveryMode(dc: DataConnect, options?: useDataConnectMutationOptions<CreateAnnouncementSendWithDeliveryModeData, FirebaseError, CreateAnnouncementSendWithDeliveryModeVariables>): UseDataConnectMutationResult<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+```
+
+### Variables
+The `CreateAnnouncementSendWithDeliveryMode` Mutation requires an argument of type `CreateAnnouncementSendWithDeliveryModeVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateAnnouncementSendWithDeliveryModeVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  recipientSnapshot: string;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+```
+### Return Type
+Recall that calling the `CreateAnnouncementSendWithDeliveryMode` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAnnouncementSendWithDeliveryMode` Mutation is of type `CreateAnnouncementSendWithDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateAnnouncementSendWithDeliveryModeData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateAnnouncementSendWithDeliveryMode`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateAnnouncementSendWithDeliveryModeVariables } from '@dataconnect/generated';
+import { useCreateAnnouncementSendWithDeliveryMode } from '@dataconnect/generated/react'
+
+export default function CreateAnnouncementSendWithDeliveryModeComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateAnnouncementSendWithDeliveryMode();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateAnnouncementSendWithDeliveryMode(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateAnnouncementSendWithDeliveryMode(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateAnnouncementSendWithDeliveryMode(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateAnnouncementSendWithDeliveryMode` Mutation requires an argument of type `CreateAnnouncementSendWithDeliveryModeVariables`:
+  const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeliveryModeVariables = {
+    id: ..., 
+    sectionId: ..., 
+    templateUuid: ..., 
+    templateName: ..., // optional
+    sentBy: ..., 
+    recipientCount: ..., 
+    skippedCount: ..., 
+    recipientSnapshot: ..., 
+    requestedDeliveryMode: ..., 
+    siteDeliveryMode: ..., 
+    effectiveDeliveryMode: ..., 
+  };
+  mutation.mutate(createAnnouncementSendWithDeliveryModeVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createAnnouncementSendWithDeliveryModeVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.announcementSend_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## CreateAnnouncementRecipient
 You can execute the `CreateAnnouncementRecipient` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -10474,6 +11349,120 @@ export default function CreateAnnouncementRecipientComponent() {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
   mutation.mutate(createAnnouncementRecipientVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.announcementRecipient_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateAnnouncementRecipientWithDeliveryMode
+You can execute the `CreateAnnouncementRecipientWithDeliveryMode` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateAnnouncementRecipientWithDeliveryMode(options?: useDataConnectMutationOptions<CreateAnnouncementRecipientWithDeliveryModeData, FirebaseError, CreateAnnouncementRecipientWithDeliveryModeVariables>): UseDataConnectMutationResult<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateAnnouncementRecipientWithDeliveryMode(dc: DataConnect, options?: useDataConnectMutationOptions<CreateAnnouncementRecipientWithDeliveryModeData, FirebaseError, CreateAnnouncementRecipientWithDeliveryModeVariables>): UseDataConnectMutationResult<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+```
+
+### Variables
+The `CreateAnnouncementRecipientWithDeliveryMode` Mutation requires an argument of type `CreateAnnouncementRecipientWithDeliveryModeVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
+  id: UUIDString;
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+```
+### Return Type
+Recall that calling the `CreateAnnouncementRecipientWithDeliveryMode` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAnnouncementRecipientWithDeliveryMode` Mutation is of type `CreateAnnouncementRecipientWithDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateAnnouncementRecipientWithDeliveryMode`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateAnnouncementRecipientWithDeliveryModeVariables } from '@dataconnect/generated';
+import { useCreateAnnouncementRecipientWithDeliveryMode } from '@dataconnect/generated/react'
+
+export default function CreateAnnouncementRecipientWithDeliveryModeComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateAnnouncementRecipientWithDeliveryMode();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateAnnouncementRecipientWithDeliveryMode(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateAnnouncementRecipientWithDeliveryMode(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateAnnouncementRecipientWithDeliveryMode(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateAnnouncementRecipientWithDeliveryMode` Mutation requires an argument of type `CreateAnnouncementRecipientWithDeliveryModeVariables`:
+  const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipientWithDeliveryModeVariables = {
+    id: ..., 
+    announcementSendId: ..., 
+    userId: ..., 
+    email: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    status: ..., 
+    skippedReason: ..., // optional
+    sentAt: ..., // optional
+    failureReason: ..., // optional
+    effectiveDeliveryMode: ..., 
+  };
+  mutation.mutate(createAnnouncementRecipientWithDeliveryModeVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createAnnouncementRecipientWithDeliveryModeVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
@@ -15281,3 +16270,4 @@ export default function OptInSectionAnnouncementComponent() {
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
+
