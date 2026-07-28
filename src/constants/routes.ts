@@ -17,9 +17,11 @@ export const ROUTES = {
   MY_BOOKINGS: "/bookings",
   SECTIONS: "/sections",
   SECTION_DETAIL: "/sections/:sectionId",
+  SECTION_FILE: "/sections/:sectionId/files/:fileId",
   MANAGE_SECTIONS: "/admin/sections",
   SECTION_ADMIN: "/admin/section/:sectionId",
   EMAIL_TEMPLATES: "/admin/email-templates",
+  EMAIL_DELIVERY: "/admin/email-delivery",
   REGISTER: "/register",
   PROFILE_COMPLETION: "/profile-completion",
   UNSUBSCRIBE_CONFIRMED: "/unsubscribe/confirmed",
@@ -29,4 +31,3 @@ export const ROUTES = {
  * Route type
  */
 export type Route = typeof ROUTES[keyof typeof ROUTES];
-

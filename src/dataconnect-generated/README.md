@@ -10,6 +10,12 @@ This README will guide you through the process of using the generated JavaScript
 - [**Accessing the connector**](#accessing-the-connector)
   - [*Connecting to the local Emulator*](#connecting-to-the-local-emulator)
 - [**Queries**](#queries)
+  - [*GetGovNotifyDeliveryConfiguration*](#getgovnotifydeliveryconfiguration)
+  - [*ListGovNotifyDeliveryModeAudits*](#listgovnotifydeliverymodeaudits)
+  - [*GetSectionFileById*](#getsectionfilebyid)
+  - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
+  - [*ListStaleSectionFiles*](#liststalesectionfiles)
+  - [*ListSectionFilesForQuota*](#listsectionfilesforquota)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetUserForCheckout*](#getuserforcheckout)
@@ -73,6 +79,18 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
   - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
 - [**Mutations**](#mutations)
+  - [*CreateGovNotifyDeliveryConfiguration*](#creategovnotifydeliveryconfiguration)
+  - [*ChangeGovNotifyDeliveryMode*](#changegovnotifydeliverymode)
+  - [*CreatePendingSectionFile*](#creatependingsectionfile)
+  - [*RecordSectionFileAudit*](#recordsectionfileaudit)
+  - [*AbandonPendingSectionFile*](#abandonpendingsectionfile)
+  - [*FinalizePendingSectionFile*](#finalizependingsectionfile)
+  - [*UpdateAvailableSectionFileMetadata*](#updateavailablesectionfilemetadata)
+  - [*BeginSectionFileReplacement*](#beginsectionfilereplacement)
+  - [*FinalizeSectionFileReplacement*](#finalizesectionfilereplacement)
+  - [*AbortSectionFileReplacement*](#abortsectionfilereplacement)
+  - [*BeginSectionFileDeletion*](#beginsectionfiledeletion)
+  - [*MarkSectionFileDeleted*](#marksectionfiledeleted)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
@@ -103,7 +121,9 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
   - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateAnnouncementSend*](#createannouncementsend)
+  - [*CreateAnnouncementSendWithDeliveryMode*](#createannouncementsendwithdeliverymode)
   - [*CreateAnnouncementRecipient*](#createannouncementrecipient)
+  - [*CreateAnnouncementRecipientWithDeliveryMode*](#createannouncementrecipientwithdeliverymode)
   - [*TryUpdateAnnouncementRecipientProcessingStatus*](#tryupdateannouncementrecipientprocessingstatus)
   - [*TryMarkAnnouncementRecipientEnqueueFailed*](#trymarkannouncementrecipientenqueuefailed)
   - [*TryUpdateAnnouncementRecipientDeliveryStatus*](#tryupdateannouncementrecipientdeliverystatus)
@@ -197,6 +217,715 @@ The following is true for both the action shortcut function and the `QueryRef` f
 - Both functions can be called with or without passing in a `DataConnect` instance as an argument. If no `DataConnect` argument is passed in, then the generated SDK will call `getDataConnect(connectorConfig)` behind the scenes for you.
 
 Below are examples of how to use the `api` connector's generated functions to execute each query. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#using-queries).
+
+## GetGovNotifyDeliveryConfiguration
+You can execute the `GetGovNotifyDeliveryConfiguration` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getGovNotifyDeliveryConfiguration(options?: ExecuteQueryOptions): QueryPromise<GetGovNotifyDeliveryConfigurationData, undefined>;
+
+interface GetGovNotifyDeliveryConfigurationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetGovNotifyDeliveryConfigurationData, undefined>;
+}
+export const getGovNotifyDeliveryConfigurationRef: GetGovNotifyDeliveryConfigurationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getGovNotifyDeliveryConfiguration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetGovNotifyDeliveryConfigurationData, undefined>;
+
+interface GetGovNotifyDeliveryConfigurationRef {
+  ...
+  (dc: DataConnect): QueryRef<GetGovNotifyDeliveryConfigurationData, undefined>;
+}
+export const getGovNotifyDeliveryConfigurationRef: GetGovNotifyDeliveryConfigurationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getGovNotifyDeliveryConfigurationRef:
+```typescript
+const name = getGovNotifyDeliveryConfigurationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetGovNotifyDeliveryConfiguration` query has no variables.
+### Return Type
+Recall that executing the `GetGovNotifyDeliveryConfiguration` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetGovNotifyDeliveryConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration?: {
+    mode: GovNotifyDeliveryMode;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+  };
+}
+```
+### Using `GetGovNotifyDeliveryConfiguration`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getGovNotifyDeliveryConfiguration } from '@dataconnect/generated';
+
+
+// Call the `getGovNotifyDeliveryConfiguration()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getGovNotifyDeliveryConfiguration();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getGovNotifyDeliveryConfiguration(dataConnect);
+
+console.log(data.govNotifyDeliveryConfiguration);
+
+// Or, you can use the `Promise` API.
+getGovNotifyDeliveryConfiguration().then((response) => {
+  const data = response.data;
+  console.log(data.govNotifyDeliveryConfiguration);
+});
+```
+
+### Using `GetGovNotifyDeliveryConfiguration`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getGovNotifyDeliveryConfigurationRef } from '@dataconnect/generated';
+
+
+// Call the `getGovNotifyDeliveryConfigurationRef()` function to get a reference to the query.
+const ref = getGovNotifyDeliveryConfigurationRef();
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getGovNotifyDeliveryConfigurationRef(dataConnect);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.govNotifyDeliveryConfiguration);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.govNotifyDeliveryConfiguration);
+});
+```
+
+## ListGovNotifyDeliveryModeAudits
+You can execute the `ListGovNotifyDeliveryModeAudits` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listGovNotifyDeliveryModeAudits(vars: ListGovNotifyDeliveryModeAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+
+interface ListGovNotifyDeliveryModeAuditsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListGovNotifyDeliveryModeAuditsVariables): QueryRef<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+}
+export const listGovNotifyDeliveryModeAuditsRef: ListGovNotifyDeliveryModeAuditsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listGovNotifyDeliveryModeAudits(dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+
+interface ListGovNotifyDeliveryModeAuditsRef {
+  ...
+  (dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables): QueryRef<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+}
+export const listGovNotifyDeliveryModeAuditsRef: ListGovNotifyDeliveryModeAuditsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listGovNotifyDeliveryModeAuditsRef:
+```typescript
+const name = listGovNotifyDeliveryModeAuditsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListGovNotifyDeliveryModeAudits` query requires an argument of type `ListGovNotifyDeliveryModeAuditsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListGovNotifyDeliveryModeAuditsVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListGovNotifyDeliveryModeAudits` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListGovNotifyDeliveryModeAuditsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListGovNotifyDeliveryModeAuditsData {
+  govNotifyDeliveryModeAudits: ({
+    id: UUIDString;
+    previousMode: GovNotifyDeliveryMode;
+    newMode: GovNotifyDeliveryMode;
+    deploymentCeiling: GovNotifyDeliveryMode;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & GovNotifyDeliveryModeAudit_Key)[];
+}
+```
+### Using `ListGovNotifyDeliveryModeAudits`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listGovNotifyDeliveryModeAudits, ListGovNotifyDeliveryModeAuditsVariables } from '@dataconnect/generated';
+
+// The `ListGovNotifyDeliveryModeAudits` query requires an argument of type `ListGovNotifyDeliveryModeAuditsVariables`:
+const listGovNotifyDeliveryModeAuditsVars: ListGovNotifyDeliveryModeAuditsVariables = {
+  limit: ..., 
+};
+
+// Call the `listGovNotifyDeliveryModeAudits()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listGovNotifyDeliveryModeAudits(listGovNotifyDeliveryModeAuditsVars);
+// Variables can be defined inline as well.
+const { data } = await listGovNotifyDeliveryModeAudits({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars);
+
+console.log(data.govNotifyDeliveryModeAudits);
+
+// Or, you can use the `Promise` API.
+listGovNotifyDeliveryModeAudits(listGovNotifyDeliveryModeAuditsVars).then((response) => {
+  const data = response.data;
+  console.log(data.govNotifyDeliveryModeAudits);
+});
+```
+
+### Using `ListGovNotifyDeliveryModeAudits`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listGovNotifyDeliveryModeAuditsRef, ListGovNotifyDeliveryModeAuditsVariables } from '@dataconnect/generated';
+
+// The `ListGovNotifyDeliveryModeAudits` query requires an argument of type `ListGovNotifyDeliveryModeAuditsVariables`:
+const listGovNotifyDeliveryModeAuditsVars: ListGovNotifyDeliveryModeAuditsVariables = {
+  limit: ..., 
+};
+
+// Call the `listGovNotifyDeliveryModeAuditsRef()` function to get a reference to the query.
+const ref = listGovNotifyDeliveryModeAuditsRef(listGovNotifyDeliveryModeAuditsVars);
+// Variables can be defined inline as well.
+const ref = listGovNotifyDeliveryModeAuditsRef({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listGovNotifyDeliveryModeAuditsRef(dataConnect, listGovNotifyDeliveryModeAuditsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.govNotifyDeliveryModeAudits);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.govNotifyDeliveryModeAudits);
+});
+```
+
+## GetSectionFileById
+You can execute the `GetSectionFileById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getSectionFileById(vars: GetSectionFileByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+
+interface GetSectionFileByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetSectionFileByIdVariables): QueryRef<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+}
+export const getSectionFileByIdRef: GetSectionFileByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getSectionFileById(dc: DataConnect, vars: GetSectionFileByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+
+interface GetSectionFileByIdRef {
+  ...
+  (dc: DataConnect, vars: GetSectionFileByIdVariables): QueryRef<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+}
+export const getSectionFileByIdRef: GetSectionFileByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getSectionFileByIdRef:
+```typescript
+const name = getSectionFileByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetSectionFileById` query requires an argument of type `GetSectionFileByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetSectionFileByIdVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetSectionFileById` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetSectionFileByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetSectionFileByIdData {
+  sectionFile?: {
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    pendingOriginalFilename?: string | null;
+    pendingContentType?: string | null;
+    pendingSizeBytes?: number | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key;
+}
+```
+### Using `GetSectionFileById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getSectionFileById, GetSectionFileByIdVariables } from '@dataconnect/generated';
+
+// The `GetSectionFileById` query requires an argument of type `GetSectionFileByIdVariables`:
+const getSectionFileByIdVars: GetSectionFileByIdVariables = {
+  id: ..., 
+};
+
+// Call the `getSectionFileById()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getSectionFileById(getSectionFileByIdVars);
+// Variables can be defined inline as well.
+const { data } = await getSectionFileById({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getSectionFileById(dataConnect, getSectionFileByIdVars);
+
+console.log(data.sectionFile);
+
+// Or, you can use the `Promise` API.
+getSectionFileById(getSectionFileByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile);
+});
+```
+
+### Using `GetSectionFileById`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getSectionFileByIdRef, GetSectionFileByIdVariables } from '@dataconnect/generated';
+
+// The `GetSectionFileById` query requires an argument of type `GetSectionFileByIdVariables`:
+const getSectionFileByIdVars: GetSectionFileByIdVariables = {
+  id: ..., 
+};
+
+// Call the `getSectionFileByIdRef()` function to get a reference to the query.
+const ref = getSectionFileByIdRef(getSectionFileByIdVars);
+// Variables can be defined inline as well.
+const ref = getSectionFileByIdRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getSectionFileByIdRef(dataConnect, getSectionFileByIdVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.sectionFile);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile);
+});
+```
+
+## ListSectionFilesByStatus
+You can execute the `ListSectionFilesByStatus` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+
+interface ListSectionFilesByStatusRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListSectionFilesByStatusVariables): QueryRef<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+}
+export const listSectionFilesByStatusRef: ListSectionFilesByStatusRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+
+interface ListSectionFilesByStatusRef {
+  ...
+  (dc: DataConnect, vars: ListSectionFilesByStatusVariables): QueryRef<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+}
+export const listSectionFilesByStatusRef: ListSectionFilesByStatusRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listSectionFilesByStatusRef:
+```typescript
+const name = listSectionFilesByStatusRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListSectionFilesByStatus` query requires an argument of type `ListSectionFilesByStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListSectionFilesByStatusVariables {
+  sectionId: UUIDString;
+  status: SectionFileStatus;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListSectionFilesByStatus` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListSectionFilesByStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListSectionFilesByStatusData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+```
+### Using `ListSectionFilesByStatus`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listSectionFilesByStatus, ListSectionFilesByStatusVariables } from '@dataconnect/generated';
+
+// The `ListSectionFilesByStatus` query requires an argument of type `ListSectionFilesByStatusVariables`:
+const listSectionFilesByStatusVars: ListSectionFilesByStatusVariables = {
+  sectionId: ..., 
+  status: ..., 
+  limit: ..., 
+};
+
+// Call the `listSectionFilesByStatus()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listSectionFilesByStatus(listSectionFilesByStatusVars);
+// Variables can be defined inline as well.
+const { data } = await listSectionFilesByStatus({ sectionId: ..., status: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
+
+console.log(data.sectionFiles);
+
+// Or, you can use the `Promise` API.
+listSectionFilesByStatus(listSectionFilesByStatusVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFiles);
+});
+```
+
+### Using `ListSectionFilesByStatus`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listSectionFilesByStatusRef, ListSectionFilesByStatusVariables } from '@dataconnect/generated';
+
+// The `ListSectionFilesByStatus` query requires an argument of type `ListSectionFilesByStatusVariables`:
+const listSectionFilesByStatusVars: ListSectionFilesByStatusVariables = {
+  sectionId: ..., 
+  status: ..., 
+  limit: ..., 
+};
+
+// Call the `listSectionFilesByStatusRef()` function to get a reference to the query.
+const ref = listSectionFilesByStatusRef(listSectionFilesByStatusVars);
+// Variables can be defined inline as well.
+const ref = listSectionFilesByStatusRef({ sectionId: ..., status: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listSectionFilesByStatusRef(dataConnect, listSectionFilesByStatusVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.sectionFiles);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFiles);
+});
+```
+
+## ListStaleSectionFiles
+You can execute the `ListStaleSectionFiles` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStaleSectionFiles(vars: ListStaleSectionFilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+
+interface ListStaleSectionFilesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStaleSectionFilesVariables): QueryRef<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+}
+export const listStaleSectionFilesRef: ListStaleSectionFilesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStaleSectionFiles(dc: DataConnect, vars: ListStaleSectionFilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+
+interface ListStaleSectionFilesRef {
+  ...
+  (dc: DataConnect, vars: ListStaleSectionFilesVariables): QueryRef<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+}
+export const listStaleSectionFilesRef: ListStaleSectionFilesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStaleSectionFilesRef:
+```typescript
+const name = listStaleSectionFilesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStaleSectionFiles` query requires an argument of type `ListStaleSectionFilesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStaleSectionFilesVariables {
+  updatedBefore: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStaleSectionFiles` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStaleSectionFilesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStaleSectionFilesData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    status: SectionFileStatus;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+```
+### Using `ListStaleSectionFiles`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStaleSectionFiles, ListStaleSectionFilesVariables } from '@dataconnect/generated';
+
+// The `ListStaleSectionFiles` query requires an argument of type `ListStaleSectionFilesVariables`:
+const listStaleSectionFilesVars: ListStaleSectionFilesVariables = {
+  updatedBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStaleSectionFiles()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStaleSectionFiles(listStaleSectionFilesVars);
+// Variables can be defined inline as well.
+const { data } = await listStaleSectionFiles({ updatedBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
+
+console.log(data.sectionFiles);
+
+// Or, you can use the `Promise` API.
+listStaleSectionFiles(listStaleSectionFilesVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFiles);
+});
+```
+
+### Using `ListStaleSectionFiles`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStaleSectionFilesRef, ListStaleSectionFilesVariables } from '@dataconnect/generated';
+
+// The `ListStaleSectionFiles` query requires an argument of type `ListStaleSectionFilesVariables`:
+const listStaleSectionFilesVars: ListStaleSectionFilesVariables = {
+  updatedBefore: ..., 
+  limit: ..., 
+};
+
+// Call the `listStaleSectionFilesRef()` function to get a reference to the query.
+const ref = listStaleSectionFilesRef(listStaleSectionFilesVars);
+// Variables can be defined inline as well.
+const ref = listStaleSectionFilesRef({ updatedBefore: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStaleSectionFilesRef(dataConnect, listStaleSectionFilesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.sectionFiles);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFiles);
+});
+```
+
+## ListSectionFilesForQuota
+You can execute the `ListSectionFilesForQuota` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listSectionFilesForQuota(vars: ListSectionFilesForQuotaVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+
+interface ListSectionFilesForQuotaRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListSectionFilesForQuotaVariables): QueryRef<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+}
+export const listSectionFilesForQuotaRef: ListSectionFilesForQuotaRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listSectionFilesForQuota(dc: DataConnect, vars: ListSectionFilesForQuotaVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+
+interface ListSectionFilesForQuotaRef {
+  ...
+  (dc: DataConnect, vars: ListSectionFilesForQuotaVariables): QueryRef<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+}
+export const listSectionFilesForQuotaRef: ListSectionFilesForQuotaRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listSectionFilesForQuotaRef:
+```typescript
+const name = listSectionFilesForQuotaRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListSectionFilesForQuota` query requires an argument of type `ListSectionFilesForQuotaVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListSectionFilesForQuotaVariables {
+  sectionId: UUIDString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListSectionFilesForQuota` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListSectionFilesForQuotaData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListSectionFilesForQuotaData {
+  sectionFiles: ({
+    id: UUIDString;
+    sizeBytes: number;
+    status: SectionFileStatus;
+  } & SectionFile_Key)[];
+}
+```
+### Using `ListSectionFilesForQuota`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listSectionFilesForQuota, ListSectionFilesForQuotaVariables } from '@dataconnect/generated';
+
+// The `ListSectionFilesForQuota` query requires an argument of type `ListSectionFilesForQuotaVariables`:
+const listSectionFilesForQuotaVars: ListSectionFilesForQuotaVariables = {
+  sectionId: ..., 
+  limit: ..., 
+};
+
+// Call the `listSectionFilesForQuota()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listSectionFilesForQuota(listSectionFilesForQuotaVars);
+// Variables can be defined inline as well.
+const { data } = await listSectionFilesForQuota({ sectionId: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
+
+console.log(data.sectionFiles);
+
+// Or, you can use the `Promise` API.
+listSectionFilesForQuota(listSectionFilesForQuotaVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFiles);
+});
+```
+
+### Using `ListSectionFilesForQuota`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listSectionFilesForQuotaRef, ListSectionFilesForQuotaVariables } from '@dataconnect/generated';
+
+// The `ListSectionFilesForQuota` query requires an argument of type `ListSectionFilesForQuotaVariables`:
+const listSectionFilesForQuotaVars: ListSectionFilesForQuotaVariables = {
+  sectionId: ..., 
+  limit: ..., 
+};
+
+// Call the `listSectionFilesForQuotaRef()` function to get a reference to the query.
+const ref = listSectionFilesForQuotaRef(listSectionFilesForQuotaVars);
+// Variables can be defined inline as well.
+const ref = listSectionFilesForQuotaRef({ sectionId: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listSectionFilesForQuotaRef(dataConnect, listSectionFilesForQuotaVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.sectionFiles);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFiles);
+});
+```
 
 ## GetUserGroupByName
 You can execute the `GetUserGroupByName` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
@@ -3143,6 +3872,9 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key)[];
 }
 ```
@@ -3262,6 +3994,7 @@ export interface GetAnnouncementSendRecipientsData {
     skippedReason?: string | null;
     sentAt?: TimestampString | null;
     failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementRecipient_Key)[];
 }
 ```
@@ -3380,6 +4113,9 @@ export interface GetAnnouncementSendByIdData {
     recipientCount: number;
     skippedCount: number;
     recipientSnapshot?: string | null;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key;
 }
 ```
@@ -3497,6 +4233,7 @@ export interface GetAnnouncementRecipientBySendAndUserData {
     processingVersion: number;
     processingStartedAt?: TimestampString | null;
     providerNotificationId?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
     deliveryVersion: number;
     deliveryStatusUpdatedAt?: TimestampString | null;
     deliveryReceiptId?: string | null;
@@ -7843,6 +8580,1445 @@ The following is true for both the action shortcut function and the `MutationRef
 
 Below are examples of how to use the `api` connector's generated functions to execute each mutation. You can also follow the examples from the [Data Connect documentation](https://firebase.google.com/docs/data-connect/web-sdk#using-mutations).
 
+## CreateGovNotifyDeliveryConfiguration
+You can execute the `CreateGovNotifyDeliveryConfiguration` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createGovNotifyDeliveryConfiguration(): MutationPromise<CreateGovNotifyDeliveryConfigurationData, undefined>;
+
+interface CreateGovNotifyDeliveryConfigurationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<CreateGovNotifyDeliveryConfigurationData, undefined>;
+}
+export const createGovNotifyDeliveryConfigurationRef: CreateGovNotifyDeliveryConfigurationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createGovNotifyDeliveryConfiguration(dc: DataConnect): MutationPromise<CreateGovNotifyDeliveryConfigurationData, undefined>;
+
+interface CreateGovNotifyDeliveryConfigurationRef {
+  ...
+  (dc: DataConnect): MutationRef<CreateGovNotifyDeliveryConfigurationData, undefined>;
+}
+export const createGovNotifyDeliveryConfigurationRef: CreateGovNotifyDeliveryConfigurationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createGovNotifyDeliveryConfigurationRef:
+```typescript
+const name = createGovNotifyDeliveryConfigurationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateGovNotifyDeliveryConfiguration` mutation has no variables.
+### Return Type
+Recall that executing the `CreateGovNotifyDeliveryConfiguration` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateGovNotifyDeliveryConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration_insert: GovNotifyDeliveryConfiguration_Key;
+}
+```
+### Using `CreateGovNotifyDeliveryConfiguration`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createGovNotifyDeliveryConfiguration } from '@dataconnect/generated';
+
+
+// Call the `createGovNotifyDeliveryConfiguration()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createGovNotifyDeliveryConfiguration();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createGovNotifyDeliveryConfiguration(dataConnect);
+
+console.log(data.govNotifyDeliveryConfiguration_insert);
+
+// Or, you can use the `Promise` API.
+createGovNotifyDeliveryConfiguration().then((response) => {
+  const data = response.data;
+  console.log(data.govNotifyDeliveryConfiguration_insert);
+});
+```
+
+### Using `CreateGovNotifyDeliveryConfiguration`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createGovNotifyDeliveryConfigurationRef } from '@dataconnect/generated';
+
+
+// Call the `createGovNotifyDeliveryConfigurationRef()` function to get a reference to the mutation.
+const ref = createGovNotifyDeliveryConfigurationRef();
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createGovNotifyDeliveryConfigurationRef(dataConnect);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.govNotifyDeliveryConfiguration_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.govNotifyDeliveryConfiguration_insert);
+});
+```
+
+## ChangeGovNotifyDeliveryMode
+You can execute the `ChangeGovNotifyDeliveryMode` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+changeGovNotifyDeliveryMode(vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+
+interface ChangeGovNotifyDeliveryModeRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ChangeGovNotifyDeliveryModeVariables): MutationRef<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+}
+export const changeGovNotifyDeliveryModeRef: ChangeGovNotifyDeliveryModeRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+changeGovNotifyDeliveryMode(dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+
+interface ChangeGovNotifyDeliveryModeRef {
+  ...
+  (dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationRef<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+}
+export const changeGovNotifyDeliveryModeRef: ChangeGovNotifyDeliveryModeRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the changeGovNotifyDeliveryModeRef:
+```typescript
+const name = changeGovNotifyDeliveryModeRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ChangeGovNotifyDeliveryMode` mutation requires an argument of type `ChangeGovNotifyDeliveryModeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ChangeGovNotifyDeliveryModeVariables {
+  expectedVersion: number;
+  previousMode: GovNotifyDeliveryMode;
+  newMode: GovNotifyDeliveryMode;
+  deploymentCeiling: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
+}
+```
+### Return Type
+Recall that executing the `ChangeGovNotifyDeliveryMode` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ChangeGovNotifyDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ChangeGovNotifyDeliveryModeData {
+  changed: number;
+  govNotifyDeliveryModeAudit_insert: GovNotifyDeliveryModeAudit_Key;
+}
+```
+### Using `ChangeGovNotifyDeliveryMode`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, changeGovNotifyDeliveryMode, ChangeGovNotifyDeliveryModeVariables } from '@dataconnect/generated';
+
+// The `ChangeGovNotifyDeliveryMode` mutation requires an argument of type `ChangeGovNotifyDeliveryModeVariables`:
+const changeGovNotifyDeliveryModeVars: ChangeGovNotifyDeliveryModeVariables = {
+  expectedVersion: ..., 
+  previousMode: ..., 
+  newMode: ..., 
+  deploymentCeiling: ..., 
+  changedBy: ..., 
+  reason: ..., 
+};
+
+// Call the `changeGovNotifyDeliveryMode()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await changeGovNotifyDeliveryMode(changeGovNotifyDeliveryModeVars);
+// Variables can be defined inline as well.
+const { data } = await changeGovNotifyDeliveryMode({ expectedVersion: ..., previousMode: ..., newMode: ..., deploymentCeiling: ..., changedBy: ..., reason: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await changeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
+
+console.log(data.changed);
+console.log(data.govNotifyDeliveryModeAudit_insert);
+
+// Or, you can use the `Promise` API.
+changeGovNotifyDeliveryMode(changeGovNotifyDeliveryModeVars).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.govNotifyDeliveryModeAudit_insert);
+});
+```
+
+### Using `ChangeGovNotifyDeliveryMode`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, changeGovNotifyDeliveryModeRef, ChangeGovNotifyDeliveryModeVariables } from '@dataconnect/generated';
+
+// The `ChangeGovNotifyDeliveryMode` mutation requires an argument of type `ChangeGovNotifyDeliveryModeVariables`:
+const changeGovNotifyDeliveryModeVars: ChangeGovNotifyDeliveryModeVariables = {
+  expectedVersion: ..., 
+  previousMode: ..., 
+  newMode: ..., 
+  deploymentCeiling: ..., 
+  changedBy: ..., 
+  reason: ..., 
+};
+
+// Call the `changeGovNotifyDeliveryModeRef()` function to get a reference to the mutation.
+const ref = changeGovNotifyDeliveryModeRef(changeGovNotifyDeliveryModeVars);
+// Variables can be defined inline as well.
+const ref = changeGovNotifyDeliveryModeRef({ expectedVersion: ..., previousMode: ..., newMode: ..., deploymentCeiling: ..., changedBy: ..., reason: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = changeGovNotifyDeliveryModeRef(dataConnect, changeGovNotifyDeliveryModeVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.changed);
+console.log(data.govNotifyDeliveryModeAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.govNotifyDeliveryModeAudit_insert);
+});
+```
+
+## CreatePendingSectionFile
+You can execute the `CreatePendingSectionFile` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createPendingSectionFile(vars: CreatePendingSectionFileVariables): MutationPromise<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+
+interface CreatePendingSectionFileRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreatePendingSectionFileVariables): MutationRef<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+}
+export const createPendingSectionFileRef: CreatePendingSectionFileRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createPendingSectionFile(dc: DataConnect, vars: CreatePendingSectionFileVariables): MutationPromise<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+
+interface CreatePendingSectionFileRef {
+  ...
+  (dc: DataConnect, vars: CreatePendingSectionFileVariables): MutationRef<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+}
+export const createPendingSectionFileRef: CreatePendingSectionFileRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createPendingSectionFileRef:
+```typescript
+const name = createPendingSectionFileRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreatePendingSectionFile` mutation requires an argument of type `CreatePendingSectionFileVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreatePendingSectionFileVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  pendingStorageObjectPath: string;
+  displayName: string;
+  originalFilename: string;
+  description?: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `CreatePendingSectionFile` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreatePendingSectionFileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreatePendingSectionFileData {
+  sectionFile_insert: SectionFile_Key;
+}
+```
+### Using `CreatePendingSectionFile`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createPendingSectionFile, CreatePendingSectionFileVariables } from '@dataconnect/generated';
+
+// The `CreatePendingSectionFile` mutation requires an argument of type `CreatePendingSectionFileVariables`:
+const createPendingSectionFileVars: CreatePendingSectionFileVariables = {
+  id: ..., 
+  sectionId: ..., 
+  pendingStorageObjectPath: ..., 
+  displayName: ..., 
+  originalFilename: ..., 
+  description: ..., // optional
+  contentType: ..., 
+  sizeBytes: ..., 
+  uploadedBy: ..., 
+  now: ..., 
+};
+
+// Call the `createPendingSectionFile()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createPendingSectionFile(createPendingSectionFileVars);
+// Variables can be defined inline as well.
+const { data } = await createPendingSectionFile({ id: ..., sectionId: ..., pendingStorageObjectPath: ..., displayName: ..., originalFilename: ..., description: ..., contentType: ..., sizeBytes: ..., uploadedBy: ..., now: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createPendingSectionFile(dataConnect, createPendingSectionFileVars);
+
+console.log(data.sectionFile_insert);
+
+// Or, you can use the `Promise` API.
+createPendingSectionFile(createPendingSectionFileVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_insert);
+});
+```
+
+### Using `CreatePendingSectionFile`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createPendingSectionFileRef, CreatePendingSectionFileVariables } from '@dataconnect/generated';
+
+// The `CreatePendingSectionFile` mutation requires an argument of type `CreatePendingSectionFileVariables`:
+const createPendingSectionFileVars: CreatePendingSectionFileVariables = {
+  id: ..., 
+  sectionId: ..., 
+  pendingStorageObjectPath: ..., 
+  displayName: ..., 
+  originalFilename: ..., 
+  description: ..., // optional
+  contentType: ..., 
+  sizeBytes: ..., 
+  uploadedBy: ..., 
+  now: ..., 
+};
+
+// Call the `createPendingSectionFileRef()` function to get a reference to the mutation.
+const ref = createPendingSectionFileRef(createPendingSectionFileVars);
+// Variables can be defined inline as well.
+const ref = createPendingSectionFileRef({ id: ..., sectionId: ..., pendingStorageObjectPath: ..., displayName: ..., originalFilename: ..., description: ..., contentType: ..., sizeBytes: ..., uploadedBy: ..., now: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createPendingSectionFileRef(dataConnect, createPendingSectionFileVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_insert);
+});
+```
+
+## RecordSectionFileAudit
+You can execute the `RecordSectionFileAudit` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+recordSectionFileAudit(vars: RecordSectionFileAuditVariables): MutationPromise<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+
+interface RecordSectionFileAuditRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordSectionFileAuditVariables): MutationRef<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+}
+export const recordSectionFileAuditRef: RecordSectionFileAuditRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+recordSectionFileAudit(dc: DataConnect, vars: RecordSectionFileAuditVariables): MutationPromise<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+
+interface RecordSectionFileAuditRef {
+  ...
+  (dc: DataConnect, vars: RecordSectionFileAuditVariables): MutationRef<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+}
+export const recordSectionFileAuditRef: RecordSectionFileAuditRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the recordSectionFileAuditRef:
+```typescript
+const name = recordSectionFileAuditRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RecordSectionFileAudit` mutation requires an argument of type `RecordSectionFileAuditVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RecordSectionFileAuditVariables {
+  sectionId: UUIDString;
+  fileId?: UUIDString | null;
+  actorUid: string;
+  action: string;
+  outcome: string;
+  detail?: string | null;
+}
+```
+### Return Type
+Recall that executing the `RecordSectionFileAudit` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RecordSectionFileAuditData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RecordSectionFileAuditData {
+  sectionFileAudit_insert: SectionFileAudit_Key;
+}
+```
+### Using `RecordSectionFileAudit`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, recordSectionFileAudit, RecordSectionFileAuditVariables } from '@dataconnect/generated';
+
+// The `RecordSectionFileAudit` mutation requires an argument of type `RecordSectionFileAuditVariables`:
+const recordSectionFileAuditVars: RecordSectionFileAuditVariables = {
+  sectionId: ..., 
+  fileId: ..., // optional
+  actorUid: ..., 
+  action: ..., 
+  outcome: ..., 
+  detail: ..., // optional
+};
+
+// Call the `recordSectionFileAudit()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await recordSectionFileAudit(recordSectionFileAuditVars);
+// Variables can be defined inline as well.
+const { data } = await recordSectionFileAudit({ sectionId: ..., fileId: ..., actorUid: ..., action: ..., outcome: ..., detail: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await recordSectionFileAudit(dataConnect, recordSectionFileAuditVars);
+
+console.log(data.sectionFileAudit_insert);
+
+// Or, you can use the `Promise` API.
+recordSectionFileAudit(recordSectionFileAuditVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFileAudit_insert);
+});
+```
+
+### Using `RecordSectionFileAudit`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, recordSectionFileAuditRef, RecordSectionFileAuditVariables } from '@dataconnect/generated';
+
+// The `RecordSectionFileAudit` mutation requires an argument of type `RecordSectionFileAuditVariables`:
+const recordSectionFileAuditVars: RecordSectionFileAuditVariables = {
+  sectionId: ..., 
+  fileId: ..., // optional
+  actorUid: ..., 
+  action: ..., 
+  outcome: ..., 
+  detail: ..., // optional
+};
+
+// Call the `recordSectionFileAuditRef()` function to get a reference to the mutation.
+const ref = recordSectionFileAuditRef(recordSectionFileAuditVars);
+// Variables can be defined inline as well.
+const ref = recordSectionFileAuditRef({ sectionId: ..., fileId: ..., actorUid: ..., action: ..., outcome: ..., detail: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = recordSectionFileAuditRef(dataConnect, recordSectionFileAuditVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFileAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFileAudit_insert);
+});
+```
+
+## AbandonPendingSectionFile
+You can execute the `AbandonPendingSectionFile` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+abandonPendingSectionFile(vars: AbandonPendingSectionFileVariables): MutationPromise<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+
+interface AbandonPendingSectionFileRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AbandonPendingSectionFileVariables): MutationRef<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+}
+export const abandonPendingSectionFileRef: AbandonPendingSectionFileRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+abandonPendingSectionFile(dc: DataConnect, vars: AbandonPendingSectionFileVariables): MutationPromise<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+
+interface AbandonPendingSectionFileRef {
+  ...
+  (dc: DataConnect, vars: AbandonPendingSectionFileVariables): MutationRef<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+}
+export const abandonPendingSectionFileRef: AbandonPendingSectionFileRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the abandonPendingSectionFileRef:
+```typescript
+const name = abandonPendingSectionFileRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AbandonPendingSectionFile` mutation requires an argument of type `AbandonPendingSectionFileVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AbandonPendingSectionFileVariables {
+  id: UUIDString;
+  updatedBefore: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `AbandonPendingSectionFile` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AbandonPendingSectionFileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AbandonPendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `AbandonPendingSectionFile`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, abandonPendingSectionFile, AbandonPendingSectionFileVariables } from '@dataconnect/generated';
+
+// The `AbandonPendingSectionFile` mutation requires an argument of type `AbandonPendingSectionFileVariables`:
+const abandonPendingSectionFileVars: AbandonPendingSectionFileVariables = {
+  id: ..., 
+  updatedBefore: ..., 
+};
+
+// Call the `abandonPendingSectionFile()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await abandonPendingSectionFile(abandonPendingSectionFileVars);
+// Variables can be defined inline as well.
+const { data } = await abandonPendingSectionFile({ id: ..., updatedBefore: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await abandonPendingSectionFile(dataConnect, abandonPendingSectionFileVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+abandonPendingSectionFile(abandonPendingSectionFileVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `AbandonPendingSectionFile`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, abandonPendingSectionFileRef, AbandonPendingSectionFileVariables } from '@dataconnect/generated';
+
+// The `AbandonPendingSectionFile` mutation requires an argument of type `AbandonPendingSectionFileVariables`:
+const abandonPendingSectionFileVars: AbandonPendingSectionFileVariables = {
+  id: ..., 
+  updatedBefore: ..., 
+};
+
+// Call the `abandonPendingSectionFileRef()` function to get a reference to the mutation.
+const ref = abandonPendingSectionFileRef(abandonPendingSectionFileVars);
+// Variables can be defined inline as well.
+const ref = abandonPendingSectionFileRef({ id: ..., updatedBefore: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = abandonPendingSectionFileRef(dataConnect, abandonPendingSectionFileVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## FinalizePendingSectionFile
+You can execute the `FinalizePendingSectionFile` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+finalizePendingSectionFile(vars: FinalizePendingSectionFileVariables): MutationPromise<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+
+interface FinalizePendingSectionFileRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: FinalizePendingSectionFileVariables): MutationRef<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+}
+export const finalizePendingSectionFileRef: FinalizePendingSectionFileRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+finalizePendingSectionFile(dc: DataConnect, vars: FinalizePendingSectionFileVariables): MutationPromise<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+
+interface FinalizePendingSectionFileRef {
+  ...
+  (dc: DataConnect, vars: FinalizePendingSectionFileVariables): MutationRef<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+}
+export const finalizePendingSectionFileRef: FinalizePendingSectionFileRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the finalizePendingSectionFileRef:
+```typescript
+const name = finalizePendingSectionFileRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `FinalizePendingSectionFile` mutation requires an argument of type `FinalizePendingSectionFileVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface FinalizePendingSectionFileVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `FinalizePendingSectionFile` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `FinalizePendingSectionFileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface FinalizePendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `FinalizePendingSectionFile`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, finalizePendingSectionFile, FinalizePendingSectionFileVariables } from '@dataconnect/generated';
+
+// The `FinalizePendingSectionFile` mutation requires an argument of type `FinalizePendingSectionFileVariables`:
+const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  storageObjectPath: ..., 
+  objectGeneration: ..., 
+  checksumSha256: ..., 
+  contentType: ..., 
+  sizeBytes: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `finalizePendingSectionFile()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await finalizePendingSectionFile(finalizePendingSectionFileVars);
+// Variables can be defined inline as well.
+const { data } = await finalizePendingSectionFile({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await finalizePendingSectionFile(dataConnect, finalizePendingSectionFileVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+finalizePendingSectionFile(finalizePendingSectionFileVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `FinalizePendingSectionFile`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, finalizePendingSectionFileRef, FinalizePendingSectionFileVariables } from '@dataconnect/generated';
+
+// The `FinalizePendingSectionFile` mutation requires an argument of type `FinalizePendingSectionFileVariables`:
+const finalizePendingSectionFileVars: FinalizePendingSectionFileVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  storageObjectPath: ..., 
+  objectGeneration: ..., 
+  checksumSha256: ..., 
+  contentType: ..., 
+  sizeBytes: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `finalizePendingSectionFileRef()` function to get a reference to the mutation.
+const ref = finalizePendingSectionFileRef(finalizePendingSectionFileVars);
+// Variables can be defined inline as well.
+const ref = finalizePendingSectionFileRef({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = finalizePendingSectionFileRef(dataConnect, finalizePendingSectionFileVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## UpdateAvailableSectionFileMetadata
+You can execute the `UpdateAvailableSectionFileMetadata` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateAvailableSectionFileMetadata(vars: UpdateAvailableSectionFileMetadataVariables): MutationPromise<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+
+interface UpdateAvailableSectionFileMetadataRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateAvailableSectionFileMetadataVariables): MutationRef<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+}
+export const updateAvailableSectionFileMetadataRef: UpdateAvailableSectionFileMetadataRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateAvailableSectionFileMetadata(dc: DataConnect, vars: UpdateAvailableSectionFileMetadataVariables): MutationPromise<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+
+interface UpdateAvailableSectionFileMetadataRef {
+  ...
+  (dc: DataConnect, vars: UpdateAvailableSectionFileMetadataVariables): MutationRef<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+}
+export const updateAvailableSectionFileMetadataRef: UpdateAvailableSectionFileMetadataRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateAvailableSectionFileMetadataRef:
+```typescript
+const name = updateAvailableSectionFileMetadataRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateAvailableSectionFileMetadata` mutation requires an argument of type `UpdateAvailableSectionFileMetadataVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateAvailableSectionFileMetadataVariables {
+  id: UUIDString;
+  displayName: string;
+  description?: string | null;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateAvailableSectionFileMetadata` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateAvailableSectionFileMetadataData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateAvailableSectionFileMetadataData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `UpdateAvailableSectionFileMetadata`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateAvailableSectionFileMetadata, UpdateAvailableSectionFileMetadataVariables } from '@dataconnect/generated';
+
+// The `UpdateAvailableSectionFileMetadata` mutation requires an argument of type `UpdateAvailableSectionFileMetadataVariables`:
+const updateAvailableSectionFileMetadataVars: UpdateAvailableSectionFileMetadataVariables = {
+  id: ..., 
+  displayName: ..., 
+  description: ..., // optional
+  updatedBy: ..., 
+};
+
+// Call the `updateAvailableSectionFileMetadata()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateAvailableSectionFileMetadata(updateAvailableSectionFileMetadataVars);
+// Variables can be defined inline as well.
+const { data } = await updateAvailableSectionFileMetadata({ id: ..., displayName: ..., description: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateAvailableSectionFileMetadata(dataConnect, updateAvailableSectionFileMetadataVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+updateAvailableSectionFileMetadata(updateAvailableSectionFileMetadataVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `UpdateAvailableSectionFileMetadata`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateAvailableSectionFileMetadataRef, UpdateAvailableSectionFileMetadataVariables } from '@dataconnect/generated';
+
+// The `UpdateAvailableSectionFileMetadata` mutation requires an argument of type `UpdateAvailableSectionFileMetadataVariables`:
+const updateAvailableSectionFileMetadataVars: UpdateAvailableSectionFileMetadataVariables = {
+  id: ..., 
+  displayName: ..., 
+  description: ..., // optional
+  updatedBy: ..., 
+};
+
+// Call the `updateAvailableSectionFileMetadataRef()` function to get a reference to the mutation.
+const ref = updateAvailableSectionFileMetadataRef(updateAvailableSectionFileMetadataVars);
+// Variables can be defined inline as well.
+const ref = updateAvailableSectionFileMetadataRef({ id: ..., displayName: ..., description: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateAvailableSectionFileMetadataRef(dataConnect, updateAvailableSectionFileMetadataVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## BeginSectionFileReplacement
+You can execute the `BeginSectionFileReplacement` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+beginSectionFileReplacement(vars: BeginSectionFileReplacementVariables): MutationPromise<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+
+interface BeginSectionFileReplacementRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: BeginSectionFileReplacementVariables): MutationRef<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+}
+export const beginSectionFileReplacementRef: BeginSectionFileReplacementRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+beginSectionFileReplacement(dc: DataConnect, vars: BeginSectionFileReplacementVariables): MutationPromise<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+
+interface BeginSectionFileReplacementRef {
+  ...
+  (dc: DataConnect, vars: BeginSectionFileReplacementVariables): MutationRef<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+}
+export const beginSectionFileReplacementRef: BeginSectionFileReplacementRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the beginSectionFileReplacementRef:
+```typescript
+const name = beginSectionFileReplacementRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `BeginSectionFileReplacement` mutation requires an argument of type `BeginSectionFileReplacementVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface BeginSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  pendingOriginalFilename: string;
+  pendingContentType: string;
+  pendingSizeBytes: number;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `BeginSectionFileReplacement` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `BeginSectionFileReplacementData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface BeginSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `BeginSectionFileReplacement`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, beginSectionFileReplacement, BeginSectionFileReplacementVariables } from '@dataconnect/generated';
+
+// The `BeginSectionFileReplacement` mutation requires an argument of type `BeginSectionFileReplacementVariables`:
+const beginSectionFileReplacementVars: BeginSectionFileReplacementVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  pendingOriginalFilename: ..., 
+  pendingContentType: ..., 
+  pendingSizeBytes: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `beginSectionFileReplacement()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await beginSectionFileReplacement(beginSectionFileReplacementVars);
+// Variables can be defined inline as well.
+const { data } = await beginSectionFileReplacement({ id: ..., pendingStorageObjectPath: ..., pendingOriginalFilename: ..., pendingContentType: ..., pendingSizeBytes: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await beginSectionFileReplacement(dataConnect, beginSectionFileReplacementVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+beginSectionFileReplacement(beginSectionFileReplacementVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `BeginSectionFileReplacement`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, beginSectionFileReplacementRef, BeginSectionFileReplacementVariables } from '@dataconnect/generated';
+
+// The `BeginSectionFileReplacement` mutation requires an argument of type `BeginSectionFileReplacementVariables`:
+const beginSectionFileReplacementVars: BeginSectionFileReplacementVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  pendingOriginalFilename: ..., 
+  pendingContentType: ..., 
+  pendingSizeBytes: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `beginSectionFileReplacementRef()` function to get a reference to the mutation.
+const ref = beginSectionFileReplacementRef(beginSectionFileReplacementVars);
+// Variables can be defined inline as well.
+const ref = beginSectionFileReplacementRef({ id: ..., pendingStorageObjectPath: ..., pendingOriginalFilename: ..., pendingContentType: ..., pendingSizeBytes: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = beginSectionFileReplacementRef(dataConnect, beginSectionFileReplacementVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## FinalizeSectionFileReplacement
+You can execute the `FinalizeSectionFileReplacement` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+finalizeSectionFileReplacement(vars: FinalizeSectionFileReplacementVariables): MutationPromise<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+
+interface FinalizeSectionFileReplacementRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: FinalizeSectionFileReplacementVariables): MutationRef<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+}
+export const finalizeSectionFileReplacementRef: FinalizeSectionFileReplacementRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+finalizeSectionFileReplacement(dc: DataConnect, vars: FinalizeSectionFileReplacementVariables): MutationPromise<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+
+interface FinalizeSectionFileReplacementRef {
+  ...
+  (dc: DataConnect, vars: FinalizeSectionFileReplacementVariables): MutationRef<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+}
+export const finalizeSectionFileReplacementRef: FinalizeSectionFileReplacementRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the finalizeSectionFileReplacementRef:
+```typescript
+const name = finalizeSectionFileReplacementRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `FinalizeSectionFileReplacement` mutation requires an argument of type `FinalizeSectionFileReplacementVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface FinalizeSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  originalFilename: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `FinalizeSectionFileReplacement` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `FinalizeSectionFileReplacementData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface FinalizeSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `FinalizeSectionFileReplacement`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, finalizeSectionFileReplacement, FinalizeSectionFileReplacementVariables } from '@dataconnect/generated';
+
+// The `FinalizeSectionFileReplacement` mutation requires an argument of type `FinalizeSectionFileReplacementVariables`:
+const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  storageObjectPath: ..., 
+  originalFilename: ..., 
+  objectGeneration: ..., 
+  checksumSha256: ..., 
+  contentType: ..., 
+  sizeBytes: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `finalizeSectionFileReplacement()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await finalizeSectionFileReplacement(finalizeSectionFileReplacementVars);
+// Variables can be defined inline as well.
+const { data } = await finalizeSectionFileReplacement({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await finalizeSectionFileReplacement(dataConnect, finalizeSectionFileReplacementVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+finalizeSectionFileReplacement(finalizeSectionFileReplacementVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `FinalizeSectionFileReplacement`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, finalizeSectionFileReplacementRef, FinalizeSectionFileReplacementVariables } from '@dataconnect/generated';
+
+// The `FinalizeSectionFileReplacement` mutation requires an argument of type `FinalizeSectionFileReplacementVariables`:
+const finalizeSectionFileReplacementVars: FinalizeSectionFileReplacementVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  storageObjectPath: ..., 
+  originalFilename: ..., 
+  objectGeneration: ..., 
+  checksumSha256: ..., 
+  contentType: ..., 
+  sizeBytes: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `finalizeSectionFileReplacementRef()` function to get a reference to the mutation.
+const ref = finalizeSectionFileReplacementRef(finalizeSectionFileReplacementVars);
+// Variables can be defined inline as well.
+const ref = finalizeSectionFileReplacementRef({ id: ..., pendingStorageObjectPath: ..., storageObjectPath: ..., originalFilename: ..., objectGeneration: ..., checksumSha256: ..., contentType: ..., sizeBytes: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = finalizeSectionFileReplacementRef(dataConnect, finalizeSectionFileReplacementVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## AbortSectionFileReplacement
+You can execute the `AbortSectionFileReplacement` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+abortSectionFileReplacement(vars: AbortSectionFileReplacementVariables): MutationPromise<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+
+interface AbortSectionFileReplacementRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AbortSectionFileReplacementVariables): MutationRef<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+}
+export const abortSectionFileReplacementRef: AbortSectionFileReplacementRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+abortSectionFileReplacement(dc: DataConnect, vars: AbortSectionFileReplacementVariables): MutationPromise<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+
+interface AbortSectionFileReplacementRef {
+  ...
+  (dc: DataConnect, vars: AbortSectionFileReplacementVariables): MutationRef<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+}
+export const abortSectionFileReplacementRef: AbortSectionFileReplacementRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the abortSectionFileReplacementRef:
+```typescript
+const name = abortSectionFileReplacementRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AbortSectionFileReplacement` mutation requires an argument of type `AbortSectionFileReplacementVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AbortSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `AbortSectionFileReplacement` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AbortSectionFileReplacementData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AbortSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `AbortSectionFileReplacement`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, abortSectionFileReplacement, AbortSectionFileReplacementVariables } from '@dataconnect/generated';
+
+// The `AbortSectionFileReplacement` mutation requires an argument of type `AbortSectionFileReplacementVariables`:
+const abortSectionFileReplacementVars: AbortSectionFileReplacementVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `abortSectionFileReplacement()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await abortSectionFileReplacement(abortSectionFileReplacementVars);
+// Variables can be defined inline as well.
+const { data } = await abortSectionFileReplacement({ id: ..., pendingStorageObjectPath: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await abortSectionFileReplacement(dataConnect, abortSectionFileReplacementVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+abortSectionFileReplacement(abortSectionFileReplacementVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `AbortSectionFileReplacement`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, abortSectionFileReplacementRef, AbortSectionFileReplacementVariables } from '@dataconnect/generated';
+
+// The `AbortSectionFileReplacement` mutation requires an argument of type `AbortSectionFileReplacementVariables`:
+const abortSectionFileReplacementVars: AbortSectionFileReplacementVariables = {
+  id: ..., 
+  pendingStorageObjectPath: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `abortSectionFileReplacementRef()` function to get a reference to the mutation.
+const ref = abortSectionFileReplacementRef(abortSectionFileReplacementVars);
+// Variables can be defined inline as well.
+const ref = abortSectionFileReplacementRef({ id: ..., pendingStorageObjectPath: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = abortSectionFileReplacementRef(dataConnect, abortSectionFileReplacementVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## BeginSectionFileDeletion
+You can execute the `BeginSectionFileDeletion` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+beginSectionFileDeletion(vars: BeginSectionFileDeletionVariables): MutationPromise<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+
+interface BeginSectionFileDeletionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: BeginSectionFileDeletionVariables): MutationRef<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+}
+export const beginSectionFileDeletionRef: BeginSectionFileDeletionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+beginSectionFileDeletion(dc: DataConnect, vars: BeginSectionFileDeletionVariables): MutationPromise<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+
+interface BeginSectionFileDeletionRef {
+  ...
+  (dc: DataConnect, vars: BeginSectionFileDeletionVariables): MutationRef<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+}
+export const beginSectionFileDeletionRef: BeginSectionFileDeletionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the beginSectionFileDeletionRef:
+```typescript
+const name = beginSectionFileDeletionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `BeginSectionFileDeletion` mutation requires an argument of type `BeginSectionFileDeletionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface BeginSectionFileDeletionVariables {
+  id: UUIDString;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `BeginSectionFileDeletion` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `BeginSectionFileDeletionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface BeginSectionFileDeletionData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `BeginSectionFileDeletion`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, beginSectionFileDeletion, BeginSectionFileDeletionVariables } from '@dataconnect/generated';
+
+// The `BeginSectionFileDeletion` mutation requires an argument of type `BeginSectionFileDeletionVariables`:
+const beginSectionFileDeletionVars: BeginSectionFileDeletionVariables = {
+  id: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `beginSectionFileDeletion()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await beginSectionFileDeletion(beginSectionFileDeletionVars);
+// Variables can be defined inline as well.
+const { data } = await beginSectionFileDeletion({ id: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await beginSectionFileDeletion(dataConnect, beginSectionFileDeletionVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+beginSectionFileDeletion(beginSectionFileDeletionVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `BeginSectionFileDeletion`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, beginSectionFileDeletionRef, BeginSectionFileDeletionVariables } from '@dataconnect/generated';
+
+// The `BeginSectionFileDeletion` mutation requires an argument of type `BeginSectionFileDeletionVariables`:
+const beginSectionFileDeletionVars: BeginSectionFileDeletionVariables = {
+  id: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `beginSectionFileDeletionRef()` function to get a reference to the mutation.
+const ref = beginSectionFileDeletionRef(beginSectionFileDeletionVars);
+// Variables can be defined inline as well.
+const ref = beginSectionFileDeletionRef({ id: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = beginSectionFileDeletionRef(dataConnect, beginSectionFileDeletionVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+## MarkSectionFileDeleted
+You can execute the `MarkSectionFileDeleted` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markSectionFileDeleted(vars: MarkSectionFileDeletedVariables): MutationPromise<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+
+interface MarkSectionFileDeletedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkSectionFileDeletedVariables): MutationRef<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+}
+export const markSectionFileDeletedRef: MarkSectionFileDeletedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markSectionFileDeleted(dc: DataConnect, vars: MarkSectionFileDeletedVariables): MutationPromise<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+
+interface MarkSectionFileDeletedRef {
+  ...
+  (dc: DataConnect, vars: MarkSectionFileDeletedVariables): MutationRef<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+}
+export const markSectionFileDeletedRef: MarkSectionFileDeletedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markSectionFileDeletedRef:
+```typescript
+const name = markSectionFileDeletedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkSectionFileDeleted` mutation requires an argument of type `MarkSectionFileDeletedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkSectionFileDeletedVariables {
+  id: UUIDString;
+  deletedAt: TimestampString;
+  updatedBy: string;
+}
+```
+### Return Type
+Recall that executing the `MarkSectionFileDeleted` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkSectionFileDeletedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkSectionFileDeletedData {
+  sectionFile_updateMany: number;
+}
+```
+### Using `MarkSectionFileDeleted`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markSectionFileDeleted, MarkSectionFileDeletedVariables } from '@dataconnect/generated';
+
+// The `MarkSectionFileDeleted` mutation requires an argument of type `MarkSectionFileDeletedVariables`:
+const markSectionFileDeletedVars: MarkSectionFileDeletedVariables = {
+  id: ..., 
+  deletedAt: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `markSectionFileDeleted()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markSectionFileDeleted(markSectionFileDeletedVars);
+// Variables can be defined inline as well.
+const { data } = await markSectionFileDeleted({ id: ..., deletedAt: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markSectionFileDeleted(dataConnect, markSectionFileDeletedVars);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+markSectionFileDeleted(markSectionFileDeletedVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
+### Using `MarkSectionFileDeleted`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markSectionFileDeletedRef, MarkSectionFileDeletedVariables } from '@dataconnect/generated';
+
+// The `MarkSectionFileDeleted` mutation requires an argument of type `MarkSectionFileDeletedVariables`:
+const markSectionFileDeletedVars: MarkSectionFileDeletedVariables = {
+  id: ..., 
+  deletedAt: ..., 
+  updatedBy: ..., 
+};
+
+// Call the `markSectionFileDeletedRef()` function to get a reference to the mutation.
+const ref = markSectionFileDeletedRef(markSectionFileDeletedVars);
+// Variables can be defined inline as well.
+const ref = markSectionFileDeletedRef({ id: ..., deletedAt: ..., updatedBy: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markSectionFileDeletedRef(dataConnect, markSectionFileDeletedVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sectionFile_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionFile_updateMany);
+});
+```
+
 ## UpdateUserMembershipStatus
 You can execute the `UpdateUserMembershipStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -10051,6 +12227,7 @@ export interface MarkNotificationDeliverySentByIdVariables {
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
 }
 ```
 ### Return Type
@@ -10078,13 +12255,14 @@ const markNotificationDeliverySentByIdVars: MarkNotificationDeliverySentByIdVari
   providerMessageId: ..., // optional
   lastErrorCode: ..., // optional
   lastErrorMessage: ..., // optional
+  deliveryMode: ..., // optional
 };
 
 // Call the `markNotificationDeliverySentById()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await markNotificationDeliverySentById(markNotificationDeliverySentByIdVars);
 // Variables can be defined inline as well.
-const { data } = await markNotificationDeliverySentById({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+const { data } = await markNotificationDeliverySentById({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., deliveryMode: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10115,12 +12293,13 @@ const markNotificationDeliverySentByIdVars: MarkNotificationDeliverySentByIdVari
   providerMessageId: ..., // optional
   lastErrorCode: ..., // optional
   lastErrorMessage: ..., // optional
+  deliveryMode: ..., // optional
 };
 
 // Call the `markNotificationDeliverySentByIdRef()` function to get a reference to the mutation.
 const ref = markNotificationDeliverySentByIdRef(markNotificationDeliverySentByIdVars);
 // Variables can be defined inline as well.
-const ref = markNotificationDeliverySentByIdRef({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+const ref = markNotificationDeliverySentByIdRef({ id: ..., attemptCount: ..., lastAttemptedAt: ..., sentAt: ..., provider: ..., providerMessageId: ..., lastErrorCode: ..., lastErrorMessage: ..., deliveryMode: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -11488,6 +13667,145 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## CreateAnnouncementSendWithDeliveryMode
+You can execute the `CreateAnnouncementSendWithDeliveryMode` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createAnnouncementSendWithDeliveryMode(vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationPromise<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+
+interface CreateAnnouncementSendWithDeliveryModeRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationRef<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+}
+export const createAnnouncementSendWithDeliveryModeRef: CreateAnnouncementSendWithDeliveryModeRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createAnnouncementSendWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationPromise<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+
+interface CreateAnnouncementSendWithDeliveryModeRef {
+  ...
+  (dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationRef<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+}
+export const createAnnouncementSendWithDeliveryModeRef: CreateAnnouncementSendWithDeliveryModeRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createAnnouncementSendWithDeliveryModeRef:
+```typescript
+const name = createAnnouncementSendWithDeliveryModeRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateAnnouncementSendWithDeliveryMode` mutation requires an argument of type `CreateAnnouncementSendWithDeliveryModeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateAnnouncementSendWithDeliveryModeVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  recipientSnapshot: string;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+```
+### Return Type
+Recall that executing the `CreateAnnouncementSendWithDeliveryMode` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateAnnouncementSendWithDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateAnnouncementSendWithDeliveryModeData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+```
+### Using `CreateAnnouncementSendWithDeliveryMode`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createAnnouncementSendWithDeliveryMode, CreateAnnouncementSendWithDeliveryModeVariables } from '@dataconnect/generated';
+
+// The `CreateAnnouncementSendWithDeliveryMode` mutation requires an argument of type `CreateAnnouncementSendWithDeliveryModeVariables`:
+const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeliveryModeVariables = {
+  id: ..., 
+  sectionId: ..., 
+  templateUuid: ..., 
+  templateName: ..., // optional
+  sentBy: ..., 
+  recipientCount: ..., 
+  skippedCount: ..., 
+  recipientSnapshot: ..., 
+  requestedDeliveryMode: ..., 
+  siteDeliveryMode: ..., 
+  effectiveDeliveryMode: ..., 
+};
+
+// Call the `createAnnouncementSendWithDeliveryMode()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createAnnouncementSendWithDeliveryMode(createAnnouncementSendWithDeliveryModeVars);
+// Variables can be defined inline as well.
+const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createAnnouncementSendWithDeliveryMode(dataConnect, createAnnouncementSendWithDeliveryModeVars);
+
+console.log(data.announcementSend_insert);
+
+// Or, you can use the `Promise` API.
+createAnnouncementSendWithDeliveryMode(createAnnouncementSendWithDeliveryModeVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementSend_insert);
+});
+```
+
+### Using `CreateAnnouncementSendWithDeliveryMode`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createAnnouncementSendWithDeliveryModeRef, CreateAnnouncementSendWithDeliveryModeVariables } from '@dataconnect/generated';
+
+// The `CreateAnnouncementSendWithDeliveryMode` mutation requires an argument of type `CreateAnnouncementSendWithDeliveryModeVariables`:
+const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeliveryModeVariables = {
+  id: ..., 
+  sectionId: ..., 
+  templateUuid: ..., 
+  templateName: ..., // optional
+  sentBy: ..., 
+  recipientCount: ..., 
+  skippedCount: ..., 
+  recipientSnapshot: ..., 
+  requestedDeliveryMode: ..., 
+  siteDeliveryMode: ..., 
+  effectiveDeliveryMode: ..., 
+};
+
+// Call the `createAnnouncementSendWithDeliveryModeRef()` function to get a reference to the mutation.
+const ref = createAnnouncementSendWithDeliveryModeRef(createAnnouncementSendWithDeliveryModeVars);
+// Variables can be defined inline as well.
+const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createAnnouncementSendWithDeliveryModeRef(dataConnect, createAnnouncementSendWithDeliveryModeVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.announcementSend_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementSend_insert);
+});
+```
+
 ## CreateAnnouncementRecipient
 You can execute the `CreateAnnouncementRecipient` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -11610,6 +13928,145 @@ const ref = createAnnouncementRecipientRef({ id: ..., announcementSendId: ..., u
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = createAnnouncementRecipientRef(dataConnect, createAnnouncementRecipientVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.announcementRecipient_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipient_insert);
+});
+```
+
+## CreateAnnouncementRecipientWithDeliveryMode
+You can execute the `CreateAnnouncementRecipientWithDeliveryMode` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createAnnouncementRecipientWithDeliveryMode(vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationPromise<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+
+interface CreateAnnouncementRecipientWithDeliveryModeRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationRef<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+}
+export const createAnnouncementRecipientWithDeliveryModeRef: CreateAnnouncementRecipientWithDeliveryModeRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createAnnouncementRecipientWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationPromise<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+
+interface CreateAnnouncementRecipientWithDeliveryModeRef {
+  ...
+  (dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationRef<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+}
+export const createAnnouncementRecipientWithDeliveryModeRef: CreateAnnouncementRecipientWithDeliveryModeRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createAnnouncementRecipientWithDeliveryModeRef:
+```typescript
+const name = createAnnouncementRecipientWithDeliveryModeRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateAnnouncementRecipientWithDeliveryMode` mutation requires an argument of type `CreateAnnouncementRecipientWithDeliveryModeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
+  id: UUIDString;
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+```
+### Return Type
+Recall that executing the `CreateAnnouncementRecipientWithDeliveryMode` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateAnnouncementRecipientWithDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+```
+### Using `CreateAnnouncementRecipientWithDeliveryMode`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createAnnouncementRecipientWithDeliveryMode, CreateAnnouncementRecipientWithDeliveryModeVariables } from '@dataconnect/generated';
+
+// The `CreateAnnouncementRecipientWithDeliveryMode` mutation requires an argument of type `CreateAnnouncementRecipientWithDeliveryModeVariables`:
+const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipientWithDeliveryModeVariables = {
+  id: ..., 
+  announcementSendId: ..., 
+  userId: ..., 
+  email: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  status: ..., 
+  skippedReason: ..., // optional
+  sentAt: ..., // optional
+  failureReason: ..., // optional
+  effectiveDeliveryMode: ..., 
+};
+
+// Call the `createAnnouncementRecipientWithDeliveryMode()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createAnnouncementRecipientWithDeliveryMode(createAnnouncementRecipientWithDeliveryModeVars);
+// Variables can be defined inline as well.
+const { data } = await createAnnouncementRecipientWithDeliveryMode({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createAnnouncementRecipientWithDeliveryMode(dataConnect, createAnnouncementRecipientWithDeliveryModeVars);
+
+console.log(data.announcementRecipient_insert);
+
+// Or, you can use the `Promise` API.
+createAnnouncementRecipientWithDeliveryMode(createAnnouncementRecipientWithDeliveryModeVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipient_insert);
+});
+```
+
+### Using `CreateAnnouncementRecipientWithDeliveryMode`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createAnnouncementRecipientWithDeliveryModeRef, CreateAnnouncementRecipientWithDeliveryModeVariables } from '@dataconnect/generated';
+
+// The `CreateAnnouncementRecipientWithDeliveryMode` mutation requires an argument of type `CreateAnnouncementRecipientWithDeliveryModeVariables`:
+const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipientWithDeliveryModeVariables = {
+  id: ..., 
+  announcementSendId: ..., 
+  userId: ..., 
+  email: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  status: ..., 
+  skippedReason: ..., // optional
+  sentAt: ..., // optional
+  failureReason: ..., // optional
+  effectiveDeliveryMode: ..., 
+};
+
+// Call the `createAnnouncementRecipientWithDeliveryModeRef()` function to get a reference to the mutation.
+const ref = createAnnouncementRecipientWithDeliveryModeRef(createAnnouncementRecipientWithDeliveryModeVars);
+// Variables can be defined inline as well.
+const ref = createAnnouncementRecipientWithDeliveryModeRef({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createAnnouncementRecipientWithDeliveryModeRef(dataConnect, createAnnouncementRecipientWithDeliveryModeVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.

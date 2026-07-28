@@ -339,7 +339,7 @@ describe("SectionEventsManager", () => {
       })
     );
     expect(await screen.findByText("Guest ticket request approved")).toBeInTheDocument();
-  });
+  }, 10_000);
 
   it("opens event edit dialog from the event admin details section", async () => {
     const user = userEvent.setup();

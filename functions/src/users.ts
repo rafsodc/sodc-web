@@ -7,6 +7,7 @@ import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { isUserAwaitingProfile, isUserPendingApproval } from "./pendingUserApproval";
 import { notifyAdminsUserPendingApproval } from "./pendingApprovalAdminAlert";
+import { govNotifySecrets } from "./mailer";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -274,7 +275,7 @@ export const listUsersPendingApproval = onCall(
  * Invoked at registration and again after profile submit so the claim is never left unset.
  */
 export const syncPendingUserClaims = onCall(
-  { region: FUNCTIONS_REGION },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
     requireAuth(request);
     await enforceRateLimit("syncPendingUserClaims", request.auth!.uid);

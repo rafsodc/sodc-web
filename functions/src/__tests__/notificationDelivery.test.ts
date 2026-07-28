@@ -10,11 +10,20 @@ import {
   type NotificationDeliveryRepository,
 } from "../notificationDelivery";
 import { parseNotificationRecoveryPayload } from "../notificationRecoveryPayload";
+import { resolveRuntimeGovNotifyDeliveryMode } from "../govNotifyDeliveryConfiguration";
 
 vi.mock("firebase-functions/logger", () => ({
   error: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
+}));
+
+vi.mock("../govNotifyDeliveryConfiguration", () => ({
+  resolveRuntimeGovNotifyDeliveryMode: vi.fn(async (requestedMode: string) => ({
+    requestedMode,
+    siteMode: "LIVE",
+    effectiveMode: requestedMode,
+  })),
 }));
 
 interface StoredDelivery {
@@ -147,6 +156,11 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
 describe("notificationDelivery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockImplementation(async (requestedMode) => ({
+      requestedMode: requestedMode ?? "LIVE",
+      siteMode: "LIVE",
+      effectiveMode: requestedMode ?? "LIVE",
+    }));
   });
 
   it("sends once and marks the delivery as sent", async () => {
@@ -199,6 +213,97 @@ describe("notificationDelivery", () => {
       kind: "PAYMENT_LIFECYCLE",
       stripeEventId: "evt_1",
     });
+  });
+
+  it("scopes GOV.UK Notify ledgers and recovery payloads to the effective mode", async () => {
+    const { repository, records } = createRepository();
+    const send = vi.fn(async () => ({
+      providerMessageId: "provider-message-1",
+      deliveryMode: "SIMULATION" as const,
+    }));
+
+    await sendNotificationOnce(
+      {
+        channel: NotificationChannel.EMAIL,
+        notificationType: "PAYMENT_PAID",
+        deliveryKey: "payment:order-1:PAYMENT_PAID:evt_1",
+        provider: "govuk_notify",
+        deliveryMode: "SIMULATION",
+        recoveryPayload: {
+          version: 1,
+          kind: "PAYMENT_LIFECYCLE",
+          type: "PAYMENT_PAID",
+          orderId: "00000000-0000-0000-0000-000000000001",
+          eventId: null,
+          stripeEventId: "evt_1",
+          status: null,
+          occurredAt: "2026-05-14T20:00:00.000Z",
+          userId: "user-1",
+        },
+        send,
+      },
+      {
+        repository,
+        now: vi.fn()
+          .mockReturnValueOnce("2026-05-14T20:00:00.000Z")
+          .mockReturnValueOnce("2026-05-14T20:00:01.000Z"),
+      },
+    );
+
+    const record = records.get(
+      "EMAIL:payment:order-1:PAYMENT_PAID:evt_1:notify-simulation",
+    );
+    expect(record).toBeDefined();
+    expect(parseNotificationRecoveryPayload(record!.recoveryPayload!)).toMatchObject({
+      deliveryMode: "SIMULATION",
+    });
+    expect(send).toHaveBeenCalledWith("SIMULATION");
+  });
+
+  it("applies the runtime ceiling before claiming a GOV.UK Notify delivery", async () => {
+    vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockResolvedValue({
+      requestedMode: "LIVE",
+      siteMode: "TEAM_TEST",
+      effectiveMode: "TEAM_TEST",
+    });
+    const { repository, records } = createRepository();
+    const send = vi.fn(async () => ({
+      providerMessageId: "provider-message-1",
+      deliveryMode: "TEAM_TEST" as const,
+    }));
+
+    await sendNotificationOnce(
+      {
+        channel: NotificationChannel.EMAIL,
+        notificationType: "PAYMENT_PAID",
+        deliveryKey: "payment:order-1:PAYMENT_PAID:evt_1",
+        provider: "govuk_notify",
+        deliveryMode: "LIVE",
+        recoveryPayload: {
+          version: 1,
+          kind: "PAYMENT_LIFECYCLE",
+          type: "PAYMENT_PAID",
+          orderId: "00000000-0000-0000-0000-000000000001",
+          eventId: null,
+          stripeEventId: "evt_1",
+          status: null,
+          occurredAt: "2026-05-14T20:00:00.000Z",
+          userId: "user-1",
+        },
+        send,
+      },
+      { repository },
+    );
+
+    expect(resolveRuntimeGovNotifyDeliveryMode).toHaveBeenCalledWith("LIVE");
+    const record = records.get(
+      "EMAIL:payment:order-1:PAYMENT_PAID:evt_1:notify-team_test",
+    );
+    expect(record).toBeDefined();
+    expect(parseNotificationRecoveryPayload(record!.recoveryPayload!)).toMatchObject({
+      deliveryMode: "TEAM_TEST",
+    });
+    expect(send).toHaveBeenCalledWith("TEAM_TEST");
   });
 
   it("skips duplicates that were already sent", async () => {

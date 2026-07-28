@@ -21,7 +21,7 @@ before using the promotion process below.
 1. **One Firebase project per environment** — Data Connect and Functions are **project-scoped**. Hosting preview channels do **not** duplicate backends; they only swap static frontend bundles within a single project.
 2. **Frontend config is baked at build time** — Vite reads `VITE_*` variables when you run `npm run build`. There is no runtime injection from Hosting for Firebase web SDK config. Each deploy pipeline must build with the correct `.env` for that target project.
 3. **Secrets and Stripe differ per project** — Use separate webhook endpoints, Stripe secrets, and Firebase secrets per environment (see [environment-and-secrets.md](./environment-and-secrets.md)).
-4. **Backend dependencies deploy schema-first** — For a full-stack release, verify generated Data Connect SDKs locally, deploy and validate Data Connect, deploy and validate Functions, then deploy Hosting. Do not use one unscoped `firebase deploy` command for a release that changes these dependencies.
+4. **Backend dependencies deploy schema-first** — For a full-stack release, verify generated Data Connect SDKs locally, deploy and validate Data Connect and Storage rules, deploy and validate Functions, then deploy Hosting. Do not use one unscoped `firebase deploy` command for a release that changes these dependencies.
 
 ## Firebase CLI aliases
 
@@ -124,9 +124,29 @@ Review migration and connector compatibility messages; do not add `--force` mere
 
 Schema changes that remove or rename fields require an expand/migrate/contract rollout across separate releases. Do not approve destructive migration steps during an ordinary application deploy.
 
-### 4. Deploy and validate Functions
+### 4. Deploy and validate Storage rules
 
-Only after the Data Connect checkpoint passes:
+When the release uses section files, first confirm Cloud Storage for Firebase
+has been initialized in the target project's Firebase console and the exact
+bucket name matches `VITE_FIREBASE_STORAGE_BUCKET` and
+`SECTION_FILES_BUCKET`. Follow
+[section-file-storage.md](./section-file-storage.md) for the initial bucket,
+IAM, lifecycle, and CORS setup.
+
+Deploy the repository's deny-all client rules:
+
+```sh
+firebase deploy --only storage --project "$FIREBASE_PROJECT"
+```
+
+Confirm the CLI targeted the intended project's bucket. Use the Firebase Rules
+Playground or an unauthenticated Firebase Storage SDK request to verify direct
+client reads and writes are denied. Stop before Functions if Storage is absent,
+mis-targeted, or permissive.
+
+### 5. Deploy and validate Functions
+
+Only after the Data Connect and Storage checkpoints pass:
 
 ```sh
 firebase deploy --only functions --project "$FIREBASE_PROJECT"
@@ -134,7 +154,7 @@ firebase deploy --only functions --project "$FIREBASE_PROJECT"
 
 Smoke-test the changed callable, HTTP, or scheduled Function through a non-destructive path. Check Functions logs for startup, Data Connect operation, authorization, and secret/configuration errors. Also repeat one established callable flow to catch connector compatibility regressions.
 
-### 5. Build and deploy Hosting
+### 6. Build and deploy Hosting
 
 Confirm the active `.env` contains the target project's `VITE_*` values, rebuild, and deploy Hosting last:
 
@@ -152,6 +172,7 @@ Smoke-test sign-in, one Data Connect read, one callable action, a deep link, and
 | SDK generation or either build fails | Stop. No remote state has changed; regenerate, fix, review, and restart. |
 | Data Connect migration or connector deployment fails | Do not deploy Functions or Hosting. Preserve CLI output, inspect the service state, and prefer a forward-compatible fix. A schema migration may already have run even if a later connector step failed. |
 | Data Connect smoke test fails | Stop before Functions. Restore the previous connector/schema from the last known-good commit only when that rollback is non-destructive; otherwise ship a reviewed forward fix. |
+| Storage is not initialized, targets the wrong bucket, or rules verification fails | Do not deploy file Functions or Hosting. Correct the target/configuration and redeploy deny-all rules. Do not make the bucket public as a workaround. |
 | Functions deploy or smoke test fails | Do not deploy Hosting. Keep the backward-compatible expanded schema in place and redeploy Functions from the last known-good release commit, then repeat the Function checkpoint. |
 | Hosting build, deploy, or smoke test fails | Backend checkpoints remain valid. Rebuild/redeploy Hosting from the last known-good release commit with the correct environment variables. |
 
@@ -161,8 +182,8 @@ Checking out and redeploying a previous Data Connect definition cannot restore d
 
 A practical sequence:
 
-1. Implement and integrate on **Dev**, completing all five rollout checkpoints.
-2. Deploy the same reviewed commit to **Beta** and repeat SDK verification, Data Connect, Functions, Hosting, and smoke tests.
+1. Implement and integrate on **Dev**, completing all six rollout checkpoints.
+2. Deploy the same reviewed commit to **Beta** and repeat SDK verification, Data Connect, Storage, Functions, Hosting, and smoke tests.
 3. After Beta sign-off, repeat the complete sequence for **Prod** using production secrets and Stripe configuration.
 
 Branch ↔ environment mapping is a **team convention** (e.g. feature branches → dev only; `main` → beta then prod). Document any automation (GitHub Actions) in the workflow repo settings.

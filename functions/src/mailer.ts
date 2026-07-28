@@ -1,10 +1,27 @@
-import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { NotifyClient } from "notifications-node-client";
 import { createHash } from "node:crypto";
 import { sanitizeMailerError } from "./mailerErrors";
+import {
+  govNotifyLiveApiKey,
+  govNotifyApiKeyForMode,
+  govNotifyReferenceForMode,
+  govNotifySecrets,
+  govNotifyTeamApiKey,
+  govNotifyTestApiKey,
+  resolveGovNotifyDeliveryMode,
+  type GovNotifyDeliveryMode,
+  type GovNotifyDeliveryResolution,
+} from "./govNotifyDeliveryMode";
+import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
 
-export const govNotifyApiKey = defineSecret("GOV_NOTIFY_API_KEY");
+export {
+  govNotifyLiveApiKey,
+  govNotifyApiKeyForMode,
+  govNotifySecrets,
+  govNotifyTeamApiKey,
+  govNotifyTestApiKey,
+};
 
 export const GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV = "GOV_NOTIFY_EMAIL_REPLY_TO_ID";
 export const GOV_NOTIFY_TEMPLATE_ENV_PREFIX = "GOV_NOTIFY_TEMPLATE_";
@@ -24,12 +41,14 @@ export interface TransactionalEmailRequest<
   to: string;
   personalisation: TPayload;
   reference?: string;
+  requestedDeliveryMode?: GovNotifyDeliveryMode;
 }
 
 export interface TransactionalEmailResult {
   provider: typeof GOV_NOTIFY_PROVIDER;
   providerNotificationId?: string;
   reference?: string;
+  deliveryMode: GovNotifyDeliveryResolution;
 }
 
 export interface TransactionalMailer<TPayloads extends TransactionalEmailPayloads<TPayloads>> {
@@ -75,6 +94,11 @@ export interface MailerLogger {
 
 export interface GovNotifyMailerOptions<TPayloads extends TransactionalEmailPayloads<TPayloads>> {
   apiKey?: string;
+  apiKeys?: Partial<Record<GovNotifyDeliveryMode, string | undefined>>;
+  siteMode?: GovNotifyDeliveryMode;
+  resolveDeliveryMode?: (
+    requestedMode: GovNotifyDeliveryMode,
+  ) => Promise<GovNotifyDeliveryResolution>;
   templateIds: Partial<Record<Extract<keyof TPayloads, string>, string | undefined>>;
   emailReplyToId?: string;
   clientFactory?: (apiKey: string) => NotifyEmailClient;
@@ -151,35 +175,60 @@ export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloa
       request: TransactionalEmailRequest<TTemplateName, TPayloads[TTemplateName]>,
     ): Promise<TransactionalEmailResult> {
       try {
-        const apiKey = requiredConfig(options.apiKey, "GOV_NOTIFY_API_KEY");
+        const requestedMode = request.requestedDeliveryMode ?? "LIVE";
+        const deliveryMode = options.resolveDeliveryMode
+          ? await options.resolveDeliveryMode(requestedMode)
+          : (() => {
+              const siteMode = options.siteMode ?? "LIVE";
+              return {
+                requestedMode,
+                siteMode,
+                effectiveMode: resolveGovNotifyDeliveryMode(siteMode, requestedMode),
+              };
+            })();
+        const { effectiveMode } = deliveryMode;
+        const secretName = effectiveMode === "LIVE"
+          ? "GOV_NOTIFY_LIVE_API_KEY"
+          : effectiveMode === "SIMULATION"
+            ? "GOV_NOTIFY_TEST_API_KEY"
+            : "GOV_NOTIFY_TEAM_API_KEY";
+        const apiKey = requiredConfig(
+          options.apiKeys?.[effectiveMode] ?? options.apiKey,
+          secretName,
+        );
         const templateId = requiredConfig(
           options.templateIds[request.templateName],
           govNotifyTemplateEnvVarName(request.templateName),
         );
         const client = clientFactory(apiKey);
-        if (request.reference) {
-          const existing = await client.getNotifications("email", undefined, request.reference);
+        const providerReference = request.reference
+          ? govNotifyReferenceForMode(request.reference, effectiveMode)
+          : undefined;
+        if (providerReference) {
+          const existing = await client.getNotifications("email", undefined, providerReference);
           const existingNotification = existing.data?.notifications?.find(
-            (notification) => notification.reference === request.reference,
+            (notification) => notification.reference === providerReference,
           );
           const existingNotificationId = maybeNonEmpty(existingNotification?.id);
           if (existingNotificationId) {
             activeLogger.info("transactional email already accepted by provider", {
               provider: GOV_NOTIFY_PROVIDER,
               templateName: request.templateName,
-              reference: request.reference,
+              reference: providerReference,
+              deliveryMode,
               providerNotificationId: existingNotificationId,
             });
             return {
               provider: GOV_NOTIFY_PROVIDER,
               providerNotificationId: existingNotificationId,
-              reference: request.reference,
+              reference: providerReference,
+              deliveryMode,
             };
           }
         }
         const response = await client.sendEmail(templateId, request.to, {
           personalisation: request.personalisation,
-          reference: request.reference,
+          reference: providerReference,
           emailReplyToId: options.emailReplyToId,
         });
         const providerNotificationId = maybeNonEmpty(response.data?.id);
@@ -189,11 +238,13 @@ export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloa
           templateName: request.templateName,
           reference,
           providerNotificationId,
+          deliveryMode,
         });
         return {
           provider: GOV_NOTIFY_PROVIDER,
           providerNotificationId,
           reference,
+          deliveryMode,
         };
       } catch (error) {
         activeLogger.error("transactional email failed", {
@@ -213,7 +264,12 @@ export function createConfiguredGovNotifyMailer<TPayloads extends TransactionalE
   env: NodeJS.ProcessEnv = process.env,
 ): TransactionalMailer<TPayloads> {
   return createGovNotifyMailer<TPayloads>({
-    apiKey: govNotifyApiKey.value(),
+    apiKeys: {
+      LIVE: govNotifyApiKeyForMode("LIVE"),
+      SIMULATION: govNotifyApiKeyForMode("SIMULATION"),
+      TEAM_TEST: govNotifyApiKeyForMode("TEAM_TEST"),
+    },
+    resolveDeliveryMode: resolveRuntimeGovNotifyDeliveryMode,
     templateIds: readGovNotifyTemplateIds(templateNames, env),
     emailReplyToId: getGovNotifyEmailReplyToId(env),
   });

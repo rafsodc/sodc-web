@@ -1,9 +1,13 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 import * as fs from "fs";
 import * as path from "path";
 import { NotifyClient } from "notifications-node-client";
 import { requireAdmin, handleFunctionError } from "./helpers";
-import { govNotifyApiKey } from "./mailer";
+import {
+  govNotifyApiKeyForMode,
+  govNotifySecrets,
+} from "./govNotifyDeliveryMode";
+import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
 import { EMAIL_TEMPLATE_MANIFEST } from "./generatedEmailTemplateManifest";
 import { FUNCTIONS_REGION } from "./constants";
 import { enforceRateLimit } from "./rateLimiter";
@@ -75,15 +79,13 @@ async function fetchNotifyTemplate(apiKey: string, uuid: string): Promise<Notify
 }
 
 export const getTemplateSyncStatus = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ results: TemplateSyncResult[] }> => {
     requireAdmin(request);
     await enforceRateLimit("getTemplateSyncStatus", request.auth!.uid);
 
-    const apiKey = govNotifyApiKey.value();
-    if (!apiKey) {
-      throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY is not configured");
-    }
+    const mode = (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).effectiveMode;
+    const apiKey = govNotifyApiKeyForMode(mode);
 
     const registry = loadRegistry();
     const environment = resolveEnvironment();

@@ -17,7 +17,7 @@ import {
   type PaymentTransitionIntent,
 } from "./paymentStateMachine";
 import { classifyStripeWebhookDomain } from "./stripeWebhookRouting";
-import { govNotifyApiKey } from "./mailer";
+import { govNotifySecrets } from "./mailer";
 import { notifyPaymentOpsDisputeSideState } from "./paymentOpsInternalAlerts";
 import {
   APP_BASE_URL,
@@ -400,13 +400,29 @@ async function handleStripeWebhookRequest(args: {
 }
 
 export const stripeWebhookPayments = onRequest(
-  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret, govNotifyApiKey] },
+  {
+    region: FUNCTIONS_REGION,
+    secrets: [
+      stripeSecret,
+      stripeWebhookSecret,
+      stripeWebhookPaymentsSecret,
+      ...govNotifySecrets,
+    ],
+  },
   async (req, res) => {
     await handleStripeWebhookRequest({ domain: "payments", endpointName: "stripeWebhookPayments", req, res });
   }
 );
 export const stripeWebhook = onRequest(
-  { region: FUNCTIONS_REGION, secrets: [stripeSecret, stripeWebhookSecret, stripeWebhookPaymentsSecret, govNotifyApiKey] },
+  {
+    region: FUNCTIONS_REGION,
+    secrets: [
+      stripeSecret,
+      stripeWebhookSecret,
+      stripeWebhookPaymentsSecret,
+      ...govNotifySecrets,
+    ],
+  },
   async (req, res) => {
     logger.warn("stripeWebhook legacy endpoint invoked", {
       migrationTarget: "stripeWebhookPayments",

@@ -9,6 +9,7 @@ import {
   isRestrictedStatus,
   type MembershipStatus,
 } from "./validation";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export const MEMBERSHIP_MAIL_TEMPLATE_KEYS = ["membershipActivated", "membershipAccessRestricted"] as const;
 
@@ -103,6 +104,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
   newStatus: MembershipStatus;
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createMembershipStatusMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   const kind = classifyMembershipStatusEmailTransition(args.previousStatus, args.newStatus);
   if (!kind) {
@@ -147,6 +149,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
       deliveryKey,
       userId: args.userId,
       provider: GOV_NOTIFY_PROVIDER,
+      deliveryMode: args.deliveryMode,
       recoveryPayload: {
         version: 1,
         kind: "MEMBERSHIP_STATUS",
@@ -154,7 +157,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
         previousStatus: args.previousStatus,
         newStatus: args.newStatus,
       },
-      send: async () => {
+      send: async (deliveryMode) => {
         if (kind === "activation") {
           const personalisation: MembershipEmailTemplates["membershipActivated"] = {
             customerFirstName,
@@ -167,8 +170,12 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
             to: email,
             personalisation,
             reference,
+            requestedDeliveryMode: deliveryMode,
           });
-          return { providerMessageId: r.providerNotificationId ?? null };
+          return {
+            providerMessageId: r.providerNotificationId ?? null,
+            deliveryMode: r.deliveryMode?.effectiveMode,
+          };
         }
         const previousStatusLabel = args.previousStatus
           ? membershipStatusCustomerLabel(args.previousStatus)
@@ -184,8 +191,12 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: r.providerNotificationId ?? null };
+        return {
+          providerMessageId: r.providerNotificationId ?? null,
+          deliveryMode: r.deliveryMode?.effectiveMode,
+        };
       },
     });
   } catch (error) {

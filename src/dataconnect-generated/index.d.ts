@@ -21,6 +21,12 @@ export enum BookingStatus {
   CANCELLED = "CANCELLED",
 };
 
+export enum GovNotifyDeliveryMode {
+  SIMULATION = "SIMULATION",
+  TEAM_TEST = "TEAM_TEST",
+  LIVE = "LIVE",
+};
+
 export enum GuestTicketRequestStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
@@ -83,6 +89,14 @@ export enum PaymentWebhookEventOutcome {
   FAILED = "FAILED",
 };
 
+export enum SectionFileStatus {
+  PENDING = "PENDING",
+  AVAILABLE = "AVAILABLE",
+  REPLACING = "REPLACING",
+  DELETING = "DELETING",
+  DELETED = "DELETED",
+};
+
 export enum SectionType {
   MEMBERS = "MEMBERS",
   EVENTS = "EVENTS",
@@ -109,6 +123,25 @@ export enum TicketOrderStatus {
 };
 
 
+
+export interface AbandonPendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbandonPendingSectionFileVariables {
+  id: UUIDString;
+  updatedBefore: TimestampString;
+}
+
+export interface AbortSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbortSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
+}
 
 export interface AddBookingLineData {
   bookingLine_insert: BookingLine_Key;
@@ -228,6 +261,28 @@ export interface AnnouncementSend_Key {
   __typename?: 'AnnouncementSend_Key';
 }
 
+export interface BeginSectionFileDeletionData {
+  sectionFile_updateMany: number;
+}
+
+export interface BeginSectionFileDeletionVariables {
+  id: UUIDString;
+  updatedBy: string;
+}
+
+export interface BeginSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface BeginSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  pendingOriginalFilename: string;
+  pendingContentType: string;
+  pendingSizeBytes: number;
+  updatedBy: string;
+}
+
 export interface BookingLine_Key {
   id: UUIDString;
   __typename?: 'BookingLine_Key';
@@ -255,6 +310,20 @@ export interface CallableRateLimitBucket_Key {
   functionName: string;
   windowStart: TimestampString;
   __typename?: 'CallableRateLimitBucket_Key';
+}
+
+export interface ChangeGovNotifyDeliveryModeData {
+  changed: number;
+  govNotifyDeliveryModeAudit_insert: GovNotifyDeliveryModeAudit_Key;
+}
+
+export interface ChangeGovNotifyDeliveryModeVariables {
+  expectedVersion: number;
+  previousMode: GovNotifyDeliveryMode;
+  newMode: GovNotifyDeliveryMode;
+  deploymentCeiling: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
 }
 
 export interface CheckUserProfileExistsData {
@@ -321,6 +390,24 @@ export interface CreateAnnouncementRecipientVariables {
   failureReason?: string | null;
 }
 
+export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+
+export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
+  id: UUIDString;
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+
 export interface CreateAnnouncementSendData {
   announcementSend_insert: AnnouncementSend_Key;
 }
@@ -334,6 +421,24 @@ export interface CreateAnnouncementSendVariables {
   recipientCount: number;
   skippedCount: number;
   recipientSnapshot: string;
+}
+
+export interface CreateAnnouncementSendWithDeliveryModeData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+
+export interface CreateAnnouncementSendWithDeliveryModeVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  recipientSnapshot: string;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export interface CreateBookingDraftData {
@@ -393,6 +498,10 @@ export interface CreateEventVariables {
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
   maxGuestsWithoutModeratorApproval?: number | null;
+}
+
+export interface CreateGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration_insert: GovNotifyDeliveryConfiguration_Key;
 }
 
 export interface CreateGuestTicketRequestData {
@@ -469,6 +578,23 @@ export interface CreatePaymentWebhookEventVariables {
   ticketOrderId?: UUIDString | null;
   stripeObjectId?: string | null;
   livemode: boolean;
+}
+
+export interface CreatePendingSectionFileData {
+  sectionFile_insert: SectionFile_Key;
+}
+
+export interface CreatePendingSectionFileVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  pendingStorageObjectPath: string;
+  displayName: string;
+  originalFilename: string;
+  description?: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  now: TimestampString;
 }
 
 export interface CreateSectionData {
@@ -628,6 +754,37 @@ export interface Event_Key {
   __typename?: 'Event_Key';
 }
 
+export interface FinalizePendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface FinalizePendingSectionFileVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+
+export interface FinalizeSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface FinalizeSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  originalFilename: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+
 export interface GetAllUserGroupsWithStatusesData {
   userGroups: ({
     id: UUIDString;
@@ -644,6 +801,7 @@ export interface GetAnnouncementRecipientBySendAndUserData {
     processingVersion: number;
     processingStartedAt?: TimestampString | null;
     providerNotificationId?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
     deliveryVersion: number;
     deliveryStatusUpdatedAt?: TimestampString | null;
     deliveryReceiptId?: string | null;
@@ -687,6 +845,9 @@ export interface GetAnnouncementSendByIdData {
     recipientCount: number;
     skippedCount: number;
     recipientSnapshot?: string | null;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key;
 }
 
@@ -703,6 +864,9 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key)[];
 }
 
@@ -721,6 +885,7 @@ export interface GetAnnouncementSendRecipientsData {
     skippedReason?: string | null;
     sentAt?: TimestampString | null;
     failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementRecipient_Key)[];
 }
 
@@ -997,6 +1162,15 @@ export interface GetEventsForSectionData {
 
 export interface GetEventsForSectionVariables {
   sectionId: UUIDString;
+}
+
+export interface GetGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration?: {
+    mode: GovNotifyDeliveryMode;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+  };
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -1440,6 +1614,34 @@ export interface GetSectionByIdVariables {
   id: UUIDString;
 }
 
+export interface GetSectionFileByIdData {
+  sectionFile?: {
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    pendingOriginalFilename?: string | null;
+    pendingContentType?: string | null;
+    pendingSizeBytes?: number | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key;
+}
+
+export interface GetSectionFileByIdVariables {
+  id: UUIDString;
+}
+
 export interface GetSectionMembersData {
   section?: {
     id: UUIDString;
@@ -1802,6 +2004,16 @@ export interface GetUserWithAccessGroupsVariables {
   id: string;
 }
 
+export interface GovNotifyDeliveryConfiguration_Key {
+  id: string;
+  __typename?: 'GovNotifyDeliveryConfiguration_Key';
+}
+
+export interface GovNotifyDeliveryModeAudit_Key {
+  id: UUIDString;
+  __typename?: 'GovNotifyDeliveryModeAudit_Key';
+}
+
 export interface GrantUserGroupToSectionForPurposeData {
   sectionUserGroupPurposeLink_upsert: SectionUserGroupPurposeLink_Key;
 }
@@ -1927,6 +2139,22 @@ export interface ListFailedNotificationDeliveriesForRecoveryVariables {
   limit: number;
 }
 
+export interface ListGovNotifyDeliveryModeAuditsData {
+  govNotifyDeliveryModeAudits: ({
+    id: UUIDString;
+    previousMode: GovNotifyDeliveryMode;
+    newMode: GovNotifyDeliveryMode;
+    deploymentCeiling: GovNotifyDeliveryMode;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & GovNotifyDeliveryModeAudit_Key)[];
+}
+
+export interface ListGovNotifyDeliveryModeAuditsVariables {
+  limit: number;
+}
+
 export interface ListGuestTicketRequestsForAdminData {
   event?: {
     id: UUIDString;
@@ -2012,6 +2240,46 @@ export interface ListOpenPaymentReconciliationExceptionsData {
   } & PaymentReconciliationException_Key)[];
 }
 
+export interface ListSectionFilesByStatusData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesByStatusVariables {
+  sectionId: UUIDString;
+  status: SectionFileStatus;
+  limit: number;
+}
+
+export interface ListSectionFilesForQuotaData {
+  sectionFiles: ({
+    id: UUIDString;
+    sizeBytes: number;
+    status: SectionFileStatus;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesForQuotaVariables {
+  sectionId: UUIDString;
+  limit: number;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -2068,6 +2336,22 @@ export interface ListStalePendingTicketOrdersForSchedulerData {
 
 export interface ListStalePendingTicketOrdersForSchedulerVariables {
   createdBefore: TimestampString;
+  limit: number;
+}
+
+export interface ListStaleSectionFilesData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    status: SectionFileStatus;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListStaleSectionFilesVariables {
+  updatedBefore: TimestampString;
   limit: number;
 }
 
@@ -2186,6 +2470,7 @@ export interface MarkNotificationDeliverySentByIdVariables {
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
 }
 
 export interface MarkNotifyDeliveryReceiptFailedData {
@@ -2207,6 +2492,16 @@ export interface MarkNotifyDeliveryReceiptProcessedVariables {
   attemptCount: number;
   outcome: NotifyDeliveryReceiptOutcome;
   processedAt: TimestampString;
+}
+
+export interface MarkSectionFileDeletedData {
+  sectionFile_updateMany: number;
+}
+
+export interface MarkSectionFileDeletedVariables {
+  id: UUIDString;
+  deletedAt: TimestampString;
+  updatedBy: string;
 }
 
 export interface MarkTicketOrderFailedFromWebhookData {
@@ -2291,6 +2586,19 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastErrorMessage: string;
 }
 
+export interface RecordSectionFileAuditData {
+  sectionFileAudit_insert: SectionFileAudit_Key;
+}
+
+export interface RecordSectionFileAuditVariables {
+  sectionId: UUIDString;
+  fileId?: UUIDString | null;
+  actorUid: string;
+  action: string;
+  outcome: string;
+  detail?: string | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -2339,6 +2647,16 @@ export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
   __typename?: 'SectionAnnouncementOptOut_Key';
+}
+
+export interface SectionFileAudit_Key {
+  id: UUIDString;
+  __typename?: 'SectionFileAudit_Key';
+}
+
+export interface SectionFile_Key {
+  id: UUIDString;
+  __typename?: 'SectionFile_Key';
 }
 
 export interface SectionUserGroupPurposeLink_Key {
@@ -2453,6 +2771,17 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
+}
+
+export interface UpdateAvailableSectionFileMetadataData {
+  sectionFile_updateMany: number;
+}
+
+export interface UpdateAvailableSectionFileMetadataVariables {
+  id: UUIDString;
+  displayName: string;
+  description?: string | null;
+  updatedBy: string;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -2644,6 +2973,222 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
+
+interface GetGovNotifyDeliveryConfigurationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetGovNotifyDeliveryConfigurationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetGovNotifyDeliveryConfigurationData, undefined>;
+  operationName: string;
+}
+export const getGovNotifyDeliveryConfigurationRef: GetGovNotifyDeliveryConfigurationRef;
+
+export function getGovNotifyDeliveryConfiguration(options?: ExecuteQueryOptions): QueryPromise<GetGovNotifyDeliveryConfigurationData, undefined>;
+export function getGovNotifyDeliveryConfiguration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetGovNotifyDeliveryConfigurationData, undefined>;
+
+interface ListGovNotifyDeliveryModeAuditsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListGovNotifyDeliveryModeAuditsVariables): QueryRef<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables): QueryRef<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+  operationName: string;
+}
+export const listGovNotifyDeliveryModeAuditsRef: ListGovNotifyDeliveryModeAuditsRef;
+
+export function listGovNotifyDeliveryModeAudits(vars: ListGovNotifyDeliveryModeAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+export function listGovNotifyDeliveryModeAudits(dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListGovNotifyDeliveryModeAuditsData, ListGovNotifyDeliveryModeAuditsVariables>;
+
+interface CreateGovNotifyDeliveryConfigurationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<CreateGovNotifyDeliveryConfigurationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): MutationRef<CreateGovNotifyDeliveryConfigurationData, undefined>;
+  operationName: string;
+}
+export const createGovNotifyDeliveryConfigurationRef: CreateGovNotifyDeliveryConfigurationRef;
+
+export function createGovNotifyDeliveryConfiguration(): MutationPromise<CreateGovNotifyDeliveryConfigurationData, undefined>;
+export function createGovNotifyDeliveryConfiguration(dc: DataConnect): MutationPromise<CreateGovNotifyDeliveryConfigurationData, undefined>;
+
+interface ChangeGovNotifyDeliveryModeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ChangeGovNotifyDeliveryModeVariables): MutationRef<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationRef<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+  operationName: string;
+}
+export const changeGovNotifyDeliveryModeRef: ChangeGovNotifyDeliveryModeRef;
+
+export function changeGovNotifyDeliveryMode(vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+export function changeGovNotifyDeliveryMode(dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+
+interface CreatePendingSectionFileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreatePendingSectionFileVariables): MutationRef<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreatePendingSectionFileVariables): MutationRef<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+  operationName: string;
+}
+export const createPendingSectionFileRef: CreatePendingSectionFileRef;
+
+export function createPendingSectionFile(vars: CreatePendingSectionFileVariables): MutationPromise<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+export function createPendingSectionFile(dc: DataConnect, vars: CreatePendingSectionFileVariables): MutationPromise<CreatePendingSectionFileData, CreatePendingSectionFileVariables>;
+
+interface GetSectionFileByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetSectionFileByIdVariables): QueryRef<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetSectionFileByIdVariables): QueryRef<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+  operationName: string;
+}
+export const getSectionFileByIdRef: GetSectionFileByIdRef;
+
+export function getSectionFileById(vars: GetSectionFileByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+export function getSectionFileById(dc: DataConnect, vars: GetSectionFileByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionFileByIdData, GetSectionFileByIdVariables>;
+
+interface ListSectionFilesByStatusRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListSectionFilesByStatusVariables): QueryRef<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListSectionFilesByStatusVariables): QueryRef<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+  operationName: string;
+}
+export const listSectionFilesByStatusRef: ListSectionFilesByStatusRef;
+
+export function listSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+export function listSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesByStatusData, ListSectionFilesByStatusVariables>;
+
+interface ListStaleSectionFilesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStaleSectionFilesVariables): QueryRef<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListStaleSectionFilesVariables): QueryRef<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+  operationName: string;
+}
+export const listStaleSectionFilesRef: ListStaleSectionFilesRef;
+
+export function listStaleSectionFiles(vars: ListStaleSectionFilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+export function listStaleSectionFiles(dc: DataConnect, vars: ListStaleSectionFilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListStaleSectionFilesData, ListStaleSectionFilesVariables>;
+
+interface ListSectionFilesForQuotaRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListSectionFilesForQuotaVariables): QueryRef<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListSectionFilesForQuotaVariables): QueryRef<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+  operationName: string;
+}
+export const listSectionFilesForQuotaRef: ListSectionFilesForQuotaRef;
+
+export function listSectionFilesForQuota(vars: ListSectionFilesForQuotaVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+export function listSectionFilesForQuota(dc: DataConnect, vars: ListSectionFilesForQuotaVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionFilesForQuotaData, ListSectionFilesForQuotaVariables>;
+
+interface RecordSectionFileAuditRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordSectionFileAuditVariables): MutationRef<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RecordSectionFileAuditVariables): MutationRef<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+  operationName: string;
+}
+export const recordSectionFileAuditRef: RecordSectionFileAuditRef;
+
+export function recordSectionFileAudit(vars: RecordSectionFileAuditVariables): MutationPromise<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+export function recordSectionFileAudit(dc: DataConnect, vars: RecordSectionFileAuditVariables): MutationPromise<RecordSectionFileAuditData, RecordSectionFileAuditVariables>;
+
+interface AbandonPendingSectionFileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AbandonPendingSectionFileVariables): MutationRef<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AbandonPendingSectionFileVariables): MutationRef<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+  operationName: string;
+}
+export const abandonPendingSectionFileRef: AbandonPendingSectionFileRef;
+
+export function abandonPendingSectionFile(vars: AbandonPendingSectionFileVariables): MutationPromise<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+export function abandonPendingSectionFile(dc: DataConnect, vars: AbandonPendingSectionFileVariables): MutationPromise<AbandonPendingSectionFileData, AbandonPendingSectionFileVariables>;
+
+interface FinalizePendingSectionFileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: FinalizePendingSectionFileVariables): MutationRef<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: FinalizePendingSectionFileVariables): MutationRef<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+  operationName: string;
+}
+export const finalizePendingSectionFileRef: FinalizePendingSectionFileRef;
+
+export function finalizePendingSectionFile(vars: FinalizePendingSectionFileVariables): MutationPromise<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+export function finalizePendingSectionFile(dc: DataConnect, vars: FinalizePendingSectionFileVariables): MutationPromise<FinalizePendingSectionFileData, FinalizePendingSectionFileVariables>;
+
+interface UpdateAvailableSectionFileMetadataRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateAvailableSectionFileMetadataVariables): MutationRef<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateAvailableSectionFileMetadataVariables): MutationRef<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+  operationName: string;
+}
+export const updateAvailableSectionFileMetadataRef: UpdateAvailableSectionFileMetadataRef;
+
+export function updateAvailableSectionFileMetadata(vars: UpdateAvailableSectionFileMetadataVariables): MutationPromise<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+export function updateAvailableSectionFileMetadata(dc: DataConnect, vars: UpdateAvailableSectionFileMetadataVariables): MutationPromise<UpdateAvailableSectionFileMetadataData, UpdateAvailableSectionFileMetadataVariables>;
+
+interface BeginSectionFileReplacementRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: BeginSectionFileReplacementVariables): MutationRef<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: BeginSectionFileReplacementVariables): MutationRef<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+  operationName: string;
+}
+export const beginSectionFileReplacementRef: BeginSectionFileReplacementRef;
+
+export function beginSectionFileReplacement(vars: BeginSectionFileReplacementVariables): MutationPromise<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+export function beginSectionFileReplacement(dc: DataConnect, vars: BeginSectionFileReplacementVariables): MutationPromise<BeginSectionFileReplacementData, BeginSectionFileReplacementVariables>;
+
+interface FinalizeSectionFileReplacementRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: FinalizeSectionFileReplacementVariables): MutationRef<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: FinalizeSectionFileReplacementVariables): MutationRef<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+  operationName: string;
+}
+export const finalizeSectionFileReplacementRef: FinalizeSectionFileReplacementRef;
+
+export function finalizeSectionFileReplacement(vars: FinalizeSectionFileReplacementVariables): MutationPromise<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+export function finalizeSectionFileReplacement(dc: DataConnect, vars: FinalizeSectionFileReplacementVariables): MutationPromise<FinalizeSectionFileReplacementData, FinalizeSectionFileReplacementVariables>;
+
+interface AbortSectionFileReplacementRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AbortSectionFileReplacementVariables): MutationRef<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AbortSectionFileReplacementVariables): MutationRef<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+  operationName: string;
+}
+export const abortSectionFileReplacementRef: AbortSectionFileReplacementRef;
+
+export function abortSectionFileReplacement(vars: AbortSectionFileReplacementVariables): MutationPromise<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+export function abortSectionFileReplacement(dc: DataConnect, vars: AbortSectionFileReplacementVariables): MutationPromise<AbortSectionFileReplacementData, AbortSectionFileReplacementVariables>;
+
+interface BeginSectionFileDeletionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: BeginSectionFileDeletionVariables): MutationRef<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: BeginSectionFileDeletionVariables): MutationRef<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+  operationName: string;
+}
+export const beginSectionFileDeletionRef: BeginSectionFileDeletionRef;
+
+export function beginSectionFileDeletion(vars: BeginSectionFileDeletionVariables): MutationPromise<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+export function beginSectionFileDeletion(dc: DataConnect, vars: BeginSectionFileDeletionVariables): MutationPromise<BeginSectionFileDeletionData, BeginSectionFileDeletionVariables>;
+
+interface MarkSectionFileDeletedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkSectionFileDeletedVariables): MutationRef<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkSectionFileDeletedVariables): MutationRef<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+  operationName: string;
+}
+export const markSectionFileDeletedRef: MarkSectionFileDeletedRef;
+
+export function markSectionFileDeleted(vars: MarkSectionFileDeletedVariables): MutationPromise<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
+export function markSectionFileDeleted(dc: DataConnect, vars: MarkSectionFileDeletedVariables): MutationPromise<MarkSectionFileDeletedData, MarkSectionFileDeletedVariables>;
 
 interface UpdateUserMembershipStatusRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -3257,6 +3802,18 @@ export const createAnnouncementSendRef: CreateAnnouncementSendRef;
 export function createAnnouncementSend(vars: CreateAnnouncementSendVariables): MutationPromise<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
 export function createAnnouncementSend(dc: DataConnect, vars: CreateAnnouncementSendVariables): MutationPromise<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
 
+interface CreateAnnouncementSendWithDeliveryModeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationRef<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationRef<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+  operationName: string;
+}
+export const createAnnouncementSendWithDeliveryModeRef: CreateAnnouncementSendWithDeliveryModeRef;
+
+export function createAnnouncementSendWithDeliveryMode(vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationPromise<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+export function createAnnouncementSendWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables): MutationPromise<CreateAnnouncementSendWithDeliveryModeData, CreateAnnouncementSendWithDeliveryModeVariables>;
+
 interface CreateAnnouncementRecipientRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: CreateAnnouncementRecipientVariables): MutationRef<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
@@ -3268,6 +3825,18 @@ export const createAnnouncementRecipientRef: CreateAnnouncementRecipientRef;
 
 export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables): MutationPromise<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
 export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnouncementRecipientVariables): MutationPromise<CreateAnnouncementRecipientData, CreateAnnouncementRecipientVariables>;
+
+interface CreateAnnouncementRecipientWithDeliveryModeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationRef<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationRef<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+  operationName: string;
+}
+export const createAnnouncementRecipientWithDeliveryModeRef: CreateAnnouncementRecipientWithDeliveryModeRef;
+
+export function createAnnouncementRecipientWithDeliveryMode(vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationPromise<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
+export function createAnnouncementRecipientWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables): MutationPromise<CreateAnnouncementRecipientWithDeliveryModeData, CreateAnnouncementRecipientWithDeliveryModeVariables>;
 
 interface GetAnnouncementRecipientProgressRef {
   /* Allow users to create refs without passing in DataConnect */

@@ -7,12 +7,18 @@ import {
   markNotificationDeliverySentById,
   NotificationChannel,
   NotificationDeliveryStatus,
+  GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import {
   serializeNotificationRecoveryPayload,
   type NotificationRecoveryPayload,
 } from "./notificationRecoveryPayload";
+import {
+  govNotifyReferenceForMode,
+  type GovNotifyDeliveryMode,
+} from "./govNotifyDeliveryMode";
+import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
 
 const MAX_ERROR_CODE_LENGTH = 120;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -20,6 +26,7 @@ export const DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS = 10 * 60 * 1000;
 
 export interface NotificationSendResult {
   providerMessageId?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode;
 }
 
 export interface SendNotificationOnceRequest {
@@ -30,8 +37,9 @@ export interface SendNotificationOnceRequest {
   bookingId?: UUIDString | null;
   userId?: string | null;
   provider?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode;
   recoveryPayload?: NotificationRecoveryPayload;
-  send: () => Promise<NotificationSendResult | void>;
+  send: (deliveryMode?: GovNotifyDeliveryMode) => Promise<NotificationSendResult | void>;
 }
 
 export interface SendNotificationOnceResult {
@@ -81,6 +89,7 @@ export interface NotificationDeliveryRepository {
     sentAt: string;
     provider?: string | null;
     providerMessageId?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
   }): Promise<boolean>;
   markFailed(args: {
     id: UUIDString;
@@ -161,6 +170,7 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       providerMessageId: args.providerMessageId ?? null,
       lastErrorCode: null,
       lastErrorMessage: null,
+      deliveryMode: args.deliveryMode as DataConnectGovNotifyDeliveryMode | null | undefined,
     });
     return completed.data.notificationDelivery_updateMany === 1;
   },
@@ -365,6 +375,18 @@ export async function sendNotificationOnce(
   request: SendNotificationOnceRequest,
   dependencies: SendNotificationOnceDependencies = {}
 ): Promise<SendNotificationOnceResult> {
+  const deliveryMode = request.provider === "govuk_notify"
+    ? (await resolveRuntimeGovNotifyDeliveryMode(request.deliveryMode ?? "LIVE")).effectiveMode
+    : request.deliveryMode;
+  if (deliveryMode) {
+    request = {
+      ...request,
+      deliveryKey: govNotifyReferenceForMode(request.deliveryKey, deliveryMode),
+      recoveryPayload: request.recoveryPayload
+        ? { ...request.recoveryPayload, deliveryMode }
+        : undefined,
+    };
+  }
   const repository = dependencies.repository ?? dataConnectNotificationDeliveryRepository;
   const now = dependencies.now ?? (() => new Date().toISOString());
   const leaseMs = dependencies.leaseMs ?? DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS;
@@ -385,7 +407,7 @@ export async function sendNotificationOnce(
   }
 
   try {
-    const sendResult = await request.send();
+    const sendResult = await request.send(deliveryMode);
     const completed = await repository.markSent({
       id: claimResult.delivery.id,
       attemptCount: claimResult.attemptCount,
@@ -393,6 +415,7 @@ export async function sendNotificationOnce(
       sentAt: now(),
       provider: request.provider ?? null,
       providerMessageId: sendResult?.providerMessageId ?? null,
+      deliveryMode: sendResult?.deliveryMode ?? null,
     });
     if (!completed) {
       logger.warn("notification delivery sent after its lease was replaced", {

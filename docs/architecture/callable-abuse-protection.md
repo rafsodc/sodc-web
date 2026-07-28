@@ -45,6 +45,15 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `previewAnnouncementTemplate` | 30 | 5 minutes | GOV.UK Notify preview API |
 | `sendSectionAnnouncement` | 5 | 1 hour | Recipient resolution and bulk task/email fan-out |
 | `getAnnouncementSendRecipients` | 60 | 5 minutes | Recipient PII enumeration |
+| `requestSectionFileUpload` | 20 | 1 hour | Signed upload capability and storage allocation |
+| `finalizeSectionFileUpload` | 30 | 1 hour | Object validation, hashing, copy, and metadata write |
+| `listSectionFiles` | 60 | 5 minutes | Restricted metadata enumeration |
+| `requestSectionFileDownload` | 120 | 5 minutes | Signed download capability and storage egress |
+| `updateSectionFileMetadata` | 60 | 1 hour | Restricted metadata mutation |
+| `requestSectionFileReplacement` | 20 | 1 hour | Signed upload capability and lifecycle mutation |
+| `finalizeSectionFileReplacement` | 30 | 1 hour | Object validation, copy, cleanup, and metadata mutation |
+| `cancelSectionFileReplacement` | 30 | 1 hour | Replacement rollback and temporary-object cleanup |
+| `deleteSectionFile` | 30 | 1 hour | Object deletion and lifecycle mutation |
 
 ## Complete callable classification
 
@@ -78,10 +87,22 @@ Risk levels are relative to other authenticated callables in this application. â
 | `registerForSectionCallable` | Medium | None | None | Low | Enabled; registration rules; idempotent upsert |
 | `getTemplateSyncStatus` | Medium | High | GOV.UK Notify | High | Admin + enabled; 10/5 minutes |
 | `getAnnouncementTemplates` | Medium | Medium | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
+| `getAnnouncementDeliveryConfiguration` | Low | None | None | Low | Enabled + moderator; returns non-secret site mode |
+| `getGovNotifyDeliveryAdminConfiguration` | Medium | Low | None | Low | Admin + enabled; bounded configuration and audit history |
+| `updateGovNotifyDeliveryMode` | High | None | None | Medium | Admin + enabled; deployment ceiling, optimistic lock, reason and immutable audit row |
 | `previewAnnouncementTemplate` | Medium | Low | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
 | `sendSectionAnnouncement` | High | High | GOV.UK Notify | Very high | Enabled + moderator; 5/hour; queued delivery |
 | `getAnnouncementSendHistory` | Low | Medium | None | Low | Enabled + moderator; bounded history query |
 | `getAnnouncementSendRecipients` | High | High | None | Medium | Enabled + moderator; 60/5 minutes; send/section binding |
+| `requestSectionFileUpload` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 20/hour; validated size/type; generated path |
+| `finalizeSectionFileUpload` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 30/hour; stored-object validation; lifecycle CAS |
+| `listSectionFiles` | Medium | Medium | None | Medium | Enabled + current section access; 60/5 minutes; available objects only |
+| `requestSectionFileDownload` | High | Low | Cloud Storage | High | Enabled + current section access; 120/5 minutes; 5-minute signed URL |
+| `updateSectionFileMetadata` | Medium | None | None | Low | Enabled + section moderator/admin; 60/hour; lifecycle CAS |
+| `requestSectionFileReplacement` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 20/hour; generated temporary path |
+| `finalizeSectionFileReplacement` | High | None | Cloud Storage | Very high | Enabled + section moderator/admin; 30/hour; validation, CAS, deferred cleanup |
+| `cancelSectionFileReplacement` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 30/hour; trusted pending-path rollback |
+| `deleteSectionFile` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 30/hour; metadata hidden before cleanup |
 
 ## App Check relationship
 

@@ -15,6 +15,13 @@ const BookingStatus = {
 }
 exports.BookingStatus = BookingStatus;
 
+const GovNotifyDeliveryMode = {
+  SIMULATION: "SIMULATION",
+  TEAM_TEST: "TEAM_TEST",
+  LIVE: "LIVE",
+}
+exports.GovNotifyDeliveryMode = GovNotifyDeliveryMode;
+
 const GuestTicketRequestStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
@@ -86,6 +93,15 @@ const PaymentWebhookEventOutcome = {
 }
 exports.PaymentWebhookEventOutcome = PaymentWebhookEventOutcome;
 
+const SectionFileStatus = {
+  PENDING: "PENDING",
+  AVAILABLE: "AVAILABLE",
+  REPLACING: "REPLACING",
+  DELETING: "DELETING",
+  DELETED: "DELETED",
+}
+exports.SectionFileStatus = SectionFileStatus;
+
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
@@ -121,6 +137,132 @@ const connectorConfig = {
   location: 'europe-west2'
 };
 exports.connectorConfig = connectorConfig;
+
+function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGovNotifyDeliveryConfiguration', undefined, inputOpts);
+}
+exports.getGovNotifyDeliveryConfiguration = getGovNotifyDeliveryConfiguration;
+
+function listGovNotifyDeliveryModeAudits(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListGovNotifyDeliveryModeAudits', inputVars, inputOpts);
+}
+exports.listGovNotifyDeliveryModeAudits = listGovNotifyDeliveryModeAudits;
+
+function createGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateGovNotifyDeliveryConfiguration', undefined, inputOpts);
+}
+exports.createGovNotifyDeliveryConfiguration = createGovNotifyDeliveryConfiguration;
+
+function changeGovNotifyDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ChangeGovNotifyDeliveryMode', inputVars, inputOpts);
+}
+exports.changeGovNotifyDeliveryMode = changeGovNotifyDeliveryMode;
+
+function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreatePendingSectionFile', inputVars, inputOpts);
+}
+exports.createPendingSectionFile = createPendingSectionFile;
+
+function getSectionFileById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionFileById', inputVars, inputOpts);
+}
+exports.getSectionFileById = getSectionFileById;
+
+function listSectionFilesByStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSectionFilesByStatus', inputVars, inputOpts);
+}
+exports.listSectionFilesByStatus = listSectionFilesByStatus;
+
+function listStaleSectionFiles(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStaleSectionFiles', inputVars, inputOpts);
+}
+exports.listStaleSectionFiles = listStaleSectionFiles;
+
+function listSectionFilesForQuota(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSectionFilesForQuota', inputVars, inputOpts);
+}
+exports.listSectionFilesForQuota = listSectionFilesForQuota;
+
+function recordSectionFileAudit(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordSectionFileAudit', inputVars, inputOpts);
+}
+exports.recordSectionFileAudit = recordSectionFileAudit;
+
+function abandonPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AbandonPendingSectionFile', inputVars, inputOpts);
+}
+exports.abandonPendingSectionFile = abandonPendingSectionFile;
+
+function finalizePendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('FinalizePendingSectionFile', inputVars, inputOpts);
+}
+exports.finalizePendingSectionFile = finalizePendingSectionFile;
+
+function updateAvailableSectionFileMetadata(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateAvailableSectionFileMetadata', inputVars, inputOpts);
+}
+exports.updateAvailableSectionFileMetadata = updateAvailableSectionFileMetadata;
+
+function beginSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('BeginSectionFileReplacement', inputVars, inputOpts);
+}
+exports.beginSectionFileReplacement = beginSectionFileReplacement;
+
+function finalizeSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('FinalizeSectionFileReplacement', inputVars, inputOpts);
+}
+exports.finalizeSectionFileReplacement = finalizeSectionFileReplacement;
+
+function abortSectionFileReplacement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AbortSectionFileReplacement', inputVars, inputOpts);
+}
+exports.abortSectionFileReplacement = abortSectionFileReplacement;
+
+function beginSectionFileDeletion(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('BeginSectionFileDeletion', inputVars, inputOpts);
+}
+exports.beginSectionFileDeletion = beginSectionFileDeletion;
+
+function markSectionFileDeleted(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkSectionFileDeleted', inputVars, inputOpts);
+}
+exports.markSectionFileDeleted = markSectionFileDeleted;
 
 function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -479,12 +621,26 @@ function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.createAnnouncementSend = createAnnouncementSend;
 
+function createAnnouncementSendWithDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementSendWithDeliveryMode', inputVars, inputOpts);
+}
+exports.createAnnouncementSendWithDeliveryMode = createAnnouncementSendWithDeliveryMode;
+
 function createAnnouncementRecipient(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CreateAnnouncementRecipient', inputVars, inputOpts);
 }
 exports.createAnnouncementRecipient = createAnnouncementRecipient;
+
+function createAnnouncementRecipientWithDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAnnouncementRecipientWithDeliveryMode', inputVars, inputOpts);
+}
+exports.createAnnouncementRecipientWithDeliveryMode = createAnnouncementRecipientWithDeliveryMode;
 
 function getAnnouncementRecipientProgress(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

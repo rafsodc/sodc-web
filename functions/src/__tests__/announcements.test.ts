@@ -19,7 +19,7 @@ import {
   extractTemplateVariables,
   buildRecipientPersonalisation,
 } from "../announcements";
-import { govNotifyApiKey } from "../mailer";
+import { govNotifyLiveApiKey } from "../mailer";
 import { unsubscribeSecret } from "../unsubscribe";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
@@ -30,13 +30,28 @@ const mockListUsers = vi.spyOn(admin, "listUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 const mockGetSectionAnnouncementOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOuts");
-const mockCreateAnnouncementSend = vi.spyOn(admin, "createAnnouncementSend");
-const mockCreateAnnouncementRecipient = vi.spyOn(admin, "createAnnouncementRecipient");
+const mockCreateAnnouncementSend = vi.spyOn(admin, "createAnnouncementSendWithDeliveryMode");
+const mockCreateAnnouncementRecipient = vi.spyOn(
+  admin,
+  "createAnnouncementRecipientWithDeliveryMode",
+);
 const mockGetAnnouncementRecipientsForResume = vi.spyOn(admin, "getAnnouncementRecipientsForResume");
 const mockTryMarkAnnouncementRecipientEnqueueFailed = vi.spyOn(admin, "tryMarkAnnouncementRecipientEnqueueFailed");
 const mockTryUpdateAnnouncementRecipientProcessingStatus = vi.spyOn(admin, "tryUpdateAnnouncementRecipientProcessingStatus");
+const mockGetGovNotifyDeliveryConfiguration = vi.spyOn(admin, "getGovNotifyDeliveryConfiguration");
 
 beforeEach(() => {
+  process.env.GOV_NOTIFY_DELIVERY_MODE = "LIVE";
+  mockGetGovNotifyDeliveryConfiguration.mockResolvedValue({
+    data: {
+      govNotifyDeliveryConfiguration: {
+        mode: "LIVE",
+        version: 1,
+        updatedAt: "2026-07-27T08:00:00.000Z",
+        updatedBy: "admin-1",
+      },
+    },
+  } as never);
   mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
   mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
 });
@@ -131,7 +146,7 @@ describe("sendSectionAnnouncement durable enqueue", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(govNotifyApiKey, "value").mockReturnValue("notify-key");
+    vi.spyOn(govNotifyLiveApiKey, "value").mockReturnValue("notify-key");
     vi.spyOn(unsubscribeSecret, "value").mockReturnValue("unsubscribe-secret-that-is-long-enough");
     vi.spyOn(NotifyClient.prototype, "getTemplateById").mockResolvedValue({
       data: { body: "Hello ((firstName))", subject: "Section update" },
@@ -182,6 +197,9 @@ describe("sendSectionAnnouncement durable enqueue", () => {
         recipientCount: variables.recipientCount,
         skippedCount: variables.skippedCount,
         recipientSnapshot: variables.recipientSnapshot,
+        requestedDeliveryMode: variables.requestedDeliveryMode,
+        siteDeliveryMode: variables.siteDeliveryMode,
+        effectiveDeliveryMode: variables.effectiveDeliveryMode,
       };
       return { data: {} } as never;
     });
@@ -227,6 +245,7 @@ describe("sendSectionAnnouncement durable enqueue", () => {
         templateUuid: "template-1",
         templateName: "BULK: Update",
         requestId,
+        deliveryMode: "LIVE",
       },
     } as never);
 

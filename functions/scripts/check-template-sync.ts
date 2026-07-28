@@ -3,7 +3,7 @@
  * Used by CI — always exits 0 (never blocks merges).
  *
  * Env vars:
- *   GOV_NOTIFY_API_KEY  — required; skip check gracefully if absent
+ *   GOV_NOTIFY_LIVE_API_KEY  — required; skip check gracefully if absent
  *   CHECK_ENV           — "dev" | "beta" | "production" (default: "dev")
  *   DRIFT_OUTPUT_FILE   — path to write a Markdown summary (optional)
  */
@@ -16,11 +16,11 @@ type Environment = "dev" | "beta" | "production";
 const TEMPLATES_DIR = path.resolve(__dirname, "../email-templates");
 const REGISTRY_PATH = path.resolve(__dirname, "../email-templates/template-registry.json");
 const ENV = (process.env.CHECK_ENV ?? "dev") as Environment;
-const API_KEY = process.env.GOV_NOTIFY_API_KEY ?? "";
+const API_KEY = process.env.GOV_NOTIFY_LIVE_API_KEY ?? "";
 const OUTPUT_FILE = process.env.DRIFT_OUTPUT_FILE ?? "";
 
 if (!API_KEY) {
-  console.log("GOV_NOTIFY_API_KEY not set — skipping template drift check");
+  console.log("GOV_NOTIFY_LIVE_API_KEY not set — skipping template drift check");
   process.exit(0);
 }
 

@@ -58,7 +58,8 @@ import {
 import type { NotificationRecoveryPayload } from "./notificationRecoveryPayload";
 import { APP_BASE_URL } from "./paymentConfig";
 import { FUNCTIONS_REGION } from "./constants";
-import { govNotifyApiKey, GOV_NOTIFY_PROVIDER } from "./mailer";
+import { govNotifySecrets, GOV_NOTIFY_PROVIDER } from "./mailer";
+import { govNotifyReferenceForMode } from "./govNotifyDeliveryMode";
 
 export function notificationRecoveryIdentity(payload: NotificationRecoveryPayload): {
   notificationType: string;
@@ -210,6 +211,7 @@ export function createNotificationRecoveryDispatcher(
         {
           userId: payload.userId,
           provider: GOV_NOTIFY_PROVIDER,
+          deliveryMode: payload.deliveryMode,
         }
       );
     });
@@ -224,7 +226,9 @@ export function createNotificationRecoveryDispatcher(
     const identity = notificationRecoveryIdentity(payload);
     if (
       identity.notificationType !== candidate.notificationType ||
-      identity.deliveryKey !== candidate.deliveryKey
+      (payload.deliveryMode
+        ? govNotifyReferenceForMode(identity.deliveryKey, payload.deliveryMode)
+        : identity.deliveryKey) !== candidate.deliveryKey
     ) {
       throw new Error("Notification recovery payload does not match its ledger identity");
     }
@@ -235,6 +239,7 @@ export function createNotificationRecoveryDispatcher(
           bookingId: payload.bookingId,
           idempotencyKey: payload.idempotencyKey,
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "BOOKING_REVISION":
@@ -243,6 +248,7 @@ export function createNotificationRecoveryDispatcher(
           idempotencyKey: payload.idempotencyKey,
           paymentDelta: payload.paymentDelta,
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "MEMBERSHIP_STATUS":
@@ -251,6 +257,7 @@ export function createNotificationRecoveryDispatcher(
           previousStatus: payload.previousStatus,
           newStatus: payload.newStatus,
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "GUEST_REQUEST_MODERATORS":
@@ -258,6 +265,7 @@ export function createNotificationRecoveryDispatcher(
           requestId: payload.requestId,
           recipientEmails: [payload.recipientEmail],
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "GUEST_REQUEST_BOOKER":
@@ -265,6 +273,7 @@ export function createNotificationRecoveryDispatcher(
           requestId: payload.requestId,
           status: payload.status,
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "USER_PENDING_APPROVAL":
@@ -273,6 +282,7 @@ export function createNotificationRecoveryDispatcher(
           emailVerified: payload.emailVerified,
           recipientEmails: [payload.recipientEmail],
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "PAYMENT_LIFECYCLE":
@@ -286,6 +296,7 @@ export function createNotificationRecoveryDispatcher(
           stripeEventId: payload.stripeEventId,
           recipientEmails: [payload.recipientEmail],
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
       case "PAYMENT_DISPUTE_OPS":
@@ -299,6 +310,7 @@ export function createNotificationRecoveryDispatcher(
           stripeDisputeId: payload.stripeDisputeId,
           recipientEmails: [payload.recipientEmail],
           appBaseUrl,
+          deliveryMode: payload.deliveryMode,
         });
         return;
     }
@@ -335,7 +347,7 @@ export const recoverNotificationDeliveries = onSchedule(
     region: FUNCTIONS_REGION,
     timeoutSeconds: 300,
     maxInstances: 1,
-    secrets: [govNotifyApiKey],
+    secrets: [...govNotifySecrets],
   },
   async () => {
     const startedAt = Date.now();

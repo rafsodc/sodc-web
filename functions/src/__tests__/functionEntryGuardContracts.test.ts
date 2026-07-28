@@ -21,6 +21,14 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(admin, "revokeAdmin", "requireAdmin(request);");
     assertOnCallGuard(admin, "listAdminUsers", "requireAdmin(request);");
 
+    const deliveryAdmin = readSource("govNotifyDeliveryAdmin.ts");
+    assertOnCallGuard(
+      deliveryAdmin,
+      "getGovNotifyDeliveryAdminConfiguration",
+      "requireAdmin(request);",
+    );
+    assertOnCallGuard(deliveryAdmin, "updateGovNotifyDeliveryMode", "requireAdmin(request);");
+
     const users = readSource("users.ts");
     assertOnCallGuard(users, "updateDisplayName", "requireAuth(request);");
     assertOnCallGuard(users, "updateUserDisplayName", "requireAdmin(request);");
@@ -65,6 +73,26 @@ describe("function entry guard contracts", () => {
       assertOnCallGuard(announcements, fn, "requireEnabled(request);");
       assertOnCallGuard(announcements, fn, "requireSectionModerator(", 700);
     }
+  });
+
+  it("keeps section-file callables behind enabled-user and section authorization", () => {
+    const sectionFiles = readSource("sectionFiles.ts");
+    expect(sectionFiles).toContain("requireEnabled(request);");
+    for (const fn of [
+      "requestSectionFileUpload",
+      "finalizeSectionFileUpload",
+      "listSectionFiles",
+      "requestSectionFileDownload",
+      "updateSectionFileMetadata",
+      "requestSectionFileReplacement",
+      "finalizeSectionFileReplacement",
+      "cancelSectionFileReplacement",
+      "deleteSectionFile",
+    ]) {
+      assertOnCallGuard(sectionFiles, fn, `requestContext(request, "${fn}"`, 450);
+    }
+    expect(sectionFiles).toContain("requireSectionAccess(");
+    expect(sectionFiles).toContain("requireSectionModerator(");
   });
 
   it("keeps only intentional pre-approval entry points authentication-only", () => {
@@ -161,6 +189,21 @@ describe("function entry guard contracts", () => {
       "getAnnouncementSendRecipients",
     ]) {
       assertOnCallGuard(announcements, fn, `enforceRateLimit("${fn}"`, 350);
+    }
+
+    const sectionFiles = readSource("sectionFiles.ts");
+    for (const fn of [
+      "requestSectionFileUpload",
+      "finalizeSectionFileUpload",
+      "listSectionFiles",
+      "requestSectionFileDownload",
+      "updateSectionFileMetadata",
+      "requestSectionFileReplacement",
+      "finalizeSectionFileReplacement",
+      "cancelSectionFileReplacement",
+      "deleteSectionFile",
+    ]) {
+      assertOnCallGuard(sectionFiles, fn, `requestContext(request, "${fn}"`, 450);
     }
   });
 

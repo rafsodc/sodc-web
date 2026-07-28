@@ -10,6 +10,7 @@ import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import { getAdminUsers } from "./helpers";
 import { isUserPendingApproval } from "./pendingUserApproval";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export const PENDING_APPROVAL_ALERT_TEMPLATE_KEYS = ["newUserPendingApprovalAlert"] as const;
 
@@ -64,6 +65,7 @@ export async function notifyAdminsUserPendingApproval(args: {
   appBaseUrl: string;
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPendingApprovalAlertMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   try {
     const row = await getUserById({ id: args.userId });
@@ -125,6 +127,7 @@ export async function notifyAdminsUserPendingApproval(args: {
           deliveryKey,
           userId: args.userId,
           provider: GOV_NOTIFY_PROVIDER,
+          deliveryMode: args.deliveryMode,
           recoveryPayload: {
             version: 1,
             kind: "USER_PENDING_APPROVAL",
@@ -132,14 +135,18 @@ export async function notifyAdminsUserPendingApproval(args: {
             emailVerified: args.emailVerified,
             recipientEmail: to,
           },
-          send: async () => {
+          send: async (deliveryMode) => {
             const r = await mailer.sendEmail({
               templateName: "newUserPendingApprovalAlert",
               to,
               personalisation,
               reference: recipientScopedNotifyReference(reference, to),
+              requestedDeliveryMode: deliveryMode,
             });
-            return { providerMessageId: r.providerNotificationId ?? null };
+            return {
+              providerMessageId: r.providerNotificationId ?? null,
+              deliveryMode: r.deliveryMode?.effectiveMode,
+            };
           },
         });
       } catch (error) {

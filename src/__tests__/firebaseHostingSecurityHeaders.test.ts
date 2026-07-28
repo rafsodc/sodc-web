@@ -68,6 +68,7 @@ describe("Firebase Hosting security headers", () => {
         "https://firebaseinstallations.googleapis.com",
         "https://firebase.googleapis.com",
         "https://firebasedataconnect.googleapis.com",
+        "https://storage.googleapis.com",
         "https://europe-west2-sodc-web.cloudfunctions.net",
         "https://europe-west2-sodc-web-beta.cloudfunctions.net",
         "https://europe-west2-sodc-web-production.cloudfunctions.net",

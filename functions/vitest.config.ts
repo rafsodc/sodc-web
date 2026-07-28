@@ -24,7 +24,7 @@ export default defineConfig({
         branches: 42,
         functions: 57,
         lines: 46,
-        'src/{helpers,rateLimiter,sections,validation}.ts': {
+        'src/{helpers,rateLimiter,sectionAccess,sections,validation}.ts': {
           statements: 77,
           branches: 66,
           functions: 80,

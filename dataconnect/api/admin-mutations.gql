@@ -7,6 +7,417 @@
 # Auth Expression: @auth(level: NO_ACCESS)
 # See AUTH_EXPRESSIONS.md for complete documentation.
 
+# ── GOV.UK Notify site-wide delivery mode ───────────────────────────────────
+
+query GetGovNotifyDeliveryConfiguration @auth(level: NO_ACCESS) {
+  govNotifyDeliveryConfiguration(key: { id: "site-wide" }) {
+    mode
+    version
+    updatedAt
+    updatedBy
+  }
+}
+
+query ListGovNotifyDeliveryModeAudits($limit: Int!) @auth(level: NO_ACCESS) {
+  govNotifyDeliveryModeAudits(orderBy: { changedAt: DESC }, limit: $limit) {
+    id
+    previousMode
+    newMode
+    deploymentCeiling
+    changedBy
+    reason
+    changedAt
+  }
+}
+
+mutation CreateGovNotifyDeliveryConfiguration @auth(level: NO_ACCESS) {
+  govNotifyDeliveryConfiguration_insert(
+    data: {
+      id: "site-wide"
+      mode: SIMULATION
+      version: 1
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation ChangeGovNotifyDeliveryMode(
+  $expectedVersion: Int!
+  $previousMode: GovNotifyDeliveryMode!
+  $newMode: GovNotifyDeliveryMode!
+  $deploymentCeiling: GovNotifyDeliveryMode!
+  $changedBy: String!
+  $reason: String!
+) @auth(level: NO_ACCESS) @transaction {
+  changed: govNotifyDeliveryConfiguration_updateMany(
+    where: {
+      id: { eq: "site-wide" }
+      version: { eq: $expectedVersion }
+      mode: { eq: $previousMode }
+    }
+    data: {
+      mode: $newMode
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "DELIVERY_MODE_CONFLICT")
+
+  govNotifyDeliveryModeAudit_insert(
+    data: {
+      previousMode: $previousMode
+      newMode: $newMode
+      deploymentCeiling: $deploymentCeiling
+      changedBy: $changedBy
+      reason: $reason
+    }
+  )
+}
+
+# ── Section file storage lifecycle ───────────────────────────────────────────
+
+# The caller generates both the opaque file ID and object path. This makes it
+# possible to constrain a direct upload to section-files/{sectionId}/{fileId}/...
+# before metadata is inserted. Actual object properties are verified separately
+# before FinalizePendingSectionFile makes the file available.
+mutation CreatePendingSectionFile(
+  $id: UUID!
+  $sectionId: UUID!
+  $pendingStorageObjectPath: String!
+  $displayName: String!
+  $originalFilename: String!
+  $description: String
+  $contentType: String!
+  $sizeBytes: Int!
+  $uploadedBy: String!
+  $now: Timestamp!
+) @auth(level: NO_ACCESS) {
+  sectionFile_insert(
+    data: {
+      id: $id
+      sectionId: $sectionId
+      pendingStorageObjectPath: $pendingStorageObjectPath
+      displayName: $displayName
+      originalFilename: $originalFilename
+      description: $description
+      contentType: $contentType
+      sizeBytes: $sizeBytes
+      status: PENDING
+      uploadedBy: $uploadedBy
+      createdAt: $now
+      updatedAt: $now
+      createdBy: $uploadedBy
+      updatedBy: $uploadedBy
+    }
+  )
+}
+
+query GetSectionFileById($id: UUID!) @auth(level: NO_ACCESS) {
+  sectionFile(id: $id) {
+    id
+    sectionId
+    storageObjectPath
+    pendingStorageObjectPath
+    pendingOriginalFilename
+    pendingContentType
+    pendingSizeBytes
+    displayName
+    originalFilename
+    description
+    contentType
+    sizeBytes
+    objectGeneration
+    checksumSha256
+    status
+    uploadedBy
+    deletedAt
+    createdAt
+    updatedAt
+  }
+}
+
+query ListSectionFilesByStatus(
+  $sectionId: UUID!
+  $status: SectionFileStatus!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  sectionFiles(
+    where: {
+      sectionId: { eq: $sectionId }
+      status: { eq: $status }
+    }
+    orderBy: { createdAt: DESC }
+    limit: $limit
+  ) {
+    id
+    sectionId
+    storageObjectPath
+    pendingStorageObjectPath
+    displayName
+    originalFilename
+    description
+    contentType
+    sizeBytes
+    objectGeneration
+    checksumSha256
+    status
+    uploadedBy
+    deletedAt
+    createdAt
+    updatedAt
+  }
+}
+
+query ListStaleSectionFiles(
+  $updatedBefore: Timestamp!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  sectionFiles(
+    where: {
+      status: { in: [PENDING, REPLACING, DELETING] }
+      updatedAt: { lt: $updatedBefore }
+    }
+    orderBy: { updatedAt: ASC }
+    limit: $limit
+  ) {
+    id
+    sectionId
+    storageObjectPath
+    pendingStorageObjectPath
+    status
+    updatedAt
+  }
+}
+
+query ListSectionFilesForQuota($sectionId: UUID!, $limit: Int!) @auth(level: NO_ACCESS) {
+  sectionFiles(
+    where: {
+      sectionId: { eq: $sectionId }
+      status: { in: [PENDING, AVAILABLE, REPLACING, DELETING] }
+    }
+    limit: $limit
+  ) {
+    id
+    sizeBytes
+    status
+  }
+}
+
+mutation RecordSectionFileAudit(
+  $sectionId: UUID!
+  $fileId: UUID
+  $actorUid: String!
+  $action: String!
+  $outcome: String!
+  $detail: String
+) @auth(level: NO_ACCESS) {
+  sectionFileAudit_insert(data: {
+    sectionId: $sectionId
+    fileId: $fileId
+    actorUid: $actorUid
+    action: $action
+    outcome: $outcome
+    detail: $detail
+  })
+}
+
+mutation AbandonPendingSectionFile(
+  $id: UUID!
+  $updatedBefore: Timestamp!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      updatedAt: { lt: $updatedBefore }
+    }
+    data: {
+      pendingStorageObjectPath: null
+      status: DELETED
+      deletedAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "section-file-reconciliation"
+    }
+  )
+}
+
+# Compare-and-swap finalization prevents a stale upload from promoting metadata
+# after a replacement or deletion transition has started.
+mutation FinalizePendingSectionFile(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $storageObjectPath: String!
+  $objectGeneration: String!
+  $checksumSha256: String!
+  $contentType: String!
+  $sizeBytes: Int!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      pendingStorageObjectPath: { eq: $pendingStorageObjectPath }
+    }
+    data: {
+      storageObjectPath: $storageObjectPath
+      pendingStorageObjectPath: null
+      objectGeneration: $objectGeneration
+      checksumSha256: $checksumSha256
+      contentType: $contentType
+      sizeBytes: $sizeBytes
+      status: AVAILABLE
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation UpdateAvailableSectionFileMetadata(
+  $id: UUID!
+  $displayName: String!
+  $description: String
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: AVAILABLE }
+    }
+    data: {
+      displayName: $displayName
+      description: $description
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+# A replacement upload uses a different immutable object path. The current
+# object metadata remains intact and can continue to be served until promotion.
+mutation BeginSectionFileReplacement(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $pendingOriginalFilename: String!
+  $pendingContentType: String!
+  $pendingSizeBytes: Int!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: AVAILABLE }
+    }
+    data: {
+      pendingStorageObjectPath: $pendingStorageObjectPath
+      pendingOriginalFilename: $pendingOriginalFilename
+      pendingContentType: $pendingContentType
+      pendingSizeBytes: $pendingSizeBytes
+      status: REPLACING
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation FinalizeSectionFileReplacement(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $storageObjectPath: String!
+  $originalFilename: String!
+  $objectGeneration: String!
+  $checksumSha256: String!
+  $contentType: String!
+  $sizeBytes: Int!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: REPLACING }
+      pendingStorageObjectPath: { eq: $pendingStorageObjectPath }
+    }
+    data: {
+      storageObjectPath: $storageObjectPath
+      pendingStorageObjectPath: null
+      pendingOriginalFilename: null
+      pendingContentType: null
+      pendingSizeBytes: null
+      originalFilename: $originalFilename
+      objectGeneration: $objectGeneration
+      checksumSha256: $checksumSha256
+      contentType: $contentType
+      sizeBytes: $sizeBytes
+      status: AVAILABLE
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation AbortSectionFileReplacement(
+  $id: UUID!
+  $pendingStorageObjectPath: String!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: REPLACING }
+      pendingStorageObjectPath: { eq: $pendingStorageObjectPath }
+    }
+    data: {
+      pendingStorageObjectPath: null
+      pendingOriginalFilename: null
+      pendingContentType: null
+      pendingSizeBytes: null
+      status: AVAILABLE
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation BeginSectionFileDeletion(
+  $id: UUID!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { in: [AVAILABLE, REPLACING] }
+    }
+    data: {
+      status: DELETING
+      updatedAt_expr: "request.time"
+      updatedBy: $updatedBy
+    }
+  )
+}
+
+mutation MarkSectionFileDeleted(
+  $id: UUID!
+  $deletedAt: Timestamp!
+  $updatedBy: String!
+) @auth(level: NO_ACCESS) {
+  sectionFile_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: DELETING }
+    }
+    data: {
+      status: DELETED
+      deletedAt: $deletedAt
+      pendingStorageObjectPath: null
+      pendingOriginalFilename: null
+      pendingContentType: null
+      pendingSizeBytes: null
+      updatedAt: $deletedAt
+      updatedBy: $updatedBy
+    }
+  )
+}
+
 # Update user membership status (SDK only)
 # Used by Firebase Functions to update membership status with server-side validation
 mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: MembershipStatus!) @auth(level: NO_ACCESS) {
@@ -704,6 +1115,7 @@ mutation MarkNotificationDeliverySentById(
   $providerMessageId: String
   $lastErrorCode: String
   $lastErrorMessage: String
+  $deliveryMode: GovNotifyDeliveryMode
 ) @auth(level: NO_ACCESS) {
   notificationDelivery_updateMany(
     where: {
@@ -720,6 +1132,7 @@ mutation MarkNotificationDeliverySentById(
       providerMessageId: $providerMessageId
       lastErrorCode: $lastErrorCode
       lastErrorMessage: $lastErrorMessage
+      deliveryMode: $deliveryMode
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
@@ -1149,6 +1562,34 @@ mutation CreateAnnouncementSend(
   })
 }
 
+mutation CreateAnnouncementSendWithDeliveryMode(
+  $id: UUID!
+  $sectionId: UUID!
+  $templateUuid: String!
+  $templateName: String
+  $sentBy: String!
+  $recipientCount: Int!
+  $skippedCount: Int!
+  $recipientSnapshot: String!
+  $requestedDeliveryMode: GovNotifyDeliveryMode!
+  $siteDeliveryMode: GovNotifyDeliveryMode!
+  $effectiveDeliveryMode: GovNotifyDeliveryMode!
+) @auth(level: NO_ACCESS) {
+  announcementSend_insert(data: {
+    id: $id
+    sectionId: $sectionId
+    templateUuid: $templateUuid
+    templateName: $templateName
+    sentBy: $sentBy
+    recipientCount: $recipientCount
+    skippedCount: $skippedCount
+    recipientSnapshot: $recipientSnapshot
+    requestedDeliveryMode: $requestedDeliveryMode
+    siteDeliveryMode: $siteDeliveryMode
+    effectiveDeliveryMode: $effectiveDeliveryMode
+  })
+}
+
 mutation CreateAnnouncementRecipient(
   $id: UUID!
   $announcementSendId: UUID!
@@ -1172,6 +1613,34 @@ mutation CreateAnnouncementRecipient(
     skippedReason: $skippedReason
     sentAt: $sentAt
     failureReason: $failureReason
+  })
+}
+
+mutation CreateAnnouncementRecipientWithDeliveryMode(
+  $id: UUID!
+  $announcementSendId: UUID!
+  $userId: String!
+  $email: String!
+  $firstName: String!
+  $lastName: String!
+  $status: String!
+  $skippedReason: String
+  $sentAt: Timestamp
+  $failureReason: String
+  $effectiveDeliveryMode: GovNotifyDeliveryMode!
+) @auth(level: NO_ACCESS) {
+  announcementRecipient_insert(data: {
+    id: $id
+    announcementSendId: $announcementSendId
+    userId: $userId
+    email: $email
+    firstName: $firstName
+    lastName: $lastName
+    status: $status
+    skippedReason: $skippedReason
+    sentAt: $sentAt
+    failureReason: $failureReason
+    effectiveDeliveryMode: $effectiveDeliveryMode
   })
 }
 
@@ -1202,6 +1671,9 @@ query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
     sentAt
     recipientCount
     skippedCount
+    requestedDeliveryMode
+    siteDeliveryMode
+    effectiveDeliveryMode
   }
 }
 
@@ -1219,6 +1691,7 @@ query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
     skippedReason
     sentAt
     failureReason
+    effectiveDeliveryMode
   }
 }
 
@@ -1234,6 +1707,9 @@ query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
     recipientCount
     skippedCount
     recipientSnapshot
+    requestedDeliveryMode
+    siteDeliveryMode
+    effectiveDeliveryMode
   }
 }
 
@@ -1251,6 +1727,7 @@ query GetAnnouncementRecipientBySendAndUser($announcementSendId: UUID!, $userId:
     processingVersion
     processingStartedAt
     providerNotificationId
+    effectiveDeliveryMode
     deliveryVersion
     deliveryStatusUpdatedAt
     deliveryReceiptId

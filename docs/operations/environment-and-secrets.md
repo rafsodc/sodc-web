@@ -31,9 +31,15 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `STRIPE_SECRET` | Firebase secret | `createTicketCheckoutSession`, `stripeWebhook` | yes for payments |
 | `STRIPE_WEBHOOK_SECRET` | Firebase secret | `stripeWebhook` | yes for webhook processing |
 | `STRIPE_WEBHOOK_SECRET_PAYMENTS` | Firebase secret | `stripeWebhookPayments` (with legacy fallback during migration) | yes for the dedicated payments webhook |
-| `GOV_NOTIFY_API_KEY` | Firebase secret | Transactional mailer / payment webhook notification path | yes for app-owned transactional email |
+| `GOV_NOTIFY_LIVE_API_KEY` | Firebase secret | GOV.UK Notify unrestricted live key | required when site/request ceiling can resolve to `LIVE` |
+| `GOV_NOTIFY_TEST_API_KEY` | Firebase secret | GOV.UK Notify test key; accepts fan-out without delivery | required when mode can resolve to `SIMULATION` |
+| `GOV_NOTIFY_TEAM_API_KEY` | Firebase secret | GOV.UK Notify team-and-guest-list key | required when mode can resolve to `TEAM_TEST` |
+| `GOV_NOTIFY_DELIVERY_MODE` | env var | Mandatory deployment ceiling: `SIMULATION`, `TEAM_TEST`, or `LIVE`; admins choose the runtime mode below this ceiling in **Admin → Email Delivery** | required |
 | `UNSUBSCRIBE_SECRET` | Firebase secret | Signed announcement unsubscribe links | yes when announcements are enabled |
 | `NOTIFY_CALLBACK_BEARER_TOKEN` | Firebase secret | Authenticates GOV.UK Notify delivery callbacks | yes when delivery callbacks are enabled |
+| `SECTION_FILES_BUCKET` | env var | Private GCS bucket used by the section-file backend | required when section files are enabled |
+| `SECTION_FILE_MALWARE_SCAN_MODE` | env var | `REQUIRED`; emulator-only tests may use `MOCK_CLEAN` or `MOCK_INFECTED` when `FUNCTIONS_EMULATOR=true` | required when section files are enabled |
+| `SECTION_FILE_MALWARE_SCANNER_URL` | env var | HTTPS URL of the authenticated scale-to-zero Cloud Run scanner | required when scan mode is `REQUIRED` |
 | `APP_BASE_URL` | env var | Checkout success/cancel URLs and internal ops email links | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
@@ -49,6 +55,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 ## Operational notes
 
 - **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
+- **Section file storage** (private bucket, IAM, lifecycle, CORS, and rollout): [section-file-storage.md](./section-file-storage.md).
 - **Notify template copy and registration** (paste into dashboard, record UUIDs per env): [govuk-notify-template-copy.md](./govuk-notify-template-copy.md), [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 - **Email policy** (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md).
 - Do not commit secret values to repo.
@@ -57,7 +64,8 @@ Defined via `.env*` files and read from `import.meta.env`:
   `functions/.env.sodc-web-production`). Firebase selects it by project ID at
   deploy time; verify the CLI reports the intended file before continuing.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
-- Rotate `GOV_NOTIFY_API_KEY` if compromised and update Firebase secrets before redeploy.
+- Rotate the affected mode-specific Notify key if compromised and update Firebase secrets before redeploy.
+- Follow [GOV.UK Notify delivery modes](./govuk-notify-delivery-modes.md) for safe mode changes and verification.
 - Keep environment docs and deployment settings aligned when adding new variables.
 - Configure GOV.UK Notify API keys and template IDs independently per Firebase environment.
 - Template env var names are derived from typed template names in `functions/src/mailer.ts`; for example, `paymentConfirmation` maps to `GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION`.

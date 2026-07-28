@@ -14,6 +14,7 @@ import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import { resolveGuestTicketModeratorEmails } from "./guestTicketRequestModerators";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export const GUEST_TICKET_MAIL_TEMPLATE_KEYS = [
   "guestTicketRequestSubmittedModerator",
@@ -81,6 +82,7 @@ export async function notifyModeratorsGuestTicketRequestSubmitted(args: {
   appBaseUrl: string;
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createGuestTicketRequestMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   try {
     const row = await getGuestTicketRequestForNotification({ id: args.requestId });
@@ -139,20 +141,25 @@ export async function notifyModeratorsGuestTicketRequestSubmitted(args: {
           bookingId: request.booking.id,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
+          deliveryMode: args.deliveryMode,
           recoveryPayload: {
             version: 1,
             kind: "GUEST_REQUEST_MODERATORS",
             requestId: args.requestId,
             recipientEmail: to,
           },
-          send: async () => {
+          send: async (deliveryMode) => {
             const r = await mailer.sendEmail({
               templateName: "guestTicketRequestSubmittedModerator",
               to,
               personalisation,
               reference: recipientScopedNotifyReference(reference, to),
+              requestedDeliveryMode: deliveryMode,
             });
-            return { providerMessageId: r.providerNotificationId ?? null };
+            return {
+              providerMessageId: r.providerNotificationId ?? null,
+              deliveryMode: r.deliveryMode?.effectiveMode,
+            };
           },
         });
       } catch (error) {
@@ -176,6 +183,7 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
   status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED;
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createGuestTicketRequestMailer>;
+  deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
   try {
     const row = await getGuestTicketRequestForNotification({ id: args.requestId });
@@ -228,20 +236,25 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
       bookingId: request.booking.id,
       userId: booker.id,
       provider: GOV_NOTIFY_PROVIDER,
+      deliveryMode: args.deliveryMode,
       recoveryPayload: {
         version: 1,
         kind: "GUEST_REQUEST_BOOKER",
         requestId: args.requestId,
         status: args.status,
       },
-      send: async () => {
+      send: async (deliveryMode) => {
         const r = await mailer.sendEmail({
           templateName,
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: r.providerNotificationId ?? null };
+        return {
+          providerMessageId: r.providerNotificationId ?? null,
+          deliveryMode: r.deliveryMode?.effectiveMode,
+        };
       },
     });
   } catch (error) {

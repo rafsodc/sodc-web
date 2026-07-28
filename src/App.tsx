@@ -25,6 +25,7 @@ import { useAppAuthSession } from "./shared/appShell/useAppAuthSession";
 import { useCheckoutQueryState } from "./shared/appShell/useCheckoutQueryState";
 import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
 import { useUnenabledProfileCheck } from "./shared/appShell/useUnenabledProfileCheck";
+import { accountSignInPath, safeReturnTo } from "./shared/navigation/authReturnTo";
 
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
@@ -37,6 +38,7 @@ const ManageSections = lazy(() => import("./features/admin/components/ManageSect
 const SectionAdminPage = lazy(() => import("./features/admin/components/SectionAdminPage"));
 const PaymentReconciliationDashboard = lazy(() => import("./features/admin/components/PaymentReconciliationDashboard"));
 const EmailTemplateSyncPage = lazy(() => import("./features/admin/components/EmailTemplateSyncPage"));
+const EmailDeliverySettingsPage = lazy(() => import("./features/admin/components/EmailDeliverySettingsPage"));
 const SectionsList = lazy(() => import("./features/sections/components/SectionsList"));
 const SectionDetail = lazy(() => import("./features/sections/components/SectionDetail"));
 const MyPayments = lazy(() => import("./features/sections/components/MyPayments"));
@@ -50,6 +52,7 @@ const AccountSettingsPage = lazy(() => import("./features/account/components/Acc
 const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"));
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
 const UnsubscribeConfirmedPage = lazy(() => import("./features/account/components/UnsubscribeConfirmedPage"));
+const SectionFileDownloadPage = lazy(() => import("./features/sections/components/SectionFileDownloadPage"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -73,6 +76,14 @@ function SectionDetailRoute() {
   return <SectionDetail sectionId={sectionId} onBack={handleBack} />;
 }
 
+function SectionFileRoute() {
+  const { sectionId, fileId } = useParams<{ sectionId: string; fileId: string }>();
+  if (!sectionId || !fileId) {
+    return <Navigate to={ROUTES.SECTIONS} replace />;
+  }
+  return <SectionFileDownloadPage sectionId={sectionId} fileId={fileId} />;
+}
+
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,6 +102,7 @@ function AppContent() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
   const checkoutReturn = isCheckoutReturnSearch(location.search);
+  const authReturnTo = safeReturnTo(location.search);
   const isAdmin = useAdminClaim(user);
   const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const {
@@ -326,7 +338,12 @@ function AppContent() {
     if (checkoutReturn) {
       return <Navigate to={{ pathname: ROUTES.ACCOUNT, search: location.search }} replace />;
     }
-    return <Navigate to={ROUTES.ACCOUNT} replace />;
+    return (
+      <Navigate
+        to={accountSignInPath(`${location.pathname}${location.search}${location.hash}`)}
+        replace
+      />
+    );
   };
 
   return (
@@ -453,6 +470,8 @@ function AppContent() {
                     user && isEnabled ? (
                       checkoutReturn ? (
                         <Navigate to={{ pathname: ROUTES.MY_PAYMENTS, search: location.search }} replace />
+                      ) : authReturnTo ? (
+                        <Navigate to={authReturnTo} replace />
                       ) : (
                         <Navigate to={ROUTES.HOME} replace />
                       )
@@ -545,6 +564,15 @@ function AppContent() {
                   )}
                 />
                 <Route
+                  path={ROUTES.EMAIL_DELIVERY}
+                  element={renderAdminOnly(
+                    "Email Delivery",
+                    <Suspense fallback={<LoadingFallback />}>
+                      <EmailDeliverySettingsPage onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
+                  )}
+                />
+                <Route
                   path={ROUTES.SECTION_ADMIN}
                   element={protectedRoute(
                     <Suspense fallback={<LoadingFallback />}>
@@ -597,6 +625,10 @@ function AppContent() {
                 <Route
                   path={ROUTES.SECTION_DETAIL}
                   element={protectedRoute(<Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense>)}
+                />
+                <Route
+                  path={ROUTES.SECTION_FILE}
+                  element={protectedRoute(<Suspense fallback={<LoadingFallback />}><SectionFileRoute /></Suspense>)}
                 />
                 <Route
                   path={ROUTES.UNSUBSCRIBE_CONFIRMED}

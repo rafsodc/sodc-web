@@ -10,30 +10,31 @@ best practices are followed.
 ### React
 For each operation, there is a wrapper hook that can be used to call the operation.
 
-Here are all of the hooks that get generated:
+Here are examples of the hooks that get generated. See `react/index.d.ts`
+for the complete list:
 ```ts
-import { useUpdateUserMembershipStatus, useDeleteUser, useCreateUser, useCreateUserGroupAdmin, useAddUserToUserGroupAdmin, useRemoveUserFromUserGroupAdmin, useGetUserGroupByName, useGetUserUserGroupsForAdmin, useGetUserForCheckout, useGetTicketTypeForCheckout } from '@dataconnect/generated/react';
+import { useGetGovNotifyDeliveryConfiguration, useListGovNotifyDeliveryModeAudits, useCreateGovNotifyDeliveryConfiguration, useChangeGovNotifyDeliveryMode, useCreatePendingSectionFile, useGetSectionFileById, useListSectionFilesByStatus, useListStaleSectionFiles, useListSectionFilesForQuota, useRecordSectionFileAudit } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
-const { data, isPending, isSuccess, isError, error } = useUpdateUserMembershipStatus(updateUserMembershipStatusVars);
+const { data, isPending, isSuccess, isError, error } = useGetGovNotifyDeliveryConfiguration();
 
-const { data, isPending, isSuccess, isError, error } = useDeleteUser(deleteUserVars);
+const { data, isPending, isSuccess, isError, error } = useListGovNotifyDeliveryModeAudits(listGovNotifyDeliveryModeAuditsVars);
 
-const { data, isPending, isSuccess, isError, error } = useCreateUser(createUserVars);
+const { data, isPending, isSuccess, isError, error } = useCreateGovNotifyDeliveryConfiguration();
 
-const { data, isPending, isSuccess, isError, error } = useCreateUserGroupAdmin(createUserGroupAdminVars);
+const { data, isPending, isSuccess, isError, error } = useChangeGovNotifyDeliveryMode(changeGovNotifyDeliveryModeVars);
 
-const { data, isPending, isSuccess, isError, error } = useAddUserToUserGroupAdmin(addUserToUserGroupAdminVars);
+const { data, isPending, isSuccess, isError, error } = useCreatePendingSectionFile(createPendingSectionFileVars);
 
-const { data, isPending, isSuccess, isError, error } = useRemoveUserFromUserGroupAdmin(removeUserFromUserGroupAdminVars);
+const { data, isPending, isSuccess, isError, error } = useGetSectionFileById(getSectionFileByIdVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserGroupByName(getUserGroupByNameVars);
+const { data, isPending, isSuccess, isError, error } = useListSectionFilesByStatus(listSectionFilesByStatusVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserUserGroupsForAdmin(getUserUserGroupsForAdminVars);
+const { data, isPending, isSuccess, isError, error } = useListStaleSectionFiles(listStaleSectionFilesVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserForCheckout(getUserForCheckoutVars);
+const { data, isPending, isSuccess, isError, error } = useListSectionFilesForQuota(listSectionFilesForQuotaVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetTicketTypeForCheckout(getTicketTypeForCheckoutVars);
+const { data, isPending, isSuccess, isError, error } = useRecordSectionFileAudit(recordSectionFileAuditVars);
 
 ```
 
@@ -69,41 +70,41 @@ function App() {
 ## Advanced Usage
 If a user is not using a supported framework, they can use the generated SDK directly.
 
-Here's an example of how to use it with the first 5 operations:
+Here's an example of how to use it with 10 operations:
 
 ```js
-import { updateUserMembershipStatus, deleteUser, createUser, createUserGroupAdmin, addUserToUserGroupAdmin, removeUserFromUserGroupAdmin, getUserGroupByName, getUserUserGroupsForAdmin, getUserForCheckout, getTicketTypeForCheckout } from '@dataconnect/generated';
+import { getGovNotifyDeliveryConfiguration, listGovNotifyDeliveryModeAudits, createGovNotifyDeliveryConfiguration, changeGovNotifyDeliveryMode, createPendingSectionFile, getSectionFileById, listSectionFilesByStatus, listStaleSectionFiles, listSectionFilesForQuota, recordSectionFileAudit } from '@dataconnect/generated';
 
 
-// Operation UpdateUserMembershipStatus:  For variables, look at type UpdateUserMembershipStatusVars in ../index.d.ts
-const { data } = await UpdateUserMembershipStatus(dataConnect, updateUserMembershipStatusVars);
+// Operation GetGovNotifyDeliveryConfiguration: 
+const { data } = await getGovNotifyDeliveryConfiguration(dataConnect);
 
-// Operation DeleteUser:  For variables, look at type DeleteUserVars in ../index.d.ts
-const { data } = await DeleteUser(dataConnect, deleteUserVars);
+// Operation ListGovNotifyDeliveryModeAudits:  For variables, look at type ListGovNotifyDeliveryModeAuditsVars in ../index.d.ts
+const { data } = await listGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars);
 
-// Operation CreateUser:  For variables, look at type CreateUserVars in ../index.d.ts
-const { data } = await CreateUser(dataConnect, createUserVars);
+// Operation CreateGovNotifyDeliveryConfiguration: 
+const { data } = await createGovNotifyDeliveryConfiguration(dataConnect);
 
-// Operation CreateUserGroupAdmin:  For variables, look at type CreateUserGroupAdminVars in ../index.d.ts
-const { data } = await CreateUserGroupAdmin(dataConnect, createUserGroupAdminVars);
+// Operation ChangeGovNotifyDeliveryMode:  For variables, look at type ChangeGovNotifyDeliveryModeVars in ../index.d.ts
+const { data } = await changeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
 
-// Operation AddUserToUserGroupAdmin:  For variables, look at type AddUserToUserGroupAdminVars in ../index.d.ts
-const { data } = await AddUserToUserGroupAdmin(dataConnect, addUserToUserGroupAdminVars);
+// Operation CreatePendingSectionFile:  For variables, look at type CreatePendingSectionFileVars in ../index.d.ts
+const { data } = await createPendingSectionFile(dataConnect, createPendingSectionFileVars);
 
-// Operation RemoveUserFromUserGroupAdmin:  For variables, look at type RemoveUserFromUserGroupAdminVars in ../index.d.ts
-const { data } = await RemoveUserFromUserGroupAdmin(dataConnect, removeUserFromUserGroupAdminVars);
+// Operation GetSectionFileById:  For variables, look at type GetSectionFileByIdVars in ../index.d.ts
+const { data } = await getSectionFileById(dataConnect, getSectionFileByIdVars);
 
-// Operation GetUserGroupByName:  For variables, look at type GetUserGroupByNameVars in ../index.d.ts
-const { data } = await GetUserGroupByName(dataConnect, getUserGroupByNameVars);
+// Operation ListSectionFilesByStatus:  For variables, look at type ListSectionFilesByStatusVars in ../index.d.ts
+const { data } = await listSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
 
-// Operation GetUserUserGroupsForAdmin:  For variables, look at type GetUserUserGroupsForAdminVars in ../index.d.ts
-const { data } = await GetUserUserGroupsForAdmin(dataConnect, getUserUserGroupsForAdminVars);
+// Operation ListStaleSectionFiles:  For variables, look at type ListStaleSectionFilesVars in ../index.d.ts
+const { data } = await listStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
 
-// Operation GetUserForCheckout:  For variables, look at type GetUserForCheckoutVars in ../index.d.ts
-const { data } = await GetUserForCheckout(dataConnect, getUserForCheckoutVars);
+// Operation ListSectionFilesForQuota:  For variables, look at type ListSectionFilesForQuotaVars in ../index.d.ts
+const { data } = await listSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
 
-// Operation GetTicketTypeForCheckout:  For variables, look at type GetTicketTypeForCheckoutVars in ../index.d.ts
-const { data } = await GetTicketTypeForCheckout(dataConnect, getTicketTypeForCheckoutVars);
+// Operation RecordSectionFileAudit:  For variables, look at type RecordSectionFileAuditVars in ../index.d.ts
+const { data } = await recordSectionFileAudit(dataConnect, recordSectionFileAuditVars);
 
 
 ```

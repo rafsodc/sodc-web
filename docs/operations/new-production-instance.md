@@ -196,6 +196,111 @@ procedure before holding irreplaceable production data.
 
 Do not load `dataconnect/seed_data.gql` into Prod.
 
+### 6a. Enable Firebase Storage and provision section-file storage
+
+Before enabling the section-file feature:
+
+1. confirm Prod is on Blaze billing;
+2. in Firebase console, open **Databases & Storage → Storage**, select
+   **Get started**, and create the default bucket in the approved location
+   (`europe-west2` unless the data-location decision says otherwise);
+3. record the exact generated bucket name—normally
+   `sodc-web-production.firebasestorage.app` for a new project;
+4. set that exact name as `VITE_FIREBASE_STORAGE_BUCKET` and
+   `SECTION_FILES_BUCKET`;
+5. deploy the repository's deny-all rules:
+
+   ```sh
+   firebase deploy --only storage --project prod
+   ```
+
+6. complete the IAM, public-access prevention, lifecycle, CORS, and verification
+   steps in [section-file-storage.md](./section-file-storage.md).
+
+Use the real production values below. Do not copy the Dev project number,
+bucket, or service account:
+
+```sh
+export PROJECT_ID="sodc-web-production"
+export SECTION_FILES_BUCKET_NAME="sodc-web-production.firebasestorage.app"
+
+gcloud storage buckets update "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --uniform-bucket-level-access \
+  --public-access-prevention \
+  --lifecycle-file="config/storage/section-files-lifecycle.json"
+
+firebase deploy --only storage --project prod
+```
+
+After the #429 Functions have been deployed—but before invoking an upload or
+download—resolve the actual Gen 2 runtime service account:
+
+```sh
+gcloud functions describe requestSectionFileUpload \
+  --gen2 \
+  --region="europe-west2" \
+  --project="${PROJECT_ID}" \
+  --format="value(serviceConfig.serviceAccountEmail)"
+```
+
+Copy the exact returned address into this variable:
+
+```sh
+export FUNCTIONS_SERVICE_ACCOUNT="<returned-runtime-service-account>"
+```
+
+Grant only the required object and keyless-signing permissions:
+
+```sh
+gcloud storage buckets add-iam-policy-binding \
+  "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --member="serviceAccount:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --role="roles/storage.objectAdmin"
+
+gcloud services enable iamcredentials.googleapis.com \
+  --project="${PROJECT_ID}"
+
+gcloud iam service-accounts add-iam-policy-binding \
+  "${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}" \
+  --member="serviceAccount:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --role="roles/iam.serviceAccountTokenCreator"
+```
+
+Verify the bucket configuration and both explicit IAM grants:
+
+```sh
+gcloud storage buckets describe "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --format="yaml(name,location,uniform_bucket_level_access,public_access_prevention,lifecycle_config,cors_config)"
+
+gcloud storage buckets get-iam-policy \
+  "gs://${SECTION_FILES_BUCKET_NAME}" \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --format="table(bindings.role,bindings.members)"
+
+gcloud iam service-accounts get-iam-policy \
+  "${FUNCTIONS_SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}"
+```
+
+The bucket policy must show `roles/storage.objectAdmin`; the service-account
+policy must show the runtime identity bound to
+`roles/iam.serviceAccountTokenCreator`. The bucket description must show
+uniform access enabled, public-access prevention enforced, and lifecycle
+deletion restricted to `section-file-uploads/`. Apply the exact production CORS
+file using the command in [section-file-storage.md](./section-file-storage.md);
+never use a wildcard origin.
+
+Do not continue if Storage has not been initialized or if the CLI deploy targets
+a Dev/Beta bucket. Resolve the actual production Functions runtime service
+account and explicitly grant it `roles/storage.objectAdmin` on the production
+bucket. Enable `iamcredentials.googleapis.com` and grant that same identity
+`roles/iam.serviceAccountTokenCreator` on itself for keyless V4 signed URLs.
+Verify both policies before the upload/download smoke test. Do not share the Dev
+or Beta bucket or runtime identity with Prod, and do not create a downloaded
+service-account key.
+
 ## 7. Configure Functions environment and secrets
 
 Cloud Functions loads project-specific non-secret values from
@@ -207,6 +312,7 @@ Cloud Functions loads project-specific non-secret values from
 APP_BASE_URL=https://sodc-web-production.web.app
 ENV_NAME=prod
 PERMITTED_PROJECT_IDS=
+SECTION_FILES_BUCKET=
 
 # Add the GOV_NOTIFY_TEMPLATE_* values for every enabled template.
 # Add optional reply-to, payment-ops recipients, and expiry tuning only when used.
@@ -225,7 +331,9 @@ Set secrets interactively so values do not appear in command history:
 firebase functions:secrets:set STRIPE_SECRET --project prod
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET --project prod
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET_PAYMENTS --project prod
-firebase functions:secrets:set GOV_NOTIFY_API_KEY --project prod
+firebase functions:secrets:set GOV_NOTIFY_LIVE_API_KEY --project prod
+firebase functions:secrets:set GOV_NOTIFY_TEST_API_KEY --project prod
+firebase functions:secrets:set GOV_NOTIFY_TEAM_API_KEY --project prod
 firebase functions:secrets:set UNSUBSCRIBE_SECRET --project prod
 firebase functions:secrets:set NOTIFY_CALLBACK_BEARER_TOKEN --project prod
 ```
@@ -261,7 +369,13 @@ Use the production Notify service/API key and follow
 [GOV.UK Notify template registration](./govuk-notify-template-registration.md).
 Create and test every required template, record its UUID outside the repository,
 put each `GOV_NOTIFY_TEMPLATE_*` UUID in the production Functions environment
-file, and set `GOV_NOTIFY_API_KEY` as a Firebase secret.
+file, set `GOV_NOTIFY_DELIVERY_MODE=SIMULATION` for the initial rollout, and
+set all three mode-specific API keys as Firebase secrets. Follow
+[GOV.UK Notify delivery modes](./govuk-notify-delivery-modes.md) before making
+the production ceiling more permissive. After Data Connect and Functions are
+deployed, open **Admin → Email Delivery** and verify that the persisted runtime
+mode defaults to **Simulation**. Day-to-day mode changes are made there, with a
+reason and audit trail; the environment value remains the hard upper ceiling.
 
 Configure the optional reply-to ID, internal payment-alert recipients, and Notify
 callback using production values. Configure the callback to send the bearer token
@@ -410,6 +524,9 @@ Connect or user data.
 - [ ] Operators understand that users moving from `web.app` to the custom domain may need to sign in again.
 - [ ] App Check tokens are valid; enforcement decision and metrics are recorded.
 - [ ] Data Connect read and a non-destructive callable action succeed.
+- [ ] Firebase Storage is initialized in Prod and the exact bucket name is recorded in both frontend and Functions configuration.
+- [ ] Section-file bucket isolation, IAM, lifecycle, CORS, deployed deny-all rules, and direct-access denial are verified before the feature is enabled.
+- [ ] Production Functions runtime has explicit bucket `roles/storage.objectAdmin` and self `roles/iam.serviceAccountTokenCreator` grants; IAM Credentials API is enabled.
 - [ ] Stripe live Checkout redirect/return and signed webhook delivery succeed.
 - [ ] Notify template drift check and one send per email domain succeed.
 - [ ] First and second administrators can sign in; an ordinary member cannot access Admin routes/actions.

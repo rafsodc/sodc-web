@@ -13,6 +13,7 @@ import {
   type GetSectionByIdData,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
+import { linkHasPurpose, resolveSectionAccess } from "./sectionAccess";
 
 export interface SectionMemberResponse {
   id: string;
@@ -44,57 +45,6 @@ function toSectionMemberResponse(u: {
     sharesContactInfo,
     email: sharesContactInfo ? u.email : null,
   };
-}
-
-function linkHasPurpose(link: { purpose?: string; purposes?: string[] | null }, target: string): boolean {
-  return link.purpose === target || (link.purposes?.includes(target) ?? false);
-}
-
-interface SectionAccess {
-  section: NonNullable<GetSectionByIdData["section"]>;
-  hasAccess: boolean;
-  canModerate: boolean;
-}
-
-/**
- * Fetches a section and determines whether callerUid has ACCESS/MODERATOR purpose on it
- * (explicit group membership or membership-status-derived), independent of callerIsAdmin.
- * Used by every section/event lookup a non-admin member is allowed to make, since the
- * underlying GetSectionById/GetEventsForSection/GetEventById Data Connect queries are
- * admin-only — this is the only path a regular member has to that data, and it's gated
- * on their actual relationship to the section rather than an arbitrary client-supplied id.
- */
-async function resolveSectionAccess(sectionId: string, callerUid: string): Promise<SectionAccess> {
-  const [sectionResult, callerGroupsResult, userStatusResult] = await Promise.all([
-    getSectionById({ id: sectionId }),
-    getUserAccessGroupsById({ userId: callerUid }),
-    getUserMembershipStatus({ id: callerUid }),
-  ]);
-
-  const section = sectionResult.data?.section;
-  if (!section) {
-    throw new HttpsError("not-found", "Section not found");
-  }
-
-  const purposeLinks = section.purposeLinks ?? [];
-  const callerGroupIds = new Set(
-    (callerGroupsResult.data?.user?.userGroups ?? []).map(
-      (ug: { userGroup: { id: string } }) => ug.userGroup.id
-    )
-  );
-  const userStatus = userStatusResult.data?.user?.membershipStatus;
-
-  const matchesPurpose = (target: string) =>
-    purposeLinks.some((pl) => {
-      if (!linkHasPurpose(pl, target)) return false;
-      if (callerGroupIds.has(pl.userGroup.id)) return true;
-      return userStatus ? (pl.userGroup.membershipStatuses?.includes(userStatus) ?? false) : false;
-    });
-
-  const canModerate = matchesPurpose("MODERATOR");
-  const hasAccess = canModerate || matchesPurpose("ACCESS");
-
-  return { section, hasAccess, canModerate };
 }
 
 /**

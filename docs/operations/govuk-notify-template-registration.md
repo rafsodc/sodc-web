@@ -16,7 +16,7 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
    - Send a **test email** using values from [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json) for that logical key.
    - Copy the template **UUID** into your secure ops record (table below).
 3. Configure Firebase Functions for that project:
-   - Secret: `GOV_NOTIFY_API_KEY`
+   - Secret: `GOV_NOTIFY_LIVE_API_KEY`
    - Env vars: `GOV_NOTIFY_TEMPLATE_*` (one per row below)
    - Optional: `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, `APP_BASE_URL`
    - Internal ops only: `PAYMENT_OPS_ALERT_EMAILS` (comma-separated)
@@ -53,7 +53,7 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
 |---------|----------------|
 | Notify API `template` error | Wrong UUID in `GOV_NOTIFY_TEMPLATE_*` for this environment |
 | Missing placeholder error | Dashboard placeholder name does not match code (see `govuk-notify-*.md`) |
-| No email sent | `GOV_NOTIFY_API_KEY` missing, template ID env unset, or ops recipient list empty (`PAYMENT_OPS_ALERT_EMAILS`) |
+| No email sent | `GOV_NOTIFY_LIVE_API_KEY` missing, template ID env unset, or ops recipient list empty (`PAYMENT_OPS_ALERT_EMAILS`) |
 | Duplicate emails | Expected on webhook retry only if delivery ledger failed; check `NotificationDelivery` |
 
 ## Related issues

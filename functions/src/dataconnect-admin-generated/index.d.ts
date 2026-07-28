@@ -18,6 +18,11 @@ export enum BookingStatus {
   CONFIRMED = "CONFIRMED",
   CANCELLED = "CANCELLED",
 }
+export enum GovNotifyDeliveryMode {
+  SIMULATION = "SIMULATION",
+  TEAM_TEST = "TEAM_TEST",
+  LIVE = "LIVE",
+}
 export enum GuestTicketRequestStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
@@ -71,6 +76,13 @@ export enum PaymentWebhookEventOutcome {
   DUPLICATE = "DUPLICATE",
   FAILED = "FAILED",
 }
+export enum SectionFileStatus {
+  PENDING = "PENDING",
+  AVAILABLE = "AVAILABLE",
+  REPLACING = "REPLACING",
+  DELETING = "DELETING",
+  DELETED = "DELETED",
+}
 export enum SectionType {
   MEMBERS = "MEMBERS",
   EVENTS = "EVENTS",
@@ -91,6 +103,25 @@ export enum TicketOrderStatus {
   PAID = "PAID",
   FAILED = "FAILED",
   REFUNDED = "REFUNDED",
+}
+
+export interface AbandonPendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbandonPendingSectionFileVariables {
+  id: UUIDString;
+  updatedBefore: TimestampString;
+}
+
+export interface AbortSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface AbortSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  updatedBy: string;
 }
 
 export interface AddBookingLineData {
@@ -211,6 +242,28 @@ export interface AnnouncementSend_Key {
   __typename?: 'AnnouncementSend_Key';
 }
 
+export interface BeginSectionFileDeletionData {
+  sectionFile_updateMany: number;
+}
+
+export interface BeginSectionFileDeletionVariables {
+  id: UUIDString;
+  updatedBy: string;
+}
+
+export interface BeginSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface BeginSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  pendingOriginalFilename: string;
+  pendingContentType: string;
+  pendingSizeBytes: number;
+  updatedBy: string;
+}
+
 export interface BookingLine_Key {
   id: UUIDString;
   __typename?: 'BookingLine_Key';
@@ -238,6 +291,20 @@ export interface CallableRateLimitBucket_Key {
   functionName: string;
   windowStart: TimestampString;
   __typename?: 'CallableRateLimitBucket_Key';
+}
+
+export interface ChangeGovNotifyDeliveryModeData {
+  changed: number;
+  govNotifyDeliveryModeAudit_insert: GovNotifyDeliveryModeAudit_Key;
+}
+
+export interface ChangeGovNotifyDeliveryModeVariables {
+  expectedVersion: number;
+  previousMode: GovNotifyDeliveryMode;
+  newMode: GovNotifyDeliveryMode;
+  deploymentCeiling: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
 }
 
 export interface CheckUserProfileExistsData {
@@ -304,6 +371,24 @@ export interface CreateAnnouncementRecipientVariables {
   failureReason?: string | null;
 }
 
+export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  announcementRecipient_insert: AnnouncementRecipient_Key;
+}
+
+export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
+  id: UUIDString;
+  announcementSendId: UUIDString;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  skippedReason?: string | null;
+  sentAt?: TimestampString | null;
+  failureReason?: string | null;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+
 export interface CreateAnnouncementSendData {
   announcementSend_insert: AnnouncementSend_Key;
 }
@@ -317,6 +402,24 @@ export interface CreateAnnouncementSendVariables {
   recipientCount: number;
   skippedCount: number;
   recipientSnapshot: string;
+}
+
+export interface CreateAnnouncementSendWithDeliveryModeData {
+  announcementSend_insert: AnnouncementSend_Key;
+}
+
+export interface CreateAnnouncementSendWithDeliveryModeVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  templateUuid: string;
+  templateName?: string | null;
+  sentBy: string;
+  recipientCount: number;
+  skippedCount: number;
+  recipientSnapshot: string;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export interface CreateBookingDraftData {
@@ -376,6 +479,10 @@ export interface CreateEventVariables {
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
   maxGuestsWithoutModeratorApproval?: number | null;
+}
+
+export interface CreateGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration_insert: GovNotifyDeliveryConfiguration_Key;
 }
 
 export interface CreateGuestTicketRequestData {
@@ -452,6 +559,23 @@ export interface CreatePaymentWebhookEventVariables {
   ticketOrderId?: UUIDString | null;
   stripeObjectId?: string | null;
   livemode: boolean;
+}
+
+export interface CreatePendingSectionFileData {
+  sectionFile_insert: SectionFile_Key;
+}
+
+export interface CreatePendingSectionFileVariables {
+  id: UUIDString;
+  sectionId: UUIDString;
+  pendingStorageObjectPath: string;
+  displayName: string;
+  originalFilename: string;
+  description?: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  now: TimestampString;
 }
 
 export interface CreateSectionData {
@@ -611,6 +735,37 @@ export interface Event_Key {
   __typename?: 'Event_Key';
 }
 
+export interface FinalizePendingSectionFileData {
+  sectionFile_updateMany: number;
+}
+
+export interface FinalizePendingSectionFileVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+
+export interface FinalizeSectionFileReplacementData {
+  sectionFile_updateMany: number;
+}
+
+export interface FinalizeSectionFileReplacementVariables {
+  id: UUIDString;
+  pendingStorageObjectPath: string;
+  storageObjectPath: string;
+  originalFilename: string;
+  objectGeneration: string;
+  checksumSha256: string;
+  contentType: string;
+  sizeBytes: number;
+  updatedBy: string;
+}
+
 export interface GetAllUserGroupsWithStatusesData {
   userGroups: ({
     id: UUIDString;
@@ -627,6 +782,7 @@ export interface GetAnnouncementRecipientBySendAndUserData {
     processingVersion: number;
     processingStartedAt?: TimestampString | null;
     providerNotificationId?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
     deliveryVersion: number;
     deliveryStatusUpdatedAt?: TimestampString | null;
     deliveryReceiptId?: string | null;
@@ -670,6 +826,9 @@ export interface GetAnnouncementSendByIdData {
     recipientCount: number;
     skippedCount: number;
     recipientSnapshot?: string | null;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key;
 }
 
@@ -686,6 +845,9 @@ export interface GetAnnouncementSendHistoryData {
     sentAt: TimestampString;
     recipientCount: number;
     skippedCount: number;
+    requestedDeliveryMode: GovNotifyDeliveryMode;
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementSend_Key)[];
 }
 
@@ -704,6 +866,7 @@ export interface GetAnnouncementSendRecipientsData {
     skippedReason?: string | null;
     sentAt?: TimestampString | null;
     failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
   } & AnnouncementRecipient_Key)[];
 }
 
@@ -980,6 +1143,15 @@ export interface GetEventsForSectionData {
 
 export interface GetEventsForSectionVariables {
   sectionId: UUIDString;
+}
+
+export interface GetGovNotifyDeliveryConfigurationData {
+  govNotifyDeliveryConfiguration?: {
+    mode: GovNotifyDeliveryMode;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+  };
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -1423,6 +1595,34 @@ export interface GetSectionByIdVariables {
   id: UUIDString;
 }
 
+export interface GetSectionFileByIdData {
+  sectionFile?: {
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    pendingOriginalFilename?: string | null;
+    pendingContentType?: string | null;
+    pendingSizeBytes?: number | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key;
+}
+
+export interface GetSectionFileByIdVariables {
+  id: UUIDString;
+}
+
 export interface GetSectionMembersData {
   section?: {
     id: UUIDString;
@@ -1785,6 +1985,16 @@ export interface GetUserWithAccessGroupsVariables {
   id: string;
 }
 
+export interface GovNotifyDeliveryConfiguration_Key {
+  id: string;
+  __typename?: 'GovNotifyDeliveryConfiguration_Key';
+}
+
+export interface GovNotifyDeliveryModeAudit_Key {
+  id: UUIDString;
+  __typename?: 'GovNotifyDeliveryModeAudit_Key';
+}
+
 export interface GrantUserGroupToSectionForPurposeData {
   sectionUserGroupPurposeLink_upsert: SectionUserGroupPurposeLink_Key;
 }
@@ -1910,6 +2120,22 @@ export interface ListFailedNotificationDeliveriesForRecoveryVariables {
   limit: number;
 }
 
+export interface ListGovNotifyDeliveryModeAuditsData {
+  govNotifyDeliveryModeAudits: ({
+    id: UUIDString;
+    previousMode: GovNotifyDeliveryMode;
+    newMode: GovNotifyDeliveryMode;
+    deploymentCeiling: GovNotifyDeliveryMode;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & GovNotifyDeliveryModeAudit_Key)[];
+}
+
+export interface ListGovNotifyDeliveryModeAuditsVariables {
+  limit: number;
+}
+
 export interface ListGuestTicketRequestsForAdminData {
   event?: {
     id: UUIDString;
@@ -1995,6 +2221,46 @@ export interface ListOpenPaymentReconciliationExceptionsData {
   } & PaymentReconciliationException_Key)[];
 }
 
+export interface ListSectionFilesByStatusData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    displayName: string;
+    originalFilename: string;
+    description?: string | null;
+    contentType: string;
+    sizeBytes: number;
+    objectGeneration?: string | null;
+    checksumSha256?: string | null;
+    status: SectionFileStatus;
+    uploadedBy: string;
+    deletedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesByStatusVariables {
+  sectionId: UUIDString;
+  status: SectionFileStatus;
+  limit: number;
+}
+
+export interface ListSectionFilesForQuotaData {
+  sectionFiles: ({
+    id: UUIDString;
+    sizeBytes: number;
+    status: SectionFileStatus;
+  } & SectionFile_Key)[];
+}
+
+export interface ListSectionFilesForQuotaVariables {
+  sectionId: UUIDString;
+  limit: number;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -2051,6 +2317,22 @@ export interface ListStalePendingTicketOrdersForSchedulerData {
 
 export interface ListStalePendingTicketOrdersForSchedulerVariables {
   createdBefore: TimestampString;
+  limit: number;
+}
+
+export interface ListStaleSectionFilesData {
+  sectionFiles: ({
+    id: UUIDString;
+    sectionId: UUIDString;
+    storageObjectPath?: string | null;
+    pendingStorageObjectPath?: string | null;
+    status: SectionFileStatus;
+    updatedAt: TimestampString;
+  } & SectionFile_Key)[];
+}
+
+export interface ListStaleSectionFilesVariables {
+  updatedBefore: TimestampString;
   limit: number;
 }
 
@@ -2169,6 +2451,7 @@ export interface MarkNotificationDeliverySentByIdVariables {
   providerMessageId?: string | null;
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
 }
 
 export interface MarkNotifyDeliveryReceiptFailedData {
@@ -2190,6 +2473,16 @@ export interface MarkNotifyDeliveryReceiptProcessedVariables {
   attemptCount: number;
   outcome: NotifyDeliveryReceiptOutcome;
   processedAt: TimestampString;
+}
+
+export interface MarkSectionFileDeletedData {
+  sectionFile_updateMany: number;
+}
+
+export interface MarkSectionFileDeletedVariables {
+  id: UUIDString;
+  deletedAt: TimestampString;
+  updatedBy: string;
 }
 
 export interface MarkTicketOrderFailedFromWebhookData {
@@ -2274,6 +2567,19 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastErrorMessage: string;
 }
 
+export interface RecordSectionFileAuditData {
+  sectionFileAudit_insert: SectionFileAudit_Key;
+}
+
+export interface RecordSectionFileAuditVariables {
+  sectionId: UUIDString;
+  fileId?: UUIDString | null;
+  actorUid: string;
+  action: string;
+  outcome: string;
+  detail?: string | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -2322,6 +2628,16 @@ export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
   __typename?: 'SectionAnnouncementOptOut_Key';
+}
+
+export interface SectionFileAudit_Key {
+  id: UUIDString;
+  __typename?: 'SectionFileAudit_Key';
+}
+
+export interface SectionFile_Key {
+  id: UUIDString;
+  __typename?: 'SectionFile_Key';
 }
 
 export interface SectionUserGroupPurposeLink_Key {
@@ -2436,6 +2752,17 @@ export interface UnsubscribeFromUserGroupData {
 
 export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
+}
+
+export interface UpdateAvailableSectionFileMetadataData {
+  sectionFile_updateMany: number;
+}
+
+export interface UpdateAvailableSectionFileMetadataVariables {
+  id: UUIDString;
+  displayName: string;
+  description?: string | null;
+  updatedBy: string;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -2627,6 +2954,96 @@ export interface User_Key {
   id: string;
   __typename?: 'User_Key';
 }
+
+/** Generated Node Admin SDK operation action function for the 'GetGovNotifyDeliveryConfiguration' Query. Allow users to execute without passing in DataConnect. */
+export function getGovNotifyDeliveryConfiguration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGovNotifyDeliveryConfigurationData>>;
+/** Generated Node Admin SDK operation action function for the 'GetGovNotifyDeliveryConfiguration' Query. Allow users to pass in custom DataConnect instances. */
+export function getGovNotifyDeliveryConfiguration(options?: OperationOptions): Promise<ExecuteOperationResponse<GetGovNotifyDeliveryConfigurationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListGovNotifyDeliveryModeAudits' Query. Allow users to execute without passing in DataConnect. */
+export function listGovNotifyDeliveryModeAudits(dc: DataConnect, vars: ListGovNotifyDeliveryModeAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGovNotifyDeliveryModeAuditsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListGovNotifyDeliveryModeAudits' Query. Allow users to pass in custom DataConnect instances. */
+export function listGovNotifyDeliveryModeAudits(vars: ListGovNotifyDeliveryModeAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGovNotifyDeliveryModeAuditsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateGovNotifyDeliveryConfiguration' Mutation. Allow users to execute without passing in DataConnect. */
+export function createGovNotifyDeliveryConfiguration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGovNotifyDeliveryConfigurationData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateGovNotifyDeliveryConfiguration' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createGovNotifyDeliveryConfiguration(options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGovNotifyDeliveryConfigurationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ChangeGovNotifyDeliveryMode' Mutation. Allow users to execute without passing in DataConnect. */
+export function changeGovNotifyDeliveryMode(dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ChangeGovNotifyDeliveryModeData>>;
+/** Generated Node Admin SDK operation action function for the 'ChangeGovNotifyDeliveryMode' Mutation. Allow users to pass in custom DataConnect instances. */
+export function changeGovNotifyDeliveryMode(vars: ChangeGovNotifyDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ChangeGovNotifyDeliveryModeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreatePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
+export function createPendingSectionFile(dc: DataConnect, vars: CreatePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePendingSectionFileData>>;
+/** Generated Node Admin SDK operation action function for the 'CreatePendingSectionFile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createPendingSectionFile(vars: CreatePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePendingSectionFileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetSectionFileById' Query. Allow users to execute without passing in DataConnect. */
+export function getSectionFileById(dc: DataConnect, vars: GetSectionFileByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionFileByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetSectionFileById' Query. Allow users to pass in custom DataConnect instances. */
+export function getSectionFileById(vars: GetSectionFileByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionFileByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesByStatus' Query. Allow users to execute without passing in DataConnect. */
+export function listSectionFilesByStatus(dc: DataConnect, vars: ListSectionFilesByStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesByStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesByStatus' Query. Allow users to pass in custom DataConnect instances. */
+export function listSectionFilesByStatus(vars: ListSectionFilesByStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesByStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListStaleSectionFiles' Query. Allow users to execute without passing in DataConnect. */
+export function listStaleSectionFiles(dc: DataConnect, vars: ListStaleSectionFilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStaleSectionFilesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListStaleSectionFiles' Query. Allow users to pass in custom DataConnect instances. */
+export function listStaleSectionFiles(vars: ListStaleSectionFilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStaleSectionFilesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesForQuota' Query. Allow users to execute without passing in DataConnect. */
+export function listSectionFilesForQuota(dc: DataConnect, vars: ListSectionFilesForQuotaVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesForQuotaData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSectionFilesForQuota' Query. Allow users to pass in custom DataConnect instances. */
+export function listSectionFilesForQuota(vars: ListSectionFilesForQuotaVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionFilesForQuotaData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RecordSectionFileAudit' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordSectionFileAudit(dc: DataConnect, vars: RecordSectionFileAuditVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordSectionFileAuditData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordSectionFileAudit' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordSectionFileAudit(vars: RecordSectionFileAuditVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordSectionFileAuditData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AbandonPendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
+export function abandonPendingSectionFile(dc: DataConnect, vars: AbandonPendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbandonPendingSectionFileData>>;
+/** Generated Node Admin SDK operation action function for the 'AbandonPendingSectionFile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function abandonPendingSectionFile(vars: AbandonPendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbandonPendingSectionFileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'FinalizePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
+export function finalizePendingSectionFile(dc: DataConnect, vars: FinalizePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizePendingSectionFileData>>;
+/** Generated Node Admin SDK operation action function for the 'FinalizePendingSectionFile' Mutation. Allow users to pass in custom DataConnect instances. */
+export function finalizePendingSectionFile(vars: FinalizePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizePendingSectionFileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateAvailableSectionFileMetadata' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateAvailableSectionFileMetadata(dc: DataConnect, vars: UpdateAvailableSectionFileMetadataVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAvailableSectionFileMetadataData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateAvailableSectionFileMetadata' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateAvailableSectionFileMetadata(vars: UpdateAvailableSectionFileMetadataVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAvailableSectionFileMetadataData>>;
+
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileReplacement' Mutation. Allow users to execute without passing in DataConnect. */
+export function beginSectionFileReplacement(dc: DataConnect, vars: BeginSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileReplacementData>>;
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileReplacement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function beginSectionFileReplacement(vars: BeginSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileReplacementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'FinalizeSectionFileReplacement' Mutation. Allow users to execute without passing in DataConnect. */
+export function finalizeSectionFileReplacement(dc: DataConnect, vars: FinalizeSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizeSectionFileReplacementData>>;
+/** Generated Node Admin SDK operation action function for the 'FinalizeSectionFileReplacement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function finalizeSectionFileReplacement(vars: FinalizeSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<FinalizeSectionFileReplacementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AbortSectionFileReplacement' Mutation. Allow users to execute without passing in DataConnect. */
+export function abortSectionFileReplacement(dc: DataConnect, vars: AbortSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbortSectionFileReplacementData>>;
+/** Generated Node Admin SDK operation action function for the 'AbortSectionFileReplacement' Mutation. Allow users to pass in custom DataConnect instances. */
+export function abortSectionFileReplacement(vars: AbortSectionFileReplacementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AbortSectionFileReplacementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileDeletion' Mutation. Allow users to execute without passing in DataConnect. */
+export function beginSectionFileDeletion(dc: DataConnect, vars: BeginSectionFileDeletionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileDeletionData>>;
+/** Generated Node Admin SDK operation action function for the 'BeginSectionFileDeletion' Mutation. Allow users to pass in custom DataConnect instances. */
+export function beginSectionFileDeletion(vars: BeginSectionFileDeletionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSectionFileDeletionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkSectionFileDeleted' Mutation. Allow users to execute without passing in DataConnect. */
+export function markSectionFileDeleted(dc: DataConnect, vars: MarkSectionFileDeletedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkSectionFileDeletedData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkSectionFileDeleted' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markSectionFileDeleted(vars: MarkSectionFileDeletedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkSectionFileDeletedData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
@@ -2883,10 +3300,20 @@ export function createAnnouncementSend(dc: DataConnect, vars: CreateAnnouncement
 /** Generated Node Admin SDK operation action function for the 'CreateAnnouncementSend' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createAnnouncementSend(vars: CreateAnnouncementSendVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementSendData>>;
 
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementSendWithDeliveryMode' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAnnouncementSendWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementSendWithDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementSendWithDeliveryModeData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementSendWithDeliveryMode' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAnnouncementSendWithDeliveryMode(vars: CreateAnnouncementSendWithDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementSendWithDeliveryModeData>>;
+
 /** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipient' Mutation. Allow users to execute without passing in DataConnect. */
 export function createAnnouncementRecipient(dc: DataConnect, vars: CreateAnnouncementRecipientVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientData>>;
 /** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipient' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createAnnouncementRecipient(vars: CreateAnnouncementRecipientVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipientWithDeliveryMode' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAnnouncementRecipientWithDeliveryMode(dc: DataConnect, vars: CreateAnnouncementRecipientWithDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientWithDeliveryModeData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAnnouncementRecipientWithDeliveryMode' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAnnouncementRecipientWithDeliveryMode(vars: CreateAnnouncementRecipientWithDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAnnouncementRecipientWithDeliveryModeData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientProgress' Query. Allow users to execute without passing in DataConnect. */
 export function getAnnouncementRecipientProgress(dc: DataConnect, vars: GetAnnouncementRecipientProgressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientProgressData>>;

@@ -10,6 +10,7 @@ import {
   type TransactionalMailer,
 } from "./mailer";
 import type { PaymentLifecycleNotification } from "./paymentNotifications";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
 export const TICKET_ORDER_MAIL_TEMPLATE_KEYS = ["ticketOrderPaid", "ticketOrderFailed", "ticketOrderRefunded"] as const;
 
@@ -99,8 +100,11 @@ export interface GovNotifyTicketOrderLifecycleDispatcherOptions {
 
 export function createGovNotifyTicketOrderLifecycleDispatcher(
   options: GovNotifyTicketOrderLifecycleDispatcherOptions
-): (notification: PaymentLifecycleNotification) => Promise<{ providerMessageId?: string | null }> {
-  return async (notification: PaymentLifecycleNotification) => {
+): (
+  notification: PaymentLifecycleNotification,
+  deliveryMode?: GovNotifyDeliveryMode,
+) => Promise<{ providerMessageId?: string | null; deliveryMode?: GovNotifyDeliveryMode }> {
+  return async (notification: PaymentLifecycleNotification, deliveryMode?: GovNotifyDeliveryMode) => {
     const refreshed = await getTicketOrderForWebhook({ id: notification.orderId as UUIDString });
     const row = refreshed.data?.ticketOrder;
     if (!row) {
@@ -135,8 +139,12 @@ export function createGovNotifyTicketOrderLifecycleDispatcher(
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: result.providerNotificationId ?? null };
+        return {
+          providerMessageId: result.providerNotificationId ?? null,
+          deliveryMode: result.deliveryMode?.effectiveMode,
+        };
       }
       case "PAYMENT_FAILED": {
         const personalisation = buildPaidLikePersonalisation({
@@ -149,8 +157,12 @@ export function createGovNotifyTicketOrderLifecycleDispatcher(
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: result.providerNotificationId ?? null };
+        return {
+          providerMessageId: result.providerNotificationId ?? null,
+          deliveryMode: result.deliveryMode?.effectiveMode,
+        };
       }
       case "PAYMENT_REFUNDED": {
         const refundMinor = row.refundedAmountMinor ?? row.totalAmountMinor;
@@ -167,8 +179,12 @@ export function createGovNotifyTicketOrderLifecycleDispatcher(
           to: email,
           personalisation,
           reference,
+          requestedDeliveryMode: deliveryMode,
         });
-        return { providerMessageId: result.providerNotificationId ?? null };
+        return {
+          providerMessageId: result.providerNotificationId ?? null,
+          deliveryMode: result.deliveryMode?.effectiveMode,
+        };
       }
     }
   };

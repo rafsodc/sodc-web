@@ -44,6 +44,8 @@ This document summarizes how access is enforced across Data Connect and Firebase
 | Callable | `submitEventBooking` | enabled user |
 | Callable | `createTicketCheckoutSession` | enabled user |
 | Callable | `grantAdmin` / `revokeAdmin` / `listAdminUsers` | enabled admin |
+| Callable | section-file list/download | enabled user with current section access, or enabled global admin |
+| Callable | section-file upload/manage/delete | enabled moderator of that section, or enabled global admin |
 | Webhook | `stripeWebhook` | Stripe signature-verified request |
 
 ## Function guard model
@@ -61,6 +63,7 @@ Guard helpers in `functions/src/helpers.ts`:
 Typical usage:
 
 - Member flows (`submitEventBooking`, checkout start, membership self-service): `requireEnabled`.
+- Section-file reads require current `ACCESS` or `MODERATOR` purpose after `requireEnabled`; management requires current `MODERATOR` purpose. Enabled global admins may bypass the relationship check, while disabled admins remain denied.
 - PII-bearing member directories and all announcement template, preview, send, history, and recipient callables: `requireEnabled` before section/group checks.
 - Admin-only operations: `requireAdmin`, which also enforces `enabled: true`.
 - A caller with `admin: true` but `enabled !== true` is rejected; admin status is not an access-revocation bypass.

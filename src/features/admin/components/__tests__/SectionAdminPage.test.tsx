@@ -46,6 +46,15 @@ vi.mock('../SendAnnouncementPage', () => ({
   ),
 }));
 
+vi.mock('../ManageSectionFiles', () => ({
+  default: ({ sectionName, onBack }: { sectionName: string; onBack: () => void }) => (
+    <div>
+      <div>Mock Manage Files for {sectionName}</div>
+      <button onClick={onBack}>Back to hub</button>
+    </div>
+  ),
+}));
+
 const sectionId = 'section-1';
 
 function mockCanModerate(canModerate: boolean) {
@@ -123,6 +132,19 @@ describe('SectionAdminPage', () => {
 
     await user.click(screen.getByText('Back to hub'));
     expect(screen.getByText('Send Announcement')).toBeInTheDocument();
+  });
+
+  it('opens and returns from Manage Files for a section moderator', async () => {
+    const user = userEvent.setup();
+    mockCanModerate(true);
+    renderSectionAdminPage();
+
+    await screen.findByText('Manage Files');
+    await user.click(screen.getByText('Manage Files'));
+    expect(screen.getByText('Mock Manage Files for Test Section')).toBeInTheDocument();
+
+    await user.click(screen.getByText('Back to hub'));
+    expect(screen.getByText('Manage Files')).toBeInTheDocument();
   });
 
   it('navigates to Manage Sections with the managed section for an EVENTS section', async () => {

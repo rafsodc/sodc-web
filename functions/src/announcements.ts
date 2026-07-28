@@ -11,8 +11,8 @@ import {
   getUserMembershipStatus,
   listUsers,
   getSectionAnnouncementOptOuts,
-  createAnnouncementSend,
-  createAnnouncementRecipient,
+  createAnnouncementSendWithDeliveryMode,
+  createAnnouncementRecipientWithDeliveryMode,
   getAnnouncementRecipientProgress,
   getAnnouncementRecipientsForResume,
   getAnnouncementSendById,
@@ -20,10 +20,17 @@ import {
   tryUpdateAnnouncementRecipientProcessingStatus,
   getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
+  GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
 } from "@dataconnect/admin-generated";
 import { requireEnabled, requireString } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
-import { govNotifyApiKey } from "./mailer";
+import {
+  govNotifyApiKeyForMode,
+  govNotifySecrets,
+  parseGovNotifyDeliveryMode,
+  type GovNotifyDeliveryMode,
+} from "./govNotifyDeliveryMode";
+import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
 import {
@@ -205,18 +212,28 @@ export interface AnnouncementTemplate {
   requiredPersonalisation: string[];
 }
 
+export const getAnnouncementDeliveryConfiguration = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request): Promise<{ siteDeliveryMode: GovNotifyDeliveryMode }> => {
+    requireEnabled(request);
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    return {
+      siteDeliveryMode: (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).siteMode,
+    };
+  },
+);
+
 export const getAnnouncementTemplates = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ templates: AnnouncementTemplate[] }> => {
     requireEnabled(request);
     await enforceRateLimit("getAnnouncementTemplates", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
-    const apiKey = govNotifyApiKey.value();
-    if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
-
-    const client = new NotifyClient(apiKey);
+    const mode = (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).effectiveMode;
+    const client = new NotifyClient(govNotifyApiKeyForMode(mode));
     const response = await client.getAllTemplates("email");
     const all = (response.data as {
       templates: {
@@ -248,7 +265,7 @@ export const getAnnouncementTemplates = onCall(
 );
 
 export const previewAnnouncementTemplate = onCall(
-  { region: FUNCTIONS_REGION, secrets: [govNotifyApiKey] },
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ html: string; subject: string }> => {
     requireEnabled(request);
     await enforceRateLimit("previewAnnouncementTemplate", request.auth!.uid);
@@ -256,10 +273,8 @@ export const previewAnnouncementTemplate = onCall(
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
 
-    const apiKey = govNotifyApiKey.value();
-    if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
-
-    const client = new NotifyClient(apiKey);
+    const mode = (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).effectiveMode;
+    const client = new NotifyClient(govNotifyApiKeyForMode(mode));
     // GOV Notify ignores extra personalisation keys — pass all placeholders so any template variable is satisfied
     const response = await client.previewTemplateById(templateUuid, PREVIEW_PLACEHOLDERS);
     const data = response.data as { html: string; subject: string };
@@ -273,6 +288,9 @@ export interface SendAnnouncementResult {
   failedToEnqueueCount: number;
   skippedCount: number;
   resumed: boolean;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export interface AnnouncementSend {
@@ -286,6 +304,9 @@ export interface AnnouncementSend {
   skippedCount: number;
   processedCount: number;
   failureCount: number;
+  requestedDeliveryMode: GovNotifyDeliveryMode;
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 export interface AnnouncementRecipient {
@@ -299,6 +320,7 @@ export interface AnnouncementRecipient {
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;
+  effectiveDeliveryMode: GovNotifyDeliveryMode;
 }
 
 interface SkippedAnnouncementRecipient {
@@ -310,6 +332,7 @@ interface SkippedAnnouncementRecipient {
 
 interface AnnouncementRecipientSnapshot {
   version: 1;
+  effectiveDeliveryMode?: GovNotifyDeliveryMode;
   tasks: AnnouncementEmailTask[];
   skippedRecipients: SkippedAnnouncementRecipient[];
 }
@@ -332,8 +355,14 @@ function isTaskAlreadyExists(error: unknown): boolean {
   return /task-already-exists|already exists/i.test(message);
 }
 
-export function announcementTaskId(sendId: string, recipientId: string): string {
-  return createHash("sha256").update(`${sendId}:${recipientId}`).digest("hex");
+export function announcementTaskId(
+  sendId: string,
+  recipientId: string,
+  effectiveDeliveryMode: GovNotifyDeliveryMode = "LIVE",
+): string {
+  return createHash("sha256")
+    .update(`${sendId}:${recipientId}:${effectiveDeliveryMode}`)
+    .digest("hex");
 }
 
 function parseRecipientSnapshot(value: string | null | undefined): AnnouncementRecipientSnapshot {
@@ -369,6 +398,7 @@ async function ensureRecipientRows(
         lastName: task.lastName,
         status: "queued",
         skippedReason: null,
+        effectiveDeliveryMode: task.effectiveDeliveryMode ?? snapshot.effectiveDeliveryMode ?? "LIVE",
       })),
     ...snapshot.skippedRecipients
       .filter((recipient) => !existing.has(recipient.userId))
@@ -377,13 +407,14 @@ async function ensureRecipientRows(
         ...recipient,
         status: "skipped",
         skippedReason: "opted_out",
+        effectiveDeliveryMode: snapshot.effectiveDeliveryMode ?? "LIVE",
       })),
   ];
 
   for (let i = 0; i < missing.length; i += WRITE_CHUNK_SIZE) {
     const results = await Promise.allSettled(
       missing.slice(i, i + WRITE_CHUNK_SIZE).map((recipient) =>
-        createAnnouncementRecipient({
+        createAnnouncementRecipientWithDeliveryMode({
           id: recipient.id,
           announcementSendId: sendId,
           userId: recipient.userId,
@@ -394,6 +425,8 @@ async function ensureRecipientRows(
           skippedReason: recipient.skippedReason,
           sentAt: null,
           failureReason: null,
+          effectiveDeliveryMode:
+            recipient.effectiveDeliveryMode as DataConnectGovNotifyDeliveryMode,
         }),
       ),
     );
@@ -426,7 +459,7 @@ async function enqueueSnapshot(
     const chunk = candidates.slice(i, i + ENQUEUE_CHUNK_SIZE);
     const results = await Promise.allSettled(
       chunk.map((task) => queue.enqueue(task, {
-        id: announcementTaskId(sendId, task.recipientId),
+        id: announcementTaskId(sendId, task.recipientId, task.effectiveDeliveryMode),
         dispatchDeadlineSeconds: 60,
       })),
     );
@@ -471,7 +504,11 @@ async function enqueueSnapshot(
 }
 
 export const sendSectionAnnouncement = onCall(
-  { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret, govNotifyApiKey], timeoutSeconds: 120 },
+  {
+    region: FUNCTIONS_REGION,
+    secrets: [unsubscribeSecret, ...govNotifySecrets],
+    timeoutSeconds: 120,
+  },
   async (request): Promise<SendAnnouncementResult> => {
     requireEnabled(request);
     await enforceRateLimit("sendSectionAnnouncement", request.auth!.uid);
@@ -487,6 +524,19 @@ export const sendSectionAnnouncement = onCall(
     const templateName: string | null = typeof request.data?.templateName === "string"
       ? request.data.templateName
       : null;
+    let requestedDeliveryMode: GovNotifyDeliveryMode;
+    try {
+      requestedDeliveryMode = parseGovNotifyDeliveryMode(
+        request.data?.deliveryMode,
+        "deliveryMode",
+      );
+    } catch (error) {
+      throw new HttpsError(
+        "invalid-argument",
+        error instanceof Error ? error.message : "deliveryMode is invalid",
+      );
+    }
+    const deliveryMode = await resolveRuntimeGovNotifyDeliveryMode(requestedDeliveryMode);
 
     let resumed = false;
     let existingResult = await getAnnouncementSendById({ id: requestId });
@@ -497,16 +547,17 @@ export const sendSectionAnnouncement = onCall(
       if (
         existing.sectionId !== sectionId ||
         existing.templateUuid !== templateUuid ||
-        existing.sentBy !== callerUid
+        existing.sentBy !== callerUid ||
+        existing.requestedDeliveryMode !== deliveryMode.requestedMode ||
+        existing.siteDeliveryMode !== deliveryMode.siteMode ||
+        existing.effectiveDeliveryMode !== deliveryMode.effectiveMode
       ) {
         throw new HttpsError("already-exists", "requestId is already in use");
       }
       resumed = true;
       snapshot = parseRecipientSnapshot(existing.recipientSnapshot);
     } else {
-      const apiKey = govNotifyApiKey.value();
-      if (!apiKey) throw new HttpsError("failed-precondition", "GOV_NOTIFY_API_KEY not configured");
-      const client = new NotifyClient(apiKey);
+      const client = new NotifyClient(govNotifyApiKeyForMode(deliveryMode.effectiveMode));
       const templateResponse = await client.getTemplateById(templateUuid);
       const template = templateResponse.data as { body?: string; subject?: string };
       const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
@@ -546,10 +597,12 @@ export const sendSectionAnnouncement = onCall(
           ),
           unsubscribeUrl,
           templateUuid,
+          effectiveDeliveryMode: deliveryMode.effectiveMode,
         };
       });
       snapshot = {
         version: 1,
+        effectiveDeliveryMode: deliveryMode.effectiveMode,
         tasks,
         skippedRecipients: optedOut.map((recipient) => ({
           userId: recipient.id,
@@ -560,7 +613,7 @@ export const sendSectionAnnouncement = onCall(
       };
 
       try {
-        await createAnnouncementSend({
+        await createAnnouncementSendWithDeliveryMode({
           id: requestId,
           sectionId,
           templateUuid,
@@ -569,6 +622,11 @@ export const sendSectionAnnouncement = onCall(
           recipientCount: snapshot.tasks.length,
           skippedCount: snapshot.skippedRecipients.length,
           recipientSnapshot: JSON.stringify(snapshot),
+          requestedDeliveryMode:
+            deliveryMode.requestedMode as DataConnectGovNotifyDeliveryMode,
+          siteDeliveryMode: deliveryMode.siteMode as DataConnectGovNotifyDeliveryMode,
+          effectiveDeliveryMode:
+            deliveryMode.effectiveMode as DataConnectGovNotifyDeliveryMode,
         });
       } catch (error) {
         if (!isDuplicateKeyError(error)) throw error;
@@ -578,7 +636,10 @@ export const sendSectionAnnouncement = onCall(
           !existing ||
           existing.sectionId !== sectionId ||
           existing.templateUuid !== templateUuid ||
-          existing.sentBy !== callerUid
+          existing.sentBy !== callerUid ||
+          existing.requestedDeliveryMode !== deliveryMode.requestedMode ||
+          existing.siteDeliveryMode !== deliveryMode.siteMode ||
+          existing.effectiveDeliveryMode !== deliveryMode.effectiveMode
         ) {
           throw new HttpsError("already-exists", "requestId is already in use");
         }
@@ -597,6 +658,9 @@ export const sendSectionAnnouncement = onCall(
       failedToEnqueueCount: enqueueResult.failedToEnqueueCount,
       skippedCount: snapshot.skippedRecipients.length,
       resumed,
+      requestedDeliveryMode: deliveryMode.requestedMode,
+      siteDeliveryMode: deliveryMode.siteMode,
+      effectiveDeliveryMode: deliveryMode.effectiveMode,
     });
     return {
       sendId: requestId,
@@ -604,6 +668,9 @@ export const sendSectionAnnouncement = onCall(
       failedToEnqueueCount: enqueueResult.failedToEnqueueCount,
       skippedCount: snapshot.skippedRecipients.length,
       resumed,
+      requestedDeliveryMode: deliveryMode.requestedMode,
+      siteDeliveryMode: deliveryMode.siteMode,
+      effectiveDeliveryMode: deliveryMode.effectiveMode,
     };
   }
 );
@@ -611,7 +678,7 @@ export const sendSectionAnnouncement = onCall(
 export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
   {
     region: FUNCTIONS_REGION,
-    secrets: [govNotifyApiKey],
+    secrets: [...govNotifySecrets],
     rateLimits: { maxDispatchesPerSecond: 20 },
     retryConfig: { maxAttempts: 4, minBackoffSeconds: 30, maxBackoffSeconds: 120 },
   },
@@ -665,6 +732,9 @@ export const getAnnouncementSendHistory = onCall(
       skippedCount: s.skippedCount,
       processedCount: progress[i]!.processedCount,
       failureCount: progress[i]!.failureCount,
+      requestedDeliveryMode: s.requestedDeliveryMode as GovNotifyDeliveryMode,
+      siteDeliveryMode: s.siteDeliveryMode as GovNotifyDeliveryMode,
+      effectiveDeliveryMode: s.effectiveDeliveryMode as GovNotifyDeliveryMode,
     }));
 
     return { sends };
@@ -708,6 +778,7 @@ export const getAnnouncementSendRecipients = onCall(
       skippedReason: r.skippedReason ?? undefined,
       sentAt: r.sentAt ?? undefined,
       failureReason: r.failureReason ?? undefined,
+      effectiveDeliveryMode: r.effectiveDeliveryMode as GovNotifyDeliveryMode,
     }));
 
     return { recipients };

@@ -15,6 +15,13 @@ const BookingStatus = {
 }
 exports.BookingStatus = BookingStatus;
 
+const GovNotifyDeliveryMode = {
+  SIMULATION: "SIMULATION",
+  TEAM_TEST: "TEAM_TEST",
+  LIVE: "LIVE",
+}
+exports.GovNotifyDeliveryMode = GovNotifyDeliveryMode;
+
 const GuestTicketRequestStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
@@ -86,6 +93,15 @@ const PaymentWebhookEventOutcome = {
 }
 exports.PaymentWebhookEventOutcome = PaymentWebhookEventOutcome;
 
+const SectionFileStatus = {
+  PENDING: "PENDING",
+  AVAILABLE: "AVAILABLE",
+  REPLACING: "REPLACING",
+  DELETING: "DELETING",
+  DELETED: "DELETED",
+}
+exports.SectionFileStatus = SectionFileStatus;
+
 const SectionType = {
   MEMBERS: "MEMBERS",
   EVENTS: "EVENTS",
@@ -121,6 +137,264 @@ const connectorConfig = {
   location: 'europe-west2'
 };
 exports.connectorConfig = connectorConfig;
+
+const getGovNotifyDeliveryConfigurationRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetGovNotifyDeliveryConfiguration');
+}
+getGovNotifyDeliveryConfigurationRef.operationName = 'GetGovNotifyDeliveryConfiguration';
+exports.getGovNotifyDeliveryConfigurationRef = getGovNotifyDeliveryConfigurationRef;
+
+exports.getGovNotifyDeliveryConfiguration = function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listGovNotifyDeliveryModeAuditsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListGovNotifyDeliveryModeAudits', inputVars);
+}
+listGovNotifyDeliveryModeAuditsRef.operationName = 'ListGovNotifyDeliveryModeAudits';
+exports.listGovNotifyDeliveryModeAuditsRef = listGovNotifyDeliveryModeAuditsRef;
+
+exports.listGovNotifyDeliveryModeAudits = function listGovNotifyDeliveryModeAudits(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listGovNotifyDeliveryModeAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const createGovNotifyDeliveryConfigurationRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateGovNotifyDeliveryConfiguration');
+}
+createGovNotifyDeliveryConfigurationRef.operationName = 'CreateGovNotifyDeliveryConfiguration';
+exports.createGovNotifyDeliveryConfigurationRef = createGovNotifyDeliveryConfigurationRef;
+
+exports.createGovNotifyDeliveryConfiguration = function createGovNotifyDeliveryConfiguration(dc) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dc, undefined);
+  return executeMutation(createGovNotifyDeliveryConfigurationRef(dcInstance, inputVars));
+}
+;
+
+const changeGovNotifyDeliveryModeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ChangeGovNotifyDeliveryMode', inputVars);
+}
+changeGovNotifyDeliveryModeRef.operationName = 'ChangeGovNotifyDeliveryMode';
+exports.changeGovNotifyDeliveryModeRef = changeGovNotifyDeliveryModeRef;
+
+exports.changeGovNotifyDeliveryMode = function changeGovNotifyDeliveryMode(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(changeGovNotifyDeliveryModeRef(dcInstance, inputVars));
+}
+;
+
+const createPendingSectionFileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreatePendingSectionFile', inputVars);
+}
+createPendingSectionFileRef.operationName = 'CreatePendingSectionFile';
+exports.createPendingSectionFileRef = createPendingSectionFileRef;
+
+exports.createPendingSectionFile = function createPendingSectionFile(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createPendingSectionFileRef(dcInstance, inputVars));
+}
+;
+
+const getSectionFileByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionFileById', inputVars);
+}
+getSectionFileByIdRef.operationName = 'GetSectionFileById';
+exports.getSectionFileByIdRef = getSectionFileByIdRef;
+
+exports.getSectionFileById = function getSectionFileById(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getSectionFileByIdRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listSectionFilesByStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSectionFilesByStatus', inputVars);
+}
+listSectionFilesByStatusRef.operationName = 'ListSectionFilesByStatus';
+exports.listSectionFilesByStatusRef = listSectionFilesByStatusRef;
+
+exports.listSectionFilesByStatus = function listSectionFilesByStatus(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listSectionFilesByStatusRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listStaleSectionFilesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListStaleSectionFiles', inputVars);
+}
+listStaleSectionFilesRef.operationName = 'ListStaleSectionFiles';
+exports.listStaleSectionFilesRef = listStaleSectionFilesRef;
+
+exports.listStaleSectionFiles = function listStaleSectionFiles(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listStaleSectionFilesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listSectionFilesForQuotaRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSectionFilesForQuota', inputVars);
+}
+listSectionFilesForQuotaRef.operationName = 'ListSectionFilesForQuota';
+exports.listSectionFilesForQuotaRef = listSectionFilesForQuotaRef;
+
+exports.listSectionFilesForQuota = function listSectionFilesForQuota(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listSectionFilesForQuotaRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const recordSectionFileAuditRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RecordSectionFileAudit', inputVars);
+}
+recordSectionFileAuditRef.operationName = 'RecordSectionFileAudit';
+exports.recordSectionFileAuditRef = recordSectionFileAuditRef;
+
+exports.recordSectionFileAudit = function recordSectionFileAudit(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(recordSectionFileAuditRef(dcInstance, inputVars));
+}
+;
+
+const abandonPendingSectionFileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AbandonPendingSectionFile', inputVars);
+}
+abandonPendingSectionFileRef.operationName = 'AbandonPendingSectionFile';
+exports.abandonPendingSectionFileRef = abandonPendingSectionFileRef;
+
+exports.abandonPendingSectionFile = function abandonPendingSectionFile(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(abandonPendingSectionFileRef(dcInstance, inputVars));
+}
+;
+
+const finalizePendingSectionFileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'FinalizePendingSectionFile', inputVars);
+}
+finalizePendingSectionFileRef.operationName = 'FinalizePendingSectionFile';
+exports.finalizePendingSectionFileRef = finalizePendingSectionFileRef;
+
+exports.finalizePendingSectionFile = function finalizePendingSectionFile(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(finalizePendingSectionFileRef(dcInstance, inputVars));
+}
+;
+
+const updateAvailableSectionFileMetadataRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAvailableSectionFileMetadata', inputVars);
+}
+updateAvailableSectionFileMetadataRef.operationName = 'UpdateAvailableSectionFileMetadata';
+exports.updateAvailableSectionFileMetadataRef = updateAvailableSectionFileMetadataRef;
+
+exports.updateAvailableSectionFileMetadata = function updateAvailableSectionFileMetadata(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateAvailableSectionFileMetadataRef(dcInstance, inputVars));
+}
+;
+
+const beginSectionFileReplacementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'BeginSectionFileReplacement', inputVars);
+}
+beginSectionFileReplacementRef.operationName = 'BeginSectionFileReplacement';
+exports.beginSectionFileReplacementRef = beginSectionFileReplacementRef;
+
+exports.beginSectionFileReplacement = function beginSectionFileReplacement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(beginSectionFileReplacementRef(dcInstance, inputVars));
+}
+;
+
+const finalizeSectionFileReplacementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'FinalizeSectionFileReplacement', inputVars);
+}
+finalizeSectionFileReplacementRef.operationName = 'FinalizeSectionFileReplacement';
+exports.finalizeSectionFileReplacementRef = finalizeSectionFileReplacementRef;
+
+exports.finalizeSectionFileReplacement = function finalizeSectionFileReplacement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(finalizeSectionFileReplacementRef(dcInstance, inputVars));
+}
+;
+
+const abortSectionFileReplacementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AbortSectionFileReplacement', inputVars);
+}
+abortSectionFileReplacementRef.operationName = 'AbortSectionFileReplacement';
+exports.abortSectionFileReplacementRef = abortSectionFileReplacementRef;
+
+exports.abortSectionFileReplacement = function abortSectionFileReplacement(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(abortSectionFileReplacementRef(dcInstance, inputVars));
+}
+;
+
+const beginSectionFileDeletionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'BeginSectionFileDeletion', inputVars);
+}
+beginSectionFileDeletionRef.operationName = 'BeginSectionFileDeletion';
+exports.beginSectionFileDeletionRef = beginSectionFileDeletionRef;
+
+exports.beginSectionFileDeletion = function beginSectionFileDeletion(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(beginSectionFileDeletionRef(dcInstance, inputVars));
+}
+;
+
+const markSectionFileDeletedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkSectionFileDeleted', inputVars);
+}
+markSectionFileDeletedRef.operationName = 'MarkSectionFileDeleted';
+exports.markSectionFileDeletedRef = markSectionFileDeletedRef;
+
+exports.markSectionFileDeleted = function markSectionFileDeleted(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markSectionFileDeletedRef(dcInstance, inputVars));
+}
+;
 
 const updateUserMembershipStatusRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
@@ -857,6 +1131,20 @@ exports.createAnnouncementSend = function createAnnouncementSend(dcOrVars, vars)
 }
 ;
 
+const createAnnouncementSendWithDeliveryModeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAnnouncementSendWithDeliveryMode', inputVars);
+}
+createAnnouncementSendWithDeliveryModeRef.operationName = 'CreateAnnouncementSendWithDeliveryMode';
+exports.createAnnouncementSendWithDeliveryModeRef = createAnnouncementSendWithDeliveryModeRef;
+
+exports.createAnnouncementSendWithDeliveryMode = function createAnnouncementSendWithDeliveryMode(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createAnnouncementSendWithDeliveryModeRef(dcInstance, inputVars));
+}
+;
+
 const createAnnouncementRecipientRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -868,6 +1156,20 @@ exports.createAnnouncementRecipientRef = createAnnouncementRecipientRef;
 exports.createAnnouncementRecipient = function createAnnouncementRecipient(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(createAnnouncementRecipientRef(dcInstance, inputVars));
+}
+;
+
+const createAnnouncementRecipientWithDeliveryModeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateAnnouncementRecipientWithDeliveryMode', inputVars);
+}
+createAnnouncementRecipientWithDeliveryModeRef.operationName = 'CreateAnnouncementRecipientWithDeliveryMode';
+exports.createAnnouncementRecipientWithDeliveryModeRef = createAnnouncementRecipientWithDeliveryModeRef;
+
+exports.createAnnouncementRecipientWithDeliveryMode = function createAnnouncementRecipientWithDeliveryMode(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createAnnouncementRecipientWithDeliveryModeRef(dcInstance, inputVars));
 }
 ;
 

@@ -46,6 +46,7 @@ import {
   SectionEventsListView,
   SectionMembersView,
 } from "./SectionDetailViews";
+import SectionFilesList from "./SectionFilesList";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -506,19 +507,22 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       />
 
       {!selectedEventId && (
-        <SectionDescriptionHeader
-          section={section}
-          isMembers={isMembers}
-          hasCurrentUser={Boolean(currentUser)}
-          canSubscribe={canSubscribe}
-          userIsMember={userIsMember}
-          userHasSectionAccess={userHasSectionAccess}
-          hasSubscribableMemberGroup={hasSubscribableMemberGroup}
-          subscribing={subscribing}
-          onSubscribe={handleSubscribe}
-          onUnsubscribe={handleUnsubscribe}
-          sectionId={sectionId}
-        />
+        <>
+          <SectionDescriptionHeader
+            section={section}
+            isMembers={isMembers}
+            hasCurrentUser={Boolean(currentUser)}
+            canSubscribe={canSubscribe}
+            userIsMember={userIsMember}
+            userHasSectionAccess={userHasSectionAccess}
+            hasSubscribableMemberGroup={hasSubscribableMemberGroup}
+            subscribing={subscribing}
+            onSubscribe={handleSubscribe}
+            onUnsubscribe={handleUnsubscribe}
+            sectionId={sectionId}
+          />
+          <SectionFilesList sectionId={sectionId} />
+        </>
       )}
 
       {isMembers ? (
