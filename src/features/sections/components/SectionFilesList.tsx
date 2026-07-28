@@ -33,17 +33,19 @@ function fileDate(value: string): string {
 export default function SectionFilesList({ sectionId }: { sectionId: string }) {
   const [files, setFiles] = useState<SectionFile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(false);
+    setLoadError(false);
+    setDownloadError(false);
     try {
       setFiles(await listSectionFiles(sectionId));
     } catch {
       setFiles([]);
-      setError(true);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -55,11 +57,12 @@ export default function SectionFilesList({ sectionId }: { sectionId: string }) {
 
   const download = async (file: SectionFile) => {
     setDownloadingId(file.id);
+    setDownloadError(false);
     try {
       const result = await requestSectionFileDownload(sectionId, file.id);
       window.location.assign(result.downloadUrl);
     } catch {
-      setError(true);
+      setDownloadError(true);
     } finally {
       setDownloadingId(null);
     }
@@ -70,12 +73,17 @@ export default function SectionFilesList({ sectionId }: { sectionId: string }) {
       <Typography id="section-files-heading" variant="h6" component="h2">
         Files
       </Typography>
+      {downloadError && (
+        <Alert severity="error" sx={{ mt: 1 }}>
+          This file could not be downloaded. Your access may have changed; please try again.
+        </Alert>
+      )}
       {loading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 2 }}>
           <CircularProgress size={22} />
           <Typography>Loading files…</Typography>
         </Stack>
-      ) : error ? (
+      ) : loadError ? (
         <Alert
           severity="error"
           action={<Button color="inherit" onClick={() => void load()}>Reload files</Button>}
