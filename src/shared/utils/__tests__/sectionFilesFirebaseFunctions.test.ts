@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpsCallable } from "firebase/functions";
 import {
   listSectionFiles,
+  replaceSectionFile,
   requestSectionFileDownload,
 } from "../firebaseFunctions/sectionFiles";
 
@@ -42,5 +43,35 @@ describe("section file callable clients", () => {
       "requestSectionFileDownload",
     );
     expect(callable).toHaveBeenCalledWith({ sectionId: "section-1", fileId: "file-1" });
+  });
+
+  it("finalizes replacements using only trusted route identifiers", async () => {
+    const requestGrant = vi.fn().mockResolvedValue({
+      data: {
+        fileId: "file-1",
+        uploadUrl: "https://storage.example/upload",
+        expiresAt: "2026-07-28T07:00:00.000Z",
+        requiredHeaders: { "Content-Type": "application/pdf" },
+        replacement: {
+          originalFilename: "replacement.pdf",
+          contentType: "application/pdf",
+          sizeBytes: 9,
+        },
+      },
+    });
+    const finalize = vi.fn().mockResolvedValue({ data: { fileId: "file-1" } });
+    vi.mocked(httpsCallable).mockImplementation(((_functions: unknown, name: string) => {
+      if (name === "requestSectionFileReplacement") return requestGrant;
+      if (name === "finalizeSectionFileReplacement") return finalize;
+      throw new Error(`Unexpected callable ${name}`);
+    }) as unknown as typeof httpsCallable);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }));
+    const replacement = new File(["%PDF-new"], "replacement.pdf", {
+      type: "application/pdf",
+    });
+
+    await replaceSectionFile("section-1", "file-1", replacement);
+
+    expect(finalize).toHaveBeenCalledWith({ sectionId: "section-1", fileId: "file-1" });
   });
 });

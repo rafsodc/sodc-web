@@ -132,23 +132,11 @@ export async function replaceSectionFile(
     onStage?.("uploading");
     await putFile(grant, file);
     onStage?.("scanning");
-    const finalize = httpsCallable<
-      {
-        sectionId: string;
-        fileId: string;
-        originalFilename: string;
-        contentType: string;
-        sizeBytes: number;
-      },
-      { fileId: string }
-    >(functions, "finalizeSectionFileReplacement");
-    await finalize({
-      sectionId,
-      fileId,
-      originalFilename: file.name,
-      contentType: file.type,
-      sizeBytes: file.size,
-    });
+    const finalize = httpsCallable<{ sectionId: string; fileId: string }, { fileId: string }>(
+      functions,
+      "finalizeSectionFileReplacement",
+    );
+    await finalize({ sectionId, fileId });
   } catch (error) {
     const cancel = httpsCallable<{ sectionId: string; fileId: string }, { fileId: string }>(
       functions,

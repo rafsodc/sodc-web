@@ -376,7 +376,7 @@ export async function sendNotificationOnce(
   dependencies: SendNotificationOnceDependencies = {}
 ): Promise<SendNotificationOnceResult> {
   const deliveryMode = request.provider === "govuk_notify"
-    ? request.deliveryMode ?? (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).effectiveMode
+    ? (await resolveRuntimeGovNotifyDeliveryMode(request.deliveryMode ?? "LIVE")).effectiveMode
     : request.deliveryMode;
   if (deliveryMode) {
     request = {
