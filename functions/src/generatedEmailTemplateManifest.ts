@@ -49,6 +49,13 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     ],
     body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Updated booking (revision ((revisedRevisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\nAccommodation: ((accommodationSummary))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nDifference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nManage payments:\n\n((myPaymentsUrl))\n\nSODC",
   },
+  emailVerification: {
+    subject: "Verify your SODC email address",
+    variables: [
+    "verificationLink"
+    ],
+    body: "Welcome to SODC.\n\nUse this secure link to verify your email address:\n\n((verificationLink))\n\nIf you did not create an SODC account, you can ignore this email.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+  },
   guestTicketRequestApproved: {
     subject: "Guest ticket request approved — ((eventTitle))",
     variables: [

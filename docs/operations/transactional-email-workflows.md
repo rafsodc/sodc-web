@@ -1,6 +1,6 @@
 # Transactional email workflows
 
-App-owned transactional email uses **GOV.UK Notify** via [`functions/src/mailer.ts`](../../functions/src/mailer.ts). Domain-event messages use the idempotent delivery ledger in [`functions/src/notificationDelivery.ts`](../../functions/src/notificationDelivery.ts). Password reset uses a one-time Firebase action code delivered by Notify; email verification remains Firebase-managed until #411.
+App-owned transactional email uses **GOV.UK Notify** via [`functions/src/mailer.ts`](../../functions/src/mailer.ts). Domain-event messages use the idempotent delivery ledger in [`functions/src/notificationDelivery.ts`](../../functions/src/notificationDelivery.ts). Password reset and email verification use one-time Firebase action codes delivered by Notify and completed on the site-owned `/auth/action` route.
 
 Per-template placeholder specs live in the linked `govuk-notify-*.md` files below. **Draft Notify subject/body copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). **Registration runbook:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md). Environment variables: [environment-and-secrets.md](./environment-and-secrets.md).
 
@@ -34,6 +34,11 @@ site-owned `/auth/action` route, sends it once through the configured Notify del
 mode, and always returns the same success response for existing and unknown accounts.
 The public callable is limited to five attempts per hour using a hash derived from the
 normalized email address and requester IP; logs do not contain either value or the link.
+
+Email-verification messages follow the same no-ledger rule. The authenticated
+`requestEmailVerification` callable derives the recipient from the Firebase Auth
+record, works before email verification/account enablement, and is limited to five
+requests per user per hour. Registration and resend both use this backend path.
 
 ## Retry and stale-claim recovery
 

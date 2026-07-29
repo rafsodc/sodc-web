@@ -80,6 +80,8 @@ The only callable entry points intentionally using authentication without an ena
 
 - `updateDisplayName`, used while establishing the account profile.
 - `syncPendingUserClaims`, used to reconcile the pre-approval Auth/profile state.
+- `requestEmailVerification`, which derives the recipient from Firebase Auth and
+  sends no member data to the caller.
 
 These exceptions must not return member-directory data, announcement data, or other enabled-member content. Adding another authentication-only callable requires an explicit security review and a contract-test update.
 

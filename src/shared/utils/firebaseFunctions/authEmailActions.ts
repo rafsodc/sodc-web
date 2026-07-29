@@ -8,3 +8,11 @@ export async function requestPasswordResetEmail(email: string): Promise<void> {
   );
   await callable({ email });
 }
+
+export async function requestEmailVerification(): Promise<void> {
+  const callable = httpsCallable<void, { success: true }>(
+    functions,
+    "requestEmailVerification",
+  );
+  await callable();
+}

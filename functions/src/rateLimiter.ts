@@ -52,6 +52,7 @@ export const CALLABLE_RATE_LIMITS = {
   cancelSectionFileReplacement: { limit: 30, windowMs: HOUR_MS },
   deleteSectionFile: { limit: 30, windowMs: HOUR_MS },
   requestPasswordReset: { limit: 5, windowMs: HOUR_MS },
+  requestEmailVerification: { limit: 5, windowMs: HOUR_MS },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitedCallableName = keyof typeof CALLABLE_RATE_LIMITS;

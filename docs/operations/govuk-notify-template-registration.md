@@ -41,10 +41,11 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
 | `bookingRevision` | `GOV_NOTIFY_TEMPLATE_BOOKING_REVISION` | | | | [ ] |
 | `newUserPendingApprovalAlert` | `GOV_NOTIFY_TEMPLATE_NEW_USER_PENDING_APPROVAL_ALERT` | | | | [ ] |
 | `passwordReset` | `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET` | | | | [ ] |
+| `emailVerification` | `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` | | | | [ ] |
 
 ## Suggested order
 
-1. Dev — all 14 templates, then E2E smoke tests
+1. Dev — all 15 templates, then E2E smoke tests
 2. Beta — clone copy, new UUIDs, repeat smoke tests  
 3. Prod — final copy review, register UUIDs, enable sends  
 

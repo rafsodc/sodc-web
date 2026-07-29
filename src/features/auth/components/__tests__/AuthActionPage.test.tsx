@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  applyActionCode,
+  checkActionCode,
   confirmPasswordReset,
   verifyPasswordResetCode,
 } from "firebase/auth";
@@ -11,6 +13,8 @@ vi.mock("firebase/auth", async (importOriginal) => {
   const original = await importOriginal<typeof import("firebase/auth")>();
   return {
     ...original,
+    applyActionCode: vi.fn(),
+    checkActionCode: vi.fn(),
     verifyPasswordResetCode: vi.fn(),
     confirmPasswordReset: vi.fn(),
   };
@@ -58,7 +62,7 @@ describe("AuthActionPage", () => {
 
     expect(await screen.findByText("This email action link is invalid.")).toBeInTheDocument();
     expect(verifyPasswordResetCode).not.toHaveBeenCalled();
-    expect(screen.getByRole("link", { name: "Request a new link" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to sign in" })).toBeInTheDocument();
   });
 
   it("offers a new link when the code has expired", async () => {
@@ -70,5 +74,17 @@ describe("AuthActionPage", () => {
     expect(
       await screen.findByText("This reset link has expired. Request a new one to continue."),
     ).toBeInTheDocument();
+  });
+
+  it("checks and applies an email verification code", async () => {
+    vi.mocked(checkActionCode).mockResolvedValue({} as never);
+    vi.mocked(applyActionCode).mockResolvedValue();
+    renderAction("?mode=verifyEmail&oobCode=verification-code");
+
+    expect(
+      await screen.findByText("Your email address has been verified."),
+    ).toBeInTheDocument();
+    expect(checkActionCode).toHaveBeenCalledWith(expect.anything(), "verification-code");
+    expect(applyActionCode).toHaveBeenCalledWith(expect.anything(), "verification-code");
   });
 });

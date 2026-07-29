@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Alert,
   Box,
@@ -7,7 +7,8 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { sendEmailVerification, reload, type User } from "firebase/auth";
+import { reload, type User } from "firebase/auth";
+import { requestEmailVerification } from "../../../shared/utils/firebaseFunctions";
 
 interface EmailVerificationMessageProps {
   user: User;
@@ -27,11 +28,16 @@ export default function EmailVerificationMessage({
     setError(null);
     setSending(true);
     try {
-      await sendEmailVerification(user);
+      await requestEmailVerification();
       setSent(true);
-      setTimeout(() => setSent(false), 5000);
-    } catch (e: any) {
-      setError(e?.message || "Failed to resend verification email");
+      setTimeout(() => setSent(false), 60_000);
+    } catch (e: unknown) {
+      const code = typeof e === "object" && e && "code" in e ? String(e.code) : "";
+      setError(
+        code.includes("resource-exhausted")
+          ? "Too many verification emails requested. Please wait before trying again."
+          : "We couldn’t resend the verification email. Check your connection and try again.",
+      );
     } finally {
       setSending(false);
     }
@@ -52,33 +58,12 @@ export default function EmailVerificationMessage({
       } else {
         setError("Email not yet verified. Please check your inbox and click the verification link.");
       }
-    } catch (e: any) {
-      setError(e?.message || "Failed to check verification status");
+    } catch {
+      setError("We couldn’t check your verification status. Please try again.");
     } finally {
       setChecking(false);
     }
   };
-
-  useEffect(() => {
-    if (user?.emailVerified) {
-      return;
-    }
-
-    const interval = setInterval(async () => {
-      if (user && !user.emailVerified) {
-        try {
-          await reload(user);
-          if (user.emailVerified && onVerified) {
-            onVerified();
-          }
-        } catch {
-          // Silently fail auto-checks
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [user, onVerified]);
 
   return (
     <Box sx={{ textAlign: "left" }}>
@@ -86,8 +71,8 @@ export default function EmailVerificationMessage({
         Verify your email
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-        We sent a link to <strong>{user.email}</strong>. Click the link in that email, then come
-        back here to continue.
+        We sent a link to <strong>{user.email}</strong>. Open it to verify your address
+        securely on this site.
       </Typography>
 
       <Alert severity="info" sx={{ mb: 2 }}>

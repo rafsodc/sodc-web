@@ -399,3 +399,29 @@ SODC
 ```
 
 **Placeholders used:** `resetLink`
+
+---
+
+### `emailVerification`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION`
+
+**Subject:** Verify your SODC email address
+
+**Body:**
+
+```
+Welcome to SODC.
+
+Use this secure link to verify your email address:
+
+((verificationLink))
+
+If you did not create an SODC account, you can ignore this email.
+
+For your security, do not forward this email or share the link.
+
+SODC
+```
+
+**Placeholders used:** `verificationLink`
