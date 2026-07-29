@@ -6,11 +6,11 @@ import { REGISTRATION_MIN_PASSWORD_LENGTH } from "../../../../constants/auth";
 
 vi.mock("firebase/auth", () => ({
   createUserWithEmailAndPassword: vi.fn(),
-  sendEmailVerification: vi.fn(),
 }));
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   syncPendingUserClaims: vi.fn(),
+  requestEmailVerification: vi.fn(),
 }));
 
 async function fillForm(user: ReturnType<typeof userEvent.setup>, password: string) {

@@ -117,9 +117,29 @@ describe("function entry guard contracts", () => {
       "enforceRateLimit(\"requestPasswordReset\"",
       700,
     );
-    expect(authEmailActions).not.toContain("requireAuth(request);");
+    const passwordResetEntry = authEmailActions.slice(
+      authEmailActions.indexOf("export const requestPasswordReset"),
+      authEmailActions.indexOf("export const requestEmailVerification"),
+    );
+    expect(passwordResetEntry).not.toContain("requireAuth(request);");
     expect(authEmailActions).toContain("return neutralResponse();");
     expect(authEmailActions).not.toContain("logger.warn(email");
+  });
+
+  it("allows signed-in onboarding users to request rate-limited verification", () => {
+    const authEmailActions = readSource("authEmailActions.ts");
+    assertOnCallGuard(
+      authEmailActions,
+      "requestEmailVerification",
+      "requireAuth(request);",
+      900,
+    );
+    assertOnCallGuard(
+      authEmailActions,
+      "requestEmailVerification",
+      "enforceRateLimit(\"requestEmailVerification\"",
+      900,
+    );
   });
 
   it("applies centralized rate limits to the high-risk callables named in #344 and #369", () => {

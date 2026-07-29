@@ -3,7 +3,7 @@ import * as logger from "firebase-functions/logger";
 import { onCall } from "firebase-functions/v2/https";
 import { createHash, randomUUID } from "node:crypto";
 import { FUNCTIONS_REGION } from "./constants";
-import { validateEmail } from "./helpers";
+import { requireAuth, validateEmail } from "./helpers";
 import {
   createConfiguredGovNotifyMailer,
   govNotifySecrets,
@@ -11,16 +11,27 @@ import {
 } from "./mailer";
 import { enforceRateLimit } from "./rateLimiter";
 
-export const AUTH_EMAIL_TEMPLATE_KEYS = ["passwordReset"] as const;
+export const AUTH_EMAIL_TEMPLATE_KEYS = ["passwordReset", "emailVerification"] as const;
 
 export type AuthEmailTemplates = {
   passwordReset: {
     resetLink: string;
   };
+  emailVerification: {
+    verificationLink: string;
+  };
 };
 
 export interface PasswordResetDependencies {
   generatePasswordResetLink(
+    email: string,
+    settings: admin.auth.ActionCodeSettings,
+  ): Promise<string>;
+  mailer: TransactionalMailer<AuthEmailTemplates>;
+}
+
+export interface EmailVerificationDependencies {
+  generateEmailVerificationLink(
     email: string,
     settings: admin.auth.ActionCodeSettings,
   ): Promise<string>;
@@ -77,6 +88,25 @@ export function applicationPasswordResetLink(firebaseLink: string, appBaseUrl: s
   return target.toString();
 }
 
+export function applicationEmailVerificationLink(
+  firebaseLink: string,
+  appBaseUrl: string,
+): string {
+  const generated = new URL(firebaseLink);
+  const mode = generated.searchParams.get("mode");
+  const oobCode = generated.searchParams.get("oobCode");
+  if (mode !== "verifyEmail" || !oobCode) {
+    throw new Error("Firebase generated an invalid email-verification action link");
+  }
+
+  const target = new URL("/auth/action", `${appBaseUrl.replace(/\/$/, "")}/`);
+  target.searchParams.set("mode", "verifyEmail");
+  target.searchParams.set("oobCode", oobCode);
+  const lang = generated.searchParams.get("lang");
+  if (lang) target.searchParams.set("lang", lang);
+  return target.toString();
+}
+
 export async function requestPasswordResetForEmail(
   email: string,
   dependencies: PasswordResetDependencies,
@@ -92,6 +122,25 @@ export async function requestPasswordResetForEmail(
     to: email,
     personalisation: { resetLink },
     reference: `PASSWORD_RESET:${randomUUID()}`,
+    requestedDeliveryMode: "LIVE",
+  });
+}
+
+export async function requestEmailVerificationForUser(
+  email: string,
+  dependencies: EmailVerificationDependencies,
+): Promise<void> {
+  const firebaseLink = await dependencies.generateEmailVerificationLink(email, {
+    url: `${APP_BASE_URL}/account`,
+    handleCodeInApp: false,
+  });
+  const verificationLink = applicationEmailVerificationLink(firebaseLink, APP_BASE_URL);
+
+  await dependencies.mailer.sendEmail({
+    templateName: "emailVerification",
+    to: email,
+    personalisation: { verificationLink },
+    reference: `EMAIL_VERIFICATION:${randomUUID()}`,
     requestedDeliveryMode: "LIVE",
   });
 }
@@ -128,6 +177,32 @@ export const requestPasswordReset = onCall(
       });
     }
 
+    return neutralResponse();
+  },
+);
+
+/**
+ * Available to signed-in onboarding users before email verification or account
+ * enablement. The recipient is always derived from Firebase Auth, never input.
+ */
+export const requestEmailVerification = onCall(
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
+  async (request): Promise<{ success: true }> => {
+    requireAuth(request);
+    await enforceRateLimit("requestEmailVerification", request.auth!.uid);
+    const user = await admin.auth().getUser(request.auth!.uid);
+    if (!user.email) {
+      throw new Error("Authenticated user has no email address");
+    }
+    if (user.emailVerified) {
+      return neutralResponse();
+    }
+
+    await requestEmailVerificationForUser(user.email, {
+      generateEmailVerificationLink: (address, settings) =>
+        admin.auth().generateEmailVerificationLink(address, settings),
+      mailer: createAuthEmailMailer(),
+    });
     return neutralResponse();
   },
 );

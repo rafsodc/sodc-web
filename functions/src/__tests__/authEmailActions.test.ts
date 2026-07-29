@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TransactionalMailer } from "../mailer";
 import {
+  applicationEmailVerificationLink,
   applicationPasswordResetLink,
   passwordResetRateLimitKey,
   requestPasswordResetForEmail,
+  requestEmailVerificationForUser,
   type AuthEmailTemplates,
 } from "../authEmailActions";
 
@@ -81,5 +83,43 @@ describe("auth email actions", () => {
     );
     const request = vi.mocked(sendMailer.sendEmail).mock.calls[0][0];
     expect(request.reference).toMatch(/^PASSWORD_RESET:[0-9a-f-]{36}$/);
+  });
+
+  it("generates and sends an application-owned email verification link", async () => {
+    const sendMailer = mailer();
+    const generateEmailVerificationLink = vi.fn(async () =>
+      "https://example.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=verify-code&apiKey=public"
+    );
+
+    await requestEmailVerificationForUser("member@example.org", {
+      generateEmailVerificationLink,
+      mailer: sendMailer,
+    });
+
+    expect(generateEmailVerificationLink).toHaveBeenCalledWith(
+      "member@example.org",
+      expect.objectContaining({ handleCodeInApp: false }),
+    );
+    expect(sendMailer.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateName: "emailVerification",
+        to: "member@example.org",
+        personalisation: {
+          verificationLink:
+            "http://localhost:5173/auth/action?mode=verifyEmail&oobCode=verify-code",
+        },
+      }),
+    );
+  });
+
+  it("rewrites only valid Firebase verification links", () => {
+    expect(
+      applicationEmailVerificationLink(
+        "https://example.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=verify-code&continueUrl=https%3A%2F%2Fevil.example",
+        "https://members.example.org",
+      ),
+    ).toBe(
+      "https://members.example.org/auth/action?mode=verifyEmail&oobCode=verify-code",
+    );
   });
 });

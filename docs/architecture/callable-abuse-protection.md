@@ -22,6 +22,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | Callable | Limit | Window | Primary risk |
 |---|---:|---:|---|
 | `requestPasswordReset` | 5 | 1 hour | Account enumeration, Firebase Auth and GOV.UK Notify |
+| `requestEmailVerification` | 5 | 1 hour | Firebase Auth and GOV.UK Notify resend abuse |
 | `grantAdmin` | 20 | 1 hour | Firebase Auth claim write |
 | `revokeAdmin` | 20 | 1 hour | Firebase Auth enumeration and claim write |
 | `listAdminUsers` | 30 | 5 minutes | Firebase Auth enumeration |
@@ -63,6 +64,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | Callable | Abuse | Enumeration | External API | Cost / fan-out | Control |
 |---|---|---|---|---|---|
 | `requestPasswordReset` | High | High | Firebase Auth, GOV.UK Notify | Medium | Public; email/IP-derived pseudonymous key; neutral success response; 5/hour |
+| `requestEmailVerification` | High | None | Firebase Auth, GOV.UK Notify | Medium | Authenticated onboarding exception; recipient derived from Auth; 5/hour |
 | `grantAdmin` | High | Low | Firebase Auth | Medium | Admin + enabled; 20/hour |
 | `revokeAdmin` | High | Medium | Firebase Auth | Medium | Admin + enabled; 20/hour; last-admin guard |
 | `listAdminUsers` | Medium | High | Firebase Auth | Medium | Admin + enabled; 30/5 minutes |
