@@ -78,5 +78,10 @@
     "dev": "f13f16aa-a0f8-4baa-a6d2-812be3f6baaf",
     "beta": "",
     "production": ""
+  },
+  "emailChangeVerification": {
+    "dev": "edbd2f81-49fe-4bae-a106-a182df239a53",
+    "beta": "",
+    "production": ""
   }
 }

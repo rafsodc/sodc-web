@@ -2858,6 +2858,15 @@ export interface UpdateUserData {
   user_upsert: User_Key;
 }
 
+export interface UpdateUserEmailFromAuthData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateUserEmailFromAuthVariables {
+  userId: string;
+  email: string;
+}
+
 export interface UpdateUserGroupData {
   userGroup_update?: UserGroup_Key | null;
 }
@@ -3201,6 +3210,18 @@ export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
 
 export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+interface UpdateUserEmailFromAuthRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserEmailFromAuthVariables): MutationRef<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateUserEmailFromAuthVariables): MutationRef<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+  operationName: string;
+}
+export const updateUserEmailFromAuthRef: UpdateUserEmailFromAuthRef;
+
+export function updateUserEmailFromAuth(vars: UpdateUserEmailFromAuthVariables): MutationPromise<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+export function updateUserEmailFromAuth(dc: DataConnect, vars: UpdateUserEmailFromAuthVariables): MutationPromise<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
 
 interface DeleteUserRef {
   /* Allow users to create refs without passing in DataConnect */

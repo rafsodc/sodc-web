@@ -38,7 +38,10 @@ import {
 import { auth, dataConnect } from "../../../config/firebase";
 import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
-import { resignMembership } from "../../../shared/utils/firebaseFunctions";
+import {
+  requestEmailChange,
+  resignMembership,
+} from "../../../shared/utils/firebaseFunctions";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { canUserResignMembership } from "../../users/utils/membershipStatusValidation";
 import { useColorMode, type ColorModePreference } from "../../../shared/appShell/ColorModeContext";
@@ -207,6 +210,11 @@ export default function AccountSettingsPage({
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState(false);
 
   const [resignDialogOpen, setResignDialogOpen] = useState(false);
   const [resignSubmitting, setResignSubmitting] = useState(false);
@@ -261,6 +269,51 @@ export default function AccountSettingsPage({
       setPasswordError(getAuthErrorMessage(error));
     } finally {
       setPasswordSubmitting(false);
+    }
+  };
+
+  const handleEmailSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setEmailError(null);
+    setEmailSuccess(false);
+    const normalized = newEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      setEmailError("Enter a valid email address");
+      return;
+    }
+    if (!user.email) {
+      setEmailError("Your account does not have an email address for re-authentication");
+      return;
+    }
+    if (normalized === user.email.trim().toLowerCase()) {
+      setEmailError("Enter a different email address");
+      return;
+    }
+
+    setEmailSubmitting(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, emailCurrentPassword);
+      await reauthenticateWithCredential(user, credential);
+      await user.getIdToken(true);
+      await requestEmailChange(normalized);
+      setNewEmail("");
+      setEmailCurrentPassword("");
+      setEmailSuccess(true);
+    } catch (error: unknown) {
+      const code = (error as { code?: string })?.code ?? "";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setEmailError("Current password is incorrect");
+      } else if (code.includes("resource-exhausted")) {
+        setEmailError("Too many email-change requests. Please wait before trying again.");
+      } else if (code.includes("already-exists")) {
+        setEmailError(
+          "This email address cannot be used. It may already be linked to another account.",
+        );
+      } else {
+        setEmailError("The email change could not be started. Check the address and try again.");
+      }
+    } finally {
+      setEmailSubmitting(false);
     }
   };
 
@@ -391,6 +444,67 @@ export default function AccountSettingsPage({
             When off, other members will see you listed but won't be able to view your contact
             details.
           </Typography>
+        </Box>
+
+        <Divider />
+
+        <Box component="section" aria-labelledby="change-email-heading">
+          <Typography id="change-email-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
+            Change email address
+          </Typography>
+          {!canChangePassword ? (
+            <Alert severity="info">
+              Email changes are only available for email and password sign-in.
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Current address: <strong>{user.email}</strong>. The new address will not take
+                effect until you confirm the link sent to it.
+              </Typography>
+              {emailError ? <Alert severity="error" sx={{ mb: 2 }}>{emailError}</Alert> : null}
+              {emailSuccess ? (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  Check the new address for a confirmation link.
+                </Alert>
+              ) : null}
+              <Box component="form" onSubmit={handleEmailSubmit}>
+                <Stack spacing={2}>
+                  <TextField
+                    label="New email address"
+                    type="email"
+                    value={newEmail}
+                    onChange={(event) => setNewEmail(event.target.value)}
+                    autoComplete="email"
+                    required
+                    fullWidth
+                    disabled={emailSubmitting}
+                  />
+                  <TextField
+                    label="Current password for email change"
+                    type="password"
+                    value={emailCurrentPassword}
+                    onChange={(event) => setEmailCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                    fullWidth
+                    disabled={emailSubmitting}
+                  />
+                  <Box>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={emailSubmitting || !newEmail.trim() || !emailCurrentPassword}
+                    >
+                      {emailSubmitting
+                        ? <CircularProgress size={24} color="inherit" />
+                        : "Send confirmation link"}
+                    </Button>
+                  </Box>
+                </Stack>
+              </Box>
+            </>
+          )}
         </Box>
 
         <Divider />

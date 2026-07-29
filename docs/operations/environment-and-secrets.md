@@ -47,6 +47,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `GOV_NOTIFY_TEMPLATE_<TEMPLATE_NAME>` | env var | GOV.UK Notify template IDs for app-owned transactional email templates | required for each enabled app email template |
 | `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET` | env var | Notify template UUID for the site-managed password-reset email | required for password reset |
 | `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` | env var | Notify template UUID for the site-managed email-verification message | required for registration and verification resend |
+| `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION` | env var | Notify template UUID for verified email-address changes | required for self-service email change |
 | `PAYMENT_OPS_ALERT_EMAILS` | env var | Comma-separated internal recipient emails for payment reconciliation / dispute ops alerts (Stripe webhook path); unset disables sends | optional |
 | `GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT` | env var | Notify template UUID for internal reconciliation-exception alerts | required when `PAYMENT_OPS_ALERT_EMAILS` is set |
 | `GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT` | env var | Notify template UUID for internal dispute side-state alerts | required when `PAYMENT_OPS_ALERT_EMAILS` is set |
@@ -73,6 +74,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 - Template env var names are derived from typed template names in `functions/src/mailer.ts`; for example, `paymentConfirmation` maps to `GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION`.
 - Site-managed password reset (#410): template key `passwordReset` maps to `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET`; `APP_BASE_URL` must be the canonical HTTPS site origin so emailed links return to `/auth/action`.
 - Site-managed verification (#411): template key `emailVerification` maps to `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` and uses the same `/auth/action` route.
+- Verified email change (#446): template key `emailChangeVerification` maps to `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION`; completion uses `mode=verifyAndChangeEmail` on `/auth/action`.
 - Ticket order lifecycle emails (issue #186): template keys `ticketOrderPaid`, `ticketOrderFailed`, `ticketOrderRefunded` — full placeholder spec and env var mapping in [govuk-notify-ticket-order-templates.md](./govuk-notify-ticket-order-templates.md).
 - Internal payment ops / finance alerts (reconciliation exceptions and dispute side-state): see [govuk-notify-payment-ops-internal-templates.md](./govuk-notify-payment-ops-internal-templates.md).
 - Membership approval / account access emails (#188): template keys `membershipActivated`, `membershipAccessRestricted` — see [govuk-notify-membership-templates.md](./govuk-notify-membership-templates.md).

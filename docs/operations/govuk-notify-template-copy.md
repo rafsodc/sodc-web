@@ -425,3 +425,29 @@ SODC
 ```
 
 **Placeholders used:** `verificationLink`
+
+---
+
+### `emailChangeVerification`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION`
+
+**Subject:** Confirm your new SODC email address
+
+**Body:**
+
+```
+We received a request to change the email address used for your SODC account.
+
+Use this secure link to confirm the new address:
+
+((verificationLink))
+
+If you did not request this change, you can ignore this email. Your current address will remain unchanged.
+
+For your security, do not forward this email or share the link.
+
+SODC
+```
+
+**Placeholders used:** `verificationLink`

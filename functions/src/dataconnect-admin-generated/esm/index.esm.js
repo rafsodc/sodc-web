@@ -234,6 +234,12 @@ export function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, opt
   return dcInstance.executeMutation('UpdateUserMembershipStatus', inputVars, inputOpts);
 }
 
+export function updateUserEmailFromAuth(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUserEmailFromAuth', inputVars, inputOpts);
+}
+
 export function deleteUser(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

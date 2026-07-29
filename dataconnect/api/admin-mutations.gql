@@ -431,6 +431,19 @@ mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: Members
   )
 }
 
+# Reconcile profile email after Firebase has completed a verified email change.
+# The callable supplies both values from the Firebase Auth user record.
+mutation UpdateUserEmailFromAuth($userId: String!, $email: String!) @auth(level: NO_ACCESS) {
+  user_update(
+    id: $userId
+    data: {
+      email: $email
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 # Delete a user (SDK only)
 # Used by Firebase Functions/CLI for dev reset operations
 mutation DeleteUser($userId: String!) @auth(level: NO_ACCESS) {

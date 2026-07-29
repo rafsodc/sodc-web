@@ -5,9 +5,17 @@ import {
   applyActionCode,
   checkActionCode,
   confirmPasswordReset,
+  reload,
   verifyPasswordResetCode,
 } from "firebase/auth";
 import AuthActionPage from "../AuthActionPage";
+import { reconcileMyEmail } from "../../../../shared/utils/firebaseFunctions";
+import { auth } from "../../../../config/firebase";
+import { createMockUser } from "../../../../test-utils/mocks/firebase";
+
+const mutableAuth = auth as unknown as {
+  currentUser: ReturnType<typeof createMockUser> | null;
+};
 
 vi.mock("firebase/auth", async (importOriginal) => {
   const original = await importOriginal<typeof import("firebase/auth")>();
@@ -15,14 +23,20 @@ vi.mock("firebase/auth", async (importOriginal) => {
     ...original,
     applyActionCode: vi.fn(),
     checkActionCode: vi.fn(),
+    reload: vi.fn(),
     verifyPasswordResetCode: vi.fn(),
     confirmPasswordReset: vi.fn(),
   };
 });
 
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
+  reconcileMyEmail: vi.fn(),
+}));
+
 describe("AuthActionPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mutableAuth.currentUser = null;
   });
 
   function renderAction(search: string) {
@@ -79,6 +93,7 @@ describe("AuthActionPage", () => {
   it("checks and applies an email verification code", async () => {
     vi.mocked(checkActionCode).mockResolvedValue({} as never);
     vi.mocked(applyActionCode).mockResolvedValue();
+    vi.mocked(reload).mockResolvedValue();
     renderAction("?mode=verifyEmail&oobCode=verification-code");
 
     expect(
@@ -86,5 +101,21 @@ describe("AuthActionPage", () => {
     ).toBeInTheDocument();
     expect(checkActionCode).toHaveBeenCalledWith(expect.anything(), "verification-code");
     expect(applyActionCode).toHaveBeenCalledWith(expect.anything(), "verification-code");
+  });
+
+  it("applies a verify-and-change-email code", async () => {
+    mutableAuth.currentUser = createMockUser({ email: "new@example.org" });
+    vi.mocked(checkActionCode).mockResolvedValue({} as never);
+    vi.mocked(applyActionCode).mockResolvedValue();
+    vi.mocked(reload).mockResolvedValue();
+    vi.mocked(reconcileMyEmail).mockResolvedValue("new@example.org");
+    renderAction("?mode=verifyAndChangeEmail&oobCode=change-code");
+
+    expect(
+      await screen.findByText("Your email address has been changed."),
+    ).toBeInTheDocument();
+    expect(checkActionCode).toHaveBeenCalledWith(expect.anything(), "change-code");
+    expect(applyActionCode).toHaveBeenCalledWith(expect.anything(), "change-code");
+    expect(reconcileMyEmail).toHaveBeenCalledOnce();
   });
 });

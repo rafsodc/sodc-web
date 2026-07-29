@@ -31,6 +31,7 @@ vi.mock("@dataconnect/generated", async (importOriginal) => {
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   resignMembership: vi.fn(),
+  requestEmailChange: vi.fn(),
 }));
 
 const mockOptOutAsync = vi.fn().mockResolvedValue(undefined);
@@ -208,9 +209,9 @@ describe("AccountSettingsPage", () => {
       { user: mockUser, userData, isAdmin: false }
     );
 
-    const currentPasswordInput = document.querySelector(
-      'input[autocomplete="current-password"]'
-    ) as HTMLInputElement;
+    const currentPasswordInput = screen.getByLabelText(
+      /^Current password(?! for email change)/i,
+    );
     const newPasswordInput = document.querySelector(
       'input[autocomplete="new-password"]'
     ) as HTMLInputElement;
@@ -230,15 +231,58 @@ describe("AccountSettingsPage", () => {
     expect(screen.getByText("Password updated successfully")).toBeInTheDocument();
   });
 
+  it("reauthenticates and requests a verified email change", async () => {
+    const interaction = userEvent.setup();
+    vi.mocked(firebaseFunctions.requestEmailChange).mockResolvedValue();
+    const { reauthenticateWithCredential } = await import("firebase/auth");
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    await interaction.type(screen.getByLabelText(/New email address/i), "new@example.com");
+    await interaction.type(
+      screen.getByLabelText(/Current password for email change/i),
+      "current-password",
+    );
+    await interaction.click(screen.getByRole("button", { name: "Send confirmation link" }));
+
+    await waitFor(() => {
+      expect(reauthenticateWithCredential).toHaveBeenCalled();
+      expect(firebaseFunctions.requestEmailChange).toHaveBeenCalledWith("new@example.com");
+    });
+    expect(
+      screen.getByText("Check the new address for a confirmation link."),
+    ).toBeInTheDocument();
+  });
+
+  it("explains when the replacement email is already linked to an account", async () => {
+    const interaction = userEvent.setup();
+    vi.mocked(firebaseFunctions.requestEmailChange).mockRejectedValue({
+      code: "functions/already-exists",
+    });
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    await interaction.type(screen.getByLabelText(/New email address/i), "used@example.com");
+    await interaction.type(
+      screen.getByLabelText(/Current password for email change/i),
+      "current-password",
+    );
+    await interaction.click(screen.getByRole("button", { name: "Send confirmation link" }));
+
+    expect(
+      await screen.findByText(
+        "This email address cannot be used. It may already be linked to another account.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("rejects a new password below the shared minimum length (#208)", async () => {
     const user = userEvent.setup();
     const { updatePassword } = await import("firebase/auth");
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const currentPasswordInput = document.querySelector(
-      'input[autocomplete="current-password"]'
-    ) as HTMLInputElement;
+    const currentPasswordInput = screen.getByLabelText(
+      /^Current password(?! for email change)/i,
+    );
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "old-pass");
@@ -314,9 +358,9 @@ describe("AccountSettingsPage", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const currentPasswordInput = document.querySelector(
-      'input[autocomplete="current-password"]'
-    ) as HTMLInputElement;
+    const currentPasswordInput = screen.getByLabelText(
+      /^Current password(?! for email change)/i,
+    );
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "pass");
@@ -379,9 +423,9 @@ describe("AccountSettingsPage", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const currentPasswordInput = document.querySelector(
-      'input[autocomplete="current-password"]'
-    ) as HTMLInputElement;
+    const currentPasswordInput = screen.getByLabelText(
+      /^Current password(?! for email change)/i,
+    );
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "wrong-pass");
@@ -402,9 +446,9 @@ describe("AccountSettingsPage", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const currentPasswordInput = document.querySelector(
-      'input[autocomplete="current-password"]'
-    ) as HTMLInputElement;
+    const currentPasswordInput = screen.getByLabelText(
+      /^Current password(?! for email change)/i,
+    );
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "pass");
@@ -426,9 +470,9 @@ describe("AccountSettingsPage", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    const currentPasswordInput = document.querySelector(
-      'input[autocomplete="current-password"]'
-    ) as HTMLInputElement;
+    const currentPasswordInput = screen.getByLabelText(
+      /^Current password(?! for email change)/i,
+    );
     const newPasswordInputs = document.querySelectorAll('input[autocomplete="new-password"]');
 
     await user.type(currentPasswordInput, "pass");

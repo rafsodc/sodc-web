@@ -2839,6 +2839,15 @@ export interface UpdateUserData {
   user_upsert: User_Key;
 }
 
+export interface UpdateUserEmailFromAuthData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateUserEmailFromAuthVariables {
+  userId: string;
+  email: string;
+}
+
 export interface UpdateUserGroupData {
   userGroup_update?: UserGroup_Key | null;
 }
@@ -3049,6 +3058,11 @@ export function markSectionFileDeleted(vars: MarkSectionFileDeletedVariables, op
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateUserEmailFromAuth' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateUserEmailFromAuth(dc: DataConnect, vars: UpdateUserEmailFromAuthVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserEmailFromAuthData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateUserEmailFromAuth' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateUserEmailFromAuth(vars: UpdateUserEmailFromAuthVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserEmailFromAuthData>>;
 
 /** Generated Node Admin SDK operation action function for the 'DeleteUser' Mutation. Allow users to execute without passing in DataConnect. */
 export function deleteUser(dc: DataConnect, vars: DeleteUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteUserData>>;

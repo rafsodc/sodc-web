@@ -19,6 +19,7 @@ import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
 import { ROUTES } from "../../../constants";
 import { canAttemptSignIn } from "../utils/passwordValidation";
+import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 
 interface AuthGateProps {
   userData?: UserData | null;
@@ -51,6 +52,14 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       await userCredential.user.getIdToken(true);
+      if (userCredential.user.emailVerified) {
+        try {
+          await reconcileMyEmail();
+        } catch {
+          // Accounts without a Data Connect profile have nothing to reconcile;
+          // a later sign-in retries after profile creation.
+        }
+      }
       setPassword("");
       if (onRegisterComplete) {
         onRegisterComplete();

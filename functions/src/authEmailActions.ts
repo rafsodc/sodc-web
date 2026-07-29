@@ -1,9 +1,10 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { createHash, randomUUID } from "node:crypto";
+import { updateUserEmailFromAuth } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
-import { requireAuth, validateEmail } from "./helpers";
+import { requireAuth, requireEnabled, validateEmail } from "./helpers";
 import {
   createConfiguredGovNotifyMailer,
   govNotifySecrets,
@@ -11,13 +12,20 @@ import {
 } from "./mailer";
 import { enforceRateLimit } from "./rateLimiter";
 
-export const AUTH_EMAIL_TEMPLATE_KEYS = ["passwordReset", "emailVerification"] as const;
+export const AUTH_EMAIL_TEMPLATE_KEYS = [
+  "passwordReset",
+  "emailVerification",
+  "emailChangeVerification",
+] as const;
 
 export type AuthEmailTemplates = {
   passwordReset: {
     resetLink: string;
   };
   emailVerification: {
+    verificationLink: string;
+  };
+  emailChangeVerification: {
     verificationLink: string;
   };
 };
@@ -37,6 +45,17 @@ export interface EmailVerificationDependencies {
   ): Promise<string>;
   mailer: TransactionalMailer<AuthEmailTemplates>;
 }
+
+export interface EmailChangeDependencies {
+  generateVerifyAndChangeEmailLink(
+    email: string,
+    newEmail: string,
+    settings: admin.auth.ActionCodeSettings,
+  ): Promise<string>;
+  mailer: TransactionalMailer<AuthEmailTemplates>;
+}
+
+const RECENT_AUTH_MAX_AGE_SECONDS = 5 * 60;
 
 const APP_BASE_URL = (() => {
   const value = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -107,6 +126,22 @@ export function applicationEmailVerificationLink(
   return target.toString();
 }
 
+export function applicationEmailChangeLink(firebaseLink: string, appBaseUrl: string): string {
+  const generated = new URL(firebaseLink);
+  const mode = generated.searchParams.get("mode");
+  const oobCode = generated.searchParams.get("oobCode");
+  if (mode !== "verifyAndChangeEmail" || !oobCode) {
+    throw new Error("Firebase generated an invalid email-change action link");
+  }
+
+  const target = new URL("/auth/action", `${appBaseUrl.replace(/\/$/, "")}/`);
+  target.searchParams.set("mode", "verifyAndChangeEmail");
+  target.searchParams.set("oobCode", oobCode);
+  const lang = generated.searchParams.get("lang");
+  if (lang) target.searchParams.set("lang", lang);
+  return target.toString();
+}
+
 export async function requestPasswordResetForEmail(
   email: string,
   dependencies: PasswordResetDependencies,
@@ -143,6 +178,42 @@ export async function requestEmailVerificationForUser(
     reference: `EMAIL_VERIFICATION:${randomUUID()}`,
     requestedDeliveryMode: "LIVE",
   });
+}
+
+export async function requestEmailChangeForUser(
+  currentEmail: string,
+  newEmail: string,
+  dependencies: EmailChangeDependencies,
+): Promise<void> {
+  const firebaseLink = await dependencies.generateVerifyAndChangeEmailLink(
+    currentEmail,
+    newEmail,
+    { url: `${APP_BASE_URL}/account`, handleCodeInApp: false },
+  );
+  const verificationLink = applicationEmailChangeLink(firebaseLink, APP_BASE_URL);
+
+  await dependencies.mailer.sendEmail({
+    templateName: "emailChangeVerification",
+    to: newEmail,
+    personalisation: { verificationLink },
+    reference: `EMAIL_CHANGE:${randomUUID()}`,
+    requestedDeliveryMode: "LIVE",
+  });
+}
+
+export function requireRecentAuthentication(authTime: unknown, nowSeconds = Date.now() / 1000): void {
+  if (
+    typeof authTime !== "number" ||
+    !Number.isFinite(authTime) ||
+    authTime > nowSeconds ||
+    nowSeconds - authTime > RECENT_AUTH_MAX_AGE_SECONDS
+  ) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Please confirm your password again before changing your email address.",
+      { code: "RECENT_LOGIN_REQUIRED" },
+    );
+  }
 }
 
 /**
@@ -204,5 +275,69 @@ export const requestEmailVerification = onCall(
       mailer: createAuthEmailMailer(),
     });
     return neutralResponse();
+  },
+);
+
+export const requestEmailChange = onCall(
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
+  async (request): Promise<{ success: true }> => {
+    requireEnabled(request);
+    requireRecentAuthentication(request.auth!.token.auth_time);
+    await enforceRateLimit("requestEmailChange", request.auth!.uid);
+    const newEmail = validateEmail(
+      typeof request.data?.newEmail === "string" ? request.data.newEmail : "",
+    );
+    const user = await admin.auth().getUser(request.auth!.uid);
+    const currentEmail = user.email?.trim().toLowerCase();
+    if (!currentEmail) {
+      throw new HttpsError("failed-precondition", "This account has no email address.");
+    }
+    if (currentEmail === newEmail) {
+      throw new HttpsError("invalid-argument", "Enter a different email address.");
+    }
+
+    try {
+      await requestEmailChangeForUser(currentEmail, newEmail, {
+        generateVerifyAndChangeEmailLink: (email, replacement, settings) =>
+          admin.auth().generateVerifyAndChangeEmailLink(email, replacement, settings),
+        mailer: createAuthEmailMailer(),
+      });
+      return neutralResponse();
+    } catch (error: unknown) {
+      const errorCode =
+        typeof error === "object" && error && "code" in error
+          ? String(error.code)
+          : "unknown";
+      logger.warn("email-change request could not be delivered", {
+        callerUid: request.auth!.uid,
+        errorCode,
+      });
+      if (errorCode === "auth/email-already-exists") {
+        throw new HttpsError(
+          "already-exists",
+          "This email address cannot be used. It may already be linked to another account.",
+          { code: "EMAIL_ALREADY_IN_USE" },
+        );
+      }
+      throw new HttpsError(
+        "failed-precondition",
+        "The email change could not be started. Check the address and try again.",
+      );
+    }
+  },
+);
+
+export const reconcileMyEmail = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request): Promise<{ success: true; email: string }> => {
+    requireAuth(request);
+    await enforceRateLimit("reconcileMyEmail", request.auth!.uid);
+    const user = await admin.auth().getUser(request.auth!.uid);
+    if (!user.email || !user.emailVerified) {
+      throw new HttpsError("failed-precondition", "A verified email address is required.");
+    }
+    const email = validateEmail(user.email);
+    await updateUserEmailFromAuth({ userId: user.uid, email });
+    return { success: true, email };
   },
 );
