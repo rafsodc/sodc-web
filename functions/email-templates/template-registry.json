@@ -68,5 +68,10 @@
     "dev": "",
     "beta": "",
     "production": ""
+  },
+  "passwordReset": {
+    "dev": "199789e9-790f-43c9-ada8-103568a91c54",
+    "beta": "",
+    "production": ""
   }
 }

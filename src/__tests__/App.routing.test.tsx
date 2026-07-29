@@ -164,6 +164,14 @@ vi.mock("../features/auth/components/RegisterPage", () => ({
   default: () => <h1>Register Page</h1>,
 }));
 
+vi.mock("../features/auth/components/PasswordResetRequestPage", () => ({
+  default: () => <h1>Password Reset Request Page</h1>,
+}));
+
+vi.mock("../features/auth/components/AuthActionPage", () => ({
+  default: () => <h1>Authentication Action Page</h1>,
+}));
+
 vi.mock("../features/auth/components/OnboardingShell", () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -338,6 +346,31 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.ACCOUNT);
+  });
+
+  it("renders password reset request from a public deep link", async () => {
+    renderApp([ROUTES.PASSWORD_RESET_REQUEST]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Password Reset Request Page" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      ROUTES.PASSWORD_RESET_REQUEST,
+    );
+  });
+
+  it("keeps the public auth action reachable for an unverified user", async () => {
+    currentUser = createMockUser({ emailVerified: false });
+    enabledClaim = false;
+
+    renderApp([`${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=code`]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Authentication Action Page" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      `${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=code`,
+    );
   });
 
   it("renders welcome dashboard for enabled users at home", async () => {
