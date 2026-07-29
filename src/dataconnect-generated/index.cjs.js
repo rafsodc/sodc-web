@@ -410,6 +410,20 @@ exports.updateUserMembershipStatus = function updateUserMembershipStatus(dcOrVar
 }
 ;
 
+const updateUserEmailFromAuthRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUserEmailFromAuth', inputVars);
+}
+updateUserEmailFromAuthRef.operationName = 'UpdateUserEmailFromAuth';
+exports.updateUserEmailFromAuthRef = updateUserEmailFromAuthRef;
+
+exports.updateUserEmailFromAuth = function updateUserEmailFromAuth(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateUserEmailFromAuthRef(dcInstance, inputVars));
+}
+;
+
 const deleteUserRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

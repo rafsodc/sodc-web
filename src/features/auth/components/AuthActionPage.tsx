@@ -23,6 +23,7 @@ import {
   getRegistrationPasswordHelperText,
   validateRegistrationPassword,
 } from "../utils/passwordValidation";
+import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 
 type ActionState = "checking" | "ready" | "invalid" | "complete";
 
@@ -57,6 +58,12 @@ function verificationErrorMessage(error: unknown): string {
   return "We couldn’t verify this email address. Sign in to request a new link.";
 }
 
+function actionHeading(mode: string | null): string {
+  if (mode === "verifyEmail") return "Verify your email";
+  if (mode === "verifyAndChangeEmail") return "Confirm your new email";
+  return "Reset your password";
+}
+
 export default function AuthActionPage() {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode");
@@ -69,7 +76,10 @@ export default function AuthActionPage() {
 
   useEffect(() => {
     let active = true;
-    if (!["resetPassword", "verifyEmail"].includes(mode ?? "") || !oobCode) {
+    if (
+      !["resetPassword", "verifyEmail", "verifyAndChangeEmail"].includes(mode ?? "") ||
+      !oobCode
+    ) {
       setState("invalid");
       setError("This email action link is invalid.");
       return () => {
@@ -89,6 +99,14 @@ export default function AuthActionPage() {
       if (auth.currentUser) {
         await reload(auth.currentUser);
         await auth.currentUser.getIdToken(true);
+        if (mode === "verifyAndChangeEmail") {
+          try {
+            await reconcileMyEmail();
+          } catch {
+            // Sign-in also retries reconciliation; do not turn a successfully
+            // applied one-time action into a misleading invalid-link state.
+          }
+        }
       }
       if (active) setState("complete");
     };
@@ -96,7 +114,7 @@ export default function AuthActionPage() {
     void completeAction().catch((actionError: unknown) => {
       if (active) {
         setError(
-          mode === "verifyEmail"
+          mode === "verifyEmail" || mode === "verifyAndChangeEmail"
             ? verificationErrorMessage(actionError)
             : resetErrorMessage(actionError),
         );
@@ -139,13 +157,13 @@ export default function AuthActionPage() {
     <Box sx={{ maxWidth: "640px", mx: "auto", width: "100%" }}>
       <Stack spacing={2}>
         <Typography variant="h5" sx={{ color: "primary.light" }}>
-          {mode === "verifyEmail" ? "Verify your email" : "Reset your password"}
+          {actionHeading(mode)}
         </Typography>
 
         {state === "checking" ? (
           <Stack direction="row" spacing={2} alignItems="center">
             <CircularProgress size={24} />
-            <Typography>Checking your reset link…</Typography>
+            <Typography>Checking your secure link…</Typography>
           </Stack>
         ) : null}
 
@@ -188,7 +206,7 @@ export default function AuthActionPage() {
           </Button>
         ) : null}
 
-        {state === "invalid" && mode === "verifyEmail" ? (
+        {state === "invalid" && ["verifyEmail", "verifyAndChangeEmail"].includes(mode ?? "") ? (
           <Button component={RouterLink} to={ROUTES.ACCOUNT} variant="contained">
             Sign in to request a new link
           </Button>
@@ -199,10 +217,12 @@ export default function AuthActionPage() {
             <Alert severity="success">
               {mode === "verifyEmail"
                 ? "Your email address has been verified."
+                : mode === "verifyAndChangeEmail"
+                  ? "Your email address has been changed."
                 : "Your password has been reset."}
             </Alert>
             <Button component={RouterLink} to={ROUTES.ACCOUNT} variant="contained">
-              {mode === "verifyEmail" && auth.currentUser ? "Continue" : "Sign in"}
+              {mode !== "resetPassword" && auth.currentUser ? "Continue" : "Sign in"}
             </Button>
           </>
         ) : null}

@@ -92,6 +92,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*BeginSectionFileDeletion*](#beginsectionfiledeletion)
   - [*MarkSectionFileDeleted*](#marksectionfiledeleted)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
+  - [*UpdateUserEmailFromAuth*](#updateuseremailfromauth)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
   - [*CreateUserGroupAdmin*](#createusergroupadmin)
@@ -10131,6 +10132,118 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## UpdateUserEmailFromAuth
+You can execute the `UpdateUserEmailFromAuth` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateUserEmailFromAuth(vars: UpdateUserEmailFromAuthVariables): MutationPromise<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+
+interface UpdateUserEmailFromAuthRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserEmailFromAuthVariables): MutationRef<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+}
+export const updateUserEmailFromAuthRef: UpdateUserEmailFromAuthRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateUserEmailFromAuth(dc: DataConnect, vars: UpdateUserEmailFromAuthVariables): MutationPromise<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+
+interface UpdateUserEmailFromAuthRef {
+  ...
+  (dc: DataConnect, vars: UpdateUserEmailFromAuthVariables): MutationRef<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+}
+export const updateUserEmailFromAuthRef: UpdateUserEmailFromAuthRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateUserEmailFromAuthRef:
+```typescript
+const name = updateUserEmailFromAuthRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateUserEmailFromAuth` mutation requires an argument of type `UpdateUserEmailFromAuthVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateUserEmailFromAuthVariables {
+  userId: string;
+  email: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateUserEmailFromAuth` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateUserEmailFromAuthData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateUserEmailFromAuthData {
+  user_update?: User_Key | null;
+}
+```
+### Using `UpdateUserEmailFromAuth`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateUserEmailFromAuth, UpdateUserEmailFromAuthVariables } from '@dataconnect/generated';
+
+// The `UpdateUserEmailFromAuth` mutation requires an argument of type `UpdateUserEmailFromAuthVariables`:
+const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
+  userId: ...,
+  email: ...,
+};
+
+// Call the `updateUserEmailFromAuth()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateUserEmailFromAuth(updateUserEmailFromAuthVars);
+// Variables can be defined inline as well.
+const { data } = await updateUserEmailFromAuth({ userId: ..., email: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateUserEmailFromAuth(dataConnect, updateUserEmailFromAuthVars);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+updateUserEmailFromAuth(updateUserEmailFromAuthVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
+### Using `UpdateUserEmailFromAuth`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateUserEmailFromAuthRef, UpdateUserEmailFromAuthVariables } from '@dataconnect/generated';
+
+// The `UpdateUserEmailFromAuth` mutation requires an argument of type `UpdateUserEmailFromAuthVariables`:
+const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
+  userId: ...,
+  email: ...,
+};
+
+// Call the `updateUserEmailFromAuthRef()` function to get a reference to the mutation.
+const ref = updateUserEmailFromAuthRef(updateUserEmailFromAuthVars);
+// Variables can be defined inline as well.
+const ref = updateUserEmailFromAuthRef({ userId: ..., email: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateUserEmailFromAuthRef(dataConnect, updateUserEmailFromAuthVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
 ## DeleteUser
 You can execute the `DeleteUser` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -19731,4 +19844,3 @@ executeMutation(ref).then((response) => {
   console.log(data.sectionAnnouncementOptOut_delete);
 });
 ```
-

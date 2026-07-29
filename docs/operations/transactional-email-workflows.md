@@ -40,6 +40,15 @@ Email-verification messages follow the same no-ledger rule. The authenticated
 record, works before email verification/account enablement, and is limited to five
 requests per user per hour. Registration and resend both use this backend path.
 
+Email-change verification also uses a non-recoverable one-time Firebase action
+link. The user must reauthenticate with their current password; the backend
+additionally requires an `auth_time` no more than five minutes old, derives the
+current address from Firebase Auth, and sends the confirmation to the validated
+new address. The existing address remains active until Firebase applies
+`verifyAndChangeEmail`. After completion, `reconcileMyEmail` copies the verified
+Firebase address into Data Connect; sign-in retries that reconciliation for links
+opened while signed out or in another browser.
+
 ## Retry and stale-claim recovery
 
 `PENDING` is a time-bounded processing lease, not a permanent skip state. A claim is considered active for **10 minutes** from `lastAttemptedAt`. During that window, another invocation returns `duplicate / in_progress`. After the lease expires, the next invocation with the same channel and delivery key may take over the row, increment `attemptCount`, and retry the send.

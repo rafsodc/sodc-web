@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TransactionalMailer } from "../mailer";
 import {
+  applicationEmailChangeLink,
   applicationEmailVerificationLink,
   applicationPasswordResetLink,
   passwordResetRateLimitKey,
   requestPasswordResetForEmail,
   requestEmailVerificationForUser,
+  requestEmailChangeForUser,
+  requireRecentAuthentication,
   type AuthEmailTemplates,
 } from "../authEmailActions";
 
@@ -121,5 +124,52 @@ describe("auth email actions", () => {
     ).toBe(
       "https://members.example.org/auth/action?mode=verifyEmail&oobCode=verify-code",
     );
+  });
+
+  it("generates and sends a verify-and-change-email link to the new address", async () => {
+    const sendMailer = mailer();
+    const generateVerifyAndChangeEmailLink = vi.fn(async () =>
+      "https://example.firebaseapp.com/__/auth/action?mode=verifyAndChangeEmail&oobCode=change-code&apiKey=public"
+    );
+
+    await requestEmailChangeForUser("old@example.org", "new@example.org", {
+      generateVerifyAndChangeEmailLink,
+      mailer: sendMailer,
+    });
+
+    expect(generateVerifyAndChangeEmailLink).toHaveBeenCalledWith(
+      "old@example.org",
+      "new@example.org",
+      expect.objectContaining({ handleCodeInApp: false }),
+    );
+    expect(sendMailer.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateName: "emailChangeVerification",
+        to: "new@example.org",
+        personalisation: {
+          verificationLink:
+            "http://localhost:5173/auth/action?mode=verifyAndChangeEmail&oobCode=change-code",
+        },
+      }),
+    );
+  });
+
+  it("rewrites verify-and-change links without untrusted redirects", () => {
+    expect(
+      applicationEmailChangeLink(
+        "https://example.firebaseapp.com/__/auth/action?mode=verifyAndChangeEmail&oobCode=change-code&continueUrl=https%3A%2F%2Fevil.example",
+        "https://members.example.org",
+      ),
+    ).toBe(
+      "https://members.example.org/auth/action?mode=verifyAndChangeEmail&oobCode=change-code",
+    );
+  });
+
+  it("requires authentication within five minutes for email changes", () => {
+    expect(() => requireRecentAuthentication(900, 1_000)).not.toThrow();
+    expect(() => requireRecentAuthentication(600, 1_000)).toThrow(
+      "Please confirm your password again",
+    );
+    expect(() => requireRecentAuthentication(undefined, 1_000)).toThrow();
   });
 });
