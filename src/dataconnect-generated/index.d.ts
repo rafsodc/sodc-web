@@ -540,6 +540,7 @@ export interface CreateMigratedUserProfileAndIdentityData {
 export interface CreateMigratedUserProfileAndIdentityVariables {
   userId: string;
   legacyUserId: UUIDString;
+  oldUid?: number | null;
   sourceSystem: string;
   migrationBatchId: UUIDString;
   recordSchemaVersion: string;
@@ -1259,6 +1260,7 @@ export interface GetLegacyUserIdentityData {
   legacyUserIdentity?: {
     sourceSystem: string;
     legacyUserId: UUIDString;
+    oldUid?: number | null;
     user: {
       id: string;
     } & User_Key;
@@ -2103,6 +2105,7 @@ export interface LinkLegacyIdentityToExistingUserData {
 export interface LinkLegacyIdentityToExistingUserVariables {
   userId: string;
   legacyUserId: UUIDString;
+  oldUid?: number | null;
   sourceSystem: string;
   migrationBatchId: UUIDString;
   recordSchemaVersion: string;
@@ -2293,6 +2296,7 @@ export interface ListLegacyUserIdentitiesByBatchData {
   legacyUserIdentities: ({
     sourceSystem: string;
     legacyUserId: UUIDString;
+    oldUid?: number | null;
     user: {
       id: string;
     } & User_Key;

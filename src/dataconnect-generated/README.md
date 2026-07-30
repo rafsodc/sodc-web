@@ -980,6 +980,7 @@ export interface GetLegacyUserIdentityData {
   legacyUserIdentity?: {
     sourceSystem: string;
     legacyUserId: UUIDString;
+    oldUid?: number | null;
     user: {
       id: string;
     } & User_Key;
@@ -1102,6 +1103,7 @@ export interface ListLegacyUserIdentitiesByBatchData {
   legacyUserIdentities: ({
     sourceSystem: string;
     legacyUserId: UUIDString;
+    oldUid?: number | null;
     user: {
       id: string;
     } & User_Key;
@@ -10800,6 +10802,7 @@ The `CreateMigratedUserProfileAndIdentity` mutation requires an argument of type
 export interface CreateMigratedUserProfileAndIdentityVariables {
   userId: string;
   legacyUserId: UUIDString;
+  oldUid?: number | null;
   sourceSystem: string;
   migrationBatchId: UUIDString;
   recordSchemaVersion: string;
@@ -10837,6 +10840,7 @@ import { connectorConfig, createMigratedUserProfileAndIdentity, CreateMigratedUs
 const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
   userId: ...,
   legacyUserId: ...,
+  oldUid: ..., // optional
   sourceSystem: ...,
   migrationBatchId: ...,
   recordSchemaVersion: ...,
@@ -10858,7 +10862,7 @@ const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIden
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createMigratedUserProfileAndIdentity(createMigratedUserProfileAndIdentityVars);
 // Variables can be defined inline as well.
-const { data } = await createMigratedUserProfileAndIdentity({ userId: ..., legacyUserId: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
+const { data } = await createMigratedUserProfileAndIdentity({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10885,6 +10889,7 @@ import { connectorConfig, createMigratedUserProfileAndIdentityRef, CreateMigrate
 const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
   userId: ...,
   legacyUserId: ...,
+  oldUid: ..., // optional
   sourceSystem: ...,
   migrationBatchId: ...,
   recordSchemaVersion: ...,
@@ -10905,7 +10910,7 @@ const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIden
 // Call the `createMigratedUserProfileAndIdentityRef()` function to get a reference to the mutation.
 const ref = createMigratedUserProfileAndIdentityRef(createMigratedUserProfileAndIdentityVars);
 // Variables can be defined inline as well.
-const ref = createMigratedUserProfileAndIdentityRef({ userId: ..., legacyUserId: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
+const ref = createMigratedUserProfileAndIdentityRef({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -10962,6 +10967,7 @@ The `LinkLegacyIdentityToExistingUser` mutation requires an argument of type `Li
 export interface LinkLegacyIdentityToExistingUserVariables {
   userId: string;
   legacyUserId: UUIDString;
+  oldUid?: number | null;
   sourceSystem: string;
   migrationBatchId: UUIDString;
   recordSchemaVersion: string;
@@ -10988,6 +10994,7 @@ import { connectorConfig, linkLegacyIdentityToExistingUser, LinkLegacyIdentityTo
 const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
   userId: ...,
   legacyUserId: ...,
+  oldUid: ..., // optional
   sourceSystem: ...,
   migrationBatchId: ...,
   recordSchemaVersion: ...,
@@ -10999,7 +11006,7 @@ const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVari
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await linkLegacyIdentityToExistingUser(linkLegacyIdentityToExistingUserVars);
 // Variables can be defined inline as well.
-const { data } = await linkLegacyIdentityToExistingUser({ userId: ..., legacyUserId: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
+const { data } = await linkLegacyIdentityToExistingUser({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -11024,6 +11031,7 @@ import { connectorConfig, linkLegacyIdentityToExistingUserRef, LinkLegacyIdentit
 const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
   userId: ...,
   legacyUserId: ...,
+  oldUid: ..., // optional
   sourceSystem: ...,
   migrationBatchId: ...,
   recordSchemaVersion: ...,
@@ -11034,7 +11042,7 @@ const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVari
 // Call the `linkLegacyIdentityToExistingUserRef()` function to get a reference to the mutation.
 const ref = linkLegacyIdentityToExistingUserRef(linkLegacyIdentityToExistingUserVars);
 // Variables can be defined inline as well.
-const ref = linkLegacyIdentityToExistingUserRef({ userId: ..., legacyUserId: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
+const ref = linkLegacyIdentityToExistingUserRef({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

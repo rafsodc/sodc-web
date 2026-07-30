@@ -12,7 +12,7 @@ Git, GitHub, chat, normal logs, and CI artifacts.
 | Export field | Destination | Rule |
 |---|---|---|
 | `legacyUserId` | `LegacyUserIdentity.legacyUserId` | Required UUID; immutable provenance key |
-| `oldUid` | None | Accepted in the source artifact but deliberately ignored and not stored |
+| `oldUid` | `LegacyUserIdentity.oldUid` | Nullable legacy numeric identifier retained as provenance only; never used as an identity key |
 | `email` | Firebase Auth and `User.email` | Trim, lowercase, validate, and reconcile collisions before writes |
 | `firstName`, `lastName` | `User.firstName`, `User.lastName` | Trim; blank values fail closed |
 | `serviceNumber` | `User.serviceNumber` | Trim; blank or missing values become `N/A` |
@@ -35,9 +35,10 @@ The admin connector exposes two server-only operations:
   call it after independently proving that an existing Firebase/Data Connect
   user is the correct canonical identity.
 
-Neither operation accepts `oldUid` or `passwordHash`. The mapping records the
-source system, legacy UUID, canonical user, batch UUID, record-schema version,
-source checksum, and import timestamp.
+Neither operation accepts `passwordHash`. Both accept nullable `oldUid` as
+provenance only. The mapping records the source system, legacy UUID, old numeric
+UID, canonical user, batch UUID, record-schema version, source checksum, and
+import timestamp.
 
 ## Staged profile completion
 
@@ -74,4 +75,3 @@ The migration maps the 55 preflight records with `hasSubscriptions=false` to
 Deploy the Data Connect schema and connector before deploying Functions or
 Hosting. Generated client and admin SDKs reference the new fields and
 operations.
-

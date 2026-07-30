@@ -27,7 +27,7 @@ describe("legacy migration Data Connect contracts", () => {
     expect(schema).toContain("profileReviewedAt: Timestamp");
   });
 
-  it("retains legacy UUID provenance without oldUid or password material", () => {
+  it("retains legacy identifiers as provenance without password material", () => {
     const start = schema.indexOf("type LegacyUserIdentity");
     const end = schema.indexOf("\n}", start);
     const identity = schema.slice(start, end + 2);
@@ -35,8 +35,8 @@ describe("legacy migration Data Connect contracts", () => {
     expect(identity).toContain("@table(key: [\"sourceSystem\", \"legacyUserId\"])");
     expect(identity).toContain("@unique(fields: [\"user\"])");
     expect(identity).toContain("legacyUserId: UUID!");
+    expect(identity).toContain("oldUid: Int");
     expect(identity).toContain("migrationBatchId: UUID!");
-    expect(identity).not.toContain("oldUid");
     expect(identity).not.toContain("password");
   });
 
@@ -47,9 +47,10 @@ describe("legacy migration Data Connect contracts", () => {
     expect(create).toContain("user_insert(");
     expect(create).not.toContain("user_upsert(");
     expect(create).toContain("legacyUserIdentity_insert(");
+    expect(create).toContain("$oldUid: Int");
+    expect(create).toContain("oldUid: $oldUid");
     expect(create).toContain("profileReviewedAt: null");
     expect(create).not.toContain("passwordHash");
-    expect(create).not.toContain("oldUid");
   });
 
   it("links reconciled existing profiles without updating them", () => {
@@ -57,6 +58,8 @@ describe("legacy migration Data Connect contracts", () => {
 
     expect(link).toContain("@auth(level: NO_ACCESS)");
     expect(link).toContain("legacyUserIdentity_insert(");
+    expect(link).toContain("$oldUid: Int");
+    expect(link).toContain("oldUid: $oldUid");
     expect(link).not.toContain("user_update(");
     expect(link).not.toContain("user_upsert(");
   });

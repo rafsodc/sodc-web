@@ -500,6 +500,7 @@ mutation CreateUser(
 mutation CreateMigratedUserProfileAndIdentity(
   $userId: String!
   $legacyUserId: UUID!
+  $oldUid: Int
   $sourceSystem: String!
   $migrationBatchId: UUID!
   $recordSchemaVersion: String!
@@ -541,6 +542,7 @@ mutation CreateMigratedUserProfileAndIdentity(
     data: {
       sourceSystem: $sourceSystem
       legacyUserId: $legacyUserId
+      oldUid: $oldUid
       userId: $userId
       migrationBatchId: $migrationBatchId
       recordSchemaVersion: $recordSchemaVersion
@@ -557,6 +559,7 @@ mutation CreateMigratedUserProfileAndIdentity(
 mutation LinkLegacyIdentityToExistingUser(
   $userId: String!
   $legacyUserId: UUID!
+  $oldUid: Int
   $sourceSystem: String!
   $migrationBatchId: UUID!
   $recordSchemaVersion: String!
@@ -567,6 +570,7 @@ mutation LinkLegacyIdentityToExistingUser(
     data: {
       sourceSystem: $sourceSystem
       legacyUserId: $legacyUserId
+      oldUid: $oldUid
       userId: $userId
       migrationBatchId: $migrationBatchId
       recordSchemaVersion: $recordSchemaVersion
@@ -590,6 +594,7 @@ query GetLegacyUserIdentity(
   ) {
     sourceSystem
     legacyUserId
+    oldUid
     user { id }
     migrationBatchId
     recordSchemaVersion
@@ -609,6 +614,7 @@ query ListLegacyUserIdentitiesByBatch(
   ) {
     sourceSystem
     legacyUserId
+    oldUid
     user { id }
     migrationBatchId
     recordSchemaVersion

@@ -855,6 +855,7 @@ export interface GetLegacyUserIdentityData {
   legacyUserIdentity?: {
     sourceSystem: string;
     legacyUserId: UUIDString;
+    oldUid?: number | null;
     user: {
       id: string;
     } & User_Key;
@@ -949,6 +950,7 @@ export interface ListLegacyUserIdentitiesByBatchData {
   legacyUserIdentities: ({
     sourceSystem: string;
     legacyUserId: UUIDString;
+    oldUid?: number | null;
     user: {
       id: string;
     } & User_Key;
@@ -8701,6 +8703,7 @@ The `CreateMigratedUserProfileAndIdentity` Mutation requires an argument of type
 export interface CreateMigratedUserProfileAndIdentityVariables {
   userId: string;
   legacyUserId: UUIDString;
+  oldUid?: number | null;
   sourceSystem: string;
   migrationBatchId: UUIDString;
   recordSchemaVersion: string;
@@ -8768,6 +8771,7 @@ export default function CreateMigratedUserProfileAndIdentityComponent() {
   const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
     userId: ...,
     legacyUserId: ...,
+    oldUid: ..., // optional
     sourceSystem: ...,
     migrationBatchId: ...,
     recordSchemaVersion: ...,
@@ -8786,7 +8790,7 @@ export default function CreateMigratedUserProfileAndIdentityComponent() {
   };
   mutation.mutate(createMigratedUserProfileAndIdentityVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., legacyUserId: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
+  mutation.mutate({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -8829,6 +8833,7 @@ The `LinkLegacyIdentityToExistingUser` Mutation requires an argument of type `Li
 export interface LinkLegacyIdentityToExistingUserVariables {
   userId: string;
   legacyUserId: UUIDString;
+  oldUid?: number | null;
   sourceSystem: string;
   migrationBatchId: UUIDString;
   recordSchemaVersion: string;
@@ -8885,6 +8890,7 @@ export default function LinkLegacyIdentityToExistingUserComponent() {
   const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
     userId: ...,
     legacyUserId: ...,
+    oldUid: ..., // optional
     sourceSystem: ...,
     migrationBatchId: ...,
     recordSchemaVersion: ...,
@@ -8893,7 +8899,7 @@ export default function LinkLegacyIdentityToExistingUserComponent() {
   };
   mutation.mutate(linkLegacyIdentityToExistingUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., legacyUserId: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
+  mutation.mutate({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
