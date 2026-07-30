@@ -17,6 +17,8 @@ query GetCurrentUser @auth(expr: "auth.token.enabled == true") {
     lastName
     email
     serviceNumber
+    mobileNumber
+    postNominals
     membershipStatus
     requestedMembershipStatus
     isRegular
@@ -25,6 +27,8 @@ query GetCurrentUser @auth(expr: "auth.token.enabled == true") {
     isIndustry
     rank
     shareContactInfo
+    announcementOptOutAll
+    profileReviewedAt
     createdAt
     updatedAt
   }
@@ -38,12 +42,18 @@ query GetUserById($id: String!) @auth(expr: "auth.token.admin == true && auth.to
     lastName
     email
     serviceNumber
+    mobileNumber
+    postNominals
     membershipStatus
     requestedMembershipStatus
     isRegular
     isReserve
     isCivilServant
     isIndustry
+    rank
+    shareContactInfo
+    announcementOptOutAll
+    profileReviewedAt
     createdAt
     updatedAt
     createdBy
@@ -59,6 +69,8 @@ query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == t
     lastName
     email
     serviceNumber
+    mobileNumber
+    postNominals
     membershipStatus
     requestedMembershipStatus
     isRegular
@@ -67,6 +79,8 @@ query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == t
     isIndustry
     rank
     shareContactInfo
+    announcementOptOutAll
+    profileReviewedAt
     createdAt
     updatedAt
     createdBy
@@ -358,6 +372,8 @@ query GetSectionMembers($sectionId: UUID!) @auth(level: NO_ACCESS) {
             membershipStatus
             rank
             shareContactInfo
+            mobileNumber
+            announcementOptOutAll
           }
         }
       }
@@ -763,6 +779,7 @@ query GetSectionAnnouncementOptOut($sectionId: UUID!) @auth(expr: "auth.token.en
 query GetMyAnnouncementPreferences @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
     membershipStatus
+    announcementOptOutAll
     userGroups: userUserGroups_on_user {
       userGroup {
         membershipStatuses

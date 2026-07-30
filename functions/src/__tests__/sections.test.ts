@@ -197,6 +197,7 @@ describe("getSectionMembersMerged", () => {
     firstName: string;
     lastName: string;
     email: string;
+    mobileNumber: string | null;
     membershipStatus: string;
     rank: string | null;
     shareContactInfo: boolean | null;
@@ -206,6 +207,7 @@ describe("getSectionMembersMerged", () => {
       firstName: "Ada",
       lastName: "Lovelace",
       email: "ada@example.com",
+      mobileNumber: null,
       membershipStatus: MembershipStatus.REGULAR,
       rank: null,
       shareContactInfo: true,
@@ -259,7 +261,13 @@ describe("getSectionMembersMerged", () => {
   });
 
   it("includes email and rank for a member who shares contact info", async () => {
-    mockMembers([member({ rank: "Wing Commander", shareContactInfo: true })]);
+    mockMembers([
+      member({
+        rank: "Wing Commander",
+        shareContactInfo: true,
+        mobileNumber: "+447700900123",
+      }),
+    ]);
 
     const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
 
@@ -272,6 +280,7 @@ describe("getSectionMembersMerged", () => {
         rank: "Wing Commander",
         sharesContactInfo: true,
         email: "ada@example.com",
+        mobileNumber: "+447700900123",
       },
     ]);
   });
@@ -282,7 +291,12 @@ describe("getSectionMembersMerged", () => {
     const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
 
     expect(result.members).toHaveLength(1);
-    expect(result.members[0]).toMatchObject({ id: "user-1", sharesContactInfo: false, email: null });
+    expect(result.members[0]).toMatchObject({
+      id: "user-1",
+      sharesContactInfo: false,
+      email: null,
+      mobileNumber: null,
+    });
   });
 
   it("defaults to sharing when shareContactInfo is null/undefined (legacy rows)", async () => {

@@ -71,7 +71,14 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation CreateUserProfile", mustInclude: EMAIL_VERIFIED_EXPR },
       { op: "mutation UpsertUser", mustInclude: USER_EXPR },
       { op: "mutation UpdateUser", mustInclude: ADMIN_EXPR },
+      { op: "mutation UpdateAnnouncementOptOutAll", mustInclude: USER_EXPR },
     ]);
+
+    const announcementPreference = extractOperationBlock(
+      userMutations,
+      "mutation UpdateAnnouncementOptOutAll"
+    );
+    expect(announcementPreference).toContain("id_expr: \"auth.uid\"");
 
     assertAuth(groupMutations, [
       { op: "mutation CreateSection", mustInclude: ADMIN_EXPR },
@@ -108,6 +115,10 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation UpdateUserMembershipStatus", mustInclude: NO_ACCESS },
       { op: "mutation DeleteUser", mustInclude: NO_ACCESS },
       { op: "mutation CreateUser", mustInclude: NO_ACCESS },
+      { op: "mutation CreateMigratedUserProfileAndIdentity", mustInclude: NO_ACCESS },
+      { op: "mutation LinkLegacyIdentityToExistingUser", mustInclude: NO_ACCESS },
+      { op: "query GetLegacyUserIdentity", mustInclude: NO_ACCESS },
+      { op: "query ListLegacyUserIdentitiesByBatch", mustInclude: NO_ACCESS },
       { op: "mutation UpdateUserStripeCustomerId", mustInclude: NO_ACCESS },
     ]);
 

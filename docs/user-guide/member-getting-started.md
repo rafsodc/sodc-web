@@ -8,7 +8,7 @@ Access to the site follows a four-step process:
 
 1. **Create an account** — register with your email address and a password
 2. **Verify your email** — click the link sent to your inbox
-3. **Complete your profile** — provide your name, service number, and service background
+3. **Complete your profile** — provide your name, service number, mobile number, and service background
 4. **Wait for approval** — an administrator reviews your profile and activates your account
 
 Once approved, you can view sections, book events, and manage your membership details.
@@ -29,6 +29,8 @@ After verifying your email, you will be prompted to complete your profile. You w
 
 - **First name and last name**
 - **Service number**
+- **Mobile number**
+- **Post-nominals** (optional)
 - **Service background** — tick any that apply: Regular, Reserve, Civil Servant, Industry
 
 Your email address is pre-filled from your account and cannot be changed here.
@@ -51,8 +53,8 @@ After approval you have access to:
 
 - **Sections** — view sections you are a member of, see upcoming and past events
 - **Event booking** — book tickets for events, including guest tickets and dietary/seating preferences
-- **Profile** — update your name, service number, and service background at any time
-- **Account settings** — change your password or manage your account
+- **Profile** — update your name, service number, mobile number, post-nominals, and service background at any time
+- **Account settings** — change your email or password, manage contact sharing, and choose announcement-email preferences
 
 ---
 

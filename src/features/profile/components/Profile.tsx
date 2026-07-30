@@ -21,10 +21,18 @@ import { dataConnect } from "../../../config/firebase";
 import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
-import { MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH, ROUTES, MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import {
+  MAX_MOBILE_NUMBER_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_POST_NOMINALS_LENGTH,
+  MAX_SERVICE_NUMBER_LENGTH,
+  ROUTES,
+  MEMBERSHIP_STATUS_OPTIONS,
+} from "../../../constants";
 import RankSelect from "../../../shared/components/RankSelect";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
+import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 
 interface ProfileProps {
   userData: UserData | null;
@@ -38,6 +46,8 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [serviceNumber, setServiceNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [postNominals, setPostNominals] = useState("");
   const [isRegular, setIsRegular] = useState(false);
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
@@ -55,6 +65,8 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
       setFirstName(userData.firstName || "");
       setLastName(userData.lastName || "");
       setServiceNumber(userData.serviceNumber || "");
+      setMobileNumber(userData.mobileNumber || "");
+      setPostNominals(userData.postNominals || "");
       setIsRegular(userData.isRegular ?? false);
       setIsReserve(userData.isReserve ?? false);
       setIsCivilServant(userData.isCivilServant ?? false);
@@ -80,11 +92,19 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
         setSubmitting(false);
         return;
       }
+      const normalizedMobileNumber = normalizeMobileNumber(mobileNumber);
+      if (!normalizedMobileNumber) {
+        setError("Enter a valid mobile number, including the country code for non-UK numbers");
+        setSubmitting(false);
+        return;
+      }
 
       const vars: UpsertUserVariables = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         serviceNumber: serviceNumber.trim(),
+        mobileNumber: normalizedMobileNumber,
+        postNominals: postNominals.trim() || null,
         isRegular,
         isReserve,
         isCivilServant,
@@ -218,6 +238,28 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
+          <TextField
+            label="Mobile number"
+            type="tel"
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.target.value)}
+            required
+            fullWidth
+            disabled={submitting}
+            inputProps={{ maxLength: MAX_MOBILE_NUMBER_LENGTH }}
+            helperText="UK numbers may start with 07; international numbers must include their country code"
+          />
+
+          <TextField
+            label="Post-nominals"
+            value={postNominals}
+            onChange={(e) => setPostNominals(e.target.value)}
+            fullWidth
+            disabled={submitting}
+            inputProps={{ maxLength: MAX_POST_NOMINALS_LENGTH }}
+            helperText={`${postNominals.length}/${MAX_POST_NOMINALS_LENGTH} characters`}
+          />
+
           <FormControl fullWidth required>
             <InputLabel>Membership Status</InputLabel>
             <Select
@@ -311,7 +353,13 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
             <Button
               type="submit"
               variant="contained"
-              disabled={submitting || !firstName.trim() || !lastName.trim() || !serviceNumber.trim()}
+              disabled={
+                submitting ||
+                !firstName.trim() ||
+                !lastName.trim() ||
+                !serviceNumber.trim() ||
+                !mobileNumber.trim()
+              }
               sx={{
                 backgroundColor: "secondary.main",
                 "&:hover": {

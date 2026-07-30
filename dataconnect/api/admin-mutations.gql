@@ -461,6 +461,8 @@ mutation CreateUser(
   $lastName: String!
   $email: String!
   $serviceNumber: String!
+  $mobileNumber: String
+  $postNominals: String
   $membershipStatus: MembershipStatus!
   $isRegular: Boolean
   $isReserve: Boolean
@@ -475,6 +477,8 @@ mutation CreateUser(
       lastName: $lastName
       email: $email
       serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
       requestedMembershipStatus: $membershipStatus
       membershipStatus: $membershipStatus
       isRegular: $isRegular
@@ -487,6 +491,136 @@ mutation CreateUser(
       updatedAt: $now
     }
   )
+}
+
+# ── Legacy-user migration ────────────────────────────────────────────────────
+
+# Creates only new profiles. insert (rather than upsert) deliberately fails if
+# the canonical user already exists so a migration cannot overwrite it.
+mutation CreateMigratedUserProfileAndIdentity(
+  $userId: String!
+  $legacyUserId: UUID!
+  $oldUid: Int
+  $sourceSystem: String!
+  $migrationBatchId: UUID!
+  $recordSchemaVersion: String!
+  $sourceChecksum: String!
+  $firstName: String!
+  $lastName: String!
+  $email: String!
+  $serviceNumber: String!
+  $mobileNumber: String
+  $postNominals: String
+  $rank: String!
+  $membershipStatus: MembershipStatus!
+  $shareContactInfo: Boolean!
+  $announcementOptOutAll: Boolean!
+  $now: Timestamp!
+) @auth(level: NO_ACCESS) @transaction {
+  user_insert(
+    data: {
+      id: $userId
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
+      rank: $rank
+      requestedMembershipStatus: $membershipStatus
+      membershipStatus: $membershipStatus
+      shareContactInfo: $shareContactInfo
+      announcementOptOutAll: $announcementOptOutAll
+      profileReviewedAt: null
+      createdBy: "legacy-migration"
+      updatedBy: "legacy-migration"
+      createdAt: $now
+      updatedAt: $now
+    }
+  )
+  legacyUserIdentity_insert(
+    data: {
+      sourceSystem: $sourceSystem
+      legacyUserId: $legacyUserId
+      oldUid: $oldUid
+      userId: $userId
+      migrationBatchId: $migrationBatchId
+      recordSchemaVersion: $recordSchemaVersion
+      sourceChecksum: $sourceChecksum
+      importedAt: $now
+      createdAt: $now
+      createdBy: "legacy-migration"
+    }
+  )
+}
+
+# Links an already-reconciled canonical profile without changing any profile
+# fields. The importer must prove the identity match before calling this.
+mutation LinkLegacyIdentityToExistingUser(
+  $userId: String!
+  $legacyUserId: UUID!
+  $oldUid: Int
+  $sourceSystem: String!
+  $migrationBatchId: UUID!
+  $recordSchemaVersion: String!
+  $sourceChecksum: String!
+  $now: Timestamp!
+) @auth(level: NO_ACCESS) {
+  legacyUserIdentity_insert(
+    data: {
+      sourceSystem: $sourceSystem
+      legacyUserId: $legacyUserId
+      oldUid: $oldUid
+      userId: $userId
+      migrationBatchId: $migrationBatchId
+      recordSchemaVersion: $recordSchemaVersion
+      sourceChecksum: $sourceChecksum
+      importedAt: $now
+      createdAt: $now
+      createdBy: "legacy-migration"
+    }
+  )
+}
+
+query GetLegacyUserIdentity(
+  $sourceSystem: String!
+  $legacyUserId: UUID!
+) @auth(level: NO_ACCESS) {
+  legacyUserIdentity(
+    key: {
+      sourceSystem: $sourceSystem
+      legacyUserId: $legacyUserId
+    }
+  ) {
+    sourceSystem
+    legacyUserId
+    oldUid
+    user { id }
+    migrationBatchId
+    recordSchemaVersion
+    sourceChecksum
+    importedAt
+  }
+}
+
+query ListLegacyUserIdentitiesByBatch(
+  $migrationBatchId: UUID!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  legacyUserIdentities(
+    where: { migrationBatchId: { eq: $migrationBatchId } }
+    orderBy: { importedAt: ASC }
+    limit: $limit
+  ) {
+    sourceSystem
+    legacyUserId
+    oldUid
+    user { id }
+    migrationBatchId
+    recordSchemaVersion
+    sourceChecksum
+    importedAt
+  }
 }
 
 # Create a user group (SDK only)

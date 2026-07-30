@@ -24,6 +24,7 @@ import {
   useGetMyAnnouncementPreferences,
   useOptOutSectionAnnouncement,
   useOptInSectionAnnouncement,
+  useUpdateAnnouncementOptOutAll,
 } from "@dataconnect/generated/react";
 import { MembershipStatus, SectionUserGroupPurpose, upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
 import { useQueryClient } from "@tanstack/react-query";
@@ -82,7 +83,10 @@ function AnnouncementPreferencesList() {
   const { data, isLoading } = useGetMyAnnouncementPreferences({ staleTime: Infinity });
   const optOut = useOptOutSectionAnnouncement();
   const optIn = useOptInSectionAnnouncement();
+  const updateGlobalOptOut = useUpdateAnnouncementOptOutAll();
   const [busy, setBusy] = useState<string | null>(null);
+  const [globalBusy, setGlobalBusy] = useState(false);
+  const [globalOverride, setGlobalOverride] = useState<boolean | null>(null);
   const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map());
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
@@ -119,6 +123,33 @@ function AnnouncementPreferencesList() {
     () => new Set((data?.user?.optOuts ?? []).map((o) => o.section.id)),
     [data]
   );
+  const announcementOptOutAll =
+    globalOverride ?? data?.user?.announcementOptOutAll ?? false;
+
+  const handleGlobalToggle = async () => {
+    const newOptOut = !announcementOptOutAll;
+    setGlobalOverride(newOptOut);
+    setGlobalBusy(true);
+    try {
+      await updateGlobalOptOut.mutateAsync({ announcementOptOutAll: newOptOut });
+      queryClient.setQueryData(
+        ["GetMyAnnouncementPreferences", null],
+        (old: typeof data) =>
+          old?.user
+            ? { ...old, user: { ...old.user, announcementOptOutAll: newOptOut } }
+            : old,
+      );
+      setSnackbar(
+        newOptOut
+          ? "Opted out of all announcement emails"
+          : "Announcement emails enabled",
+      );
+    } catch {
+      setGlobalOverride(null);
+    } finally {
+      setGlobalBusy(false);
+    }
+  };
 
   const handleToggle = async (sectionId: string, currentlyOptedOut: boolean) => {
     const newOptedOut = !currentlyOptedOut;
@@ -155,8 +186,22 @@ function AnnouncementPreferencesList() {
         Announcement emails
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Choose which sections you receive announcement emails from. You can also change this on each
-        section's page.
+        Choose whether you receive optional announcements. Account-security, booking, and payment
+        messages are always sent when required.
+      </Typography>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={!announcementOptOutAll}
+            onChange={() => void handleGlobalToggle()}
+            disabled={isLoading || globalBusy}
+          />
+        }
+        label="Receive announcement emails"
+      />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Turning this off also applies to sections added in the future. Your individual section
+        choices are preserved.
       </Typography>
       {isLoading ? (
         <CircularProgress size={20} />
@@ -177,7 +222,7 @@ function AnnouncementPreferencesList() {
                     checked={!isOptedOut}
                     onChange={() => void handleToggle(section.id, isOptedOut)}
                     size="small"
-                    disabled={isBusy}
+                    disabled={isBusy || announcementOptOutAll}
                   />
                 }
                 label={<Typography variant="body2">{section.name}</Typography>}
@@ -330,6 +375,8 @@ export default function AccountSettingsPage({
         firstName: userData.firstName,
         lastName: userData.lastName,
         serviceNumber: userData.serviceNumber,
+        mobileNumber: userData.mobileNumber,
+        postNominals: userData.postNominals,
         isRegular: userData.isRegular,
         isReserve: userData.isReserve,
         isCivilServant: userData.isCivilServant,

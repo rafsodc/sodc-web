@@ -23,9 +23,20 @@ export default function ContactDetailsDialog({ member, onClose }: ContactDetails
               {displayName}
             </Typography>
             <Chip label={getMembershipStatusLabel(member.membershipStatus)} size="small" sx={{ mt: 1, mb: 1.5 }} />
-            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: "break-word" }}>
-              {member.email}
-            </Typography>
+            {member.email && (
+              <Box sx={{ mb: member.mobileNumber ? 1 : 0 }}>
+                <Typography variant="caption" color="text.secondary">Email</Typography>
+                <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+                  {member.email}
+                </Typography>
+              </Box>
+            )}
+            {member.mobileNumber && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">Mobile</Typography>
+                <Typography variant="body2">{member.mobileNumber}</Typography>
+              </Box>
+            )}
           </Box>
         )}
       </DialogContent>

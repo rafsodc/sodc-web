@@ -23,9 +23,14 @@ Only non-restricted membership statuses (`REGULAR`, `RETIRED`, `RESERVE`, `INDUS
 are excluded even if a stale explicit group relation remains or a group is misconfigured to list a
 restricted status.
 
-After explicit and status-derived users are merged, the section's `SectionAnnouncementOptOut`
-records are applied once to the combined audience. This ensures both recipient sources have the
-same opt-out behaviour. An empty audience is valid and records a send with zero queued recipients.
+After explicit and status-derived users are merged, `User.announcementOptOutAll` and the section's
+`SectionAnnouncementOptOut` records are applied once to the combined audience. The global
+preference takes precedence and also covers sections added in the future. Per-section preferences
+remain stored while the global preference is enabled.
+
+These preferences affect optional section announcements only. Required transactional and
+account-security emails are unaffected. An empty audience is valid and records a send with zero
+queued recipients.
 
 ## Operational checks
 
@@ -33,5 +38,6 @@ Before sending a production announcement:
 
 - confirm the section's `ACCESS` and `MODERATOR` purpose links target the intended groups;
 - review each group's explicit users and inherited `membershipStatuses`; and
+- remember that a user's global announcement opt-out excludes them from every section; and
 - remember that adding a status to either eligible purpose group includes every non-restricted user
   with that status unless they have opted out of that section's announcements.
