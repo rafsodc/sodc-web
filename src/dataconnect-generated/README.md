@@ -178,6 +178,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*OptOutSectionAnnouncement*](#optoutsectionannouncement)
   - [*OptInSectionAnnouncement*](#optinsectionannouncement)
   - [*UpdateAnnouncementOptOutAll*](#updateannouncementoptoutall)
+  - [*ConfirmProfileReview*](#confirmprofilereview)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `api`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -20527,6 +20528,133 @@ const ref = updateAnnouncementOptOutAllRef({ announcementOptOutAll: ..., });
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = updateAnnouncementOptOutAllRef(dataConnect, updateAnnouncementOptOutAllVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
+## ConfirmProfileReview
+You can execute the `ConfirmProfileReview` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+confirmProfileReview(vars: ConfirmProfileReviewVariables): MutationPromise<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+
+interface ConfirmProfileReviewRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmProfileReviewVariables): MutationRef<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+}
+export const confirmProfileReviewRef: ConfirmProfileReviewRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+confirmProfileReview(dc: DataConnect, vars: ConfirmProfileReviewVariables): MutationPromise<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+
+interface ConfirmProfileReviewRef {
+  ...
+  (dc: DataConnect, vars: ConfirmProfileReviewVariables): MutationRef<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+}
+export const confirmProfileReviewRef: ConfirmProfileReviewRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the confirmProfileReviewRef:
+```typescript
+const name = confirmProfileReviewRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ConfirmProfileReview` mutation requires an argument of type `ConfirmProfileReviewVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ConfirmProfileReviewVariables {
+  firstName: string;
+  lastName: string;
+  serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
+  rank: string;
+  shareContactInfo: boolean;
+}
+```
+### Return Type
+Recall that executing the `ConfirmProfileReview` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ConfirmProfileReviewData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ConfirmProfileReviewData {
+  user_update?: User_Key | null;
+}
+```
+### Using `ConfirmProfileReview`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, confirmProfileReview, ConfirmProfileReviewVariables } from '@dataconnect/generated';
+
+// The `ConfirmProfileReview` mutation requires an argument of type `ConfirmProfileReviewVariables`:
+const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
+  firstName: ...,
+  lastName: ...,
+  serviceNumber: ...,
+  mobileNumber: ...,
+  postNominals: ..., // optional
+  rank: ...,
+  shareContactInfo: ...,
+};
+
+// Call the `confirmProfileReview()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await confirmProfileReview(confirmProfileReviewVars);
+// Variables can be defined inline as well.
+const { data } = await confirmProfileReview({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await confirmProfileReview(dataConnect, confirmProfileReviewVars);
+
+console.log(data.user_update);
+
+// Or, you can use the `Promise` API.
+confirmProfileReview(confirmProfileReviewVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_update);
+});
+```
+
+### Using `ConfirmProfileReview`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, confirmProfileReviewRef, ConfirmProfileReviewVariables } from '@dataconnect/generated';
+
+// The `ConfirmProfileReview` mutation requires an argument of type `ConfirmProfileReviewVariables`:
+const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
+  firstName: ...,
+  lastName: ...,
+  serviceNumber: ...,
+  mobileNumber: ...,
+  postNominals: ..., // optional
+  rank: ...,
+  shareContactInfo: ...,
+};
+
+// Call the `confirmProfileReviewRef()` function to get a reference to the mutation.
+const ref = confirmProfileReviewRef(confirmProfileReviewVars);
+// Variables can be defined inline as well.
+const ref = confirmProfileReviewRef({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = confirmProfileReviewRef(dataConnect, confirmProfileReviewVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.

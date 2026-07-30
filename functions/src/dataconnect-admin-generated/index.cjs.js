@@ -1307,3 +1307,10 @@ function updateAnnouncementOptOutAll(dcOrVarsOrOptions, varsOrOptions, options) 
 }
 exports.updateAnnouncementOptOutAll = updateAnnouncementOptOutAll;
 
+function confirmProfileReview(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmProfileReview', inputVars, inputOpts);
+}
+exports.confirmProfileReview = confirmProfileReview;
+

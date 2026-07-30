@@ -361,6 +361,20 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   lastAttemptedAt: TimestampString;
 }
 
+export interface ConfirmProfileReviewData {
+  user_update?: User_Key | null;
+}
+
+export interface ConfirmProfileReviewVariables {
+  firstName: string;
+  lastName: string;
+  serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
+  rank: string;
+  shareContactInfo: boolean;
+}
+
 export interface ConsumeCallableRateLimitData {
   consumed: number;
   callableRateLimitBucket_deleteMany: number;
@@ -5106,4 +5120,16 @@ export const updateAnnouncementOptOutAllRef: UpdateAnnouncementOptOutAllRef;
 
 export function updateAnnouncementOptOutAll(vars: UpdateAnnouncementOptOutAllVariables): MutationPromise<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
 export function updateAnnouncementOptOutAll(dc: DataConnect, vars: UpdateAnnouncementOptOutAllVariables): MutationPromise<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+
+interface ConfirmProfileReviewRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmProfileReviewVariables): MutationRef<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ConfirmProfileReviewVariables): MutationRef<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+  operationName: string;
+}
+export const confirmProfileReviewRef: ConfirmProfileReviewRef;
+
+export function confirmProfileReview(vars: ConfirmProfileReviewVariables): MutationPromise<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+export function confirmProfileReview(dc: DataConnect, vars: ConfirmProfileReviewVariables): MutationPromise<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
 

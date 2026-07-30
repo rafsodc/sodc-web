@@ -58,6 +58,23 @@ After approval you have access to:
 
 ---
 
+## Keeping your profile up to date
+
+The site asks you to review your profile when it has never been confirmed and
+again when the last confirmation is more than six calendar months old. Check
+your name, service number, mobile number, post-nominals, rank or title, and
+contact-sharing choice, then select **Confirm profile**.
+
+Your verified sign-in email is shown read-only in the review. To change it, use
+**Account settings**, complete the verification link sent to the new address,
+and then return to the site. Confirming a profile does not verify or change an
+email address.
+
+If saving fails, your review date is not changed. Check your connection and try
+again.
+
+---
+
 ## Sections and membership
 
 Sections are groups within SODC (for example, a particular sporting or social group). Membership of a section is managed by administrators. Once you are added to a section, it will appear on your home page.

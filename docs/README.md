@@ -30,7 +30,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 
 ## User Guides
 
-- `user-guide/member-getting-started.md`: registration, profile completion, and approval flow.
+- `user-guide/member-getting-started.md`: registration, profile completion, approval, and six-month profile-review flow.
 - `user-guide/booking-an-event.md`: finding events, booking tickets, guest tickets, and payments.
 - `user-guide/admin-guide.md`: approving members, managing sections, events, bookings, and user groups.
 

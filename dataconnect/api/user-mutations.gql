@@ -207,3 +207,32 @@ mutation UpdateAnnouncementOptOutAll(
     }
   )
 }
+
+# Confirms the signed-in member has reviewed the profile fields shown by the
+# periodic review flow. Profile changes and the server-owned review timestamp
+# are committed in one write.
+mutation ConfirmProfileReview(
+  $firstName: String!
+  $lastName: String!
+  $serviceNumber: String!
+  $mobileNumber: String!
+  $postNominals: String
+  $rank: String!
+  $shareContactInfo: Boolean!
+) @auth(expr: "auth.token.enabled == true") {
+  user_update(
+    id_expr: "auth.uid"
+    data: {
+      firstName: $firstName
+      lastName: $lastName
+      serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
+      rank: $rank
+      shareContactInfo: $shareContactInfo
+      profileReviewedAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}

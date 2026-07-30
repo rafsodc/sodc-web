@@ -1122,3 +1122,9 @@ export function updateAnnouncementOptOutAll(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeMutation('UpdateAnnouncementOptOutAll', inputVars, inputOpts);
 }
 
+export function confirmProfileReview(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmProfileReview', inputVars, inputOpts);
+}
+
