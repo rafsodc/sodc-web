@@ -50,6 +50,7 @@ describe("ProfileCompletion", () => {
     await user.type(textboxes[1], "Member");
     const serviceNumberInput = document.querySelector('input[maxlength="50"]') as HTMLInputElement;
     await user.type(serviceNumberInput, "99999");
+    await user.type(screen.getByLabelText(/Mobile number/i), "07700 900123");
     await user.click(screen.getByRole("button", { name: /submit profile/i }));
 
     await waitFor(() => {
@@ -60,6 +61,8 @@ describe("ProfileCompletion", () => {
           requestedMembershipStatus: MembershipStatus.REGULAR,
           firstName: "New",
           lastName: "Member",
+          mobileNumber: "+447700900123",
+          postNominals: null,
           rank: null,
         })
       );
@@ -75,6 +78,7 @@ describe("ProfileCompletion", () => {
     await user.type(textboxes[1], "Member");
     const serviceNumberInput = document.querySelector('input[maxlength="50"]') as HTMLInputElement;
     await user.type(serviceNumberInput, "99999");
+    await user.type(screen.getByLabelText(/Mobile number/i), "07700 900123");
 
     const rankSelect = screen.getByLabelText("Rank / Title");
     fireEvent.mouseDown(rankSelect);

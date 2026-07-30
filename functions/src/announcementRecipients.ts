@@ -10,6 +10,7 @@ export interface AnnouncementAudienceRecipient {
   email: string;
   serviceNumber: string;
   membershipStatus: string;
+  announcementOptOutAll?: boolean | null;
 }
 
 export interface AnnouncementPurposeLink {
@@ -79,7 +80,7 @@ export function mergeAnnouncementRecipients(
   return [...recipients.values()];
 }
 
-/** Applies the same section opt-out set after explicit and inherited users are merged. */
+/** Applies the global master preference and section opt-outs after audiences are merged. */
 export function partitionAnnouncementRecipients(
   recipients: readonly AnnouncementAudienceRecipient[],
   optedOutUserIds: ReadonlySet<string>
@@ -88,7 +89,11 @@ export function partitionAnnouncementRecipients(
   const optedOut: AnnouncementAudienceRecipient[] = [];
 
   for (const recipient of recipients) {
-    (optedOutUserIds.has(recipient.id) ? optedOut : deliverable).push(recipient);
+    (
+      recipient.announcementOptOutAll === true || optedOutUserIds.has(recipient.id)
+        ? optedOut
+        : deliverable
+    ).push(recipient);
   }
 
   return { deliverable, optedOut };

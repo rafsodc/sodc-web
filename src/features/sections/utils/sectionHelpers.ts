@@ -13,6 +13,8 @@ export interface SectionMember {
   sharesContactInfo: boolean;
   /** Null whenever sharesContactInfo is false — withheld server-side, not just hidden client-side. */
   email: string | null;
+  /** Null whenever sharesContactInfo is false or no number is stored. */
+  mobileNumber?: string | null;
 }
 
 /** Sorts by surname, then first name to break ties. Does not mutate the input array. */

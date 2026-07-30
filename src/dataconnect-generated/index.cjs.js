@@ -452,6 +452,64 @@ exports.createUser = function createUser(dcOrVars, vars) {
 }
 ;
 
+const createMigratedUserProfileAndIdentityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateMigratedUserProfileAndIdentity', inputVars);
+}
+createMigratedUserProfileAndIdentityRef.operationName = 'CreateMigratedUserProfileAndIdentity';
+exports.createMigratedUserProfileAndIdentityRef = createMigratedUserProfileAndIdentityRef;
+
+exports.createMigratedUserProfileAndIdentity = function createMigratedUserProfileAndIdentity(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createMigratedUserProfileAndIdentityRef(dcInstance, inputVars));
+}
+;
+
+const linkLegacyIdentityToExistingUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'LinkLegacyIdentityToExistingUser', inputVars);
+}
+linkLegacyIdentityToExistingUserRef.operationName = 'LinkLegacyIdentityToExistingUser';
+exports.linkLegacyIdentityToExistingUserRef = linkLegacyIdentityToExistingUserRef;
+
+exports.linkLegacyIdentityToExistingUser = function linkLegacyIdentityToExistingUser(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(linkLegacyIdentityToExistingUserRef(dcInstance, inputVars));
+}
+;
+
+const getLegacyUserIdentityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetLegacyUserIdentity', inputVars);
+}
+getLegacyUserIdentityRef.operationName = 'GetLegacyUserIdentity';
+exports.getLegacyUserIdentityRef = getLegacyUserIdentityRef;
+
+exports.getLegacyUserIdentity = function getLegacyUserIdentity(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getLegacyUserIdentityRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listLegacyUserIdentitiesByBatchRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyUserIdentitiesByBatch', inputVars);
+}
+listLegacyUserIdentitiesByBatchRef.operationName = 'ListLegacyUserIdentitiesByBatch';
+exports.listLegacyUserIdentitiesByBatchRef = listLegacyUserIdentitiesByBatchRef;
+
+exports.listLegacyUserIdentitiesByBatch = function listLegacyUserIdentitiesByBatch(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyUserIdentitiesByBatchRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const createUserGroupAdminRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -2471,5 +2529,19 @@ exports.optInSectionAnnouncementRef = optInSectionAnnouncementRef;
 exports.optInSectionAnnouncement = function optInSectionAnnouncement(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(optInSectionAnnouncementRef(dcInstance, inputVars));
+}
+;
+
+const updateAnnouncementOptOutAllRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAnnouncementOptOutAll', inputVars);
+}
+updateAnnouncementOptOutAllRef.operationName = 'UpdateAnnouncementOptOutAll';
+exports.updateAnnouncementOptOutAllRef = updateAnnouncementOptOutAllRef;
+
+exports.updateAnnouncementOptOutAll = function updateAnnouncementOptOutAll(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateAnnouncementOptOutAllRef(dcInstance, inputVars));
 }
 ;

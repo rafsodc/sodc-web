@@ -40,6 +40,8 @@ const userData: UserData = {
   lastName: "Member",
   email: "member@example.com",
   serviceNumber: "12345",
+  mobileNumber: "+447700900123",
+  postNominals: "MRAeS",
   membershipStatus: MembershipStatus.REGULAR,
   isRegular: true,
   isReserve: false,
@@ -105,6 +107,8 @@ describe("Profile", () => {
         expect.objectContaining({
           firstName: "Jordan",
           lastName: "Member",
+          mobileNumber: "+447700900123",
+          postNominals: "MRAeS",
         })
       );
     });

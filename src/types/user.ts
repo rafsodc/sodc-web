@@ -9,6 +9,8 @@ export interface UserData {
   lastName: string;
   email: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   membershipStatus: MembershipStatus;
   requestedMembershipStatus?: MembershipStatus | null;
   isRegular?: boolean | null;
@@ -17,6 +19,8 @@ export interface UserData {
   isIndustry?: boolean | null;
   rank?: string | null;
   shareContactInfo?: boolean | null;
+  announcementOptOutAll?: boolean;
+  profileReviewedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,4 +67,3 @@ export interface AdminUser {
 export interface PendingUser extends UserData {
   id: string;
 }
-

@@ -10,6 +10,10 @@ export interface RankOptionGroup {
 
 export const RANK_OPTION_GROUPS: readonly RankOptionGroup[] = [
   {
+    label: "Other",
+    options: ["Not specified"],
+  },
+  {
     label: "Titles",
     options: ["Mr", "Mrs", "Ms", "Miss", "Dr"],
   },

@@ -21,12 +21,20 @@ import {
 import { dataConnect } from "../../../config/firebase";
 import type { SearchUser } from "../../../types";
 import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../dataconnect-generated";
-import { MEMBERSHIP_STATUS_OPTIONS, MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
+import {
+  MEMBERSHIP_STATUS_OPTIONS,
+  MAX_EMAIL_LENGTH,
+  MAX_MOBILE_NUMBER_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_POST_NOMINALS_LENGTH,
+  MAX_SERVICE_NUMBER_LENGTH,
+} from "../../../constants";
 import { parseDisplayName, validateUserForm } from "../../users/utils/userHelpers";
 import { updateUserDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import { canUserChangeStatus, membershipStatusSaveAction, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
+import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -50,6 +58,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [serviceNumber, setServiceNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [postNominals, setPostNominals] = useState("");
   const [membershipStatus, setMembershipStatus] = useState<MembershipStatus>(MembershipStatus.PENDING);
   const [isRegular, setIsRegular] = useState(false);
   const [isReserve, setIsReserve] = useState(false);
@@ -81,6 +91,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         setLastName(fullUser.lastName || "");
         setEmail(fullUser.email || userToLoad.email || "");
         setServiceNumber(fullUser.serviceNumber || "");
+        setMobileNumber(fullUser.mobileNumber || "");
+        setPostNominals(fullUser.postNominals || "");
         const status = fullUser.membershipStatus || MembershipStatus.PENDING;
         setMembershipStatus(status);
         setCurrentStatus(status);
@@ -96,6 +108,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         setLastName(parsed.lastName);
         setEmail(userToLoad.email || "");
         setServiceNumber("");
+        setMobileNumber("");
+        setPostNominals("");
         setMembershipStatus(MembershipStatus.PENDING);
         setCurrentStatus(MembershipStatus.PENDING);
         setRequestedMembershipStatus(null);
@@ -111,6 +125,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       setLastName(parsed.lastName);
       setEmail(userToLoad.email || "");
       setServiceNumber("");
+      setMobileNumber("");
+      setPostNominals("");
       setMembershipStatus(MembershipStatus.PENDING);
       setCurrentStatus(MembershipStatus.PENDING);
       setIsRegular(false);
@@ -134,6 +150,16 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
     const validation = validateUserForm(firstName, lastName, email, serviceNumber);
     if (!validation.isValid) {
       setUpdateMessage({ type: "error", text: validation.error || "Please fill in all required fields" });
+      return;
+    }
+    const normalizedMobileNumber = mobileNumber.trim()
+      ? normalizeMobileNumber(mobileNumber)
+      : null;
+    if (mobileNumber.trim() && !normalizedMobileNumber) {
+      setUpdateMessage({
+        type: "error",
+        text: "Enter a valid mobile number, including the country code for non-UK numbers",
+      });
       return;
     }
 
@@ -164,6 +190,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         lastName: lastName.trim(),
         email: email.trim(),
         serviceNumber: serviceNumber.trim(),
+        mobileNumber: normalizedMobileNumber,
+        postNominals: postNominals.trim() || null,
         isRegular,
         isReserve,
         isCivilServant,
@@ -285,6 +313,25 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                 disabled={submitting}
                 inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
                 helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
+              />
+              <TextField
+                label="Mobile number"
+                type="tel"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+                fullWidth
+                disabled={submitting}
+                inputProps={{ maxLength: MAX_MOBILE_NUMBER_LENGTH }}
+                helperText="UK numbers may start with 07; international numbers must include their country code"
+              />
+              <TextField
+                label="Post-nominals"
+                value={postNominals}
+                onChange={(e) => setPostNominals(e.target.value)}
+                fullWidth
+                disabled={submitting}
+                inputProps={{ maxLength: MAX_POST_NOMINALS_LENGTH }}
+                helperText={`${postNominals.length}/${MAX_POST_NOMINALS_LENGTH} characters`}
               />
               <FormControl fullWidth required>
                 <InputLabel>Membership Status</InputLabel>

@@ -139,6 +139,10 @@ type User @table {
   lastName: String!
   email: String!
   serviceNumber: String!
+  # Stored in E.164 format when present. Nullable so legacy records without a
+  # usable number can be staged and completed during the member review flow.
+  mobileNumber: String
+  postNominals: String
   membershipStatus: MembershipStatus! @default(value: PENDING)
   requestedMembershipStatus: MembershipStatus
   isRegular: Boolean @default(value: false)
@@ -149,9 +153,15 @@ type User @table {
   # dropdown, but this stays a plain string so the list can change without a schema migration.
   rank: String
   # Site-wide (not per-section) preference: whether other members can see this user's contact
-  # details (currently just email) on section member lists. Enforced server-side in
+  # details (email and mobile number) on section member lists. Enforced server-side in
   # getSectionMembersMerged, not just hidden client-side. See #273.
   shareContactInfo: Boolean @default(value: true)
+  # Master preference for optional section announcement emails. This takes
+  # precedence over per-section preferences and applies to future sections.
+  # Transactional/account-security messages are not affected.
+  announcementOptOutAll: Boolean! @default(value: false)
+  # Advanced only when the member explicitly confirms their profile.
+  profileReviewedAt: Timestamp
   stripeCustomerId: String
   emailBounceCount: Int! @default(value: 0)
   emailLastBounceAt: Timestamp
@@ -167,6 +177,22 @@ type User @table {
   updatedAt: Timestamp! @default(expr: "request.time")
   createdBy: String @default(expr: "auth.uid")
   updatedBy: String @default(expr: "auth.uid")
+}
+
+# Immutable provenance link from a legacy user record to its canonical Firebase
+# Auth/Data Connect identity. oldUid is intentionally not retained.
+type LegacyUserIdentity
+  @table(key: ["sourceSystem", "legacyUserId"])
+  @unique(fields: ["user"]) {
+  sourceSystem: String!
+  legacyUserId: UUID!
+  user: User!
+  migrationBatchId: UUID!
+  recordSchemaVersion: String!
+  sourceChecksum: String!
+  importedAt: Timestamp!
+  createdAt: Timestamp! @default(expr: "request.time")
+  createdBy: String!
 }
 
 # Section table - represents different sections of the application
