@@ -2545,3 +2545,17 @@ exports.updateAnnouncementOptOutAll = function updateAnnouncementOptOutAll(dcOrV
   return executeMutation(updateAnnouncementOptOutAllRef(dcInstance, inputVars));
 }
 ;
+
+const confirmProfileReviewRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ConfirmProfileReview', inputVars);
+}
+confirmProfileReviewRef.operationName = 'ConfirmProfileReview';
+exports.confirmProfileReviewRef = confirmProfileReviewRef;
+
+exports.confirmProfileReview = function confirmProfileReview(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(confirmProfileReviewRef(dcInstance, inputVars));
+}
+;

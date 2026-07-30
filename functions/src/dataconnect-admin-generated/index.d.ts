@@ -342,6 +342,20 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   lastAttemptedAt: TimestampString;
 }
 
+export interface ConfirmProfileReviewData {
+  user_update?: User_Key | null;
+}
+
+export interface ConfirmProfileReviewVariables {
+  firstName: string;
+  lastName: string;
+  serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
+  rank: string;
+  shareContactInfo: boolean;
+}
+
 export interface ConsumeCallableRateLimitData {
   consumed: number;
   callableRateLimitBucket_deleteMany: number;
@@ -3918,4 +3932,9 @@ export function optInSectionAnnouncement(vars: OptInSectionAnnouncementVariables
 export function updateAnnouncementOptOutAll(dc: DataConnect, vars: UpdateAnnouncementOptOutAllVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementOptOutAllData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateAnnouncementOptOutAll' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateAnnouncementOptOutAll(vars: UpdateAnnouncementOptOutAllVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateAnnouncementOptOutAllData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ConfirmProfileReview' Mutation. Allow users to execute without passing in DataConnect. */
+export function confirmProfileReview(dc: DataConnect, vars: ConfirmProfileReviewVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmProfileReviewData>>;
+/** Generated Node Admin SDK operation action function for the 'ConfirmProfileReview' Mutation. Allow users to pass in custom DataConnect instances. */
+export function confirmProfileReview(vars: ConfirmProfileReviewVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmProfileReviewData>>;
 

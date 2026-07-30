@@ -52,8 +52,10 @@ The application normalises common UK input such as `07700 900123` to
 importer in #419 must apply equivalent E.164 validation and quarantine
 non-empty values that cannot be interpreted safely.
 
-`profileReviewedAt` remains null for migrated users until they explicitly save
-or confirm their profile through #416.
+`profileReviewedAt` remains null for migrated users until they complete the
+profile-review dialog. The dialog appears after email verification and enabled
+account gates, persists profile corrections and the server review timestamp in
+one Data Connect write, and requires missing mobile/rank details to be resolved.
 
 ## Announcement preferences
 
