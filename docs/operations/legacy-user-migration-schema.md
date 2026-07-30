@@ -13,7 +13,7 @@ Git, GitHub, chat, normal logs, and CI artifacts.
 |---|---|---|
 | `legacyUserId` | `LegacyUserIdentity.legacyUserId` | Required UUID; immutable provenance key |
 | `oldUid` | `LegacyUserIdentity.oldUid` | Nullable legacy numeric identifier retained as provenance only; never used as an identity key |
-| `email` | Firebase Auth and `User.email` | Trim, lowercase, validate, and reconcile collisions before writes |
+| `email` | Firebase Auth and `User.email` | Trim, lowercase, validate, and reconcile collisions before writes. An explicitly approved invalid-email exception may be imported only as a disabled email-less Auth identity with `User.email=""` and `membershipStatus=LOST`. |
 | `firstName`, `lastName` | `User.firstName`, `User.lastName` | Trim; blank values fail closed |
 | `serviceNumber` | `User.serviceNumber` | Trim; blank or missing values become `N/A` |
 | `mobileNumber` | `User.mobileNumber` | Normalise valid values to E.164; blank values remain null for first-login review |
@@ -56,6 +56,9 @@ non-empty values that cannot be interpreted safely.
 profile-review dialog. The dialog appears after email verification and enabled
 account gates, persists profile corrections and the server review timestamp in
 one Data Connect write, and requires missing mobile/rank details to be resolved.
+
+The executable dry-run, apply, resume, and production approval procedure is in
+[`legacy-user-import.md`](legacy-user-import.md).
 
 ## Announcement preferences
 

@@ -623,6 +623,32 @@ query ListLegacyUserIdentitiesByBatch(
   }
 }
 
+# The importer snapshots the complete identity surface before it plans any
+# writes. It requests one more than its documented ceiling and fails closed if
+# that sentinel row is returned.
+query ListMigrationUsers($limit: Int!) @auth(level: NO_ACCESS) {
+  users(limit: $limit) {
+    id
+    email
+  }
+}
+
+query ListLegacyUserIdentitiesForMigration(
+  $sourceSystem: String!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  legacyUserIdentities(
+    where: { sourceSystem: { eq: $sourceSystem } }
+    limit: $limit
+  ) {
+    legacyUserId
+    user { id }
+    migrationBatchId
+    recordSchemaVersion
+    sourceChecksum
+  }
+}
+
 # Create a user group (SDK only)
 # Used by Firebase Functions to automatically create status-based user groups
 mutation CreateUserGroupAdmin(

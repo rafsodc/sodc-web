@@ -276,6 +276,18 @@ export function listLegacyUserIdentitiesByBatch(dcOrVarsOrOptions, varsOrOptions
   return dcInstance.executeQuery('ListLegacyUserIdentitiesByBatch', inputVars, inputOpts);
 }
 
+export function listMigrationUsers(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListMigrationUsers', inputVars, inputOpts);
+}
+
+export function listLegacyUserIdentitiesForMigration(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyUserIdentitiesForMigration', inputVars, inputOpts);
+}
+
 export function createUserGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

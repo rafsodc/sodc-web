@@ -138,6 +138,11 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation LinkLegacyIdentityToExistingUser", mustInclude: NO_ACCESS },
       { op: "query GetLegacyUserIdentity", mustInclude: NO_ACCESS },
       { op: "query ListLegacyUserIdentitiesByBatch", mustInclude: NO_ACCESS },
+      { op: "query ListMigrationUsers", mustInclude: NO_ACCESS },
+      {
+        op: "query ListLegacyUserIdentitiesForMigration",
+        mustInclude: NO_ACCESS,
+      },
       { op: "mutation UpdateUserStripeCustomerId", mustInclude: NO_ACCESS },
     ]);
 

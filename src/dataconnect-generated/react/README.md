@@ -25,6 +25,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListSectionFilesForQuota*](#listsectionfilesforquota)
   - [*GetLegacyUserIdentity*](#getlegacyuseridentity)
   - [*ListLegacyUserIdentitiesByBatch*](#listlegacyuseridentitiesbybatch)
+  - [*ListMigrationUsers*](#listmigrationusers)
+  - [*ListLegacyUserIdentitiesForMigration*](#listlegacyuseridentitiesformigration)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetUserForCheckout*](#getuserforcheckout)
@@ -880,8 +882,8 @@ import { useGetLegacyUserIdentity } from '@dataconnect/generated/react'
 export default function GetLegacyUserIdentityComponent() {
   // The `useGetLegacyUserIdentity` Query hook requires an argument of type `GetLegacyUserIdentityVariables`:
   const getLegacyUserIdentityVars: GetLegacyUserIdentityVariables = {
-    sourceSystem: ...,
-    legacyUserId: ...,
+    sourceSystem: ..., 
+    legacyUserId: ..., 
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -975,8 +977,8 @@ import { useListLegacyUserIdentitiesByBatch } from '@dataconnect/generated/react
 export default function ListLegacyUserIdentitiesByBatchComponent() {
   // The `useListLegacyUserIdentitiesByBatch` Query hook requires an argument of type `ListLegacyUserIdentitiesByBatchVariables`:
   const listLegacyUserIdentitiesByBatchVars: ListLegacyUserIdentitiesByBatchVariables = {
-    migrationBatchId: ...,
-    limit: ...,
+    migrationBatchId: ..., 
+    limit: ..., 
   };
 
   // You don't have to do anything to "execute" the Query.
@@ -997,6 +999,183 @@ export default function ListLegacyUserIdentitiesByBatchComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useListLegacyUserIdentitiesByBatch(dataConnect, listLegacyUserIdentitiesByBatchVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.legacyUserIdentities);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListMigrationUsers
+You can execute the `ListMigrationUsers` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: useDataConnectQueryOptions<ListMigrationUsersData>): UseDataConnectQueryResult<ListMigrationUsersData, ListMigrationUsersVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListMigrationUsers(vars: ListMigrationUsersVariables, options?: useDataConnectQueryOptions<ListMigrationUsersData>): UseDataConnectQueryResult<ListMigrationUsersData, ListMigrationUsersVariables>;
+```
+
+### Variables
+The `ListMigrationUsers` Query requires an argument of type `ListMigrationUsersVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListMigrationUsersVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListMigrationUsers` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListMigrationUsers` Query is of type `ListMigrationUsersData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListMigrationUsersData {
+  users: ({
+    id: string;
+    email: string;
+  } & User_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListMigrationUsers`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListMigrationUsersVariables } from '@dataconnect/generated';
+import { useListMigrationUsers } from '@dataconnect/generated/react'
+
+export default function ListMigrationUsersComponent() {
+  // The `useListMigrationUsers` Query hook requires an argument of type `ListMigrationUsersVariables`:
+  const listMigrationUsersVars: ListMigrationUsersVariables = {
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListMigrationUsers(listMigrationUsersVars);
+  // Variables can be defined inline as well.
+  const query = useListMigrationUsers({ limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListMigrationUsers(dataConnect, listMigrationUsersVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListMigrationUsers(listMigrationUsersVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListMigrationUsers(dataConnect, listMigrationUsersVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.users);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListLegacyUserIdentitiesForMigration
+You can execute the `ListLegacyUserIdentitiesForMigration` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: useDataConnectQueryOptions<ListLegacyUserIdentitiesForMigrationData>): UseDataConnectQueryResult<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListLegacyUserIdentitiesForMigration(vars: ListLegacyUserIdentitiesForMigrationVariables, options?: useDataConnectQueryOptions<ListLegacyUserIdentitiesForMigrationData>): UseDataConnectQueryResult<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+```
+
+### Variables
+The `ListLegacyUserIdentitiesForMigration` Query requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListLegacyUserIdentitiesForMigrationVariables {
+  sourceSystem: string;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListLegacyUserIdentitiesForMigration` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListLegacyUserIdentitiesForMigration` Query is of type `ListLegacyUserIdentitiesForMigrationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListLegacyUserIdentitiesForMigrationData {
+  legacyUserIdentities: ({
+    legacyUserId: UUIDString;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListLegacyUserIdentitiesForMigration`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListLegacyUserIdentitiesForMigrationVariables } from '@dataconnect/generated';
+import { useListLegacyUserIdentitiesForMigration } from '@dataconnect/generated/react'
+
+export default function ListLegacyUserIdentitiesForMigrationComponent() {
+  // The `useListLegacyUserIdentitiesForMigration` Query hook requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`:
+  const listLegacyUserIdentitiesForMigrationVars: ListLegacyUserIdentitiesForMigrationVariables = {
+    sourceSystem: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListLegacyUserIdentitiesForMigration(listLegacyUserIdentitiesForMigrationVars);
+  // Variables can be defined inline as well.
+  const query = useListLegacyUserIdentitiesForMigration({ sourceSystem: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListLegacyUserIdentitiesForMigration(dataConnect, listLegacyUserIdentitiesForMigrationVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListLegacyUserIdentitiesForMigration(listLegacyUserIdentitiesForMigrationVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListLegacyUserIdentitiesForMigration(dataConnect, listLegacyUserIdentitiesForMigrationVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -8445,8 +8624,8 @@ export default function UpdateUserEmailFromAuthComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateUserEmailFromAuth` Mutation requires an argument of type `UpdateUserEmailFromAuthVariables`:
   const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
-    userId: ...,
-    email: ...,
+    userId: ..., 
+    email: ..., 
   };
   mutation.mutate(updateUserEmailFromAuthVars);
   // Variables can be defined inline as well.
@@ -8770,24 +8949,24 @@ export default function CreateMigratedUserProfileAndIdentityComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateMigratedUserProfileAndIdentity` Mutation requires an argument of type `CreateMigratedUserProfileAndIdentityVariables`:
   const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
-    userId: ...,
-    legacyUserId: ...,
+    userId: ..., 
+    legacyUserId: ..., 
     oldUid: ..., // optional
-    sourceSystem: ...,
-    migrationBatchId: ...,
-    recordSchemaVersion: ...,
-    sourceChecksum: ...,
-    firstName: ...,
-    lastName: ...,
-    email: ...,
-    serviceNumber: ...,
+    sourceSystem: ..., 
+    migrationBatchId: ..., 
+    recordSchemaVersion: ..., 
+    sourceChecksum: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    email: ..., 
+    serviceNumber: ..., 
     mobileNumber: ..., // optional
     postNominals: ..., // optional
-    rank: ...,
-    membershipStatus: ...,
-    shareContactInfo: ...,
-    announcementOptOutAll: ...,
-    now: ...,
+    rank: ..., 
+    membershipStatus: ..., 
+    shareContactInfo: ..., 
+    announcementOptOutAll: ..., 
+    now: ..., 
   };
   mutation.mutate(createMigratedUserProfileAndIdentityVars);
   // Variables can be defined inline as well.
@@ -8889,14 +9068,14 @@ export default function LinkLegacyIdentityToExistingUserComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useLinkLegacyIdentityToExistingUser` Mutation requires an argument of type `LinkLegacyIdentityToExistingUserVariables`:
   const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
-    userId: ...,
-    legacyUserId: ...,
+    userId: ..., 
+    legacyUserId: ..., 
     oldUid: ..., // optional
-    sourceSystem: ...,
-    migrationBatchId: ...,
-    recordSchemaVersion: ...,
-    sourceChecksum: ...,
-    now: ...,
+    sourceSystem: ..., 
+    migrationBatchId: ..., 
+    recordSchemaVersion: ..., 
+    sourceChecksum: ..., 
+    now: ..., 
   };
   mutation.mutate(linkLegacyIdentityToExistingUserVars);
   // Variables can be defined inline as well.
@@ -16006,7 +16185,7 @@ export default function CreateUserProfileComponent() {
     firstName: ..., 
     lastName: ..., 
     serviceNumber: ..., 
-    mobileNumber: ...,
+    mobileNumber: ..., 
     postNominals: ..., // optional
     requestedMembershipStatus: ..., 
     isRegular: ..., // optional
@@ -16900,7 +17079,7 @@ export default function UpdateAnnouncementOptOutAllComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useUpdateAnnouncementOptOutAll` Mutation requires an argument of type `UpdateAnnouncementOptOutAllVariables`:
   const updateAnnouncementOptOutAllVars: UpdateAnnouncementOptOutAllVariables = {
-    announcementOptOutAll: ...,
+    announcementOptOutAll: ..., 
   };
   mutation.mutate(updateAnnouncementOptOutAllVars);
   // Variables can be defined inline as well.
@@ -17000,13 +17179,13 @@ export default function ConfirmProfileReviewComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useConfirmProfileReview` Mutation requires an argument of type `ConfirmProfileReviewVariables`:
   const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
-    firstName: ...,
-    lastName: ...,
-    serviceNumber: ...,
-    mobileNumber: ...,
+    firstName: ..., 
+    lastName: ..., 
+    serviceNumber: ..., 
+    mobileNumber: ..., 
     postNominals: ..., // optional
-    rank: ...,
-    shareContactInfo: ...,
+    rank: ..., 
+    shareContactInfo: ..., 
   };
   mutation.mutate(confirmProfileReviewVars);
   // Variables can be defined inline as well.
@@ -17034,3 +17213,4 @@ export default function ConfirmProfileReviewComponent() {
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
 ```
+
