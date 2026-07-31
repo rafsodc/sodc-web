@@ -16,6 +16,8 @@ mutation CreateUserProfile(
   $firstName: String!
   $lastName: String!
   $serviceNumber: String!
+  $mobileNumber: String!
+  $postNominals: String
   $requestedMembershipStatus: MembershipStatus!
   $isRegular: Boolean
   $isReserve: Boolean
@@ -31,6 +33,8 @@ mutation CreateUserProfile(
       lastName: $lastName
       email_expr: "auth.token.email"
       serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
       requestedMembershipStatus: $requestedMembershipStatus
       membershipStatus: PENDING
       isRegular: $isRegular
@@ -54,6 +58,8 @@ mutation UpsertUser(
   $firstName: String!
   $lastName: String!
   $serviceNumber: String!
+  $mobileNumber: String
+  $postNominals: String
   $isRegular: Boolean
   $isReserve: Boolean
   $isCivilServant: Boolean
@@ -68,6 +74,8 @@ mutation UpsertUser(
       lastName: $lastName
       email_expr: "auth.token.email"
       serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
       isRegular: $isRegular
       isReserve: $isReserve
       isCivilServant: $isCivilServant
@@ -91,6 +99,8 @@ mutation UpdateUser(
   $lastName: String!
   $email: String!
   $serviceNumber: String!
+  $mobileNumber: String
+  $postNominals: String
   $isRegular: Boolean
   $isReserve: Boolean
   $isCivilServant: Boolean
@@ -103,6 +113,8 @@ mutation UpdateUser(
       lastName: $lastName
       email: $email
       serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
       isRegular: $isRegular
       isReserve: $isReserve
       isCivilServant: $isCivilServant
@@ -179,4 +191,48 @@ mutation OptOutSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.en
 # Remove the current user's per-section opt-out (opt back in)
 mutation OptInSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
   sectionAnnouncementOptOut_delete(key: { userId_expr: "auth.uid", sectionId: $sectionId })
+}
+
+# Site-wide master preference for optional announcement emails. Per-section
+# preferences remain stored while this is enabled and resume if it is disabled.
+mutation UpdateAnnouncementOptOutAll(
+  $announcementOptOutAll: Boolean!
+) @auth(expr: "auth.token.enabled == true") {
+  user_update(
+    id_expr: "auth.uid"
+    data: {
+      announcementOptOutAll: $announcementOptOutAll
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
+}
+
+# Confirms the signed-in member has reviewed the profile fields shown by the
+# periodic review flow. Profile changes and the server-owned review timestamp
+# are committed in one write.
+mutation ConfirmProfileReview(
+  $firstName: String!
+  $lastName: String!
+  $serviceNumber: String!
+  $mobileNumber: String!
+  $postNominals: String
+  $rank: String!
+  $shareContactInfo: Boolean!
+) @auth(expr: "auth.token.enabled == true") {
+  user_update(
+    id_expr: "auth.uid"
+    data: {
+      firstName: $firstName
+      lastName: $lastName
+      serviceNumber: $serviceNumber
+      mobileNumber: $mobileNumber
+      postNominals: $postNominals
+      rank: $rank
+      shareContactInfo: $shareContactInfo
+      profileReviewedAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy_expr: "auth.uid"
+    }
+  )
 }

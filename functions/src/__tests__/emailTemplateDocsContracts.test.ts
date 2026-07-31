@@ -5,6 +5,7 @@ import { EMAIL_TEMPLATE_MANIFEST } from "../generatedEmailTemplateManifest";
 
 const repoRoot = path.resolve(process.cwd(), "..");
 const DOCS_PATH = "docs/operations/govuk-notify-template-copy.md";
+const REGISTRY_PATH = "functions/email-templates/template-registry.json";
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -22,6 +23,7 @@ function readRepoFile(relativePath: string): string {
  */
 describe("GOV Notify template docs parity (#378)", () => {
   const docs = readRepoFile(DOCS_PATH);
+  const registry = JSON.parse(readRepoFile(REGISTRY_PATH)) as Record<string, unknown>;
   const manifestKeys = Object.keys(EMAIL_TEMPLATE_MANIFEST);
   const documentedKeys = [...docs.matchAll(/^### `([a-zA-Z0-9]+)`/gm)].map((match) => match[1]);
 
@@ -33,6 +35,13 @@ describe("GOV Notify template docs parity (#378)", () => {
   for (const key of manifestKeys) {
     it(`documents ${key} (present in functions/email-templates/) in ${DOCS_PATH}`, () => {
       expect(documentedKeys, `${key} exists in functions/email-templates/ but has no "### \`${key}\`" heading in ${DOCS_PATH}`).toContain(key);
+    });
+
+    it(`registers ${key} in ${REGISTRY_PATH}`, () => {
+      expect(
+        registry,
+        `${key} exists in the generated manifest but has no registry entry`,
+      ).toHaveProperty(key);
     });
   }
 

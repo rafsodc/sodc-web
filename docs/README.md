@@ -26,10 +26,12 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/section-announcement-audiences.md`: explicit and membership-status-derived audience, eligibility, deduplication, and opt-out rules for section announcements.
 - `operations/firebase-hosting-security-headers.md`: production CSP and browser hardening policy, HSTS ownership, and post-deploy verification.
 - `operations/section-file-storage.md`: private section-file bucket, lifecycle states, IAM, CORS, deployment order, and verification.
+- `operations/legacy-user-migration-schema.md`: approved legacy-user field mapping, secure Data Connect write boundary, staged profile completion, and deployment order.
+- `operations/legacy-user-import.md`: guarded dry-run/apply/resume workflow and PII-minimised postflight reconciliation.
 
 ## User Guides
 
-- `user-guide/member-getting-started.md`: registration, profile completion, and approval flow.
+- `user-guide/member-getting-started.md`: registration, profile completion, approval, and six-month profile-review flow.
 - `user-guide/booking-an-event.md`: finding events, booking tickets, guest tickets, and payments.
 - `user-guide/admin-guide.md`: approving members, managing sections, events, bookings, and user groups.
 

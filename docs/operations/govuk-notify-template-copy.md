@@ -371,3 +371,83 @@ Review in Approve Users:
 ```
 
 **Placeholders used:** `firstName`, `lastName`, `email`, `serviceNumber`, `serviceBackgroundSummary`, `requestedMembershipStatus`, `approveUsersUrl`
+
+---
+
+## Account access
+
+### `passwordReset`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET`
+
+**Subject:** Reset your SODC password
+
+**Body:**
+
+```
+We received a request to reset the password for your SODC account.
+
+Use this secure link to choose a new password:
+
+((resetLink))
+
+If you did not request this, you can ignore this email. Your password will not change.
+
+For your security, do not forward this email or share the link.
+
+SODC
+```
+
+**Placeholders used:** `resetLink`
+
+---
+
+### `emailVerification`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION`
+
+**Subject:** Verify your SODC email address
+
+**Body:**
+
+```
+Welcome to SODC.
+
+Use this secure link to verify your email address:
+
+((verificationLink))
+
+If you did not create an SODC account, you can ignore this email.
+
+For your security, do not forward this email or share the link.
+
+SODC
+```
+
+**Placeholders used:** `verificationLink`
+
+---
+
+### `emailChangeVerification`
+
+**Env var:** `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION`
+
+**Subject:** Confirm your new SODC email address
+
+**Body:**
+
+```
+We received a request to change the email address used for your SODC account.
+
+Use this secure link to confirm the new address:
+
+((verificationLink))
+
+If you did not request this change, you can ignore this email. Your current address will remain unchanged.
+
+For your security, do not forward this email or share the link.
+
+SODC
+```
+
+**Placeholders used:** `verificationLink`

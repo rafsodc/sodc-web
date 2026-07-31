@@ -68,5 +68,20 @@
     "dev": "",
     "beta": "",
     "production": ""
+  },
+  "passwordReset": {
+    "dev": "199789e9-790f-43c9-ada8-103568a91c54",
+    "beta": "",
+    "production": ""
+  },
+  "emailVerification": {
+    "dev": "f13f16aa-a0f8-4baa-a6d2-812be3f6baaf",
+    "beta": "",
+    "production": ""
+  },
+  "emailChangeVerification": {
+    "dev": "edbd2f81-49fe-4bae-a106-a182df239a53",
+    "beta": "",
+    "production": ""
   }
 }

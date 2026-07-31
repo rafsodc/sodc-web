@@ -8,9 +8,12 @@ import {
   Typography,
   Link,
 } from "@mui/material";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../../config/firebase";
-import { syncPendingUserClaims } from "../../../shared/utils/firebaseFunctions";
+import {
+  requestEmailVerification,
+  syncPendingUserClaims,
+} from "../../../shared/utils/firebaseFunctions";
 import {
   getRegistrationPasswordHelperText,
   validateRegistrationPassword,
@@ -75,7 +78,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
       }
       await userCredential.user.getIdToken(true);
 
-      await sendEmailVerification(userCredential.user);
+      await requestEmailVerification();
 
       setSuccess(true);
       setPassword("");
@@ -92,6 +95,9 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
         errorMessage = "Invalid email address";
       } else if (e?.code === "auth/weak-password") {
         errorMessage = "Password is too weak";
+      } else if (String(e?.code ?? "").startsWith("functions/")) {
+        errorMessage =
+          "Your account was created, but we couldn’t send the verification email. Sign in to request another.";
       } else if (e?.message) {
         errorMessage = e.message;
       }

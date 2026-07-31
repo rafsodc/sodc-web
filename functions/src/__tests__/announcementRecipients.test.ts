@@ -85,6 +85,21 @@ describe("announcement recipient resolution", () => {
     expect(partitioned.optedOut.map(({ id }) => id)).toEqual(["explicit", "inherited"]);
   });
 
+  it("applies the global announcement opt-out even without a section opt-out", () => {
+    const globallyOptedOut = {
+      ...user("global"),
+      announcementOptOutAll: true,
+    };
+
+    const partitioned = partitionAnnouncementRecipients(
+      [globallyOptedOut, user("subscribed")],
+      new Set(),
+    );
+
+    expect(partitioned.deliverable.map(({ id }) => id)).toEqual(["subscribed"]);
+    expect(partitioned.optedOut.map(({ id }) => id)).toEqual(["global"]);
+  });
+
   it("returns an empty audience when no eligible links or users exist", () => {
     expect(mergeAnnouncementRecipients([], [])).toEqual([]);
     expect(

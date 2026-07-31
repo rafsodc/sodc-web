@@ -23,6 +23,8 @@ export const MAX_NAME_LENGTH = 100;
 export const MAX_DESCRIPTION_LENGTH = 500;
 export const MAX_SERVICE_NUMBER_LENGTH = 50;
 export const MAX_EMAIL_LENGTH = 255;
+export const MAX_MOBILE_NUMBER_LENGTH = 32;
+export const MAX_POST_NOMINALS_LENGTH = 100;
 
 // Membership status options for UI
 import { MembershipStatus } from "../dataconnect-generated";
@@ -45,4 +47,3 @@ export const MEMBERSHIP_STATUS_OPTIONS = [
   { value: MembershipStatus.LOST, label: "Lost" },
   { value: MembershipStatus.DECEASED, label: "Deceased" },
 ] as const;
-

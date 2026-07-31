@@ -49,6 +49,20 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     ],
     body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Updated booking (revision ((revisedRevisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\nAccommodation: ((accommodationSummary))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nDifference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nManage payments:\n\n((myPaymentsUrl))\n\nSODC",
   },
+  emailChangeVerification: {
+    subject: "Confirm your new SODC email address",
+    variables: [
+    "verificationLink"
+    ],
+    body: "We received a request to change the email address used for your SODC account.\n\nUse this secure link to confirm the new address:\n\n((verificationLink))\n\nIf you did not request this change, you can ignore this email. Your current address will remain unchanged.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+  },
+  emailVerification: {
+    subject: "Verify your SODC email address",
+    variables: [
+    "verificationLink"
+    ],
+    body: "Welcome to SODC.\n\nUse this secure link to verify your email address:\n\n((verificationLink))\n\nIf you did not create an SODC account, you can ignore this email.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+  },
   guestTicketRequestApproved: {
     subject: "Guest ticket request approved — ((eventTitle))",
     variables: [
@@ -121,6 +135,13 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "approveUsersUrl"
     ],
     body: "A new member has completed their profile and is awaiting approval.\n\nName: ((firstName)) ((lastName))\nEmail: ((email))\nService number: ((serviceNumber))\nService background: ((serviceBackgroundSummary))\nRequested status: ((requestedMembershipStatus))\n\nReview in Approve Users:\n((approveUsersUrl))",
+  },
+  passwordReset: {
+    subject: "Reset your SODC password",
+    variables: [
+    "resetLink"
+    ],
+    body: "We received a request to reset the password for your SODC account.\n\nUse this secure link to choose a new password:\n\n((resetLink))\n\nIf you did not request this, you can ignore this email. Your password will not change.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
   },
   paymentDisputeOpsAlert: {
     subject: "[SODC OPS] Payment dispute — ((orderId))",

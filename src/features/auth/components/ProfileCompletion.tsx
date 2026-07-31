@@ -15,10 +15,16 @@ import { dataConnect } from "../../../config/firebase";
 import { executeMutation, mutationRef } from "firebase/data-connect";
 import { MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
-import { MAX_NAME_LENGTH, MAX_SERVICE_NUMBER_LENGTH } from "../../../constants";
+import {
+  MAX_MOBILE_NUMBER_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_POST_NOMINALS_LENGTH,
+  MAX_SERVICE_NUMBER_LENGTH,
+} from "../../../constants";
 import { auth } from "../../../config/firebase";
 import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 import RankSelect from "../../../shared/components/RankSelect";
+import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -33,6 +39,8 @@ export default function ProfileCompletion({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(userEmail);
   const [serviceNumber, setServiceNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [postNominals, setPostNominals] = useState("");
   const [isRegular, setIsRegular] = useState(false);
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
@@ -56,6 +64,11 @@ export default function ProfileCompletion({
       setError(validation.error || "Please fill in all required fields");
       return;
     }
+    const normalizedMobileNumber = normalizeMobileNumber(mobileNumber);
+    if (!normalizedMobileNumber) {
+      setError("Enter a valid mobile number, including the country code for non-UK numbers");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -73,6 +86,8 @@ export default function ProfileCompletion({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         serviceNumber: serviceNumber.trim(),
+        mobileNumber: normalizedMobileNumber,
+        postNominals: postNominals.trim() || null,
         requestedMembershipStatus: MembershipStatus.REGULAR,
         isRegular,
         isReserve,
@@ -196,6 +211,28 @@ export default function ProfileCompletion({
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
           />
 
+          <TextField
+            label="Mobile number"
+            type="tel"
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.target.value)}
+            required
+            fullWidth
+            disabled={submitting}
+            inputProps={{ maxLength: MAX_MOBILE_NUMBER_LENGTH }}
+            helperText="UK numbers may start with 07; international numbers must include their country code"
+          />
+
+          <TextField
+            label="Post-nominals"
+            value={postNominals}
+            onChange={(e) => setPostNominals(e.target.value)}
+            fullWidth
+            disabled={submitting}
+            inputProps={{ maxLength: MAX_POST_NOMINALS_LENGTH }}
+            helperText={`${postNominals.length}/${MAX_POST_NOMINALS_LENGTH} characters`}
+          />
+
           <RankSelect value={rank} onChange={setRank} disabled={submitting} />
 
           <Divider sx={{ my: 2 }} />
@@ -256,7 +293,14 @@ export default function ProfileCompletion({
             <Button
               type="submit"
               variant="contained"
-              disabled={submitting || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
+              disabled={
+                submitting ||
+                !firstName.trim() ||
+                !lastName.trim() ||
+                !email.trim() ||
+                !serviceNumber.trim() ||
+                !mobileNumber.trim()
+              }
               sx={{
                 backgroundColor: "secondary.main",
                 "&:hover": {
@@ -273,4 +317,3 @@ export default function ProfileCompletion({
     </Box>
   );
 }
-

@@ -24,6 +24,8 @@ export const ROUTES = {
   EMAIL_DELIVERY: "/admin/email-delivery",
   REGISTER: "/register",
   PROFILE_COMPLETION: "/profile-completion",
+  PASSWORD_RESET_REQUEST: "/account/reset-password",
+  AUTH_ACTION: "/auth/action",
   UNSUBSCRIBE_CONFIRMED: "/unsubscribe/confirmed",
 } as const;
 

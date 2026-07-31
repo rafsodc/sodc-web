@@ -26,6 +26,7 @@ import { useCheckoutQueryState } from "./shared/appShell/useCheckoutQueryState";
 import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
 import { useUnenabledProfileCheck } from "./shared/appShell/useUnenabledProfileCheck";
 import { accountSignInPath, safeReturnTo } from "./shared/navigation/authReturnTo";
+import { isProfileReviewDue } from "./features/profile/utils/profileReviewDue";
 
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
@@ -53,6 +54,11 @@ const RegisterPage = lazy(() => import("./features/auth/components/RegisterPage"
 const OnboardingShell = lazy(() => import("./features/auth/components/OnboardingShell"));
 const UnsubscribeConfirmedPage = lazy(() => import("./features/account/components/UnsubscribeConfirmedPage"));
 const SectionFileDownloadPage = lazy(() => import("./features/sections/components/SectionFileDownloadPage"));
+const PasswordResetRequestPage = lazy(() => import("./features/auth/components/PasswordResetRequestPage"));
+const AuthActionPage = lazy(() => import("./features/auth/components/AuthActionPage"));
+const ProfileReviewDialog = lazy(
+  () => import("./features/profile/components/ProfileReviewDialog"),
+);
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -100,9 +106,13 @@ function AppContent() {
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [profileReviewCompletedForUid, setProfileReviewCompletedForUid] = useState<string | null>(
+    null,
+  );
   const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
   const checkoutReturn = isCheckoutReturnSearch(location.search);
   const authReturnTo = safeReturnTo(location.search);
+  const isPublicAuthAction = location.pathname === ROUTES.AUTH_ACTION;
   const isAdmin = useAdminClaim(user);
   const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const {
@@ -126,8 +136,24 @@ function AppContent() {
     }
   }, [refetch]);
 
+  const handleProfileReviewed = useCallback(async () => {
+    if (!user) return;
+    setProfileReviewCompletedForUid(user.uid);
+    await refetch?.();
+  }, [refetch, user]);
+
   // Check if email is verified
   const emailNotVerified = user && !user.emailVerified;
+  const showProfileReview = Boolean(
+    user &&
+      user.emailVerified &&
+      isEnabled &&
+      userData &&
+      !userDataLoading &&
+      !isPublicAuthAction &&
+      profileReviewCompletedForUid !== user.uid &&
+      isProfileReviewDue(userData.profileReviewedAt),
+  );
 
   const navigationLinks = useMemo(
     () => buildNavigationLinks({ isEnabled, isAdmin, sectionsData: userSectionsData }),
@@ -178,7 +204,7 @@ function AppContent() {
     );
   }
 
-  if (emailNotVerified) {
+  if (emailNotVerified && !isPublicAuthAction) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -226,7 +252,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabledClaimResolved) {
+  if (user && !isEnabledClaimResolved && !isPublicAuthAction) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -237,7 +263,12 @@ function AppContent() {
     );
   }
 
-  if (user && needsProfileCompletion && location.pathname !== ROUTES.PROFILE_COMPLETION) {
+  if (
+    user &&
+    needsProfileCompletion &&
+    location.pathname !== ROUTES.PROFILE_COMPLETION &&
+    !isPublicAuthAction
+  ) {
     return (
       <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -246,7 +277,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabled && !needsProfileCompletion) {
+  if (user && !isEnabled && !needsProfileCompletion && !isPublicAuthAction) {
     const inactiveUserData =
       userData ||
       (membershipStatusForUnenabled
@@ -360,6 +391,15 @@ function AppContent() {
         </Alert>
       </Snackbar>
       {header}
+      {showProfileReview && userData && user && (
+        <Suspense fallback={null}>
+          <ProfileReviewDialog
+            userData={userData}
+            userEmail={user.email || ""}
+            onReviewed={handleProfileReviewed}
+          />
+        </Suspense>
+      )}
       <Box
         component="main"
         sx={{
@@ -461,6 +501,26 @@ function AppContent() {
                       ) : (
                         <Navigate to={ROUTES.ACCOUNT} replace />
                       )}
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.PASSWORD_RESET_REQUEST}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <PasswordResetRequestPage />
+                      </Suspense>
+                    </Box>
+                  }
+                />
+                <Route
+                  path={ROUTES.AUTH_ACTION}
+                  element={
+                    <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+                      <Suspense fallback={<LoadingFallback />}>
+                        <AuthActionPage />
+                      </Suspense>
                     </Box>
                   }
                 />

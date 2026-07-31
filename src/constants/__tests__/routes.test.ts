@@ -12,6 +12,8 @@ describe('routes', () => {
     expect(ROUTES.APPROVE_USERS).toBe('/admin/users/approvals');
     expect(ROUTES.REGISTER).toBe('/register');
     expect(ROUTES.PROFILE_COMPLETION).toBe('/profile-completion');
+    expect(ROUTES.PASSWORD_RESET_REQUEST).toBe('/account/reset-password');
+    expect(ROUTES.AUTH_ACTION).toBe('/auth/action');
     expect(ROUTES.SECTION_FILE).toBe('/sections/:sectionId/files/:fileId');
   });
 
@@ -25,6 +27,8 @@ describe('routes', () => {
       ROUTES.APPROVE_USERS,
       ROUTES.REGISTER,
       ROUTES.PROFILE_COMPLETION,
+      ROUTES.PASSWORD_RESET_REQUEST,
+      ROUTES.AUTH_ACTION,
       ROUTES.SECTION_FILE,
     ];
     

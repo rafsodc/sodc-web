@@ -14,6 +14,7 @@ let currentUser: User | null = null;
 let enabledClaim = false;
 let enabledClaimResolved = true;
 let adminClaim = false;
+let profileReviewedAt: string | null = new Date().toISOString();
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
   return {
@@ -84,6 +85,10 @@ vi.mock("../features/users/hooks/useUserData", () => ({
           lastName: "User",
           email: user.email ?? "test@example.com",
           serviceNumber: "123",
+          mobileNumber: "+447700900123",
+          rank: "Not specified",
+          shareContactInfo: true,
+          profileReviewedAt,
           membershipStatus: "REGULAR",
           createdAt: "2024-01-01",
           updatedAt: "2024-01-01",
@@ -164,6 +169,14 @@ vi.mock("../features/auth/components/RegisterPage", () => ({
   default: () => <h1>Register Page</h1>,
 }));
 
+vi.mock("../features/auth/components/PasswordResetRequestPage", () => ({
+  default: () => <h1>Password Reset Request Page</h1>,
+}));
+
+vi.mock("../features/auth/components/AuthActionPage", () => ({
+  default: () => <h1>Authentication Action Page</h1>,
+}));
+
 vi.mock("../features/auth/components/OnboardingShell", () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -173,6 +186,15 @@ vi.mock("../features/profile/components/Profile", () => ({
     <div>
       <h1>Profile Page</h1>
       <button onClick={onBack}>Back</button>
+    </div>
+  ),
+}));
+
+vi.mock("../features/profile/components/ProfileReviewDialog", () => ({
+  default: ({ onReviewed }: { onReviewed: () => void }) => (
+    <div role="dialog" aria-label="Please review your profile">
+      <h1>Please review your profile</h1>
+      <button onClick={onReviewed}>Confirm profile</button>
     </div>
   ),
 }));
@@ -290,6 +312,7 @@ describe("App routing", () => {
     enabledClaim = false;
     enabledClaimResolved = true;
     adminClaim = false;
+    profileReviewedAt = new Date().toISOString();
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
@@ -340,6 +363,31 @@ describe("App routing", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.ACCOUNT);
   });
 
+  it("renders password reset request from a public deep link", async () => {
+    renderApp([ROUTES.PASSWORD_RESET_REQUEST]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Password Reset Request Page" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      ROUTES.PASSWORD_RESET_REQUEST,
+    );
+  });
+
+  it("keeps the public auth action reachable for an unverified user", async () => {
+    currentUser = createMockUser({ emailVerified: false });
+    enabledClaim = false;
+
+    renderApp([`${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=code`]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Authentication Action Page" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      `${ROUTES.AUTH_ACTION}?mode=resetPassword&oobCode=code`,
+    );
+  });
+
   it("renders welcome dashboard for enabled users at home", async () => {
     signInEnabledUser();
 
@@ -347,6 +395,48 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it("prompts an enabled verified user whose profile has never been reviewed", async () => {
+    signInEnabledUser();
+    profileReviewedAt = null;
+
+    renderApp([ROUTES.HOME]);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Please review your profile" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+  });
+
+  it("does not repeat the profile review after confirmation in the same session", async () => {
+    const interaction = userEvent.setup();
+    signInEnabledUser();
+    profileReviewedAt = null;
+
+    renderApp([ROUTES.HOME]);
+
+    await interaction.click(
+      await screen.findByRole("button", { name: "Confirm profile" }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Please review your profile" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not show profile review before email verification", async () => {
+    currentUser = createMockUser({ emailVerified: false });
+    enabledClaim = true;
+    profileReviewedAt = null;
+
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Email Verification Page" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Please review your profile" }),
+    ).not.toBeInTheDocument();
   });
 
   it("redirects enabled users from account to home", async () => {

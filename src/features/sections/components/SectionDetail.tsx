@@ -122,6 +122,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         firstName: m.firstName,
         lastName: m.lastName,
         email: m.email,
+        mobileNumber: m.mobileNumber,
         rank: m.rank,
         sharesContactInfo: m.sharesContactInfo,
         membershipStatus: m.membershipStatus as SectionMember["membershipStatus"],

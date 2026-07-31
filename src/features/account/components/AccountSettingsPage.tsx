@@ -24,6 +24,7 @@ import {
   useGetMyAnnouncementPreferences,
   useOptOutSectionAnnouncement,
   useOptInSectionAnnouncement,
+  useUpdateAnnouncementOptOutAll,
 } from "@dataconnect/generated/react";
 import { MembershipStatus, SectionUserGroupPurpose, upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,7 +39,10 @@ import {
 import { auth, dataConnect } from "../../../config/firebase";
 import { ROUTES } from "../../../constants";
 import type { UserData } from "../../../types";
-import { resignMembership } from "../../../shared/utils/firebaseFunctions";
+import {
+  requestEmailChange,
+  resignMembership,
+} from "../../../shared/utils/firebaseFunctions";
 import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 import { canUserResignMembership } from "../../users/utils/membershipStatusValidation";
 import { useColorMode, type ColorModePreference } from "../../../shared/appShell/ColorModeContext";
@@ -79,7 +83,10 @@ function AnnouncementPreferencesList() {
   const { data, isLoading } = useGetMyAnnouncementPreferences({ staleTime: Infinity });
   const optOut = useOptOutSectionAnnouncement();
   const optIn = useOptInSectionAnnouncement();
+  const updateGlobalOptOut = useUpdateAnnouncementOptOutAll();
   const [busy, setBusy] = useState<string | null>(null);
+  const [globalBusy, setGlobalBusy] = useState(false);
+  const [globalOverride, setGlobalOverride] = useState<boolean | null>(null);
   const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map());
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
@@ -116,6 +123,33 @@ function AnnouncementPreferencesList() {
     () => new Set((data?.user?.optOuts ?? []).map((o) => o.section.id)),
     [data]
   );
+  const announcementOptOutAll =
+    globalOverride ?? data?.user?.announcementOptOutAll ?? false;
+
+  const handleGlobalToggle = async () => {
+    const newOptOut = !announcementOptOutAll;
+    setGlobalOverride(newOptOut);
+    setGlobalBusy(true);
+    try {
+      await updateGlobalOptOut.mutateAsync({ announcementOptOutAll: newOptOut });
+      queryClient.setQueryData(
+        ["GetMyAnnouncementPreferences", null],
+        (old: typeof data) =>
+          old?.user
+            ? { ...old, user: { ...old.user, announcementOptOutAll: newOptOut } }
+            : old,
+      );
+      setSnackbar(
+        newOptOut
+          ? "Opted out of all announcement emails"
+          : "Announcement emails enabled",
+      );
+    } catch {
+      setGlobalOverride(null);
+    } finally {
+      setGlobalBusy(false);
+    }
+  };
 
   const handleToggle = async (sectionId: string, currentlyOptedOut: boolean) => {
     const newOptedOut = !currentlyOptedOut;
@@ -152,8 +186,22 @@ function AnnouncementPreferencesList() {
         Announcement emails
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Choose which sections you receive announcement emails from. You can also change this on each
-        section's page.
+        Choose whether you receive optional announcements. Account-security, booking, and payment
+        messages are always sent when required.
+      </Typography>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={!announcementOptOutAll}
+            onChange={() => void handleGlobalToggle()}
+            disabled={isLoading || globalBusy}
+          />
+        }
+        label="Receive announcement emails"
+      />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Turning this off also applies to sections added in the future. Your individual section
+        choices are preserved.
       </Typography>
       {isLoading ? (
         <CircularProgress size={20} />
@@ -174,7 +222,7 @@ function AnnouncementPreferencesList() {
                     checked={!isOptedOut}
                     onChange={() => void handleToggle(section.id, isOptedOut)}
                     size="small"
-                    disabled={isBusy}
+                    disabled={isBusy || announcementOptOutAll}
                   />
                 }
                 label={<Typography variant="body2">{section.name}</Typography>}
@@ -207,6 +255,11 @@ export default function AccountSettingsPage({
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState(false);
 
   const [resignDialogOpen, setResignDialogOpen] = useState(false);
   const [resignSubmitting, setResignSubmitting] = useState(false);
@@ -264,6 +317,51 @@ export default function AccountSettingsPage({
     }
   };
 
+  const handleEmailSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setEmailError(null);
+    setEmailSuccess(false);
+    const normalized = newEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      setEmailError("Enter a valid email address");
+      return;
+    }
+    if (!user.email) {
+      setEmailError("Your account does not have an email address for re-authentication");
+      return;
+    }
+    if (normalized === user.email.trim().toLowerCase()) {
+      setEmailError("Enter a different email address");
+      return;
+    }
+
+    setEmailSubmitting(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, emailCurrentPassword);
+      await reauthenticateWithCredential(user, credential);
+      await user.getIdToken(true);
+      await requestEmailChange(normalized);
+      setNewEmail("");
+      setEmailCurrentPassword("");
+      setEmailSuccess(true);
+    } catch (error: unknown) {
+      const code = (error as { code?: string })?.code ?? "";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setEmailError("Current password is incorrect");
+      } else if (code.includes("resource-exhausted")) {
+        setEmailError("Too many email-change requests. Please wait before trying again.");
+      } else if (code.includes("already-exists")) {
+        setEmailError(
+          "This email address cannot be used. It may already be linked to another account.",
+        );
+      } else {
+        setEmailError("The email change could not be started. Check the address and try again.");
+      }
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
+
   const shareContactInfo = shareContactInfoOverride ?? userData?.shareContactInfo ?? true;
 
   const handleShareContactInfoToggle = async () => {
@@ -277,6 +375,8 @@ export default function AccountSettingsPage({
         firstName: userData.firstName,
         lastName: userData.lastName,
         serviceNumber: userData.serviceNumber,
+        mobileNumber: userData.mobileNumber,
+        postNominals: userData.postNominals,
         isRegular: userData.isRegular,
         isReserve: userData.isReserve,
         isCivilServant: userData.isCivilServant,
@@ -391,6 +491,67 @@ export default function AccountSettingsPage({
             When off, other members will see you listed but won't be able to view your contact
             details.
           </Typography>
+        </Box>
+
+        <Divider />
+
+        <Box component="section" aria-labelledby="change-email-heading">
+          <Typography id="change-email-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
+            Change email address
+          </Typography>
+          {!canChangePassword ? (
+            <Alert severity="info">
+              Email changes are only available for email and password sign-in.
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Current address: <strong>{user.email}</strong>. The new address will not take
+                effect until you confirm the link sent to it.
+              </Typography>
+              {emailError ? <Alert severity="error" sx={{ mb: 2 }}>{emailError}</Alert> : null}
+              {emailSuccess ? (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  Check the new address for a confirmation link.
+                </Alert>
+              ) : null}
+              <Box component="form" onSubmit={handleEmailSubmit}>
+                <Stack spacing={2}>
+                  <TextField
+                    label="New email address"
+                    type="email"
+                    value={newEmail}
+                    onChange={(event) => setNewEmail(event.target.value)}
+                    autoComplete="email"
+                    required
+                    fullWidth
+                    disabled={emailSubmitting}
+                  />
+                  <TextField
+                    label="Current password for email change"
+                    type="password"
+                    value={emailCurrentPassword}
+                    onChange={(event) => setEmailCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                    fullWidth
+                    disabled={emailSubmitting}
+                  />
+                  <Box>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={emailSubmitting || !newEmail.trim() || !emailCurrentPassword}
+                    >
+                      {emailSubmitting
+                        ? <CircularProgress size={24} color="inherit" />
+                        : "Send confirmation link"}
+                    </Button>
+                  </Box>
+                </Stack>
+              </Box>
+            </>
+          )}
         </Box>
 
         <Divider />

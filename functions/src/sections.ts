@@ -24,6 +24,8 @@ export interface SectionMemberResponse {
   sharesContactInfo: boolean;
   /** Null whenever sharesContactInfo is false — the client never receives it, this isn't just hidden client-side. See #273. */
   email: string | null;
+  /** Null whenever sharesContactInfo is false or no mobile number is stored. */
+  mobileNumber: string | null;
 }
 
 function toSectionMemberResponse(u: {
@@ -31,6 +33,7 @@ function toSectionMemberResponse(u: {
   firstName: string;
   lastName: string;
   email: string;
+  mobileNumber?: string | null;
   membershipStatus: string;
   rank?: string | null;
   shareContactInfo?: boolean | null;
@@ -44,6 +47,7 @@ function toSectionMemberResponse(u: {
     rank: u.rank ?? null,
     sharesContactInfo,
     email: sharesContactInfo ? u.email : null,
+    mobileNumber: sharesContactInfo ? u.mobileNumber ?? null : null,
   };
 }
 
@@ -119,6 +123,7 @@ export const getSectionMembersMerged = onCall(
         firstName: string;
         lastName: string;
         email: string;
+        mobileNumber?: string | null;
         membershipStatus: string;
         rank?: string | null;
         shareContactInfo?: boolean | null;

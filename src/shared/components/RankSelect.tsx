@@ -1,16 +1,34 @@
-import { FormControl, InputLabel, ListSubheader, MenuItem, Select, type SelectChangeEvent } from "@mui/material";
+import {
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  ListSubheader,
+  MenuItem,
+  Select,
+  type SelectChangeEvent,
+} from "@mui/material";
 import { RANK_OPTION_GROUPS } from "../../constants";
 
 interface RankSelectProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  required?: boolean;
+  error?: boolean;
+  helperText?: string;
 }
 
 /** Grouped rank/title dropdown shared between ProfileCompletion.tsx and Profile.tsx. See #273. */
-export default function RankSelect({ value, onChange, disabled }: RankSelectProps) {
+export default function RankSelect({
+  value,
+  onChange,
+  disabled,
+  required = false,
+  error = false,
+  helperText,
+}: RankSelectProps) {
   return (
-    <FormControl fullWidth disabled={disabled}>
+    <FormControl fullWidth disabled={disabled} required={required} error={error}>
       <InputLabel id="rank-select-label">Rank / Title</InputLabel>
       <Select
         labelId="rank-select-label"
@@ -30,6 +48,7 @@ export default function RankSelect({ value, onChange, disabled }: RankSelectProp
           )),
         ])}
       </Select>
+      {helperText && <FormHelperText>{helperText}</FormHelperText>}
     </FormControl>
   );
 }

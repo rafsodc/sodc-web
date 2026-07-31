@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Link,
   Stack,
   TextField,
   Typography,
@@ -20,10 +21,18 @@ import { dataConnect } from "../../../config/firebase";
 import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
-import { MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_SERVICE_NUMBER_LENGTH, ROUTES, MEMBERSHIP_STATUS_OPTIONS } from "../../../constants";
+import {
+  MAX_MOBILE_NUMBER_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_POST_NOMINALS_LENGTH,
+  MAX_SERVICE_NUMBER_LENGTH,
+  ROUTES,
+  MEMBERSHIP_STATUS_OPTIONS,
+} from "../../../constants";
 import RankSelect from "../../../shared/components/RankSelect";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
+import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 
 interface ProfileProps {
   userData: UserData | null;
@@ -36,8 +45,9 @@ interface ProfileProps {
 export default function Profile({ userData, userDataLoading = false, userEmail, onBack, onUpdate }: ProfileProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
   const [serviceNumber, setServiceNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [postNominals, setPostNominals] = useState("");
   const [isRegular, setIsRegular] = useState(false);
   const [isReserve, setIsReserve] = useState(false);
   const [isCivilServant, setIsCivilServant] = useState(false);
@@ -54,8 +64,9 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
     if (userData) {
       setFirstName(userData.firstName || "");
       setLastName(userData.lastName || "");
-      setEmail(userData.email || userEmail);
       setServiceNumber(userData.serviceNumber || "");
+      setMobileNumber(userData.mobileNumber || "");
+      setPostNominals(userData.postNominals || "");
       setIsRegular(userData.isRegular ?? false);
       setIsReserve(userData.isReserve ?? false);
       setIsCivilServant(userData.isCivilServant ?? false);
@@ -63,11 +74,10 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
       setRank(userData.rank || "");
       setMembershipStatus(userData.membershipStatus || "");
     } else {
-      setEmail(userEmail);
       setRank("");
       setMembershipStatus("");
     }
-  }, [userData, userEmail]);
+  }, [userData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,11 +92,19 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
         setSubmitting(false);
         return;
       }
+      const normalizedMobileNumber = normalizeMobileNumber(mobileNumber);
+      if (!normalizedMobileNumber) {
+        setError("Enter a valid mobile number, including the country code for non-UK numbers");
+        setSubmitting(false);
+        return;
+      }
 
       const vars: UpsertUserVariables = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         serviceNumber: serviceNumber.trim(),
+        mobileNumber: normalizedMobileNumber,
+        postNominals: postNominals.trim() || null,
         isRegular,
         isReserve,
         isCivilServant,
@@ -158,7 +176,8 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
 
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Password, resignation, and other account actions are managed in Account settings.
+          Email address, password, resignation, and other account actions are managed in Account
+          settings.
         </Typography>
         <Button component={RouterLink} to={ROUTES.ACCOUNT_SETTINGS} variant="outlined" size="small">
           Account settings
@@ -194,13 +213,18 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
           <TextField
             label="Email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
+            value={userEmail}
             fullWidth
-            disabled={submitting}
-            inputProps={{ maxLength: MAX_EMAIL_LENGTH }}
-            helperText={`${email.length}/${MAX_EMAIL_LENGTH} characters`}
+            inputProps={{ readOnly: true }}
+            helperText={
+              <>
+                This is your verified sign-in address.{" "}
+                <Link component={RouterLink} to={ROUTES.ACCOUNT_SETTINGS}>
+                  Change email in Account settings
+                </Link>
+                .
+              </>
+            }
           />
 
           <TextField
@@ -212,6 +236,28 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
             disabled={submitting}
             inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
             helperText={`${serviceNumber.length}/${MAX_SERVICE_NUMBER_LENGTH} characters`}
+          />
+
+          <TextField
+            label="Mobile number"
+            type="tel"
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.target.value)}
+            required
+            fullWidth
+            disabled={submitting}
+            inputProps={{ maxLength: MAX_MOBILE_NUMBER_LENGTH }}
+            helperText="UK numbers may start with 07; international numbers must include their country code"
+          />
+
+          <TextField
+            label="Post-nominals"
+            value={postNominals}
+            onChange={(e) => setPostNominals(e.target.value)}
+            fullWidth
+            disabled={submitting}
+            inputProps={{ maxLength: MAX_POST_NOMINALS_LENGTH }}
+            helperText={`${postNominals.length}/${MAX_POST_NOMINALS_LENGTH} characters`}
           />
 
           <FormControl fullWidth required>
@@ -307,7 +353,13 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
             <Button
               type="submit"
               variant="contained"
-              disabled={submitting || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
+              disabled={
+                submitting ||
+                !firstName.trim() ||
+                !lastName.trim() ||
+                !serviceNumber.trim() ||
+                !mobileNumber.trim()
+              }
               sx={{
                 backgroundColor: "secondary.main",
                 "&:hover": {

@@ -109,6 +109,63 @@ describe("function entry guard contracts", () => {
     expect(guardedSources).not.toContain("requireAuth(request);");
   });
 
+  it("keeps password reset public, neutral, and rate limited", () => {
+    const authEmailActions = readSource("authEmailActions.ts");
+    assertOnCallGuard(
+      authEmailActions,
+      "requestPasswordReset",
+      "enforceRateLimit(\"requestPasswordReset\"",
+      700,
+    );
+    const passwordResetEntry = authEmailActions.slice(
+      authEmailActions.indexOf("export const requestPasswordReset"),
+      authEmailActions.indexOf("export const requestEmailVerification"),
+    );
+    expect(passwordResetEntry).not.toContain("requireAuth(request);");
+    expect(authEmailActions).toContain("return neutralResponse();");
+    expect(authEmailActions).not.toContain("logger.warn(email");
+  });
+
+  it("allows signed-in onboarding users to request rate-limited verification", () => {
+    const authEmailActions = readSource("authEmailActions.ts");
+    assertOnCallGuard(
+      authEmailActions,
+      "requestEmailVerification",
+      "requireAuth(request);",
+      900,
+    );
+    assertOnCallGuard(
+      authEmailActions,
+      "requestEmailVerification",
+      "enforceRateLimit(\"requestEmailVerification\"",
+      900,
+    );
+  });
+
+  it("protects email change and reconciliation with the expected boundaries", () => {
+    const authEmailActions = readSource("authEmailActions.ts");
+    assertOnCallGuard(authEmailActions, "requestEmailChange", "requireEnabled(request);", 1_500);
+    assertOnCallGuard(
+      authEmailActions,
+      "requestEmailChange",
+      "requireRecentAuthentication(request.auth!.token.auth_time);",
+      1_500,
+    );
+    assertOnCallGuard(
+      authEmailActions,
+      "requestEmailChange",
+      "enforceRateLimit(\"requestEmailChange\"",
+      1_500,
+    );
+    assertOnCallGuard(authEmailActions, "reconcileMyEmail", "requireAuth(request);", 900);
+    assertOnCallGuard(
+      authEmailActions,
+      "reconcileMyEmail",
+      "enforceRateLimit(\"reconcileMyEmail\"",
+      900,
+    );
+  });
+
   it("applies centralized rate limits to the high-risk callables named in #344 and #369", () => {
     const admin = readSource("admin.ts");
     for (const fn of ["grantAdmin", "revokeAdmin", "listAdminUsers"]) {

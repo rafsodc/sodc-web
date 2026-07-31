@@ -280,7 +280,7 @@ export default function UsersTable({
                 }}
               >
                 <TableCell>{user.displayName || "-"}</TableCell>
-                <TableCell>{user.email}</TableCell>
+                <TableCell>{user.email || "No email"}</TableCell>
                 <TableCell>
                   {user.emailVerified ? (
                     <CheckCircle color="success" />
@@ -333,4 +333,3 @@ export default function UsersTable({
     </TableContainer>
   );
 }
-

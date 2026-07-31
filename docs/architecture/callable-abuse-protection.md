@@ -1,6 +1,6 @@
 # Callable abuse protection
 
-Firebase callable functions use authentication and authorization as the first access boundary. Callables with material abuse, enumeration, external-API, or fan-out cost also consume a per-user fixed-window allowance through `functions/src/rateLimiter.ts`.
+Firebase callable functions normally use authentication and authorization as the first access boundary. Public account-recovery callables instead use a pseudonymous request key and a neutral response. Callables with material abuse, enumeration, external-API, or fan-out cost consume a fixed-window allowance through `functions/src/rateLimiter.ts`.
 
 `CALLABLE_RATE_LIMITS` is the canonical limit configuration. Call sites must reference a named policy; do not add inline limit or window values.
 
@@ -21,6 +21,10 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 
 | Callable | Limit | Window | Primary risk |
 |---|---:|---:|---|
+| `requestPasswordReset` | 5 | 1 hour | Account enumeration, Firebase Auth and GOV.UK Notify |
+| `requestEmailVerification` | 5 | 1 hour | Firebase Auth and GOV.UK Notify resend abuse |
+| `requestEmailChange` | 5 | 1 hour | Sensitive Firebase Auth action and GOV.UK Notify |
+| `reconcileMyEmail` | 10 | 1 hour | Firebase Auth read and profile mutation |
 | `grantAdmin` | 20 | 1 hour | Firebase Auth claim write |
 | `revokeAdmin` | 20 | 1 hour | Firebase Auth enumeration and claim write |
 | `listAdminUsers` | 30 | 5 minutes | Firebase Auth enumeration |
@@ -61,6 +65,10 @@ Risk levels are relative to other authenticated callables in this application. â
 
 | Callable | Abuse | Enumeration | External API | Cost / fan-out | Control |
 |---|---|---|---|---|---|
+| `requestPasswordReset` | High | High | Firebase Auth, GOV.UK Notify | Medium | Public; email/IP-derived pseudonymous key; neutral success response; 5/hour |
+| `requestEmailVerification` | High | None | Firebase Auth, GOV.UK Notify | Medium | Authenticated onboarding exception; recipient derived from Auth; 5/hour |
+| `requestEmailChange` | High | Low | Firebase Auth, GOV.UK Notify | Medium | Enabled + recent authentication; current identity derived from Auth; 5/hour |
+| `reconcileMyEmail` | Medium | None | Firebase Auth | Low | Authenticated; verified Auth email copied to caller-owned profile; 10/hour |
 | `grantAdmin` | High | Low | Firebase Auth | Medium | Admin + enabled; 20/hour |
 | `revokeAdmin` | High | Medium | Firebase Auth | Medium | Admin + enabled; 20/hour; last-admin guard |
 | `listAdminUsers` | Medium | High | Firebase Auth | Medium | Admin + enabled; 30/5 minutes |

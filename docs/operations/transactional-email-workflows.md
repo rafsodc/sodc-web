@@ -1,6 +1,6 @@
 # Transactional email workflows
 
-App-owned transactional email uses **GOV.UK Notify** via [`functions/src/mailer.ts`](../../functions/src/mailer.ts) and idempotent delivery via [`functions/src/notificationDelivery.ts`](../../functions/src/notificationDelivery.ts). Firebase Auth still sends verification emails.
+App-owned transactional email uses **GOV.UK Notify** via [`functions/src/mailer.ts`](../../functions/src/mailer.ts). Domain-event messages use the idempotent delivery ledger in [`functions/src/notificationDelivery.ts`](../../functions/src/notificationDelivery.ts). Password reset and email verification use one-time Firebase action codes delivered by Notify and completed on the site-owned `/auth/action` route.
 
 Per-template placeholder specs live in the linked `govuk-notify-*.md` files below. **Draft Notify subject/body copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). **Registration runbook:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md). Environment variables: [environment-and-secrets.md](./environment-and-secrets.md).
 
@@ -26,6 +26,28 @@ flowchart LR
   ledger -->|atomic claim| notify
   notify -->|awaited completion| ledger
 ```
+
+Password-reset messages deliberately do not use the recovery ledger: persisting or
+replaying an account action URL would extend exposure of its one-time credential.
+`requestPasswordReset` generates a fresh Firebase Admin link, rewrites it to the
+site-owned `/auth/action` route, sends it once through the configured Notify delivery
+mode, and always returns the same success response for existing and unknown accounts.
+The public callable is limited to five attempts per hour using a hash derived from the
+normalized email address and requester IP; logs do not contain either value or the link.
+
+Email-verification messages follow the same no-ledger rule. The authenticated
+`requestEmailVerification` callable derives the recipient from the Firebase Auth
+record, works before email verification/account enablement, and is limited to five
+requests per user per hour. Registration and resend both use this backend path.
+
+Email-change verification also uses a non-recoverable one-time Firebase action
+link. The user must reauthenticate with their current password; the backend
+additionally requires an `auth_time` no more than five minutes old, derives the
+current address from Firebase Auth, and sends the confirmation to the validated
+new address. The existing address remains active until Firebase applies
+`verifyAndChangeEmail`. After completion, `reconcileMyEmail` copies the verified
+Firebase address into Data Connect; sign-in retries that reconciliation for links
+opened while signed out or in another browser.
 
 ## Retry and stale-claim recovery
 

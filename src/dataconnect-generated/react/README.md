@@ -23,6 +23,10 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
   - [*ListStaleSectionFiles*](#liststalesectionfiles)
   - [*ListSectionFilesForQuota*](#listsectionfilesforquota)
+  - [*GetLegacyUserIdentity*](#getlegacyuseridentity)
+  - [*ListLegacyUserIdentitiesByBatch*](#listlegacyuseridentitiesbybatch)
+  - [*ListMigrationUsers*](#listmigrationusers)
+  - [*ListLegacyUserIdentitiesForMigration*](#listlegacyuseridentitiesformigration)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetUserForCheckout*](#getuserforcheckout)
@@ -99,8 +103,11 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*BeginSectionFileDeletion*](#beginsectionfiledeletion)
   - [*MarkSectionFileDeleted*](#marksectionfiledeleted)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
+  - [*UpdateUserEmailFromAuth*](#updateuseremailfromauth)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
+  - [*CreateMigratedUserProfileAndIdentity*](#createmigrateduserprofileandidentity)
+  - [*LinkLegacyIdentityToExistingUser*](#linklegacyidentitytoexistinguser)
   - [*CreateUserGroupAdmin*](#createusergroupadmin)
   - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
   - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
@@ -179,6 +186,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UnsubscribeFromUserGroup*](#unsubscribefromusergroup)
   - [*OptOutSectionAnnouncement*](#optoutsectionannouncement)
   - [*OptInSectionAnnouncement*](#optinsectionannouncement)
+  - [*UpdateAnnouncementOptOutAll*](#updateannouncementoptoutall)
+  - [*ConfirmProfileReview*](#confirmprofilereview)
 
 # TanStack Query Firebase & TanStack React Query
 This SDK provides [React](https://react.dev/) hooks generated specific to your application, for the operations found in the connector `api`. These hooks are generated using [TanStack Query Firebase](https://react-query-firebase.invertase.dev/) by our partners at Invertase, a library built on top of [TanStack React Query v5](https://tanstack.com/query/v5/docs/framework/react/overview).
@@ -813,6 +822,385 @@ export default function ListSectionFilesForQuotaComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.sectionFiles);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetLegacyUserIdentity
+You can execute the `GetLegacyUserIdentity` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetLegacyUserIdentity(dc: DataConnect, vars: GetLegacyUserIdentityVariables, options?: useDataConnectQueryOptions<GetLegacyUserIdentityData>): UseDataConnectQueryResult<GetLegacyUserIdentityData, GetLegacyUserIdentityVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetLegacyUserIdentity(vars: GetLegacyUserIdentityVariables, options?: useDataConnectQueryOptions<GetLegacyUserIdentityData>): UseDataConnectQueryResult<GetLegacyUserIdentityData, GetLegacyUserIdentityVariables>;
+```
+
+### Variables
+The `GetLegacyUserIdentity` Query requires an argument of type `GetLegacyUserIdentityVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetLegacyUserIdentityVariables {
+  sourceSystem: string;
+  legacyUserId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetLegacyUserIdentity` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetLegacyUserIdentity` Query is of type `GetLegacyUserIdentityData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetLegacyUserIdentityData {
+  legacyUserIdentity?: {
+    sourceSystem: string;
+    legacyUserId: UUIDString;
+    oldUid?: number | null;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+    importedAt: TimestampString;
+  } & LegacyUserIdentity_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetLegacyUserIdentity`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetLegacyUserIdentityVariables } from '@dataconnect/generated';
+import { useGetLegacyUserIdentity } from '@dataconnect/generated/react'
+
+export default function GetLegacyUserIdentityComponent() {
+  // The `useGetLegacyUserIdentity` Query hook requires an argument of type `GetLegacyUserIdentityVariables`:
+  const getLegacyUserIdentityVars: GetLegacyUserIdentityVariables = {
+    sourceSystem: ..., 
+    legacyUserId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetLegacyUserIdentity(getLegacyUserIdentityVars);
+  // Variables can be defined inline as well.
+  const query = useGetLegacyUserIdentity({ sourceSystem: ..., legacyUserId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetLegacyUserIdentity(dataConnect, getLegacyUserIdentityVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetLegacyUserIdentity(getLegacyUserIdentityVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetLegacyUserIdentity(dataConnect, getLegacyUserIdentityVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.legacyUserIdentity);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListLegacyUserIdentitiesByBatch
+You can execute the `ListLegacyUserIdentitiesByBatch` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListLegacyUserIdentitiesByBatch(dc: DataConnect, vars: ListLegacyUserIdentitiesByBatchVariables, options?: useDataConnectQueryOptions<ListLegacyUserIdentitiesByBatchData>): UseDataConnectQueryResult<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListLegacyUserIdentitiesByBatch(vars: ListLegacyUserIdentitiesByBatchVariables, options?: useDataConnectQueryOptions<ListLegacyUserIdentitiesByBatchData>): UseDataConnectQueryResult<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+```
+
+### Variables
+The `ListLegacyUserIdentitiesByBatch` Query requires an argument of type `ListLegacyUserIdentitiesByBatchVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListLegacyUserIdentitiesByBatchVariables {
+  migrationBatchId: UUIDString;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListLegacyUserIdentitiesByBatch` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListLegacyUserIdentitiesByBatch` Query is of type `ListLegacyUserIdentitiesByBatchData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListLegacyUserIdentitiesByBatchData {
+  legacyUserIdentities: ({
+    sourceSystem: string;
+    legacyUserId: UUIDString;
+    oldUid?: number | null;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      mobileNumber?: string | null;
+      postNominals?: string | null;
+      rank?: string | null;
+      membershipStatus: MembershipStatus;
+      shareContactInfo?: boolean | null;
+      announcementOptOutAll: boolean;
+      legacyPasswordMigrated?: boolean | null;
+      profileReviewedAt?: TimestampString | null;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+    importedAt: TimestampString;
+  } & LegacyUserIdentity_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListLegacyUserIdentitiesByBatch`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListLegacyUserIdentitiesByBatchVariables } from '@dataconnect/generated';
+import { useListLegacyUserIdentitiesByBatch } from '@dataconnect/generated/react'
+
+export default function ListLegacyUserIdentitiesByBatchComponent() {
+  // The `useListLegacyUserIdentitiesByBatch` Query hook requires an argument of type `ListLegacyUserIdentitiesByBatchVariables`:
+  const listLegacyUserIdentitiesByBatchVars: ListLegacyUserIdentitiesByBatchVariables = {
+    migrationBatchId: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListLegacyUserIdentitiesByBatch(listLegacyUserIdentitiesByBatchVars);
+  // Variables can be defined inline as well.
+  const query = useListLegacyUserIdentitiesByBatch({ migrationBatchId: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListLegacyUserIdentitiesByBatch(dataConnect, listLegacyUserIdentitiesByBatchVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListLegacyUserIdentitiesByBatch(listLegacyUserIdentitiesByBatchVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListLegacyUserIdentitiesByBatch(dataConnect, listLegacyUserIdentitiesByBatchVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.legacyUserIdentities);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListMigrationUsers
+You can execute the `ListMigrationUsers` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: useDataConnectQueryOptions<ListMigrationUsersData>): UseDataConnectQueryResult<ListMigrationUsersData, ListMigrationUsersVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListMigrationUsers(vars: ListMigrationUsersVariables, options?: useDataConnectQueryOptions<ListMigrationUsersData>): UseDataConnectQueryResult<ListMigrationUsersData, ListMigrationUsersVariables>;
+```
+
+### Variables
+The `ListMigrationUsers` Query requires an argument of type `ListMigrationUsersVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListMigrationUsersVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListMigrationUsers` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListMigrationUsers` Query is of type `ListMigrationUsersData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListMigrationUsersData {
+  users: ({
+    id: string;
+    email: string;
+  } & User_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListMigrationUsers`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListMigrationUsersVariables } from '@dataconnect/generated';
+import { useListMigrationUsers } from '@dataconnect/generated/react'
+
+export default function ListMigrationUsersComponent() {
+  // The `useListMigrationUsers` Query hook requires an argument of type `ListMigrationUsersVariables`:
+  const listMigrationUsersVars: ListMigrationUsersVariables = {
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListMigrationUsers(listMigrationUsersVars);
+  // Variables can be defined inline as well.
+  const query = useListMigrationUsers({ limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListMigrationUsers(dataConnect, listMigrationUsersVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListMigrationUsers(listMigrationUsersVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListMigrationUsers(dataConnect, listMigrationUsersVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.users);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListLegacyUserIdentitiesForMigration
+You can execute the `ListLegacyUserIdentitiesForMigration` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: useDataConnectQueryOptions<ListLegacyUserIdentitiesForMigrationData>): UseDataConnectQueryResult<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListLegacyUserIdentitiesForMigration(vars: ListLegacyUserIdentitiesForMigrationVariables, options?: useDataConnectQueryOptions<ListLegacyUserIdentitiesForMigrationData>): UseDataConnectQueryResult<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+```
+
+### Variables
+The `ListLegacyUserIdentitiesForMigration` Query requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListLegacyUserIdentitiesForMigrationVariables {
+  sourceSystem: string;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListLegacyUserIdentitiesForMigration` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListLegacyUserIdentitiesForMigration` Query is of type `ListLegacyUserIdentitiesForMigrationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListLegacyUserIdentitiesForMigrationData {
+  legacyUserIdentities: ({
+    legacyUserId: UUIDString;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListLegacyUserIdentitiesForMigration`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListLegacyUserIdentitiesForMigrationVariables } from '@dataconnect/generated';
+import { useListLegacyUserIdentitiesForMigration } from '@dataconnect/generated/react'
+
+export default function ListLegacyUserIdentitiesForMigrationComponent() {
+  // The `useListLegacyUserIdentitiesForMigration` Query hook requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`:
+  const listLegacyUserIdentitiesForMigrationVars: ListLegacyUserIdentitiesForMigrationVariables = {
+    sourceSystem: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListLegacyUserIdentitiesForMigration(listLegacyUserIdentitiesForMigrationVars);
+  // Variables can be defined inline as well.
+  const query = useListLegacyUserIdentitiesForMigration({ sourceSystem: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListLegacyUserIdentitiesForMigration(dataConnect, listLegacyUserIdentitiesForMigrationVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListLegacyUserIdentitiesForMigration(listLegacyUserIdentitiesForMigrationVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListLegacyUserIdentitiesForMigration(dataConnect, listLegacyUserIdentitiesForMigrationVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.legacyUserIdentities);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -4022,6 +4410,8 @@ export interface GetCurrentUserData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
     membershipStatus: MembershipStatus;
     requestedMembershipStatus?: MembershipStatus | null;
     isRegular?: boolean | null;
@@ -4030,6 +4420,9 @@ export interface GetCurrentUserData {
     isIndustry?: boolean | null;
     rank?: string | null;
     shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -4113,12 +4506,19 @@ export interface GetUserByIdData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
     membershipStatus: MembershipStatus;
     requestedMembershipStatus?: MembershipStatus | null;
     isRegular?: boolean | null;
     isReserve?: boolean | null;
     isCivilServant?: boolean | null;
     isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -4205,6 +4605,8 @@ export interface ListUsersData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
     membershipStatus: MembershipStatus;
     requestedMembershipStatus?: MembershipStatus | null;
     isRegular?: boolean | null;
@@ -4213,6 +4615,9 @@ export interface ListUsersData {
     isIndustry?: boolean | null;
     rank?: string | null;
     shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -5484,6 +5889,8 @@ export interface GetSectionMembersData {
             membershipStatus: MembershipStatus;
             rank?: string | null;
             shareContactInfo?: boolean | null;
+            mobileNumber?: string | null;
+            announcementOptOutAll: boolean;
           } & User_Key;
         })[];
       } & UserGroup_Key;
@@ -6753,6 +7160,7 @@ To access the data returned by a Query, use the `UseQueryResult.data` field. The
 export interface GetMyAnnouncementPreferencesData {
   user?: {
     membershipStatus: MembershipStatus;
+    announcementOptOutAll: boolean;
     userGroups: ({
       userGroup: {
         membershipStatuses?: MembershipStatus[] | null;
@@ -8165,6 +8573,102 @@ export default function UpdateUserMembershipStatusComponent() {
 }
 ```
 
+## UpdateUserEmailFromAuth
+You can execute the `UpdateUserEmailFromAuth` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateUserEmailFromAuth(options?: useDataConnectMutationOptions<UpdateUserEmailFromAuthData, FirebaseError, UpdateUserEmailFromAuthVariables>): UseDataConnectMutationResult<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateUserEmailFromAuth(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateUserEmailFromAuthData, FirebaseError, UpdateUserEmailFromAuthVariables>): UseDataConnectMutationResult<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+```
+
+### Variables
+The `UpdateUserEmailFromAuth` Mutation requires an argument of type `UpdateUserEmailFromAuthVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateUserEmailFromAuthVariables {
+  userId: string;
+  email: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateUserEmailFromAuth` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateUserEmailFromAuth` Mutation is of type `UpdateUserEmailFromAuthData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateUserEmailFromAuthData {
+  user_update?: User_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateUserEmailFromAuth`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateUserEmailFromAuthVariables } from '@dataconnect/generated';
+import { useUpdateUserEmailFromAuth } from '@dataconnect/generated/react'
+
+export default function UpdateUserEmailFromAuthComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateUserEmailFromAuth();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateUserEmailFromAuth(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateUserEmailFromAuth(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateUserEmailFromAuth(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateUserEmailFromAuth` Mutation requires an argument of type `UpdateUserEmailFromAuthVariables`:
+  const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
+    userId: ..., 
+    email: ..., 
+  };
+  mutation.mutate(updateUserEmailFromAuthVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., email: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateUserEmailFromAuthVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## DeleteUser
 You can execute the `DeleteUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -8279,6 +8783,8 @@ export interface CreateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   membershipStatus: MembershipStatus;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
@@ -8339,6 +8845,8 @@ export default function CreateUserComponent() {
     lastName: ..., 
     email: ..., 
     serviceNumber: ..., 
+    mobileNumber: ..., // optional
+    postNominals: ..., // optional
     membershipStatus: ..., 
     isRegular: ..., // optional
     isReserve: ..., // optional
@@ -8348,7 +8856,7 @@ export default function CreateUserComponent() {
   };
   mutation.mutate(createUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., now: ..., });
+  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., membershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., now: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -8368,6 +8876,246 @@ export default function CreateUserComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.user_upsert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateMigratedUserProfileAndIdentity
+You can execute the `CreateMigratedUserProfileAndIdentity` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateMigratedUserProfileAndIdentity(options?: useDataConnectMutationOptions<CreateMigratedUserProfileAndIdentityData, FirebaseError, CreateMigratedUserProfileAndIdentityVariables>): UseDataConnectMutationResult<CreateMigratedUserProfileAndIdentityData, CreateMigratedUserProfileAndIdentityVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateMigratedUserProfileAndIdentity(dc: DataConnect, options?: useDataConnectMutationOptions<CreateMigratedUserProfileAndIdentityData, FirebaseError, CreateMigratedUserProfileAndIdentityVariables>): UseDataConnectMutationResult<CreateMigratedUserProfileAndIdentityData, CreateMigratedUserProfileAndIdentityVariables>;
+```
+
+### Variables
+The `CreateMigratedUserProfileAndIdentity` Mutation requires an argument of type `CreateMigratedUserProfileAndIdentityVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateMigratedUserProfileAndIdentityVariables {
+  userId: string;
+  legacyUserId: UUIDString;
+  oldUid?: number | null;
+  sourceSystem: string;
+  migrationBatchId: UUIDString;
+  recordSchemaVersion: string;
+  sourceChecksum: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
+  rank: string;
+  membershipStatus: MembershipStatus;
+  shareContactInfo: boolean;
+  announcementOptOutAll: boolean;
+  legacyPasswordMigrated?: boolean | null;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `CreateMigratedUserProfileAndIdentity` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateMigratedUserProfileAndIdentity` Mutation is of type `CreateMigratedUserProfileAndIdentityData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateMigratedUserProfileAndIdentityData {
+  user_insert: User_Key;
+  legacyUserIdentity_insert: LegacyUserIdentity_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateMigratedUserProfileAndIdentity`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateMigratedUserProfileAndIdentityVariables } from '@dataconnect/generated';
+import { useCreateMigratedUserProfileAndIdentity } from '@dataconnect/generated/react'
+
+export default function CreateMigratedUserProfileAndIdentityComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateMigratedUserProfileAndIdentity();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateMigratedUserProfileAndIdentity(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateMigratedUserProfileAndIdentity(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateMigratedUserProfileAndIdentity(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateMigratedUserProfileAndIdentity` Mutation requires an argument of type `CreateMigratedUserProfileAndIdentityVariables`:
+  const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
+    userId: ..., 
+    legacyUserId: ..., 
+    oldUid: ..., // optional
+    sourceSystem: ..., 
+    migrationBatchId: ..., 
+    recordSchemaVersion: ..., 
+    sourceChecksum: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    email: ..., 
+    serviceNumber: ..., 
+    mobileNumber: ..., // optional
+    postNominals: ..., // optional
+    rank: ..., 
+    membershipStatus: ..., 
+    shareContactInfo: ..., 
+    announcementOptOutAll: ..., 
+    legacyPasswordMigrated: ..., // optional
+    now: ..., 
+  };
+  mutation.mutate(createMigratedUserProfileAndIdentityVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., legacyPasswordMigrated: ..., now: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createMigratedUserProfileAndIdentityVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_insert);
+    console.log(mutation.data.legacyUserIdentity_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## LinkLegacyIdentityToExistingUser
+You can execute the `LinkLegacyIdentityToExistingUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useLinkLegacyIdentityToExistingUser(options?: useDataConnectMutationOptions<LinkLegacyIdentityToExistingUserData, FirebaseError, LinkLegacyIdentityToExistingUserVariables>): UseDataConnectMutationResult<LinkLegacyIdentityToExistingUserData, LinkLegacyIdentityToExistingUserVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useLinkLegacyIdentityToExistingUser(dc: DataConnect, options?: useDataConnectMutationOptions<LinkLegacyIdentityToExistingUserData, FirebaseError, LinkLegacyIdentityToExistingUserVariables>): UseDataConnectMutationResult<LinkLegacyIdentityToExistingUserData, LinkLegacyIdentityToExistingUserVariables>;
+```
+
+### Variables
+The `LinkLegacyIdentityToExistingUser` Mutation requires an argument of type `LinkLegacyIdentityToExistingUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface LinkLegacyIdentityToExistingUserVariables {
+  userId: string;
+  legacyUserId: UUIDString;
+  oldUid?: number | null;
+  sourceSystem: string;
+  migrationBatchId: UUIDString;
+  recordSchemaVersion: string;
+  sourceChecksum: string;
+  now: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `LinkLegacyIdentityToExistingUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `LinkLegacyIdentityToExistingUser` Mutation is of type `LinkLegacyIdentityToExistingUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface LinkLegacyIdentityToExistingUserData {
+  legacyUserIdentity_insert: LegacyUserIdentity_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `LinkLegacyIdentityToExistingUser`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, LinkLegacyIdentityToExistingUserVariables } from '@dataconnect/generated';
+import { useLinkLegacyIdentityToExistingUser } from '@dataconnect/generated/react'
+
+export default function LinkLegacyIdentityToExistingUserComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useLinkLegacyIdentityToExistingUser();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useLinkLegacyIdentityToExistingUser(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useLinkLegacyIdentityToExistingUser(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useLinkLegacyIdentityToExistingUser(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useLinkLegacyIdentityToExistingUser` Mutation requires an argument of type `LinkLegacyIdentityToExistingUserVariables`:
+  const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
+    userId: ..., 
+    legacyUserId: ..., 
+    oldUid: ..., // optional
+    sourceSystem: ..., 
+    migrationBatchId: ..., 
+    recordSchemaVersion: ..., 
+    sourceChecksum: ..., 
+    now: ..., 
+  };
+  mutation.mutate(linkLegacyIdentityToExistingUserVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., now: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(linkLegacyIdentityToExistingUserVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.legacyUserIdentity_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -15393,6 +16141,8 @@ export interface CreateUserProfileVariables {
   firstName: string;
   lastName: string;
   serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
   requestedMembershipStatus: MembershipStatus;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
@@ -15452,6 +16202,8 @@ export default function CreateUserProfileComponent() {
     firstName: ..., 
     lastName: ..., 
     serviceNumber: ..., 
+    mobileNumber: ..., 
+    postNominals: ..., // optional
     requestedMembershipStatus: ..., 
     isRegular: ..., // optional
     isReserve: ..., // optional
@@ -15462,7 +16214,7 @@ export default function CreateUserProfileComponent() {
   };
   mutation.mutate(createUserProfileVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., rank: ..., shareContactInfo: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., requestedMembershipStatus: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., rank: ..., shareContactInfo: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -15505,6 +16257,8 @@ export interface UpsertUserVariables {
   firstName: string;
   lastName: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -15563,6 +16317,8 @@ export default function UpsertUserComponent() {
     firstName: ..., 
     lastName: ..., 
     serviceNumber: ..., 
+    mobileNumber: ..., // optional
+    postNominals: ..., // optional
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -15572,7 +16328,7 @@ export default function UpsertUserComponent() {
   };
   mutation.mutate(upsertUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., rank: ..., shareContactInfo: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., rank: ..., shareContactInfo: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -15617,6 +16373,8 @@ export interface UpdateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -15675,6 +16433,8 @@ export default function UpdateUserComponent() {
     lastName: ..., 
     email: ..., 
     serviceNumber: ..., 
+    mobileNumber: ..., // optional
+    postNominals: ..., // optional
     isRegular: ..., // optional
     isReserve: ..., // optional
     isCivilServant: ..., // optional
@@ -15682,7 +16442,7 @@ export default function UpdateUserComponent() {
   };
   mutation.mutate(updateUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -16266,6 +17026,206 @@ export default function OptInSectionAnnouncementComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.sectionAnnouncementOptOut_delete);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateAnnouncementOptOutAll
+You can execute the `UpdateAnnouncementOptOutAll` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateAnnouncementOptOutAll(options?: useDataConnectMutationOptions<UpdateAnnouncementOptOutAllData, FirebaseError, UpdateAnnouncementOptOutAllVariables>): UseDataConnectMutationResult<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateAnnouncementOptOutAll(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateAnnouncementOptOutAllData, FirebaseError, UpdateAnnouncementOptOutAllVariables>): UseDataConnectMutationResult<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+```
+
+### Variables
+The `UpdateAnnouncementOptOutAll` Mutation requires an argument of type `UpdateAnnouncementOptOutAllVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateAnnouncementOptOutAllVariables {
+  announcementOptOutAll: boolean;
+}
+```
+### Return Type
+Recall that calling the `UpdateAnnouncementOptOutAll` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateAnnouncementOptOutAll` Mutation is of type `UpdateAnnouncementOptOutAllData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateAnnouncementOptOutAllData {
+  user_update?: User_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateAnnouncementOptOutAll`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateAnnouncementOptOutAllVariables } from '@dataconnect/generated';
+import { useUpdateAnnouncementOptOutAll } from '@dataconnect/generated/react'
+
+export default function UpdateAnnouncementOptOutAllComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateAnnouncementOptOutAll();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateAnnouncementOptOutAll(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateAnnouncementOptOutAll(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateAnnouncementOptOutAll(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateAnnouncementOptOutAll` Mutation requires an argument of type `UpdateAnnouncementOptOutAllVariables`:
+  const updateAnnouncementOptOutAllVars: UpdateAnnouncementOptOutAllVariables = {
+    announcementOptOutAll: ..., 
+  };
+  mutation.mutate(updateAnnouncementOptOutAllVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ announcementOptOutAll: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateAnnouncementOptOutAllVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ConfirmProfileReview
+You can execute the `ConfirmProfileReview` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useConfirmProfileReview(options?: useDataConnectMutationOptions<ConfirmProfileReviewData, FirebaseError, ConfirmProfileReviewVariables>): UseDataConnectMutationResult<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useConfirmProfileReview(dc: DataConnect, options?: useDataConnectMutationOptions<ConfirmProfileReviewData, FirebaseError, ConfirmProfileReviewVariables>): UseDataConnectMutationResult<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+```
+
+### Variables
+The `ConfirmProfileReview` Mutation requires an argument of type `ConfirmProfileReviewVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ConfirmProfileReviewVariables {
+  firstName: string;
+  lastName: string;
+  serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
+  rank: string;
+  shareContactInfo: boolean;
+}
+```
+### Return Type
+Recall that calling the `ConfirmProfileReview` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ConfirmProfileReview` Mutation is of type `ConfirmProfileReviewData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ConfirmProfileReviewData {
+  user_update?: User_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ConfirmProfileReview`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ConfirmProfileReviewVariables } from '@dataconnect/generated';
+import { useConfirmProfileReview } from '@dataconnect/generated/react'
+
+export default function ConfirmProfileReviewComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useConfirmProfileReview();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useConfirmProfileReview(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useConfirmProfileReview(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useConfirmProfileReview(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useConfirmProfileReview` Mutation requires an argument of type `ConfirmProfileReviewVariables`:
+  const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
+    firstName: ..., 
+    lastName: ..., 
+    serviceNumber: ..., 
+    mobileNumber: ..., 
+    postNominals: ..., // optional
+    rank: ..., 
+    shareContactInfo: ..., 
+  };
+  mutation.mutate(confirmProfileReviewVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(confirmProfileReviewVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

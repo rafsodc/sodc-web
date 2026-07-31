@@ -40,10 +40,13 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
 | `bookingConfirmation` | `GOV_NOTIFY_TEMPLATE_BOOKING_CONFIRMATION` | | | | [ ] |
 | `bookingRevision` | `GOV_NOTIFY_TEMPLATE_BOOKING_REVISION` | | | | [ ] |
 | `newUserPendingApprovalAlert` | `GOV_NOTIFY_TEMPLATE_NEW_USER_PENDING_APPROVAL_ALERT` | | | | [ ] |
+| `passwordReset` | `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET` | | | | [ ] |
+| `emailVerification` | `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` | | | | [ ] |
+| `emailChangeVerification` | `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION` | | | | [ ] |
 
 ## Suggested order
 
-1. Dev — all 13 templates, then E2E smoke tests  
+1. Dev — all 16 templates, then E2E smoke tests
 2. Beta — clone copy, new UUIDs, repeat smoke tests  
 3. Prod — final copy review, register UUIDs, enable sends  
 
@@ -53,7 +56,7 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
 |---------|----------------|
 | Notify API `template` error | Wrong UUID in `GOV_NOTIFY_TEMPLATE_*` for this environment |
 | Missing placeholder error | Dashboard placeholder name does not match code (see `govuk-notify-*.md`) |
-| No email sent | `GOV_NOTIFY_LIVE_API_KEY` missing, template ID env unset, or ops recipient list empty (`PAYMENT_OPS_ALERT_EMAILS`) |
+| No email sent | The key for the effective delivery mode is missing, the template ID env is unset, or the ops recipient list is empty (`PAYMENT_OPS_ALERT_EMAILS`) |
 | Duplicate emails | Expected on webhook retry only if delivery ledger failed; check `NotificationDelivery` |
 
 ## Related issues

@@ -271,6 +271,13 @@ function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.updateUserMembershipStatus = updateUserMembershipStatus;
 
+function updateUserEmailFromAuth(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateUserEmailFromAuth', inputVars, inputOpts);
+}
+exports.updateUserEmailFromAuth = updateUserEmailFromAuth;
+
 function deleteUser(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -284,6 +291,48 @@ function createUser(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeMutation('CreateUser', inputVars, inputOpts);
 }
 exports.createUser = createUser;
+
+function createMigratedUserProfileAndIdentity(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateMigratedUserProfileAndIdentity', inputVars, inputOpts);
+}
+exports.createMigratedUserProfileAndIdentity = createMigratedUserProfileAndIdentity;
+
+function linkLegacyIdentityToExistingUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('LinkLegacyIdentityToExistingUser', inputVars, inputOpts);
+}
+exports.linkLegacyIdentityToExistingUser = linkLegacyIdentityToExistingUser;
+
+function getLegacyUserIdentity(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetLegacyUserIdentity', inputVars, inputOpts);
+}
+exports.getLegacyUserIdentity = getLegacyUserIdentity;
+
+function listLegacyUserIdentitiesByBatch(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyUserIdentitiesByBatch', inputVars, inputOpts);
+}
+exports.listLegacyUserIdentitiesByBatch = listLegacyUserIdentitiesByBatch;
+
+function listMigrationUsers(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListMigrationUsers', inputVars, inputOpts);
+}
+exports.listMigrationUsers = listMigrationUsers;
+
+function listLegacyUserIdentitiesForMigration(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyUserIdentitiesForMigration', inputVars, inputOpts);
+}
+exports.listLegacyUserIdentitiesForMigration = listLegacyUserIdentitiesForMigration;
 
 function createUserGroupAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -1264,4 +1313,18 @@ function optInSectionAnnouncement(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeMutation('OptInSectionAnnouncement', inputVars, inputOpts);
 }
 exports.optInSectionAnnouncement = optInSectionAnnouncement;
+
+function updateAnnouncementOptOutAll(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateAnnouncementOptOutAll', inputVars, inputOpts);
+}
+exports.updateAnnouncementOptOutAll = updateAnnouncementOptOutAll;
+
+function confirmProfileReview(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmProfileReview', inputVars, inputOpts);
+}
+exports.confirmProfileReview = confirmProfileReview;
 

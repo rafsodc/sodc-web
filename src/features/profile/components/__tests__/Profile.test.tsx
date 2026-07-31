@@ -40,6 +40,8 @@ const userData: UserData = {
   lastName: "Member",
   email: "member@example.com",
   serviceNumber: "12345",
+  mobileNumber: "+447700900123",
+  postNominals: "MRAeS",
   membershipStatus: MembershipStatus.REGULAR,
   isRegular: true,
   isReserve: false,
@@ -74,6 +76,22 @@ describe("Profile", () => {
     );
   });
 
+  it("shows the Firebase email as read-only and directs changes to account settings", () => {
+    renderProfile({
+      userData: { ...userData, email: "stale@example.com" },
+      userEmail: "verified@example.com",
+    });
+
+    expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue(
+      "verified@example.com",
+    );
+    expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("readonly");
+    expect(
+      screen.getByRole("link", { name: "Change email in Account settings" }),
+    ).toHaveAttribute("href", "/account/settings");
+    expect(screen.queryByDisplayValue("stale@example.com")).not.toBeInTheDocument();
+  });
+
   it("saves identity fields without updating membership status when unchanged", async () => {
     const user = userEvent.setup();
     renderProfile({ userData, userEmail: userData.email });
@@ -89,6 +107,8 @@ describe("Profile", () => {
         expect.objectContaining({
           firstName: "Jordan",
           lastName: "Member",
+          mobileNumber: "+447700900123",
+          postNominals: "MRAeS",
         })
       );
     });

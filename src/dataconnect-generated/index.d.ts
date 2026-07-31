@@ -361,6 +361,20 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   lastAttemptedAt: TimestampString;
 }
 
+export interface ConfirmProfileReviewData {
+  user_update?: User_Key | null;
+}
+
+export interface ConfirmProfileReviewVariables {
+  firstName: string;
+  lastName: string;
+  serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
+  rank: string;
+  shareContactInfo: boolean;
+}
+
 export interface ConsumeCallableRateLimitData {
   consumed: number;
   callableRateLimitBucket_deleteMany: number;
@@ -532,6 +546,33 @@ export interface CreateGuestTicketRequestVariables {
   dietaryNote?: string | null;
 }
 
+export interface CreateMigratedUserProfileAndIdentityData {
+  user_insert: User_Key;
+  legacyUserIdentity_insert: LegacyUserIdentity_Key;
+}
+
+export interface CreateMigratedUserProfileAndIdentityVariables {
+  userId: string;
+  legacyUserId: UUIDString;
+  oldUid?: number | null;
+  sourceSystem: string;
+  migrationBatchId: UUIDString;
+  recordSchemaVersion: string;
+  sourceChecksum: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
+  rank: string;
+  membershipStatus: MembershipStatus;
+  shareContactInfo: boolean;
+  announcementOptOutAll: boolean;
+  legacyPasswordMigrated?: boolean | null;
+  now: TimestampString;
+}
+
 export interface CreateNotificationDeliveryData {
   notificationDelivery_insert: NotificationDelivery_Key;
 }
@@ -668,6 +709,8 @@ export interface CreateUserProfileVariables {
   firstName: string;
   lastName: string;
   serviceNumber: string;
+  mobileNumber: string;
+  postNominals?: string | null;
   requestedMembershipStatus: MembershipStatus;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
@@ -683,6 +726,8 @@ export interface CreateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   membershipStatus: MembershipStatus;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
@@ -1062,6 +1107,8 @@ export interface GetCurrentUserData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
     membershipStatus: MembershipStatus;
     requestedMembershipStatus?: MembershipStatus | null;
     isRegular?: boolean | null;
@@ -1070,6 +1117,9 @@ export interface GetCurrentUserData {
     isIndustry?: boolean | null;
     rank?: string | null;
     shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
@@ -1222,9 +1272,30 @@ export interface GetLatestNotifyDeliveryReceiptForReferenceVariables {
   reference: string;
 }
 
+export interface GetLegacyUserIdentityData {
+  legacyUserIdentity?: {
+    sourceSystem: string;
+    legacyUserId: UUIDString;
+    oldUid?: number | null;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+    importedAt: TimestampString;
+  } & LegacyUserIdentity_Key;
+}
+
+export interface GetLegacyUserIdentityVariables {
+  sourceSystem: string;
+  legacyUserId: UUIDString;
+}
+
 export interface GetMyAnnouncementPreferencesData {
   user?: {
     membershipStatus: MembershipStatus;
+    announcementOptOutAll: boolean;
     userGroups: ({
       userGroup: {
         membershipStatuses?: MembershipStatus[] | null;
@@ -1664,6 +1735,8 @@ export interface GetSectionMembersData {
             membershipStatus: MembershipStatus;
             rank?: string | null;
             shareContactInfo?: boolean | null;
+            mobileNumber?: string | null;
+            announcementOptOutAll: boolean;
           } & User_Key;
         })[];
       } & UserGroup_Key;
@@ -1872,12 +1945,19 @@ export interface GetUserByIdData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
     membershipStatus: MembershipStatus;
     requestedMembershipStatus?: MembershipStatus | null;
     isRegular?: boolean | null;
     isReserve?: boolean | null;
     isCivilServant?: boolean | null;
     isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -2027,6 +2107,27 @@ export interface GrantUserGroupToSectionForPurposeVariables {
 export interface GuestTicketRequest_Key {
   id: UUIDString;
   __typename?: 'GuestTicketRequest_Key';
+}
+
+export interface LegacyUserIdentity_Key {
+  sourceSystem: string;
+  legacyUserId: UUIDString;
+  __typename?: 'LegacyUserIdentity_Key';
+}
+
+export interface LinkLegacyIdentityToExistingUserData {
+  legacyUserIdentity_insert: LegacyUserIdentity_Key;
+}
+
+export interface LinkLegacyIdentityToExistingUserVariables {
+  userId: string;
+  legacyUserId: UUIDString;
+  oldUid?: number | null;
+  sourceSystem: string;
+  migrationBatchId: UUIDString;
+  recordSchemaVersion: string;
+  sourceChecksum: string;
+  now: TimestampString;
 }
 
 export interface ListBookingPaymentAdjustmentsForAdminData {
@@ -2206,6 +2307,66 @@ export interface ListGuestTicketRequestsForAdminData {
 
 export interface ListGuestTicketRequestsForAdminVariables {
   eventId: UUIDString;
+}
+
+export interface ListLegacyUserIdentitiesByBatchData {
+  legacyUserIdentities: ({
+    sourceSystem: string;
+    legacyUserId: UUIDString;
+    oldUid?: number | null;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      mobileNumber?: string | null;
+      postNominals?: string | null;
+      rank?: string | null;
+      membershipStatus: MembershipStatus;
+      shareContactInfo?: boolean | null;
+      announcementOptOutAll: boolean;
+      legacyPasswordMigrated?: boolean | null;
+      profileReviewedAt?: TimestampString | null;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+    importedAt: TimestampString;
+  } & LegacyUserIdentity_Key)[];
+}
+
+export interface ListLegacyUserIdentitiesByBatchVariables {
+  migrationBatchId: UUIDString;
+  limit: number;
+}
+
+export interface ListLegacyUserIdentitiesForMigrationData {
+  legacyUserIdentities: ({
+    legacyUserId: UUIDString;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+  })[];
+}
+
+export interface ListLegacyUserIdentitiesForMigrationVariables {
+  sourceSystem: string;
+  limit: number;
+}
+
+export interface ListMigrationUsersData {
+  users: ({
+    id: string;
+    email: string;
+  } & User_Key)[];
+}
+
+export interface ListMigrationUsersVariables {
+  limit: number;
 }
 
 export interface ListOpenPaymentReconciliationExceptionsData {
@@ -2421,6 +2582,8 @@ export interface ListUsersData {
     lastName: string;
     email: string;
     serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
     membershipStatus: MembershipStatus;
     requestedMembershipStatus?: MembershipStatus | null;
     isRegular?: boolean | null;
@@ -2429,6 +2592,9 @@ export interface ListUsersData {
     isIndustry?: boolean | null;
     rank?: string | null;
     shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
     createdBy?: string | null;
@@ -2773,6 +2939,14 @@ export interface UnsubscribeFromUserGroupVariables {
   userGroupId: UUIDString;
 }
 
+export interface UpdateAnnouncementOptOutAllData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateAnnouncementOptOutAllVariables {
+  announcementOptOutAll: boolean;
+}
+
 export interface UpdateAvailableSectionFileMetadataData {
   sectionFile_updateMany: number;
 }
@@ -2858,6 +3032,15 @@ export interface UpdateUserData {
   user_upsert: User_Key;
 }
 
+export interface UpdateUserEmailFromAuthData {
+  user_update?: User_Key | null;
+}
+
+export interface UpdateUserEmailFromAuthVariables {
+  userId: string;
+  email: string;
+}
+
 export interface UpdateUserGroupData {
   userGroup_update?: UserGroup_Key | null;
 }
@@ -2894,6 +3077,8 @@ export interface UpdateUserVariables {
   lastName: string;
   email: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -2950,6 +3135,8 @@ export interface UpsertUserVariables {
   firstName: string;
   lastName: string;
   serviceNumber: string;
+  mobileNumber?: string | null;
+  postNominals?: string | null;
   isRegular?: boolean | null;
   isReserve?: boolean | null;
   isCivilServant?: boolean | null;
@@ -3202,6 +3389,18 @@ export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
 export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
 
+interface UpdateUserEmailFromAuthRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateUserEmailFromAuthVariables): MutationRef<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateUserEmailFromAuthVariables): MutationRef<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+  operationName: string;
+}
+export const updateUserEmailFromAuthRef: UpdateUserEmailFromAuthRef;
+
+export function updateUserEmailFromAuth(vars: UpdateUserEmailFromAuthVariables): MutationPromise<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+export function updateUserEmailFromAuth(dc: DataConnect, vars: UpdateUserEmailFromAuthVariables): MutationPromise<UpdateUserEmailFromAuthData, UpdateUserEmailFromAuthVariables>;
+
 interface DeleteUserRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: DeleteUserVariables): MutationRef<DeleteUserData, DeleteUserVariables>;
@@ -3225,6 +3424,78 @@ export const createUserRef: CreateUserRef;
 
 export function createUser(vars: CreateUserVariables): MutationPromise<CreateUserData, CreateUserVariables>;
 export function createUser(dc: DataConnect, vars: CreateUserVariables): MutationPromise<CreateUserData, CreateUserVariables>;
+
+interface CreateMigratedUserProfileAndIdentityRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateMigratedUserProfileAndIdentityVariables): MutationRef<CreateMigratedUserProfileAndIdentityData, CreateMigratedUserProfileAndIdentityVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateMigratedUserProfileAndIdentityVariables): MutationRef<CreateMigratedUserProfileAndIdentityData, CreateMigratedUserProfileAndIdentityVariables>;
+  operationName: string;
+}
+export const createMigratedUserProfileAndIdentityRef: CreateMigratedUserProfileAndIdentityRef;
+
+export function createMigratedUserProfileAndIdentity(vars: CreateMigratedUserProfileAndIdentityVariables): MutationPromise<CreateMigratedUserProfileAndIdentityData, CreateMigratedUserProfileAndIdentityVariables>;
+export function createMigratedUserProfileAndIdentity(dc: DataConnect, vars: CreateMigratedUserProfileAndIdentityVariables): MutationPromise<CreateMigratedUserProfileAndIdentityData, CreateMigratedUserProfileAndIdentityVariables>;
+
+interface LinkLegacyIdentityToExistingUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: LinkLegacyIdentityToExistingUserVariables): MutationRef<LinkLegacyIdentityToExistingUserData, LinkLegacyIdentityToExistingUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: LinkLegacyIdentityToExistingUserVariables): MutationRef<LinkLegacyIdentityToExistingUserData, LinkLegacyIdentityToExistingUserVariables>;
+  operationName: string;
+}
+export const linkLegacyIdentityToExistingUserRef: LinkLegacyIdentityToExistingUserRef;
+
+export function linkLegacyIdentityToExistingUser(vars: LinkLegacyIdentityToExistingUserVariables): MutationPromise<LinkLegacyIdentityToExistingUserData, LinkLegacyIdentityToExistingUserVariables>;
+export function linkLegacyIdentityToExistingUser(dc: DataConnect, vars: LinkLegacyIdentityToExistingUserVariables): MutationPromise<LinkLegacyIdentityToExistingUserData, LinkLegacyIdentityToExistingUserVariables>;
+
+interface GetLegacyUserIdentityRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetLegacyUserIdentityVariables): QueryRef<GetLegacyUserIdentityData, GetLegacyUserIdentityVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetLegacyUserIdentityVariables): QueryRef<GetLegacyUserIdentityData, GetLegacyUserIdentityVariables>;
+  operationName: string;
+}
+export const getLegacyUserIdentityRef: GetLegacyUserIdentityRef;
+
+export function getLegacyUserIdentity(vars: GetLegacyUserIdentityVariables, options?: ExecuteQueryOptions): QueryPromise<GetLegacyUserIdentityData, GetLegacyUserIdentityVariables>;
+export function getLegacyUserIdentity(dc: DataConnect, vars: GetLegacyUserIdentityVariables, options?: ExecuteQueryOptions): QueryPromise<GetLegacyUserIdentityData, GetLegacyUserIdentityVariables>;
+
+interface ListLegacyUserIdentitiesByBatchRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyUserIdentitiesByBatchVariables): QueryRef<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyUserIdentitiesByBatchVariables): QueryRef<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+  operationName: string;
+}
+export const listLegacyUserIdentitiesByBatchRef: ListLegacyUserIdentitiesByBatchRef;
+
+export function listLegacyUserIdentitiesByBatch(vars: ListLegacyUserIdentitiesByBatchVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+export function listLegacyUserIdentitiesByBatch(dc: DataConnect, vars: ListLegacyUserIdentitiesByBatchVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+
+interface ListMigrationUsersRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListMigrationUsersVariables): QueryRef<ListMigrationUsersData, ListMigrationUsersVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListMigrationUsersVariables): QueryRef<ListMigrationUsersData, ListMigrationUsersVariables>;
+  operationName: string;
+}
+export const listMigrationUsersRef: ListMigrationUsersRef;
+
+export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+
+interface ListLegacyUserIdentitiesForMigrationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+  operationName: string;
+}
+export const listLegacyUserIdentitiesForMigrationRef: ListLegacyUserIdentitiesForMigrationRef;
+
+export function listLegacyUserIdentitiesForMigration(vars: ListLegacyUserIdentitiesForMigrationVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+export function listLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
 
 interface CreateUserGroupAdminRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -4905,4 +5176,28 @@ export const optInSectionAnnouncementRef: OptInSectionAnnouncementRef;
 
 export function optInSectionAnnouncement(vars: OptInSectionAnnouncementVariables): MutationPromise<OptInSectionAnnouncementData, OptInSectionAnnouncementVariables>;
 export function optInSectionAnnouncement(dc: DataConnect, vars: OptInSectionAnnouncementVariables): MutationPromise<OptInSectionAnnouncementData, OptInSectionAnnouncementVariables>;
+
+interface UpdateAnnouncementOptOutAllRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateAnnouncementOptOutAllVariables): MutationRef<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateAnnouncementOptOutAllVariables): MutationRef<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+  operationName: string;
+}
+export const updateAnnouncementOptOutAllRef: UpdateAnnouncementOptOutAllRef;
+
+export function updateAnnouncementOptOutAll(vars: UpdateAnnouncementOptOutAllVariables): MutationPromise<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+export function updateAnnouncementOptOutAll(dc: DataConnect, vars: UpdateAnnouncementOptOutAllVariables): MutationPromise<UpdateAnnouncementOptOutAllData, UpdateAnnouncementOptOutAllVariables>;
+
+interface ConfirmProfileReviewRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmProfileReviewVariables): MutationRef<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ConfirmProfileReviewVariables): MutationRef<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+  operationName: string;
+}
+export const confirmProfileReviewRef: ConfirmProfileReviewRef;
+
+export function confirmProfileReview(vars: ConfirmProfileReviewVariables): MutationPromise<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
+export function confirmProfileReview(dc: DataConnect, vars: ConfirmProfileReviewVariables): MutationPromise<ConfirmProfileReviewData, ConfirmProfileReviewVariables>;
 

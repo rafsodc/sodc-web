@@ -10,8 +10,7 @@ best practices are followed.
 ### React
 For each operation, there is a wrapper hook that can be used to call the operation.
 
-Here are examples of the hooks that get generated. See `react/index.d.ts`
-for the complete list:
+Here are all of the hooks that get generated:
 ```ts
 import { useGetGovNotifyDeliveryConfiguration, useListGovNotifyDeliveryModeAudits, useCreateGovNotifyDeliveryConfiguration, useChangeGovNotifyDeliveryMode, useCreatePendingSectionFile, useGetSectionFileById, useListSectionFilesByStatus, useListStaleSectionFiles, useListSectionFilesForQuota, useRecordSectionFileAudit } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
@@ -70,41 +69,41 @@ function App() {
 ## Advanced Usage
 If a user is not using a supported framework, they can use the generated SDK directly.
 
-Here's an example of how to use it with 10 operations:
+Here's an example of how to use it with the first 5 operations:
 
 ```js
 import { getGovNotifyDeliveryConfiguration, listGovNotifyDeliveryModeAudits, createGovNotifyDeliveryConfiguration, changeGovNotifyDeliveryMode, createPendingSectionFile, getSectionFileById, listSectionFilesByStatus, listStaleSectionFiles, listSectionFilesForQuota, recordSectionFileAudit } from '@dataconnect/generated';
 
 
 // Operation GetGovNotifyDeliveryConfiguration: 
-const { data } = await getGovNotifyDeliveryConfiguration(dataConnect);
+const { data } = await GetGovNotifyDeliveryConfiguration(dataConnect);
 
 // Operation ListGovNotifyDeliveryModeAudits:  For variables, look at type ListGovNotifyDeliveryModeAuditsVars in ../index.d.ts
-const { data } = await listGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars);
+const { data } = await ListGovNotifyDeliveryModeAudits(dataConnect, listGovNotifyDeliveryModeAuditsVars);
 
 // Operation CreateGovNotifyDeliveryConfiguration: 
-const { data } = await createGovNotifyDeliveryConfiguration(dataConnect);
+const { data } = await CreateGovNotifyDeliveryConfiguration(dataConnect);
 
 // Operation ChangeGovNotifyDeliveryMode:  For variables, look at type ChangeGovNotifyDeliveryModeVars in ../index.d.ts
-const { data } = await changeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
+const { data } = await ChangeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
 
 // Operation CreatePendingSectionFile:  For variables, look at type CreatePendingSectionFileVars in ../index.d.ts
-const { data } = await createPendingSectionFile(dataConnect, createPendingSectionFileVars);
+const { data } = await CreatePendingSectionFile(dataConnect, createPendingSectionFileVars);
 
 // Operation GetSectionFileById:  For variables, look at type GetSectionFileByIdVars in ../index.d.ts
-const { data } = await getSectionFileById(dataConnect, getSectionFileByIdVars);
+const { data } = await GetSectionFileById(dataConnect, getSectionFileByIdVars);
 
 // Operation ListSectionFilesByStatus:  For variables, look at type ListSectionFilesByStatusVars in ../index.d.ts
-const { data } = await listSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
+const { data } = await ListSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
 
 // Operation ListStaleSectionFiles:  For variables, look at type ListStaleSectionFilesVars in ../index.d.ts
-const { data } = await listStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
+const { data } = await ListStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
 
 // Operation ListSectionFilesForQuota:  For variables, look at type ListSectionFilesForQuotaVars in ../index.d.ts
-const { data } = await listSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
+const { data } = await ListSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
 
 // Operation RecordSectionFileAudit:  For variables, look at type RecordSectionFileAuditVars in ../index.d.ts
-const { data } = await recordSectionFileAudit(dataConnect, recordSectionFileAuditVars);
+const { data } = await RecordSectionFileAudit(dataConnect, recordSectionFileAuditVars);
 
 
 ```

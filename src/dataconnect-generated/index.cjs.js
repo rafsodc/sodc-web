@@ -410,6 +410,20 @@ exports.updateUserMembershipStatus = function updateUserMembershipStatus(dcOrVar
 }
 ;
 
+const updateUserEmailFromAuthRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateUserEmailFromAuth', inputVars);
+}
+updateUserEmailFromAuthRef.operationName = 'UpdateUserEmailFromAuth';
+exports.updateUserEmailFromAuthRef = updateUserEmailFromAuthRef;
+
+exports.updateUserEmailFromAuth = function updateUserEmailFromAuth(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateUserEmailFromAuthRef(dcInstance, inputVars));
+}
+;
+
 const deleteUserRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -435,6 +449,94 @@ exports.createUserRef = createUserRef;
 exports.createUser = function createUser(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(createUserRef(dcInstance, inputVars));
+}
+;
+
+const createMigratedUserProfileAndIdentityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateMigratedUserProfileAndIdentity', inputVars);
+}
+createMigratedUserProfileAndIdentityRef.operationName = 'CreateMigratedUserProfileAndIdentity';
+exports.createMigratedUserProfileAndIdentityRef = createMigratedUserProfileAndIdentityRef;
+
+exports.createMigratedUserProfileAndIdentity = function createMigratedUserProfileAndIdentity(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createMigratedUserProfileAndIdentityRef(dcInstance, inputVars));
+}
+;
+
+const linkLegacyIdentityToExistingUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'LinkLegacyIdentityToExistingUser', inputVars);
+}
+linkLegacyIdentityToExistingUserRef.operationName = 'LinkLegacyIdentityToExistingUser';
+exports.linkLegacyIdentityToExistingUserRef = linkLegacyIdentityToExistingUserRef;
+
+exports.linkLegacyIdentityToExistingUser = function linkLegacyIdentityToExistingUser(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(linkLegacyIdentityToExistingUserRef(dcInstance, inputVars));
+}
+;
+
+const getLegacyUserIdentityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetLegacyUserIdentity', inputVars);
+}
+getLegacyUserIdentityRef.operationName = 'GetLegacyUserIdentity';
+exports.getLegacyUserIdentityRef = getLegacyUserIdentityRef;
+
+exports.getLegacyUserIdentity = function getLegacyUserIdentity(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getLegacyUserIdentityRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listLegacyUserIdentitiesByBatchRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyUserIdentitiesByBatch', inputVars);
+}
+listLegacyUserIdentitiesByBatchRef.operationName = 'ListLegacyUserIdentitiesByBatch';
+exports.listLegacyUserIdentitiesByBatchRef = listLegacyUserIdentitiesByBatchRef;
+
+exports.listLegacyUserIdentitiesByBatch = function listLegacyUserIdentitiesByBatch(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyUserIdentitiesByBatchRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listMigrationUsersRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListMigrationUsers', inputVars);
+}
+listMigrationUsersRef.operationName = 'ListMigrationUsers';
+exports.listMigrationUsersRef = listMigrationUsersRef;
+
+exports.listMigrationUsers = function listMigrationUsers(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listMigrationUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listLegacyUserIdentitiesForMigrationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyUserIdentitiesForMigration', inputVars);
+}
+listLegacyUserIdentitiesForMigrationRef.operationName = 'ListLegacyUserIdentitiesForMigration';
+exports.listLegacyUserIdentitiesForMigrationRef = listLegacyUserIdentitiesForMigrationRef;
+
+exports.listLegacyUserIdentitiesForMigration = function listLegacyUserIdentitiesForMigration(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyUserIdentitiesForMigrationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2457,5 +2559,33 @@ exports.optInSectionAnnouncementRef = optInSectionAnnouncementRef;
 exports.optInSectionAnnouncement = function optInSectionAnnouncement(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(optInSectionAnnouncementRef(dcInstance, inputVars));
+}
+;
+
+const updateAnnouncementOptOutAllRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateAnnouncementOptOutAll', inputVars);
+}
+updateAnnouncementOptOutAllRef.operationName = 'UpdateAnnouncementOptOutAll';
+exports.updateAnnouncementOptOutAllRef = updateAnnouncementOptOutAllRef;
+
+exports.updateAnnouncementOptOutAll = function updateAnnouncementOptOutAll(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateAnnouncementOptOutAllRef(dcInstance, inputVars));
+}
+;
+
+const confirmProfileReviewRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ConfirmProfileReview', inputVars);
+}
+confirmProfileReviewRef.operationName = 'ConfirmProfileReview';
+exports.confirmProfileReviewRef = confirmProfileReviewRef;
+
+exports.confirmProfileReview = function confirmProfileReview(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(confirmProfileReviewRef(dcInstance, inputVars));
 }
 ;
