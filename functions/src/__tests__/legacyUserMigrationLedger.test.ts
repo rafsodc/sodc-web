@@ -7,6 +7,7 @@ import {
   createMigrationLedger,
   hasMigrationStage,
   readMigrationLedger,
+  recordMigrationExclusion,
   recordMigrationStage,
   writeMigrationLedger,
 } from "../legacyUserMigrationLedger";
@@ -36,6 +37,22 @@ describe("legacy migration resume ledger", () => {
     expect(() =>
       recordMigrationStage(ledger, "legacy-id", "different", "profile-created")
     ).toThrow(/canonical UID conflict/);
+  });
+
+  it("records non-PII reconciliation exclusions separately", () => {
+    const ledger = createMigrationLedger(binding);
+    recordMigrationExclusion(
+      ledger,
+      "legacy-id",
+      "identity-mapping-conflict"
+    );
+
+    expect(ledger.excludedRecords).toEqual({
+      "legacy-id": { reason: "identity-mapping-conflict" },
+    });
+    expect(() =>
+      recordMigrationStage(ledger, "legacy-id", "canonical-id", "auth-created")
+    ).toThrow(/cannot receive a stage/);
   });
 
   it("binds resume to the exact project, batch, schema, and source", () => {

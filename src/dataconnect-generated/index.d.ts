@@ -569,6 +569,7 @@ export interface CreateMigratedUserProfileAndIdentityVariables {
   membershipStatus: MembershipStatus;
   shareContactInfo: boolean;
   announcementOptOutAll: boolean;
+  legacyPasswordMigrated?: boolean | null;
   now: TimestampString;
 }
 
@@ -1117,6 +1118,7 @@ export interface GetCurrentUserData {
     rank?: string | null;
     shareContactInfo?: boolean | null;
     announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
     profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
@@ -1954,6 +1956,7 @@ export interface GetUserByIdData {
     rank?: string | null;
     shareContactInfo?: boolean | null;
     announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
     profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
@@ -2313,6 +2316,18 @@ export interface ListLegacyUserIdentitiesByBatchData {
     oldUid?: number | null;
     user: {
       id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      mobileNumber?: string | null;
+      postNominals?: string | null;
+      rank?: string | null;
+      membershipStatus: MembershipStatus;
+      shareContactInfo?: boolean | null;
+      announcementOptOutAll: boolean;
+      legacyPasswordMigrated?: boolean | null;
+      profileReviewedAt?: TimestampString | null;
     } & User_Key;
     migrationBatchId: UUIDString;
     recordSchemaVersion: string;
@@ -2578,6 +2593,7 @@ export interface ListUsersData {
     rank?: string | null;
     shareContactInfo?: boolean | null;
     announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
     profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;

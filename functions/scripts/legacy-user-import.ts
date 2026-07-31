@@ -1,10 +1,6 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import readline from "node:readline";
-import readlinePromises from "node:readline/promises";
-import { spawn } from "node:child_process";
 import * as admin from "firebase-admin";
 import type { UserImportRecord, UserRecord } from "firebase-admin/auth";
 import {
@@ -15,7 +11,6 @@ import {
   MembershipStatus as DataConnectMembershipStatus,
 } from "@dataconnect/admin-generated";
 import {
-  LEGACY_PREFLIGHT_SCHEMA_VERSION,
   LEGACY_RECORD_SCHEMA_VERSION,
   LEGACY_SOURCE_SYSTEM,
   batchesOf,
@@ -25,18 +20,22 @@ import {
   type MigrationReason,
   type NormalizedLegacyUser,
   type PlannedMigrationRecord,
-  LegacyRecordError,
-  normalizeEmail,
-  normalizeMobileNumber,
-  parseLegacyRecord,
   reconcileLegacyRecord,
-  sha256Hex,
   validateJsonLines,
 } from "../src/legacyUserMigration";
+import {
+  decryptLegacyArtifact,
+  effectiveLegacySourceChecksum,
+  emailLessLegacyUserIds,
+  readLegacyPreflight,
+  remediateLegacyContacts,
+  type ContactRemediation,
+} from "../src/legacyUserMigrationArtifact";
 import {
   createMigrationLedger,
   hasMigrationStage,
   readMigrationLedger,
+  recordMigrationExclusion,
   recordMigrationStage,
   writeMigrationLedger,
   type MigrationLedger,
@@ -64,19 +63,6 @@ interface CliOptions {
   bcryptProven: boolean;
   interactiveRemediation: boolean;
   allowQuarantineCount?: number;
-}
-
-interface ContactRemediation {
-  line: number;
-  email?: string | null;
-  mobileNumber?: string | null;
-  membershipStatus?: "LOST";
-}
-
-interface Preflight {
-  schemaVersion: string;
-  recordSchemaVersion: string;
-  overall: { recordCount: number };
 }
 
 interface ProductionApproval {
@@ -240,244 +226,6 @@ function assertProjectAllowed(options: CliOptions): boolean {
   return isProduction;
 }
 
-function readPreflight(preflightPath: string): Preflight {
-  const parsed: unknown = JSON.parse(fs.readFileSync(preflightPath, "utf8"));
-  if (!parsed || typeof parsed !== "object") {
-    throw new Error("preflight must be a JSON object");
-  }
-  const preflight = parsed as Preflight;
-  if (preflight.schemaVersion !== LEGACY_PREFLIGHT_SCHEMA_VERSION) {
-    throw new Error("unsupported preflight schema version");
-  }
-  if (preflight.recordSchemaVersion !== LEGACY_RECORD_SCHEMA_VERSION) {
-    throw new Error("unsupported legacy record schema version");
-  }
-  if (
-    !preflight.overall ||
-    !Number.isInteger(preflight.overall.recordCount) ||
-    preflight.overall.recordCount < 0
-  ) {
-    throw new Error("preflight record count is invalid");
-  }
-  return preflight;
-}
-
-async function decryptAndValidate(inputPath: string): Promise<{
-  artifactChecksum: string;
-  plaintextLines: string[];
-}> {
-  if (!fs.statSync(inputPath).isFile()) {
-    throw new Error("encrypted input is not a file");
-  }
-  // Let GPG use its configured pinentry program. The importer never receives
-  // the passphrase; it only reads the decrypted byte stream from stdout.
-  const child = spawn("gpg", ["--quiet", "--decrypt", inputPath], {
-    // stdin must remain attached for terminal-based pinentry. Decrypted
-    // plaintext is still isolated on stdout and never reaches the terminal.
-    stdio: ["inherit", "pipe", "pipe"],
-  });
-  const exit = new Promise<number>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", (code) => resolve(code ?? 1));
-  });
-  const digest = createHash("sha256");
-  child.stdout.on("data", (chunk: Buffer) => digest.update(chunk));
-  let stderrBytes = 0;
-  child.stderr.on("data", (chunk: Buffer) => {
-    stderrBytes += chunk.length;
-  });
-
-  const lines = readline.createInterface({
-    input: child.stdout,
-    crlfDelay: Infinity,
-  });
-  const plaintextLines: string[] = [];
-  for await (const line of lines) {
-    plaintextLines.push(line);
-  }
-  const exitCode = await exit;
-  if (exitCode !== 0) {
-    throw new Error(
-      `GPG decryption failed (exit ${exitCode}, ${stderrBytes} diagnostic bytes)`
-    );
-  }
-  return {
-    artifactChecksum: digest.digest("hex"),
-    plaintextLines,
-  };
-}
-
-function terminalSafe(value: unknown): string {
-  const text = typeof value === "string" ? value : String(value ?? "");
-  return Array.from(text, (character) => {
-    const codePoint = character.codePointAt(0) ?? 0;
-    return codePoint <= 31 || (codePoint >= 127 && codePoint <= 159)
-      ? "?"
-      : character;
-  })
-    .join("")
-    .slice(0, 200);
-}
-
-function memberLabel(record: {
-  firstName: string | null;
-  lastName: string | null;
-  serviceNumber: string | null;
-}): string {
-  const name = `${terminalSafe(record.firstName)} ${terminalSafe(
-    record.lastName
-  )}`.trim();
-  const serviceNumber = terminalSafe(record.serviceNumber) || "not supplied";
-  return `${name || "Unnamed member"} (service number: ${serviceNumber})`;
-}
-
-function isEmailRemediationError(error: unknown): boolean {
-  return (
-    error instanceof LegacyRecordError &&
-    ["invalid-email", "placeholder-email", "missing-required-value"].includes(
-      error.reason
-    )
-  );
-}
-
-async function interactivelyRemediateContacts(
-  lines: readonly string[]
-): Promise<{
-  lines: string[];
-  remediations: ContactRemediation[];
-}> {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    throw new Error(
-      "--interactive-remediation requires an interactive local terminal"
-    );
-  }
-  console.error(
-    "Interactive remediation displays member PII locally. " +
-      "Do not record, capture, or share this terminal session."
-  );
-  const prompt = readlinePromises.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  const remediatedLines: string[] = [];
-  const remediations: ContactRemediation[] = [];
-
-  try {
-    for (let index = 0; index < lines.length; index += 1) {
-      const line = lines[index];
-      if (!line.trim()) {
-        remediatedLines.push(line);
-        continue;
-      }
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(line);
-      } catch {
-        remediatedLines.push(line);
-        continue;
-      }
-      let record;
-      try {
-        record = parseLegacyRecord(parsed);
-      } catch {
-        remediatedLines.push(line);
-        continue;
-      }
-      const remediation: ContactRemediation = { line: index + 1 };
-      try {
-        normalizeEmail(record.email);
-      } catch (error) {
-        if (!isEmailRemediationError(error)) {
-          throw error;
-        }
-        console.error(
-          `\nInvalid email for ${memberLabel(record)}: ` +
-            `"${terminalSafe(record.email)}"`
-        );
-        while (true) {
-          const replacement = await prompt.question(
-            "Replacement email, LOST for an email-less lost member, " +
-              "or SKIP to quarantine: "
-          );
-          const action = replacement.trim().toUpperCase();
-          if (action === "SKIP") {
-            break;
-          }
-          if (action === "LOST") {
-            record.email = null;
-            record.membershipStatus = "LOST";
-            remediation.email = null;
-            remediation.membershipStatus = "LOST";
-            break;
-          }
-          try {
-            record.email = normalizeEmail(replacement);
-            remediation.email = record.email;
-            break;
-          } catch {
-            console.error("That is not a valid non-placeholder email address.");
-          }
-        }
-      }
-
-      try {
-        normalizeMobileNumber(record.mobileNumber);
-      } catch (error) {
-        if (
-          !(error instanceof LegacyRecordError) ||
-          error.reason !== "invalid-mobile-number"
-        ) {
-          throw error;
-        }
-        console.error(
-          `\nInvalid mobile for ${memberLabel(record)}: ` +
-            `"${terminalSafe(record.mobileNumber)}"`
-        );
-        while (true) {
-          const replacement = await prompt.question(
-            "Replacement mobile (press Enter to clear it): "
-          );
-          try {
-            record.mobileNumber = normalizeMobileNumber(replacement);
-            remediation.mobileNumber = record.mobileNumber;
-            break;
-          } catch {
-            console.error(
-              "That number cannot be normalized to E.164; retry or press Enter."
-            );
-          }
-        }
-      }
-
-      if (
-        remediation.email !== undefined ||
-        remediation.mobileNumber !== undefined
-      ) {
-        remediations.push(remediation);
-      }
-      remediatedLines.push(JSON.stringify(record));
-    }
-  } finally {
-    prompt.close();
-  }
-  return { lines: remediatedLines, remediations };
-}
-
-function effectiveSourceChecksum(
-  artifactChecksum: string,
-  remediations: readonly ContactRemediation[]
-): string {
-  if (remediations.length === 0) {
-    return artifactChecksum;
-  }
-  return sha256Hex(
-    JSON.stringify({
-      artifactChecksum,
-      remediations,
-    })
-  );
-}
-
 function addByEmail<T extends { email: string | null }>(
   map: Map<string, T[]>,
   value: T
@@ -568,10 +316,13 @@ function planRecords(
   sourceChecksum: string
 ): {
   plans: PlannedMigrationRecord[];
-  quarantined: MigrationReason[];
+  quarantined: Array<{ legacyUserId: string; reason: MigrationReason }>;
 } {
   const plans: PlannedMigrationRecord[] = [];
-  const quarantined: MigrationReason[] = [];
+  const quarantined: Array<{
+    legacyUserId: string;
+    reason: MigrationReason;
+  }> = [];
   for (const record of records) {
     const mapping = snapshot.mappingsByLegacyId.get(record.legacyUserId) ?? null;
     const identityUid = mapping?.userId ?? record.legacyUserId;
@@ -592,7 +343,10 @@ function planRecords(
       }
     );
     if (result.outcome === "quarantined") {
-      quarantined.push(result.reason);
+      quarantined.push({
+        legacyUserId: record.legacyUserId,
+        reason: result.reason,
+      });
     } else {
       plans.push(result.plan);
     }
@@ -833,6 +587,13 @@ async function writeProfiles(
             plan.record.membershipStatus as DataConnectMembershipStatus,
           shareContactInfo: plan.record.shareContactInfo,
           announcementOptOutAll: plan.record.announcementOptOutAll,
+          legacyPasswordMigrated: plan.createAuthUser
+            ? Boolean(
+                options.bcryptProven &&
+                  plan.record.email &&
+                  plan.record.passwordDisposition === "compatible-bcrypt"
+              )
+            : null,
         });
       } else {
         await linkLegacyIdentityToExistingUser(provenance);
@@ -884,26 +645,20 @@ async function reconcileAccess(
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
   const isProduction = assertProjectAllowed(options);
-  const preflight = readPreflight(options.preflightPath);
+  const preflight = readLegacyPreflight(options.preflightPath);
   console.log("Decrypting and validating the canonical artifact in memory...");
-  const decrypted = await decryptAndValidate(options.inputPath);
+  const decrypted = await decryptLegacyArtifact(options.inputPath);
   const remediated = options.interactiveRemediation
-    ? await interactivelyRemediateContacts(decrypted.plaintextLines)
+    ? await remediateLegacyContacts(decrypted.plaintextLines)
     : { lines: decrypted.plaintextLines, remediations: [] };
-  const emailLessLegacyUserIds = new Set(
+  const allowedEmailLessLegacyUserIds = emailLessLegacyUserIds(
+    remediated.lines,
     remediated.remediations
-      .filter(({ email, membershipStatus }) =>
-        email === null && membershipStatus === "LOST"
-      )
-      .map(({ line }) => {
-        const parsed: unknown = JSON.parse(remediated.lines[line - 1]);
-        return parseLegacyRecord(parsed).legacyUserId;
-      })
   );
   const validation = validateJsonLines(remediated.lines, {
-    allowEmailLessLegacyUserIds: emailLessLegacyUserIds,
+    allowEmailLessLegacyUserIds: allowedEmailLessLegacyUserIds,
   });
-  const sourceChecksum = effectiveSourceChecksum(
+  const sourceChecksum = effectiveLegacySourceChecksum(
     decrypted.artifactChecksum,
     remediated.remediations
   );
@@ -927,7 +682,7 @@ async function main(): Promise<void> {
     sourceChecksum,
     planned.plans,
     inputReasons,
-    planned.quarantined,
+    planned.quarantined.map(({ reason }) => reason),
     remediated.remediations
   );
   const quarantineCount =
@@ -960,7 +715,31 @@ async function main(): Promise<void> {
   const ledger = options.resume
     ? readMigrationLedger(options.statePath, binding)
     : createMigrationLedger(binding);
-  if (!options.resume) {
+  if (options.resume) {
+    const plannedExclusions = new Map(
+      planned.quarantined.map(({ legacyUserId, reason }) => [
+        legacyUserId,
+        reason,
+      ])
+    );
+    const ledgerExclusions = Object.entries(ledger.excludedRecords);
+    if (
+      ledgerExclusions.length !== plannedExclusions.size ||
+      ledgerExclusions.some(
+        ([legacyUserId, { reason }]) =>
+          plannedExclusions.get(legacyUserId) !== reason
+      )
+    ) {
+      throw new Error("resume reconciliation exclusions do not match the ledger");
+    }
+  } else {
+    for (const exclusion of planned.quarantined) {
+      recordMigrationExclusion(
+        ledger,
+        exclusion.legacyUserId,
+        exclusion.reason
+      );
+    }
     writeMigrationLedger(options.statePath, ledger);
   }
 

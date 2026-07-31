@@ -134,6 +134,8 @@ Review:
 - `sourceChecksum` against later runs and the approval artifact;
 - create/link/already-mapped counts;
 - password-reset and compatible-bcrypt counts;
+- the persisted `legacyPasswordMigrated` outcome for migration-created
+  profiles (`true` for an imported proven-compatible hash, otherwise `false`);
 - warning and quarantine reason counts.
 
 The output deliberately contains no names, email addresses, phone numbers, or
@@ -194,9 +196,10 @@ npm run legacy-user-import -- \
 ```
 
 The state file is mode `0600` and contains only the project/batch/input binding,
-legacy UUID, canonical UID, and completed stage names. Resume rejects any
-project, checksum, schema, batch, or canonical-UID mismatch. Do not edit the
-ledger manually.
+legacy UUID, canonical UID, completed stage names, and reason codes for records
+excluded by destination reconciliation. It contains no contact details or
+password hashes. Resume rejects any project, checksum, schema, batch, or
+canonical-UID mismatch. Do not edit the ledger manually.
 
 There is no transaction spanning Firebase Auth and Data Connect. A failure
 after Auth import leaves new accounts disabled. Profile writes complete before
@@ -243,6 +246,72 @@ npm run legacy-user-import -- \
 After completion, retain the encrypted source, preflight, approval, aggregate
 output, and protected ledger according to the agreed migration retention
 policy. Run the issue #425 postflight reconciliation before cutover.
+
+## 6. Postflight reconciliation
+
+Run postflight immediately after a completed apply and before migrated members
+can sign in or edit profiles. It decrypts the same source in memory, repeats the
+same remediation questions, and first requires the resulting effective
+checksum to match the protected importer ledger. Different answers fail closed
+before destination comparison.
+
+Deploy the updated Data Connect connector before running postflight; its
+server-only batch query exposes the fields needed for read-only comparison:
+
+```bash
+npx firebase deploy --only dataconnect --project sodc-web
+```
+
+Then run from `functions`, using the same `--bcrypt-proven` choice as apply:
+
+```bash
+npm run legacy-user-postflight -- \
+  --input /secure/path/legacy-users.jsonl.gpg \
+  --preflight /secure/path/legacy-user-preflight.json \
+  --state /secure/path/sodc-web-import-state.json \
+  --project sodc-web \
+  --confirm-project sodc-web \
+  --output /secure/path/sodc-web-postflight.json \
+  --interactive-remediation \
+  --bcrypt-proven
+```
+
+For production, use the production paths/project and add `--production`:
+
+```bash
+npm run legacy-user-postflight -- \
+  --input /secure/path/legacy-users.jsonl.gpg \
+  --preflight /secure/path/legacy-user-preflight.json \
+  --state /secure/path/production-import-state.json \
+  --project sodc-web-production \
+  --confirm-project sodc-web-production \
+  --output /secure/path/production-postflight.json \
+  --interactive-remediation \
+  --bcrypt-proven \
+  --production
+```
+
+The command compares each imported identity across the ledger, immutable
+legacy mapping, Data Connect, and Firebase Auth. Profiles created by the
+migration receive an exact field comparison. Pre-existing linked profiles are
+not overwritten by the importer, so postflight checks their identity and email
+rather than treating their existing profile fields as migrated values. Planned
+reconciliation exclusions must match the ledger and must have no mapping in
+the migration batch.
+
+Success prints `outcome: "match"` and exits zero. A mismatch exits non-zero and
+reports only aggregate reason counts plus deterministic correlation IDs. The
+retained report is written atomically with mode `0600` and contains no raw
+names, emails, mobiles, source rows, or password hashes.
+
+Firebase Auth does not expose imported password hashes. Postflight therefore
+compares the persisted `legacyPasswordMigrated` evidence with the approved
+plan, records compatible-bcrypt eligibility and completed importer stages, but
+sets `credentialHashesDirectlyVerifiable` to zero and states this limitation
+in the report. Credential sign-in compatibility remains the staging proof
+required before `--bcrypt-proven` is used. The marker is historical; use it
+with Firebase Auth `lastSignInTime` when assessing whether somebody has used
+the new site.
 
 ## Recovery rules
 

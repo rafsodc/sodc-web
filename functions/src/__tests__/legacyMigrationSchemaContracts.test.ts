@@ -24,6 +24,7 @@ describe("legacy migration Data Connect contracts", () => {
     expect(schema).toContain("mobileNumber: String");
     expect(schema).toContain("postNominals: String");
     expect(schema).toContain("announcementOptOutAll: Boolean! @default(value: false)");
+    expect(schema).toContain("legacyPasswordMigrated: Boolean");
     expect(schema).toContain("profileReviewedAt: Timestamp");
   });
 
@@ -50,6 +51,9 @@ describe("legacy migration Data Connect contracts", () => {
     expect(create).toContain("$oldUid: Int");
     expect(create).toContain("oldUid: $oldUid");
     expect(create).toContain("profileReviewedAt: null");
+    expect(create).toContain(
+      "legacyPasswordMigrated: $legacyPasswordMigrated"
+    );
     expect(create).not.toContain("passwordHash");
   });
 

@@ -28,6 +28,7 @@ query GetCurrentUser @auth(expr: "auth.token.enabled == true") {
     rank
     shareContactInfo
     announcementOptOutAll
+    legacyPasswordMigrated
     profileReviewedAt
     createdAt
     updatedAt
@@ -53,6 +54,7 @@ query GetUserById($id: String!) @auth(expr: "auth.token.admin == true && auth.to
     rank
     shareContactInfo
     announcementOptOutAll
+    legacyPasswordMigrated
     profileReviewedAt
     createdAt
     updatedAt
@@ -80,6 +82,7 @@ query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == t
     rank
     shareContactInfo
     announcementOptOutAll
+    legacyPasswordMigrated
     profileReviewedAt
     createdAt
     updatedAt
