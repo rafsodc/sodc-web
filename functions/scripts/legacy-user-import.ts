@@ -21,6 +21,7 @@ import {
   type NormalizedLegacyUser,
   type PlannedMigrationRecord,
   reconcileLegacyRecord,
+  sha256Hex,
   validateJsonLines,
 } from "../src/legacyUserMigration";
 import {
@@ -386,10 +387,11 @@ function printPlan(
         Boolean(record.email) &&
         record.passwordDisposition === "compatible-bcrypt"
     ).length,
-    passwordResetRequired: plans.filter(
+    credentialResetRequired: plans.filter(
       ({ record }) =>
         Boolean(record.email) &&
-        record.passwordDisposition !== "compatible-bcrypt"
+        (!options.bcryptProven ||
+          record.passwordDisposition !== "compatible-bcrypt")
     ).length,
     emailLessLost: plans.filter(
       ({ record }) => !record.email && record.membershipStatus === "LOST"
@@ -601,6 +603,15 @@ async function writeProfiles(
       checkpoint(options.statePath, ledger, plan, stage);
     } catch {
       failureCount += 1;
+      console.error(
+        JSON.stringify({
+          event: "legacy-user-profile-write-failed",
+          correlationId: sha256Hex(
+            `${sourceChecksum}:${plan.record.legacyUserId}`
+          ).slice(0, 20),
+          operation: plan.profileAction,
+        })
+      );
     }
   }
   if (failureCount > 0) {
@@ -731,6 +742,21 @@ async function main(): Promise<void> {
       )
     ) {
       throw new Error("resume reconciliation exclusions do not match the ledger");
+    }
+    const recomputedPlans = new Map(
+      planned.plans.map((plan) => [plan.record.legacyUserId, plan])
+    );
+    for (const [legacyUserId, ledgerRecord] of Object.entries(
+      ledger.records
+    )) {
+      if (
+        recomputedPlans.get(legacyUserId)?.canonicalUid !==
+        ledgerRecord.canonicalUid
+      ) {
+        throw new Error(
+          "resume ledger canonical UID does not match the recomputed plan"
+        );
+      }
     }
   } else {
     for (const exclusion of planned.quarantined) {

@@ -76,7 +76,7 @@ export interface PostflightReport {
     profilesCreated: number;
     profilesLinked: number;
     compatibleBcryptPlanned: number;
-    passwordResetRequired: number;
+    credentialResetRequired: number;
     credentialHashesDirectlyVerifiable: 0;
     differences: number;
   };
@@ -294,7 +294,7 @@ export function buildLegacyUserPostflightReport(input: {
               record.passwordDisposition === "compatible-bcrypt"
           ).length
         : 0,
-      passwordResetRequired: authCreatedRecords.filter(
+      credentialResetRequired: authCreatedRecords.filter(
         (record) =>
           Boolean(record.email) &&
           (!input.bcryptProven ||

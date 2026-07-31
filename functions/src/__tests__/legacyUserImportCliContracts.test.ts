@@ -55,6 +55,15 @@ describe("legacy user import CLI safety contracts", () => {
     expect(cli.indexOf("await writeProfiles")).toBeLessThan(
       cli.indexOf("await reconcileAccess")
     );
+    expect(cli).toContain("legacy-user-profile-write-failed");
+    expect(cli).toContain("correlationId: sha256Hex");
+  });
+
+  it("revalidates canonical UIDs before resuming completed records", () => {
+    expect(cli).toContain("const recomputedPlans = new Map(");
+    expect(cli).toContain(
+      "resume ledger canonical UID does not match the recomputed plan"
+    );
   });
 
   it("requires an issue 420 input-bound artifact for production apply", () => {
