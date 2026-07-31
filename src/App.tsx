@@ -27,6 +27,9 @@ import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
 import { useUnenabledProfileCheck } from "./shared/appShell/useUnenabledProfileCheck";
 import { accountSignInPath, safeReturnTo } from "./shared/navigation/authReturnTo";
 import { isProfileReviewDue } from "./features/profile/utils/profileReviewDue";
+import SiteFooter from "./shared/components/SiteFooter";
+import CookieBanner from "./shared/components/CookieBanner";
+import CookieSettingsDialog from "./shared/components/CookieSettingsDialog";
 
 // Lazy load route components for code splitting
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
@@ -709,5 +712,12 @@ function AppContent() {
 }
 
 export default function App() {
-  return <AppContent />;
+  return (
+    <>
+      <AppContent />
+      <SiteFooter />
+      <CookieBanner />
+      <CookieSettingsDialog />
+    </>
+  );
 }

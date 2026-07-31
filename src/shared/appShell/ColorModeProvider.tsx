@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -9,34 +9,40 @@ import {
   writeStoredPreference,
   type ColorModePreference,
 } from "./ColorModeContext";
+import { useCookiePreferences } from "../cookies/CookiePreferencesContext";
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
+  const { decision, acceptPreferenceCookies } = useCookiePreferences();
   const [preference, setPreferenceState] = useState<ColorModePreference>(readStoredPreference);
-  // Session-only override from the Header's quick toggle — never persisted, always starts null
-  // (i.e. "no override") on a fresh page load, so the effective mode falls back to `preference`.
-  const [sessionOverride, setSessionOverride] = useState<AppColorMode | null>(null);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
 
-  const persistedResolvedMode: AppColorMode = preference === "system" ? (prefersDark ? "dark" : "light") : preference;
-  const resolvedMode: AppColorMode = sessionOverride ?? persistedResolvedMode;
+  const resolvedMode: AppColorMode = preference === "system" ? (prefersDark ? "dark" : "light") : preference;
 
-  const setPreference = useCallback((next: ColorModePreference) => {
-    setPreferenceState(next);
-    writeStoredPreference(next);
-    // A deliberate persistent choice should take effect immediately, not be masked by a
-    // leftover session-only override from the Header toggle.
-    setSessionOverride(null);
-  }, []);
+  useEffect(() => {
+    if (decision === "rejected") {
+      setPreferenceState("system");
+      writeStoredPreference("system");
+    }
+  }, [decision]);
 
-  const toggleSessionMode = useCallback(() => {
-    setSessionOverride((current) => (current ?? persistedResolvedMode) === "dark" ? "light" : "dark");
-  }, [persistedResolvedMode]);
+  const setPreference = useCallback(
+    (next: ColorModePreference) => {
+      if (next !== "system") {
+        // Choosing a persistent appearance is an explicit request to remember
+        // that preference, so enable only this optional storage purpose.
+        acceptPreferenceCookies();
+      }
+      setPreferenceState(next);
+      writeStoredPreference(next);
+    },
+    [acceptPreferenceCookies]
+  );
 
   const theme = useMemo(() => createAppTheme(resolvedMode), [resolvedMode]);
 
   const contextValue = useMemo(
-    () => ({ preference, resolvedMode, setPreference, toggleSessionMode }),
-    [preference, resolvedMode, setPreference, toggleSessionMode]
+    () => ({ preference, resolvedMode, setPreference }),
+    [preference, resolvedMode, setPreference]
   );
 
   return (

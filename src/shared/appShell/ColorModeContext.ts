@@ -1,10 +1,11 @@
 import { createContext, useContext } from "react";
 import type { AppColorMode } from "../../config/theme";
 import { getCookie, removeCookie, setCookie } from "../utils/cookies";
+import { COLOR_MODE_COOKIE } from "../cookies/cookieCatalog";
 
 export type ColorModePreference = "system" | AppColorMode;
 
-export const PREFERENCE_COOKIE = "sodc-color-mode-preference";
+export const PREFERENCE_COOKIE = COLOR_MODE_COOKIE;
 
 export function readStoredPreference(): ColorModePreference {
   try {
@@ -29,18 +30,12 @@ export function writeStoredPreference(preference: ColorModePreference): void {
 }
 
 export interface ColorModeContextValue {
-  /** The persisted System/Light/Dark choice, set from Account Settings. Defaults to "system". */
+  /** The persisted System/Light/Dark choice. Defaults to "system". */
   preference: ColorModePreference;
-  /**
-   * The mode actually applied to the app right now. Starts each page load from `preference`
-   * (system preference, or the persisted explicit choice) — toggleSessionMode can flip it for
-   * the current session only, without touching the persisted preference.
-   */
+  /** The mode actually applied to the app right now. */
   resolvedMode: AppColorMode;
-  /** Persists an explicit System/Light/Dark choice (Account Settings). Clears any session override. */
+  /** Persists an explicit System/Light/Dark choice. */
   setPreference: (preference: ColorModePreference) => void;
-  /** Flips resolvedMode for the current session only (Header toggle) — never persisted. */
-  toggleSessionMode: () => void;
 }
 
 export const ColorModeContext = createContext<ColorModeContextValue | null>(null);

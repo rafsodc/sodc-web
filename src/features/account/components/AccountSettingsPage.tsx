@@ -441,7 +441,8 @@ export default function AccountSettingsPage({
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Choose whether the site follows your device's light/dark setting, or always uses a
-            specific one.
+            specific one. Choosing Light or Dark stores one appearance cookie so the site can
+            remember your choice.
           </Typography>
           <ToggleButtonGroup
             value={colorModePreference}
