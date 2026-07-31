@@ -22,7 +22,7 @@ Git, GitHub, chat, normal logs, and CI artifacts.
 | `membershipStatus` | `User.membershipStatus` | Direct mapping to the existing enum |
 | `isShared` | `User.shareContactInfo` | Direct mapping; controls server-side disclosure of email and mobile number |
 | `hasSubscriptions` | `User.announcementOptOutAll` | Invert: `announcementOptOutAll = !hasSubscriptions` |
-| `passwordHash` | Firebase Authentication only | Never passed to or stored in Data Connect |
+| `passwordHash` | Firebase Authentication plus `User.legacyPasswordMigrated` evidence | The hash is never stored in Data Connect. The nullable marker is true only when a migration-created Auth account received the proven-compatible legacy bcrypt hash; false means that account required password reset; null means the migration did not create that Auth account. |
 
 ## Migration write boundary
 
@@ -39,6 +39,13 @@ Neither operation accepts `passwordHash`. Both accept nullable `oldUid` as
 provenance only. The mapping records the source system, legacy UUID, old numeric
 UID, canonical user, batch UUID, record-schema version, source checksum, and
 import timestamp.
+
+`legacyPasswordMigrated` is historical migration evidence, not a live activity
+flag. For migration-created accounts it records whether the legacy credential
+was imported successfully. It remains unchanged after a password reset or
+sign-in. To determine whether a member has subsequently used the new site,
+combine this marker with Firebase Auth's `lastSignInTime`; do not treat the
+marker alone as proof of current inactivity.
 
 ## Staged profile completion
 

@@ -160,6 +160,10 @@ type User @table {
   # precedence over per-section preferences and applies to future sections.
   # Transactional/account-security messages are not affected.
   announcementOptOutAll: Boolean! @default(value: false)
+  # Historical migration evidence. true means the legacy bcrypt credential was
+  # imported; false means the migration-created account required password reset.
+  # Null means the account was not created by the legacy migration.
+  legacyPasswordMigrated: Boolean
   # Advanced only when the member explicitly confirms their profile.
   profileReviewedAt: Timestamp
   stripeCustomerId: String

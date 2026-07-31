@@ -515,6 +515,7 @@ mutation CreateMigratedUserProfileAndIdentity(
   $membershipStatus: MembershipStatus!
   $shareContactInfo: Boolean!
   $announcementOptOutAll: Boolean!
+  $legacyPasswordMigrated: Boolean
   $now: Timestamp!
 ) @auth(level: NO_ACCESS) @transaction {
   user_insert(
@@ -531,6 +532,7 @@ mutation CreateMigratedUserProfileAndIdentity(
       membershipStatus: $membershipStatus
       shareContactInfo: $shareContactInfo
       announcementOptOutAll: $announcementOptOutAll
+      legacyPasswordMigrated: $legacyPasswordMigrated
       profileReviewedAt: null
       createdBy: "legacy-migration"
       updatedBy: "legacy-migration"
@@ -615,7 +617,21 @@ query ListLegacyUserIdentitiesByBatch(
     sourceSystem
     legacyUserId
     oldUid
-    user { id }
+    user {
+      id
+      firstName
+      lastName
+      email
+      serviceNumber
+      mobileNumber
+      postNominals
+      rank
+      membershipStatus
+      shareContactInfo
+      announcementOptOutAll
+      legacyPasswordMigrated
+      profileReviewedAt
+    }
     migrationBatchId
     recordSchemaVersion
     sourceChecksum

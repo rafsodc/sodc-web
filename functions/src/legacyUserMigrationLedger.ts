@@ -22,6 +22,7 @@ export interface MigrationLedgerRecord {
 export interface MigrationLedger extends MigrationLedgerBinding {
   ledgerSchemaVersion: "sodc-legacy-user-import-ledger/v1";
   records: Record<string, MigrationLedgerRecord>;
+  excludedRecords: Record<string, { reason: string }>;
 }
 
 export function createMigrationLedger(
@@ -31,6 +32,7 @@ export function createMigrationLedger(
     ledgerSchemaVersion: "sodc-legacy-user-import-ledger/v1",
     ...binding,
     records: {},
+    excludedRecords: {},
   };
 }
 
@@ -64,6 +66,9 @@ export function recordMigrationStage(
   canonicalUid: string,
   stage: MigrationStage
 ): void {
+  if (ledger.excludedRecords[legacyUserId]) {
+    throw new Error("excluded migration record cannot receive a stage");
+  }
   const existing = ledger.records[legacyUserId];
   if (existing && existing.canonicalUid !== canonicalUid) {
     throw new Error("resume ledger canonical UID conflict");
@@ -97,6 +102,13 @@ export function readMigrationLedger(
   ) {
     throw new Error("resume ledger records are invalid");
   }
+  if (
+    !ledger.excludedRecords ||
+    typeof ledger.excludedRecords !== "object" ||
+    Array.isArray(ledger.excludedRecords)
+  ) {
+    throw new Error("resume ledger excluded records are invalid");
+  }
   const validStages = new Set<MigrationStage>([
     "auth-created",
     "profile-created",
@@ -119,12 +131,37 @@ export function readMigrationLedger(
       throw new Error("resume ledger record is invalid");
     }
   }
+  for (const [legacyUserId, exclusion] of Object.entries(
+    ledger.excludedRecords
+  )) {
+    if (
+      !legacyUserId ||
+      ledger.records[legacyUserId] ||
+      !exclusion ||
+      typeof exclusion !== "object" ||
+      typeof exclusion.reason !== "string" ||
+      !exclusion.reason
+    ) {
+      throw new Error("resume ledger excluded record is invalid");
+    }
+  }
   return ledger;
 }
 
+export function recordMigrationExclusion(
+  ledger: MigrationLedger,
+  legacyUserId: string,
+  reason: string
+): void {
+  if (ledger.records[legacyUserId]) {
+    throw new Error("migration ledger record cannot also be excluded");
+  }
+  ledger.excludedRecords[legacyUserId] = { reason };
+}
+
 /**
- * Persists only migration IDs and stage names. The temporary file is created
- * with owner-only permissions and atomically renamed over the prior checkpoint.
+ * Persists only migration IDs, stage names, and non-PII exclusion reason codes.
+ * The temporary file is owner-only and atomically replaces the checkpoint.
  */
 export function writeMigrationLedger(
   ledgerPath: string,

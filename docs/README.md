@@ -27,6 +27,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/firebase-hosting-security-headers.md`: production CSP and browser hardening policy, HSTS ownership, and post-deploy verification.
 - `operations/section-file-storage.md`: private section-file bucket, lifecycle states, IAM, CORS, deployment order, and verification.
 - `operations/legacy-user-migration-schema.md`: approved legacy-user field mapping, secure Data Connect write boundary, staged profile completion, and deployment order.
+- `operations/legacy-user-import.md`: guarded dry-run/apply/resume workflow and PII-minimised postflight reconciliation.
 
 ## User Guides
 

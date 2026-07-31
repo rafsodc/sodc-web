@@ -1109,6 +1109,18 @@ export interface ListLegacyUserIdentitiesByBatchData {
     oldUid?: number | null;
     user: {
       id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      mobileNumber?: string | null;
+      postNominals?: string | null;
+      rank?: string | null;
+      membershipStatus: MembershipStatus;
+      shareContactInfo?: boolean | null;
+      announcementOptOutAll: boolean;
+      legacyPasswordMigrated?: boolean | null;
+      profileReviewedAt?: TimestampString | null;
     } & User_Key;
     migrationBatchId: UUIDString;
     recordSchemaVersion: string;
@@ -5548,6 +5560,7 @@ export interface GetCurrentUserData {
     rank?: string | null;
     shareContactInfo?: boolean | null;
     announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
     profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
@@ -5665,6 +5678,7 @@ export interface GetUserByIdData {
     rank?: string | null;
     shareContactInfo?: boolean | null;
     announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
     profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
@@ -5790,6 +5804,7 @@ export interface ListUsersData {
     rank?: string | null;
     shareContactInfo?: boolean | null;
     announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
     profileReviewedAt?: TimestampString | null;
     createdAt: TimestampString;
     updatedAt: TimestampString;
@@ -11052,6 +11067,7 @@ export interface CreateMigratedUserProfileAndIdentityVariables {
   membershipStatus: MembershipStatus;
   shareContactInfo: boolean;
   announcementOptOutAll: boolean;
+  legacyPasswordMigrated?: boolean | null;
   now: TimestampString;
 }
 ```
@@ -11090,6 +11106,7 @@ const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIden
   membershipStatus: ..., 
   shareContactInfo: ..., 
   announcementOptOutAll: ..., 
+  legacyPasswordMigrated: ..., // optional
   now: ..., 
 };
 
@@ -11097,7 +11114,7 @@ const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIden
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createMigratedUserProfileAndIdentity(createMigratedUserProfileAndIdentityVars);
 // Variables can be defined inline as well.
-const { data } = await createMigratedUserProfileAndIdentity({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
+const { data } = await createMigratedUserProfileAndIdentity({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., legacyPasswordMigrated: ..., now: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -11139,13 +11156,14 @@ const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIden
   membershipStatus: ..., 
   shareContactInfo: ..., 
   announcementOptOutAll: ..., 
+  legacyPasswordMigrated: ..., // optional
   now: ..., 
 };
 
 // Call the `createMigratedUserProfileAndIdentityRef()` function to get a reference to the mutation.
 const ref = createMigratedUserProfileAndIdentityRef(createMigratedUserProfileAndIdentityVars);
 // Variables can be defined inline as well.
-const ref = createMigratedUserProfileAndIdentityRef({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., now: ..., });
+const ref = createMigratedUserProfileAndIdentityRef({ userId: ..., legacyUserId: ..., oldUid: ..., sourceSystem: ..., migrationBatchId: ..., recordSchemaVersion: ..., sourceChecksum: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., membershipStatus: ..., shareContactInfo: ..., announcementOptOutAll: ..., legacyPasswordMigrated: ..., now: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

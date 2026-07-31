@@ -20,6 +20,7 @@ export interface UserData {
   rank?: string | null;
   shareContactInfo?: boolean | null;
   announcementOptOutAll?: boolean;
+  legacyPasswordMigrated?: boolean | null;
   profileReviewedAt?: string | null;
   createdAt: string;
   updatedAt: string;

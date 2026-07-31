@@ -6,6 +6,11 @@ const cli = fs.readFileSync(
   path.resolve(process.cwd(), "scripts/legacy-user-import.ts"),
   "utf8"
 );
+const artifact = fs.readFileSync(
+  path.resolve(process.cwd(), "src/legacyUserMigrationArtifact.ts"),
+  "utf8"
+);
+const safetyCode = `${cli}\n${artifact}`;
 
 describe("legacy user import CLI safety contracts", () => {
   it("defaults to dry-run and requires explicit apply guards", () => {
@@ -17,22 +22,22 @@ describe("legacy user import CLI safety contracts", () => {
   });
 
   it("stream-decrypts with GPG and never writes plaintext", () => {
-    expect(cli).toContain("spawn(\"gpg\"");
-    expect(cli).toContain("\"--decrypt\"");
-    expect(cli).not.toContain("[\"--batch\", \"--quiet\", \"--decrypt\"");
-    expect(cli).toContain("input: child.stdout");
-    expect(cli).toContain("stdio: [\"inherit\", \"pipe\", \"pipe\"]");
-    expect(cli).not.toMatch(/writeFileSync\([^)]*plaintext/i);
+    expect(safetyCode).toContain("spawn(\"gpg\"");
+    expect(safetyCode).toContain("\"--decrypt\"");
+    expect(safetyCode).not.toContain("[\"--batch\", \"--quiet\", \"--decrypt\"");
+    expect(safetyCode).toContain("input: child.stdout");
+    expect(safetyCode).toContain("stdio: [\"inherit\", \"pipe\", \"pipe\"]");
+    expect(safetyCode).not.toMatch(/writeFileSync\([^)]*plaintext/i);
   });
 
   it("requires an explicit local TTY for PII contact remediation", () => {
     expect(cli).toContain("--interactive-remediation");
-    expect(cli).toContain("process.stdin.isTTY");
-    expect(cli).toContain("Do not record, capture, or share this terminal");
-    expect(cli).toContain("press Enter to clear it");
-    expect(cli).toContain("LOST for an email-less lost member");
-    expect(cli).toContain("emailLessLegacyUserIds");
-    expect(cli).toContain("effectiveSourceChecksum");
+    expect(safetyCode).toContain("process.stdin.isTTY");
+    expect(safetyCode).toContain("Do not record, capture, or share this terminal");
+    expect(safetyCode).toContain("press Enter to clear it");
+    expect(safetyCode).toContain("LOST for an email-less lost member");
+    expect(safetyCode).toContain("emailLessLegacyUserIds");
+    expect(safetyCode).toContain("effectiveLegacySourceChecksum");
   });
 
   it("stages new Auth users disabled and unverified in bounded batches", () => {
