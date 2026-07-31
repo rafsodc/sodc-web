@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
+  Box,
   Button,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
+  Typography,
 } from "@mui/material";
 import {
   Check,
@@ -17,6 +19,7 @@ import {
   useColorMode,
   type ColorModePreference,
 } from "../appShell/ColorModeContext";
+import { useCookiePreferences } from "../cookies/CookiePreferencesContext";
 
 const OPTIONS: Array<{
   value: ColorModePreference;
@@ -30,6 +33,7 @@ const OPTIONS: Array<{
 
 export default function AppearanceMenu() {
   const { preference, setPreference } = useColorMode();
+  const { decision } = useCookiePreferences();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
   const selectedLabel = OPTIONS.find(({ value }) => value === preference)?.label;
@@ -60,6 +64,13 @@ export default function AppearanceMenu() {
         onClose={() => setAnchorEl(null)}
         MenuListProps={{ "aria-label": "Choose appearance" }}
       >
+        {decision !== "accepted" ? (
+          <Box component="li" role="presentation" sx={{ maxWidth: 260, px: 2, py: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Light and Dark use one cookie to remember your choice.
+            </Typography>
+          </Box>
+        ) : null}
         {OPTIONS.map(({ value, label, icon: Icon }) => (
           <MenuItem
             key={value}

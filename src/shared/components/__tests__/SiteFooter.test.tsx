@@ -51,6 +51,9 @@ describe("site footer and cookie controls", () => {
     await user.click(
       screen.getByRole("button", { name: "Appearance: System" })
     );
+    expect(
+      screen.getByText("Light and Dark use one cookie to remember your choice.")
+    ).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /System/ })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /Light/ })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /Dark/ })).toBeInTheDocument();
@@ -62,6 +65,11 @@ describe("site footer and cookie controls", () => {
     ).toBeInTheDocument();
     expect(document.cookie).toContain("sodc-color-mode-preference=dark");
     expect(document.cookie).toContain("sodc-cookie-preferences=accepted");
+
+    await user.click(screen.getByRole("button", { name: "Appearance: Dark" }));
+    expect(
+      screen.queryByText("Light and Dark use one cookie to remember your choice.")
+    ).not.toBeInTheDocument();
   });
 
   it("reopens settings and removes appearance storage when disabled", async () => {
@@ -88,5 +96,10 @@ describe("site footer and cookie controls", () => {
     });
     expect(document.cookie).not.toContain("sodc-color-mode-preference=");
     expect(document.cookie).toContain("sodc-cookie-preferences=rejected");
+
+    await user.click(screen.getByRole("button", { name: "Appearance: System" }));
+    expect(
+      screen.getByText("Light and Dark use one cookie to remember your choice.")
+    ).toBeInTheDocument();
   });
 });
