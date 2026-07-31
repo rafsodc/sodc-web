@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js"
+    "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js",
+    "legacy-user-import": "ts-node --project tsconfig.scripts.json scripts/legacy-user-import.ts"
   },
   "engines": {
     "node": "24"

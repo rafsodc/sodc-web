@@ -18,6 +18,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListSectionFilesForQuota*](#listsectionfilesforquota)
   - [*GetLegacyUserIdentity*](#getlegacyuseridentity)
   - [*ListLegacyUserIdentitiesByBatch*](#listlegacyuseridentitiesbybatch)
+  - [*ListMigrationUsers*](#listmigrationusers)
+  - [*ListLegacyUserIdentitiesForMigration*](#listlegacyuseridentitiesformigration)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
   - [*GetUserForCheckout*](#getuserforcheckout)
@@ -1000,8 +1002,8 @@ import { connectorConfig, getLegacyUserIdentity, GetLegacyUserIdentityVariables 
 
 // The `GetLegacyUserIdentity` query requires an argument of type `GetLegacyUserIdentityVariables`:
 const getLegacyUserIdentityVars: GetLegacyUserIdentityVariables = {
-  sourceSystem: ...,
-  legacyUserId: ...,
+  sourceSystem: ..., 
+  legacyUserId: ..., 
 };
 
 // Call the `getLegacyUserIdentity()` function to execute the query.
@@ -1031,8 +1033,8 @@ import { connectorConfig, getLegacyUserIdentityRef, GetLegacyUserIdentityVariabl
 
 // The `GetLegacyUserIdentity` query requires an argument of type `GetLegacyUserIdentityVariables`:
 const getLegacyUserIdentityVars: GetLegacyUserIdentityVariables = {
-  sourceSystem: ...,
-  legacyUserId: ...,
+  sourceSystem: ..., 
+  legacyUserId: ..., 
 };
 
 // Call the `getLegacyUserIdentityRef()` function to get a reference to the query.
@@ -1123,8 +1125,8 @@ import { connectorConfig, listLegacyUserIdentitiesByBatch, ListLegacyUserIdentit
 
 // The `ListLegacyUserIdentitiesByBatch` query requires an argument of type `ListLegacyUserIdentitiesByBatchVariables`:
 const listLegacyUserIdentitiesByBatchVars: ListLegacyUserIdentitiesByBatchVariables = {
-  migrationBatchId: ...,
-  limit: ...,
+  migrationBatchId: ..., 
+  limit: ..., 
 };
 
 // Call the `listLegacyUserIdentitiesByBatch()` function to execute the query.
@@ -1154,8 +1156,8 @@ import { connectorConfig, listLegacyUserIdentitiesByBatchRef, ListLegacyUserIden
 
 // The `ListLegacyUserIdentitiesByBatch` query requires an argument of type `ListLegacyUserIdentitiesByBatchVariables`:
 const listLegacyUserIdentitiesByBatchVars: ListLegacyUserIdentitiesByBatchVariables = {
-  migrationBatchId: ...,
-  limit: ...,
+  migrationBatchId: ..., 
+  limit: ..., 
 };
 
 // Call the `listLegacyUserIdentitiesByBatchRef()` function to get a reference to the query.
@@ -1166,6 +1168,238 @@ const ref = listLegacyUserIdentitiesByBatchRef({ migrationBatchId: ..., limit: .
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = listLegacyUserIdentitiesByBatchRef(dataConnect, listLegacyUserIdentitiesByBatchVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.legacyUserIdentities);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.legacyUserIdentities);
+});
+```
+
+## ListMigrationUsers
+You can execute the `ListMigrationUsers` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listMigrationUsers(vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+
+interface ListMigrationUsersRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListMigrationUsersVariables): QueryRef<ListMigrationUsersData, ListMigrationUsersVariables>;
+}
+export const listMigrationUsersRef: ListMigrationUsersRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+
+interface ListMigrationUsersRef {
+  ...
+  (dc: DataConnect, vars: ListMigrationUsersVariables): QueryRef<ListMigrationUsersData, ListMigrationUsersVariables>;
+}
+export const listMigrationUsersRef: ListMigrationUsersRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listMigrationUsersRef:
+```typescript
+const name = listMigrationUsersRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListMigrationUsers` query requires an argument of type `ListMigrationUsersVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListMigrationUsersVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListMigrationUsers` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListMigrationUsersData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListMigrationUsersData {
+  users: ({
+    id: string;
+    email: string;
+  } & User_Key)[];
+}
+```
+### Using `ListMigrationUsers`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listMigrationUsers, ListMigrationUsersVariables } from '@dataconnect/generated';
+
+// The `ListMigrationUsers` query requires an argument of type `ListMigrationUsersVariables`:
+const listMigrationUsersVars: ListMigrationUsersVariables = {
+  limit: ..., 
+};
+
+// Call the `listMigrationUsers()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listMigrationUsers(listMigrationUsersVars);
+// Variables can be defined inline as well.
+const { data } = await listMigrationUsers({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listMigrationUsers(dataConnect, listMigrationUsersVars);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+listMigrationUsers(listMigrationUsersVars).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+### Using `ListMigrationUsers`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listMigrationUsersRef, ListMigrationUsersVariables } from '@dataconnect/generated';
+
+// The `ListMigrationUsers` query requires an argument of type `ListMigrationUsersVariables`:
+const listMigrationUsersVars: ListMigrationUsersVariables = {
+  limit: ..., 
+};
+
+// Call the `listMigrationUsersRef()` function to get a reference to the query.
+const ref = listMigrationUsersRef(listMigrationUsersVars);
+// Variables can be defined inline as well.
+const ref = listMigrationUsersRef({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listMigrationUsersRef(dataConnect, listMigrationUsersVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+## ListLegacyUserIdentitiesForMigration
+You can execute the `ListLegacyUserIdentitiesForMigration` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listLegacyUserIdentitiesForMigration(vars: ListLegacyUserIdentitiesForMigrationVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+
+interface ListLegacyUserIdentitiesForMigrationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+}
+export const listLegacyUserIdentitiesForMigrationRef: ListLegacyUserIdentitiesForMigrationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+
+interface ListLegacyUserIdentitiesForMigrationRef {
+  ...
+  (dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+}
+export const listLegacyUserIdentitiesForMigrationRef: ListLegacyUserIdentitiesForMigrationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listLegacyUserIdentitiesForMigrationRef:
+```typescript
+const name = listLegacyUserIdentitiesForMigrationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListLegacyUserIdentitiesForMigration` query requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListLegacyUserIdentitiesForMigrationVariables {
+  sourceSystem: string;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListLegacyUserIdentitiesForMigration` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListLegacyUserIdentitiesForMigrationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListLegacyUserIdentitiesForMigrationData {
+  legacyUserIdentities: ({
+    legacyUserId: UUIDString;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+  })[];
+}
+```
+### Using `ListLegacyUserIdentitiesForMigration`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listLegacyUserIdentitiesForMigration, ListLegacyUserIdentitiesForMigrationVariables } from '@dataconnect/generated';
+
+// The `ListLegacyUserIdentitiesForMigration` query requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`:
+const listLegacyUserIdentitiesForMigrationVars: ListLegacyUserIdentitiesForMigrationVariables = {
+  sourceSystem: ..., 
+  limit: ..., 
+};
+
+// Call the `listLegacyUserIdentitiesForMigration()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listLegacyUserIdentitiesForMigration(listLegacyUserIdentitiesForMigrationVars);
+// Variables can be defined inline as well.
+const { data } = await listLegacyUserIdentitiesForMigration({ sourceSystem: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listLegacyUserIdentitiesForMigration(dataConnect, listLegacyUserIdentitiesForMigrationVars);
+
+console.log(data.legacyUserIdentities);
+
+// Or, you can use the `Promise` API.
+listLegacyUserIdentitiesForMigration(listLegacyUserIdentitiesForMigrationVars).then((response) => {
+  const data = response.data;
+  console.log(data.legacyUserIdentities);
+});
+```
+
+### Using `ListLegacyUserIdentitiesForMigration`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listLegacyUserIdentitiesForMigrationRef, ListLegacyUserIdentitiesForMigrationVariables } from '@dataconnect/generated';
+
+// The `ListLegacyUserIdentitiesForMigration` query requires an argument of type `ListLegacyUserIdentitiesForMigrationVariables`:
+const listLegacyUserIdentitiesForMigrationVars: ListLegacyUserIdentitiesForMigrationVariables = {
+  sourceSystem: ..., 
+  limit: ..., 
+};
+
+// Call the `listLegacyUserIdentitiesForMigrationRef()` function to get a reference to the query.
+const ref = listLegacyUserIdentitiesForMigrationRef(listLegacyUserIdentitiesForMigrationVars);
+// Variables can be defined inline as well.
+const ref = listLegacyUserIdentitiesForMigrationRef({ sourceSystem: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listLegacyUserIdentitiesForMigrationRef(dataConnect, listLegacyUserIdentitiesForMigrationVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -10456,8 +10690,8 @@ import { connectorConfig, updateUserEmailFromAuth, UpdateUserEmailFromAuthVariab
 
 // The `UpdateUserEmailFromAuth` mutation requires an argument of type `UpdateUserEmailFromAuthVariables`:
 const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
-  userId: ...,
-  email: ...,
+  userId: ..., 
+  email: ..., 
 };
 
 // Call the `updateUserEmailFromAuth()` function to execute the mutation.
@@ -10487,8 +10721,8 @@ import { connectorConfig, updateUserEmailFromAuthRef, UpdateUserEmailFromAuthVar
 
 // The `UpdateUserEmailFromAuth` mutation requires an argument of type `UpdateUserEmailFromAuthVariables`:
 const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
-  userId: ...,
-  email: ...,
+  userId: ..., 
+  email: ..., 
 };
 
 // Call the `updateUserEmailFromAuthRef()` function to get a reference to the mutation.
@@ -10839,24 +11073,24 @@ import { connectorConfig, createMigratedUserProfileAndIdentity, CreateMigratedUs
 
 // The `CreateMigratedUserProfileAndIdentity` mutation requires an argument of type `CreateMigratedUserProfileAndIdentityVariables`:
 const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
-  userId: ...,
-  legacyUserId: ...,
+  userId: ..., 
+  legacyUserId: ..., 
   oldUid: ..., // optional
-  sourceSystem: ...,
-  migrationBatchId: ...,
-  recordSchemaVersion: ...,
-  sourceChecksum: ...,
-  firstName: ...,
-  lastName: ...,
-  email: ...,
-  serviceNumber: ...,
+  sourceSystem: ..., 
+  migrationBatchId: ..., 
+  recordSchemaVersion: ..., 
+  sourceChecksum: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
   mobileNumber: ..., // optional
   postNominals: ..., // optional
-  rank: ...,
-  membershipStatus: ...,
-  shareContactInfo: ...,
-  announcementOptOutAll: ...,
-  now: ...,
+  rank: ..., 
+  membershipStatus: ..., 
+  shareContactInfo: ..., 
+  announcementOptOutAll: ..., 
+  now: ..., 
 };
 
 // Call the `createMigratedUserProfileAndIdentity()` function to execute the mutation.
@@ -10888,24 +11122,24 @@ import { connectorConfig, createMigratedUserProfileAndIdentityRef, CreateMigrate
 
 // The `CreateMigratedUserProfileAndIdentity` mutation requires an argument of type `CreateMigratedUserProfileAndIdentityVariables`:
 const createMigratedUserProfileAndIdentityVars: CreateMigratedUserProfileAndIdentityVariables = {
-  userId: ...,
-  legacyUserId: ...,
+  userId: ..., 
+  legacyUserId: ..., 
   oldUid: ..., // optional
-  sourceSystem: ...,
-  migrationBatchId: ...,
-  recordSchemaVersion: ...,
-  sourceChecksum: ...,
-  firstName: ...,
-  lastName: ...,
-  email: ...,
-  serviceNumber: ...,
+  sourceSystem: ..., 
+  migrationBatchId: ..., 
+  recordSchemaVersion: ..., 
+  sourceChecksum: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., 
+  serviceNumber: ..., 
   mobileNumber: ..., // optional
   postNominals: ..., // optional
-  rank: ...,
-  membershipStatus: ...,
-  shareContactInfo: ...,
-  announcementOptOutAll: ...,
-  now: ...,
+  rank: ..., 
+  membershipStatus: ..., 
+  shareContactInfo: ..., 
+  announcementOptOutAll: ..., 
+  now: ..., 
 };
 
 // Call the `createMigratedUserProfileAndIdentityRef()` function to get a reference to the mutation.
@@ -10993,14 +11227,14 @@ import { connectorConfig, linkLegacyIdentityToExistingUser, LinkLegacyIdentityTo
 
 // The `LinkLegacyIdentityToExistingUser` mutation requires an argument of type `LinkLegacyIdentityToExistingUserVariables`:
 const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
-  userId: ...,
-  legacyUserId: ...,
+  userId: ..., 
+  legacyUserId: ..., 
   oldUid: ..., // optional
-  sourceSystem: ...,
-  migrationBatchId: ...,
-  recordSchemaVersion: ...,
-  sourceChecksum: ...,
-  now: ...,
+  sourceSystem: ..., 
+  migrationBatchId: ..., 
+  recordSchemaVersion: ..., 
+  sourceChecksum: ..., 
+  now: ..., 
 };
 
 // Call the `linkLegacyIdentityToExistingUser()` function to execute the mutation.
@@ -11030,14 +11264,14 @@ import { connectorConfig, linkLegacyIdentityToExistingUserRef, LinkLegacyIdentit
 
 // The `LinkLegacyIdentityToExistingUser` mutation requires an argument of type `LinkLegacyIdentityToExistingUserVariables`:
 const linkLegacyIdentityToExistingUserVars: LinkLegacyIdentityToExistingUserVariables = {
-  userId: ...,
-  legacyUserId: ...,
+  userId: ..., 
+  legacyUserId: ..., 
   oldUid: ..., // optional
-  sourceSystem: ...,
-  migrationBatchId: ...,
-  recordSchemaVersion: ...,
-  sourceChecksum: ...,
-  now: ...,
+  sourceSystem: ..., 
+  migrationBatchId: ..., 
+  recordSchemaVersion: ..., 
+  sourceChecksum: ..., 
+  now: ..., 
 };
 
 // Call the `linkLegacyIdentityToExistingUserRef()` function to get a reference to the mutation.
@@ -19427,7 +19661,7 @@ const createUserProfileVars: CreateUserProfileVariables = {
   firstName: ..., 
   lastName: ..., 
   serviceNumber: ..., 
-  mobileNumber: ...,
+  mobileNumber: ..., 
   postNominals: ..., // optional
   requestedMembershipStatus: ..., 
   isRegular: ..., // optional
@@ -19468,7 +19702,7 @@ const createUserProfileVars: CreateUserProfileVariables = {
   firstName: ..., 
   lastName: ..., 
   serviceNumber: ..., 
-  mobileNumber: ...,
+  mobileNumber: ..., 
   postNominals: ..., // optional
   requestedMembershipStatus: ..., 
   isRegular: ..., // optional
@@ -20487,7 +20721,7 @@ import { connectorConfig, updateAnnouncementOptOutAll, UpdateAnnouncementOptOutA
 
 // The `UpdateAnnouncementOptOutAll` mutation requires an argument of type `UpdateAnnouncementOptOutAllVariables`:
 const updateAnnouncementOptOutAllVars: UpdateAnnouncementOptOutAllVariables = {
-  announcementOptOutAll: ...,
+  announcementOptOutAll: ..., 
 };
 
 // Call the `updateAnnouncementOptOutAll()` function to execute the mutation.
@@ -20517,7 +20751,7 @@ import { connectorConfig, updateAnnouncementOptOutAllRef, UpdateAnnouncementOptO
 
 // The `UpdateAnnouncementOptOutAll` mutation requires an argument of type `UpdateAnnouncementOptOutAllVariables`:
 const updateAnnouncementOptOutAllVars: UpdateAnnouncementOptOutAllVariables = {
-  announcementOptOutAll: ...,
+  announcementOptOutAll: ..., 
 };
 
 // Call the `updateAnnouncementOptOutAllRef()` function to get a reference to the mutation.
@@ -20602,13 +20836,13 @@ import { connectorConfig, confirmProfileReview, ConfirmProfileReviewVariables } 
 
 // The `ConfirmProfileReview` mutation requires an argument of type `ConfirmProfileReviewVariables`:
 const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
-  firstName: ...,
-  lastName: ...,
-  serviceNumber: ...,
-  mobileNumber: ...,
+  firstName: ..., 
+  lastName: ..., 
+  serviceNumber: ..., 
+  mobileNumber: ..., 
   postNominals: ..., // optional
-  rank: ...,
-  shareContactInfo: ...,
+  rank: ..., 
+  shareContactInfo: ..., 
 };
 
 // Call the `confirmProfileReview()` function to execute the mutation.
@@ -20638,13 +20872,13 @@ import { connectorConfig, confirmProfileReviewRef, ConfirmProfileReviewVariables
 
 // The `ConfirmProfileReview` mutation requires an argument of type `ConfirmProfileReviewVariables`:
 const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
-  firstName: ...,
-  lastName: ...,
-  serviceNumber: ...,
-  mobileNumber: ...,
+  firstName: ..., 
+  lastName: ..., 
+  serviceNumber: ..., 
+  mobileNumber: ..., 
   postNominals: ..., // optional
-  rank: ...,
-  shareContactInfo: ...,
+  rank: ..., 
+  shareContactInfo: ..., 
 };
 
 // Call the `confirmProfileReviewRef()` function to get a reference to the mutation.
@@ -20668,3 +20902,4 @@ executeMutation(ref).then((response) => {
   console.log(data.user_update);
 });
 ```
+

@@ -366,7 +366,7 @@ function UserGroupUsersTable({ groupId, users, onAddUser, onRemoveUser }: UserGr
             <TableCell>
               {user.firstName} {user.lastName}
             </TableCell>
-            <TableCell>{user.email}</TableCell>
+            <TableCell>{user.email || "No email"}</TableCell>
             <TableCell>
               <Chip label={user.membershipStatus} size="small" variant="outlined" />
             </TableCell>
@@ -545,7 +545,7 @@ export function UserGroupDialogSurface({
                 <Box sx={{ maxHeight: 120, overflow: "auto" }}>
                   {selectedStatusUsers.slice(0, 20).map((user) => (
                     <Typography key={user.id} variant="caption" component="div" color="text.secondary">
-                      {user.firstName} {user.lastName} ({user.email})
+                      {user.firstName} {user.lastName} ({user.email || "No email"})
                     </Typography>
                   ))}
                   {selectedStatusUsers.length > 20 && (
@@ -600,7 +600,9 @@ export function AddUserToGroupDialogSurface({
       <DialogContent>
         <Autocomplete
           options={searchResults}
-          getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.email})`}
+          getOptionLabel={(option) =>
+            `${option.firstName} ${option.lastName} (${option.email || "No email"})`
+          }
           loading={searchingUsers}
           inputValue={userSearchTerm}
           onInputChange={(_, value) => onSearchTermChange(value)}
@@ -637,7 +639,7 @@ export function AddUserToGroupDialogSurface({
                     {option.firstName} {option.lastName}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {option.email}
+                    {option.email || "No email"}
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
@@ -684,7 +686,7 @@ export function UserDetailDialogSurface({ user, onClose }: UserDetailDialogSurfa
               </strong>
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {user.email}
+              {user.email || "No email"}
             </Typography>
             <Chip label={user.membershipStatus} size="small" variant="outlined" sx={{ mt: 1 }} />
           </Box>

@@ -489,7 +489,7 @@ getLegacyUserIdentityRef.operationName = 'GetLegacyUserIdentity';
 exports.getLegacyUserIdentityRef = getLegacyUserIdentityRef;
 
 exports.getLegacyUserIdentity = function getLegacyUserIdentity(dcOrVars, varsOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getLegacyUserIdentityRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -504,9 +504,39 @@ listLegacyUserIdentitiesByBatchRef.operationName = 'ListLegacyUserIdentitiesByBa
 exports.listLegacyUserIdentitiesByBatchRef = listLegacyUserIdentitiesByBatchRef;
 
 exports.listLegacyUserIdentitiesByBatch = function listLegacyUserIdentitiesByBatch(dcOrVars, varsOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(listLegacyUserIdentitiesByBatchRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listMigrationUsersRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListMigrationUsers', inputVars);
+}
+listMigrationUsersRef.operationName = 'ListMigrationUsers';
+exports.listMigrationUsersRef = listMigrationUsersRef;
+
+exports.listMigrationUsers = function listMigrationUsers(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listMigrationUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listLegacyUserIdentitiesForMigrationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyUserIdentitiesForMigration', inputVars);
+}
+listLegacyUserIdentitiesForMigrationRef.operationName = 'ListLegacyUserIdentitiesForMigration';
+exports.listLegacyUserIdentitiesForMigrationRef = listLegacyUserIdentitiesForMigrationRef;
+
+exports.listLegacyUserIdentitiesForMigration = function listLegacyUserIdentitiesForMigration(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyUserIdentitiesForMigrationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 

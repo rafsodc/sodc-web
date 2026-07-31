@@ -2326,6 +2326,34 @@ export interface ListLegacyUserIdentitiesByBatchVariables {
   limit: number;
 }
 
+export interface ListLegacyUserIdentitiesForMigrationData {
+  legacyUserIdentities: ({
+    legacyUserId: UUIDString;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+  })[];
+}
+
+export interface ListLegacyUserIdentitiesForMigrationVariables {
+  sourceSystem: string;
+  limit: number;
+}
+
+export interface ListMigrationUsersData {
+  users: ({
+    id: string;
+    email: string;
+  } & User_Key)[];
+}
+
+export interface ListMigrationUsersVariables {
+  limit: number;
+}
+
 export interface ListOpenPaymentReconciliationExceptionsData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -3428,6 +3456,30 @@ export const listLegacyUserIdentitiesByBatchRef: ListLegacyUserIdentitiesByBatch
 
 export function listLegacyUserIdentitiesByBatch(vars: ListLegacyUserIdentitiesByBatchVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
 export function listLegacyUserIdentitiesByBatch(dc: DataConnect, vars: ListLegacyUserIdentitiesByBatchVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesByBatchData, ListLegacyUserIdentitiesByBatchVariables>;
+
+interface ListMigrationUsersRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListMigrationUsersVariables): QueryRef<ListMigrationUsersData, ListMigrationUsersVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListMigrationUsersVariables): QueryRef<ListMigrationUsersData, ListMigrationUsersVariables>;
+  operationName: string;
+}
+export const listMigrationUsersRef: ListMigrationUsersRef;
+
+export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+
+interface ListLegacyUserIdentitiesForMigrationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+  operationName: string;
+}
+export const listLegacyUserIdentitiesForMigrationRef: ListLegacyUserIdentitiesForMigrationRef;
+
+export function listLegacyUserIdentitiesForMigration(vars: ListLegacyUserIdentitiesForMigrationVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
+export function listLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
 
 interface CreateUserGroupAdminRef {
   /* Allow users to create refs without passing in DataConnect */

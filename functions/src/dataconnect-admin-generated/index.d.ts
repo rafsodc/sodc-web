@@ -2307,6 +2307,34 @@ export interface ListLegacyUserIdentitiesByBatchVariables {
   limit: number;
 }
 
+export interface ListLegacyUserIdentitiesForMigrationData {
+  legacyUserIdentities: ({
+    legacyUserId: UUIDString;
+    user: {
+      id: string;
+    } & User_Key;
+    migrationBatchId: UUIDString;
+    recordSchemaVersion: string;
+    sourceChecksum: string;
+  })[];
+}
+
+export interface ListLegacyUserIdentitiesForMigrationVariables {
+  sourceSystem: string;
+  limit: number;
+}
+
+export interface ListMigrationUsersData {
+  users: ({
+    id: string;
+    email: string;
+  } & User_Key)[];
+}
+
+export interface ListMigrationUsersVariables {
+  limit: number;
+}
+
 export interface ListOpenPaymentReconciliationExceptionsData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -3227,6 +3255,16 @@ export function getLegacyUserIdentity(vars: GetLegacyUserIdentityVariables, opti
 export function listLegacyUserIdentitiesByBatch(dc: DataConnect, vars: ListLegacyUserIdentitiesByBatchVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyUserIdentitiesByBatchData>>;
 /** Generated Node Admin SDK operation action function for the 'ListLegacyUserIdentitiesByBatch' Query. Allow users to pass in custom DataConnect instances. */
 export function listLegacyUserIdentitiesByBatch(vars: ListLegacyUserIdentitiesByBatchVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyUserIdentitiesByBatchData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListMigrationUsers' Query. Allow users to execute without passing in DataConnect. */
+export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListMigrationUsersData>>;
+/** Generated Node Admin SDK operation action function for the 'ListMigrationUsers' Query. Allow users to pass in custom DataConnect instances. */
+export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListMigrationUsersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListLegacyUserIdentitiesForMigration' Query. Allow users to execute without passing in DataConnect. */
+export function listLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyUserIdentitiesForMigrationData>>;
+/** Generated Node Admin SDK operation action function for the 'ListLegacyUserIdentitiesForMigration' Query. Allow users to pass in custom DataConnect instances. */
+export function listLegacyUserIdentitiesForMigration(vars: ListLegacyUserIdentitiesForMigrationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyUserIdentitiesForMigrationData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateUserGroupAdmin' Mutation. Allow users to execute without passing in DataConnect. */
 export function createUserGroupAdmin(dc: DataConnect, vars: CreateUserGroupAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateUserGroupAdminData>>;
