@@ -14,6 +14,8 @@ import {
   parseJsonOutput,
   redact,
   resolveTarget,
+  result,
+  safeErrorMessage,
   unwrapFirebaseResult,
 } from "./deployment-check-lib.mjs";
 
@@ -87,6 +89,29 @@ describe("deployment check parsing and comparison", () => {
       accessToken: "[REDACTED]",
       message: "Authorization: Bearer [REDACTED] and ?code=[REDACTED]",
     });
+
+    expect(
+      redact(
+        "https://storage.example/object?X-Goog-Credential=service%40example&X-Goog-Signature=signature-value&X-Amz-Security-Token=session-value"
+      )
+    ).toBe(
+      "https://storage.example/object?X-Goog-Credential=[REDACTED]&X-Goog-Signature=[REDACTED]&X-Amz-Security-Token=[REDACTED]"
+    );
+  });
+
+  it("normalises thrown values and redacts summaries as defence in depth", () => {
+    expect(safeErrorMessage(new Error("Bearer secret-token"))).toBe("Bearer [REDACTED]");
+    expect(safeErrorMessage("request failed?signature=private-value")).toBe(
+      "request failed?signature=[REDACTED]"
+    );
+    expect(safeErrorMessage({ reason: "no message" })).toBe("Unknown error");
+    expect(
+      result(
+        "safe-summary",
+        RESULT_STATUS.FAIL,
+        "request failed with Bearer secret-token"
+      ).summary
+    ).toBe("request failed with Bearer [REDACTED]");
   });
 
   it("discovers deployed Function and Secret contracts from source fixtures", async () => {
