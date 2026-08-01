@@ -23,6 +23,10 @@ before using the promotion process below.
 3. **Secrets and Stripe differ per project** — Use separate webhook endpoints, Stripe secrets, and Firebase secrets per environment (see [environment-and-secrets.md](./environment-and-secrets.md)).
 4. **Backend dependencies deploy schema-first** — For a full-stack release, verify generated Data Connect SDKs locally, deploy and validate Data Connect and Storage rules, deploy and validate Functions, then deploy Hosting. Do not use one unscoped `firebase deploy` command for a release that changes these dependencies.
 
+Firebase Authentication password policy is also project-specific. Follow
+[firebase-password-policy.md](./firebase-password-policy.md) in every
+environment; Dev configuration is not inherited by Beta or Prod.
+
 ## Firebase CLI aliases
 
 Aliases live in `.firebaserc` at the repo root. Typical mapping:

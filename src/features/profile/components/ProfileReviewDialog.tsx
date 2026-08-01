@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  FormGroup,
   Stack,
   TextField,
   Typography,
@@ -17,6 +18,11 @@ import {
   useTheme,
 } from "@mui/material";
 import { confirmProfileReview } from "@dataconnect/generated";
+import {
+  useGetMyAnnouncementPreferences,
+  useOptInSectionAnnouncement,
+  useOptOutSectionAnnouncement,
+} from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import {
   MAX_MOBILE_NUMBER_LENGTH,
@@ -28,6 +34,7 @@ import RankSelect from "../../../shared/components/RankSelect";
 import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 import type { UserData } from "../../../types";
+import { getAnnouncementSections } from "../../account/utils/announcementPreferences";
 
 interface ProfileReviewDialogProps {
   userData: UserData;
@@ -49,9 +56,16 @@ export default function ProfileReviewDialog({
   const [postNominals, setPostNominals] = useState("");
   const [rank, setRank] = useState("");
   const [shareContactInfo, setShareContactInfo] = useState(true);
+  const [announcementOptOutAll, setAnnouncementOptOutAll] = useState(false);
+  const [sectionOptOutIds, setSectionOptOutIds] = useState<Set<string>>(new Set());
+  const [preferencesInitialised, setPreferencesInitialised] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rankError, setRankError] = useState(false);
+  const preferences = useGetMyAnnouncementPreferences({ staleTime: 0 });
+  const optOutSection = useOptOutSectionAnnouncement();
+  const optInSection = useOptInSectionAnnouncement();
+  const announcementSections = getAnnouncementSections(preferences.data);
 
   useEffect(() => {
     setFirstName(userData.firstName || "");
@@ -62,6 +76,15 @@ export default function ProfileReviewDialog({
     setRank(userData.rank || "");
     setShareContactInfo(userData.shareContactInfo ?? true);
   }, [userData]);
+
+  useEffect(() => {
+    if (!preferences.data?.user || preferencesInitialised) return;
+    setAnnouncementOptOutAll(preferences.data.user.announcementOptOutAll ?? false);
+    setSectionOptOutIds(
+      new Set((preferences.data.user.optOuts ?? []).map((optOut) => optOut.section.id)),
+    );
+    setPreferencesInitialised(true);
+  }, [preferences.data, preferencesInitialised]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -81,6 +104,20 @@ export default function ProfileReviewDialog({
     setRankError(false);
     setSubmitting(true);
     try {
+      if (!preferences.data?.user || !preferencesInitialised) {
+        throw new Error("Communication preferences are still loading. Please try again.");
+      }
+      const storedOptOutIds = new Set(
+        (preferences.data.user.optOuts ?? []).map((optOut) => optOut.section.id),
+      );
+      for (const section of announcementSections) {
+        const stored = storedOptOutIds.has(section.id);
+        const requested = sectionOptOutIds.has(section.id);
+        if (stored === requested) continue;
+        if (requested) await optOutSection.mutateAsync({ sectionId: section.id });
+        else await optInSection.mutateAsync({ sectionId: section.id });
+      }
+
       await confirmProfileReview(dataConnect, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -89,6 +126,7 @@ export default function ProfileReviewDialog({
         postNominals: postNominals.trim() || null,
         rank,
         shareContactInfo,
+        announcementOptOutAll,
       });
 
       const displayName = `${lastName.trim()}, ${firstName.trim()}`;
@@ -133,8 +171,8 @@ export default function ProfileReviewDialog({
         <DialogTitle id="profile-review-title">Please review your profile</DialogTitle>
         <DialogContent dividers>
           <Typography id="profile-review-description" variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Please check these details are still correct. We ask every six months so membership and
-            contact information stays current.
+            Please check these details and communication choices are still correct. We ask every six
+            months so membership and contact information stays current.
           </Typography>
 
           {error && (
@@ -219,10 +257,62 @@ export default function ProfileReviewDialog({
               }
               label="Share my email address and mobile number with members in my sections"
             />
+            <Box component="section" aria-labelledby="review-announcements-heading">
+              <Typography id="review-announcements-heading" variant="h6" component="h2">
+                Announcement emails
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Account-security, booking and payment messages are always sent when required.
+              </Typography>
+              {preferences.isLoading ? <CircularProgress size={20} /> : null}
+              {preferences.isError ? (
+                <Alert severity="error">We could not load your communication preferences.</Alert>
+              ) : null}
+              {preferencesInitialised ? (
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!announcementOptOutAll}
+                        onChange={(event) => setAnnouncementOptOutAll(!event.target.checked)}
+                        disabled={submitting}
+                      />
+                    }
+                    label="Receive announcement emails"
+                  />
+                  {announcementSections.map((section) => (
+                    <FormControlLabel
+                      key={section.id}
+                      control={
+                        <Checkbox
+                          checked={!sectionOptOutIds.has(section.id)}
+                          onChange={(event) => {
+                            setSectionOptOutIds((current) => {
+                              const next = new Set(current);
+                              if (event.target.checked) next.delete(section.id);
+                              else next.add(section.id);
+                              return next;
+                            });
+                          }}
+                          disabled={submitting || announcementOptOutAll}
+                        />
+                      }
+                      label={section.name}
+                    />
+                  ))}
+                </FormGroup>
+              ) : null}
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button type="submit" variant="contained" disabled={submitting || missingRequiredField}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={
+              submitting || missingRequiredField || !preferencesInitialised || preferences.isError
+            }
+          >
             {submitting ? <CircularProgress size={24} /> : "Confirm profile"}
           </Button>
         </DialogActions>

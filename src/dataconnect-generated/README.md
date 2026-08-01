@@ -20835,6 +20835,7 @@ export interface ConfirmProfileReviewVariables {
   postNominals?: string | null;
   rank: string;
   shareContactInfo: boolean;
+  announcementOptOutAll: boolean;
 }
 ```
 ### Return Type
@@ -20861,13 +20862,14 @@ const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
   postNominals: ..., // optional
   rank: ..., 
   shareContactInfo: ..., 
+  announcementOptOutAll: ..., 
 };
 
 // Call the `confirmProfileReview()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await confirmProfileReview(confirmProfileReviewVars);
 // Variables can be defined inline as well.
-const { data } = await confirmProfileReview({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., });
+const { data } = await confirmProfileReview({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -20897,12 +20899,13 @@ const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
   postNominals: ..., // optional
   rank: ..., 
   shareContactInfo: ..., 
+  announcementOptOutAll: ..., 
 };
 
 // Call the `confirmProfileReviewRef()` function to get a reference to the mutation.
 const ref = confirmProfileReviewRef(confirmProfileReviewVars);
 // Variables can be defined inline as well.
-const ref = confirmProfileReviewRef({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., });
+const ref = confirmProfileReviewRef({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

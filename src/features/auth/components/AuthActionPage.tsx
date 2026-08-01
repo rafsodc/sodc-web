@@ -20,8 +20,8 @@ import {
 import { auth } from "../../../config/firebase";
 import { ROUTES } from "../../../constants";
 import {
-  getRegistrationPasswordHelperText,
-  validateRegistrationPassword,
+  PASSWORD_POLICY_HELPER_TEXT,
+  validateNewPassword,
 } from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 
@@ -39,7 +39,7 @@ function resetErrorMessage(error: unknown): string {
     return "This reset link is invalid or has already been used. Request a new one to continue.";
   }
   if (code.includes("weak-password")) {
-    return getRegistrationPasswordHelperText();
+    return "Password does not meet the current account security policy.";
   }
   return "The reset could not be completed. Please request a new link.";
 }
@@ -130,11 +130,6 @@ export default function AuthActionPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
-    const validation = validateRegistrationPassword(password);
-    if (!validation.isValid) {
-      setError(validation.error ?? "Choose a stronger password.");
-      return;
-    }
     if (password !== confirmation) {
       setError("Passwords do not match.");
       return;
@@ -142,6 +137,11 @@ export default function AuthActionPage() {
 
     setSubmitting(true);
     try {
+      const validation = await validateNewPassword(auth, password);
+      if (!validation.isValid) {
+        setError(validation.error ?? "Choose a stronger password.");
+        return;
+      }
       await confirmPasswordReset(auth, oobCode, password);
       setPassword("");
       setConfirmation("");
@@ -178,7 +178,7 @@ export default function AuthActionPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="new-password"
-                helperText={getRegistrationPasswordHelperText()}
+                helperText={PASSWORD_POLICY_HELPER_TEXT}
                 disabled={submitting}
                 required
                 fullWidth

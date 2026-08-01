@@ -1,0 +1,5 @@
+# The Data Connect SDK generator emits example placeholders with trailing spaces.
+# Keep generated documentation reproducible while excluding that generator-owned
+# formatting from Git's whitespace error checks.
+src/dataconnect-generated/README.md whitespace=-trailing-space
+src/dataconnect-generated/react/README.md whitespace=-trailing-space

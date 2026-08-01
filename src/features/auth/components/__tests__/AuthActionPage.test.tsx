@@ -7,6 +7,7 @@ import {
   confirmPasswordReset,
   reload,
   verifyPasswordResetCode,
+  validatePassword,
 } from "firebase/auth";
 import AuthActionPage from "../AuthActionPage";
 import { reconcileMyEmail } from "../../../../shared/utils/firebaseFunctions";
@@ -26,6 +27,7 @@ vi.mock("firebase/auth", async (importOriginal) => {
     reload: vi.fn(),
     verifyPasswordResetCode: vi.fn(),
     confirmPasswordReset: vi.fn(),
+    validatePassword: vi.fn(),
   };
 });
 
@@ -37,6 +39,15 @@ describe("AuthActionPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mutableAuth.currentUser = null;
+    vi.mocked(validatePassword).mockResolvedValue({
+      isValid: true,
+      passwordPolicy: {
+        customStrengthOptions: { minPasswordLength: 12 },
+        enforcementState: "ENFORCE",
+        forceUpgradeOnSignin: true,
+        allowedNonAlphanumericCharacters: "",
+      },
+    });
   });
 
   function renderAction(search: string) {

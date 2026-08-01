@@ -17147,6 +17147,7 @@ export interface ConfirmProfileReviewVariables {
   postNominals?: string | null;
   rank: string;
   shareContactInfo: boolean;
+  announcementOptOutAll: boolean;
 }
 ```
 ### Return Type
@@ -17203,10 +17204,11 @@ export default function ConfirmProfileReviewComponent() {
     postNominals: ..., // optional
     rank: ..., 
     shareContactInfo: ..., 
+    announcementOptOutAll: ..., 
   };
   mutation.mutate(confirmProfileReviewVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., });
+  mutation.mutate({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

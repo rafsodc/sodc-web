@@ -87,6 +87,7 @@ describe("Data Connect auth contracts", () => {
     );
     expect(profileReview).toContain("id_expr: \"auth.uid\"");
     expect(profileReview).toContain("profileReviewedAt_expr: \"request.time\"");
+    expect(profileReview).toContain("announcementOptOutAll: $announcementOptOutAll");
 
     const ordinaryProfileUpdate = extractOperationBlock(
       userMutations,

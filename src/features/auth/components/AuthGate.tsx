@@ -18,7 +18,11 @@ import type { UserData } from "../../../types";
 import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
 import { ROUTES } from "../../../constants";
-import { canAttemptSignIn } from "../utils/passwordValidation";
+import {
+  canAttemptSignIn,
+  isPasswordPolicyAuthError,
+  validateNewPassword,
+} from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 
 interface AuthGateProps {
@@ -50,6 +54,11 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
     setError(null);
     setSubmitting(true);
     try {
+      const policyValidation = await validateNewPassword(auth, password);
+      if (!policyValidation.isValid) {
+        setError(`${policyValidation.error} Reset your password to continue.`);
+        return;
+      }
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       await userCredential.user.getIdToken(true);
       if (userCredential.user.emailVerified) {
@@ -64,8 +73,12 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
       if (onRegisterComplete) {
         onRegisterComplete();
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Sign-in failed");
+    } catch (e: unknown) {
+      setError(
+        isPasswordPolicyAuthError(e)
+          ? "This password no longer meets the account security policy. Reset your password to continue."
+          : (e as { message?: string })?.message ?? "Sign-in failed",
+      );
     } finally {
       setSubmitting(false);
     }

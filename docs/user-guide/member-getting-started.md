@@ -62,8 +62,11 @@ After approval you have access to:
 
 The site asks you to review your profile when it has never been confirmed and
 again when the last confirmation is more than six calendar months old. Check
-your name, service number, mobile number, post-nominals, rank or title, and
-contact-sharing choice, then select **Confirm profile**.
+your name, service number, mobile number, post-nominals, rank or title,
+contact-sharing choice, and announcement-email preferences, then select
+**Confirm profile**. Individual section choices are preserved when the master
+announcement switch is off, and account-security, booking, and payment messages
+are always sent when required.
 
 Your verified sign-in email is shown read-only in the review. To change it, use
 **Account settings**, complete the verification link sent to the new address,
@@ -72,6 +75,11 @@ email address.
 
 If saving fails, your review date is not changed. Check your connection and try
 again.
+
+Passwords are checked against the current Firebase security policy whenever
+they are submitted for sign-in. If an older migrated password no longer meets
+the policy, use **Forgot password?** to set a compliant password through the
+site's secure email flow.
 
 ---
 
