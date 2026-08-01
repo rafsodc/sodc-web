@@ -18,7 +18,10 @@ import type { UserData } from "../../../types";
 import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
 import { ROUTES } from "../../../constants";
-import { canAttemptSignIn } from "../utils/passwordValidation";
+import {
+  canAttemptSignIn,
+  isPasswordPolicyAuthError,
+} from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 
 interface AuthGateProps {
@@ -64,8 +67,12 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
       if (onRegisterComplete) {
         onRegisterComplete();
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Sign-in failed");
+    } catch (e: unknown) {
+      setError(
+        isPasswordPolicyAuthError(e)
+          ? "This password no longer meets the account security policy. Reset your password to continue."
+          : (e as { message?: string })?.message ?? "Sign-in failed",
+      );
     } finally {
       setSubmitting(false);
     }

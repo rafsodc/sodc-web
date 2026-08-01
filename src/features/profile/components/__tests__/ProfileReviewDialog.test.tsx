@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import { MembershipStatus } from "@dataconnect/generated";
 import * as generated from "@dataconnect/generated";
+import * as generatedReact from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import type { UserData } from "../../../../types";
 import ProfileReviewDialog from "../ProfileReviewDialog";
@@ -12,6 +13,31 @@ vi.mock("@dataconnect/generated", () => ({
   MembershipStatus: {
     REGULAR: "REGULAR",
   },
+  SectionUserGroupPurpose: {
+    ACCESS: "ACCESS",
+    MODERATOR: "MODERATOR",
+  },
+}));
+
+const mockOptOut = vi.fn().mockResolvedValue(undefined);
+const mockOptIn = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("@dataconnect/generated/react", () => ({
+  useGetMyAnnouncementPreferences: vi.fn(() => ({
+    data: {
+      user: {
+        membershipStatus: "REGULAR",
+        announcementOptOutAll: false,
+        userGroups: [],
+        optOuts: [],
+      },
+      allUserGroups: [],
+    },
+    isLoading: false,
+    isError: false,
+  })),
+  useOptOutSectionAnnouncement: vi.fn(() => ({ mutateAsync: mockOptOut })),
+  useOptInSectionAnnouncement: vi.fn(() => ({ mutateAsync: mockOptIn })),
 }));
 
 vi.mock("../../../../config/firebase", () => ({
@@ -43,6 +69,110 @@ describe("ProfileReviewDialog", () => {
     vi.clearAllMocks();
     vi.mocked(generated.confirmProfileReview).mockResolvedValue({ data: {} } as never);
     vi.mocked(firebaseFunctions.updateDisplayName).mockResolvedValue({ success: true });
+    mockOptOut.mockResolvedValue(undefined);
+    mockOptIn.mockResolvedValue(undefined);
+    vi.mocked(generatedReact.useGetMyAnnouncementPreferences).mockReturnValue({
+      data: {
+        user: {
+          membershipStatus: "REGULAR",
+          announcementOptOutAll: false,
+          userGroups: [],
+          optOuts: [],
+        },
+        allUserGroups: [],
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+  });
+
+  it("reviews per-section preferences before advancing the profile timestamp", async () => {
+    vi.mocked(generatedReact.useGetMyAnnouncementPreferences).mockReturnValue({
+      data: {
+        user: {
+          membershipStatus: "REGULAR",
+          announcementOptOutAll: false,
+          userGroups: [
+            {
+              userGroup: {
+                membershipStatuses: [],
+                purposeLinks: [
+                  {
+                    purposes: ["ACCESS"],
+                    section: { id: "section-1", name: "Golf" },
+                  },
+                ],
+              },
+            },
+          ],
+          optOuts: [],
+        },
+        allUserGroups: [],
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    const interaction = userEvent.setup();
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={vi.fn()}
+      />,
+    );
+
+    await interaction.click(await screen.findByRole("checkbox", { name: "Golf" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    await waitFor(() => expect(mockOptOut).toHaveBeenCalledWith({ sectionId: "section-1" }));
+    expect(mockOptOut.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(generated.confirmProfileReview).mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("does not advance the profile timestamp when a preference save fails", async () => {
+    vi.mocked(generatedReact.useGetMyAnnouncementPreferences).mockReturnValue({
+      data: {
+        user: {
+          membershipStatus: "REGULAR",
+          announcementOptOutAll: false,
+          userGroups: [
+            {
+              userGroup: {
+                membershipStatuses: [],
+                purposeLinks: [
+                  {
+                    purposes: ["ACCESS"],
+                    section: { id: "section-1", name: "Golf" },
+                  },
+                ],
+              },
+            },
+          ],
+          optOuts: [],
+        },
+        allUserGroups: [],
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockOptOut.mockRejectedValueOnce(new Error("Preference save failed"));
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={onReviewed}
+      />,
+    );
+
+    await interaction.click(await screen.findByRole("checkbox", { name: "Golf" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    expect(await screen.findByText("Preference save failed")).toBeInTheDocument();
+    expect(generated.confirmProfileReview).not.toHaveBeenCalled();
+    expect(onReviewed).not.toHaveBeenCalled();
   });
 
   it("shows all review fields and sources the read-only email from Firebase Auth", () => {
@@ -72,6 +202,7 @@ describe("ProfileReviewDialog", () => {
         name: "Share my email address and mobile number with members in my sections",
       }),
     ).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Receive announcement emails" })).toBeChecked();
   });
 
   it("normalises and atomically submits the reviewed fields before completing", async () => {
@@ -98,6 +229,7 @@ describe("ProfileReviewDialog", () => {
           postNominals: "MRAeS",
           rank: "Wing Commander",
           shareContactInfo: true,
+          announcementOptOutAll: false,
         },
       );
     });

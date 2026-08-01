@@ -373,6 +373,7 @@ export interface ConfirmProfileReviewVariables {
   postNominals?: string | null;
   rank: string;
   shareContactInfo: boolean;
+  announcementOptOutAll: boolean;
 }
 
 export interface ConsumeCallableRateLimitData {

@@ -26,7 +26,7 @@ import {
   useOptInSectionAnnouncement,
   useUpdateAnnouncementOptOutAll,
 } from "@dataconnect/generated/react";
-import { MembershipStatus, SectionUserGroupPurpose, upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
+import { upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 import {
@@ -47,9 +47,10 @@ import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatus
 import { canUserResignMembership } from "../../users/utils/membershipStatusValidation";
 import { useColorMode, type ColorModePreference } from "../../../shared/appShell/ColorModeContext";
 import {
-  getRegistrationPasswordHelperText,
-  validateRegistrationPassword,
+  PASSWORD_POLICY_HELPER_TEXT,
+  validateNewPassword,
 } from "../../auth/utils/passwordValidation";
+import { getAnnouncementSections } from "../utils/announcementPreferences";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -91,32 +92,7 @@ function AnnouncementPreferencesList() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
   const sections = useMemo(() => {
-    const grantsAccess = (purposes?: string[] | null) =>
-      purposes?.includes(SectionUserGroupPurpose.ACCESS) ||
-      purposes?.includes(SectionUserGroupPurpose.MODERATOR);
-
-    const sectionMap = new Map<string, { id: string; name: string }>();
-    const addSection = (s: { id: string; name: string }) => {
-      if (!sectionMap.has(s.id)) sectionMap.set(s.id, s);
-    };
-
-    // Explicit group memberships
-    for (const ug of data?.user?.userGroups ?? []) {
-      for (const pl of ug.userGroup.purposeLinks) {
-        if (grantsAccess(pl.purposes) && pl.section) addSection(pl.section);
-      }
-    }
-
-    // Status-based group memberships
-    const userStatus = data?.user?.membershipStatus;
-    for (const ug of data?.allUserGroups ?? []) {
-      if (!ug.membershipStatuses?.includes(userStatus as MembershipStatus)) continue;
-      for (const pl of ug.purposeLinks) {
-        if (grantsAccess(pl.purposes) && pl.section) addSection(pl.section);
-      }
-    }
-
-    return Array.from(sectionMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return getAnnouncementSections(data);
   }, [data]);
 
   const optOutIds = useMemo(
@@ -287,11 +263,6 @@ export default function AccountSettingsPage({
     setPasswordError(null);
     setPasswordSuccess(false);
 
-    const passwordValidation = validateRegistrationPassword(newPassword);
-    if (!passwordValidation.isValid) {
-      setPasswordError(passwordValidation.error ?? "Password does not meet the minimum requirements");
-      return;
-    }
     if (newPassword !== confirmPassword) {
       setPasswordError("New passwords do not match");
       return;
@@ -303,6 +274,13 @@ export default function AccountSettingsPage({
 
     setPasswordSubmitting(true);
     try {
+      const passwordValidation = await validateNewPassword(auth, newPassword);
+      if (!passwordValidation.isValid) {
+        setPasswordError(
+          passwordValidation.error ?? "Password does not meet the current requirements",
+        );
+        return;
+      }
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
@@ -593,7 +571,7 @@ export default function AccountSettingsPage({
                     required
                     fullWidth
                     disabled={passwordSubmitting}
-                    helperText={getRegistrationPasswordHelperText()}
+                    helperText={PASSWORD_POLICY_HELPER_TEXT}
                   />
                   <TextField
                     label="Confirm new password"
@@ -612,7 +590,7 @@ export default function AccountSettingsPage({
                       disabled={
                         passwordSubmitting ||
                         !currentPassword ||
-                        !validateRegistrationPassword(newPassword).isValid ||
+                        !newPassword ||
                         newPassword !== confirmPassword
                       }
                       sx={{

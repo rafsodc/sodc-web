@@ -255,6 +255,14 @@ same remediation questions, and first requires the resulting effective
 checksum to match the protected importer ledger. Different answers fail closed
 before destination comparison.
 
+Before enabling migrated members, complete the target environment's
+[Firebase password-policy setup](./firebase-password-policy.md). Rehearsal must
+prove that a compatible imported password passes the deployed policy, while a
+missing or non-compliant password reaches the in-app reset journey. It must also
+exercise email verification followed by the combined profile and communication
+review; migrated profiles retain a null `profileReviewedAt` until that complete
+review succeeds.
+
 Deploy the updated Data Connect connector before running postflight; its
 server-only batch query exposes the fields needed for read-only comparison:
 

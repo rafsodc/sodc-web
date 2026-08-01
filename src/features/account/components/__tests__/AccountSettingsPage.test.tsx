@@ -17,6 +17,15 @@ vi.mock("firebase/auth", () => ({
   reauthenticateWithCredential: vi.fn().mockResolvedValue(undefined),
   updatePassword: vi.fn().mockResolvedValue(undefined),
   signOut: vi.fn().mockResolvedValue(undefined),
+  validatePassword: vi.fn().mockResolvedValue({
+    isValid: true,
+    passwordPolicy: {
+      customStrengthOptions: { minPasswordLength: 12 },
+      enforcementState: "ENFORCE",
+      forceUpgradeOnSignin: true,
+      allowedNonAlphanumericCharacters: "",
+    },
+  }),
 }));
 
 const mockUpsertUser = vi.fn().mockResolvedValue({ data: {} });
@@ -288,9 +297,19 @@ describe("AccountSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("rejects a new password below the shared minimum length (#208)", async () => {
+  it("rejects a new password when the deployed Firebase policy rejects it", async () => {
     const user = userEvent.setup();
-    const { updatePassword } = await import("firebase/auth");
+    const { updatePassword, validatePassword } = await import("firebase/auth");
+    vi.mocked(validatePassword).mockResolvedValueOnce({
+      isValid: false,
+      meetsMinPasswordLength: false,
+      passwordPolicy: {
+        customStrengthOptions: { minPasswordLength: 12 },
+        enforcementState: "ENFORCE",
+        forceUpgradeOnSignin: true,
+        allowedNonAlphanumericCharacters: "",
+      },
+    });
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
@@ -303,14 +322,17 @@ describe("AccountSettingsPage", () => {
     await user.type(newPasswordInputs[0]!, "short12345");
     await user.type(newPasswordInputs[1]!, "short12345");
 
-    expect(screen.getByRole("button", { name: "Update password" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Update password" }));
+    expect(await screen.findByText("Password must be at least 12 characters.")).toBeInTheDocument();
     expect(updatePassword).not.toHaveBeenCalled();
   });
 
-  it("shows the shared minimum length in the new password helper text", () => {
+  it("explains that the current policy is used for a new password", () => {
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
-    expect(screen.getByText("Must be at least 12 characters")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Requirements are checked against the current account security policy/),
+    ).toBeInTheDocument();
   });
 
   it("resigns membership and signs out", async () => {

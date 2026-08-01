@@ -15,10 +15,9 @@ import {
   syncPendingUserClaims,
 } from "../../../shared/utils/firebaseFunctions";
 import {
-  getRegistrationPasswordHelperText,
-  validateRegistrationPassword,
+  PASSWORD_POLICY_HELPER_TEXT,
+  validateNewPassword,
 } from "../utils/passwordValidation";
-import { REGISTRATION_MIN_PASSWORD_LENGTH } from "../../../constants/auth";
 
 interface RegisterProps {
   onSuccess?: () => void;
@@ -40,10 +39,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return { isValid: false, error: "Invalid email format" };
     }
-    const passwordValidation = validateRegistrationPassword(password);
-    if (!passwordValidation.isValid) {
-      return { isValid: false, error: passwordValidation.error };
-    }
+    if (!password) return { isValid: false, error: "Password is required" };
     if (password !== confirmPassword) {
       return { isValid: false, error: "Passwords do not match" };
     }
@@ -63,6 +59,11 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
 
     setSubmitting(true);
     try {
+      const passwordValidation = await validateNewPassword(auth, password);
+      if (!passwordValidation.isValid) {
+        setError(passwordValidation.error ?? "Choose a stronger password");
+        return;
+      }
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
@@ -158,7 +159,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
             fullWidth
             required
             disabled={submitting}
-            helperText={getRegistrationPasswordHelperText()}
+            helperText={PASSWORD_POLICY_HELPER_TEXT}
           />
           <TextField
             label="Confirm Password"
@@ -177,7 +178,7 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
             disabled={
               submitting ||
               !email.trim() ||
-              password.length < REGISTRATION_MIN_PASSWORD_LENGTH ||
+              !password ||
               password !== confirmPassword
             }
             sx={{
