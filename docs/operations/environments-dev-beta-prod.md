@@ -67,9 +67,8 @@ The repo expects a **beta** Firebase project whose ID matches the `beta` entry i
 For a Hosting-only change, always build with the environment variables for **the project you are about to deploy to**. If the release also changes Data Connect or Functions, use the full-stack rollout sequence instead and do not deploy Hosting until its backend checkpoints pass.
 
 ```sh
-# Example: deploy Hosting to beta — ensure VITE_* point at the beta Firebase web app
-npm run build
-firebase deploy --only hosting --project beta
+# Build with .env.staging.local, then deploy to the beta alias.
+npm run deploy:hosting:beta
 ```
 
 Common mistakes:
@@ -77,7 +76,19 @@ Common mistakes:
 - Building with **prod** `.env` and deploying to **dev** (wrong Auth project, confusing failures).
 - Deploying **without** rebuilding after changing `.env` (stale API keys in `dist/`).
 
-Recommendation: maintain **separate env files** that are **not committed**, e.g. `.env.dev.local`, `.env.beta.local`, `.env.prod.local`, and copy or symlink the right one before `npm run build`, or use your shell/CI to export variables.
+The repository's fixed commands pair each Firebase alias with its Vite mode and
+ignored environment file:
+
+| Target | Vite mode / local file | Build | Build and deploy Hosting |
+|---|---|---|---|
+| Dev | `development` / `.env.development.local` | `npm run build:dev` | `npm run deploy:hosting:dev` |
+| Beta | `staging` / `.env.staging.local` | `npm run build:beta` | `npm run deploy:hosting:beta` |
+| Prod | `production` / `.env.production.local` | `npm run build:prod` | `npm run deploy:hosting:prod` |
+
+Use the combined deploy command for Hosting releases. It always rebuilds before
+calling Firebase and cannot reuse a stale `dist` directory. `--project` selects
+the remote Hosting project; it does not replace the Firebase configuration that
+Vite already embedded in the bundle.
 
 ## Full-stack rollout sequence
 
@@ -156,14 +167,27 @@ Smoke-test the changed callable, HTTP, or scheduled Function through a non-destr
 
 ### 6. Build and deploy Hosting
 
-Confirm the active `.env` contains the target project's `VITE_*` values, rebuild, and deploy Hosting last:
+Use the fixed command for the current rollout target. It selects the matching
+Vite mode, rebuilds, and deploys Hosting last:
 
 ```sh
-npm run build
-firebase deploy --only hosting --project "$FIREBASE_PROJECT"
+npm run deploy:hosting:dev
+# Use deploy:hosting:beta or deploy:hosting:prod at those promotion stages.
 ```
 
 Smoke-test sign-in, one Data Connect read, one callable action, a deep link, and the release's changed browser flow. For CSP/header changes, also follow [firebase-hosting-security-headers.md](./firebase-hosting-security-headers.md).
+
+Then run the read-only deployment audit and require the live manifest to match
+the reviewed commit:
+
+```sh
+npm run deployment:check -- \
+  --env "$FIREBASE_PROJECT" \
+  --expected-sha "$(git rev-parse HEAD)"
+```
+
+See [deployment configuration and health checks](./deployment-checks.md) for
+permissions, JSON output, authenticated smoke checks, and manual checkpoints.
 
 ## Partial failure and rollback checkpoints
 
@@ -205,3 +229,4 @@ They do **not** replace the Beta project for full-stack staging.
 - [environment-and-secrets.md](./environment-and-secrets.md) — Variable and secret matrix.
 - [contributor-workflow.md](../contributor-workflow.md) — Branches, PRs, tests.
 - [stripe-webhook-endpoints.md](./stripe-webhook-endpoints.md) — Webhook URLs per deployment.
+- [deployment-checks.md](./deployment-checks.md) — Read-only configuration audit and runtime checks.

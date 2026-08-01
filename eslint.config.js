@@ -30,6 +30,7 @@ export default defineConfig([
     files: [
       '*.config.{js,mjs,cjs,ts,mts,cts}',
       '.github/scripts/**/*.{js,mjs,cjs}',
+      'scripts/**/*.{js,mjs,cjs}',
     ],
     languageOptions: {
       ecmaVersion: 2022,

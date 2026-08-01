@@ -30,7 +30,7 @@ describe("deployment runbook contracts", () => {
     const generatedStatus = rollout.indexOf("git status --short --");
     const dataConnect = rollout.indexOf("firebase deploy --only dataconnect");
     const functions = rollout.indexOf("firebase deploy --only functions");
-    const hosting = rollout.indexOf("firebase deploy --only hosting");
+    const hosting = rollout.indexOf("npm run deploy:hosting:dev");
 
     expect(generate).toBeGreaterThanOrEqual(0);
     expect(generatedDiff).toBeGreaterThan(generate);

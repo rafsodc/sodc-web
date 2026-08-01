@@ -182,7 +182,7 @@ resources and can take several minutes:
 npx firebase dataconnect:sdk:generate
 git diff --exit-code -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 git status --short -- src/dataconnect-generated functions/src/dataconnect-admin-generated
-npm run build
+npm run build:prod
 npm --prefix functions run build
 firebase deploy --only dataconnect --project prod
 firebase dataconnect:services:list --project prod
@@ -396,6 +396,12 @@ only after valid traffic is healthy and all clients are registered. The current
 callable Functions do not set `enforceAppCheck: true`, so enabling/strengthening
 Functions enforcement requires a reviewed code change and regression testing.
 
+Dev configuration alone does not configure Prod and does not complete #345.
+Repeat the Web app registration and allowed-domain setup in the production
+Firebase/GCP project. `npm run build:prod` loads the production public site key;
+after deploying it, record valid-token metrics and the reviewed enforcement
+decision before enabling callable enforcement.
+
 The existing implementation uses reCAPTCHA v3. Firebase recommends reCAPTCHA
 Enterprise for new integrations; migrating providers is a separate reviewed change,
 not a launch-day configuration switch.
@@ -441,16 +447,19 @@ firebase dataconnect:services:list --project "$FIREBASE_PROJECT"
 npx firebase dataconnect:sdk:generate
 git diff --exit-code -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 git status --short -- src/dataconnect-generated functions/src/dataconnect-admin-generated
-npm run build
+npm run build:prod
 npm --prefix functions run build
 
 firebase deploy --only dataconnect --project "$FIREBASE_PROJECT"
 firebase dataconnect:services:list --project "$FIREBASE_PROJECT"
 firebase deploy --only functions --project "$FIREBASE_PROJECT"
 
-# Ensure the root production env file is active for this Vite build.
-npm run build -- --mode production
-firebase deploy --only hosting --project "$FIREBASE_PROJECT"
+# This rebuilds with .env.production.local before deploying to the prod alias.
+npm run deploy:hosting:prod
+
+npm run deployment:check -- \
+  --env prod \
+  --expected-sha "$(git rev-parse HEAD)"
 ```
 
 Complete and record each checkpoint before proceeding. If Data Connect validation

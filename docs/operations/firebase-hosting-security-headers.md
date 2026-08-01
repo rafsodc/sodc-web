@@ -52,8 +52,7 @@ subdomains before adding `includeSubDomains` or `preload`.
 For a full-stack release, complete the Data Connect and Functions checkpoints in the [central rollout runbook](./environments-dev-beta-prod.md#full-stack-rollout-sequence) before this Hosting step. For a Hosting-only change, deploy to Beta first:
 
 ```bash
-npm run build
-firebase deploy --only hosting --project beta
+npm run deploy:hosting:beta
 curl -sS -D - -o /dev/null https://sodc-web-beta.web.app/
 curl -sS -D - -o /dev/null https://sodc-web-beta.web.app/sections/example
 ```

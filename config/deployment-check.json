@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "sodc-deployment-check/v1",
+  "region": "europe-west2",
+  "functionsRuntime": "nodejs24",
+  "dataConnect": {
+    "service": "sodc-web-service",
+    "connector": "api",
+    "sqlInstance": "sodc-web-instance",
+    "database": "fdcdb"
+  },
+  "requiredApis": [
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudscheduler.googleapis.com",
+    "firebase.googleapis.com",
+    "firebaseappcheck.googleapis.com",
+    "firebasedataconnect.googleapis.com",
+    "firebasehosting.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "identitytoolkit.googleapis.com",
+    "logging.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
+    "sqladmin.googleapis.com",
+    "storage.googleapis.com"
+  ],
+  "requiredSecrets": [
+    "GOV_NOTIFY_LIVE_API_KEY",
+    "GOV_NOTIFY_TEAM_API_KEY",
+    "GOV_NOTIFY_TEST_API_KEY",
+    "NOTIFY_CALLBACK_BEARER_TOKEN",
+    "STRIPE_SECRET",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_WEBHOOK_SECRET_PAYMENTS",
+    "UNSUBSCRIBE_SECRET"
+  ],
+  "requiredHostingHeaders": [
+    "content-security-policy",
+    "permissions-policy",
+    "referrer-policy",
+    "x-content-type-options",
+    "x-frame-options"
+  ],
+  "requiredCloudRunServices": [
+    "section-file-malware-scanner"
+  ],
+  "requiredCloudRunJobs": [
+    "section-file-clamav-definitions"
+  ],
+  "expectedPublicInvokerFunctions": [
+    "cancelSectionFileReplacement",
+    "createEventBookingCheckoutSession",
+    "createTicketCheckoutSession",
+    "deleteSectionFile",
+    "finalizeSectionFileReplacement",
+    "finalizeSectionFileUpload",
+    "getAnnouncementDeliveryConfiguration",
+    "getAnnouncementSendHistory",
+    "getAnnouncementSendRecipients",
+    "getAnnouncementTemplates",
+    "getEventForUser",
+    "getGovNotifyDeliveryAdminConfiguration",
+    "getMyTicketOrderStripeArtifactsBatch",
+    "getSectionEventsForUser",
+    "getSectionForUser",
+    "getSectionMembersMerged",
+    "getTemplateSyncStatus",
+    "grantAdmin",
+    "listAdminUsers",
+    "listSectionFiles",
+    "listUsersPendingApproval",
+    "listUsersWithoutDataConnectProfile",
+    "notifyDeliveryCallback",
+    "previewAnnouncementTemplate",
+    "reconcileMyCheckoutSessionOrders",
+    "reconcileMyEmail",
+    "registerForSectionCallable",
+    "requestEmailChange",
+    "requestEmailVerification",
+    "requestPasswordReset",
+    "requestSectionFileDownload",
+    "requestSectionFileReplacement",
+    "requestSectionFileUpload",
+    "resignMembership",
+    "reviewGuestTicketRequest",
+    "revokeAdmin",
+    "searchUsers",
+    "sendSectionAnnouncement",
+    "stripeWebhook",
+    "stripeWebhookPayments",
+    "submitEventBooking",
+    "submitGuestTicketRequest",
+    "subscribeToUserGroup",
+    "syncPendingUserClaims",
+    "unsubscribeAnnouncement",
+    "updateDisplayName",
+    "updateGovNotifyDeliveryMode",
+    "updateMembershipStatus",
+    "updateSectionFileMetadata",
+    "updateUserDisplayName"
+  ],
+  "environments": {
+    "dev": {
+      "projectId": "sodc-web",
+      "viteMode": "development",
+      "hostingSite": "sodc-web",
+      "hostingUrl": "https://sodc-web.web.app",
+      "storageBucket": "sodc-web.firebasestorage.app"
+    },
+    "beta": {
+      "projectId": "sodc-web-beta",
+      "viteMode": "staging",
+      "hostingSite": "sodc-web-beta",
+      "hostingUrl": "https://sodc-web-beta.web.app",
+      "storageBucket": "sodc-web-beta.firebasestorage.app"
+    },
+    "prod": {
+      "projectId": "sodc-web-production",
+      "viteMode": "production",
+      "hostingSite": "sodc-web-production",
+      "hostingUrl": "https://sodc-web-production.web.app",
+      "storageBucket": "sodc-web-production.firebasestorage.app"
+    }
+  }
+}
