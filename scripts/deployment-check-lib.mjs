@@ -76,14 +76,27 @@ export function redact(value) {
   if (typeof value !== "string") return value;
   return value
     .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, "Bearer [REDACTED]")
-    .replace(/([?&](?:key|token|code|signature)=)[^&\s]+/gi, "$1[REDACTED]");
+    .replace(
+      /([?&](?:key|token|code|signature|credential|x-goog-(?:signature|credential|security-token)|x-amz-(?:signature|credential|security-token))=)[^&\s]+/gi,
+      "$1[REDACTED]"
+    );
+}
+
+export function safeErrorMessage(error) {
+  const message =
+    typeof error === "string"
+      ? error
+      : error && typeof error === "object" && typeof error.message === "string"
+        ? error.message
+        : "Unknown error";
+  return redact(message);
 }
 
 export function result(id, status, summary, details) {
   return {
     id,
     status,
-    summary,
+    summary: redact(summary),
     ...(details === undefined ? {} : { details: redact(details) }),
   };
 }

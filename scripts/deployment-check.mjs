@@ -18,6 +18,7 @@ import {
   parseJsonOutput,
   resolveTarget,
   result,
+  safeErrorMessage,
   unwrapFirebaseResult,
 } from "./deployment-check-lib.mjs";
 
@@ -98,7 +99,7 @@ async function commandCheck(results, definition) {
   } catch (error) {
     const status = definition.optional ? RESULT_STATUS.WARN : RESULT_STATUS.FAIL;
     results.push(
-      result(definition.id, status, `${definition.label}: ${error.message}`, {
+      result(definition.id, status, `${definition.label}: ${safeErrorMessage(error)}`, {
         command: [definition.command, ...definition.args].join(" "),
       })
     );
@@ -135,7 +136,7 @@ async function main() {
   try {
     options = parseArguments(process.argv.slice(2));
   } catch (error) {
-    console.error(error.message);
+    console.error(safeErrorMessage(error));
     console.error(help);
     process.exitCode = 2;
     return;
@@ -437,7 +438,7 @@ async function main() {
             publiclyInvokable: isPublicInvokerPolicy(policy),
           };
         } catch (error) {
-          return { functionName, serviceName, error: error.message };
+          return { functionName, serviceName, error: safeErrorMessage(error) };
         }
       }
     );
@@ -709,7 +710,13 @@ async function main() {
       })
     );
   } catch (error) {
-    results.push(result("hosting-runtime", RESULT_STATUS.FAIL, `Hosting runtime audit failed: ${error.message}`));
+    results.push(
+      result(
+        "hosting-runtime",
+        RESULT_STATUS.FAIL,
+        `Hosting runtime audit failed: ${safeErrorMessage(error)}`
+      )
+    );
   }
 
   if (options.authenticated) {
@@ -728,7 +735,13 @@ async function main() {
       if (!response.ok) throw new Error(`callable returned HTTP ${response.status}`);
       results.push(result("authenticated-callable", RESULT_STATUS.PASS, "Authenticated callable smoke check passed."));
     } catch (error) {
-      results.push(result("authenticated-callable", RESULT_STATUS.FAIL, `Authenticated smoke check failed: ${error.message}`));
+      results.push(
+        result(
+          "authenticated-callable",
+          RESULT_STATUS.FAIL,
+          `Authenticated smoke check failed: ${safeErrorMessage(error)}`
+        )
+      );
     }
   } else {
     results.push(
