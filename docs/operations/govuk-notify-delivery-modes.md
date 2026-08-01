@@ -48,7 +48,10 @@ tables are schema changes:
 ```sh
 npx firebase deploy --only dataconnect --project PROJECT_ID
 npx firebase deploy --only functions --project PROJECT_ID
-npx firebase deploy --only hosting --project PROJECT_ID
+# Choose the Hosting command matching the target alias; it rebuilds first.
+npm run deploy:hosting:dev
+# npm run deploy:hosting:beta
+# npm run deploy:hosting:prod
 ```
 
 ## Change the runtime mode

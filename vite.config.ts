@@ -1,9 +1,47 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { execFileSync } from 'node:child_process'
+
+const DEPLOY_ENV_BY_MODE: Record<string, string> = {
+  development: 'dev',
+  staging: 'beta',
+  production: 'prod',
+}
+
+function currentGitSha(): string {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA
+
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  } catch {
+    return 'unknown'
+  }
+}
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    {
+      name: 'sodc-deployment-manifest',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'deployment-manifest.json',
+          source: JSON.stringify(
+            {
+              schemaVersion: 'sodc-deployment-manifest/v1',
+              environment: DEPLOY_ENV_BY_MODE[mode] ?? mode,
+              gitSha: currentGitSha(),
+              builtAt: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
+        })
+      },
+    },
+  ],
   build: {
     // Increase chunk size warning limit (we'll handle chunking manually)
     chunkSizeWarningLimit: 1000,
@@ -51,4 +89,4 @@ export default defineConfig({
       'firebase/data-connect',
     ],
   },
-})
+}))
