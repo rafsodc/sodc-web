@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { onAuthStateChanged, signInWithEmailAndPassword, validatePassword } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 import { render, screen } from "../../../../test-utils";
 import AuthGate from "../AuthGate";
 
 vi.mock("firebase/auth", () => ({
   onAuthStateChanged: vi.fn(),
   signInWithEmailAndPassword: vi.fn(),
-  validatePassword: vi.fn(),
 }));
 
 vi.mock("../../../../config/firebase", () => ({ auth: {} }));
@@ -16,13 +15,6 @@ vi.mock("../../../users/hooks/useEnabledClaim", () => ({
   useEnabledClaim: () => ({ isEnabled: false, isEnabledClaimResolved: true }),
 }));
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({ reconcileMyEmail: vi.fn() }));
-
-const policy = {
-  customStrengthOptions: { minPasswordLength: 12 },
-  enforcementState: "ENFORCE",
-  forceUpgradeOnSignin: true,
-  allowedNonAlphanumericCharacters: "",
-};
 
 function renderGate() {
   return render(
@@ -39,7 +31,7 @@ async function enterCredentials(password: string) {
   await user.click(screen.getByRole("button", { name: "Sign in" }));
 }
 
-describe("AuthGate password policy", () => {
+describe("AuthGate sign-in", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(onAuthStateChanged).mockImplementation((_auth, observer) => {
@@ -48,11 +40,10 @@ describe("AuthGate password policy", () => {
     });
   });
 
-  it("checks every submitted password and routes a non-compliant member to reset", async () => {
-    vi.mocked(validatePassword).mockResolvedValue({
-      isValid: false,
-      meetsMinPasswordLength: false,
-      passwordPolicy: policy,
+  it("routes a member to reset when Firebase rejects their password under the policy", async () => {
+    vi.mocked(signInWithEmailAndPassword).mockRejectedValue({
+      code: "auth/password-does-not-meet-requirements",
+      message: "Password does not meet requirements",
     });
     renderGate();
     await enterCredentials("legacy-password");
@@ -61,11 +52,25 @@ describe("AuthGate password policy", () => {
       "href",
       "/account/reset-password",
     );
-    expect(signInWithEmailAndPassword).not.toHaveBeenCalled();
+    expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
+      {},
+      "member@example.org",
+      "legacy-password",
+    );
   });
 
-  it("signs in when the submitted password meets the deployed policy", async () => {
-    vi.mocked(validatePassword).mockResolvedValue({ isValid: true, passwordPolicy: policy });
+  it("does not misreport an ordinary invalid credential as a policy failure", async () => {
+    vi.mocked(signInWithEmailAndPassword).mockRejectedValue({
+      code: "auth/invalid-credential",
+      message: "Firebase: Error (auth/invalid-credential).",
+    });
+    renderGate();
+    await enterCredentials("mistyped-password");
+    expect(await screen.findByText(/auth\/invalid-credential/)).toBeInTheDocument();
+    expect(screen.queryByText(/password no longer meets/i)).not.toBeInTheDocument();
+  });
+
+  it("signs in when Firebase accepts the submitted password", async () => {
     vi.mocked(signInWithEmailAndPassword).mockResolvedValue({
       user: {
         emailVerified: false,

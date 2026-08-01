@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { getAnnouncementSections } from "../announcementPreferences";
 
 describe("getAnnouncementSections", () => {
@@ -6,13 +7,21 @@ describe("getAnnouncementSections", () => {
     expect(
       getAnnouncementSections({
         user: {
-          membershipStatus: "REGULAR",
+          membershipStatus: MembershipStatus.REGULAR,
+          announcementOptOutAll: false,
+          optOuts: [],
           userGroups: [
             {
               userGroup: {
                 purposeLinks: [
-                  { purposes: ["ACCESS"], section: { id: "two", name: "Zulu" } },
-                  { purposes: ["ANNOUNCEMENTS"], section: { id: "ignored", name: "Ignored" } },
+                  {
+                    purposes: [SectionUserGroupPurpose.ACCESS],
+                    section: { id: "two", name: "Zulu" },
+                  },
+                  {
+                    purposes: [SectionUserGroupPurpose.MESSAGE],
+                    section: { id: "ignored", name: "Ignored" },
+                  },
                 ],
               },
             },
@@ -20,10 +29,16 @@ describe("getAnnouncementSections", () => {
         },
         allUserGroups: [
           {
-            membershipStatuses: ["REGULAR"],
+            membershipStatuses: [MembershipStatus.REGULAR],
             purposeLinks: [
-              { purposes: ["MODERATOR"], section: { id: "one", name: "Alpha" } },
-              { purposes: ["ACCESS"], section: { id: "two", name: "Zulu" } },
+              {
+                purposes: [SectionUserGroupPurpose.MODERATOR],
+                section: { id: "one", name: "Alpha" },
+              },
+              {
+                purposes: [SectionUserGroupPurpose.ACCESS],
+                section: { id: "two", name: "Zulu" },
+              },
             ],
           },
         ],

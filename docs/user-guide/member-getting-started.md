@@ -76,10 +76,10 @@ email address.
 If saving fails, your review date is not changed. Check your connection and try
 again.
 
-Passwords are checked against the current Firebase security policy whenever
-they are submitted for sign-in. If an older migrated password no longer meets
-the policy, use **Forgot password?** to set a compliant password through the
-site's secure email flow.
+Firebase Authentication applies the current security policy when you sign in.
+If it requires an older migrated password to be upgraded, the site directs you
+to **Forgot password?** so you can set a compliant password through the secure
+email flow.
 
 ---
 

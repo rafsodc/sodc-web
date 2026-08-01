@@ -13,6 +13,10 @@ vi.mock("@dataconnect/generated", () => ({
   MembershipStatus: {
     REGULAR: "REGULAR",
   },
+  SectionUserGroupPurpose: {
+    ACCESS: "ACCESS",
+    MODERATOR: "MODERATOR",
+  },
 }));
 
 const mockOptOut = vi.fn().mockResolvedValue(undefined);

@@ -21,7 +21,6 @@ import { ROUTES } from "../../../constants";
 import {
   canAttemptSignIn,
   isPasswordPolicyAuthError,
-  validateNewPassword,
 } from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 
@@ -54,11 +53,6 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
     setError(null);
     setSubmitting(true);
     try {
-      const policyValidation = await validateNewPassword(auth, password);
-      if (!policyValidation.isValid) {
-        setError(`${policyValidation.error} Reset your password to continue.`);
-        return;
-      }
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       await userCredential.user.getIdToken(true);
       if (userCredential.user.emailVerified) {

@@ -1,35 +1,28 @@
+import type {
+  GetMyAnnouncementPreferencesData,
+  SectionUserGroupPurpose,
+} from "@dataconnect/generated";
+import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
+
 interface AnnouncementSection {
   id: string;
   name: string;
 }
 
-interface PurposeLink {
-  purposes?: string[] | null;
-  section?: AnnouncementSection | null;
-}
-
-interface PreferenceGroup {
-  membershipStatuses?: string[] | null;
-  purposeLinks?: PurposeLink[] | null;
-}
-
-export interface AnnouncementPreferenceData {
-  user?: {
-    membershipStatus?: string | null;
-    userGroups?: Array<{ userGroup: PreferenceGroup }> | null;
-  } | null;
-  allUserGroups?: PreferenceGroup[] | null;
-}
-
-function grantsSectionAccess(purposes?: string[] | null) {
-  return purposes?.includes("ACCESS") || purposes?.includes("MODERATOR");
+function grantsSectionAccess(purposes?: SectionUserGroupPurpose[] | null) {
+  return (
+    purposes?.includes(SectionPurpose.ACCESS) ||
+    purposes?.includes(SectionPurpose.MODERATOR)
+  );
 }
 
 export function getAnnouncementSections(
-  data: AnnouncementPreferenceData | null | undefined,
+  data: GetMyAnnouncementPreferencesData | null | undefined,
 ): AnnouncementSection[] {
   const sections = new Map<string, AnnouncementSection>();
-  const addLinks = (links?: PurposeLink[] | null) => {
+  const addLinks = (
+    links?: GetMyAnnouncementPreferencesData["allUserGroups"][number]["purposeLinks"] | null,
+  ) => {
     for (const link of links ?? []) {
       if (grantsSectionAccess(link.purposes) && link.section && !sections.has(link.section.id)) {
         sections.set(link.section.id, link.section);

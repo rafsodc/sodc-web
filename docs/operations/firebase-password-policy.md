@@ -1,10 +1,12 @@
 # Firebase Authentication password policy
 
 The application treats each environment's Firebase Authentication password
-policy as the authoritative source for registration, sign-in upgrade checks,
-password reset, and password change. The browser calls Firebase
-`validatePassword()`; it does not reproduce complexity rules in application
-code and never sends a password to Functions or Data Connect.
+policy as authoritative. The browser calls Firebase `validatePassword()` for
+new passwords during registration, password reset, and password change; it does
+not reproduce complexity rules in application code. Sign-in credentials go
+directly to Firebase Authentication, which applies the configured enforcement
+state and force-upgrade setting. Passwords are never sent to Functions or Data
+Connect.
 
 ## Required environment setup
 
@@ -19,15 +21,19 @@ one Firebase project does not configure the others.
    registration, reset, change-password, and representative migrated-password
    sign-ins.
 4. After the environment passes those checks, enable enforcement and
-   **force upgrade on sign-in**. A member whose submitted password is no longer
-   compliant must use the site's GOV.UK Notify-backed reset journey.
+   **force upgrade on sign-in**. When Firebase rejects an otherwise valid
+   credential because its password is no longer compliant, the site directs
+   the member to the GOV.UK Notify-backed reset journey.
 5. Record the target project, operator, date, policy requirements, enforcement
    state, and test evidence in the release record.
 
-The application check improves the member-facing explanation, but Firebase
-enforcement is the security boundary for clients that bypass the UI. Do not
-enable forced upgrade in Prod until Beta proves compatible imported passwords
-continue to sign in and non-compliant passwords reach the reset journey.
+The new-password check improves the member-facing explanation. For sign-in,
+Firebase's policy error triggers the reset explanation; the application does
+not pre-check the submitted credential because doing so would bypass monitoring
+mode and could misreport an ordinary typo as a policy failure. Firebase
+enforcement is the security boundary. Do not enable forced upgrade in Prod
+until Beta proves compatible imported passwords continue to sign in and
+non-compliant passwords reach the reset journey.
 
 ## Verification
 
