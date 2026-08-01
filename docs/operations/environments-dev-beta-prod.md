@@ -94,6 +94,38 @@ calling Firebase and cannot reuse a stale `dist` directory. `--project` selects
 the remote Hosting project; it does not replace the Firebase configuration that
 Vite already embedded in the bundle.
 
+## One-command application deployment
+
+For an ordinary reviewed application release, use the command pinned to the
+target environment:
+
+```sh
+npm run deploy:dev
+npm run deploy:beta
+npm run deploy:prod
+```
+
+Run only the command for the environment being promoted. Each command requires
+a clean checkout, verifies its Firebase alias, generates the Data Connect SDKs
+and rejects generated drift, then deploys Data Connect, all Functions, and a
+freshly rebuilt Hosting bundle in that order. It stops on the first failure and
+finishes by checking the live deployment manifest against the deployed Git
+revision.
+
+These commands deliberately do not deploy Storage rules. Initial bucket setup
+remains an operator procedure, and rules changes must be reviewed and deployed
+explicitly before Functions:
+
+```sh
+firebase deploy --only storage --project dev
+# Substitute beta or prod for the relevant promotion stage.
+```
+
+Use the detailed sequence below for first-time environment setup,
+Storage-changing releases, manual checkpoints, or troubleshooting. Do not use
+an unscoped `firebase deploy`: it can reuse a stale `dist` directory and does
+not enforce the repository's dependency-safe stage ordering.
+
 ## Full-stack rollout sequence
 
 Run this sequence independently for **Dev**, then **Beta**, then **Prod**. Complete the smoke-test checkpoint for one environment before promoting the same reviewed commit to the next. Replace `dev` below with `beta` or `prod` as appropriate.

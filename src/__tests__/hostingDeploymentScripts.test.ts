@@ -30,6 +30,9 @@ describe("environment-safe Hosting scripts", () => {
       expect(packageJson.scripts[`deploy:hosting:${alias}`]).toBe(
         `npm run build:${alias} && firebase deploy --only hosting --project ${alias}`
       );
+      expect(packageJson.scripts[`deploy:${alias}`]).toBe(
+        `node scripts/deploy-environment.mjs --env ${alias}`
+      );
     }
   );
 
