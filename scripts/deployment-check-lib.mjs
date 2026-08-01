@@ -92,6 +92,44 @@ export function exitCodeFor(results) {
   return results.some(({ status }) => status === RESULT_STATUS.FAIL) ? 1 : 0;
 }
 
+const PUBLIC_INVOKER_MEMBERS = new Set(["allUsers", "allAuthenticatedUsers"]);
+
+export function isPublicInvokerPolicy(policy) {
+  return (policy?.bindings ?? []).some(
+    (binding) =>
+      ["roles/run.invoker", "roles/cloudfunctions.invoker"].includes(binding.role) &&
+      binding.members?.some((member) => PUBLIC_INVOKER_MEMBERS.has(member))
+  );
+}
+
+export function assessFunctionInvokerPolicies(records, expectedPublicFunctions) {
+  const expected = new Set(expectedPublicFunctions.map((name) => name.toLowerCase()));
+  const audited = new Set(records.map(({ functionName }) => functionName.toLowerCase()));
+  const unreadable = records
+    .filter(({ error }) => error)
+    .map(({ functionName }) => functionName)
+    .sort();
+  const unexpectedlyPublic = records
+    .filter(
+      ({ functionName, publiclyInvokable, error }) =>
+        !error && publiclyInvokable && !expected.has(functionName.toLowerCase())
+    )
+    .map(({ functionName }) => functionName)
+    .sort();
+  const unexpectedlyPrivate = records
+    .filter(
+      ({ functionName, publiclyInvokable, error }) =>
+        !error && !publiclyInvokable && expected.has(functionName.toLowerCase())
+    )
+    .map(({ functionName }) => functionName)
+    .sort();
+  const missingAudits = expectedPublicFunctions
+    .filter((functionName) => !audited.has(functionName.toLowerCase()))
+    .sort();
+
+  return { unreadable, unexpectedlyPublic, unexpectedlyPrivate, missingAudits };
+}
+
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
@@ -105,15 +143,17 @@ async function walk(directory) {
 
 export async function discoverFunctionContracts(functionsSourceDirectory) {
   const functions = new Set();
+  const publicInvokerFunctions = new Set();
   const secrets = new Set();
   const files = await walk(functionsSourceDirectory);
 
   for (const file of files) {
     const source = await readFile(file, "utf8");
     for (const match of source.matchAll(
-      /export const\s+(\w+)\s*=\s*on(?:Call|Request|Schedule|TaskDispatched)\b/g
+      /export const\s+(\w+)\s*=\s*on(Call|Request|Schedule|TaskDispatched)\b/g
     )) {
       functions.add(match[1]);
+      if (["Call", "Request"].includes(match[2])) publicInvokerFunctions.add(match[1]);
     }
     for (const match of source.matchAll(/defineSecret\(["']([^"']+)["']\)/g)) {
       secrets.add(match[1]);
@@ -122,6 +162,7 @@ export async function discoverFunctionContracts(functionsSourceDirectory) {
 
   return {
     functions: [...functions].sort(),
+    publicInvokerFunctions: [...publicInvokerFunctions].sort(),
     secrets: [...secrets].sort(),
   };
 }

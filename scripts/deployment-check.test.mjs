@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
+  assessFunctionInvokerPolicies,
   compareExpected,
   createReport,
   discoverFunctionContracts,
   exitCodeFor,
+  isPublicInvokerPolicy,
   parseArguments,
   parseJsonOutput,
   redact,
@@ -18,6 +21,7 @@ const fixtureDirectory = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "__fixtures__/functions"
 );
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("deployment check configuration", () => {
   const configuration = {
@@ -88,8 +92,66 @@ describe("deployment check parsing and comparison", () => {
   it("discovers deployed Function and Secret contracts from source fixtures", async () => {
     await expect(discoverFunctionContracts(fixtureDirectory)).resolves.toEqual({
       functions: ["sampleCallable", "sampleTask", "sampleWebhook"],
+      publicInvokerFunctions: ["sampleCallable", "sampleWebhook"],
       secrets: ["SAMPLE_SECRET"],
     });
+  });
+
+  it("keeps the reviewed public-invoker allowlist aligned with HTTP and callable exports", async () => {
+    const [contracts, configuration] = await Promise.all([
+      discoverFunctionContracts(path.join(repositoryRoot, "functions/src")),
+      readFile(path.join(repositoryRoot, "config/deployment-check.json"), "utf8").then(JSON.parse),
+    ]);
+
+    expect(configuration.expectedPublicInvokerFunctions).toEqual(
+      contracts.publicInvokerFunctions
+    );
+  });
+
+  it("recognises only public invoker principals on invoker roles", () => {
+    expect(
+      isPublicInvokerPolicy({
+        bindings: [{ role: "roles/run.invoker", members: ["allUsers"] }],
+      })
+    ).toBe(true);
+    expect(
+      isPublicInvokerPolicy({
+        bindings: [{ role: "roles/run.viewer", members: ["allUsers"] }],
+      })
+    ).toBe(false);
+    expect(
+      isPublicInvokerPolicy({
+        bindings: [
+          { role: "roles/run.invoker", members: ["serviceAccount:runtime@example.test"] },
+        ],
+      })
+    ).toBe(false);
+  });
+
+  it("reports unexpected public, unexpectedly private, unreadable, and missing IAM audits", () => {
+    expect(
+      assessFunctionInvokerPolicies(
+        [
+          { functionName: "expectedPublic", publiclyInvokable: true },
+          { functionName: "unexpectedPublic", publiclyInvokable: true },
+          { functionName: "expectedPrivate", publiclyInvokable: false },
+          { functionName: "unreadable", error: "permission denied" },
+        ],
+        ["expectedPublic", "expectedButPrivate", "missingFunction"]
+      )
+    ).toEqual({
+      unreadable: ["unreadable"],
+      unexpectedlyPublic: ["unexpectedPublic"],
+      unexpectedlyPrivate: [],
+      missingAudits: ["expectedButPrivate", "missingFunction"],
+    });
+
+    expect(
+      assessFunctionInvokerPolicies(
+        [{ functionName: "expectedButPrivate", publiclyInvokable: false }],
+        ["expectedButPrivate"]
+      ).unexpectedlyPrivate
+    ).toEqual(["expectedButPrivate"]);
   });
 
   it("uses failures—not warnings or skipped checks—to determine the exit code", () => {

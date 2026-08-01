@@ -49,6 +49,10 @@ tokens, signed URLs, or raw log messages.
 - the expected Hosting site exists;
 - every Function exported from `functions/src` is deployed, Gen 2, `ACTIVE`,
   and in `europe-west2`; unexpected Functions are reported as warnings;
+- every deployed Function's underlying Cloud Run service has the expected
+  invoker IAM policy: HTTP/callable transports in the reviewed allowlist are
+  public, while scheduled/task Functions and unexpected services must not grant
+  invocation to `allUsers` or `allAuthenticatedUsers`;
 - required Secret Manager resources exist without reading their values;
 - the environment-specific section-file bucket has uniform bucket-level
   access, public-access prevention, and the checked-in temporary-upload
@@ -65,9 +69,11 @@ tokens, signed URLs, or raw log messages.
   previous 30 minutes is reported.
 
 Expected Functions and Firebase secrets are discovered from checked-in source
-contracts. Environment-specific resource expectations and required APIs live in
-`config/deployment-check.json`; update and review that file whenever the
-infrastructure contract changes.
+contracts. The explicit `expectedPublicInvokerFunctions` allowlist must match
+the source's HTTP and callable exports, so adding or removing an endpoint
+requires a reviewed infrastructure-contract change. Environment-specific
+resource expectations and required APIs live in `config/deployment-check.json`;
+update and review that file whenever the infrastructure contract changes.
 
 ## Deployment manifest
 
@@ -114,7 +120,7 @@ safely and completely through the current read-only APIs:
 - App Check registration, valid-token metrics, and enforcement state;
 - Authentication providers and authorized domains;
 - the active Firebase Storage ruleset and a negative unauthenticated probe;
-- unexpected Cloud Run invoker bindings and scanner service-account scope;
+- scanner service-account scope beyond the required invocation permission;
 - malware-definition freshness and the scheduled refresh job;
 - SQL backups, point-in-time recovery, deletion protection, and restore tests;
 - alerts, incident contacts, budget notifications, and external dashboard
@@ -149,6 +155,10 @@ have been separately reviewed.
   or a stale build was deployed. Rebuild and redeploy the reviewed commit.
 - **Unexpected Function:** establish ownership and whether it is still used
   before deleting anything. The audit never deletes it.
+- **Function invoker mismatch:** review both the exported trigger type and
+  `expectedPublicInvokerFunctions`. Never add an endpoint to the allowlist only
+  to make the check green; confirm its Firebase/app-level authentication and
+  authorization before approving public transport access.
 - **Permission denied:** grant the audit identity only the missing read role and
   rerun. Do not switch to Owner merely to make the report green.
 - **Warnings about recent errors:** inspect the bounded entries directly in

@@ -6,11 +6,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
+  assessFunctionInvokerPolicies,
   compareExpected,
   createReport,
   discoverFunctionContracts,
   exitCodeFor,
   formatHumanReport,
+  isPublicInvokerPolicy,
   normalizeResourceName,
   parseArguments,
   parseJsonOutput,
@@ -112,6 +114,22 @@ function fetchWithTimeout(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(15_000) });
 }
 
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const output = new Array(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      output[index] = await mapper(items[index]);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+  return output;
+}
+
 async function main() {
   let options;
   try {
@@ -133,6 +151,7 @@ async function main() {
     discoverFunctionContracts(path.join(repositoryRoot, "functions/src")),
   ]);
   const target = resolveTarget(firebaseRc, configuration, options.env);
+  const expectedPublicInvokerFunctions = configuration.expectedPublicInvokerFunctions ?? [];
   const results = [
     result(
       "target",
@@ -140,6 +159,29 @@ async function main() {
       `Resolved ${target.alias} to explicit project ${target.projectId}.`
     ),
   ];
+
+  const missingPublicContracts = compareExpected(
+    contracts.publicInvokerFunctions,
+    expectedPublicInvokerFunctions
+  );
+  const stalePublicContracts = compareExpected(
+    expectedPublicInvokerFunctions,
+    contracts.publicInvokerFunctions
+  );
+  results.push(
+    result(
+      "function-public-contract",
+      missingPublicContracts.length || stalePublicContracts.length
+        ? RESULT_STATUS.FAIL
+        : RESULT_STATUS.PASS,
+      missingPublicContracts.length || stalePublicContracts.length
+        ? "Function public-invoker allowlist does not match the checked-in HTTP/callable exports."
+        : "Function public-invoker allowlist matches the checked-in HTTP/callable exports.",
+      missingPublicContracts.length || stalePublicContracts.length
+        ? { missingPublicContracts, stalePublicContracts }
+        : undefined
+    )
+  );
 
   const firebaseProjects = await commandCheck(results, {
     id: "firebase-project",
@@ -366,6 +408,63 @@ async function main() {
       };
     },
   });
+
+  if (deployedFunctions && gcloudReady) {
+    const functionIamRecords = await mapWithConcurrency(
+      values(deployedFunctions),
+      6,
+      async (fn) => {
+        const functionName = normalizeResourceName(fn.name);
+        const serviceName = normalizeResourceName(fn.serviceConfig?.service);
+        if (!serviceName) {
+          return { functionName, error: "deployed Function did not report its Cloud Run service" };
+        }
+        try {
+          const policy = await runJson("gcloud", [
+            "run",
+            "services",
+            "get-iam-policy",
+            serviceName,
+            "--region",
+            target.region,
+            "--project",
+            target.projectId,
+            "--format=json",
+          ]);
+          return {
+            functionName,
+            serviceName,
+            publiclyInvokable: isPublicInvokerPolicy(policy),
+          };
+        } catch (error) {
+          return { functionName, serviceName, error: error.message };
+        }
+      }
+    );
+    const assessment = assessFunctionInvokerPolicies(
+      functionIamRecords,
+      expectedPublicInvokerFunctions
+    );
+    const failed = Object.values(assessment).some((entries) => entries.length > 0);
+    results.push(
+      result(
+        "function-cloud-run-iam",
+        failed ? RESULT_STATUS.FAIL : RESULT_STATUS.PASS,
+        failed
+          ? "Function Cloud Run invoker IAM differs from the explicit transport exposure contract."
+          : "Function Cloud Run invoker IAM matches the explicit transport exposure contract.",
+        failed ? assessment : undefined
+      )
+    );
+  } else {
+    results.push(
+      result(
+        "function-cloud-run-iam",
+        RESULT_STATUS.SKIP,
+        "Function Cloud Run IAM audit skipped because Function inventory or gcloud access was unavailable."
+      )
+    );
+  }
 
   await commandCheck(results, {
     id: "secrets",
@@ -672,7 +771,7 @@ async function main() {
     result(
       "manual-controls",
       RESULT_STATUS.WARN,
-      "Manually confirm App Check enforcement, Auth authorized domains/providers, deployed Storage rules, scanner IAM/definitions freshness, backups, alerts, and unexpected public invokers."
+      "Manually confirm App Check enforcement, Auth authorized domains/providers, deployed Storage rules, scanner definitions freshness, backups, and alerts."
     )
   );
 
