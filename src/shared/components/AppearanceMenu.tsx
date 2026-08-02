@@ -20,6 +20,7 @@ import {
   type ColorModePreference,
 } from "../appShell/ColorModeContext";
 import { useCookiePreferences } from "../cookies/CookiePreferencesContext";
+import { footerUtilityButtonSx } from "./footerUtilityStyles";
 
 const OPTIONS: Array<{
   value: ColorModePreference;
@@ -65,6 +66,7 @@ export default function AppearanceMenu() {
         aria-haspopup="menu"
         aria-expanded={open ? "true" : undefined}
         aria-controls={open ? "appearance-menu" : undefined}
+        sx={footerUtilityButtonSx}
       >
         {resolvedLabel}
       </Button>

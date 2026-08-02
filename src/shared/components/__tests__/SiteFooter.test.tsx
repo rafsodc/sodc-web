@@ -99,6 +99,25 @@ describe("site footer and cookie controls", () => {
     expect(within(systemButton).getByTestId("SettingsBrightnessIcon")).toBeInTheDocument();
   });
 
+  it("right-aligns compact translucent utility pills", () => {
+    renderUtilities();
+
+    const utilities = screen.getByTestId("footer-utilities");
+    expect(utilities).toHaveStyle({ justifyContent: "flex-end" });
+
+    const appearanceButton = screen.getByRole("button", {
+      name: "Appearance: System, currently Light mode",
+    });
+    const cookieButton = screen.getByRole("button", { name: "Cookie settings" });
+    for (const button of [appearanceButton, cookieButton]) {
+      expect(button).toHaveStyle({
+        borderRadius: "9999px",
+        backgroundColor: "rgba(255, 255, 255, 0.12)",
+      });
+    }
+    expect(within(cookieButton).getByTestId("CookieOutlinedIcon")).toBeInTheDocument();
+  });
+
   it("reopens settings and removes appearance storage when disabled", async () => {
     const user = userEvent.setup();
     renderUtilities();
