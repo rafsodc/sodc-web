@@ -58,6 +58,20 @@ Do not build a single global map of server message strings. Server copy is not a
 stable API and may expose implementation details. Add stable domain codes to the
 callable contract where they are missing.
 
+### Ambiguous failed preconditions
+
+The Firebase/gRPC `failed-precondition` transport code does not identify one
+user-facing category. This codebase uses it for both state conflicts (for example,
+an object changed and must be refreshed) and deployment configuration failures
+(for example, a provider is not configured). The shared classifier therefore
+maps an unqualified `failed-precondition` to neutral `precondition` guidance.
+
+Before adopting `toUserFacingError` for a callable that can return
+`failed-precondition`, add an application-owned `details.code` and a reviewed
+feature mapping whenever the UI must distinguish `conflict`, `configuration`,
+validation, or another outcome. Never infer that distinction from the callable's
+message text.
+
 ## Authentication and privacy
 
 `toAuthUserFacingError` centralises Firebase Auth mapping and takes a context so

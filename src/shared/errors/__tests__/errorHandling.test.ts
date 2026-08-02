@@ -34,7 +34,7 @@ describe("shared error handling", () => {
     ["functions/not-found", "not-found"],
     ["functions/resource-exhausted", "rate-limit"],
     ["auth/network-request-failed", "network"],
-    ["functions/failed-precondition", "configuration"],
+    ["functions/failed-precondition", "precondition"],
     ["functions/internal", "unknown"],
   ] as const)("classifies %s as %s", (code, category) => {
     expect(classifyError({ code })).toBe(category);
@@ -65,6 +65,21 @@ describe("shared error handling", () => {
       message: "You already have a booking for this event.",
       retryable: false,
     });
+  });
+
+  it("uses neutral guidance when failed-precondition has no stable domain code", () => {
+    const mapped = toUserFacingError({
+      code: "functions/failed-precondition",
+      message: "Stripe is not configured on the server",
+    });
+    expect(mapped).toEqual({
+      category: "precondition",
+      title: "The operation cannot be completed",
+      message:
+        "The operation cannot be completed in its current state. Refresh and try again. If the problem continues, contact an administrator.",
+      retryable: true,
+    });
+    expect(mapped.message).not.toContain("Stripe");
   });
 
   it("never exposes an unknown error message", () => {

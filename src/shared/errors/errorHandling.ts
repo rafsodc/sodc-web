@@ -3,6 +3,7 @@ export type ErrorCategory =
   | "authorization"
   | "validation"
   | "conflict"
+  | "precondition"
   | "not-found"
   | "rate-limit"
   | "network"
@@ -56,6 +57,13 @@ const DEFAULT_ERRORS: Record<ErrorCategory, UserFacingError> = {
     category: "conflict",
     title: "The information has changed",
     message: "Refresh the page, check the latest information, and try again.",
+    retryable: true,
+  },
+  precondition: {
+    category: "precondition",
+    title: "The operation cannot be completed",
+    message:
+      "The operation cannot be completed in its current state. Refresh and try again. If the problem continues, contact an administrator.",
     retryable: true,
   },
   "not-found": {
@@ -169,7 +177,10 @@ export function classifyError(error: unknown): ErrorCategory {
   ) {
     return "validation";
   }
-  if (code.includes("failed-precondition")) return "configuration";
+  // Firebase/gRPC failed-precondition is used for both state conflicts and
+  // deployment configuration in this codebase. It cannot safely distinguish
+  // those outcomes without an application-owned details.code mapping.
+  if (code.includes("failed-precondition")) return "precondition";
   if (code.startsWith("auth/")) return "authentication";
   return "unknown";
 }
