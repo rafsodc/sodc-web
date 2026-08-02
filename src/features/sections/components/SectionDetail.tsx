@@ -452,7 +452,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   if (loadingSection || loadingMembers || loadingUserGroups) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
         <Box className="loading-container">
           <CircularProgress />
@@ -463,7 +463,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
 
   if (errorSection || errorMembers || !sectionData?.section) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           {errorMembers && !errorSection ? errorMembers : "Failed to load section details. Please try again."}
@@ -499,7 +499,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   };
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
       <PageHeader
         title={pageTitle}
         onBack={handleHeaderBack}

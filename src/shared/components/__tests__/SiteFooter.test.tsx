@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { render, screen, waitFor } from "../../../test-utils";
+import { render, screen, waitFor, within } from "../../../test-utils";
 import CookieBanner from "../CookieBanner";
 import CookieSettingsDialog from "../CookieSettingsDialog";
 import SiteFooter from "../SiteFooter";
@@ -10,6 +10,19 @@ function clearCookies() {
     const name = cookie.split("=")[0]?.trim();
     if (name) document.cookie = `${name}=; max-age=0; path=/`;
   });
+}
+
+function mockSystemDarkMode(matches: boolean) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
 }
 
 function renderUtilities() {
@@ -23,7 +36,10 @@ function renderUtilities() {
 }
 
 describe("site footer and cookie controls", () => {
-  beforeEach(clearCookies);
+  beforeEach(() => {
+    clearCookies();
+    mockSystemDarkMode(false);
+  });
 
   it("shows an accurate first-visit banner and remembers rejection", async () => {
     const user = userEvent.setup();
@@ -49,7 +65,7 @@ describe("site footer and cookie controls", () => {
     renderUtilities();
 
     await user.click(
-      screen.getByRole("button", { name: "Appearance: System" })
+      screen.getByRole("button", { name: "Appearance: System, currently Light mode" })
     );
     expect(
       screen.getByText("Light and Dark use one cookie to remember your choice.")
@@ -60,16 +76,27 @@ describe("site footer and cookie controls", () => {
 
     await user.click(screen.getByRole("menuitem", { name: /Dark/ }));
 
-    expect(
-      screen.getByRole("button", { name: "Appearance: Dark" })
-    ).toBeInTheDocument();
+    const darkButton = screen.getByRole("button", { name: "Appearance: Dark mode" });
+    expect(darkButton).toHaveTextContent("Dark mode");
+    expect(within(darkButton).getByTestId("DarkModeIcon")).toBeInTheDocument();
     expect(document.cookie).toContain("sodc-color-mode-preference=dark");
     expect(document.cookie).toContain("sodc-cookie-preferences=accepted");
 
-    await user.click(screen.getByRole("button", { name: "Appearance: Dark" }));
+    await user.click(darkButton);
     expect(
       screen.queryByText("Light and Dark use one cookie to remember your choice.")
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the resolved mode but retains the System icon for a system preference", () => {
+    mockSystemDarkMode(true);
+    renderUtilities();
+
+    const systemButton = screen.getByRole("button", {
+      name: "Appearance: System, currently Dark mode",
+    });
+    expect(systemButton).toHaveTextContent("Dark mode");
+    expect(within(systemButton).getByTestId("SettingsBrightnessIcon")).toBeInTheDocument();
   });
 
   it("reopens settings and removes appearance storage when disabled", async () => {
@@ -77,9 +104,12 @@ describe("site footer and cookie controls", () => {
     renderUtilities();
 
     await user.click(
-      screen.getByRole("button", { name: "Appearance: System" })
+      screen.getByRole("button", { name: "Appearance: System, currently Light mode" })
     );
     await user.click(screen.getByRole("menuitem", { name: /Light/ }));
+    const lightButton = screen.getByRole("button", { name: "Appearance: Light mode" });
+    expect(lightButton).toHaveTextContent("Light mode");
+    expect(within(lightButton).getByTestId("LightModeIcon")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cookie settings" }));
 
     const appearanceSwitch = screen.getByRole("switch", {
@@ -91,13 +121,17 @@ describe("site footer and cookie controls", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "Appearance: System" })
+        screen.getByRole("button", {
+          name: "Appearance: System, currently Light mode",
+        }),
       ).toBeInTheDocument();
     });
     expect(document.cookie).not.toContain("sodc-color-mode-preference=");
     expect(document.cookie).toContain("sodc-cookie-preferences=rejected");
 
-    await user.click(screen.getByRole("button", { name: "Appearance: System" }));
+    await user.click(
+      screen.getByRole("button", { name: "Appearance: System, currently Light mode" }),
+    );
     expect(
       screen.getByText("Light and Dark use one cookie to remember your choice.")
     ).toBeInTheDocument();

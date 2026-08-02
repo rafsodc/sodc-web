@@ -191,7 +191,7 @@ function AppContent() {
 
   if (!isOnline) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <Box sx={{ maxWidth: { sm: "700px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
@@ -209,7 +209,7 @@ function AppContent() {
 
   if (emailNotVerified && !isPublicAuthAction) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box
           component="main"
@@ -246,7 +246,7 @@ function AppContent() {
     (!authInitialized || (user && !isEnabledClaimResolved))
   ) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <LoadingFallback />
@@ -257,7 +257,7 @@ function AppContent() {
 
   if (user && !isEnabledClaimResolved && !isPublicAuthAction) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <LoadingFallback />
@@ -273,7 +273,7 @@ function AppContent() {
     !isPublicAuthAction
   ) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Navigate to={ROUTES.PROFILE_COMPLETION} replace />
       </Box>
@@ -298,7 +298,7 @@ function AppContent() {
     const showApprovalStep = inactiveUserData?.membershipStatus === "PENDING";
 
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box
           component="main"
@@ -381,7 +381,7 @@ function AppContent() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+    <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
       <Snackbar
         open={logoutSuccess}
         autoHideDuration={6000}
@@ -714,8 +714,19 @@ function AppContent() {
 export default function App() {
   return (
     <>
-      <AppContent />
-      <SiteFooter />
+      <Box
+        data-testid="app-shell"
+        sx={{
+          minHeight: "100dvh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "background.default",
+        }}
+      >
+        <AppContent />
+        <SiteFooter />
+      </Box>
       <CookieBanner />
       <CookieSettingsDialog />
     </>

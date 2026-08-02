@@ -325,6 +325,21 @@ describe("App routing", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
   });
 
+  it("keeps the footer at the viewport edge on short pages without fixing it over content", async () => {
+    renderApp([ROUTES.HOME]);
+
+    expect(await screen.findByRole("heading", { name: "Public Home Page" })).toBeInTheDocument();
+    const shell = screen.getByTestId("app-shell");
+    const footer = screen.getByRole("contentinfo");
+    expect(shell).toHaveStyle({
+      display: "flex",
+      flexDirection: "column",
+      minHeight: "100dvh",
+    });
+    expect(shell.lastElementChild).toBe(footer);
+    expect(footer).not.toHaveStyle({ position: "fixed" });
+  });
+
   it("renders the register page from a direct deep link when logged out", async () => {
     renderApp([ROUTES.REGISTER]);
 

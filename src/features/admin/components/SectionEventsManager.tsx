@@ -407,7 +407,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       : event ?? null;
     const ticketTypes = eventDetailData?.event?.ticketTypes ?? [];
     return (
-      <Box className="page-container" sx={{ backgroundColor: "#fafafa", minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "#fafafa" }}>
         <TicketAdminSurface
           event={eventForAdmin}
           eventTitle={eventForAdmin?.title ?? "Event"}
@@ -491,7 +491,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   }
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: "#fafafa", minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "#fafafa" }}>
       <EventListSurface
         sectionName={sectionName}
         onBack={onBack}

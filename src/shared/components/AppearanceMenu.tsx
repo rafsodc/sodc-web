@@ -26,17 +26,27 @@ const OPTIONS: Array<{
   label: string;
   icon: typeof SettingsBrightness;
 }> = [
-  { value: "system", label: "System", icon: SettingsBrightness },
   { value: "light", label: "Light", icon: LightMode },
   { value: "dark", label: "Dark", icon: DarkMode },
+  { value: "system", label: "System", icon: SettingsBrightness },
 ];
 
 export default function AppearanceMenu() {
-  const { preference, setPreference } = useColorMode();
+  const { preference, resolvedMode, setPreference } = useColorMode();
   const { decision } = useCookiePreferences();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
-  const selectedLabel = OPTIONS.find(({ value }) => value === preference)?.label;
+  const resolvedLabel = resolvedMode === "dark" ? "Dark mode" : "Light mode";
+  const accessibleLabel =
+    preference === "system"
+      ? `Appearance: System, currently ${resolvedLabel}`
+      : `Appearance: ${resolvedLabel}`;
+  const StatusIcon =
+    preference === "system"
+      ? SettingsBrightness
+      : resolvedMode === "dark"
+        ? DarkMode
+        : LightMode;
 
   const choose = (value: ColorModePreference) => {
     setPreference(value);
@@ -48,21 +58,25 @@ export default function AppearanceMenu() {
       <Button
         size="small"
         color="inherit"
-        startIcon={<SettingsBrightness />}
+        startIcon={<StatusIcon />}
         endIcon={<ExpandMore />}
         onClick={(event) => setAnchorEl(event.currentTarget)}
+        aria-label={accessibleLabel}
         aria-haspopup="menu"
         aria-expanded={open ? "true" : undefined}
         aria-controls={open ? "appearance-menu" : undefined}
       >
-        Appearance: {selectedLabel}
+        {resolvedLabel}
       </Button>
       <Menu
         id="appearance-menu"
         anchorEl={anchorEl}
         open={open}
         onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "left" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
         MenuListProps={{ "aria-label": "Choose appearance" }}
+        slotProps={{ paper: { sx: { minWidth: 180 } } }}
       >
         {decision !== "accepted" ? (
           <Box component="li" role="presentation" sx={{ maxWidth: 260, px: 2, py: 1 }}>
