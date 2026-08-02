@@ -15,6 +15,7 @@ import {
   LightMode,
   SettingsBrightness,
 } from "@mui/icons-material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import {
   useColorMode,
   type ColorModePreference,
@@ -32,7 +33,32 @@ const OPTIONS: Array<{
   { value: "system", label: "System", icon: SettingsBrightness },
 ];
 
-export default function AppearanceMenu() {
+interface AppearanceMenuProps {
+  surface?: "footer" | "drawer";
+  onPreferenceChange?: () => void;
+}
+
+const drawerButtonSx: SxProps<Theme> = {
+  width: "100%",
+  minHeight: 48,
+  justifyContent: "flex-start",
+  px: 2,
+  color: "text.primary",
+  textTransform: "none",
+  borderRadius: 0,
+  "& .MuiButton-startIcon": {
+    width: 24,
+    mr: 2,
+  },
+  "& .MuiButton-endIcon": {
+    ml: "auto",
+  },
+};
+
+export default function AppearanceMenu({
+  surface = "footer",
+  onPreferenceChange,
+}: AppearanceMenuProps) {
   const { preference, resolvedMode, setPreference } = useColorMode();
   const { decision } = useCookiePreferences();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -52,13 +78,16 @@ export default function AppearanceMenu() {
   const choose = (value: ColorModePreference) => {
     setPreference(value);
     setAnchorEl(null);
+    onPreferenceChange?.();
   };
+
+  const isDrawer = surface === "drawer";
 
   return (
     <>
       <Button
         size="small"
-        color="inherit"
+        color={isDrawer ? "primary" : "inherit"}
         startIcon={<StatusIcon />}
         endIcon={<ExpandMore />}
         onClick={(event) => setAnchorEl(event.currentTarget)}
@@ -66,7 +95,7 @@ export default function AppearanceMenu() {
         aria-haspopup="menu"
         aria-expanded={open ? "true" : undefined}
         aria-controls={open ? "appearance-menu" : undefined}
-        sx={footerUtilityButtonSx}
+        sx={isDrawer ? drawerButtonSx : footerUtilityButtonSx}
       >
         {resolvedLabel}
       </Button>
@@ -75,8 +104,8 @@ export default function AppearanceMenu() {
         anchorEl={anchorEl}
         open={open}
         onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "left" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+        anchorOrigin={{ vertical: isDrawer ? "bottom" : "top", horizontal: "left" }}
+        transformOrigin={{ vertical: isDrawer ? "top" : "bottom", horizontal: "left" }}
         MenuListProps={{ "aria-label": "Choose appearance" }}
         slotProps={{ paper: { sx: { minWidth: 180 } } }}
       >

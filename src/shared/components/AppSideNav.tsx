@@ -12,9 +12,6 @@ interface AppSideNavProps {
   pathname: string;
   selectedAdminSectionId?: string | null;
   selectedAdminUserGroupId?: string | null;
-  /** Controlled open state for the temporary (mobile) drawer. */
-  mobileOpen: boolean;
-  onMobileClose: () => void;
 }
 
 function isActive(pathname: string, to: string): boolean {
@@ -127,7 +124,7 @@ function getSelectedChild({
   );
 }
 
-function SideNavContent({
+export function SideNavContent({
   sections,
   adminLinks,
   pathname,
@@ -174,63 +171,30 @@ export default function AppSideNav({
   pathname,
   selectedAdminSectionId,
   selectedAdminUserGroupId,
-  mobileOpen,
-  onMobileClose,
 }: AppSideNavProps) {
-  const closeOnNavigate = () => {
-    onMobileClose();
-  };
-
   return (
-    <>
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={onMobileClose}
-        ModalProps={{ keepMounted: true }}
-        sx={{
-          display: { xs: "block", md: "none" },
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-            top: `${headerHeight}px`,
-            height: `calc(100% - ${headerHeight}px)`,
-          },
-        }}
-      >
-        <SideNavContent
-          sections={sections}
-          adminLinks={adminLinks}
-          pathname={pathname}
-          selectedAdminSectionId={selectedAdminSectionId}
-          selectedAdminUserGroupId={selectedAdminUserGroupId}
-          onItemNavigate={closeOnNavigate}
-        />
-      </Drawer>
-
-      <Drawer
-        variant="permanent"
-        sx={{
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        "& .MuiDrawer-paper": {
           width: drawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-            borderRight: "1px solid rgba(0,0,0,0.08)",
-            top: `${headerHeight}px`,
-            height: `calc(100% - ${headerHeight}px)`,
-          },
-          display: { xs: "none", md: "block" },
-        }}
-      >
-        <SideNavContent
-          sections={sections}
-          adminLinks={adminLinks}
-          pathname={pathname}
-          selectedAdminSectionId={selectedAdminSectionId}
-          selectedAdminUserGroupId={selectedAdminUserGroupId}
-        />
-      </Drawer>
-    </>
+          boxSizing: "border-box",
+          borderRight: "1px solid rgba(0,0,0,0.08)",
+          top: `${headerHeight}px`,
+          height: `calc(100% - ${headerHeight}px)`,
+        },
+        display: { xs: "none", md: "block" },
+      }}
+    >
+      <SideNavContent
+        sections={sections}
+        adminLinks={adminLinks}
+        pathname={pathname}
+        selectedAdminSectionId={selectedAdminSectionId}
+        selectedAdminUserGroupId={selectedAdminUserGroupId}
+      />
+    </Drawer>
   );
 }

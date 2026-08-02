@@ -19,6 +19,22 @@ vi.mock("../../../features/users/hooks/useEnabledClaim", () => ({
 }));
 
 describe("Header account menu", () => {
+  it("keeps Sign in and Join in the header while exposing the mobile menu", () => {
+    render(
+      <Header
+        user={null}
+        userData={null}
+        onAccountClick={vi.fn()}
+        onJoinClick={vi.fn()}
+        onNavMenuOpen={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Join" })).toBeInTheDocument();
+  });
+
   it("shows My Bookings and My Payments for enabled users", async () => {
     const user = userEvent.setup();
     const onMyBookingsClick = vi.fn();

@@ -11,14 +11,17 @@ export default function SiteFooter() {
     <Box
       component="footer"
       sx={{
+        display: { xs: "none", sm: "block" },
         width: "100%",
         borderTop: 1,
-        borderColor: "rgba(255, 255, 255, 0.18)",
-        backgroundColor: "primary.main",
-        color: "common.white",
+        borderColor: "divider",
+        backgroundColor: (theme) =>
+          theme.palette.mode === "light" ? theme.palette.grey[100] : theme.palette.grey[900],
+        color: "text.primary",
       }}
     >
       <Stack
+        data-testid="footer-status-row"
         direction="row"
         sx={{
           maxWidth: 1200,
@@ -26,7 +29,7 @@ export default function SiteFooter() {
           px: { xs: 2, sm: 3 },
           py: 1.25,
           alignItems: "center",
-          flexWrap: "wrap",
+          flexWrap: "nowrap",
           columnGap: 1.5,
           rowGap: 1,
         }}
@@ -37,10 +40,10 @@ export default function SiteFooter() {
         <Box
           data-testid="footer-utilities"
           sx={{
-            width: { xs: "100%", sm: "auto" },
+            width: "auto",
             ml: "auto",
             display: "flex",
-            flexWrap: "wrap",
+            flexWrap: "nowrap",
             justifyContent: "flex-end",
             alignItems: "center",
             gap: 1,

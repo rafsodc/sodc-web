@@ -99,9 +99,10 @@ describe("site footer and cookie controls", () => {
     expect(within(systemButton).getByTestId("SettingsBrightnessIcon")).toBeInTheDocument();
   });
 
-  it("right-aligns compact translucent utility pills", () => {
+  it("keeps quiet utility pills on a single desktop status row", () => {
     renderUtilities();
 
+    expect(screen.getByTestId("footer-status-row")).toHaveStyle({ flexWrap: "nowrap" });
     const utilities = screen.getByTestId("footer-utilities");
     expect(utilities).toHaveStyle({ justifyContent: "flex-end" });
 
@@ -112,7 +113,7 @@ describe("site footer and cookie controls", () => {
     for (const button of [appearanceButton, cookieButton]) {
       expect(button).toHaveStyle({
         borderRadius: "9999px",
-        backgroundColor: "rgba(255, 255, 255, 0.12)",
+        backgroundColor: "rgba(0, 0, 0, 0.04)",
       });
     }
     expect(within(cookieButton).getByTestId("CookieOutlinedIcon")).toBeInTheDocument();

@@ -9,6 +9,7 @@ import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import AppSideNav from "./shared/components/AppSideNav";
+import MobileNavigationDrawer from "./shared/components/MobileNavigationDrawer";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
 import { ROUTES } from "./constants";
@@ -176,17 +177,28 @@ function AppContent() {
     getSelectedAdminUserGroupId(location.pathname, ROUTES.USER_GROUPS, location.state);
 
   const header = (
-    <Header
-      user={user}
-      userData={userData}
-      onAccountClick={() => navigate(ROUTES.ACCOUNT)}
-      onProfileClick={() => navigate(ROUTES.PROFILE)}
-      onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
-      onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
-      onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
-      onJoinClick={() => navigate(ROUTES.REGISTER)}
-      onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
-    />
+    <>
+      <Header
+        user={user}
+        userData={userData}
+        onAccountClick={() => navigate(ROUTES.ACCOUNT)}
+        onProfileClick={() => navigate(ROUTES.PROFILE)}
+        onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
+        onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
+        onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
+        onJoinClick={() => navigate(ROUTES.REGISTER)}
+        onNavMenuOpen={() => setMobileNavOpen(true)}
+      />
+      <MobileNavigationDrawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        sections={navigationLinks.sections}
+        adminLinks={navigationLinks.admin}
+        pathname={location.pathname}
+        selectedAdminSectionId={selectedAdminSectionId}
+        selectedAdminUserGroupId={selectedAdminUserGroupId}
+      />
+    </>
   );
 
   if (!isOnline) {
@@ -420,8 +432,6 @@ function AppContent() {
             pathname={location.pathname}
             selectedAdminSectionId={selectedAdminSectionId}
             selectedAdminUserGroupId={selectedAdminUserGroupId}
-            mobileOpen={mobileNavOpen}
-            onMobileClose={() => setMobileNavOpen(false)}
           />
         ) : null}
         <Box

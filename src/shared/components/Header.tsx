@@ -15,7 +15,7 @@ interface HeaderProps {
   onAccountSettingsClick?: () => void;
   onMyBookingsClick?: () => void;
   onMyPaymentsClick?: () => void;
-  /** When set, shows a hamburger on small screens that opens the side navigation. */
+  /** Opens the responsive navigation and settings drawer. */
   onNavMenuOpen?: () => void;
 }
 
@@ -103,13 +103,18 @@ export default function Header({
       }}
     >
       <Toolbar>
-        {user && isEnabled && onNavMenuOpen ? (
+        {onNavMenuOpen ? (
           <IconButton
             color="inherit"
             edge="start"
             aria-label="Open navigation menu"
             onClick={onNavMenuOpen}
-            sx={{ mr: 1, display: { xs: "inline-flex", md: "none" } }}
+            sx={{
+              mr: 1,
+              display: user && isEnabled
+                ? { xs: "inline-flex", md: "none" }
+                : { xs: "inline-flex", sm: "none" },
+            }}
           >
             <MenuIcon />
           </IconButton>
