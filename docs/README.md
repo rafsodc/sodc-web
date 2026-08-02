@@ -17,6 +17,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `architecture/booking-data-model.md`: booking entities, relationships, and issue cross-links.
 - `architecture/booking-submission-api.md`: callable contract for `submitEventBooking`.
 - `architecture/security-and-permissions.md`: auth model across Data Connect and Cloud Functions.
+- `architecture/error-handling.md`: shared safe error contract, provider/domain-code mapping, diagnostic reporting, and privacy rules.
 - `operations/environment-and-secrets.md`: environment variables and secrets matrix.
 - `operations/environments-dev-beta-prod.md`: Dev / Beta / Prod Firebase projects, schema-first deploy flow, smoke-test and rollback checkpoints, and local setup (cloud-backed dev; no emulators).
 - `operations/new-production-instance.md`: first-time Firebase/GCP production provisioning, integrations, administrator bootstrap, deployment, and go-live checklist.
