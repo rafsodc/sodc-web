@@ -106,7 +106,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   };
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Box sx={{ flex: 1 }}>
           <PageHeader title="Audit Logs" onBack={onBack} />

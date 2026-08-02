@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AppSideNav from "../AppSideNav";
@@ -25,8 +25,6 @@ describe("AppSideNav", () => {
             },
             { label: "Manage Users", to: "/admin/users" },
           ]}
-          mobileOpen={false}
-          onMobileClose={vi.fn()}
         />
       </MemoryRouter>
     );
@@ -59,8 +57,6 @@ describe("AppSideNav", () => {
               children: [{ label: "Events", to: "/admin/sections", state: { managedSection: { id: "events" } } }],
             },
           ]}
-          mobileOpen={false}
-          onMobileClose={vi.fn()}
         />
       </MemoryRouter>
     );
@@ -100,8 +96,6 @@ describe("AppSideNav", () => {
               ],
             },
           ]}
-          mobileOpen={false}
-          onMobileClose={vi.fn()}
         />
       </MemoryRouter>
     );
@@ -136,8 +130,6 @@ describe("AppSideNav", () => {
               children: [{ label: "Events", to: "/admin/sections", state: { managedSection: { id: "events" } } }],
             },
           ]}
-          mobileOpen={false}
-          onMobileClose={vi.fn()}
         />
       </MemoryRouter>
     );
@@ -165,8 +157,6 @@ describe("AppSideNav", () => {
               ],
             },
           ]}
-          mobileOpen={false}
-          onMobileClose={vi.fn()}
         />
       </MemoryRouter>
     );

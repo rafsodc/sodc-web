@@ -9,6 +9,7 @@ import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import AppSideNav from "./shared/components/AppSideNav";
+import MobileNavigationMenu from "./shared/components/MobileNavigationMenu";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
 import { ROUTES } from "./constants";
@@ -108,7 +109,7 @@ function AppContent() {
   } = useAppAuthSession(handleLoggedOut);
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavAnchorEl, setMobileNavAnchorEl] = useState<HTMLElement | null>(null);
   const [profileReviewCompletedForUid, setProfileReviewCompletedForUid] = useState<string | null>(
     null,
   );
@@ -129,7 +130,7 @@ function AppContent() {
   const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    setMobileNavAnchorEl(null);
   }, [location.pathname]);
 
   const handleProfileUpdate = useCallback(() => {
@@ -176,22 +177,33 @@ function AppContent() {
     getSelectedAdminUserGroupId(location.pathname, ROUTES.USER_GROUPS, location.state);
 
   const header = (
-    <Header
-      user={user}
-      userData={userData}
-      onAccountClick={() => navigate(ROUTES.ACCOUNT)}
-      onProfileClick={() => navigate(ROUTES.PROFILE)}
-      onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
-      onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
-      onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
-      onJoinClick={() => navigate(ROUTES.REGISTER)}
-      onNavMenuOpen={user && isEnabled ? () => setMobileNavOpen(true) : undefined}
-    />
+    <>
+      <Header
+        user={user}
+        userData={userData}
+        onAccountClick={() => navigate(ROUTES.ACCOUNT)}
+        onProfileClick={() => navigate(ROUTES.PROFILE)}
+        onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
+        onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
+        onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
+        onJoinClick={() => navigate(ROUTES.REGISTER)}
+        onNavMenuOpen={setMobileNavAnchorEl}
+      />
+      <MobileNavigationMenu
+        anchorEl={mobileNavAnchorEl}
+        onClose={() => setMobileNavAnchorEl(null)}
+        sections={navigationLinks.sections}
+        adminLinks={navigationLinks.admin}
+        pathname={location.pathname}
+        selectedAdminSectionId={selectedAdminSectionId}
+        selectedAdminUserGroupId={selectedAdminUserGroupId}
+      />
+    </>
   );
 
   if (!isOnline) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <Box sx={{ maxWidth: { sm: "700px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
@@ -209,7 +221,7 @@ function AppContent() {
 
   if (emailNotVerified && !isPublicAuthAction) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box
           component="main"
@@ -246,7 +258,7 @@ function AppContent() {
     (!authInitialized || (user && !isEnabledClaimResolved))
   ) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <LoadingFallback />
@@ -257,7 +269,7 @@ function AppContent() {
 
   if (user && !isEnabledClaimResolved && !isPublicAuthAction) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <LoadingFallback />
@@ -273,7 +285,7 @@ function AppContent() {
     !isPublicAuthAction
   ) {
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Navigate to={ROUTES.PROFILE_COMPLETION} replace />
       </Box>
@@ -298,7 +310,7 @@ function AppContent() {
     const showApprovalStep = inactiveUserData?.membershipStatus === "PENDING";
 
     return (
-      <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
         <Box
           component="main"
@@ -381,7 +393,7 @@ function AppContent() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+    <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
       <Snackbar
         open={logoutSuccess}
         autoHideDuration={6000}
@@ -420,8 +432,6 @@ function AppContent() {
             pathname={location.pathname}
             selectedAdminSectionId={selectedAdminSectionId}
             selectedAdminUserGroupId={selectedAdminUserGroupId}
-            mobileOpen={mobileNavOpen}
-            onMobileClose={() => setMobileNavOpen(false)}
           />
         ) : null}
         <Box
@@ -714,8 +724,19 @@ function AppContent() {
 export default function App() {
   return (
     <>
-      <AppContent />
-      <SiteFooter />
+      <Box
+        data-testid="app-shell"
+        sx={{
+          minHeight: "100dvh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "background.default",
+        }}
+      >
+        <AppContent />
+        <SiteFooter />
+      </Box>
       <CookieBanner />
       <CookieSettingsDialog />
     </>

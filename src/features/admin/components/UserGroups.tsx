@@ -445,7 +445,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+      <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="User Groups" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Access denied. Admin privileges required to manage user groups.
@@ -455,7 +455,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   }
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+    <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
       <UserGroupsListSurface
         onBack={onBack}
         error={error}
