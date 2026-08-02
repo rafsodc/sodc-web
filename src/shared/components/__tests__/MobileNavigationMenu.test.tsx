@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "../../../test-utils";
-import MobileNavigationDrawer from "../MobileNavigationDrawer";
+import MobileNavigationMenu from "../MobileNavigationMenu";
 
-function renderDrawer(onClose = vi.fn()) {
+function renderMenu(onClose = vi.fn()) {
   render(
     <MemoryRouter>
-      <MobileNavigationDrawer
-        open
+      <MobileNavigationMenu
+        anchorEl={document.body}
         onClose={onClose}
         pathname="/sections/events"
         sections={[{ label: "Events", to: "/sections/events" }]}
@@ -19,14 +19,14 @@ function renderDrawer(onClose = vi.fn()) {
   return onClose;
 }
 
-describe("MobileNavigationDrawer", () => {
-  it("combines application navigation with appearance and cookie settings", () => {
-    renderDrawer();
+describe("MobileNavigationMenu", () => {
+  it("combines application navigation with aligned appearance and cookie rows", () => {
+    renderMenu();
 
-    const drawer = screen.getByRole("navigation", {
+    const menu = screen.getByRole("navigation", {
       name: "Mobile navigation and settings",
     });
-    expect(drawer).toBeInTheDocument();
+    expect(menu).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute(
       "href",
       "/sections/events",
@@ -35,19 +35,19 @@ describe("MobileNavigationDrawer", () => {
       "href",
       "/admin/users",
     );
+
     const appearanceButton = screen.getByRole("button", { name: /Appearance:/ });
-    expect(appearanceButton).toBeInTheDocument();
-    expect(appearanceButton).toHaveStyle({
-      fontSize: "1rem",
-      fontWeight: "400",
-      lineHeight: "1.5",
-    });
-    expect(screen.getByRole("button", { name: "Cookie settings" })).toBeInTheDocument();
+    const cookieButton = screen.getByRole("button", { name: "Cookie settings" });
+    for (const button of [appearanceButton, cookieButton]) {
+      expect(button).toHaveClass("MuiListItemButton-root");
+      expect(button.querySelector(".MuiListItemIcon-root")).toBeInTheDocument();
+      expect(button.querySelector(".MuiListItemText-root")).toBeInTheDocument();
+    }
   });
 
   it("closes after navigation or choosing a setting", async () => {
     const user = userEvent.setup();
-    const onClose = renderDrawer();
+    const onClose = renderMenu();
 
     await user.click(screen.getByRole("link", { name: "Events" }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -59,7 +59,7 @@ describe("MobileNavigationDrawer", () => {
 
   it("closes before opening cookie settings", async () => {
     const user = userEvent.setup();
-    const onClose = renderDrawer();
+    const onClose = renderMenu();
 
     await user.click(screen.getByRole("button", { name: "Cookie settings" }));
 

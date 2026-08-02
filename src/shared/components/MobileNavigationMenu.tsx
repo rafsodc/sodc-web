@@ -1,11 +1,11 @@
 import {
   Box,
   Divider,
-  Drawer,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Popover,
   Typography,
 } from "@mui/material";
 import { CookieOutlined } from "@mui/icons-material";
@@ -15,10 +15,8 @@ import AppearanceMenu from "./AppearanceMenu";
 import { SideNavContent } from "./AppSideNav";
 import { drawerWidth } from "./appSideNavConstants";
 
-const headerHeight = 64;
-
-interface MobileNavigationDrawerProps {
-  open: boolean;
+interface MobileNavigationMenuProps {
+  anchorEl: HTMLElement | null;
   onClose: () => void;
   sections: NavigationLink[];
   adminLinks: NavigationLink[];
@@ -27,16 +25,17 @@ interface MobileNavigationDrawerProps {
   selectedAdminUserGroupId?: string | null;
 }
 
-export default function MobileNavigationDrawer({
-  open,
+export default function MobileNavigationMenu({
+  anchorEl,
   onClose,
   sections,
   adminLinks,
   pathname,
   selectedAdminSectionId,
   selectedAdminUserGroupId,
-}: MobileNavigationDrawerProps) {
+}: MobileNavigationMenuProps) {
   const { openSettings } = useCookiePreferences();
+  const hasNavigation = sections.length > 0 || adminLinks.length > 0;
 
   const handleCookieSettings = () => {
     onClose();
@@ -44,29 +43,26 @@ export default function MobileNavigationDrawer({
   };
 
   return (
-    <Drawer
-      variant="temporary"
-      open={open}
+    <Popover
+      open={Boolean(anchorEl)}
+      anchorEl={anchorEl}
       onClose={onClose}
-      ModalProps={{ keepMounted: true }}
-      sx={{
-        display: { xs: "block", md: "none" },
-        "& .MuiDrawer-paper": {
-          width: drawerWidth,
-          boxSizing: "border-box",
-          top: `${headerHeight}px`,
-          height: `calc(100% - ${headerHeight}px)`,
-          display: "flex",
-          flexDirection: "column",
+      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+      transformOrigin={{ vertical: "top", horizontal: "left" }}
+      marginThreshold={8}
+      slotProps={{
+        paper: {
+          sx: {
+            width: drawerWidth,
+            maxWidth: "calc(100vw - 16px)",
+            maxHeight: "calc(100dvh - 72px)",
+            overflow: "auto",
+          },
         },
       }}
     >
-      <Box
-        component="nav"
-        aria-label="Mobile navigation and settings"
-        sx={{ display: "flex", flex: 1, minHeight: 0, flexDirection: "column" }}
-      >
-        <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+      <Box component="nav" aria-label="Mobile navigation and settings">
+        {hasNavigation ? (
           <SideNavContent
             sections={sections}
             adminLinks={adminLinks}
@@ -75,9 +71,9 @@ export default function MobileNavigationDrawer({
             selectedAdminUserGroupId={selectedAdminUserGroupId}
             onItemNavigate={onClose}
           />
-        </Box>
+        ) : null}
         <Box sx={{ display: { xs: "block", sm: "none" } }}>
-          <Divider />
+          {hasNavigation ? <Divider /> : null}
           <Typography
             variant="overline"
             color="text.secondary"
@@ -86,7 +82,7 @@ export default function MobileNavigationDrawer({
             Settings
           </Typography>
           <List disablePadding sx={{ pb: 1 }}>
-            <AppearanceMenu surface="drawer" onPreferenceChange={onClose} />
+            <AppearanceMenu surface="navigation" onPreferenceChange={onClose} />
             <ListItemButton onClick={handleCookieSettings}>
               <ListItemIcon>
                 <CookieOutlined fontSize="small" />
@@ -96,6 +92,6 @@ export default function MobileNavigationDrawer({
           </List>
         </Box>
       </Box>
-    </Drawer>
+    </Popover>
   );
 }

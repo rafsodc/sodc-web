@@ -15,8 +15,8 @@ interface HeaderProps {
   onAccountSettingsClick?: () => void;
   onMyBookingsClick?: () => void;
   onMyPaymentsClick?: () => void;
-  /** Opens the responsive navigation and settings drawer. */
-  onNavMenuOpen?: () => void;
+  /** Opens the responsive navigation and settings menu from this anchor. */
+  onNavMenuOpen?: (anchorEl: HTMLElement) => void;
 }
 
 function getFullName(userData: UserData | null): string {
@@ -108,7 +108,7 @@ export default function Header({
             color="inherit"
             edge="start"
             aria-label="Open navigation menu"
-            onClick={onNavMenuOpen}
+            onClick={(event) => onNavMenuOpen(event.currentTarget)}
             sx={{
               mr: 1,
               display: user && isEnabled

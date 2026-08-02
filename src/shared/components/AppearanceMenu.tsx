@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Box,
   Button,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -15,7 +16,6 @@ import {
   LightMode,
   SettingsBrightness,
 } from "@mui/icons-material";
-import type { SxProps, Theme } from "@mui/material/styles";
 import {
   useColorMode,
   type ColorModePreference,
@@ -34,30 +34,9 @@ const OPTIONS: Array<{
 ];
 
 interface AppearanceMenuProps {
-  surface?: "footer" | "drawer";
+  surface?: "footer" | "navigation";
   onPreferenceChange?: () => void;
 }
-
-const drawerButtonSx: SxProps<Theme> = {
-  width: "100%",
-  minHeight: 48,
-  justifyContent: "flex-start",
-  px: 2,
-  color: "text.primary",
-  fontSize: "1rem",
-  fontWeight: 400,
-  lineHeight: 1.5,
-  letterSpacing: "0.00938em",
-  textTransform: "none",
-  borderRadius: 0,
-  "& .MuiButton-startIcon": {
-    width: 24,
-    mr: 2,
-  },
-  "& .MuiButton-endIcon": {
-    ml: "auto",
-  },
-};
 
 export default function AppearanceMenu({
   surface = "footer",
@@ -85,31 +64,48 @@ export default function AppearanceMenu({
     onPreferenceChange?.();
   };
 
-  const isDrawer = surface === "drawer";
+  const isNavigation = surface === "navigation";
+  const menuId = `appearance-menu-${surface}`;
 
   return (
     <>
-      <Button
-        size="small"
-        color={isDrawer ? "primary" : "inherit"}
-        startIcon={<StatusIcon />}
-        endIcon={<ExpandMore />}
-        onClick={(event) => setAnchorEl(event.currentTarget)}
-        aria-label={accessibleLabel}
-        aria-haspopup="menu"
-        aria-expanded={open ? "true" : undefined}
-        aria-controls={open ? "appearance-menu" : undefined}
-        sx={isDrawer ? drawerButtonSx : footerUtilityButtonSx}
-      >
-        {resolvedLabel}
-      </Button>
+      {isNavigation ? (
+        <ListItemButton
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+          aria-label={accessibleLabel}
+          aria-haspopup="menu"
+          aria-expanded={open ? "true" : undefined}
+          aria-controls={open ? menuId : undefined}
+        >
+          <ListItemIcon>
+            <StatusIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={resolvedLabel} />
+          <ExpandMore fontSize="small" />
+        </ListItemButton>
+      ) : (
+        <Button
+          size="small"
+          color="inherit"
+          startIcon={<StatusIcon />}
+          endIcon={<ExpandMore />}
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+          aria-label={accessibleLabel}
+          aria-haspopup="menu"
+          aria-expanded={open ? "true" : undefined}
+          aria-controls={open ? menuId : undefined}
+          sx={footerUtilityButtonSx}
+        >
+          {resolvedLabel}
+        </Button>
+      )}
       <Menu
-        id="appearance-menu"
+        id={menuId}
         anchorEl={anchorEl}
         open={open}
         onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: isDrawer ? "bottom" : "top", horizontal: "left" }}
-        transformOrigin={{ vertical: isDrawer ? "top" : "bottom", horizontal: "left" }}
+        anchorOrigin={{ vertical: isNavigation ? "bottom" : "top", horizontal: "left" }}
+        transformOrigin={{ vertical: isNavigation ? "top" : "bottom", horizontal: "left" }}
         MenuListProps={{ "aria-label": "Choose appearance" }}
         slotProps={{ paper: { sx: { minWidth: 180 } } }}
       >

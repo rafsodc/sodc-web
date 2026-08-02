@@ -9,7 +9,7 @@ import { useAdminClaim } from "./features/users/hooks/useAdminClaim";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import AppSideNav from "./shared/components/AppSideNav";
-import MobileNavigationDrawer from "./shared/components/MobileNavigationDrawer";
+import MobileNavigationMenu from "./shared/components/MobileNavigationMenu";
 import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
 import { ROUTES } from "./constants";
@@ -109,7 +109,7 @@ function AppContent() {
   } = useAppAuthSession(handleLoggedOut);
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavAnchorEl, setMobileNavAnchorEl] = useState<HTMLElement | null>(null);
   const [profileReviewCompletedForUid, setProfileReviewCompletedForUid] = useState<string | null>(
     null,
   );
@@ -130,7 +130,7 @@ function AppContent() {
   const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    setMobileNavAnchorEl(null);
   }, [location.pathname]);
 
   const handleProfileUpdate = useCallback(() => {
@@ -187,11 +187,11 @@ function AppContent() {
         onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
         onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
         onJoinClick={() => navigate(ROUTES.REGISTER)}
-        onNavMenuOpen={() => setMobileNavOpen(true)}
+        onNavMenuOpen={setMobileNavAnchorEl}
       />
-      <MobileNavigationDrawer
-        open={mobileNavOpen}
-        onClose={() => setMobileNavOpen(false)}
+      <MobileNavigationMenu
+        anchorEl={mobileNavAnchorEl}
+        onClose={() => setMobileNavAnchorEl(null)}
         sections={navigationLinks.sections}
         adminLinks={navigationLinks.admin}
         pathname={location.pathname}
