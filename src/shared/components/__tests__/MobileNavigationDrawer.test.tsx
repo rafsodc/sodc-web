@@ -35,9 +35,13 @@ describe("MobileNavigationDrawer", () => {
       "href",
       "/admin/users",
     );
-    expect(
-      screen.getByRole("button", { name: /Appearance:/ }),
-    ).toBeInTheDocument();
+    const appearanceButton = screen.getByRole("button", { name: /Appearance:/ });
+    expect(appearanceButton).toBeInTheDocument();
+    expect(appearanceButton).toHaveStyle({
+      fontSize: "1rem",
+      fontWeight: "400",
+      lineHeight: "1.5",
+    });
     expect(screen.getByRole("button", { name: "Cookie settings" })).toBeInTheDocument();
   });
 

@@ -44,6 +44,10 @@ const drawerButtonSx: SxProps<Theme> = {
   justifyContent: "flex-start",
   px: 2,
   color: "text.primary",
+  fontSize: "1rem",
+  fontWeight: 400,
+  lineHeight: 1.5,
+  letterSpacing: "0.00938em",
   textTransform: "none",
   borderRadius: 0,
   "& .MuiButton-startIcon": {
