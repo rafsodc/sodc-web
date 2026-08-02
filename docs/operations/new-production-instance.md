@@ -437,6 +437,21 @@ before launch to avoid a single-person recovery dependency.
 Return to the exact commit that passed Beta. Recheck project targeting and build
 configuration, then follow the schema-first order:
 
+After all one-time Storage, IAM, secrets, and environment prerequisites in this
+guide are complete, the reviewed application deployment can be run as one
+fail-fast command:
+
+```sh
+npm run deploy:prod
+```
+
+That command verifies the `prod` alias resolves to `sodc-web-production`,
+generates and checks the SDKs, deploys Data Connect and all Functions, rebuilds
+Hosting with `.env.production.local`, deploys it last, and runs the live
+revision audit. It intentionally does not repeat Storage setup or deploy
+Storage rules. The expanded commands below remain the manual troubleshooting
+sequence.
+
 ```sh
 export FIREBASE_PROJECT=prod
 git status --short
