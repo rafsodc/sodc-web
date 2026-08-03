@@ -40,10 +40,20 @@ export type GovNotifyDeliveryMode = "SIMULATION" | "TEAM_TEST" | "LIVE";
 
 export async function getAnnouncementDeliveryConfiguration(
   sectionId: string
-): Promise<{ siteDeliveryMode: GovNotifyDeliveryMode }> {
+): Promise<{
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  replyToOptions?: Array<{ id: string; displayLabel: string; emailAddress: string }>;
+  defaultReplyToAddressId?: string | null;
+  replyToFallbackSource?: string;
+}> {
   const callable = httpsCallable<
     { sectionId: string },
-    { siteDeliveryMode: GovNotifyDeliveryMode }
+    {
+      siteDeliveryMode: GovNotifyDeliveryMode;
+      replyToOptions?: Array<{ id: string; displayLabel: string; emailAddress: string }>;
+      defaultReplyToAddressId?: string | null;
+      replyToFallbackSource?: string;
+    }
   >(functions, "getAnnouncementDeliveryConfiguration");
   return (await callable({ sectionId })).data;
 }
@@ -87,7 +97,8 @@ export async function sendSectionAnnouncement(
   templateUuid: string,
   requestId: string,
   templateName: string | undefined,
-  deliveryMode: GovNotifyDeliveryMode
+  deliveryMode: GovNotifyDeliveryMode,
+  replyToAddressId?: string,
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
     {
@@ -96,6 +107,7 @@ export async function sendSectionAnnouncement(
       requestId: string;
       templateName?: string;
       deliveryMode: GovNotifyDeliveryMode;
+      replyToAddressId?: string;
     },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
@@ -105,6 +117,7 @@ export async function sendSectionAnnouncement(
     requestId,
     templateName,
     deliveryMode,
+    replyToAddressId,
   });
   return result.data;
 }
@@ -123,6 +136,9 @@ export interface AnnouncementSend {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId?: string | null;
+  replyToDisplayLabel?: string | null;
+  replyToEmailAddress?: string | null;
 }
 
 export type AnnouncementRecipientStatus =

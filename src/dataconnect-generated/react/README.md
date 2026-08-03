@@ -19,6 +19,8 @@ You can also follow the instructions from the [Data Connect documentation](https
 - [**Queries**](#queries)
   - [*GetGovNotifyDeliveryConfiguration*](#getgovnotifydeliveryconfiguration)
   - [*ListGovNotifyDeliveryModeAudits*](#listgovnotifydeliverymodeaudits)
+  - [*GetNotifyReplyToConfiguration*](#getnotifyreplytoconfiguration)
+  - [*ListNotifyReplyToAudits*](#listnotifyreplytoaudits)
   - [*GetSectionFileById*](#getsectionfilebyid)
   - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
   - [*ListStaleSectionFiles*](#liststalesectionfiles)
@@ -92,6 +94,16 @@ You can also follow the instructions from the [Data Connect documentation](https
 - [**Mutations**](#mutations)
   - [*CreateGovNotifyDeliveryConfiguration*](#creategovnotifydeliveryconfiguration)
   - [*ChangeGovNotifyDeliveryMode*](#changegovnotifydeliverymode)
+  - [*CreateNotifyEmailConfiguration*](#createnotifyemailconfiguration)
+  - [*CreateNotifyReplyToAddress*](#createnotifyreplytoaddress)
+  - [*UpdateNotifyReplyToAddressIdentity*](#updatenotifyreplytoaddressidentity)
+  - [*RecordNotifyReplyToProviderAcceptance*](#recordnotifyreplytoprovideracceptance)
+  - [*ConfirmNotifyReplyToVerification*](#confirmnotifyreplytoverification)
+  - [*UpdateNotifyReplyToAvailability*](#updatenotifyreplytoavailability)
+  - [*ChangeNotifyReplyToDefault*](#changenotifyreplytodefault)
+  - [*DisableDefaultNotifyReplyToAddress*](#disabledefaultnotifyreplytoaddress)
+  - [*SetNotifyTemplateReplyToOverride*](#setnotifytemplatereplytooverride)
+  - [*ClearNotifyTemplateReplyToOverride*](#clearnotifytemplatereplytooverride)
   - [*CreatePendingSectionFile*](#creatependingsectionfile)
   - [*RecordSectionFileAudit*](#recordsectionfileaudit)
   - [*AbandonPendingSectionFile*](#abandonpendingsectionfile)
@@ -438,6 +450,224 @@ export default function ListGovNotifyDeliveryModeAuditsComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.govNotifyDeliveryModeAudits);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNotifyReplyToConfiguration
+You can execute the `GetNotifyReplyToConfiguration` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotifyReplyToConfiguration(dc: DataConnect, options?: useDataConnectQueryOptions<GetNotifyReplyToConfigurationData>): UseDataConnectQueryResult<GetNotifyReplyToConfigurationData, undefined>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotifyReplyToConfiguration(options?: useDataConnectQueryOptions<GetNotifyReplyToConfigurationData>): UseDataConnectQueryResult<GetNotifyReplyToConfigurationData, undefined>;
+```
+
+### Variables
+The `GetNotifyReplyToConfiguration` Query has no variables.
+### Return Type
+Recall that calling the `GetNotifyReplyToConfiguration` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotifyReplyToConfiguration` Query is of type `GetNotifyReplyToConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotifyReplyToConfigurationData {
+  notifyEmailConfiguration?: {
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+    defaultReplyToAddress?: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      announcementSelectable: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+      providerAcceptedAt?: TimestampString | null;
+      providerNotificationId?: string | null;
+      verificationMode?: GovNotifyDeliveryMode | null;
+      verifiedAt?: TimestampString | null;
+      verifiedBy?: string | null;
+      version: number;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy: string;
+      updatedBy: string;
+    } & NotifyReplyToAddress_Key;
+  };
+  notifyReplyToAddresses: ({
+    id: UUIDString;
+    displayLabel: string;
+    emailAddress: string;
+    notifyUuid: string;
+    enabled: boolean;
+    announcementSelectable: boolean;
+    verificationStatus: NotifyReplyToVerificationStatus;
+    providerAcceptedAt?: TimestampString | null;
+    providerNotificationId?: string | null;
+    verificationMode?: GovNotifyDeliveryMode | null;
+    verifiedAt?: TimestampString | null;
+    verifiedBy?: string | null;
+    version: number;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy: string;
+    updatedBy: string;
+  } & NotifyReplyToAddress_Key)[];
+  notifyTemplateReplyToOverrides: ({
+    templateKey: string;
+    replyToAddress: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+    } & NotifyReplyToAddress_Key;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateReplyToOverride_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotifyReplyToConfiguration`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@dataconnect/generated';
+import { useGetNotifyReplyToConfiguration } from '@dataconnect/generated/react'
+
+export default function GetNotifyReplyToConfigurationComponent() {
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotifyReplyToConfiguration();
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotifyReplyToConfiguration(dataConnect);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyReplyToConfiguration(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyReplyToConfiguration(dataConnect, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyEmailConfiguration);
+    console.log(query.data.notifyReplyToAddresses);
+    console.log(query.data.notifyTemplateReplyToOverrides);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListNotifyReplyToAudits
+You can execute the `ListNotifyReplyToAudits` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListNotifyReplyToAudits(dc: DataConnect, vars: ListNotifyReplyToAuditsVariables, options?: useDataConnectQueryOptions<ListNotifyReplyToAuditsData>): UseDataConnectQueryResult<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListNotifyReplyToAudits(vars: ListNotifyReplyToAuditsVariables, options?: useDataConnectQueryOptions<ListNotifyReplyToAuditsData>): UseDataConnectQueryResult<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+```
+
+### Variables
+The `ListNotifyReplyToAudits` Query requires an argument of type `ListNotifyReplyToAuditsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListNotifyReplyToAuditsVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListNotifyReplyToAudits` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListNotifyReplyToAudits` Query is of type `ListNotifyReplyToAuditsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListNotifyReplyToAuditsData {
+  notifyReplyToAudits: ({
+    id: UUIDString;
+    action: NotifyReplyToAuditAction;
+    replyToAddressId?: UUIDString | null;
+    templateKey?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & NotifyReplyToAudit_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListNotifyReplyToAudits`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListNotifyReplyToAuditsVariables } from '@dataconnect/generated';
+import { useListNotifyReplyToAudits } from '@dataconnect/generated/react'
+
+export default function ListNotifyReplyToAuditsComponent() {
+  // The `useListNotifyReplyToAudits` Query hook requires an argument of type `ListNotifyReplyToAuditsVariables`:
+  const listNotifyReplyToAuditsVars: ListNotifyReplyToAuditsVariables = {
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListNotifyReplyToAudits(listNotifyReplyToAuditsVars);
+  // Variables can be defined inline as well.
+  const query = useListNotifyReplyToAudits({ limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListNotifyReplyToAudits(dataConnect, listNotifyReplyToAuditsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNotifyReplyToAudits(listNotifyReplyToAuditsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNotifyReplyToAudits(dataConnect, listNotifyReplyToAuditsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyReplyToAudits);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -3513,6 +3743,9 @@ export interface GetAnnouncementSendHistoryData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
   } & AnnouncementSend_Key)[];
 }
 ```
@@ -3700,6 +3933,10 @@ export interface GetAnnouncementSendByIdData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
+    replyToNotifyUuid?: string | null;
   } & AnnouncementSend_Key;
 }
 ```
@@ -7452,6 +7689,1053 @@ export default function ChangeGovNotifyDeliveryModeComponent() {
   if (mutation.isSuccess) {
     console.log(mutation.data.changed);
     console.log(mutation.data.govNotifyDeliveryModeAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateNotifyEmailConfiguration
+You can execute the `CreateNotifyEmailConfiguration` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateNotifyEmailConfiguration(options?: useDataConnectMutationOptions<CreateNotifyEmailConfigurationData, FirebaseError, void>): UseDataConnectMutationResult<CreateNotifyEmailConfigurationData, undefined>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateNotifyEmailConfiguration(dc: DataConnect, options?: useDataConnectMutationOptions<CreateNotifyEmailConfigurationData, FirebaseError, void>): UseDataConnectMutationResult<CreateNotifyEmailConfigurationData, undefined>;
+```
+
+### Variables
+The `CreateNotifyEmailConfiguration` Mutation has no variables.
+### Return Type
+Recall that calling the `CreateNotifyEmailConfiguration` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateNotifyEmailConfiguration` Mutation is of type `CreateNotifyEmailConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateNotifyEmailConfigurationData {
+  notifyEmailConfiguration_insert: NotifyEmailConfiguration_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateNotifyEmailConfiguration`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@dataconnect/generated';
+import { useCreateNotifyEmailConfiguration } from '@dataconnect/generated/react'
+
+export default function CreateNotifyEmailConfigurationComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateNotifyEmailConfiguration();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateNotifyEmailConfiguration(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotifyEmailConfiguration(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotifyEmailConfiguration(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  mutation.mutate();
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  // Since this Mutation accepts no variables, you must pass `undefined` where you would normally pass the variables.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(undefined, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyEmailConfiguration_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CreateNotifyReplyToAddress
+You can execute the `CreateNotifyReplyToAddress` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCreateNotifyReplyToAddress(options?: useDataConnectMutationOptions<CreateNotifyReplyToAddressData, FirebaseError, CreateNotifyReplyToAddressVariables>): UseDataConnectMutationResult<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCreateNotifyReplyToAddress(dc: DataConnect, options?: useDataConnectMutationOptions<CreateNotifyReplyToAddressData, FirebaseError, CreateNotifyReplyToAddressVariables>): UseDataConnectMutationResult<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+```
+
+### Variables
+The `CreateNotifyReplyToAddress` Mutation requires an argument of type `CreateNotifyReplyToAddressVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CreateNotifyReplyToAddressVariables {
+  id: UUIDString;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason: string;
+  newValue: string;
+}
+```
+### Return Type
+Recall that calling the `CreateNotifyReplyToAddress` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateNotifyReplyToAddress` Mutation is of type `CreateNotifyReplyToAddressData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CreateNotifyReplyToAddressData {
+  notifyReplyToAddress_insert: NotifyReplyToAddress_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CreateNotifyReplyToAddress`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CreateNotifyReplyToAddressVariables } from '@dataconnect/generated';
+import { useCreateNotifyReplyToAddress } from '@dataconnect/generated/react'
+
+export default function CreateNotifyReplyToAddressComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCreateNotifyReplyToAddress();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCreateNotifyReplyToAddress(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotifyReplyToAddress(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCreateNotifyReplyToAddress(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCreateNotifyReplyToAddress` Mutation requires an argument of type `CreateNotifyReplyToAddressVariables`:
+  const createNotifyReplyToAddressVars: CreateNotifyReplyToAddressVariables = {
+    id: ..., 
+    displayLabel: ..., 
+    emailAddress: ..., 
+    notifyUuid: ..., 
+    changedBy: ..., 
+    reason: ..., 
+    newValue: ..., 
+  };
+  mutation.mutate(createNotifyReplyToAddressVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., displayLabel: ..., emailAddress: ..., notifyUuid: ..., changedBy: ..., reason: ..., newValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(createNotifyReplyToAddressVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyReplyToAddress_insert);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateNotifyReplyToAddressIdentity
+You can execute the `UpdateNotifyReplyToAddressIdentity` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateNotifyReplyToAddressIdentity(options?: useDataConnectMutationOptions<UpdateNotifyReplyToAddressIdentityData, FirebaseError, UpdateNotifyReplyToAddressIdentityVariables>): UseDataConnectMutationResult<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateNotifyReplyToAddressIdentity(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateNotifyReplyToAddressIdentityData, FirebaseError, UpdateNotifyReplyToAddressIdentityVariables>): UseDataConnectMutationResult<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+```
+
+### Variables
+The `UpdateNotifyReplyToAddressIdentity` Mutation requires an argument of type `UpdateNotifyReplyToAddressIdentityVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateNotifyReplyToAddressIdentityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+  newValue: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateNotifyReplyToAddressIdentity` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateNotifyReplyToAddressIdentity` Mutation is of type `UpdateNotifyReplyToAddressIdentityData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateNotifyReplyToAddressIdentityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateNotifyReplyToAddressIdentity`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateNotifyReplyToAddressIdentityVariables } from '@dataconnect/generated';
+import { useUpdateNotifyReplyToAddressIdentity } from '@dataconnect/generated/react'
+
+export default function UpdateNotifyReplyToAddressIdentityComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateNotifyReplyToAddressIdentity();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateNotifyReplyToAddressIdentity(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateNotifyReplyToAddressIdentity(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateNotifyReplyToAddressIdentity(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateNotifyReplyToAddressIdentity` Mutation requires an argument of type `UpdateNotifyReplyToAddressIdentityVariables`:
+  const updateNotifyReplyToAddressIdentityVars: UpdateNotifyReplyToAddressIdentityVariables = {
+    id: ..., 
+    expectedVersion: ..., 
+    displayLabel: ..., 
+    emailAddress: ..., 
+    notifyUuid: ..., 
+    changedBy: ..., 
+    reason: ..., 
+    previousValue: ..., 
+    newValue: ..., 
+  };
+  mutation.mutate(updateNotifyReplyToAddressIdentityVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedVersion: ..., displayLabel: ..., emailAddress: ..., notifyUuid: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateNotifyReplyToAddressIdentityVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## RecordNotifyReplyToProviderAcceptance
+You can execute the `RecordNotifyReplyToProviderAcceptance` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useRecordNotifyReplyToProviderAcceptance(options?: useDataConnectMutationOptions<RecordNotifyReplyToProviderAcceptanceData, FirebaseError, RecordNotifyReplyToProviderAcceptanceVariables>): UseDataConnectMutationResult<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useRecordNotifyReplyToProviderAcceptance(dc: DataConnect, options?: useDataConnectMutationOptions<RecordNotifyReplyToProviderAcceptanceData, FirebaseError, RecordNotifyReplyToProviderAcceptanceVariables>): UseDataConnectMutationResult<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+```
+
+### Variables
+The `RecordNotifyReplyToProviderAcceptance` Mutation requires an argument of type `RecordNotifyReplyToProviderAcceptanceVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface RecordNotifyReplyToProviderAcceptanceVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  providerNotificationId: string;
+  verificationMode: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
+}
+```
+### Return Type
+Recall that calling the `RecordNotifyReplyToProviderAcceptance` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RecordNotifyReplyToProviderAcceptance` Mutation is of type `RecordNotifyReplyToProviderAcceptanceData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface RecordNotifyReplyToProviderAcceptanceData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `RecordNotifyReplyToProviderAcceptance`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, RecordNotifyReplyToProviderAcceptanceVariables } from '@dataconnect/generated';
+import { useRecordNotifyReplyToProviderAcceptance } from '@dataconnect/generated/react'
+
+export default function RecordNotifyReplyToProviderAcceptanceComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useRecordNotifyReplyToProviderAcceptance();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useRecordNotifyReplyToProviderAcceptance(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordNotifyReplyToProviderAcceptance(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordNotifyReplyToProviderAcceptance(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useRecordNotifyReplyToProviderAcceptance` Mutation requires an argument of type `RecordNotifyReplyToProviderAcceptanceVariables`:
+  const recordNotifyReplyToProviderAcceptanceVars: RecordNotifyReplyToProviderAcceptanceVariables = {
+    id: ..., 
+    expectedVersion: ..., 
+    providerNotificationId: ..., 
+    verificationMode: ..., 
+    changedBy: ..., 
+    reason: ..., 
+  };
+  mutation.mutate(recordNotifyReplyToProviderAcceptanceVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedVersion: ..., providerNotificationId: ..., verificationMode: ..., changedBy: ..., reason: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(recordNotifyReplyToProviderAcceptanceVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ConfirmNotifyReplyToVerification
+You can execute the `ConfirmNotifyReplyToVerification` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useConfirmNotifyReplyToVerification(options?: useDataConnectMutationOptions<ConfirmNotifyReplyToVerificationData, FirebaseError, ConfirmNotifyReplyToVerificationVariables>): UseDataConnectMutationResult<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useConfirmNotifyReplyToVerification(dc: DataConnect, options?: useDataConnectMutationOptions<ConfirmNotifyReplyToVerificationData, FirebaseError, ConfirmNotifyReplyToVerificationVariables>): UseDataConnectMutationResult<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+```
+
+### Variables
+The `ConfirmNotifyReplyToVerification` Mutation requires an argument of type `ConfirmNotifyReplyToVerificationVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ConfirmNotifyReplyToVerificationVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  changedBy: string;
+  reason: string;
+}
+```
+### Return Type
+Recall that calling the `ConfirmNotifyReplyToVerification` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ConfirmNotifyReplyToVerification` Mutation is of type `ConfirmNotifyReplyToVerificationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ConfirmNotifyReplyToVerificationData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ConfirmNotifyReplyToVerification`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ConfirmNotifyReplyToVerificationVariables } from '@dataconnect/generated';
+import { useConfirmNotifyReplyToVerification } from '@dataconnect/generated/react'
+
+export default function ConfirmNotifyReplyToVerificationComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useConfirmNotifyReplyToVerification();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useConfirmNotifyReplyToVerification(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useConfirmNotifyReplyToVerification(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useConfirmNotifyReplyToVerification(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useConfirmNotifyReplyToVerification` Mutation requires an argument of type `ConfirmNotifyReplyToVerificationVariables`:
+  const confirmNotifyReplyToVerificationVars: ConfirmNotifyReplyToVerificationVariables = {
+    id: ..., 
+    expectedVersion: ..., 
+    changedBy: ..., 
+    reason: ..., 
+  };
+  mutation.mutate(confirmNotifyReplyToVerificationVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedVersion: ..., changedBy: ..., reason: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(confirmNotifyReplyToVerificationVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateNotifyReplyToAvailability
+You can execute the `UpdateNotifyReplyToAvailability` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateNotifyReplyToAvailability(options?: useDataConnectMutationOptions<UpdateNotifyReplyToAvailabilityData, FirebaseError, UpdateNotifyReplyToAvailabilityVariables>): UseDataConnectMutationResult<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateNotifyReplyToAvailability(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateNotifyReplyToAvailabilityData, FirebaseError, UpdateNotifyReplyToAvailabilityVariables>): UseDataConnectMutationResult<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+```
+
+### Variables
+The `UpdateNotifyReplyToAvailability` Mutation requires an argument of type `UpdateNotifyReplyToAvailabilityVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateNotifyReplyToAvailabilityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  enabled: boolean;
+  announcementSelectable: boolean;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+  newValue: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateNotifyReplyToAvailability` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateNotifyReplyToAvailability` Mutation is of type `UpdateNotifyReplyToAvailabilityData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateNotifyReplyToAvailabilityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateNotifyReplyToAvailability`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateNotifyReplyToAvailabilityVariables } from '@dataconnect/generated';
+import { useUpdateNotifyReplyToAvailability } from '@dataconnect/generated/react'
+
+export default function UpdateNotifyReplyToAvailabilityComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateNotifyReplyToAvailability();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateNotifyReplyToAvailability(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateNotifyReplyToAvailability(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateNotifyReplyToAvailability(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateNotifyReplyToAvailability` Mutation requires an argument of type `UpdateNotifyReplyToAvailabilityVariables`:
+  const updateNotifyReplyToAvailabilityVars: UpdateNotifyReplyToAvailabilityVariables = {
+    id: ..., 
+    expectedVersion: ..., 
+    enabled: ..., 
+    announcementSelectable: ..., 
+    changedBy: ..., 
+    reason: ..., 
+    previousValue: ..., 
+    newValue: ..., 
+  };
+  mutation.mutate(updateNotifyReplyToAvailabilityVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedVersion: ..., enabled: ..., announcementSelectable: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateNotifyReplyToAvailabilityVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ChangeNotifyReplyToDefault
+You can execute the `ChangeNotifyReplyToDefault` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useChangeNotifyReplyToDefault(options?: useDataConnectMutationOptions<ChangeNotifyReplyToDefaultData, FirebaseError, ChangeNotifyReplyToDefaultVariables>): UseDataConnectMutationResult<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useChangeNotifyReplyToDefault(dc: DataConnect, options?: useDataConnectMutationOptions<ChangeNotifyReplyToDefaultData, FirebaseError, ChangeNotifyReplyToDefaultVariables>): UseDataConnectMutationResult<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+```
+
+### Variables
+The `ChangeNotifyReplyToDefault` Mutation requires an argument of type `ChangeNotifyReplyToDefaultVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ChangeNotifyReplyToDefaultVariables {
+  expectedVersion: number;
+  previousAddressId?: UUIDString | null;
+  newAddressId?: UUIDString | null;
+  changedBy: string;
+  reason: string;
+  previousValue?: string | null;
+  newValue?: string | null;
+}
+```
+### Return Type
+Recall that calling the `ChangeNotifyReplyToDefault` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ChangeNotifyReplyToDefault` Mutation is of type `ChangeNotifyReplyToDefaultData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ChangeNotifyReplyToDefaultData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ChangeNotifyReplyToDefault`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ChangeNotifyReplyToDefaultVariables } from '@dataconnect/generated';
+import { useChangeNotifyReplyToDefault } from '@dataconnect/generated/react'
+
+export default function ChangeNotifyReplyToDefaultComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useChangeNotifyReplyToDefault();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useChangeNotifyReplyToDefault(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useChangeNotifyReplyToDefault(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useChangeNotifyReplyToDefault(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useChangeNotifyReplyToDefault` Mutation requires an argument of type `ChangeNotifyReplyToDefaultVariables`:
+  const changeNotifyReplyToDefaultVars: ChangeNotifyReplyToDefaultVariables = {
+    expectedVersion: ..., 
+    previousAddressId: ..., // optional
+    newAddressId: ..., // optional
+    changedBy: ..., 
+    reason: ..., 
+    previousValue: ..., // optional
+    newValue: ..., // optional
+  };
+  mutation.mutate(changeNotifyReplyToDefaultVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ expectedVersion: ..., previousAddressId: ..., newAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(changeNotifyReplyToDefaultVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## DisableDefaultNotifyReplyToAddress
+You can execute the `DisableDefaultNotifyReplyToAddress` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useDisableDefaultNotifyReplyToAddress(options?: useDataConnectMutationOptions<DisableDefaultNotifyReplyToAddressData, FirebaseError, DisableDefaultNotifyReplyToAddressVariables>): UseDataConnectMutationResult<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useDisableDefaultNotifyReplyToAddress(dc: DataConnect, options?: useDataConnectMutationOptions<DisableDefaultNotifyReplyToAddressData, FirebaseError, DisableDefaultNotifyReplyToAddressVariables>): UseDataConnectMutationResult<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+```
+
+### Variables
+The `DisableDefaultNotifyReplyToAddress` Mutation requires an argument of type `DisableDefaultNotifyReplyToAddressVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface DisableDefaultNotifyReplyToAddressVariables {
+  id: UUIDString;
+  expectedAddressVersion: number;
+  expectedConfigurationVersion: number;
+  replacementAddressId?: UUIDString | null;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+}
+```
+### Return Type
+Recall that calling the `DisableDefaultNotifyReplyToAddress` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `DisableDefaultNotifyReplyToAddress` Mutation is of type `DisableDefaultNotifyReplyToAddressData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface DisableDefaultNotifyReplyToAddressData {
+  addressChanged: number;
+  configurationChanged: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `DisableDefaultNotifyReplyToAddress`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, DisableDefaultNotifyReplyToAddressVariables } from '@dataconnect/generated';
+import { useDisableDefaultNotifyReplyToAddress } from '@dataconnect/generated/react'
+
+export default function DisableDefaultNotifyReplyToAddressComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useDisableDefaultNotifyReplyToAddress();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useDisableDefaultNotifyReplyToAddress(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useDisableDefaultNotifyReplyToAddress(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useDisableDefaultNotifyReplyToAddress(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useDisableDefaultNotifyReplyToAddress` Mutation requires an argument of type `DisableDefaultNotifyReplyToAddressVariables`:
+  const disableDefaultNotifyReplyToAddressVars: DisableDefaultNotifyReplyToAddressVariables = {
+    id: ..., 
+    expectedAddressVersion: ..., 
+    expectedConfigurationVersion: ..., 
+    replacementAddressId: ..., // optional
+    changedBy: ..., 
+    reason: ..., 
+    previousValue: ..., 
+  };
+  mutation.mutate(disableDefaultNotifyReplyToAddressVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedAddressVersion: ..., expectedConfigurationVersion: ..., replacementAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(disableDefaultNotifyReplyToAddressVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.addressChanged);
+    console.log(mutation.data.configurationChanged);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## SetNotifyTemplateReplyToOverride
+You can execute the `SetNotifyTemplateReplyToOverride` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useSetNotifyTemplateReplyToOverride(options?: useDataConnectMutationOptions<SetNotifyTemplateReplyToOverrideData, FirebaseError, SetNotifyTemplateReplyToOverrideVariables>): UseDataConnectMutationResult<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useSetNotifyTemplateReplyToOverride(dc: DataConnect, options?: useDataConnectMutationOptions<SetNotifyTemplateReplyToOverrideData, FirebaseError, SetNotifyTemplateReplyToOverrideVariables>): UseDataConnectMutationResult<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+```
+
+### Variables
+The `SetNotifyTemplateReplyToOverride` Mutation requires an argument of type `SetNotifyTemplateReplyToOverrideVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface SetNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  replyToAddressId: UUIDString;
+  changedBy: string;
+  reason: string;
+  previousValue?: string | null;
+  newValue: string;
+}
+```
+### Return Type
+Recall that calling the `SetNotifyTemplateReplyToOverride` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `SetNotifyTemplateReplyToOverride` Mutation is of type `SetNotifyTemplateReplyToOverrideData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface SetNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `SetNotifyTemplateReplyToOverride`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, SetNotifyTemplateReplyToOverrideVariables } from '@dataconnect/generated';
+import { useSetNotifyTemplateReplyToOverride } from '@dataconnect/generated/react'
+
+export default function SetNotifyTemplateReplyToOverrideComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useSetNotifyTemplateReplyToOverride();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useSetNotifyTemplateReplyToOverride(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useSetNotifyTemplateReplyToOverride(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useSetNotifyTemplateReplyToOverride(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useSetNotifyTemplateReplyToOverride` Mutation requires an argument of type `SetNotifyTemplateReplyToOverrideVariables`:
+  const setNotifyTemplateReplyToOverrideVars: SetNotifyTemplateReplyToOverrideVariables = {
+    templateKey: ..., 
+    replyToAddressId: ..., 
+    changedBy: ..., 
+    reason: ..., 
+    previousValue: ..., // optional
+    newValue: ..., 
+  };
+  mutation.mutate(setNotifyTemplateReplyToOverrideVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ templateKey: ..., replyToAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(setNotifyTemplateReplyToOverrideVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyTemplateReplyToOverride_upsert);
+    console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ClearNotifyTemplateReplyToOverride
+You can execute the `ClearNotifyTemplateReplyToOverride` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useClearNotifyTemplateReplyToOverride(options?: useDataConnectMutationOptions<ClearNotifyTemplateReplyToOverrideData, FirebaseError, ClearNotifyTemplateReplyToOverrideVariables>): UseDataConnectMutationResult<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useClearNotifyTemplateReplyToOverride(dc: DataConnect, options?: useDataConnectMutationOptions<ClearNotifyTemplateReplyToOverrideData, FirebaseError, ClearNotifyTemplateReplyToOverrideVariables>): UseDataConnectMutationResult<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+```
+
+### Variables
+The `ClearNotifyTemplateReplyToOverride` Mutation requires an argument of type `ClearNotifyTemplateReplyToOverrideVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ClearNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+}
+```
+### Return Type
+Recall that calling the `ClearNotifyTemplateReplyToOverride` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ClearNotifyTemplateReplyToOverride` Mutation is of type `ClearNotifyTemplateReplyToOverrideData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ClearNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_delete?: NotifyTemplateReplyToOverride_Key | null;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ClearNotifyTemplateReplyToOverride`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ClearNotifyTemplateReplyToOverrideVariables } from '@dataconnect/generated';
+import { useClearNotifyTemplateReplyToOverride } from '@dataconnect/generated/react'
+
+export default function ClearNotifyTemplateReplyToOverrideComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useClearNotifyTemplateReplyToOverride();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useClearNotifyTemplateReplyToOverride(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useClearNotifyTemplateReplyToOverride(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useClearNotifyTemplateReplyToOverride(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useClearNotifyTemplateReplyToOverride` Mutation requires an argument of type `ClearNotifyTemplateReplyToOverrideVariables`:
+  const clearNotifyTemplateReplyToOverrideVars: ClearNotifyTemplateReplyToOverrideVariables = {
+    templateKey: ..., 
+    changedBy: ..., 
+    reason: ..., 
+    previousValue: ..., 
+  };
+  mutation.mutate(clearNotifyTemplateReplyToOverrideVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ templateKey: ..., changedBy: ..., reason: ..., previousValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(clearNotifyTemplateReplyToOverrideVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyTemplateReplyToOverride_delete);
+    console.log(mutation.data.notifyReplyToAudit_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -11921,6 +13205,10 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId?: UUIDString | null;
+  replyToDisplayLabel?: string | null;
+  replyToEmailAddress?: string | null;
+  replyToNotifyUuid?: string | null;
 }
 ```
 ### Return Type
@@ -11981,10 +13269,14 @@ export default function CreateAnnouncementSendWithDeliveryModeComponent() {
     requestedDeliveryMode: ..., 
     siteDeliveryMode: ..., 
     effectiveDeliveryMode: ..., 
+    replyToAddressId: ..., // optional
+    replyToDisplayLabel: ..., // optional
+    replyToEmailAddress: ..., // optional
+    replyToNotifyUuid: ..., // optional
   };
   mutation.mutate(createAnnouncementSendWithDeliveryModeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., });
+  mutation.mutate({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

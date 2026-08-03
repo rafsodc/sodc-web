@@ -108,6 +108,73 @@ type GovNotifyDeliveryModeAudit @table {
   changedAt: Timestamp! @default(expr: "request.time")
 }
 
+enum NotifyReplyToVerificationStatus {
+  UNVERIFIED
+  PROVIDER_ACCEPTED
+  VERIFIED
+}
+
+enum NotifyReplyToAuditAction {
+  CREATED
+  UPDATED
+  DISABLED
+  PROVIDER_TEST_ACCEPTED
+  VERIFIED
+  DEFAULT_CHANGED
+  TEMPLATE_OVERRIDE_CHANGED
+}
+
+# Named, environment-local GOV.UK Notify reply-to address. Records are retained
+# for audit/history and are disabled rather than deleted.
+type NotifyReplyToAddress @table @unique(fields: ["notifyUuid"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  displayLabel: String!
+  emailAddress: String!
+  notifyUuid: String!
+  enabled: Boolean! @default(value: false)
+  announcementSelectable: Boolean! @default(value: false)
+  verificationStatus: NotifyReplyToVerificationStatus! @default(value: UNVERIFIED)
+  providerAcceptedAt: Timestamp
+  providerNotificationId: String
+  verificationMode: GovNotifyDeliveryMode
+  verifiedAt: Timestamp
+  verifiedBy: String
+  version: Int! @default(value: 1)
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String!
+  updatedBy: String!
+}
+
+# Singleton pointer provides an atomic zero-or-one system default.
+type NotifyEmailConfiguration @table {
+  id: String!
+  defaultReplyToAddress: NotifyReplyToAddress
+  version: Int! @default(value: 1)
+  updatedAt: Timestamp! @default(expr: "request.time")
+  updatedBy: String
+}
+
+# A row exists only when a logical automated template overrides the default.
+type NotifyTemplateReplyToOverride @table(key: ["templateKey"]) {
+  templateKey: String!
+  replyToAddress: NotifyReplyToAddress!
+  updatedAt: Timestamp! @default(expr: "request.time")
+  updatedBy: String!
+}
+
+type NotifyReplyToAudit @table {
+  id: UUID! @default(expr: "uuidV4()")
+  action: NotifyReplyToAuditAction!
+  replyToAddressId: UUID
+  templateKey: String
+  previousValue: String
+  newValue: String
+  changedBy: String!
+  reason: String!
+  changedAt: Timestamp! @default(expr: "request.time")
+}
+
 enum NotifyDeliveryReceiptProcessingStatus {
   PENDING
   PROCESSED
@@ -519,6 +586,11 @@ type AnnouncementSend @table {
   requestedDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
   siteDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
   effectiveDeliveryMode: GovNotifyDeliveryMode! @default(value: LIVE)
+  # Immutable reply-to snapshot used by every queued recipient task.
+  replyToAddressId: UUID
+  replyToDisplayLabel: String
+  replyToEmailAddress: String
+  replyToNotifyUuid: String
   # Immutable versioned snapshot used to resume a partially-enqueued send without
   # re-resolving an audience that may have changed since the moderator clicked send.
   recipientSnapshot: String

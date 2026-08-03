@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
+  assessGovNotifyReplyToConfiguration,
   assessFunctionInvokerPolicies,
   compareExpected,
   createReport,
@@ -409,6 +410,50 @@ async function main() {
       };
     },
   });
+
+  if (deployedFunctions) {
+    const replyTo = assessGovNotifyReplyToConfiguration(values(deployedFunctions));
+    const details = {
+      configuredFunctionCount: replyTo.configuredFunctions.length,
+      missingFunctions: replyTo.missingFunctions,
+      invalidFunctions: replyTo.invalidFunctions,
+    };
+    if (replyTo.invalidFunctions.length) {
+      results.push(result(
+        "gov-notify-email-reply-to",
+        RESULT_STATUS.FAIL,
+        "GOV.UK Notify email reply-to configuration contains a malformed UUID.",
+        details,
+      ));
+    } else if (replyTo.distinctValueCount > 1) {
+      results.push(result(
+        "gov-notify-email-reply-to",
+        RESULT_STATUS.FAIL,
+        "Deployed Functions use inconsistent GOV.UK Notify email reply-to UUIDs.",
+        details,
+      ));
+    } else if (replyTo.configuredFunctions.length && replyTo.missingFunctions.length) {
+      results.push(result(
+        "gov-notify-email-reply-to",
+        RESULT_STATUS.FAIL,
+        "GOV.UK Notify email reply-to UUID is missing from some deployed Functions.",
+        details,
+      ));
+    } else if (!replyTo.configuredFunctions.length) {
+      results.push(result(
+        "gov-notify-email-reply-to",
+        RESULT_STATUS.PASS,
+        "No migration reply-to UUID is deployed; admin-managed configuration is expected.",
+      ));
+    } else {
+      results.push(result(
+        "gov-notify-email-reply-to",
+        RESULT_STATUS.PASS,
+        "GOV.UK Notify email reply-to UUID is valid and consistent across deployed Functions.",
+        { configuredFunctionCount: replyTo.configuredFunctions.length },
+      ));
+    }
+  }
 
   if (deployedFunctions && gcloudReady) {
     const functionIamRecords = await mapWithConcurrency(

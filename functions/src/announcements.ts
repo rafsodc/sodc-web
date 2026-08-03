@@ -22,7 +22,7 @@ import {
   getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
   GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
 } from "@dataconnect/admin-generated";
-import { requireEnabled, requireString } from "./helpers";
+import { requireEnabled, requireString, validateUUID } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import {
   govNotifyApiKeyForMode,
@@ -31,6 +31,11 @@ import {
   type GovNotifyDeliveryMode,
 } from "./govNotifyDeliveryMode";
 import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
+import {
+  listAnnouncementReplyToOptions,
+  NotifyReplyToSelectionError,
+  resolveNotifyReplyToForAnnouncement,
+} from "./notifyReplyToConfiguration";
 import { FUNCTIONS_REGION } from "./constants";
 import { signUnsubscribeToken, unsubscribeSecret } from "./unsubscribe";
 import {
@@ -214,12 +219,24 @@ export interface AnnouncementTemplate {
 
 export const getAnnouncementDeliveryConfiguration = onCall(
   { region: FUNCTIONS_REGION },
-  async (request): Promise<{ siteDeliveryMode: GovNotifyDeliveryMode }> => {
+  async (request): Promise<{
+    siteDeliveryMode: GovNotifyDeliveryMode;
+    replyToOptions: Array<{ id: string; displayLabel: string; emailAddress: string }>;
+    defaultReplyToAddressId: string | null;
+    replyToFallbackSource: string;
+  }> => {
     requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    const [delivery, replyTo] = await Promise.all([
+      resolveRuntimeGovNotifyDeliveryMode("LIVE"),
+      listAnnouncementReplyToOptions(),
+    ]);
     return {
-      siteDeliveryMode: (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).siteMode,
+      siteDeliveryMode: delivery.siteMode,
+      replyToOptions: replyTo.options,
+      defaultReplyToAddressId: replyTo.defaultAddressId,
+      replyToFallbackSource: replyTo.fallbackSource,
     };
   },
 );
@@ -307,6 +324,9 @@ export interface AnnouncementSend {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId: string | null;
+  replyToDisplayLabel: string | null;
+  replyToEmailAddress: string | null;
 }
 
 export interface AnnouncementRecipient {
@@ -537,6 +557,10 @@ export const sendSectionAnnouncement = onCall(
       );
     }
     const deliveryMode = await resolveRuntimeGovNotifyDeliveryMode(requestedDeliveryMode);
+    const selectedReplyToAddressId = typeof request.data?.replyToAddressId === "string" &&
+      request.data.replyToAddressId.trim().length > 0
+      ? validateUUID(request.data.replyToAddressId, "replyToAddressId")
+      : undefined;
 
     let resumed = false;
     let existingResult = await getAnnouncementSendById({ id: requestId });
@@ -551,12 +575,22 @@ export const sendSectionAnnouncement = onCall(
         existing.requestedDeliveryMode !== deliveryMode.requestedMode ||
         existing.siteDeliveryMode !== deliveryMode.siteMode ||
         existing.effectiveDeliveryMode !== deliveryMode.effectiveMode
+        || (selectedReplyToAddressId !== undefined && existing.replyToAddressId !== selectedReplyToAddressId)
       ) {
         throw new HttpsError("already-exists", "requestId is already in use");
       }
       resumed = true;
       snapshot = parseRecipientSnapshot(existing.recipientSnapshot);
     } else {
+      let replyTo;
+      try {
+        replyTo = await resolveNotifyReplyToForAnnouncement(selectedReplyToAddressId);
+      } catch (error) {
+        if (error instanceof NotifyReplyToSelectionError) {
+          throw new HttpsError("failed-precondition", error.message);
+        }
+        throw error;
+      }
       const client = new NotifyClient(govNotifyApiKeyForMode(deliveryMode.effectiveMode));
       const templateResponse = await client.getTemplateById(templateUuid);
       const template = templateResponse.data as { body?: string; subject?: string };
@@ -598,6 +632,7 @@ export const sendSectionAnnouncement = onCall(
           unsubscribeUrl,
           templateUuid,
           effectiveDeliveryMode: deliveryMode.effectiveMode,
+          emailReplyToId: replyTo.notifyUuid ?? null,
         };
       });
       snapshot = {
@@ -627,6 +662,10 @@ export const sendSectionAnnouncement = onCall(
           siteDeliveryMode: deliveryMode.siteMode as DataConnectGovNotifyDeliveryMode,
           effectiveDeliveryMode:
             deliveryMode.effectiveMode as DataConnectGovNotifyDeliveryMode,
+          replyToAddressId: replyTo.addressId ?? null,
+          replyToDisplayLabel: replyTo.displayLabel ?? null,
+          replyToEmailAddress: replyTo.emailAddress ?? null,
+          replyToNotifyUuid: replyTo.notifyUuid ?? null,
         });
       } catch (error) {
         if (!isDuplicateKeyError(error)) throw error;
@@ -639,7 +678,8 @@ export const sendSectionAnnouncement = onCall(
           existing.sentBy !== callerUid ||
           existing.requestedDeliveryMode !== deliveryMode.requestedMode ||
           existing.siteDeliveryMode !== deliveryMode.siteMode ||
-          existing.effectiveDeliveryMode !== deliveryMode.effectiveMode
+          existing.effectiveDeliveryMode !== deliveryMode.effectiveMode ||
+          (selectedReplyToAddressId !== undefined && existing.replyToAddressId !== selectedReplyToAddressId)
         ) {
           throw new HttpsError("already-exists", "requestId is already in use");
         }
@@ -735,6 +775,9 @@ export const getAnnouncementSendHistory = onCall(
       requestedDeliveryMode: s.requestedDeliveryMode as GovNotifyDeliveryMode,
       siteDeliveryMode: s.siteDeliveryMode as GovNotifyDeliveryMode,
       effectiveDeliveryMode: s.effectiveDeliveryMode as GovNotifyDeliveryMode,
+      replyToAddressId: s.replyToAddressId ?? null,
+      replyToDisplayLabel: s.replyToDisplayLabel ?? null,
+      replyToEmailAddress: s.replyToEmailAddress ?? null,
     }));
 
     return { sends };

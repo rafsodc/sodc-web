@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
+  assessGovNotifyReplyToConfiguration,
   assessFunctionInvokerPolicies,
   compareExpected,
   createReport,
@@ -77,6 +78,41 @@ describe("deployment check parsing and comparison", () => {
 
   it("compares expected resources case-insensitively", () => {
     expect(compareExpected(["One", "Two"], ["one", "THREE"])).toEqual(["Two"]);
+  });
+
+  it("assesses deployed GOV.UK Notify reply-to UUID configuration", () => {
+    const replyToId = "11111111-1111-4111-8111-111111111111";
+    expect(assessGovNotifyReplyToConfiguration([
+      {
+        name: "projects/example/locations/europe-west2/functions/one",
+        serviceConfig: { environmentVariables: { GOV_NOTIFY_EMAIL_REPLY_TO_ID: replyToId } },
+      },
+      {
+        name: "projects/example/locations/europe-west2/functions/two",
+        serviceConfig: { environmentVariables: { GOV_NOTIFY_EMAIL_REPLY_TO_ID: ` ${replyToId} ` } },
+      },
+    ])).toEqual({
+      configuredFunctions: ["one", "two"],
+      missingFunctions: [],
+      invalidFunctions: [],
+      distinctValueCount: 1,
+    });
+
+    expect(assessGovNotifyReplyToConfiguration([
+      { name: "configured", serviceConfig: { environmentVariables: { GOV_NOTIFY_EMAIL_REPLY_TO_ID: replyToId } } },
+      { name: "missing", serviceConfig: { environmentVariables: {} } },
+      { name: "invalid", serviceConfig: { environmentVariables: { GOV_NOTIFY_EMAIL_REPLY_TO_ID: "not-a-uuid" } } },
+    ])).toEqual({
+      configuredFunctions: ["configured"],
+      missingFunctions: ["missing"],
+      invalidFunctions: ["invalid"],
+      distinctValueCount: 1,
+    });
+
+    expect(assessGovNotifyReplyToConfiguration([
+      { name: "one", serviceConfig: { environmentVariables: { GOV_NOTIFY_EMAIL_REPLY_TO_ID: replyToId } } },
+      { name: "two", serviceConfig: { environmentVariables: { GOV_NOTIFY_EMAIL_REPLY_TO_ID: "22222222-2222-4222-8222-222222222222" } } },
+    ]).distinctValueCount).toBe(2);
   });
 
   it("redacts sensitive fields and URL credentials from reports", () => {

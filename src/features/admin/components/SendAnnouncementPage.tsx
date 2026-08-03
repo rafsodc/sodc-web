@@ -68,6 +68,13 @@ export default function SendAnnouncementPage({
   const [deliveryMode, setDeliveryMode] = useState<GovNotifyDeliveryMode>("SIMULATION");
   const [siteDeliveryMode, setSiteDeliveryMode] = useState<GovNotifyDeliveryMode | null>(null);
   const [deliveryModeError, setDeliveryModeError] = useState<string | null>(null);
+  const [replyToOptions, setReplyToOptions] = useState<Array<{
+    id: string;
+    displayLabel: string;
+    emailAddress: string;
+  }>>([]);
+  const [replyToAddressId, setReplyToAddressId] = useState("");
+  const [replyToDefaultDescription, setReplyToDefaultDescription] = useState("Notify service default");
 
   useEffect(() => {
     setLoadingTemplates(true);
@@ -84,9 +91,20 @@ export default function SendAnnouncementPage({
   useEffect(() => {
     setDeliveryModeError(null);
     getAnnouncementDeliveryConfiguration(sectionId)
-      .then(({ siteDeliveryMode: configuredMode }) => {
+      .then((configuration) => {
+        const configuredMode = configuration.siteDeliveryMode;
         setSiteDeliveryMode(configuredMode);
         setDeliveryMode(configuredMode === "SIMULATION" ? "SIMULATION" : configuredMode);
+        const options = configuration.replyToOptions ?? [];
+        setReplyToOptions(options);
+        const defaultAddress = options.find(
+          (option) => option.id === configuration.defaultReplyToAddressId,
+        );
+        setReplyToDefaultDescription(defaultAddress
+          ? `${defaultAddress.displayLabel} (${defaultAddress.emailAddress})`
+          : configuration.replyToFallbackSource === "environment_fallback"
+            ? "Configured system fallback"
+            : "Notify service default");
       })
       .catch((caught) => {
         reportError("admin.announcements.delivery-mode", caught, { sectionId });
@@ -126,13 +144,22 @@ export default function SendAnnouncementPage({
       const selectedTemplate = templates.find((t) => t.id === selectedId);
       const requestId = sendRequestId ?? crypto.randomUUID();
       setSendRequestId(requestId);
-      const result = await sendSectionAnnouncement(
-        sectionId,
-        selectedId,
-        requestId,
-        selectedTemplate?.name,
-        deliveryMode,
-      );
+      const result = replyToAddressId
+        ? await sendSectionAnnouncement(
+          sectionId,
+          selectedId,
+          requestId,
+          selectedTemplate?.name,
+          deliveryMode,
+          replyToAddressId,
+        )
+        : await sendSectionAnnouncement(
+          sectionId,
+          selectedId,
+          requestId,
+          selectedTemplate?.name,
+          deliveryMode,
+        );
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
     } catch (caught) {
@@ -273,6 +300,26 @@ export default function SendAnnouncementPage({
               <MenuItem value="SIMULATION">
                 Simulation — submit every recipient using the Notify test key; deliver none
               </MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="reply-to-select-label">Replies go to</InputLabel>
+            <Select
+              labelId="reply-to-select-label"
+              label="Replies go to"
+              value={replyToAddressId}
+              onChange={(event) => {
+                setReplyToAddressId(event.target.value);
+                setSendRequestId(null);
+                setSendResult(null);
+              }}
+            >
+              <MenuItem value="">System default — {replyToDefaultDescription}</MenuItem>
+              {replyToOptions.map((option) => (
+                <MenuItem key={option.id} value={option.id}>
+                  {option.displayLabel} — {option.emailAddress}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           {sendResult ? (

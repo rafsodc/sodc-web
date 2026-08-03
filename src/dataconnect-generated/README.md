@@ -12,6 +12,8 @@ This README will guide you through the process of using the generated JavaScript
 - [**Queries**](#queries)
   - [*GetGovNotifyDeliveryConfiguration*](#getgovnotifydeliveryconfiguration)
   - [*ListGovNotifyDeliveryModeAudits*](#listgovnotifydeliverymodeaudits)
+  - [*GetNotifyReplyToConfiguration*](#getnotifyreplytoconfiguration)
+  - [*ListNotifyReplyToAudits*](#listnotifyreplytoaudits)
   - [*GetSectionFileById*](#getsectionfilebyid)
   - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
   - [*ListStaleSectionFiles*](#liststalesectionfiles)
@@ -85,6 +87,16 @@ This README will guide you through the process of using the generated JavaScript
 - [**Mutations**](#mutations)
   - [*CreateGovNotifyDeliveryConfiguration*](#creategovnotifydeliveryconfiguration)
   - [*ChangeGovNotifyDeliveryMode*](#changegovnotifydeliverymode)
+  - [*CreateNotifyEmailConfiguration*](#createnotifyemailconfiguration)
+  - [*CreateNotifyReplyToAddress*](#createnotifyreplytoaddress)
+  - [*UpdateNotifyReplyToAddressIdentity*](#updatenotifyreplytoaddressidentity)
+  - [*RecordNotifyReplyToProviderAcceptance*](#recordnotifyreplytoprovideracceptance)
+  - [*ConfirmNotifyReplyToVerification*](#confirmnotifyreplytoverification)
+  - [*UpdateNotifyReplyToAvailability*](#updatenotifyreplytoavailability)
+  - [*ChangeNotifyReplyToDefault*](#changenotifyreplytodefault)
+  - [*DisableDefaultNotifyReplyToAddress*](#disabledefaultnotifyreplytoaddress)
+  - [*SetNotifyTemplateReplyToOverride*](#setnotifytemplatereplytooverride)
+  - [*ClearNotifyTemplateReplyToOverride*](#clearnotifytemplatereplytooverride)
   - [*CreatePendingSectionFile*](#creatependingsectionfile)
   - [*RecordSectionFileAudit*](#recordsectionfileaudit)
   - [*AbandonPendingSectionFile*](#abandonpendingsectionfile)
@@ -437,6 +449,279 @@ console.log(data.govNotifyDeliveryModeAudits);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.govNotifyDeliveryModeAudits);
+});
+```
+
+## GetNotifyReplyToConfiguration
+You can execute the `GetNotifyReplyToConfiguration` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNotifyReplyToConfiguration(options?: ExecuteQueryOptions): QueryPromise<GetNotifyReplyToConfigurationData, undefined>;
+
+interface GetNotifyReplyToConfigurationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNotifyReplyToConfigurationData, undefined>;
+}
+export const getNotifyReplyToConfigurationRef: GetNotifyReplyToConfigurationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNotifyReplyToConfiguration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNotifyReplyToConfigurationData, undefined>;
+
+interface GetNotifyReplyToConfigurationRef {
+  ...
+  (dc: DataConnect): QueryRef<GetNotifyReplyToConfigurationData, undefined>;
+}
+export const getNotifyReplyToConfigurationRef: GetNotifyReplyToConfigurationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNotifyReplyToConfigurationRef:
+```typescript
+const name = getNotifyReplyToConfigurationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNotifyReplyToConfiguration` query has no variables.
+### Return Type
+Recall that executing the `GetNotifyReplyToConfiguration` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNotifyReplyToConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNotifyReplyToConfigurationData {
+  notifyEmailConfiguration?: {
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+    defaultReplyToAddress?: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      announcementSelectable: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+      providerAcceptedAt?: TimestampString | null;
+      providerNotificationId?: string | null;
+      verificationMode?: GovNotifyDeliveryMode | null;
+      verifiedAt?: TimestampString | null;
+      verifiedBy?: string | null;
+      version: number;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy: string;
+      updatedBy: string;
+    } & NotifyReplyToAddress_Key;
+  };
+  notifyReplyToAddresses: ({
+    id: UUIDString;
+    displayLabel: string;
+    emailAddress: string;
+    notifyUuid: string;
+    enabled: boolean;
+    announcementSelectable: boolean;
+    verificationStatus: NotifyReplyToVerificationStatus;
+    providerAcceptedAt?: TimestampString | null;
+    providerNotificationId?: string | null;
+    verificationMode?: GovNotifyDeliveryMode | null;
+    verifiedAt?: TimestampString | null;
+    verifiedBy?: string | null;
+    version: number;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy: string;
+    updatedBy: string;
+  } & NotifyReplyToAddress_Key)[];
+  notifyTemplateReplyToOverrides: ({
+    templateKey: string;
+    replyToAddress: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+    } & NotifyReplyToAddress_Key;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateReplyToOverride_Key)[];
+}
+```
+### Using `GetNotifyReplyToConfiguration`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNotifyReplyToConfiguration } from '@dataconnect/generated';
+
+
+// Call the `getNotifyReplyToConfiguration()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNotifyReplyToConfiguration();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNotifyReplyToConfiguration(dataConnect);
+
+console.log(data.notifyEmailConfiguration);
+console.log(data.notifyReplyToAddresses);
+console.log(data.notifyTemplateReplyToOverrides);
+
+// Or, you can use the `Promise` API.
+getNotifyReplyToConfiguration().then((response) => {
+  const data = response.data;
+  console.log(data.notifyEmailConfiguration);
+  console.log(data.notifyReplyToAddresses);
+  console.log(data.notifyTemplateReplyToOverrides);
+});
+```
+
+### Using `GetNotifyReplyToConfiguration`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNotifyReplyToConfigurationRef } from '@dataconnect/generated';
+
+
+// Call the `getNotifyReplyToConfigurationRef()` function to get a reference to the query.
+const ref = getNotifyReplyToConfigurationRef();
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNotifyReplyToConfigurationRef(dataConnect);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyEmailConfiguration);
+console.log(data.notifyReplyToAddresses);
+console.log(data.notifyTemplateReplyToOverrides);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyEmailConfiguration);
+  console.log(data.notifyReplyToAddresses);
+  console.log(data.notifyTemplateReplyToOverrides);
+});
+```
+
+## ListNotifyReplyToAudits
+You can execute the `ListNotifyReplyToAudits` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listNotifyReplyToAudits(vars: ListNotifyReplyToAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+
+interface ListNotifyReplyToAuditsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNotifyReplyToAuditsVariables): QueryRef<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+}
+export const listNotifyReplyToAuditsRef: ListNotifyReplyToAuditsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listNotifyReplyToAudits(dc: DataConnect, vars: ListNotifyReplyToAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+
+interface ListNotifyReplyToAuditsRef {
+  ...
+  (dc: DataConnect, vars: ListNotifyReplyToAuditsVariables): QueryRef<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+}
+export const listNotifyReplyToAuditsRef: ListNotifyReplyToAuditsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listNotifyReplyToAuditsRef:
+```typescript
+const name = listNotifyReplyToAuditsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListNotifyReplyToAudits` query requires an argument of type `ListNotifyReplyToAuditsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListNotifyReplyToAuditsVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListNotifyReplyToAudits` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListNotifyReplyToAuditsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListNotifyReplyToAuditsData {
+  notifyReplyToAudits: ({
+    id: UUIDString;
+    action: NotifyReplyToAuditAction;
+    replyToAddressId?: UUIDString | null;
+    templateKey?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason: string;
+    changedAt: TimestampString;
+  } & NotifyReplyToAudit_Key)[];
+}
+```
+### Using `ListNotifyReplyToAudits`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listNotifyReplyToAudits, ListNotifyReplyToAuditsVariables } from '@dataconnect/generated';
+
+// The `ListNotifyReplyToAudits` query requires an argument of type `ListNotifyReplyToAuditsVariables`:
+const listNotifyReplyToAuditsVars: ListNotifyReplyToAuditsVariables = {
+  limit: ..., 
+};
+
+// Call the `listNotifyReplyToAudits()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listNotifyReplyToAudits(listNotifyReplyToAuditsVars);
+// Variables can be defined inline as well.
+const { data } = await listNotifyReplyToAudits({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listNotifyReplyToAudits(dataConnect, listNotifyReplyToAuditsVars);
+
+console.log(data.notifyReplyToAudits);
+
+// Or, you can use the `Promise` API.
+listNotifyReplyToAudits(listNotifyReplyToAuditsVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyReplyToAudits);
+});
+```
+
+### Using `ListNotifyReplyToAudits`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listNotifyReplyToAuditsRef, ListNotifyReplyToAuditsVariables } from '@dataconnect/generated';
+
+// The `ListNotifyReplyToAudits` query requires an argument of type `ListNotifyReplyToAuditsVariables`:
+const listNotifyReplyToAuditsVars: ListNotifyReplyToAuditsVariables = {
+  limit: ..., 
+};
+
+// Call the `listNotifyReplyToAuditsRef()` function to get a reference to the query.
+const ref = listNotifyReplyToAuditsRef(listNotifyReplyToAuditsVars);
+// Variables can be defined inline as well.
+const ref = listNotifyReplyToAuditsRef({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listNotifyReplyToAuditsRef(dataConnect, listNotifyReplyToAuditsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyReplyToAudits);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyReplyToAudits);
 });
 ```
 
@@ -4380,6 +4665,9 @@ export interface GetAnnouncementSendHistoryData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
   } & AnnouncementSend_Key)[];
 }
 ```
@@ -4621,6 +4909,10 @@ export interface GetAnnouncementSendByIdData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
+    replyToNotifyUuid?: string | null;
   } & AnnouncementSend_Key;
 }
 ```
@@ -9322,6 +9614,1275 @@ executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.changed);
   console.log(data.govNotifyDeliveryModeAudit_insert);
+});
+```
+
+## CreateNotifyEmailConfiguration
+You can execute the `CreateNotifyEmailConfiguration` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createNotifyEmailConfiguration(): MutationPromise<CreateNotifyEmailConfigurationData, undefined>;
+
+interface CreateNotifyEmailConfigurationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<CreateNotifyEmailConfigurationData, undefined>;
+}
+export const createNotifyEmailConfigurationRef: CreateNotifyEmailConfigurationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createNotifyEmailConfiguration(dc: DataConnect): MutationPromise<CreateNotifyEmailConfigurationData, undefined>;
+
+interface CreateNotifyEmailConfigurationRef {
+  ...
+  (dc: DataConnect): MutationRef<CreateNotifyEmailConfigurationData, undefined>;
+}
+export const createNotifyEmailConfigurationRef: CreateNotifyEmailConfigurationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createNotifyEmailConfigurationRef:
+```typescript
+const name = createNotifyEmailConfigurationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateNotifyEmailConfiguration` mutation has no variables.
+### Return Type
+Recall that executing the `CreateNotifyEmailConfiguration` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateNotifyEmailConfigurationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateNotifyEmailConfigurationData {
+  notifyEmailConfiguration_insert: NotifyEmailConfiguration_Key;
+}
+```
+### Using `CreateNotifyEmailConfiguration`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createNotifyEmailConfiguration } from '@dataconnect/generated';
+
+
+// Call the `createNotifyEmailConfiguration()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createNotifyEmailConfiguration();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createNotifyEmailConfiguration(dataConnect);
+
+console.log(data.notifyEmailConfiguration_insert);
+
+// Or, you can use the `Promise` API.
+createNotifyEmailConfiguration().then((response) => {
+  const data = response.data;
+  console.log(data.notifyEmailConfiguration_insert);
+});
+```
+
+### Using `CreateNotifyEmailConfiguration`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createNotifyEmailConfigurationRef } from '@dataconnect/generated';
+
+
+// Call the `createNotifyEmailConfigurationRef()` function to get a reference to the mutation.
+const ref = createNotifyEmailConfigurationRef();
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createNotifyEmailConfigurationRef(dataConnect);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyEmailConfiguration_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyEmailConfiguration_insert);
+});
+```
+
+## CreateNotifyReplyToAddress
+You can execute the `CreateNotifyReplyToAddress` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+createNotifyReplyToAddress(vars: CreateNotifyReplyToAddressVariables): MutationPromise<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+
+interface CreateNotifyReplyToAddressRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateNotifyReplyToAddressVariables): MutationRef<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+}
+export const createNotifyReplyToAddressRef: CreateNotifyReplyToAddressRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createNotifyReplyToAddress(dc: DataConnect, vars: CreateNotifyReplyToAddressVariables): MutationPromise<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+
+interface CreateNotifyReplyToAddressRef {
+  ...
+  (dc: DataConnect, vars: CreateNotifyReplyToAddressVariables): MutationRef<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+}
+export const createNotifyReplyToAddressRef: CreateNotifyReplyToAddressRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createNotifyReplyToAddressRef:
+```typescript
+const name = createNotifyReplyToAddressRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateNotifyReplyToAddress` mutation requires an argument of type `CreateNotifyReplyToAddressVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateNotifyReplyToAddressVariables {
+  id: UUIDString;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason: string;
+  newValue: string;
+}
+```
+### Return Type
+Recall that executing the `CreateNotifyReplyToAddress` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateNotifyReplyToAddressData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateNotifyReplyToAddressData {
+  notifyReplyToAddress_insert: NotifyReplyToAddress_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `CreateNotifyReplyToAddress`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createNotifyReplyToAddress, CreateNotifyReplyToAddressVariables } from '@dataconnect/generated';
+
+// The `CreateNotifyReplyToAddress` mutation requires an argument of type `CreateNotifyReplyToAddressVariables`:
+const createNotifyReplyToAddressVars: CreateNotifyReplyToAddressVariables = {
+  id: ..., 
+  displayLabel: ..., 
+  emailAddress: ..., 
+  notifyUuid: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  newValue: ..., 
+};
+
+// Call the `createNotifyReplyToAddress()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createNotifyReplyToAddress(createNotifyReplyToAddressVars);
+// Variables can be defined inline as well.
+const { data } = await createNotifyReplyToAddress({ id: ..., displayLabel: ..., emailAddress: ..., notifyUuid: ..., changedBy: ..., reason: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createNotifyReplyToAddress(dataConnect, createNotifyReplyToAddressVars);
+
+console.log(data.notifyReplyToAddress_insert);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+createNotifyReplyToAddress(createNotifyReplyToAddressVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyReplyToAddress_insert);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `CreateNotifyReplyToAddress`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createNotifyReplyToAddressRef, CreateNotifyReplyToAddressVariables } from '@dataconnect/generated';
+
+// The `CreateNotifyReplyToAddress` mutation requires an argument of type `CreateNotifyReplyToAddressVariables`:
+const createNotifyReplyToAddressVars: CreateNotifyReplyToAddressVariables = {
+  id: ..., 
+  displayLabel: ..., 
+  emailAddress: ..., 
+  notifyUuid: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  newValue: ..., 
+};
+
+// Call the `createNotifyReplyToAddressRef()` function to get a reference to the mutation.
+const ref = createNotifyReplyToAddressRef(createNotifyReplyToAddressVars);
+// Variables can be defined inline as well.
+const ref = createNotifyReplyToAddressRef({ id: ..., displayLabel: ..., emailAddress: ..., notifyUuid: ..., changedBy: ..., reason: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createNotifyReplyToAddressRef(dataConnect, createNotifyReplyToAddressVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyReplyToAddress_insert);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyReplyToAddress_insert);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## UpdateNotifyReplyToAddressIdentity
+You can execute the `UpdateNotifyReplyToAddressIdentity` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateNotifyReplyToAddressIdentity(vars: UpdateNotifyReplyToAddressIdentityVariables): MutationPromise<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+
+interface UpdateNotifyReplyToAddressIdentityRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateNotifyReplyToAddressIdentityVariables): MutationRef<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+}
+export const updateNotifyReplyToAddressIdentityRef: UpdateNotifyReplyToAddressIdentityRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateNotifyReplyToAddressIdentity(dc: DataConnect, vars: UpdateNotifyReplyToAddressIdentityVariables): MutationPromise<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+
+interface UpdateNotifyReplyToAddressIdentityRef {
+  ...
+  (dc: DataConnect, vars: UpdateNotifyReplyToAddressIdentityVariables): MutationRef<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+}
+export const updateNotifyReplyToAddressIdentityRef: UpdateNotifyReplyToAddressIdentityRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateNotifyReplyToAddressIdentityRef:
+```typescript
+const name = updateNotifyReplyToAddressIdentityRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateNotifyReplyToAddressIdentity` mutation requires an argument of type `UpdateNotifyReplyToAddressIdentityVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateNotifyReplyToAddressIdentityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+  newValue: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateNotifyReplyToAddressIdentity` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateNotifyReplyToAddressIdentityData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateNotifyReplyToAddressIdentityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `UpdateNotifyReplyToAddressIdentity`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateNotifyReplyToAddressIdentity, UpdateNotifyReplyToAddressIdentityVariables } from '@dataconnect/generated';
+
+// The `UpdateNotifyReplyToAddressIdentity` mutation requires an argument of type `UpdateNotifyReplyToAddressIdentityVariables`:
+const updateNotifyReplyToAddressIdentityVars: UpdateNotifyReplyToAddressIdentityVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  displayLabel: ..., 
+  emailAddress: ..., 
+  notifyUuid: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+  newValue: ..., 
+};
+
+// Call the `updateNotifyReplyToAddressIdentity()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateNotifyReplyToAddressIdentity(updateNotifyReplyToAddressIdentityVars);
+// Variables can be defined inline as well.
+const { data } = await updateNotifyReplyToAddressIdentity({ id: ..., expectedVersion: ..., displayLabel: ..., emailAddress: ..., notifyUuid: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateNotifyReplyToAddressIdentity(dataConnect, updateNotifyReplyToAddressIdentityVars);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+updateNotifyReplyToAddressIdentity(updateNotifyReplyToAddressIdentityVars).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `UpdateNotifyReplyToAddressIdentity`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateNotifyReplyToAddressIdentityRef, UpdateNotifyReplyToAddressIdentityVariables } from '@dataconnect/generated';
+
+// The `UpdateNotifyReplyToAddressIdentity` mutation requires an argument of type `UpdateNotifyReplyToAddressIdentityVariables`:
+const updateNotifyReplyToAddressIdentityVars: UpdateNotifyReplyToAddressIdentityVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  displayLabel: ..., 
+  emailAddress: ..., 
+  notifyUuid: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+  newValue: ..., 
+};
+
+// Call the `updateNotifyReplyToAddressIdentityRef()` function to get a reference to the mutation.
+const ref = updateNotifyReplyToAddressIdentityRef(updateNotifyReplyToAddressIdentityVars);
+// Variables can be defined inline as well.
+const ref = updateNotifyReplyToAddressIdentityRef({ id: ..., expectedVersion: ..., displayLabel: ..., emailAddress: ..., notifyUuid: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateNotifyReplyToAddressIdentityRef(dataConnect, updateNotifyReplyToAddressIdentityVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## RecordNotifyReplyToProviderAcceptance
+You can execute the `RecordNotifyReplyToProviderAcceptance` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+recordNotifyReplyToProviderAcceptance(vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationPromise<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+
+interface RecordNotifyReplyToProviderAcceptanceRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationRef<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+}
+export const recordNotifyReplyToProviderAcceptanceRef: RecordNotifyReplyToProviderAcceptanceRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+recordNotifyReplyToProviderAcceptance(dc: DataConnect, vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationPromise<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+
+interface RecordNotifyReplyToProviderAcceptanceRef {
+  ...
+  (dc: DataConnect, vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationRef<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+}
+export const recordNotifyReplyToProviderAcceptanceRef: RecordNotifyReplyToProviderAcceptanceRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the recordNotifyReplyToProviderAcceptanceRef:
+```typescript
+const name = recordNotifyReplyToProviderAcceptanceRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RecordNotifyReplyToProviderAcceptance` mutation requires an argument of type `RecordNotifyReplyToProviderAcceptanceVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RecordNotifyReplyToProviderAcceptanceVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  providerNotificationId: string;
+  verificationMode: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason: string;
+}
+```
+### Return Type
+Recall that executing the `RecordNotifyReplyToProviderAcceptance` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RecordNotifyReplyToProviderAcceptanceData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RecordNotifyReplyToProviderAcceptanceData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `RecordNotifyReplyToProviderAcceptance`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, recordNotifyReplyToProviderAcceptance, RecordNotifyReplyToProviderAcceptanceVariables } from '@dataconnect/generated';
+
+// The `RecordNotifyReplyToProviderAcceptance` mutation requires an argument of type `RecordNotifyReplyToProviderAcceptanceVariables`:
+const recordNotifyReplyToProviderAcceptanceVars: RecordNotifyReplyToProviderAcceptanceVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  providerNotificationId: ..., 
+  verificationMode: ..., 
+  changedBy: ..., 
+  reason: ..., 
+};
+
+// Call the `recordNotifyReplyToProviderAcceptance()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await recordNotifyReplyToProviderAcceptance(recordNotifyReplyToProviderAcceptanceVars);
+// Variables can be defined inline as well.
+const { data } = await recordNotifyReplyToProviderAcceptance({ id: ..., expectedVersion: ..., providerNotificationId: ..., verificationMode: ..., changedBy: ..., reason: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await recordNotifyReplyToProviderAcceptance(dataConnect, recordNotifyReplyToProviderAcceptanceVars);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+recordNotifyReplyToProviderAcceptance(recordNotifyReplyToProviderAcceptanceVars).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `RecordNotifyReplyToProviderAcceptance`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, recordNotifyReplyToProviderAcceptanceRef, RecordNotifyReplyToProviderAcceptanceVariables } from '@dataconnect/generated';
+
+// The `RecordNotifyReplyToProviderAcceptance` mutation requires an argument of type `RecordNotifyReplyToProviderAcceptanceVariables`:
+const recordNotifyReplyToProviderAcceptanceVars: RecordNotifyReplyToProviderAcceptanceVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  providerNotificationId: ..., 
+  verificationMode: ..., 
+  changedBy: ..., 
+  reason: ..., 
+};
+
+// Call the `recordNotifyReplyToProviderAcceptanceRef()` function to get a reference to the mutation.
+const ref = recordNotifyReplyToProviderAcceptanceRef(recordNotifyReplyToProviderAcceptanceVars);
+// Variables can be defined inline as well.
+const ref = recordNotifyReplyToProviderAcceptanceRef({ id: ..., expectedVersion: ..., providerNotificationId: ..., verificationMode: ..., changedBy: ..., reason: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = recordNotifyReplyToProviderAcceptanceRef(dataConnect, recordNotifyReplyToProviderAcceptanceVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## ConfirmNotifyReplyToVerification
+You can execute the `ConfirmNotifyReplyToVerification` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+confirmNotifyReplyToVerification(vars: ConfirmNotifyReplyToVerificationVariables): MutationPromise<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+
+interface ConfirmNotifyReplyToVerificationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmNotifyReplyToVerificationVariables): MutationRef<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+}
+export const confirmNotifyReplyToVerificationRef: ConfirmNotifyReplyToVerificationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+confirmNotifyReplyToVerification(dc: DataConnect, vars: ConfirmNotifyReplyToVerificationVariables): MutationPromise<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+
+interface ConfirmNotifyReplyToVerificationRef {
+  ...
+  (dc: DataConnect, vars: ConfirmNotifyReplyToVerificationVariables): MutationRef<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+}
+export const confirmNotifyReplyToVerificationRef: ConfirmNotifyReplyToVerificationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the confirmNotifyReplyToVerificationRef:
+```typescript
+const name = confirmNotifyReplyToVerificationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ConfirmNotifyReplyToVerification` mutation requires an argument of type `ConfirmNotifyReplyToVerificationVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ConfirmNotifyReplyToVerificationVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  changedBy: string;
+  reason: string;
+}
+```
+### Return Type
+Recall that executing the `ConfirmNotifyReplyToVerification` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ConfirmNotifyReplyToVerificationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ConfirmNotifyReplyToVerificationData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `ConfirmNotifyReplyToVerification`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, confirmNotifyReplyToVerification, ConfirmNotifyReplyToVerificationVariables } from '@dataconnect/generated';
+
+// The `ConfirmNotifyReplyToVerification` mutation requires an argument of type `ConfirmNotifyReplyToVerificationVariables`:
+const confirmNotifyReplyToVerificationVars: ConfirmNotifyReplyToVerificationVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  changedBy: ..., 
+  reason: ..., 
+};
+
+// Call the `confirmNotifyReplyToVerification()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await confirmNotifyReplyToVerification(confirmNotifyReplyToVerificationVars);
+// Variables can be defined inline as well.
+const { data } = await confirmNotifyReplyToVerification({ id: ..., expectedVersion: ..., changedBy: ..., reason: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await confirmNotifyReplyToVerification(dataConnect, confirmNotifyReplyToVerificationVars);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+confirmNotifyReplyToVerification(confirmNotifyReplyToVerificationVars).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `ConfirmNotifyReplyToVerification`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, confirmNotifyReplyToVerificationRef, ConfirmNotifyReplyToVerificationVariables } from '@dataconnect/generated';
+
+// The `ConfirmNotifyReplyToVerification` mutation requires an argument of type `ConfirmNotifyReplyToVerificationVariables`:
+const confirmNotifyReplyToVerificationVars: ConfirmNotifyReplyToVerificationVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  changedBy: ..., 
+  reason: ..., 
+};
+
+// Call the `confirmNotifyReplyToVerificationRef()` function to get a reference to the mutation.
+const ref = confirmNotifyReplyToVerificationRef(confirmNotifyReplyToVerificationVars);
+// Variables can be defined inline as well.
+const ref = confirmNotifyReplyToVerificationRef({ id: ..., expectedVersion: ..., changedBy: ..., reason: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = confirmNotifyReplyToVerificationRef(dataConnect, confirmNotifyReplyToVerificationVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## UpdateNotifyReplyToAvailability
+You can execute the `UpdateNotifyReplyToAvailability` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateNotifyReplyToAvailability(vars: UpdateNotifyReplyToAvailabilityVariables): MutationPromise<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+
+interface UpdateNotifyReplyToAvailabilityRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateNotifyReplyToAvailabilityVariables): MutationRef<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+}
+export const updateNotifyReplyToAvailabilityRef: UpdateNotifyReplyToAvailabilityRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateNotifyReplyToAvailability(dc: DataConnect, vars: UpdateNotifyReplyToAvailabilityVariables): MutationPromise<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+
+interface UpdateNotifyReplyToAvailabilityRef {
+  ...
+  (dc: DataConnect, vars: UpdateNotifyReplyToAvailabilityVariables): MutationRef<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+}
+export const updateNotifyReplyToAvailabilityRef: UpdateNotifyReplyToAvailabilityRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateNotifyReplyToAvailabilityRef:
+```typescript
+const name = updateNotifyReplyToAvailabilityRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateNotifyReplyToAvailability` mutation requires an argument of type `UpdateNotifyReplyToAvailabilityVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateNotifyReplyToAvailabilityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  enabled: boolean;
+  announcementSelectable: boolean;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+  newValue: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateNotifyReplyToAvailability` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateNotifyReplyToAvailabilityData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateNotifyReplyToAvailabilityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `UpdateNotifyReplyToAvailability`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateNotifyReplyToAvailability, UpdateNotifyReplyToAvailabilityVariables } from '@dataconnect/generated';
+
+// The `UpdateNotifyReplyToAvailability` mutation requires an argument of type `UpdateNotifyReplyToAvailabilityVariables`:
+const updateNotifyReplyToAvailabilityVars: UpdateNotifyReplyToAvailabilityVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  enabled: ..., 
+  announcementSelectable: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+  newValue: ..., 
+};
+
+// Call the `updateNotifyReplyToAvailability()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateNotifyReplyToAvailability(updateNotifyReplyToAvailabilityVars);
+// Variables can be defined inline as well.
+const { data } = await updateNotifyReplyToAvailability({ id: ..., expectedVersion: ..., enabled: ..., announcementSelectable: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateNotifyReplyToAvailability(dataConnect, updateNotifyReplyToAvailabilityVars);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+updateNotifyReplyToAvailability(updateNotifyReplyToAvailabilityVars).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `UpdateNotifyReplyToAvailability`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateNotifyReplyToAvailabilityRef, UpdateNotifyReplyToAvailabilityVariables } from '@dataconnect/generated';
+
+// The `UpdateNotifyReplyToAvailability` mutation requires an argument of type `UpdateNotifyReplyToAvailabilityVariables`:
+const updateNotifyReplyToAvailabilityVars: UpdateNotifyReplyToAvailabilityVariables = {
+  id: ..., 
+  expectedVersion: ..., 
+  enabled: ..., 
+  announcementSelectable: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+  newValue: ..., 
+};
+
+// Call the `updateNotifyReplyToAvailabilityRef()` function to get a reference to the mutation.
+const ref = updateNotifyReplyToAvailabilityRef(updateNotifyReplyToAvailabilityVars);
+// Variables can be defined inline as well.
+const ref = updateNotifyReplyToAvailabilityRef({ id: ..., expectedVersion: ..., enabled: ..., announcementSelectable: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateNotifyReplyToAvailabilityRef(dataConnect, updateNotifyReplyToAvailabilityVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## ChangeNotifyReplyToDefault
+You can execute the `ChangeNotifyReplyToDefault` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+changeNotifyReplyToDefault(vars: ChangeNotifyReplyToDefaultVariables): MutationPromise<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+
+interface ChangeNotifyReplyToDefaultRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ChangeNotifyReplyToDefaultVariables): MutationRef<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+}
+export const changeNotifyReplyToDefaultRef: ChangeNotifyReplyToDefaultRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+changeNotifyReplyToDefault(dc: DataConnect, vars: ChangeNotifyReplyToDefaultVariables): MutationPromise<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+
+interface ChangeNotifyReplyToDefaultRef {
+  ...
+  (dc: DataConnect, vars: ChangeNotifyReplyToDefaultVariables): MutationRef<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+}
+export const changeNotifyReplyToDefaultRef: ChangeNotifyReplyToDefaultRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the changeNotifyReplyToDefaultRef:
+```typescript
+const name = changeNotifyReplyToDefaultRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ChangeNotifyReplyToDefault` mutation requires an argument of type `ChangeNotifyReplyToDefaultVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ChangeNotifyReplyToDefaultVariables {
+  expectedVersion: number;
+  previousAddressId?: UUIDString | null;
+  newAddressId?: UUIDString | null;
+  changedBy: string;
+  reason: string;
+  previousValue?: string | null;
+  newValue?: string | null;
+}
+```
+### Return Type
+Recall that executing the `ChangeNotifyReplyToDefault` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ChangeNotifyReplyToDefaultData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ChangeNotifyReplyToDefaultData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `ChangeNotifyReplyToDefault`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, changeNotifyReplyToDefault, ChangeNotifyReplyToDefaultVariables } from '@dataconnect/generated';
+
+// The `ChangeNotifyReplyToDefault` mutation requires an argument of type `ChangeNotifyReplyToDefaultVariables`:
+const changeNotifyReplyToDefaultVars: ChangeNotifyReplyToDefaultVariables = {
+  expectedVersion: ..., 
+  previousAddressId: ..., // optional
+  newAddressId: ..., // optional
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., // optional
+  newValue: ..., // optional
+};
+
+// Call the `changeNotifyReplyToDefault()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await changeNotifyReplyToDefault(changeNotifyReplyToDefaultVars);
+// Variables can be defined inline as well.
+const { data } = await changeNotifyReplyToDefault({ expectedVersion: ..., previousAddressId: ..., newAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await changeNotifyReplyToDefault(dataConnect, changeNotifyReplyToDefaultVars);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+changeNotifyReplyToDefault(changeNotifyReplyToDefaultVars).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `ChangeNotifyReplyToDefault`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, changeNotifyReplyToDefaultRef, ChangeNotifyReplyToDefaultVariables } from '@dataconnect/generated';
+
+// The `ChangeNotifyReplyToDefault` mutation requires an argument of type `ChangeNotifyReplyToDefaultVariables`:
+const changeNotifyReplyToDefaultVars: ChangeNotifyReplyToDefaultVariables = {
+  expectedVersion: ..., 
+  previousAddressId: ..., // optional
+  newAddressId: ..., // optional
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., // optional
+  newValue: ..., // optional
+};
+
+// Call the `changeNotifyReplyToDefaultRef()` function to get a reference to the mutation.
+const ref = changeNotifyReplyToDefaultRef(changeNotifyReplyToDefaultVars);
+// Variables can be defined inline as well.
+const ref = changeNotifyReplyToDefaultRef({ expectedVersion: ..., previousAddressId: ..., newAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = changeNotifyReplyToDefaultRef(dataConnect, changeNotifyReplyToDefaultVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.changed);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.changed);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## DisableDefaultNotifyReplyToAddress
+You can execute the `DisableDefaultNotifyReplyToAddress` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+disableDefaultNotifyReplyToAddress(vars: DisableDefaultNotifyReplyToAddressVariables): MutationPromise<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+
+interface DisableDefaultNotifyReplyToAddressRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DisableDefaultNotifyReplyToAddressVariables): MutationRef<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+}
+export const disableDefaultNotifyReplyToAddressRef: DisableDefaultNotifyReplyToAddressRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+disableDefaultNotifyReplyToAddress(dc: DataConnect, vars: DisableDefaultNotifyReplyToAddressVariables): MutationPromise<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+
+interface DisableDefaultNotifyReplyToAddressRef {
+  ...
+  (dc: DataConnect, vars: DisableDefaultNotifyReplyToAddressVariables): MutationRef<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+}
+export const disableDefaultNotifyReplyToAddressRef: DisableDefaultNotifyReplyToAddressRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the disableDefaultNotifyReplyToAddressRef:
+```typescript
+const name = disableDefaultNotifyReplyToAddressRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `DisableDefaultNotifyReplyToAddress` mutation requires an argument of type `DisableDefaultNotifyReplyToAddressVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface DisableDefaultNotifyReplyToAddressVariables {
+  id: UUIDString;
+  expectedAddressVersion: number;
+  expectedConfigurationVersion: number;
+  replacementAddressId?: UUIDString | null;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+}
+```
+### Return Type
+Recall that executing the `DisableDefaultNotifyReplyToAddress` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `DisableDefaultNotifyReplyToAddressData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface DisableDefaultNotifyReplyToAddressData {
+  addressChanged: number;
+  configurationChanged: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `DisableDefaultNotifyReplyToAddress`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, disableDefaultNotifyReplyToAddress, DisableDefaultNotifyReplyToAddressVariables } from '@dataconnect/generated';
+
+// The `DisableDefaultNotifyReplyToAddress` mutation requires an argument of type `DisableDefaultNotifyReplyToAddressVariables`:
+const disableDefaultNotifyReplyToAddressVars: DisableDefaultNotifyReplyToAddressVariables = {
+  id: ..., 
+  expectedAddressVersion: ..., 
+  expectedConfigurationVersion: ..., 
+  replacementAddressId: ..., // optional
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+};
+
+// Call the `disableDefaultNotifyReplyToAddress()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await disableDefaultNotifyReplyToAddress(disableDefaultNotifyReplyToAddressVars);
+// Variables can be defined inline as well.
+const { data } = await disableDefaultNotifyReplyToAddress({ id: ..., expectedAddressVersion: ..., expectedConfigurationVersion: ..., replacementAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await disableDefaultNotifyReplyToAddress(dataConnect, disableDefaultNotifyReplyToAddressVars);
+
+console.log(data.addressChanged);
+console.log(data.configurationChanged);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+disableDefaultNotifyReplyToAddress(disableDefaultNotifyReplyToAddressVars).then((response) => {
+  const data = response.data;
+  console.log(data.addressChanged);
+  console.log(data.configurationChanged);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `DisableDefaultNotifyReplyToAddress`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, disableDefaultNotifyReplyToAddressRef, DisableDefaultNotifyReplyToAddressVariables } from '@dataconnect/generated';
+
+// The `DisableDefaultNotifyReplyToAddress` mutation requires an argument of type `DisableDefaultNotifyReplyToAddressVariables`:
+const disableDefaultNotifyReplyToAddressVars: DisableDefaultNotifyReplyToAddressVariables = {
+  id: ..., 
+  expectedAddressVersion: ..., 
+  expectedConfigurationVersion: ..., 
+  replacementAddressId: ..., // optional
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+};
+
+// Call the `disableDefaultNotifyReplyToAddressRef()` function to get a reference to the mutation.
+const ref = disableDefaultNotifyReplyToAddressRef(disableDefaultNotifyReplyToAddressVars);
+// Variables can be defined inline as well.
+const ref = disableDefaultNotifyReplyToAddressRef({ id: ..., expectedAddressVersion: ..., expectedConfigurationVersion: ..., replacementAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = disableDefaultNotifyReplyToAddressRef(dataConnect, disableDefaultNotifyReplyToAddressVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.addressChanged);
+console.log(data.configurationChanged);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.addressChanged);
+  console.log(data.configurationChanged);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## SetNotifyTemplateReplyToOverride
+You can execute the `SetNotifyTemplateReplyToOverride` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+setNotifyTemplateReplyToOverride(vars: SetNotifyTemplateReplyToOverrideVariables): MutationPromise<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+
+interface SetNotifyTemplateReplyToOverrideRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SetNotifyTemplateReplyToOverrideVariables): MutationRef<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+}
+export const setNotifyTemplateReplyToOverrideRef: SetNotifyTemplateReplyToOverrideRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+setNotifyTemplateReplyToOverride(dc: DataConnect, vars: SetNotifyTemplateReplyToOverrideVariables): MutationPromise<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+
+interface SetNotifyTemplateReplyToOverrideRef {
+  ...
+  (dc: DataConnect, vars: SetNotifyTemplateReplyToOverrideVariables): MutationRef<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+}
+export const setNotifyTemplateReplyToOverrideRef: SetNotifyTemplateReplyToOverrideRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the setNotifyTemplateReplyToOverrideRef:
+```typescript
+const name = setNotifyTemplateReplyToOverrideRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SetNotifyTemplateReplyToOverride` mutation requires an argument of type `SetNotifyTemplateReplyToOverrideVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SetNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  replyToAddressId: UUIDString;
+  changedBy: string;
+  reason: string;
+  previousValue?: string | null;
+  newValue: string;
+}
+```
+### Return Type
+Recall that executing the `SetNotifyTemplateReplyToOverride` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SetNotifyTemplateReplyToOverrideData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SetNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `SetNotifyTemplateReplyToOverride`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, setNotifyTemplateReplyToOverride, SetNotifyTemplateReplyToOverrideVariables } from '@dataconnect/generated';
+
+// The `SetNotifyTemplateReplyToOverride` mutation requires an argument of type `SetNotifyTemplateReplyToOverrideVariables`:
+const setNotifyTemplateReplyToOverrideVars: SetNotifyTemplateReplyToOverrideVariables = {
+  templateKey: ..., 
+  replyToAddressId: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., // optional
+  newValue: ..., 
+};
+
+// Call the `setNotifyTemplateReplyToOverride()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await setNotifyTemplateReplyToOverride(setNotifyTemplateReplyToOverrideVars);
+// Variables can be defined inline as well.
+const { data } = await setNotifyTemplateReplyToOverride({ templateKey: ..., replyToAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await setNotifyTemplateReplyToOverride(dataConnect, setNotifyTemplateReplyToOverrideVars);
+
+console.log(data.notifyTemplateReplyToOverride_upsert);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+setNotifyTemplateReplyToOverride(setNotifyTemplateReplyToOverrideVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateReplyToOverride_upsert);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `SetNotifyTemplateReplyToOverride`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, setNotifyTemplateReplyToOverrideRef, SetNotifyTemplateReplyToOverrideVariables } from '@dataconnect/generated';
+
+// The `SetNotifyTemplateReplyToOverride` mutation requires an argument of type `SetNotifyTemplateReplyToOverrideVariables`:
+const setNotifyTemplateReplyToOverrideVars: SetNotifyTemplateReplyToOverrideVariables = {
+  templateKey: ..., 
+  replyToAddressId: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., // optional
+  newValue: ..., 
+};
+
+// Call the `setNotifyTemplateReplyToOverrideRef()` function to get a reference to the mutation.
+const ref = setNotifyTemplateReplyToOverrideRef(setNotifyTemplateReplyToOverrideVars);
+// Variables can be defined inline as well.
+const ref = setNotifyTemplateReplyToOverrideRef({ templateKey: ..., replyToAddressId: ..., changedBy: ..., reason: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = setNotifyTemplateReplyToOverrideRef(dataConnect, setNotifyTemplateReplyToOverrideVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyTemplateReplyToOverride_upsert);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateReplyToOverride_upsert);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## ClearNotifyTemplateReplyToOverride
+You can execute the `ClearNotifyTemplateReplyToOverride` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+clearNotifyTemplateReplyToOverride(vars: ClearNotifyTemplateReplyToOverrideVariables): MutationPromise<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+
+interface ClearNotifyTemplateReplyToOverrideRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClearNotifyTemplateReplyToOverrideVariables): MutationRef<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+}
+export const clearNotifyTemplateReplyToOverrideRef: ClearNotifyTemplateReplyToOverrideRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+clearNotifyTemplateReplyToOverride(dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables): MutationPromise<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+
+interface ClearNotifyTemplateReplyToOverrideRef {
+  ...
+  (dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables): MutationRef<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+}
+export const clearNotifyTemplateReplyToOverrideRef: ClearNotifyTemplateReplyToOverrideRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the clearNotifyTemplateReplyToOverrideRef:
+```typescript
+const name = clearNotifyTemplateReplyToOverrideRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ClearNotifyTemplateReplyToOverride` mutation requires an argument of type `ClearNotifyTemplateReplyToOverrideVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ClearNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  changedBy: string;
+  reason: string;
+  previousValue: string;
+}
+```
+### Return Type
+Recall that executing the `ClearNotifyTemplateReplyToOverride` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ClearNotifyTemplateReplyToOverrideData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ClearNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_delete?: NotifyTemplateReplyToOverride_Key | null;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+```
+### Using `ClearNotifyTemplateReplyToOverride`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, clearNotifyTemplateReplyToOverride, ClearNotifyTemplateReplyToOverrideVariables } from '@dataconnect/generated';
+
+// The `ClearNotifyTemplateReplyToOverride` mutation requires an argument of type `ClearNotifyTemplateReplyToOverrideVariables`:
+const clearNotifyTemplateReplyToOverrideVars: ClearNotifyTemplateReplyToOverrideVariables = {
+  templateKey: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+};
+
+// Call the `clearNotifyTemplateReplyToOverride()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await clearNotifyTemplateReplyToOverride(clearNotifyTemplateReplyToOverrideVars);
+// Variables can be defined inline as well.
+const { data } = await clearNotifyTemplateReplyToOverride({ templateKey: ..., changedBy: ..., reason: ..., previousValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await clearNotifyTemplateReplyToOverride(dataConnect, clearNotifyTemplateReplyToOverrideVars);
+
+console.log(data.notifyTemplateReplyToOverride_delete);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+clearNotifyTemplateReplyToOverride(clearNotifyTemplateReplyToOverrideVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateReplyToOverride_delete);
+  console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+### Using `ClearNotifyTemplateReplyToOverride`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, clearNotifyTemplateReplyToOverrideRef, ClearNotifyTemplateReplyToOverrideVariables } from '@dataconnect/generated';
+
+// The `ClearNotifyTemplateReplyToOverride` mutation requires an argument of type `ClearNotifyTemplateReplyToOverrideVariables`:
+const clearNotifyTemplateReplyToOverrideVars: ClearNotifyTemplateReplyToOverrideVariables = {
+  templateKey: ..., 
+  changedBy: ..., 
+  reason: ..., 
+  previousValue: ..., 
+};
+
+// Call the `clearNotifyTemplateReplyToOverrideRef()` function to get a reference to the mutation.
+const ref = clearNotifyTemplateReplyToOverrideRef(clearNotifyTemplateReplyToOverrideVars);
+// Variables can be defined inline as well.
+const ref = clearNotifyTemplateReplyToOverrideRef({ templateKey: ..., changedBy: ..., reason: ..., previousValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = clearNotifyTemplateReplyToOverrideRef(dataConnect, clearNotifyTemplateReplyToOverrideVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyTemplateReplyToOverride_delete);
+console.log(data.notifyReplyToAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateReplyToOverride_delete);
+  console.log(data.notifyReplyToAudit_insert);
 });
 ```
 
@@ -14653,6 +16214,10 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId?: UUIDString | null;
+  replyToDisplayLabel?: string | null;
+  replyToEmailAddress?: string | null;
+  replyToNotifyUuid?: string | null;
 }
 ```
 ### Return Type
@@ -14683,13 +16248,17 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
   requestedDeliveryMode: ..., 
   siteDeliveryMode: ..., 
   effectiveDeliveryMode: ..., 
+  replyToAddressId: ..., // optional
+  replyToDisplayLabel: ..., // optional
+  replyToEmailAddress: ..., // optional
+  replyToNotifyUuid: ..., // optional
 };
 
 // Call the `createAnnouncementSendWithDeliveryMode()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementSendWithDeliveryMode(createAnnouncementSendWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., });
+const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -14723,12 +16292,16 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
   requestedDeliveryMode: ..., 
   siteDeliveryMode: ..., 
   effectiveDeliveryMode: ..., 
+  replyToAddressId: ..., // optional
+  replyToDisplayLabel: ..., // optional
+  replyToEmailAddress: ..., // optional
+  replyToNotifyUuid: ..., // optional
 };
 
 // Call the `createAnnouncementSendWithDeliveryModeRef()` function to get a reference to the mutation.
 const ref = createAnnouncementSendWithDeliveryModeRef(createAnnouncementSendWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., });
+const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

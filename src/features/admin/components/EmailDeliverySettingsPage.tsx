@@ -27,6 +27,7 @@ import {
 } from "../../../shared/utils/firebaseFunctions/govNotifyDeliveryConfiguration";
 import "../../../shared/components/PageContainer.css";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import NotifyReplyToSettings from "./NotifyReplyToSettings";
 
 const MODES: GovNotifyDeliveryMode[] = ["SIMULATION", "TEAM_TEST", "LIVE"];
 const RANK: Record<GovNotifyDeliveryMode, number> = {
@@ -193,6 +194,7 @@ export default function EmailDeliverySettingsPage({ onBack }: Props) {
               </Box>
             ))}
           </Paper>
+          <NotifyReplyToSettings />
         </Stack>
       )}
 

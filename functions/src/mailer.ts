@@ -14,6 +14,11 @@ import {
   type GovNotifyDeliveryResolution,
 } from "./govNotifyDeliveryMode";
 import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
+import { resolveNotifyReplyToForAutomatedEmail } from "./notifyReplyToConfiguration";
+import {
+  GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV,
+  getGovNotifyEmailReplyToId,
+} from "./govNotifyReplyToId";
 
 export {
   govNotifyLiveApiKey,
@@ -23,7 +28,7 @@ export {
   govNotifyTestApiKey,
 };
 
-export const GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV = "GOV_NOTIFY_EMAIL_REPLY_TO_ID";
+export { GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV, getGovNotifyEmailReplyToId };
 export const GOV_NOTIFY_TEMPLATE_ENV_PREFIX = "GOV_NOTIFY_TEMPLATE_";
 export const GOV_NOTIFY_PROVIDER = "govuk_notify";
 
@@ -101,6 +106,7 @@ export interface GovNotifyMailerOptions<TPayloads extends TransactionalEmailPayl
   ) => Promise<GovNotifyDeliveryResolution>;
   templateIds: Partial<Record<Extract<keyof TPayloads, string>, string | undefined>>;
   emailReplyToId?: string;
+  resolveEmailReplyToId?: (templateName: Extract<keyof TPayloads, string>) => Promise<string | undefined>;
   clientFactory?: (apiKey: string) => NotifyEmailClient;
   logger?: MailerLogger;
 }
@@ -146,10 +152,6 @@ export function readGovNotifyTemplateIds<TTemplateName extends string>(
       return value ? [[templateName, value]] : [];
     }),
   ) as Partial<Record<TTemplateName, string>>;
-}
-
-export function getGovNotifyEmailReplyToId(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  return maybeNonEmpty(env[GOV_NOTIFY_EMAIL_REPLY_TO_ID_ENV]);
 }
 
 /**
@@ -229,7 +231,9 @@ export function createGovNotifyMailer<TPayloads extends TransactionalEmailPayloa
         const response = await client.sendEmail(templateId, request.to, {
           personalisation: request.personalisation,
           reference: providerReference,
-          emailReplyToId: options.emailReplyToId,
+          emailReplyToId: options.resolveEmailReplyToId
+            ? await options.resolveEmailReplyToId(request.templateName)
+            : options.emailReplyToId,
         });
         const providerNotificationId = maybeNonEmpty(response.data?.id);
         const reference = maybeNonEmpty(response.data?.reference) ?? request.reference;
@@ -271,7 +275,8 @@ export function createConfiguredGovNotifyMailer<TPayloads extends TransactionalE
     },
     resolveDeliveryMode: resolveRuntimeGovNotifyDeliveryMode,
     templateIds: readGovNotifyTemplateIds(templateNames, env),
-    emailReplyToId: getGovNotifyEmailReplyToId(env),
+    resolveEmailReplyToId: async (templateName) =>
+      (await resolveNotifyReplyToForAutomatedEmail(templateName, env)).notifyUuid,
   });
 }
 
