@@ -1,12 +1,11 @@
 ---
-subject: "Your SODC booking — ((eventTitle))"
+subject: "Your booking for ((eventTitle)) is confirmed"
 templateKey: bookingConfirmation
 variables:
-  - customerFirstName
+  - firstName
   - eventTitle
   - eventDateTime
   - eventLocation
-  - revisionNumber
   - ticketLinesSummary
   - bookerDietaryNote
   - accommodationSummary
@@ -14,25 +13,25 @@ variables:
   - sectionBookingsUrl
   - myPaymentsUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Your booking for ((eventTitle)) has been confirmed.
+Thank you for booking your place at ((eventTitle)). Your booking is confirmed.
 
 ---
 
 # Event details
 
-When: ((eventDateTime))
+Date and time: ((eventDateTime))
 
 Where: ((eventLocation))
 
 ---
 
-# Your booking (revision ((revisionNumber)))
+# Your booking
 
 ((ticketLinesSummary))
 
-Your dietary note: ((bookerDietaryNote))
+Dietary requirements: ((bookerDietaryNote))
 
 Accommodation: ((accommodationSummary))
 
@@ -40,12 +39,14 @@ Total: ((bookingTotalFormatted))
 
 ---
 
-You can view your booking and payment status at any time:
+View your booking:
 
 ((sectionBookingsUrl))
 
-If payment is outstanding, visit My Payments:
+If you still need to make a payment, visit My Payments:
 
 ((myPaymentsUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

@@ -1,37 +1,34 @@
 {
   "ticketOrderPaid": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
     "ticketTypeTitle": "Member ticket",
     "quantity": 2,
-    "totalFormatted": "50.00 GBP",
-    "currencyDisplay": "GBP",
-    "orderStatusLabel": "Paid",
-    "orderId": "00000000-0000-0000-0000-000000000001",
+    "totalFormatted": "£50.00",
     "myPaymentsUrl": "https://app.example/payments"
   },
   "ticketOrderFailed": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
     "ticketTypeTitle": "Member ticket",
     "quantity": 1,
-    "totalFormatted": "25.00 GBP",
-    "currencyDisplay": "GBP",
-    "orderStatusLabel": "Payment failed",
-    "orderId": "00000000-0000-0000-0000-000000000002",
+    "totalFormatted": "£25.00",
     "myPaymentsUrl": "https://app.example/payments"
   },
   "ticketOrderRefunded": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
     "ticketTypeTitle": "Member ticket",
     "quantity": 1,
-    "totalFormatted": "25.00 GBP",
-    "currencyDisplay": "GBP",
-    "orderStatusLabel": "Refunded",
-    "orderId": "00000000-0000-0000-0000-000000000003",
+    "totalFormatted": "£25.00",
     "myPaymentsUrl": "https://app.example/payments",
-    "refundFormatted": "25.00 GBP"
+    "refundFormatted": "£25.00"
   },
   "paymentReconciliationExceptionAlert": {
     "orderId": "00000000-0000-0000-0000-000000000001",
@@ -55,13 +52,13 @@
     "stripeEventId": "evt_test_dispute"
   },
   "membershipActivated": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "membershipStatusLabel": "Regular",
     "appUrl": "https://app.example",
     "profileUrl": "https://app.example/profile"
   },
   "membershipAccessRestricted": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "membershipStatusLabel": "Resigned",
     "previousStatusLabel": "Regular",
     "appUrl": "https://app.example"
@@ -77,54 +74,52 @@
     "moderationUrl": "https://app.example/admin/sections"
   },
   "guestTicketRequestApproved": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
     "guestDisplayName": "Guest Name",
     "requestedGuestCount": 2,
-    "decisionLabel": "Approved",
     "moderatorNote": "Approved for this event.",
     "myBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010"
   },
   "guestTicketRequestRejected": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
+    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
+    "eventLocation": "Main Hall",
     "guestDisplayName": "Guest Name",
     "requestedGuestCount": 2,
-    "decisionLabel": "Rejected",
     "moderatorNote": "Capacity reached.",
     "myBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010"
   },
   "bookingConfirmation": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
     "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
     "eventLocation": "Main Hall",
-    "revisionNumber": 1,
     "ticketLinesSummary": "• Member ticket — Alex Example\n• Guest ticket — Guest Name",
     "bookerDietaryNote": "None",
     "accommodationSummary": "Not requested",
-    "bookingTotalFormatted": "35.00 GBP",
+    "bookingTotalFormatted": "£35.00",
     "sectionBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010",
     "myPaymentsUrl": "https://app.example/payments"
   },
   "bookingRevision": {
-    "customerFirstName": "Alex",
+    "firstName": "Alex",
     "eventTitle": "Summer Dinner",
     "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
     "eventLocation": "Main Hall",
-    "revisionNumber": 2,
     "ticketLinesSummary": "• Member ticket — Alex Example\n• Guest ticket — Guest Name",
     "bookerDietaryNote": "Vegetarian",
     "accommodationSummary": "Requested — Ground floor if possible",
-    "bookingTotalFormatted": "50.00 GBP",
+    "bookingTotalFormatted": "£50.00",
     "sectionBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010",
     "myPaymentsUrl": "https://app.example/payments",
-    "previousRevisionNumber": 1,
-    "revisedRevisionNumber": 2,
     "paymentAdjustmentStatus": "Additional payment due",
-    "previousTotalFormatted": "35.00 GBP",
-    "revisedTotalFormatted": "50.00 GBP",
-    "deltaAmountFormatted": "+15.00 GBP"
+    "previousTotalFormatted": "£35.00",
+    "revisedTotalFormatted": "£50.00",
+    "deltaAmountFormatted": "+£15.00"
   },
   "newUserPendingApprovalAlert": {
     "firstName": "Ada",

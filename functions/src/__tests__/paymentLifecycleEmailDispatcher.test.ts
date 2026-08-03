@@ -4,8 +4,8 @@ import * as admin from "@dataconnect/admin-generated";
 import {
   createGovNotifyTicketOrderLifecycleDispatcher,
   formatMinorCurrency,
+  formatTransactionalEventDateTime,
   normaliseAppBaseUrl,
-  ticketOrderStatusCustomerLabel,
 } from "../paymentLifecycleEmailDispatcher";
 import type { PaymentLifecycleNotification } from "../paymentNotifications";
 
@@ -13,7 +13,7 @@ const mockGet = vi.spyOn(admin, "getTicketOrderForWebhook");
 
 describe("paymentLifecycleEmailDispatcher helpers", () => {
   it("formats minor currency", () => {
-    expect(formatMinorCurrency(1299, "gbp")).toBe("12.99 GBP");
+    expect(formatMinorCurrency(1299, "gbp")).toBe("£12.99");
   });
 
   it("normalises app base URL", () => {
@@ -22,9 +22,13 @@ describe("paymentLifecycleEmailDispatcher helpers", () => {
     expect(normaliseAppBaseUrl("https://app.example")).toBe("https://app.example");
   });
 
-  it("maps status labels", () => {
-    expect(ticketOrderStatusCustomerLabel(TicketOrderStatus.PAID)).toBe("Paid");
-    expect(ticketOrderStatusCustomerLabel(TicketOrderStatus.FAILED)).toBe("Payment failed");
+  it("formats event times in the UK time zone", () => {
+    expect(
+      formatTransactionalEventDateTime(
+        "2026-07-01T18:00:00.000Z",
+        "2026-07-01T22:00:00.000Z",
+      ),
+    ).toContain("19:00 – 23:00");
   });
 });
 
@@ -43,6 +47,9 @@ const baseOrder = {
   event: {
     id: "00000000-0000-4000-8000-00000000000e",
     title: "Annual dinner",
+    location: "Main Hall",
+    startDateTime: "2026-07-01T18:00:00.000Z",
+    endDateTime: "2026-07-01T22:00:00.000Z",
   },
   ticketType: {
     id: "00000000-0000-4000-8000-0000000000tt",
@@ -102,9 +109,10 @@ describe("createGovNotifyTicketOrderLifecycleDispatcher", () => {
         templateName: "ticketOrderPaid",
         to: "buyer@example.com",
         personalisation: expect.objectContaining({
-          customerFirstName: "Sam",
           firstName: "Sam",
           eventTitle: "Annual dinner",
+          eventDateTime: expect.stringContaining("19:00 – 23:00"),
+          eventLocation: "Main Hall",
           ticketTypeTitle: "Member ticket",
           myPaymentsUrl: "https://app.example/payments",
           quantity: 2,
@@ -146,7 +154,7 @@ describe("createGovNotifyTicketOrderLifecycleDispatcher", () => {
       expect.objectContaining({
         templateName: "ticketOrderRefunded",
         personalisation: expect.objectContaining({
-          refundFormatted: "30.00 GBP",
+          refundFormatted: "£30.00",
         }),
       })
     );

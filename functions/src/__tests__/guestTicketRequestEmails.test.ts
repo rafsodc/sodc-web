@@ -15,7 +15,7 @@ const mockSendOnce = vi.spyOn(notificationDelivery, "sendNotificationOnce");
 
 describe("guest ticket email helpers", () => {
   it("formats moderator note", () => {
-    expect(formatModeratorNote(null)).toBe("—");
+    expect(formatModeratorNote(null)).toBe("No additional note");
     expect(formatModeratorNote("  OK  ")).toBe("OK");
   });
 
@@ -56,6 +56,9 @@ describe("notifyBookerGuestTicketRequestReviewed", () => {
             event: {
               id: "evt",
               title: "Annual dinner",
+              location: "Main Hall",
+              startDateTime: "2026-07-01T18:00:00.000Z",
+              endDateTime: "2026-07-01T22:00:00.000Z",
               section: { id: "sec-1", name: "Events" },
             },
           },
@@ -83,6 +86,9 @@ describe("notifyBookerGuestTicketRequestReviewed", () => {
         templateName: "guestTicketRequestApproved",
         to: "sam@example.com",
         personalisation: expect.objectContaining({
+          firstName: "Sam",
+          eventDateTime: expect.stringContaining("19:00 – 23:00"),
+          eventLocation: "Main Hall",
           moderatorNote: "Welcome",
           myBookingsUrl: "https://app.example/sections/sec-1",
         }),
@@ -120,6 +126,9 @@ describe("notifyModeratorsGuestTicketRequestSubmitted", () => {
             event: {
               id: "evt",
               title: "Annual dinner",
+              location: "Main Hall",
+              startDateTime: "2026-07-01T18:00:00.000Z",
+              endDateTime: "2026-07-01T22:00:00.000Z",
               section: { id: "sec-1", name: "Events" },
             },
           },

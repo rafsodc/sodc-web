@@ -1055,6 +1055,9 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
     event {
       id
       title
+      location
+      startDateTime
+      endDateTime
     }
     ticketType {
       id
@@ -1707,6 +1710,9 @@ query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
       event {
         id
         title
+        location
+        startDateTime
+        endDateTime
         section {
           id
           name

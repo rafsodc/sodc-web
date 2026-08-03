@@ -2,8 +2,12 @@
 
 Use this checklist when creating templates in Notify for **Dev**, **Beta**, and **Prod**. Do **not** commit API keys or template UUIDs to the repository.
 
-**Draft copy to paste:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md)  
-**Test payloads:** [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json)  
+**Source templates to paste:** [`functions/email-templates/`](../../functions/email-templates/)
+
+**Template index and tone guide:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md)
+
+**Test payloads:** [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json)
+
 **Env matrix:** [environment-and-secrets.md](./environment-and-secrets.md)
 
 ## Per-environment steps
@@ -11,7 +15,7 @@ Use this checklist when creating templates in Notify for **Dev**, **Beta**, and 
 1. Sign in to [GOV.UK Notify](https://www.notifications.service.gov.uk/) for the service linked to that Firebase project.
 2. For each template below:
    - Create an **email** template ([guidance](https://www.notifications.service.gov.uk/using-notify/how-to-create-email-template)).
-   - Paste **subject** and **body** from [govuk-notify-template-copy.md](./govuk-notify-template-copy.md).
+   - Paste **subject** and **body** from the matching file in [`functions/email-templates/`](../../functions/email-templates/).
    - Add every `((placeholder))` listed for that template (Notify validates on send).
    - Send a **test email** using values from [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json) for that logical key.
    - Copy the template **UUID** into your secure ops record (table below).

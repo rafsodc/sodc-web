@@ -59,6 +59,12 @@ The admin panel includes a **Template sync** page that fetches each template fro
 
 ## Relationship to `docs/operations/govuk-notify-template-copy.md`
 
-That file is a separate, hand-maintained human reference (registration runbook, sample personalisation) — it is **not** read by any code, so adding a template there does nothing on its own. This directory (`.md` files + `template-registry.json`, compiled into `generatedEmailTemplateManifest.ts`) is the actual source the Template sync page checks.
+That file is an index and tone guide linking back to this directory. It deliberately
+does not duplicate subject and body copy. This directory (`.md` files +
+`template-registry.json`, compiled into `generatedEmailTemplateManifest.ts`) is the
+source the Template sync page checks.
 
-When adding or removing a template, update both in the same PR: a `### \`templateKey\`` heading must exist in `docs/operations/govuk-notify-template-copy.md` for every template here, and vice versa. `functions/src/__tests__/emailTemplateDocsContracts.test.ts` enforces this (presence only, not that the copy text itself matches) and fails CI if either side gets a template the other doesn't — this is exactly what went wrong in #271, where the docs were updated but this directory wasn't, and the new template silently never appeared on the Template sync page (#378).
+When adding or removing a template, update the index in the same PR: a
+`### \`templateKey\`` heading must exist in
+`docs/operations/govuk-notify-template-copy.md` for every template here, and vice
+versa. `functions/src/__tests__/emailTemplateDocsContracts.test.ts` enforces this.

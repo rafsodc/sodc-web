@@ -60,7 +60,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 - **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
 - **Section file storage** (private bucket, IAM, lifecycle, CORS, and rollout): [section-file-storage.md](./section-file-storage.md).
 - **Deployment verification** (read-only Firebase/GCP configuration audit, release manifest, and smoke checks): [deployment-checks.md](./deployment-checks.md).
-- **Notify template copy and registration** (paste into dashboard, record UUIDs per env): [govuk-notify-template-copy.md](./govuk-notify-template-copy.md), [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+- **Notify source templates and registration** (paste into dashboard, record UUIDs per env): [`functions/email-templates/`](../../functions/email-templates/), [template index and tone guide](./govuk-notify-template-copy.md), [registration runbook](./govuk-notify-template-registration.md).
 - **Email policy** (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md).
 - Do not commit secret values to repo.
 - For project-specific non-secret Functions configuration, use the ignored file

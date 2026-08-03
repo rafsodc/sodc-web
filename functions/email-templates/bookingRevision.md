@@ -1,44 +1,41 @@
 ---
-subject: "Your SODC booking has been updated — ((eventTitle))"
+subject: "Your booking for ((eventTitle)) has been updated"
 templateKey: bookingRevision
 variables:
-  - customerFirstName
+  - firstName
   - eventTitle
   - eventDateTime
   - eventLocation
-  - revisionNumber
   - ticketLinesSummary
   - bookerDietaryNote
   - accommodationSummary
   - bookingTotalFormatted
   - sectionBookingsUrl
   - myPaymentsUrl
-  - previousRevisionNumber
-  - revisedRevisionNumber
   - paymentAdjustmentStatus
   - previousTotalFormatted
   - revisedTotalFormatted
   - deltaAmountFormatted
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Your booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).
+Your booking for ((eventTitle)) has been updated.
 
 ---
 
 # Event details
 
-When: ((eventDateTime))
+Date and time: ((eventDateTime))
 
 Where: ((eventLocation))
 
 ---
 
-# Updated booking (revision ((revisedRevisionNumber)))
+# Your updated booking
 
 ((ticketLinesSummary))
 
-Your dietary note: ((bookerDietaryNote))
+Dietary requirements: ((bookerDietaryNote))
 
 Accommodation: ((accommodationSummary))
 
@@ -46,7 +43,7 @@ Previous total: ((previousTotalFormatted))
 
 Revised total: ((revisedTotalFormatted))
 
-Difference: ((deltaAmountFormatted))
+Payment difference: ((deltaAmountFormatted))
 
 Payment status: ((paymentAdjustmentStatus))
 
@@ -56,8 +53,10 @@ View your booking:
 
 ((sectionBookingsUrl))
 
-Manage payments:
+View your payments:
 
 ((myPaymentsUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

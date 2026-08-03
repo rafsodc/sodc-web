@@ -1228,6 +1228,9 @@ export interface GetGuestTicketRequestForNotificationData {
       event: {
         id: UUIDString;
         title: string;
+        location?: string | null;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
         section: {
           id: UUIDString;
           name: string;
@@ -1784,6 +1787,9 @@ export interface GetTicketOrderForWebhookData {
     event: {
       id: UUIDString;
       title: string;
+      location?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
     } & Event_Key;
     ticketType: {
       id: UUIDString;

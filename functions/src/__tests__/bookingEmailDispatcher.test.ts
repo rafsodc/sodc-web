@@ -34,7 +34,7 @@ const sampleLines = [
 describe("bookingEmailDispatcher helpers", () => {
   it("formats event date/time for same-day events", () => {
     const formatted = formatBookingEventDateTime("2026-06-01T18:00:00.000Z", "2026-06-01T22:00:00.000Z");
-    expect(formatted).toMatch(/Jun/);
+    expect(formatted).toMatch(/June/);
     expect(formatted).toMatch(/–/);
   });
 
@@ -58,8 +58,8 @@ describe("bookingEmailDispatcher helpers", () => {
     expect(paymentAdjustmentStatusLabel(BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE)).toBe(
       "Additional payment due"
     );
-    expect(formatSignedDeltaAmount(1500)).toBe("+15.00 GBP");
-    expect(formatSignedDeltaAmount(-500)).toBe("-5.00 GBP");
+    expect(formatSignedDeltaAmount(1500)).toBe("+£15.00");
+    expect(formatSignedDeltaAmount(-500)).toBe("-£5.00");
   });
 });
 
@@ -119,6 +119,7 @@ describe("notifyBookingConfirmationEmail", () => {
         templateName: "bookingConfirmation",
         to: "sam@example.com",
         personalisation: expect.objectContaining({
+          firstName: "Sam",
           eventTitle: "Annual dinner",
           sectionBookingsUrl: "https://app.example/sections/sec-1",
           myPaymentsUrl: "https://app.example/payments",

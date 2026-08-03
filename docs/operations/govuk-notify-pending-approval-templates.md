@@ -6,7 +6,7 @@ Recipients are **all current Firebase Auth admins** (`getAdminUsers()`, same pat
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+**Source copy:** [`newUserPendingApprovalAlert.md`](../../functions/email-templates/newUserPendingApprovalAlert.md). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 
 ## Configuration
 
