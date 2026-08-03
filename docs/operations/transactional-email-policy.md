@@ -2,16 +2,16 @@
 
 Defines which emails the application sends today, how they are classified, and what is deferred. Part of epic **#183**; closes **#191**.
 
-**Related:** [transactional-email-workflows.md](./transactional-email-workflows.md) (triggers and templates), [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (Notify dashboard copy).
+**Related:** [transactional-email-workflows.md](./transactional-email-workflows.md) (triggers and templates), [`functions/email-templates/`](../../functions/email-templates/) (Notify source copy), [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (template index and tone guide).
 
 ## Provider and boundaries
 
 | Channel | Provider | Used for |
 |---------|----------|----------|
-| Account verification | **Firebase Auth** | Email verification links only |
+| Account actions | **Firebase Auth + GOV.UK Notify** | Firebase creates one-time action codes; Notify sends the site-owned verification, password-reset and email-change links |
 | App-owned transactional | **GOV.UK Notify** | Payments, bookings, membership access, guest moderation, internal payment ops |
 
-We do **not** replace Firebase Auth verification emails. Stripe may send its own receipts when enabled in the Stripe dashboard; app-owned payment emails add application context and deep links.
+Firebase Auth remains the authority for one-time account action codes, but the site delivers those links using GOV.UK Notify. Stripe may send its own receipts when enabled in the Stripe dashboard; app-owned payment emails add application context and deep links.
 
 ## Email categories
 
@@ -67,12 +67,12 @@ Configuration: [environment-and-secrets.md](./environment-and-secrets.md). Regis
 ## User-facing copy expectations
 
 - Operational emails: plain language, what happened, what to do next, link placeholders only (no hardcoded environment URLs in Notify).
-- Do not include admin-only notes in customer personalisation payloads.
+- Do not include admin-only notes in member personalisation payloads.
 - Profile completion UI may state that users **will be notified by email** when an administrator activates their account (`membershipActivated`).
 
 ## Governance
 
-- New operational templates: update dispatcher, `govuk-notify-*.md`, `govuk-notify-template-copy.md`, and register in Notify per environment.
+- New operational templates: update the dispatcher, source file in `functions/email-templates/`, relevant `govuk-notify-*.md` specification, template index, and Notify registration in each environment.
 - New optional templates: new issue; reference this policy; do not merge without preferences design.
 
 ## Related issues

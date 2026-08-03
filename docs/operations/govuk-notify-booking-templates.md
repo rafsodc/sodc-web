@@ -4,7 +4,7 @@ User-facing email after a successful **`submitEventBooking`** callable. Implemen
 
 **No email** when the callable returns **`idempotentReplay: true`**.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (bookings section).
+**Source copy:** [`functions/email-templates/`](../../functions/email-templates/) (see the [template index](./govuk-notify-template-copy.md)).
 
 ## Configuration
 
@@ -26,15 +26,14 @@ Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_RE
 
 | Key | Semantics |
 |-----|-----------|
-| `customerFirstName` | Booker first name or `there` |
+| `firstName` | Booker first name, or `Member` if unexpectedly blank |
 | `eventTitle` | Event title |
 | `eventDateTime` | Formatted start/end (en-GB) |
-| `eventLocation` | Location or `—` |
-| `revisionNumber` | Booking revision number |
+| `eventLocation` | Location or `To be confirmed` |
 | `ticketLinesSummary` | Multiline bullet list of lines |
-| `bookerDietaryNote` | Booker dietary note or `—` |
+| `bookerDietaryNote` | Booker dietary note or `None provided` |
 | `accommodationSummary` | `Not requested` or `Requested — {note}` |
-| `bookingTotalFormatted` | Sum of line prices, e.g. `35.00 GBP` |
+| `bookingTotalFormatted` | Sum of line prices, e.g. `£35.00` |
 | `sectionBookingsUrl` | `APP_BASE_URL/sections/{sectionId}` |
 | `myPaymentsUrl` | `APP_BASE_URL/payments` |
 
@@ -44,12 +43,10 @@ All keys from **bookingConfirmation**, plus:
 
 | Key | Semantics |
 |-----|-----------|
-| `previousRevisionNumber` | Superseded booking revision |
-| `revisedRevisionNumber` | New booking revision |
 | `paymentAdjustmentStatus` | e.g. `Additional payment due`, `Refund due`, `No payment change required` |
 | `previousTotalFormatted` | Prior revision total |
 | `revisedTotalFormatted` | New revision total |
-| `deltaAmountFormatted` | Signed delta, e.g. `+15.00 GBP` |
+| `deltaAmountFormatted` | Signed delta, e.g. `+£15.00` |
 
 ## Related docs
 

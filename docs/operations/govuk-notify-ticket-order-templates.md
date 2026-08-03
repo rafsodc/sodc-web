@@ -4,7 +4,7 @@ These templates send **app-owned transactional email** when a `TicketOrder` is m
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify. If the dashboard placeholder names do not match the API payload, sends fail at runtime.
 
-**Draft copy for Notify dashboard:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (ticket order section). **Test payloads:** [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json).
+**Source copy for Notify dashboard:** [`functions/email-templates/`](../../functions/email-templates/) (see the [template index](./govuk-notify-template-copy.md)). **Test payloads:** [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json).
 
 ## Configuration
 
@@ -20,7 +20,7 @@ Also required for sends: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIF
 
 ## Placeholder format
 
-GOV.UK Notify templates use double brackets. Use the **same identifier** as the JSON key sent by Functions, e.g. `((customerFirstName))`, `((eventTitle))`.
+GOV.UK Notify templates use double brackets. Use the **same identifier** as the JSON key sent by Functions, e.g. `((firstName))`, `((eventTitle))`.
 
 Numbers are sent as JSON numbers where noted (`quantity`).
 
@@ -36,14 +36,13 @@ Functions set: `PAYMENT_<TYPE>:<orderId>:<stripeEventId>` (e.g. `PAYMENT_PAID:�
 
 | Key | Type | Semantics |
 |-----|------|-----------|
-| `customerFirstName` | text | User first name, or `there` if missing/blank |
+| `firstName` | text | Member first name, or `Member` if unexpectedly blank |
 | `eventTitle` | text | Event title |
+| `eventDateTime` | text | Formatted start/end in the `Europe/London` time zone |
+| `eventLocation` | text | Location or `To be confirmed` |
 | `ticketTypeTitle` | text | Ticket type title |
 | `quantity` | number | Line quantity |
-| `totalFormatted` | text | Order total, e.g. `50.00 GBP` — `totalAmountMinor / 100` plus uppercased currency |
-| `currencyDisplay` | text | Uppercased currency code, e.g. `GBP` |
-| `orderStatusLabel` | text | Always `Paid` for this template |
-| `orderId` | text | Ticket order UUID |
+| `totalFormatted` | text | Payment total in en-GB currency format, e.g. `£50.00` |
 | `myPaymentsUrl` | text | `APP_BASE_URL` without trailing slash + `/payments` |
 
 ## Template 2: payment failed — `ticketOrderFailed`
@@ -52,13 +51,7 @@ Functions set: `PAYMENT_<TYPE>:<orderId>:<stripeEventId>` (e.g. `PAYMENT_PAID:�
 
 **Recipient:** Same as template 1.
 
-Same keys as **ticketOrderPaid**, except:
-
-| Key | Type | Semantics |
-|-----|------|-----------|
-| `orderStatusLabel` | text | `Payment failed` |
-
-All other keys: `customerFirstName`, `eventTitle`, `ticketTypeTitle`, `quantity`, `totalFormatted`, `currencyDisplay`, `orderId`, `myPaymentsUrl` — same meaning as template 1.
+Uses the same keys as **ticketOrderPaid**.
 
 ## Template 3: refund processed — `ticketOrderRefunded`
 
@@ -66,12 +59,11 @@ All other keys: `customerFirstName`, `eventTitle`, `ticketTypeTitle`, `quantity`
 
 **Recipient:** Same as template 1.
 
-Includes **all** keys from the paid/failed set, plus:
+Includes all keys from the paid/failed set, plus:
 
 | Key | Type | Semantics |
 |-----|------|-----------|
 | `refundFormatted` | text | Refund amount: uses `refundedAmountMinor` when set, otherwise `totalAmountMinor`; same display format as `totalFormatted` |
-| `orderStatusLabel` | text | `Refunded` |
 
 ## What does *not* use these templates
 

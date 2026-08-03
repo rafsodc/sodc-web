@@ -2,35 +2,33 @@
 subject: "Payment unsuccessful — ((eventTitle))"
 templateKey: ticketOrderFailed
 variables:
-  - customerFirstName
   - firstName
   - eventTitle
+  - eventDateTime
+  - eventLocation
   - ticketTypeTitle
   - quantity
   - totalFormatted
-  - currencyDisplay
-  - orderStatusLabel
-  - orderId
   - myPaymentsUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Unfortunately your payment for ((eventTitle)) was unsuccessful.
+We could not complete your payment for ((eventTitle)).
+
+Date and time: ((eventDateTime))
+
+Location: ((eventLocation))
 
 Ticket: ((ticketTypeTitle))
 
 Quantity: ((quantity))
 
-Amount: ((totalFormatted)) ((currencyDisplay))
-
-Status: ((orderStatusLabel))
-
-Order reference: ((orderId))
+Amount: ((totalFormatted))
 
 Your booking is still in place. You can return to My Payments to try again:
 
 ((myPaymentsUrl))
 
-If you continue to have problems, please reply to this email.
+Kind regards,
 
-SODC
+SODC Admin

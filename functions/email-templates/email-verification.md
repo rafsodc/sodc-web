@@ -4,7 +4,9 @@ subject: Verify your SODC email address
 variables:
   - verificationLink
 ---
-Welcome to SODC.
+Hello,
+
+Thank you for registering with SODC.
 
 Use this secure link to verify your email address:
 
@@ -12,6 +14,6 @@ Use this secure link to verify your email address:
 
 If you did not create an SODC account, you can ignore this email.
 
-For your security, do not forward this email or share the link.
+Kind regards,
 
-SODC
+SODC Admin

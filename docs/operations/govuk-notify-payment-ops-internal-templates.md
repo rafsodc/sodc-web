@@ -6,7 +6,7 @@ Recipients are **`PAYMENT_OPS_ALERT_EMAILS`** (comma-separated). If unset or emp
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (payment ops section). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+**Source copy:** [`paymentReconciliationExceptionAlert.md`](../../functions/email-templates/paymentReconciliationExceptionAlert.md) and [`paymentDisputeOpsAlert.md`](../../functions/email-templates/paymentDisputeOpsAlert.md). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 
 ## Configuration
 

@@ -1,453 +1,99 @@
-# GOV.UK Notify: draft template copy
+# GOV.UK Notify template copy index
 
-Ready-to-paste **subject** and **body** text for all transactional email templates. Register each template in the [GOV.UK Notify dashboard](https://www.notifications.service.gov.uk/) per Firebase environment (Dev, Beta, Prod).
+The reviewed GOV.UK Notify subjects, bodies and placeholder lists live in
+[`functions/email-templates/`](../../functions/email-templates/). Those Markdown
+files are the single source of truth used to generate the Function manifest and
+the **Admin → Email Templates** drift report. Do not maintain a second copy of
+their contents in this document.
 
-**Before publishing**
+## Automated email tone
 
-1. Follow [how to create an email template](https://www.notifications.service.gov.uk/using-notify/how-to-create-email-template) and [personalisation](https://www.notifications.service.gov.uk/using-notify/personalisation).
-2. Placeholder names must match this document **exactly** (`((customerFirstName))`, not `((first_name))`).
-3. Copy the template UUID into the matching `GOV_NOTIFY_TEMPLATE_*` env var — see [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
-4. Send a test email using sample values from [govuk-notify-sample-personalisation.json](./govuk-notify-sample-personalisation.json).
+- Use clear, concise British English with a warm club tone.
+- Use `Hello ((firstName)),` when a member name is safely available, otherwise
+  use plain `Hello,`.
+- Use member-facing terms such as member, booking, place, guest and payment.
+- Do not use customer, purchase or order in member-facing copy.
+- Automated emails must not ask recipients to reply.
+- End every automated email with these lines:
 
-Placeholder specs (keys only): `govuk-notify-*.md`. Workflow index: [transactional-email-workflows.md](./transactional-email-workflows.md).
+```text
+Kind regards,
 
----
-
-## Ticket order lifecycle
-
-### `ticketOrderPaid` — Payment confirmed
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_TICKET_ORDER_PAID`
-
-**Subject:** Payment confirmed for ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your payment for ((eventTitle)) is confirmed.
-
-Ticket: ((ticketTypeTitle))
-Quantity: ((quantity))
-Total: ((totalFormatted))
-Status: ((orderStatusLabel))
-Order reference: ((orderId))
-
-View your payments: ((myPaymentsUrl))
-
-If you did not make this payment, contact your section administrator.
+SODC Admin
 ```
 
-**Placeholders used:** `customerFirstName`, `eventTitle`, `ticketTypeTitle`, `quantity`, `totalFormatted`, `currencyDisplay` (optional in body), `orderStatusLabel`, `orderId`, `myPaymentsUrl`
-
----
-
-### `ticketOrderFailed` — Payment failed
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_TICKET_ORDER_FAILED`
-
-**Subject:** Payment could not be completed for ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-We could not complete your payment for ((eventTitle)).
-
-Ticket: ((ticketTypeTitle))
-Quantity: ((quantity))
-Amount: ((totalFormatted))
-Status: ((orderStatusLabel))
-Order reference: ((orderId))
-
-You can try again from your payments page: ((myPaymentsUrl))
-```
-
-**Placeholders used:** same as `ticketOrderPaid` (status label is sent as `Payment failed`)
-
----
-
-### `ticketOrderRefunded` — Refund processed
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_TICKET_ORDER_REFUNDED`
-
-**Subject:** Refund processed for ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-A refund has been processed for your order for ((eventTitle)).
-
-Ticket: ((ticketTypeTitle))
-Quantity: ((quantity))
-Original total: ((totalFormatted))
-Refund amount: ((refundFormatted))
-Status: ((orderStatusLabel))
-Order reference: ((orderId))
-
-View your payments: ((myPaymentsUrl))
-```
-
-**Placeholders used:** all paid/failed keys plus `refundFormatted`
-
----
-
-## Internal payment ops
-
-Set `PAYMENT_OPS_ALERT_EMAILS` before these templates will send.
-
-### `paymentReconciliationExceptionAlert`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT`
-
-**Subject:** [Payments] Reconciliation exception — ((exceptionType))
-
-**Body:**
-
-```
-A payment reconciliation exception is open.
-
-Order: ((orderId))
-Event: ((eventTitle))
-Customer: ((customerDisplay))
-Exception type: ((exceptionType))
-Note: ((exceptionNote))
-Stripe event: ((stripeEventId))
-
-Open reconciliation dashboard:
-((reconciliationDashboardUrl))
-```
-
-**Placeholders used:** `orderId`, `eventTitle`, `customerDisplay`, `exceptionType`, `exceptionNote`, `reconciliationDashboardUrl`, `stripeEventId`
-
----
-
-### `paymentDisputeOpsAlert`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT`
-
-**Subject:** [Payments] Stripe dispute update — ((eventTitle))
-
-**Body:**
-
-```
-Stripe dispute side-state received.
-
-Order: ((orderId))
-Event: ((eventTitle))
-Customer: ((customerDisplay))
-Local state: ((disputeLocalState))
-Stripe dispute status: ((disputeStripeStatus))
-Reason: ((disputeReason))
-Dispute ID: ((stripeDisputeId))
-Stripe event type: ((stripeEventType))
-Stripe event ID: ((stripeEventId))
-
-Open reconciliation dashboard:
-((reconciliationDashboardUrl))
-```
-
-**Placeholders used:** `orderId`, `eventTitle`, `customerDisplay`, `disputeStripeStatus`, `disputeReason`, `disputeLocalState`, `stripeDisputeId`, `stripeEventType`, `reconciliationDashboardUrl`, `stripeEventId`
-
----
-
-## Membership status
-
-### `membershipActivated`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACTIVATED`
-
-**Subject:** Your account is now active
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your membership status is now ((membershipStatusLabel)). You can sign in and use the application.
-
-Open the app: ((appUrl))
-Your profile: ((profileUrl))
-
-If you have questions, contact your section administrator.
-```
-
-**Placeholders used:** `customerFirstName`, `membershipStatusLabel`, `appUrl`, `profileUrl`
-
----
-
-### `membershipAccessRestricted`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACCESS_RESTRICTED`
-
-**Subject:** Your account access has changed
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)). You may no longer have full access to the application.
-
-If you believe this is a mistake, contact your section administrator.
-
-Application: ((appUrl))
-```
-
-**Placeholders used:** `customerFirstName`, `membershipStatusLabel`, `previousStatusLabel`, `appUrl`
-
----
-
-## Guest ticket requests
-
-### `guestTicketRequestSubmittedModerator`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_SUBMITTED_MODERATOR`
-
-**Subject:** Guest ticket request — ((eventTitle))
-
-**Body:**
-
-```
-A booker has submitted a guest ticket request that needs review.
-
-Section: ((sectionName))
-Event: ((eventTitle))
-Booker: ((bookerDisplay))
-Guest name: ((guestDisplayName))
-Ticket type: ((guestTicketTypeTitle))
-Guests requested: ((requestedGuestCount))
-Dietary note: ((dietaryNote))
-
-Review requests (Manage Sections): ((moderationUrl))
-```
-
-**Placeholders used:** `eventTitle`, `sectionName`, `bookerDisplay`, `guestDisplayName`, `requestedGuestCount`, `guestTicketTypeTitle`, `dietaryNote`, `moderationUrl`
-
----
-
-### `guestTicketRequestApproved`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_APPROVED`
-
-**Subject:** Guest ticket request approved — ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
-
-Guest: ((guestDisplayName))
-Guests requested: ((requestedGuestCount))
-Moderator note: ((moderatorNote))
-
-View your booking: ((myBookingsUrl))
-```
-
-**Placeholders used:** `customerFirstName`, `eventTitle`, `guestDisplayName`, `requestedGuestCount`, `decisionLabel`, `moderatorNote`, `myBookingsUrl`
-
----
-
-### `guestTicketRequestRejected`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_REJECTED`
-
-**Subject:** Guest ticket request not approved — ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
-
-Guest: ((guestDisplayName))
-Guests requested: ((requestedGuestCount))
-Moderator note: ((moderatorNote))
-
-View your booking: ((myBookingsUrl))
-```
-
-**Placeholders used:** same as approved (`decisionLabel` is sent as `Rejected`)
-
----
-
-## Bookings
+## Member-facing templates
 
 ### `bookingConfirmation`
 
-**Env var:** `GOV_NOTIFY_TEMPLATE_BOOKING_CONFIRMATION`
-
-**Subject:** Booking confirmed — ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your booking for ((eventTitle)) has been submitted.
-
-When: ((eventDateTime))
-Where: ((eventLocation))
-Revision: ((revisionNumber))
-
-Tickets:
-((ticketLinesSummary))
-
-Dietary requirements: ((bookerDietaryNote))
-Accommodation: ((accommodationSummary))
-Booking total: ((bookingTotalFormatted))
-
-View section bookings: ((sectionBookingsUrl))
-Payments: ((myPaymentsUrl))
-```
-
-**Placeholders used:** `customerFirstName`, `eventTitle`, `eventDateTime`, `eventLocation`, `revisionNumber`, `ticketLinesSummary`, `bookerDietaryNote`, `accommodationSummary`, `bookingTotalFormatted`, `sectionBookingsUrl`, `myPaymentsUrl`
-
----
+Source: [`bookingConfirmation.md`](../../functions/email-templates/bookingConfirmation.md)
 
 ### `bookingRevision`
 
-**Env var:** `GOV_NOTIFY_TEMPLATE_BOOKING_REVISION`
-
-**Subject:** Booking updated — ((eventTitle))
-
-**Body:**
-
-```
-Hello ((customerFirstName)),
-
-Your booking for ((eventTitle)) has been updated (revision ((revisedRevisionNumber)), previously revision ((previousRevisionNumber))).
-
-When: ((eventDateTime))
-Where: ((eventLocation))
-
-Tickets:
-((ticketLinesSummary))
-
-Dietary requirements: ((bookerDietaryNote))
-Accommodation: ((accommodationSummary))
-
-Payment adjustment: ((paymentAdjustmentStatus))
-Previous total: ((previousTotalFormatted))
-Revised total: ((revisedTotalFormatted))
-Change: ((deltaAmountFormatted))
-
-View section bookings: ((sectionBookingsUrl))
-Payments: ((myPaymentsUrl))
-```
-
-**Placeholders used:** all confirmation keys plus `previousRevisionNumber`, `revisedRevisionNumber`, `paymentAdjustmentStatus`, `previousTotalFormatted`, `revisedTotalFormatted`, `deltaAmountFormatted`
-
----
-
-## Internal approval queue
-
-### `newUserPendingApprovalAlert`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_NEW_USER_PENDING_APPROVAL_ALERT`
-
-**Subject:** [SODC] New member awaiting approval — ((firstName)) ((lastName))
-
-**Body:**
-
-```
-A new member has completed their profile and is awaiting approval.
-
-Name: ((firstName)) ((lastName))
-Email: ((email))
-Service number: ((serviceNumber))
-Service background: ((serviceBackgroundSummary))
-Requested status: ((requestedMembershipStatus))
-
-Review in Approve Users:
-((approveUsersUrl))
-```
-
-**Placeholders used:** `firstName`, `lastName`, `email`, `serviceNumber`, `serviceBackgroundSummary`, `requestedMembershipStatus`, `approveUsersUrl`
-
----
-
-## Account access
-
-### `passwordReset`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET`
-
-**Subject:** Reset your SODC password
-
-**Body:**
-
-```
-We received a request to reset the password for your SODC account.
-
-Use this secure link to choose a new password:
-
-((resetLink))
-
-If you did not request this, you can ignore this email. Your password will not change.
-
-For your security, do not forward this email or share the link.
-
-SODC
-```
-
-**Placeholders used:** `resetLink`
-
----
-
-### `emailVerification`
-
-**Env var:** `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION`
-
-**Subject:** Verify your SODC email address
-
-**Body:**
-
-```
-Welcome to SODC.
-
-Use this secure link to verify your email address:
-
-((verificationLink))
-
-If you did not create an SODC account, you can ignore this email.
-
-For your security, do not forward this email or share the link.
-
-SODC
-```
-
-**Placeholders used:** `verificationLink`
-
----
+Source: [`bookingRevision.md`](../../functions/email-templates/bookingRevision.md)
 
 ### `emailChangeVerification`
 
-**Env var:** `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION`
+Source: [`email-change-verification.md`](../../functions/email-templates/email-change-verification.md)
 
-**Subject:** Confirm your new SODC email address
+### `emailVerification`
 
-**Body:**
+Source: [`email-verification.md`](../../functions/email-templates/email-verification.md)
 
-```
-We received a request to change the email address used for your SODC account.
+### `guestTicketRequestApproved`
 
-Use this secure link to confirm the new address:
+Source: [`guestTicketRequestApproved.md`](../../functions/email-templates/guestTicketRequestApproved.md)
 
-((verificationLink))
+### `guestTicketRequestRejected`
 
-If you did not request this change, you can ignore this email. Your current address will remain unchanged.
+Source: [`guestTicketRequestRejected.md`](../../functions/email-templates/guestTicketRequestRejected.md)
 
-For your security, do not forward this email or share the link.
+### `membershipAccessRestricted`
 
-SODC
-```
+Source: [`membershipAccessRestricted.md`](../../functions/email-templates/membershipAccessRestricted.md)
 
-**Placeholders used:** `verificationLink`
+### `membershipActivated`
+
+Source: [`membershipActivated.md`](../../functions/email-templates/membershipActivated.md)
+
+### `passwordReset`
+
+Source: [`password-reset.md`](../../functions/email-templates/password-reset.md)
+
+### `ticketOrderFailed`
+
+Source: [`ticketOrderFailed.md`](../../functions/email-templates/ticketOrderFailed.md)
+
+### `ticketOrderPaid`
+
+Source: [`ticketOrderPaid.md`](../../functions/email-templates/ticketOrderPaid.md)
+
+### `ticketOrderRefunded`
+
+Source: [`ticketOrderRefunded.md`](../../functions/email-templates/ticketOrderRefunded.md)
+
+## Moderator and operations templates
+
+### `guestTicketRequestSubmittedModerator`
+
+Source: [`guestTicketRequestSubmittedModerator.md`](../../functions/email-templates/guestTicketRequestSubmittedModerator.md)
+
+### `newUserPendingApprovalAlert`
+
+Source: [`newUserPendingApprovalAlert.md`](../../functions/email-templates/newUserPendingApprovalAlert.md)
+
+### `paymentDisputeOpsAlert`
+
+Source: [`paymentDisputeOpsAlert.md`](../../functions/email-templates/paymentDisputeOpsAlert.md)
+
+### `paymentReconciliationExceptionAlert`
+
+Source: [`paymentReconciliationExceptionAlert.md`](../../functions/email-templates/paymentReconciliationExceptionAlert.md)
+
+## Publishing and testing
+
+Use [the template registration runbook](./govuk-notify-template-registration.md)
+and [sample personalisation](./govuk-notify-sample-personalisation.json). After
+updating a source file, regenerate the manifest with
+`npm --prefix functions run generate:templates`, deploy Functions, and use the
+Admin drift report to apply and verify the corresponding Notify dashboard change.

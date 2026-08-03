@@ -4,7 +4,7 @@ User-facing email when **membership status** changes in ways that affect app acc
 
 **Source of truth:** Personalisation **keys** must match the Notify template placeholders.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (membership section).
+**Source copy:** [`functions/email-templates/`](../../functions/email-templates/) (see the [template index](./govuk-notify-template-copy.md)).
 
 ## Configuration
 
@@ -32,7 +32,7 @@ No email for restricted→restricted or non-restricted→non-restricted transiti
 
 | Key | Semantics |
 |-----|-----------|
-| `customerFirstName` | User first name, or `there` |
+| `firstName` | Member first name, or `Member` if unexpectedly blank |
 | `membershipStatusLabel` | Friendly label for new status, e.g. `Regular` |
 | `appUrl` | `APP_BASE_URL` (no trailing slash) |
 | `profileUrl` | `appUrl` + `/profile` |
@@ -41,12 +41,12 @@ No email for restricted→restricted or non-restricted→non-restricted transiti
 
 | Key | Semantics |
 |-----|-----------|
-| `customerFirstName` | User first name, or `there` |
+| `firstName` | Member first name, or `Member` if unexpectedly blank |
 | `membershipStatusLabel` | Friendly label for new restricted status |
 | `previousStatusLabel` | Friendly label for previous status |
 | `appUrl` | `APP_BASE_URL` |
 
-Use static template copy for “contact your administrator” — do not include admin-only notes in personalisation.
+Do not include admin-only notes in personalisation or invite replies to the automated email.
 
 ## Related docs
 

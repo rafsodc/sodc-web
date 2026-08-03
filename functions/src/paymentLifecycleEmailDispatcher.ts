@@ -1,7 +1,6 @@
 import * as logger from "firebase-functions/logger";
 import { getTicketOrderForWebhook } from "@dataconnect/admin-generated";
 import {
-  TicketOrderStatus,
   type GetTicketOrderForWebhookData,
   type UUIDString,
 } from "@dataconnect/admin-generated";
@@ -15,15 +14,13 @@ import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 export const TICKET_ORDER_MAIL_TEMPLATE_KEYS = ["ticketOrderPaid", "ticketOrderFailed", "ticketOrderRefunded"] as const;
 
 export type TicketOrderPaidPersonalisation = {
-  customerFirstName: string;
   firstName: string;
   eventTitle: string;
+  eventDateTime: string;
+  eventLocation: string;
   ticketTypeTitle: string;
   quantity: number;
   totalFormatted: string;
-  currencyDisplay: string;
-  orderStatusLabel: string;
-  orderId: string;
   myPaymentsUrl: string;
 };
 
@@ -50,45 +47,68 @@ export function normaliseAppBaseUrl(baseUrl: string): string {
 }
 
 export function formatMinorCurrency(amountMinor: number, currency: string): string {
-  const symbolOrCode = currency.trim().toUpperCase();
+  const currencyCode = currency.trim().toUpperCase();
   const major = amountMinor / 100;
-  return `${major.toFixed(2)} ${symbolOrCode}`;
+  try {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+    }).format(major);
+  } catch {
+    return `${major.toFixed(2)} ${currencyCode}`;
+  }
 }
 
-export function ticketOrderStatusCustomerLabel(status: TicketOrderStatus): string {
-  switch (status) {
-    case TicketOrderStatus.PAID:
-      return "Paid";
-    case TicketOrderStatus.FAILED:
-      return "Payment failed";
-    case TicketOrderStatus.REFUNDED:
-      return "Refunded";
-    case TicketOrderStatus.PENDING:
-      return "Pending payment";
-    default:
-      return String(status);
+export function formatTransactionalEventDateTime(startDateTime: string, endDateTime: string): string {
+  const start = new Date(startDateTime);
+  const end = new Date(endDateTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${startDateTime} – ${endDateTime}`;
   }
+  const dateFormat = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/London",
+  });
+  const timeFormat = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/London",
+  });
+  const dateKeyFormat = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Europe/London",
+  });
+  if (dateKeyFormat.format(start) === dateKeyFormat.format(end)) {
+    return `${dateFormat.format(start)}, ${timeFormat.format(start)} – ${timeFormat.format(end)}`;
+  }
+  return `${dateFormat.format(start)}, ${timeFormat.format(start)} – ${dateFormat.format(end)}, ${timeFormat.format(end)}`;
 }
 
 function buildPaidLikePersonalisation(args: {
   row: TicketOrderWebhookRow;
-  statusForEmail: TicketOrderStatus;
   appBaseUrl: string;
 }): TicketOrderPaidPersonalisation {
-  const { row, statusForEmail, appBaseUrl } = args;
+  const { row, appBaseUrl } = args;
   const base = normaliseAppBaseUrl(appBaseUrl);
   const fn = row.user.firstName?.trim();
-  const customerFirstName = fn && fn.length > 0 ? fn : "there";
+  const firstName = fn && fn.length > 0 ? fn : "Member";
   return {
-    customerFirstName,
-    firstName: customerFirstName,
+    firstName,
     eventTitle: row.event.title ?? "",
+    eventDateTime: formatTransactionalEventDateTime(
+      row.event.startDateTime,
+      row.event.endDateTime,
+    ),
+    eventLocation: row.event.location?.trim() || "To be confirmed",
     ticketTypeTitle: row.ticketType.title ?? "",
     quantity: row.quantity,
     totalFormatted: formatMinorCurrency(row.totalAmountMinor, row.currency),
-    currencyDisplay: row.currency.trim().toUpperCase(),
-    orderStatusLabel: ticketOrderStatusCustomerLabel(statusForEmail),
-    orderId: row.id,
     myPaymentsUrl: `${base}/payments`,
   };
 }
@@ -131,7 +151,6 @@ export function createGovNotifyTicketOrderLifecycleDispatcher(
       case "PAYMENT_PAID": {
         const personalisation = buildPaidLikePersonalisation({
           row,
-          statusForEmail: TicketOrderStatus.PAID,
           appBaseUrl: options.appBaseUrl,
         });
         const result = await mailer.sendEmail({
@@ -149,7 +168,6 @@ export function createGovNotifyTicketOrderLifecycleDispatcher(
       case "PAYMENT_FAILED": {
         const personalisation = buildPaidLikePersonalisation({
           row,
-          statusForEmail: TicketOrderStatus.FAILED,
           appBaseUrl: options.appBaseUrl,
         });
         const result = await mailer.sendEmail({
@@ -169,7 +187,6 @@ export function createGovNotifyTicketOrderLifecycleDispatcher(
         const personalisation: TicketOrderRefundedPersonalisation = {
           ...buildPaidLikePersonalisation({
             row,
-            statusForEmail: TicketOrderStatus.REFUNDED,
             appBaseUrl: options.appBaseUrl,
           }),
           refundFormatted: formatMinorCurrency(refundMinor, row.currency),

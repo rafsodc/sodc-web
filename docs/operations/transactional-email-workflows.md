@@ -2,7 +2,7 @@
 
 App-owned transactional email uses **GOV.UK Notify** via [`functions/src/mailer.ts`](../../functions/src/mailer.ts). Domain-event messages use the idempotent delivery ledger in [`functions/src/notificationDelivery.ts`](../../functions/src/notificationDelivery.ts). Password reset and email verification use one-time Firebase action codes delivered by Notify and completed on the site-owned `/auth/action` route.
 
-Per-template placeholder specs live in the linked `govuk-notify-*.md` files below. **Draft Notify subject/body copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). **Registration runbook:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md). Environment variables: [environment-and-secrets.md](./environment-and-secrets.md).
+Per-template placeholder specs live in the linked `govuk-notify-*.md` files below. **Notify subject/body source:** [`functions/email-templates/`](../../functions/email-templates/). **Template index and tone guide:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). **Registration runbook:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md). Environment variables: [environment-and-secrets.md](./environment-and-secrets.md).
 
 ## Shared delivery pattern
 
