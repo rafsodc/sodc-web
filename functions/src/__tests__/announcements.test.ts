@@ -39,6 +39,7 @@ const mockGetAnnouncementRecipientsForResume = vi.spyOn(admin, "getAnnouncementR
 const mockTryMarkAnnouncementRecipientEnqueueFailed = vi.spyOn(admin, "tryMarkAnnouncementRecipientEnqueueFailed");
 const mockTryUpdateAnnouncementRecipientProcessingStatus = vi.spyOn(admin, "tryUpdateAnnouncementRecipientProcessingStatus");
 const mockGetGovNotifyDeliveryConfiguration = vi.spyOn(admin, "getGovNotifyDeliveryConfiguration");
+const mockGetNotifyReplyToConfiguration = vi.spyOn(admin, "getNotifyReplyToConfiguration");
 
 beforeEach(() => {
   process.env.GOV_NOTIFY_DELIVERY_MODE = "LIVE";
@@ -50,6 +51,18 @@ beforeEach(() => {
         updatedAt: "2026-07-27T08:00:00.000Z",
         updatedBy: "admin-1",
       },
+    },
+  } as never);
+  mockGetNotifyReplyToConfiguration.mockResolvedValue({
+    data: {
+      notifyEmailConfiguration: {
+        version: 1,
+        updatedAt: "2026-08-03T08:00:00.000Z",
+        updatedBy: "admin-1",
+        defaultReplyToAddress: null,
+      },
+      notifyReplyToAddresses: [],
+      notifyTemplateReplyToOverrides: [],
     },
   } as never);
   mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);

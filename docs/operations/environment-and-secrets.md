@@ -43,7 +43,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `APP_BASE_URL` | env var | Public site origin used for checkout, internal ops, and Firebase Auth action links | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
-| `GOV_NOTIFY_EMAIL_REPLY_TO_ID` | env var | Optional GOV.UK Notify reply-to selection | optional |
+| `GOV_NOTIFY_EMAIL_REPLY_TO_ID` | env var | Optional migration fallback UUID for GOV.UK Notify reply-to; prefer verified admin-managed configuration | optional |
 | `GOV_NOTIFY_TEMPLATE_<TEMPLATE_NAME>` | env var | GOV.UK Notify template IDs for app-owned transactional email templates | required for each enabled app email template |
 | `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET` | env var | Notify template UUID for the site-managed password-reset email | required for password reset |
 | `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` | env var | Notify template UUID for the site-managed email-verification message | required for registration and verification resend |
@@ -58,6 +58,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 ## Operational notes
 
 - **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
+- **Notify email reply-to address** (find the UUID, configure, deploy, and verify): [govuk-notify-email-reply-to.md](./govuk-notify-email-reply-to.md).
 - **Section file storage** (private bucket, IAM, lifecycle, CORS, and rollout): [section-file-storage.md](./section-file-storage.md).
 - **Deployment verification** (read-only Firebase/GCP configuration audit, release manifest, and smoke checks): [deployment-checks.md](./deployment-checks.md).
 - **Notify source templates and registration** (paste into dashboard, record UUIDs per env): [`functions/email-templates/`](../../functions/email-templates/), [template index and tone guide](./govuk-notify-template-copy.md), [registration runbook](./govuk-notify-template-registration.md).

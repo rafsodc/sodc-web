@@ -313,9 +313,11 @@ APP_BASE_URL=https://sodc-web-production.web.app
 ENV_NAME=prod
 PERMITTED_PROJECT_IDS=
 SECTION_FILES_BUCKET=
+# Optional migration fallback; prefer the admin-managed reply-to configuration.
+GOV_NOTIFY_EMAIL_REPLY_TO_ID=
 
 # Add the GOV_NOTIFY_TEMPLATE_* values for every enabled template.
-# Add optional reply-to, payment-ops recipients, and expiry tuning only when used.
+# Add optional payment-ops recipients and expiry tuning only when used.
 ```
 
 `PERMITTED_PROJECT_IDS` must not include the production project. The Dev reset
@@ -377,8 +379,10 @@ deployed, open **Admin → Email Delivery** and verify that the persisted runtim
 mode defaults to **Simulation**. Day-to-day mode changes are made there, with a
 reason and audit trail; the environment value remains the hard upper ceiling.
 
-Configure the optional reply-to ID, internal payment-alert recipients, and Notify
-callback using production values. Configure the callback to send the bearer token
+Configure and verify reply-to addresses in the admin UI using the
+[GOV.UK Notify email reply-to runbook](./govuk-notify-email-reply-to.md), along
+with internal payment-alert recipients and the Notify callback using production
+values. Configure the callback to send the bearer token
 stored as `NOTIFY_CALLBACK_BEARER_TOKEN`. Run the template drift check and one
 end-to-end trigger per email domain before launch.
 

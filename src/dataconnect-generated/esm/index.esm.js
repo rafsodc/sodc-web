@@ -63,6 +63,22 @@ export const NotifyDeliveryReceiptProcessingStatus = {
   FAILED: "FAILED",
 }
 
+export const NotifyReplyToAuditAction = {
+  CREATED: "CREATED",
+  UPDATED: "UPDATED",
+  DISABLED: "DISABLED",
+  PROVIDER_TEST_ACCEPTED: "PROVIDER_TEST_ACCEPTED",
+  VERIFIED: "VERIFIED",
+  DEFAULT_CHANGED: "DEFAULT_CHANGED",
+  TEMPLATE_OVERRIDE_CHANGED: "TEMPLATE_OVERRIDE_CHANGED",
+}
+
+export const NotifyReplyToVerificationStatus = {
+  UNVERIFIED: "UNVERIFIED",
+  PROVIDER_ACCEPTED: "PROVIDER_ACCEPTED",
+  VERIFIED: "VERIFIED",
+}
+
 export const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -127,7 +143,7 @@ export const getGovNotifyDeliveryConfigurationRef = (dc) => {
 getGovNotifyDeliveryConfigurationRef.operationName = 'GetGovNotifyDeliveryConfiguration';
 
 export function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
-  
+
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
   return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -140,7 +156,7 @@ export const listGovNotifyDeliveryModeAuditsRef = (dcOrVars, vars) => {
 listGovNotifyDeliveryModeAuditsRef.operationName = 'ListGovNotifyDeliveryModeAudits';
 
 export function listGovNotifyDeliveryModeAudits(dcOrVars, varsOrOptions, options) {
-  
+
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(listGovNotifyDeliveryModeAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -167,6 +183,152 @@ changeGovNotifyDeliveryModeRef.operationName = 'ChangeGovNotifyDeliveryMode';
 export function changeGovNotifyDeliveryMode(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(changeGovNotifyDeliveryModeRef(dcInstance, inputVars));
+}
+
+export const getNotifyReplyToConfigurationRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotifyReplyToConfiguration');
+}
+getNotifyReplyToConfigurationRef.operationName = 'GetNotifyReplyToConfiguration';
+
+export function getNotifyReplyToConfiguration(dcOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyReplyToConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const listNotifyReplyToAuditsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListNotifyReplyToAudits', inputVars);
+}
+listNotifyReplyToAuditsRef.operationName = 'ListNotifyReplyToAudits';
+
+export function listNotifyReplyToAudits(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listNotifyReplyToAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const createNotifyEmailConfigurationRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateNotifyEmailConfiguration');
+}
+createNotifyEmailConfigurationRef.operationName = 'CreateNotifyEmailConfiguration';
+
+export function createNotifyEmailConfiguration(dc) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dc, undefined);
+  return executeMutation(createNotifyEmailConfigurationRef(dcInstance, inputVars));
+}
+
+export const createNotifyReplyToAddressRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateNotifyReplyToAddress', inputVars);
+}
+createNotifyReplyToAddressRef.operationName = 'CreateNotifyReplyToAddress';
+
+export function createNotifyReplyToAddress(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createNotifyReplyToAddressRef(dcInstance, inputVars));
+}
+
+export const updateNotifyReplyToAddressIdentityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateNotifyReplyToAddressIdentity', inputVars);
+}
+updateNotifyReplyToAddressIdentityRef.operationName = 'UpdateNotifyReplyToAddressIdentity';
+
+export function updateNotifyReplyToAddressIdentity(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateNotifyReplyToAddressIdentityRef(dcInstance, inputVars));
+}
+
+export const recordNotifyReplyToProviderAcceptanceRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RecordNotifyReplyToProviderAcceptance', inputVars);
+}
+recordNotifyReplyToProviderAcceptanceRef.operationName = 'RecordNotifyReplyToProviderAcceptance';
+
+export function recordNotifyReplyToProviderAcceptance(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(recordNotifyReplyToProviderAcceptanceRef(dcInstance, inputVars));
+}
+
+export const confirmNotifyReplyToVerificationRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ConfirmNotifyReplyToVerification', inputVars);
+}
+confirmNotifyReplyToVerificationRef.operationName = 'ConfirmNotifyReplyToVerification';
+
+export function confirmNotifyReplyToVerification(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(confirmNotifyReplyToVerificationRef(dcInstance, inputVars));
+}
+
+export const updateNotifyReplyToAvailabilityRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateNotifyReplyToAvailability', inputVars);
+}
+updateNotifyReplyToAvailabilityRef.operationName = 'UpdateNotifyReplyToAvailability';
+
+export function updateNotifyReplyToAvailability(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateNotifyReplyToAvailabilityRef(dcInstance, inputVars));
+}
+
+export const changeNotifyReplyToDefaultRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ChangeNotifyReplyToDefault', inputVars);
+}
+changeNotifyReplyToDefaultRef.operationName = 'ChangeNotifyReplyToDefault';
+
+export function changeNotifyReplyToDefault(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(changeNotifyReplyToDefaultRef(dcInstance, inputVars));
+}
+
+export const disableDefaultNotifyReplyToAddressRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DisableDefaultNotifyReplyToAddress', inputVars);
+}
+disableDefaultNotifyReplyToAddressRef.operationName = 'DisableDefaultNotifyReplyToAddress';
+
+export function disableDefaultNotifyReplyToAddress(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(disableDefaultNotifyReplyToAddressRef(dcInstance, inputVars));
+}
+
+export const setNotifyTemplateReplyToOverrideRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'SetNotifyTemplateReplyToOverride', inputVars);
+}
+setNotifyTemplateReplyToOverrideRef.operationName = 'SetNotifyTemplateReplyToOverride';
+
+export function setNotifyTemplateReplyToOverride(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(setNotifyTemplateReplyToOverrideRef(dcInstance, inputVars));
+}
+
+export const clearNotifyTemplateReplyToOverrideRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ClearNotifyTemplateReplyToOverride', inputVars);
+}
+clearNotifyTemplateReplyToOverrideRef.operationName = 'ClearNotifyTemplateReplyToOverride';
+
+export function clearNotifyTemplateReplyToOverride(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(clearNotifyTemplateReplyToOverrideRef(dcInstance, inputVars));
 }
 
 export const createPendingSectionFileRef = (dcOrVars, vars) => {
@@ -2230,4 +2392,3 @@ export function confirmProfileReview(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(confirmProfileReviewRef(dcInstance, inputVars));
 }
-

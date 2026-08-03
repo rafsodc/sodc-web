@@ -13,6 +13,7 @@ import {
   govNotifyReferenceForMode,
   type GovNotifyDeliveryMode,
 } from "./govNotifyDeliveryMode";
+import { getGovNotifyEmailReplyToId } from "./govNotifyReplyToId";
 import { sanitizeMailerError } from "./mailerErrors";
 
 // A task dispatch has a 60-second deadline. Keep the lease long enough that a
@@ -46,6 +47,8 @@ export interface AnnouncementEmailTask {
   unsubscribeUrl: string;
   templateUuid: string;
   effectiveDeliveryMode?: GovNotifyDeliveryMode;
+  /** null means deliberately use Notify's service default; undefined is a legacy task. */
+  emailReplyToId?: string | null;
 }
 
 interface AnnouncementRecipientProcessingRecord {
@@ -89,6 +92,7 @@ export interface AnnouncementNotifyClient {
       personalisation: Record<string, string>;
       reference: string;
       oneClickUnsubscribeURL: string;
+      emailReplyToId?: string;
     },
   ): Promise<{ data?: { id?: string; reference?: string } }>;
 }
@@ -103,6 +107,7 @@ interface ProcessAnnouncementEmailDependencies {
   now?: () => string;
   leaseMs?: number;
   reconciliationDelayMs?: number;
+  emailReplyToId?: string;
 }
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -333,6 +338,12 @@ export async function processAnnouncementEmailTask(
     }
   }
 
+  const emailReplyToId = dependencies.emailReplyToId !== undefined
+    ? dependencies.emailReplyToId
+    : task.emailReplyToId !== undefined
+      ? task.emailReplyToId ?? undefined
+      : getGovNotifyEmailReplyToId();
+
   const claimed = await claimForSend(repository, row, now);
   if (!claimed) {
     const winner = await repository.get(task.sendId, task.recipientId);
@@ -346,6 +357,7 @@ export async function processAnnouncementEmailTask(
       personalisation: task.personalisation,
       reference,
       oneClickUnsubscribeURL: task.unsubscribeUrl,
+      emailReplyToId,
     });
     const marked = await markStatus(repository, row, "sent", now, {
       providerNotificationId: response.data?.id ?? null,

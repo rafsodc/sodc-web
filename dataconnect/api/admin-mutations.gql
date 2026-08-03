@@ -74,6 +74,372 @@ mutation ChangeGovNotifyDeliveryMode(
   )
 }
 
+# ── GOV.UK Notify reply-to configuration ────────────────────────────────────
+
+query GetNotifyReplyToConfiguration @auth(level: NO_ACCESS) {
+  notifyEmailConfiguration(key: { id: "site-wide" }) {
+    version
+    updatedAt
+    updatedBy
+    defaultReplyToAddress {
+      id
+      displayLabel
+      emailAddress
+      notifyUuid
+      enabled
+      announcementSelectable
+      verificationStatus
+      providerAcceptedAt
+      providerNotificationId
+      verificationMode
+      verifiedAt
+      verifiedBy
+      version
+      createdAt
+      updatedAt
+      createdBy
+      updatedBy
+    }
+  }
+  notifyReplyToAddresses(orderBy: { displayLabel: ASC }) {
+    id
+    displayLabel
+    emailAddress
+    notifyUuid
+    enabled
+    announcementSelectable
+    verificationStatus
+    providerAcceptedAt
+    providerNotificationId
+    verificationMode
+    verifiedAt
+    verifiedBy
+    version
+    createdAt
+    updatedAt
+    createdBy
+    updatedBy
+  }
+  notifyTemplateReplyToOverrides(orderBy: { templateKey: ASC }) {
+    templateKey
+    replyToAddress {
+      id
+      displayLabel
+      emailAddress
+      notifyUuid
+      enabled
+      verificationStatus
+    }
+    updatedAt
+    updatedBy
+  }
+}
+
+query ListNotifyReplyToAudits($limit: Int!) @auth(level: NO_ACCESS) {
+  notifyReplyToAudits(orderBy: { changedAt: DESC }, limit: $limit) {
+    id
+    action
+    replyToAddressId
+    templateKey
+    previousValue
+    newValue
+    changedBy
+    reason
+    changedAt
+  }
+}
+
+mutation CreateNotifyEmailConfiguration @auth(level: NO_ACCESS) {
+  notifyEmailConfiguration_insert(data: {
+    id: "site-wide"
+    version: 1
+    updatedBy: "system"
+  })
+}
+
+mutation CreateNotifyReplyToAddress(
+  $id: UUID!
+  $displayLabel: String!
+  $emailAddress: String!
+  $notifyUuid: String!
+  $changedBy: String!
+  $reason: String!
+  $newValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  notifyReplyToAddress_insert(data: {
+    id: $id
+    displayLabel: $displayLabel
+    emailAddress: $emailAddress
+    notifyUuid: $notifyUuid
+    enabled: false
+    announcementSelectable: false
+    verificationStatus: UNVERIFIED
+    createdBy: $changedBy
+    updatedBy: $changedBy
+  })
+  notifyReplyToAudit_insert(data: {
+    action: CREATED
+    replyToAddressId: $id
+    newValue: $newValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation UpdateNotifyReplyToAddressIdentity(
+  $id: UUID!
+  $expectedVersion: Int!
+  $displayLabel: String!
+  $emailAddress: String!
+  $notifyUuid: String!
+  $changedBy: String!
+  $reason: String!
+  $previousValue: String!
+  $newValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  changed: notifyReplyToAddress_updateMany(
+    where: { id: { eq: $id }, version: { eq: $expectedVersion } }
+    data: {
+      displayLabel: $displayLabel
+      emailAddress: $emailAddress
+      notifyUuid: $notifyUuid
+      enabled: false
+      announcementSelectable: false
+      verificationStatus: UNVERIFIED
+      providerAcceptedAt: null
+      providerNotificationId: null
+      verificationMode: null
+      verifiedAt: null
+      verifiedBy: null
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_CONFLICT")
+  notifyReplyToAudit_insert(data: {
+    action: UPDATED
+    replyToAddressId: $id
+    previousValue: $previousValue
+    newValue: $newValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation RecordNotifyReplyToProviderAcceptance(
+  $id: UUID!
+  $expectedVersion: Int!
+  $providerNotificationId: String!
+  $verificationMode: GovNotifyDeliveryMode!
+  $changedBy: String!
+  $reason: String!
+) @auth(level: NO_ACCESS) @transaction {
+  changed: notifyReplyToAddress_updateMany(
+    where: { id: { eq: $id }, version: { eq: $expectedVersion } }
+    data: {
+      enabled: false
+      announcementSelectable: false
+      verificationStatus: PROVIDER_ACCEPTED
+      providerAcceptedAt_expr: "request.time"
+      providerNotificationId: $providerNotificationId
+      verificationMode: $verificationMode
+      verifiedAt: null
+      verifiedBy: null
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_CONFLICT")
+  notifyReplyToAudit_insert(data: {
+    action: PROVIDER_TEST_ACCEPTED
+    replyToAddressId: $id
+    newValue: $providerNotificationId
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation ConfirmNotifyReplyToVerification(
+  $id: UUID!
+  $expectedVersion: Int!
+  $changedBy: String!
+  $reason: String!
+) @auth(level: NO_ACCESS) @transaction {
+  changed: notifyReplyToAddress_updateMany(
+    where: {
+      id: { eq: $id }
+      version: { eq: $expectedVersion }
+      verificationStatus: { eq: PROVIDER_ACCEPTED }
+    }
+    data: {
+      verificationStatus: VERIFIED
+      verifiedAt_expr: "request.time"
+      verifiedBy: $changedBy
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_CONFLICT")
+  notifyReplyToAudit_insert(data: {
+    action: VERIFIED
+    replyToAddressId: $id
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation UpdateNotifyReplyToAvailability(
+  $id: UUID!
+  $expectedVersion: Int!
+  $enabled: Boolean!
+  $announcementSelectable: Boolean!
+  $changedBy: String!
+  $reason: String!
+  $previousValue: String!
+  $newValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  changed: notifyReplyToAddress_updateMany(
+    where: {
+      id: { eq: $id }
+      version: { eq: $expectedVersion }
+      verificationStatus: { eq: VERIFIED }
+    }
+    data: {
+      enabled: $enabled
+      announcementSelectable: $announcementSelectable
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_CONFLICT")
+  notifyReplyToAudit_insert(data: {
+    action: UPDATED
+    replyToAddressId: $id
+    previousValue: $previousValue
+    newValue: $newValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation ChangeNotifyReplyToDefault(
+  $expectedVersion: Int!
+  $previousAddressId: UUID
+  $newAddressId: UUID
+  $changedBy: String!
+  $reason: String!
+  $previousValue: String
+  $newValue: String
+) @auth(level: NO_ACCESS) @transaction {
+  changed: notifyEmailConfiguration_updateMany(
+    where: {
+      id: { eq: "site-wide" }
+      version: { eq: $expectedVersion }
+      defaultReplyToAddressId: { eq: $previousAddressId }
+    }
+    data: {
+      defaultReplyToAddressId: $newAddressId
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_DEFAULT_CONFLICT")
+  notifyReplyToAudit_insert(data: {
+    action: DEFAULT_CHANGED
+    replyToAddressId: $newAddressId
+    previousValue: $previousValue
+    newValue: $newValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation DisableDefaultNotifyReplyToAddress(
+  $id: UUID!
+  $expectedAddressVersion: Int!
+  $expectedConfigurationVersion: Int!
+  $replacementAddressId: UUID
+  $changedBy: String!
+  $reason: String!
+  $previousValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  addressChanged: notifyReplyToAddress_updateMany(
+    where: {
+      id: { eq: $id }
+      version: { eq: $expectedAddressVersion }
+      verificationStatus: { eq: VERIFIED }
+    }
+    data: {
+      enabled: false
+      announcementSelectable: false
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_CONFLICT")
+  configurationChanged: notifyEmailConfiguration_updateMany(
+    where: {
+      id: { eq: "site-wide" }
+      version: { eq: $expectedConfigurationVersion }
+      defaultReplyToAddressId: { eq: $id }
+    }
+    data: {
+      defaultReplyToAddressId: $replacementAddressId
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $changedBy
+    }
+  ) @check(expr: "this == 1", message: "REPLY_TO_DEFAULT_CONFLICT")
+  notifyReplyToAudit_insert(data: {
+    action: DISABLED
+    replyToAddressId: $id
+    previousValue: $previousValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation SetNotifyTemplateReplyToOverride(
+  $templateKey: String!
+  $replyToAddressId: UUID!
+  $changedBy: String!
+  $reason: String!
+  $previousValue: String
+  $newValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  notifyTemplateReplyToOverride_upsert(data: {
+    templateKey: $templateKey
+    replyToAddressId: $replyToAddressId
+    updatedAt_expr: "request.time"
+    updatedBy: $changedBy
+  })
+  notifyReplyToAudit_insert(data: {
+    action: TEMPLATE_OVERRIDE_CHANGED
+    replyToAddressId: $replyToAddressId
+    templateKey: $templateKey
+    previousValue: $previousValue
+    newValue: $newValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
+mutation ClearNotifyTemplateReplyToOverride(
+  $templateKey: String!
+  $changedBy: String!
+  $reason: String!
+  $previousValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  notifyTemplateReplyToOverride_delete(key: { templateKey: $templateKey })
+  notifyReplyToAudit_insert(data: {
+    action: TEMPLATE_OVERRIDE_CHANGED
+    templateKey: $templateKey
+    previousValue: $previousValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
 # ── Section file storage lifecycle ───────────────────────────────────────────
 
 # The caller generates both the opaque file ID and object path. This makes it
@@ -1769,6 +2135,10 @@ mutation CreateAnnouncementSendWithDeliveryMode(
   $requestedDeliveryMode: GovNotifyDeliveryMode!
   $siteDeliveryMode: GovNotifyDeliveryMode!
   $effectiveDeliveryMode: GovNotifyDeliveryMode!
+  $replyToAddressId: UUID
+  $replyToDisplayLabel: String
+  $replyToEmailAddress: String
+  $replyToNotifyUuid: String
 ) @auth(level: NO_ACCESS) {
   announcementSend_insert(data: {
     id: $id
@@ -1782,6 +2152,10 @@ mutation CreateAnnouncementSendWithDeliveryMode(
     requestedDeliveryMode: $requestedDeliveryMode
     siteDeliveryMode: $siteDeliveryMode
     effectiveDeliveryMode: $effectiveDeliveryMode
+    replyToAddressId: $replyToAddressId
+    replyToDisplayLabel: $replyToDisplayLabel
+    replyToEmailAddress: $replyToEmailAddress
+    replyToNotifyUuid: $replyToNotifyUuid
   })
 }
 
@@ -1869,6 +2243,9 @@ query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
     requestedDeliveryMode
     siteDeliveryMode
     effectiveDeliveryMode
+    replyToAddressId
+    replyToDisplayLabel
+    replyToEmailAddress
   }
 }
 
@@ -1905,6 +2282,10 @@ query GetAnnouncementSendById($id: UUID!) @auth(level: NO_ACCESS) {
     requestedDeliveryMode
     siteDeliveryMode
     effectiveDeliveryMode
+    replyToAddressId
+    replyToDisplayLabel
+    replyToEmailAddress
+    replyToNotifyUuid
   }
 }
 

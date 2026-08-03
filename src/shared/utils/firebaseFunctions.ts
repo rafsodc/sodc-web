@@ -7,5 +7,6 @@ export * from "./firebaseFunctions/sectionAccess";
 export * from "./firebaseFunctions/bookingPayments";
 export * from "./firebaseFunctions/guestTickets";
 export * from "./firebaseFunctions/announcements";
+export * from "./firebaseFunctions/notifyReplyToConfiguration";
 export * from "./firebaseFunctions/sectionFiles";
 export * from "./firebaseFunctions/authEmailActions";

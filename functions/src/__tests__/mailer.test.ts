@@ -28,6 +28,8 @@ type TestTemplates = {
   };
 };
 
+const REPLY_TO_ID = "11111111-1111-4111-8111-111111111111";
+
 function fakeLogger() {
   return {
     info: vi.fn(),
@@ -52,15 +54,21 @@ describe("mailer", () => {
   });
 
   it("reads the optional reply-to ID and builds the environment-configured mailer", () => {
-    expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id" })).toBe("reply-to-id");
+    expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: `  ${REPLY_TO_ID}  ` })).toBe(REPLY_TO_ID);
     expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: "  " })).toBeUndefined();
     expect(
       createConfiguredGovNotifyMailer<TestTemplates>(["paymentConfirmation"], {
         GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION: "template-paid",
-        GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id",
+        GOV_NOTIFY_EMAIL_REPLY_TO_ID: REPLY_TO_ID,
         GOV_NOTIFY_DELIVERY_MODE: "LIVE",
       })
     ).toHaveProperty("sendEmail");
+  });
+
+  it("ignores a malformed migration fallback so critical email can use Notify's default", () => {
+    expect(getGovNotifyEmailReplyToId({
+      GOV_NOTIFY_EMAIL_REPLY_TO_ID: "not-a-uuid",
+    })).toBeUndefined();
   });
 
   it("builds stable recipient-scoped references without exposing recipient PII", () => {
@@ -110,7 +118,7 @@ describe("mailer", () => {
       templateIds: {
         paymentConfirmation: "template-paid",
       },
-      emailReplyToId: "reply-to-id",
+      emailReplyToId: REPLY_TO_ID,
       clientFactory: () => ({ getNotifications, sendEmail }),
       logger,
     });
@@ -142,7 +150,7 @@ describe("mailer", () => {
         amount_paid: "GBP 10.00",
       },
       reference: "order-123:notify-live",
-      emailReplyToId: "reply-to-id",
+      emailReplyToId: REPLY_TO_ID,
     });
     expect(getNotifications).toHaveBeenCalledWith(
       "email",

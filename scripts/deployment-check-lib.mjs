@@ -44,6 +44,34 @@ export function compareExpected(expected, actual) {
   return expected.filter((value) => !actualSet.has(String(value).toLowerCase()));
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function assessGovNotifyReplyToConfiguration(functions) {
+  const configured = [];
+  const missing = [];
+  const invalid = [];
+
+  for (const fn of functions) {
+    const functionName = normalizeResourceName(fn.name);
+    const rawValue = fn.serviceConfig?.environmentVariables?.GOV_NOTIFY_EMAIL_REPLY_TO_ID;
+    const value = typeof rawValue === "string" ? rawValue.trim() : "";
+    if (!value) {
+      missing.push(functionName);
+    } else if (!UUID_PATTERN.test(value)) {
+      invalid.push(functionName);
+    } else {
+      configured.push({ functionName, value: value.toLowerCase() });
+    }
+  }
+
+  return {
+    configuredFunctions: configured.map(({ functionName }) => functionName).sort(),
+    missingFunctions: missing.sort(),
+    invalidFunctions: invalid.sort(),
+    distinctValueCount: new Set(configured.map(({ value }) => value)).size,
+  };
+}
+
 export function resolveTarget(firebaseRc, configuration, alias) {
   if (!Object.hasOwn(configuration.environments, alias)) {
     throw new Error(`Unknown environment "${alias}"; expected dev, beta, or prod.`);

@@ -41,6 +41,7 @@ export const CALLABLE_RATE_LIMITS = {
   getAnnouncementTemplates: { limit: 30, windowMs: 5 * MINUTE_MS },
   previewAnnouncementTemplate: { limit: 30, windowMs: 5 * MINUTE_MS },
   sendSectionAnnouncement: { limit: 5, windowMs: HOUR_MS },
+  sendNotifyReplyToVerificationTest: { limit: 10, windowMs: HOUR_MS },
   getAnnouncementSendRecipients: { limit: 60, windowMs: 5 * MINUTE_MS },
   requestSectionFileUpload: { limit: 20, windowMs: HOUR_MS },
   finalizeSectionFileUpload: { limit: 30, windowMs: HOUR_MS },

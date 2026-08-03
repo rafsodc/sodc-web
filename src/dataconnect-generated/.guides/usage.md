@@ -12,7 +12,7 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useGetGovNotifyDeliveryConfiguration, useListGovNotifyDeliveryModeAudits, useCreateGovNotifyDeliveryConfiguration, useChangeGovNotifyDeliveryMode, useCreatePendingSectionFile, useGetSectionFileById, useListSectionFilesByStatus, useListStaleSectionFiles, useListSectionFilesForQuota, useRecordSectionFileAudit } from '@dataconnect/generated/react';
+import { useGetGovNotifyDeliveryConfiguration, useListGovNotifyDeliveryModeAudits, useCreateGovNotifyDeliveryConfiguration, useChangeGovNotifyDeliveryMode, useGetNotifyReplyToConfiguration, useListNotifyReplyToAudits, useCreateNotifyEmailConfiguration, useCreateNotifyReplyToAddress, useUpdateNotifyReplyToAddressIdentity, useRecordNotifyReplyToProviderAcceptance } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
 const { data, isPending, isSuccess, isError, error } = useGetGovNotifyDeliveryConfiguration();
@@ -23,17 +23,17 @@ const { data, isPending, isSuccess, isError, error } = useCreateGovNotifyDeliver
 
 const { data, isPending, isSuccess, isError, error } = useChangeGovNotifyDeliveryMode(changeGovNotifyDeliveryModeVars);
 
-const { data, isPending, isSuccess, isError, error } = useCreatePendingSectionFile(createPendingSectionFileVars);
+const { data, isPending, isSuccess, isError, error } = useGetNotifyReplyToConfiguration();
 
-const { data, isPending, isSuccess, isError, error } = useGetSectionFileById(getSectionFileByIdVars);
+const { data, isPending, isSuccess, isError, error } = useListNotifyReplyToAudits(listNotifyReplyToAuditsVars);
 
-const { data, isPending, isSuccess, isError, error } = useListSectionFilesByStatus(listSectionFilesByStatusVars);
+const { data, isPending, isSuccess, isError, error } = useCreateNotifyEmailConfiguration();
 
-const { data, isPending, isSuccess, isError, error } = useListStaleSectionFiles(listStaleSectionFilesVars);
+const { data, isPending, isSuccess, isError, error } = useCreateNotifyReplyToAddress(createNotifyReplyToAddressVars);
 
-const { data, isPending, isSuccess, isError, error } = useListSectionFilesForQuota(listSectionFilesForQuotaVars);
+const { data, isPending, isSuccess, isError, error } = useUpdateNotifyReplyToAddressIdentity(updateNotifyReplyToAddressIdentityVars);
 
-const { data, isPending, isSuccess, isError, error } = useRecordSectionFileAudit(recordSectionFileAuditVars);
+const { data, isPending, isSuccess, isError, error } = useRecordNotifyReplyToProviderAcceptance(recordNotifyReplyToProviderAcceptanceVars);
 
 ```
 
@@ -72,7 +72,7 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { getGovNotifyDeliveryConfiguration, listGovNotifyDeliveryModeAudits, createGovNotifyDeliveryConfiguration, changeGovNotifyDeliveryMode, createPendingSectionFile, getSectionFileById, listSectionFilesByStatus, listStaleSectionFiles, listSectionFilesForQuota, recordSectionFileAudit } from '@dataconnect/generated';
+import { getGovNotifyDeliveryConfiguration, listGovNotifyDeliveryModeAudits, createGovNotifyDeliveryConfiguration, changeGovNotifyDeliveryMode, getNotifyReplyToConfiguration, listNotifyReplyToAudits, createNotifyEmailConfiguration, createNotifyReplyToAddress, updateNotifyReplyToAddressIdentity, recordNotifyReplyToProviderAcceptance } from '@dataconnect/generated';
 
 
 // Operation GetGovNotifyDeliveryConfiguration: 
@@ -87,23 +87,23 @@ const { data } = await CreateGovNotifyDeliveryConfiguration(dataConnect);
 // Operation ChangeGovNotifyDeliveryMode:  For variables, look at type ChangeGovNotifyDeliveryModeVars in ../index.d.ts
 const { data } = await ChangeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
 
-// Operation CreatePendingSectionFile:  For variables, look at type CreatePendingSectionFileVars in ../index.d.ts
-const { data } = await CreatePendingSectionFile(dataConnect, createPendingSectionFileVars);
+// Operation GetNotifyReplyToConfiguration:
+const { data } = await GetNotifyReplyToConfiguration(dataConnect);
 
-// Operation GetSectionFileById:  For variables, look at type GetSectionFileByIdVars in ../index.d.ts
-const { data } = await GetSectionFileById(dataConnect, getSectionFileByIdVars);
+// Operation ListNotifyReplyToAudits:  For variables, look at type ListNotifyReplyToAuditsVars in ../index.d.ts
+const { data } = await ListNotifyReplyToAudits(dataConnect, listNotifyReplyToAuditsVars);
 
-// Operation ListSectionFilesByStatus:  For variables, look at type ListSectionFilesByStatusVars in ../index.d.ts
-const { data } = await ListSectionFilesByStatus(dataConnect, listSectionFilesByStatusVars);
+// Operation CreateNotifyEmailConfiguration:
+const { data } = await CreateNotifyEmailConfiguration(dataConnect);
 
-// Operation ListStaleSectionFiles:  For variables, look at type ListStaleSectionFilesVars in ../index.d.ts
-const { data } = await ListStaleSectionFiles(dataConnect, listStaleSectionFilesVars);
+// Operation CreateNotifyReplyToAddress:  For variables, look at type CreateNotifyReplyToAddressVars in ../index.d.ts
+const { data } = await CreateNotifyReplyToAddress(dataConnect, createNotifyReplyToAddressVars);
 
-// Operation ListSectionFilesForQuota:  For variables, look at type ListSectionFilesForQuotaVars in ../index.d.ts
-const { data } = await ListSectionFilesForQuota(dataConnect, listSectionFilesForQuotaVars);
+// Operation UpdateNotifyReplyToAddressIdentity:  For variables, look at type UpdateNotifyReplyToAddressIdentityVars in ../index.d.ts
+const { data } = await UpdateNotifyReplyToAddressIdentity(dataConnect, updateNotifyReplyToAddressIdentityVars);
 
-// Operation RecordSectionFileAudit:  For variables, look at type RecordSectionFileAuditVars in ../index.d.ts
-const { data } = await RecordSectionFileAudit(dataConnect, recordSectionFileAuditVars);
+// Operation RecordNotifyReplyToProviderAcceptance:  For variables, look at type RecordNotifyReplyToProviderAcceptanceVars in ../index.d.ts
+const { data } = await RecordNotifyReplyToProviderAcceptance(dataConnect, recordNotifyReplyToProviderAcceptanceVars);
 
 
 ```
