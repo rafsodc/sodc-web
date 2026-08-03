@@ -33,6 +33,7 @@ import EventDetailHero from "./EventDetailHero";
 import SectionEventCard from "./SectionEventCard";
 import SectionMemberCard from "./SectionMemberCard";
 import SectionMemberListItem from "./SectionMemberListItem";
+import FailureState from "../../../shared/components/FailureState";
 
 type MemberViewMode = "card" | "list";
 
@@ -283,15 +284,14 @@ export function SectionEventsListView({
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-          <CircularProgress />
+          <CircularProgress aria-label="Loading events" />
         </Box>
       ) : isError ? (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          Failed to load events.{" "}
-          <Button size="small" onClick={onRetry}>
-            Retry
-          </Button>
-        </Alert>
+        <FailureState
+          title="Events are unavailable"
+          message="We could not load the events for this section. Please try again."
+          onRetry={onRetry}
+        />
       ) : listMode === "upcoming" && upcoming.length === 0 ? (
         <Alert severity="info">
           {past.length > 0
@@ -360,15 +360,14 @@ export function SectionEventDetailView({
       </Button>
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-          <CircularProgress />
+          <CircularProgress aria-label="Loading event" />
         </Box>
       ) : isError ? (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          Failed to load event.{" "}
-          <Button size="small" onClick={onRetry}>
-            Retry
-          </Button>
-        </Alert>
+        <FailureState
+          title="Event unavailable"
+          message="We could not load this event. Please try again."
+          onRetry={onRetry}
+        />
       ) : !event ? (
         <Alert severity="info">Event not found.</Alert>
       ) : (

@@ -33,6 +33,7 @@ import {
   ticketOrderStatusChipColor,
 } from "../utils/myPaymentsDisplay";
 import { reportError, toBookingUserFacingError } from "../../../shared/errors";
+import FailureState from "../../../shared/components/FailureState";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -141,16 +142,11 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
           <CircularProgress size={28} aria-label="Loading payments" />
         </Box>
       ) : isError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => refetch()}>
-              Retry
-            </Button>
-          }
-        >
-          {toBookingUserFacingError(error, "payment-history").message}
-        </Alert>
+        <FailureState
+          title={toBookingUserFacingError(error, "payment-history").title}
+          message={toBookingUserFacingError(error, "payment-history").message}
+          onRetry={() => void refetch()}
+        />
       ) : paymentGroups.length === 0 ? (
         <Alert severity="info">
           You have not made any ticket payments yet. After you pay for an event, your receipts will appear here.

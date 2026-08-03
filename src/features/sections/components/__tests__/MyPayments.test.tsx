@@ -282,7 +282,7 @@ describe("MyPayments", () => {
       screen.getByText("We couldn’t load your payment history. Please try again."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Postgres ticket_orders/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 });
