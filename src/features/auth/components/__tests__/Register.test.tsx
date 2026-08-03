@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "../../../../test-utils";
 import Register from "../Register";
@@ -28,6 +28,10 @@ async function fillForm(user: ReturnType<typeof userEvent.setup>, password: stri
 }
 
 describe("Register", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("explains that password requirements come from the current policy", () => {
     render(<Register />);
     expect(
@@ -57,5 +61,27 @@ describe("Register", () => {
     expect(await screen.findByText("Password must be at least 12 characters.")).toBeInTheDocument();
     expect(validatePassword).toHaveBeenCalled();
     expect(createUserWithEmailAndPassword).not.toHaveBeenCalled();
+  });
+
+  it("uses the shared safe fallback instead of rendering an unknown technical message", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    vi.mocked(validatePassword).mockResolvedValue({
+      isValid: true,
+      passwordPolicy: policy,
+    });
+    vi.mocked(createUserWithEmailAndPassword).mockRejectedValue(
+      new Error("SQL user insert failed with internal identifier 42"),
+    );
+
+    render(<Register />);
+    await fillForm(user, "compliant-password");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(
+      await screen.findByText("The account request could not be completed. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/SQL user insert/)).not.toBeInTheDocument();
+    consoleSpy.mockRestore();
   });
 });
