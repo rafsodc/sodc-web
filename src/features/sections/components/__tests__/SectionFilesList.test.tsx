@@ -55,7 +55,7 @@ describe("SectionFilesList", () => {
       .mockResolvedValueOnce([]);
     render(<SectionFilesList sectionId="section-1" />);
 
-    const reload = await screen.findByRole("button", { name: "Reload files" });
+    const reload = await screen.findByRole("button", { name: "Try again" });
     reload.click();
     await waitFor(() => expect(listSectionFiles).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("No files are available for this section.")).toBeInTheDocument();
@@ -87,6 +87,6 @@ describe("SectionFilesList", () => {
 
     expect(await screen.findByText(/could not be downloaded/i)).toBeInTheDocument();
     expect(screen.getByText("Joining instructions")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Reload files" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 });

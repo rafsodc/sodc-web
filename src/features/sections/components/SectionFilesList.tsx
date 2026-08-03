@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
+import FailureState from "../../../shared/components/FailureState";
 import {
   listSectionFiles,
   requestSectionFileDownload,
@@ -80,17 +81,17 @@ export default function SectionFilesList({ sectionId }: { sectionId: string }) {
       )}
       {loading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 2 }}>
-          <CircularProgress size={22} />
+          <CircularProgress size={22} aria-label="Loading section files" />
           <Typography>Loading files…</Typography>
         </Stack>
       ) : loadError ? (
-        <Alert
-          severity="error"
-          action={<Button color="inherit" onClick={() => void load()}>Reload files</Button>}
-          sx={{ mt: 1 }}
-        >
-          Files could not be loaded. Your access may have changed.
-        </Alert>
+        <Box sx={{ mt: 1 }}>
+          <FailureState
+            title="Files are unavailable"
+            message="We could not load the files for this section. Your access may have changed."
+            onRetry={() => void load()}
+          />
+        </Box>
       ) : files.length === 0 ? (
         <Typography color="text.secondary" sx={{ mt: 1 }}>
           No files are available for this section.

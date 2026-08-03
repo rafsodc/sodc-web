@@ -3,13 +3,14 @@ import {
   Box,
   Alert,
   CircularProgress,
-  Button,
   Snackbar,
 } from "@mui/material";
 import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import PageHeader from "../../../shared/components/PageHeader";
+import FailureState from "../../../shared/components/FailureState";
+import { reportError } from "../../../shared/errors";
 import {
   getMemberGroups,
   canUserSubscribe,
@@ -67,7 +68,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [subscribing, setSubscribing] = useState(false);
   const [sectionMembers, setSectionMembers] = useState<SectionMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
-  const [errorMembers, setErrorMembers] = useState<string | null>(null);
+  const [errorMembers, setErrorMembers] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const currentUser = auth.currentUser;
@@ -113,7 +114,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const fetchMembers = useCallback(async () => {
     const requestId = ++membersRequestIdRef.current;
     setLoadingMembers(true);
-    setErrorMembers(null);
+    setErrorMembers(false);
     try {
       const res = await getSectionMembersMerged(sectionId);
       if (membersRequestIdRef.current !== requestId) return;
@@ -130,10 +131,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       setSectionMembers(members);
     } catch (err: unknown) {
       if (membersRequestIdRef.current !== requestId) return;
-      const message = err && typeof (err as { message?: string }).message === "string"
-        ? (err as { message: string }).message
-        : "Failed to load section members";
-      setErrorMembers(message);
+      reportError("sections.members", err);
+      setErrorMembers(true);
       setSectionMembers([]);
     } finally {
       if (membersRequestIdRef.current === requestId) {
@@ -455,7 +454,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
         <Box className="loading-container">
-          <CircularProgress />
+          <CircularProgress aria-label="Loading section details" />
         </Box>
       </Box>
     );
@@ -465,19 +464,16 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {errorMembers && !errorSection ? errorMembers : "Failed to load section details. Please try again."}
-        </Alert>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            refetchSection();
-            refetchMembers();
-          }}
-          sx={{ mt: 2 }}
-        >
-          Retry
-        </Button>
+        <Box sx={{ mt: 2 }}>
+          <FailureState
+            title="Section unavailable"
+            message="We could not load this section. Please try again."
+            onRetry={() => {
+              void refetchSection();
+              void refetchMembers();
+            }}
+          />
+        </Box>
       </Box>
     );
   }

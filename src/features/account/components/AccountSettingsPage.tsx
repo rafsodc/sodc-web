@@ -56,7 +56,9 @@ import {
   toAuthUserFacingError,
   toProfileDomainUserFacingError,
   toProfileUserFacingError,
+  toMemberDataError,
 } from "../../../shared/errors";
+import FailureState from "../../../shared/components/FailureState";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -72,7 +74,7 @@ function usesEmailPassword(user: User): boolean {
 
 function AnnouncementPreferencesList() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useGetMyAnnouncementPreferences({ staleTime: Infinity });
+  const { data, isLoading, isError, error, refetch } = useGetMyAnnouncementPreferences({ staleTime: Infinity });
   const optOut = useOptOutSectionAnnouncement();
   const optIn = useOptInSectionAnnouncement();
   const updateGlobalOptOut = useUpdateAnnouncementOptOutAll();
@@ -173,7 +175,13 @@ function AnnouncementPreferencesList() {
         choices are preserved.
       </Typography>
       {isLoading ? (
-        <CircularProgress size={20} />
+        <CircularProgress size={20} aria-label="Loading communication preferences" />
+      ) : isError ? (
+        <FailureState
+          title={toMemberDataError(error, "preferences").title}
+          message={toMemberDataError(error, "preferences").message}
+          onRetry={() => void refetch()}
+        />
       ) : sections.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           You are not a member of any sections.

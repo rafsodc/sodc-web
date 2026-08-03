@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { SectionType } from "@dataconnect/generated";
 import { getEventsForSection } from "@dataconnect/generated";
 import { sectionsFingerprint, useUpcomingEventsForUser } from "../useUpcomingEventsForUser";
@@ -66,5 +66,26 @@ describe("useUpcomingEventsForUser", () => {
 
     await waitFor(() => expect(result.current.events).toHaveLength(1));
     expect(getEventsForSection).toHaveBeenCalledTimes(1);
+  });
+
+  it("can retry a failed request and recover", async () => {
+    vi.mocked(getEventsForSection)
+      .mockRejectedValueOnce(new Error("temporary network failure"))
+      .mockResolvedValueOnce({
+        data: {
+          section: {
+            id: "section-1",
+            events: [],
+          },
+        },
+      } as unknown as Awaited<ReturnType<typeof getEventsForSection>>);
+
+    const { result } = renderHook(() => useUpcomingEventsForUser([eventSection]));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    act(() => result.current.retry());
+
+    await waitFor(() => expect(result.current.isError).toBe(false));
+    expect(getEventsForSection).toHaveBeenCalledTimes(2);
   });
 });

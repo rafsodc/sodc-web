@@ -262,9 +262,9 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to load section details/i)).toBeInTheDocument();
+      expect(screen.getByText(/could not load this section/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 
   it('should render section description above the members list', async () => {
@@ -1517,9 +1517,9 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to load events/i)).toBeInTheDocument();
+      expect(screen.getByText(/could not load the events for this section/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /try again/i })).not.toHaveLength(0);
   });
 
   it('shows members refresh button and calls refetch when clicked', async () => {

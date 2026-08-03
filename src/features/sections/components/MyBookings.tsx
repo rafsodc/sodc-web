@@ -1,5 +1,4 @@
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -28,6 +27,9 @@ import {
   formatBookingEventWhen,
   getMyBookingActionLabel,
 } from "../utils/myBookingsDisplay";
+import FailureState from "../../../shared/components/FailureState";
+import { reportError, toMemberDataError } from "../../../shared/errors";
+import { useEffect } from "react";
 
 interface MyBookingsProps {
   onBack: () => void;
@@ -52,6 +54,12 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
   const bookings = data?.user?.bookings ?? [];
   const ticketOrders = ticketOrdersData?.user?.ticketOrders ?? [];
 
+  useEffect(() => {
+    if (isError) reportError("bookings.history", error);
+  }, [error, isError]);
+
+  const loadError = toMemberDataError(error, "bookings");
+
   return (
     <Box className="page-container">
       <PageHeader title="My Bookings" onBack={onBack} />
@@ -64,16 +72,11 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
           <CircularProgress size={28} aria-label="Loading bookings" />
         </Box>
       ) : isError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => refetch()}>
-              Retry
-            </Button>
-          }
-        >
-          {error instanceof Error ? error.message : "We could not load your bookings. Please try again."}
-        </Alert>
+        <FailureState
+          title={loadError.title}
+          message={loadError.message}
+          onRetry={loadError.retryable ? () => void refetch() : undefined}
+        />
       ) : bookings.length === 0 ? (
         <Typography variant="body1" color="text.secondary">
           No bookings yet — head to a section to find an upcoming event.
