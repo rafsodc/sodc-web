@@ -14,13 +14,17 @@ import {
   BOOKING_STEPS,
   buildBookingSubmissionLines,
   EMPTY_GUEST_DETAIL,
-  extractCallableErrorCode,
   guestCountValidationError,
   guestDetailsValidationError,
   resizeExtraGuestDetails,
   type ExtraGuestDetailRow,
   type WizardMode,
 } from "./bookingWizardModel";
+import {
+  extractDomainErrorCode,
+  reportError,
+  toBookingUserFacingError,
+} from "../../../shared/errors";
 import { useBookingWizardData } from "./useBookingWizardData";
 import { useSectionMemberSeatingOptions } from "./useSectionMemberSeatingOptions";
 
@@ -319,9 +323,7 @@ export function useBookingWizardState({
 
       if (!memberTicketTypeId || !membershipStatus || gate.ok !== true) return;
 
-      if (isEditingBooking && existingTerminalBooking) {
-        idempotencyKeyRef.current = crypto.randomUUID();
-      } else if (!idempotencyKeyRef.current) {
+      if (!idempotencyKeyRef.current) {
         const fromDraft = existingDraft?.clientSubmissionKey?.trim();
         if (fromDraft) {
           try {
@@ -365,11 +367,8 @@ export function useBookingWizardState({
       setActiveStep(3);
       onBookingComplete?.();
     } catch (err: unknown) {
-      const code = extractCallableErrorCode(err);
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Booking failed. Please try again.";
+      reportError("booking.submit", err);
+      const code = extractDomainErrorCode(err);
       if (code === "BOOKING_ALREADY_SUBMITTED") {
         setSubmitError("You already have a submitted booking for this event.");
         await refetchMyBookings();
@@ -397,7 +396,7 @@ export function useBookingWizardState({
           );
         }
       } else {
-        setSubmitError(message);
+        setSubmitError(toBookingUserFacingError(err, "booking-submit").message);
       }
     } finally {
       setSubmitting(false);
@@ -411,11 +410,8 @@ export function useBookingWizardState({
       const { url } = await createEventBookingCheckoutSession({ eventId: event.id });
       window.location.assign(url);
     } catch (err: unknown) {
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Could not start checkout. Please try again.";
-      setSubmitError(message);
+      reportError("booking.checkout-start", err);
+      setSubmitError(toBookingUserFacingError(err, "checkout-start").message);
     } finally {
       setPayingAllTickets(false);
     }

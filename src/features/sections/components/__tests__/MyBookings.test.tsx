@@ -5,6 +5,7 @@ import MyBookings from "../MyBookings";
 import * as reactGenerated from "@dataconnect/generated/react";
 import { BookingStatus } from "@dataconnect/generated";
 import { dataConnectQueryResult } from "../../../../test-utils/dataConnectMocks";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("@dataconnect/generated/react", () => ({
   useGetMyBookings: vi.fn(),
@@ -221,5 +222,48 @@ describe("MyBookings", () => {
     );
 
     expect(screen.getByText(/no bookings yet/i)).toBeInTheDocument();
+  });
+
+  it("shows a safe failure and retries without exposing query details", async () => {
+    const refetch = vi.fn();
+    vi.mocked(reactGenerated.useGetMyBookings).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyBookings>({
+        isLoading: false,
+        isError: true,
+        error: new Error("booking_rows database failure"),
+        refetch,
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <MyBookings onBack={() => undefined} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/could not load your bookings/i)).toBeInTheDocument();
+    expect(screen.queryByText(/booking_rows/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("distinguishes access denied from a retryable failure", () => {
+    vi.mocked(reactGenerated.useGetMyBookings).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyBookings>({
+        isLoading: false,
+        isError: true,
+        error: { code: "permission-denied", message: "internal policy name" },
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <MyBookings onBack={() => undefined} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("heading", { name: "Access denied" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/internal policy name/i)).not.toBeInTheDocument();
   });
 });

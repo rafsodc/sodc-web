@@ -264,4 +264,25 @@ describe("MyPayments", () => {
 
     expect(screen.getByText(/you have not made any ticket payments yet/i)).toBeInTheDocument();
   });
+
+  it("shows a safe retryable error without exposing query details", async () => {
+    const refetch = vi.fn();
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+        isLoading: false,
+        isError: true,
+        error: new Error("Postgres ticket_orders relation failed"),
+        refetch,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<MyPayments onBack={() => undefined} />);
+
+    expect(
+      screen.getByText("We couldn’t load your payment history. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Postgres ticket_orders/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
 });

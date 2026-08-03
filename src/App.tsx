@@ -460,7 +460,13 @@ function AppContent() {
                   />
                 </Box>
               )}
-              <Routes>
+              <ErrorBoundary
+                title="Page unavailable"
+                resetKey={`${location.key}:${location.pathname}${location.search}`}
+                onBack={() => navigateBackOr(ROUTES.HOME)}
+                onHome={() => navigate(ROUTES.HOME)}
+              >
+                <Routes>
                 <Route
                   path={ROUTES.HOME}
                   element={
@@ -609,22 +615,18 @@ function AppContent() {
                   path={ROUTES.AUDIT_LOGS}
                   element={renderAdminOnly(
                     "Audit Logs",
-                    <ErrorBoundary title="Audit Logs" onBack={() => navigateBackOr(ROUTES.HOME)}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <AuditLogs onBack={() => navigateBackOr(ROUTES.HOME)} />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <AuditLogs onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
                   )}
                 />
                 <Route
                   path={ROUTES.PAYMENT_RECONCILIATION}
                   element={renderAdminOnly(
                     "Payment Reconciliation",
-                    <ErrorBoundary title="Payment Reconciliation" onBack={() => navigateBackOr(ROUTES.HOME)}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <PaymentReconciliationDashboard onBack={() => navigateBackOr(ROUTES.HOME)} />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <PaymentReconciliationDashboard onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
                   )}
                 />
                 <Route
@@ -657,11 +659,9 @@ function AppContent() {
                   path={ROUTES.MANAGE_SECTIONS}
                   element={renderAdminOnly(
                     "Manage Sections",
-                    <ErrorBoundary title="Manage Sections" onBack={() => navigateBackOr(ROUTES.HOME)}>
-                      <Suspense fallback={<LoadingFallback />}>
-                        <ManageSections onBack={() => navigateBackOr(ROUTES.HOME)} />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <ManageSections onBack={() => navigateBackOr(ROUTES.HOME)} />
+                    </Suspense>
                   )}
                 />
                 <Route
@@ -712,7 +712,8 @@ function AppContent() {
                   }
                 />
                 <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
-              </Routes>
+                </Routes>
+              </ErrorBoundary>
             </PageHeaderAdminActionProvider>
           </Box>
         </Box>
@@ -722,23 +723,33 @@ function AppContent() {
 }
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   return (
-    <>
-      <Box
-        data-testid="app-shell"
-        sx={{
-          minHeight: "100dvh",
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          backgroundColor: "background.default",
-        }}
-      >
-        <AppContent />
-        <SiteFooter />
-      </Box>
-      <CookieBanner />
-      <CookieSettingsDialog />
-    </>
+    <ErrorBoundary
+      title="SODC is temporarily unavailable"
+      resetKey={`${location.key}:${location.pathname}${location.search}`}
+      variant="page"
+      onHome={() => navigate(ROUTES.HOME)}
+    >
+      <>
+        <Box
+          data-testid="app-shell"
+          sx={{
+            minHeight: "100dvh",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "background.default",
+          }}
+        >
+          <AppContent />
+          <SiteFooter />
+        </Box>
+        <CookieBanner />
+        <CookieSettingsDialog />
+      </>
+    </ErrorBoundary>
   );
 }

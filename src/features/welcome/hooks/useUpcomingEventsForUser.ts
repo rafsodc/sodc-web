@@ -4,6 +4,7 @@ import type { UUIDString } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import type { AccessibleSection } from "../../../shared/navigation/extractAccessibleSections";
+import { reportError } from "../../../shared/errors";
 import {
   isUpcomingSectionEvent,
   sortUpcomingSectionEvents,
@@ -49,6 +50,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
   const [events, setEvents] = useState<UpcomingEventRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const lastFetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -101,10 +103,11 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
           setEvents(upcoming);
           setIsError(false);
         }
-      } catch {
+      } catch (error) {
         if (alive) {
+          reportError("welcome.upcoming-events", error);
           setIsError(true);
-          setEvents([]);
+          // Keep any previously loaded events visible while the retry option is shown.
         }
       } finally {
         if (alive) {
@@ -116,7 +119,12 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
     return () => {
       alive = false;
     };
-  }, [eventSectionIdsKey, sectionNameById]);
+  }, [eventSectionIdsKey, sectionNameById, retryAttempt]);
 
-  return { events, loading, isError };
+  return {
+    events,
+    loading,
+    isError,
+    retry: () => setRetryAttempt((attempt) => attempt + 1),
+  };
 }

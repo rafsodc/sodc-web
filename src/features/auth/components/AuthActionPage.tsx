@@ -24,39 +24,9 @@ import {
   validateNewPassword,
 } from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
+import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 type ActionState = "checking" | "ready" | "invalid" | "complete";
-
-function resetErrorMessage(error: unknown): string {
-  const code =
-    typeof error === "object" && error && "code" in error
-      ? String(error.code)
-      : "";
-  if (code.includes("expired-action-code")) {
-    return "This reset link has expired. Request a new one to continue.";
-  }
-  if (code.includes("invalid-action-code")) {
-    return "This reset link is invalid or has already been used. Request a new one to continue.";
-  }
-  if (code.includes("weak-password")) {
-    return "Password does not meet the current account security policy.";
-  }
-  return "The reset could not be completed. Please request a new link.";
-}
-
-function verificationErrorMessage(error: unknown): string {
-  const code =
-    typeof error === "object" && error && "code" in error
-      ? String(error.code)
-      : "";
-  if (code.includes("expired-action-code")) {
-    return "This verification link has expired. Sign in to request a new one.";
-  }
-  if (code.includes("invalid-action-code")) {
-    return "This verification link is invalid or has already been used.";
-  }
-  return "We couldn’t verify this email address. Sign in to request a new link.";
-}
 
 function actionHeading(mode: string | null): string {
   if (mode === "verifyEmail") return "Verify your email";
@@ -102,7 +72,8 @@ export default function AuthActionPage() {
         if (mode === "verifyAndChangeEmail") {
           try {
             await reconcileMyEmail();
-          } catch {
+          } catch (reconciliationError) {
+            reportError("auth.action.reconcile-email", reconciliationError);
             // Sign-in also retries reconciliation; do not turn a successfully
             // applied one-time action into a misleading invalid-link state.
           }
@@ -112,12 +83,10 @@ export default function AuthActionPage() {
     };
 
     void completeAction().catch((actionError: unknown) => {
+      reportError("auth.action.apply", actionError, { mode: mode ?? "missing" });
       if (active) {
-        setError(
-          mode === "verifyEmail" || mode === "verifyAndChangeEmail"
-            ? verificationErrorMessage(actionError)
-            : resetErrorMessage(actionError),
-        );
+        const context = mode === "resetPassword" ? "password-reset" : "email-action";
+        setError(toAuthUserFacingError(actionError, context).message);
         setState("invalid");
       }
     });
@@ -147,7 +116,8 @@ export default function AuthActionPage() {
       setConfirmation("");
       setState("complete");
     } catch (completionError: unknown) {
-      setError(resetErrorMessage(completionError));
+      reportError("auth.password-reset.complete", completionError);
+      setError(toAuthUserFacingError(completionError, "password-reset").message);
     } finally {
       setSubmitting(false);
     }

@@ -35,6 +35,8 @@ import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 import type { UserData } from "../../../types";
 import { getAnnouncementSections } from "../../account/utils/announcementPreferences";
+import { reportError, toProfileUserFacingError } from "../../../shared/errors";
+import FailureState from "../../../shared/components/FailureState";
 
 interface ProfileReviewDialogProps {
   userData: UserData;
@@ -133,18 +135,19 @@ export default function ProfileReviewDialog({
       try {
         const displayNameResult = await updateDisplayName(displayName);
         if (!displayNameResult.success) {
-          console.warn("Profile review saved, but display name sync failed:", displayNameResult.error);
+          reportError(
+            "profile.review.display-name",
+            new Error(displayNameResult.error ?? "Display name update failed"),
+          );
         }
       } catch (displayNameError) {
-        console.warn("Profile review saved, but display name sync failed:", displayNameError);
+        reportError("profile.review.display-name", displayNameError);
       }
 
       await onReviewed();
     } catch (caught) {
-      setError(
-        (caught as Error)?.message ||
-          "We could not save your profile review. Check your connection and try again.",
-      );
+      reportError("profile.review", caught);
+      setError(toProfileUserFacingError(caught, "review").message);
     } finally {
       setSubmitting(false);
     }
@@ -264,9 +267,15 @@ export default function ProfileReviewDialog({
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Account-security, booking and payment messages are always sent when required.
               </Typography>
-              {preferences.isLoading ? <CircularProgress size={20} /> : null}
+              {preferences.isLoading ? (
+                <CircularProgress size={20} aria-label="Loading communication preferences" />
+              ) : null}
               {preferences.isError ? (
-                <Alert severity="error">We could not load your communication preferences.</Alert>
+                <FailureState
+                  title="Communication preferences are unavailable"
+                  message="We could not load your communication preferences. Please try again."
+                  onRetry={() => void preferences.refetch()}
+                />
               ) : null}
               {preferencesInitialised ? (
                 <FormGroup>

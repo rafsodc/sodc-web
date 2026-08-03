@@ -85,8 +85,8 @@ describe('SectionsList', () => {
 
     render(<SectionsList onBack={mockOnBack} onSelectSection={mockOnSelectSection} />);
 
-    expect(screen.getByText(/failed to load sections/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByText(/could not load your sections/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 
   it('should render sections list for regular users', async () => {

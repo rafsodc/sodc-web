@@ -111,7 +111,8 @@ describe("ManageSectionFiles", () => {
   it("shows a permission-safe error when the list cannot be loaded", async () => {
     vi.mocked(listSectionFiles).mockRejectedValue(new Error("permission-denied"));
     render(<ManageSectionFiles sectionId="section-1" sectionName="Test Section" onBack={vi.fn()} />);
-    expect(await screen.findByText(/no longer have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/could not complete the file operation/i)).toBeInTheDocument();
+    expect(screen.queryByText(/permission-denied/i)).not.toBeInTheDocument();
   });
 
   it("clears previously loaded metadata when a refresh loses access", async () => {
@@ -126,7 +127,8 @@ describe("ManageSectionFiles", () => {
     await user.click(screen.getByRole("button", { name: "Edit Joining instructions" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByText(/no longer have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/could not complete the file operation/i)).toBeInTheDocument();
+    expect(screen.queryByText(/permission-denied/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Joining instructions")).not.toBeInTheDocument();
   });
 });

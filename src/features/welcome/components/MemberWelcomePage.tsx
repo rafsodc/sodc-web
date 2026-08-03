@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -19,6 +18,7 @@ import type { UserData } from "../../../types";
 import { extractAccessibleSections } from "../../../shared/navigation/extractAccessibleSections";
 import { getMemberDisplayName } from "../../../shared/utils/userDisplayName";
 import { useUpcomingEventsForUser } from "../hooks/useUpcomingEventsForUser";
+import FailureState from "../../../shared/components/FailureState";
 
 export interface MemberWelcomePageProps {
   userData: UserData | null;
@@ -33,7 +33,12 @@ export default function MemberWelcomePage({
 }: MemberWelcomePageProps) {
   const displayName = getMemberDisplayName(userData, userEmail);
   const sections = useMemo(() => extractAccessibleSections(sectionsData), [sectionsData]);
-  const { events, loading: loadingEvents, isError: errorEvents } = useUpcomingEventsForUser(sections);
+  const {
+    events,
+    loading: loadingEvents,
+    isError: errorEvents,
+    retry: retryEvents,
+  } = useUpcomingEventsForUser(sections);
 
   return (
     <Box sx={{ maxWidth: "900px", mx: "auto", px: { xs: 2, sm: 3 }, py: 2 }}>
@@ -53,17 +58,24 @@ export default function MemberWelcomePage({
       </Typography>
       {loadingEvents ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-          <CircularProgress size={28} />
+          <CircularProgress size={28} aria-label="Loading upcoming events" />
         </Box>
-      ) : errorEvents ? (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          Failed to load upcoming events. Please try again later.
-        </Alert>
-      ) : events.length === 0 ? (
+      ) : null}
+      {errorEvents ? (
+        <Box sx={{ mb: 3 }}>
+          <FailureState
+            title="Upcoming events are unavailable"
+            message="We could not refresh upcoming events. Your sections are still available below."
+            onRetry={retryEvents}
+          />
+        </Box>
+      ) : null}
+      {!loadingEvents && !errorEvents && events.length === 0 ? (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Nothing in the diary yet — check back soon or browse your sections below.
         </Typography>
-      ) : (
+      ) : null}
+      {!loadingEvents && events.length > 0 ? (
         <Box
           component="ul"
           sx={{
@@ -101,7 +113,7 @@ export default function MemberWelcomePage({
             </Box>
           ))}
         </Box>
-      )}
+      ) : null}
 
       <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
         Your sections

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildBookingSubmissionLines,
   EMPTY_GUEST_DETAIL,
-  extractCallableErrorCode,
   guestCountValidationError,
   guestDetailsValidationError,
   resizeExtraGuestDetails,
@@ -78,11 +77,5 @@ describe("bookingWizardModel", () => {
         dietaryNote: "Vegan",
       },
     ]);
-  });
-
-  it("reads callable error codes from either supported Firebase shape", () => {
-    expect(extractCallableErrorCode({ details: { code: "DETAILS" } })).toBe("DETAILS");
-    expect(extractCallableErrorCode({ customData: { code: "CUSTOM" } })).toBe("CUSTOM");
-    expect(extractCallableErrorCode(new Error("none"))).toBeUndefined();
   });
 });

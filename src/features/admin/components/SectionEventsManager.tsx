@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
 import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
@@ -48,6 +48,7 @@ import SendAnnouncementPage from "./SendAnnouncementPage";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import "../../../shared/components/PageContainer.css";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface SectionEventsManagerProps {
   sectionId: string;
@@ -57,7 +58,13 @@ interface SectionEventsManagerProps {
 }
 
 export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
-  const { data: eventsData, isLoading: loadingEvents, isError: errorEvents, refetch: refetchEvents } = useGetEventsForSection(
+  const {
+    data: eventsData,
+    isLoading: loadingEvents,
+    isError: errorEvents,
+    error: eventsQueryError,
+    refetch: refetchEvents,
+  } = useGetEventsForSection(
     dataConnect,
     { sectionId: sectionId as UUIDString }
   );
@@ -78,7 +85,13 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
 
   // Ticket types: which event we're managing ticket types for
   const [ticketTypesEventId, setTicketTypesEventId] = useState<string | null>(initialEventId ?? null);
-  const { data: eventDetailData, isLoading: loadingEventDetail, refetch: refetchEventDetail } = useGetEventById(
+  const {
+    data: eventDetailData,
+    isLoading: loadingEventDetail,
+    isError: eventDetailFailed,
+    error: eventDetailError,
+    refetch: refetchEventDetail,
+  } = useGetEventById(
     dataConnect,
     { id: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
@@ -102,27 +115,82 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const {
     data: guestRequestsData,
     isLoading: loadingGuestRequests,
+    isError: guestRequestsFailed,
+    error: guestRequestsError,
     refetch: refetchGuestRequests,
   } = useListGuestTicketRequestsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
   );
-  const { data: eventBookingsData, isLoading: loadingEventBookings } = useListEventBookingsForAdmin(
+  const {
+    data: eventBookingsData,
+    isLoading: loadingEventBookings,
+    isError: eventBookingsFailed,
+    error: eventBookingsError,
+  } = useListEventBookingsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
   );
-  const { data: ticketOrdersData, isLoading: loadingTicketOrders } = useListTicketOrdersForAdmin(
+  const {
+    data: ticketOrdersData,
+    isLoading: loadingTicketOrders,
+    isError: ticketOrdersFailed,
+    error: ticketOrdersError,
+  } = useListTicketOrdersForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
   );
-  const { data: paymentAdjustmentsData, isLoading: loadingPaymentAdjustments } = useListBookingPaymentAdjustmentsForAdmin(
+  const {
+    data: paymentAdjustmentsData,
+    isLoading: loadingPaymentAdjustments,
+    isError: paymentAdjustmentsFailed,
+    error: paymentAdjustmentsError,
+  } = useListBookingPaymentAdjustmentsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
   );
+
+  useEffect(() => {
+    if (!errorEvents) return;
+    reportError("admin.events.list", eventsQueryError, { sectionId });
+  }, [errorEvents, eventsQueryError, sectionId]);
+
+  useEffect(() => {
+    const failures = [
+      { failed: eventDetailFailed, error: eventDetailError, operation: "detail", context: "events" as const },
+      { failed: guestRequestsFailed, error: guestRequestsError, operation: "guest-requests", context: "guest-moderation" as const },
+      { failed: eventBookingsFailed, error: eventBookingsError, operation: "bookings", context: "tickets" as const },
+      { failed: ticketOrdersFailed, error: ticketOrdersError, operation: "orders", context: "tickets" as const },
+      { failed: paymentAdjustmentsFailed, error: paymentAdjustmentsError, operation: "adjustments", context: "payment-reconciliation" as const },
+    ].filter((failure) => failure.failed);
+
+    if (failures.length === 0) return;
+
+    for (const failure of failures) {
+      reportError(`admin.events.${failure.operation}`, failure.error, {
+        sectionId,
+        eventId: ticketTypesEventId,
+      });
+    }
+    setError(toAdminUserFacingError(failures[0].error, failures[0].context).message);
+  }, [
+    eventBookingsError,
+    eventBookingsFailed,
+    eventDetailError,
+    eventDetailFailed,
+    guestRequestsError,
+    guestRequestsFailed,
+    paymentAdjustmentsError,
+    paymentAdjustmentsFailed,
+    sectionId,
+    ticketOrdersError,
+    ticketOrdersFailed,
+    ticketTypesEventId,
+  ]);
 
   const fetchUserGroups = useCallback(async () => {
     setLoadingUserGroups(true);
@@ -130,12 +198,13 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
       setAllUserGroups((result.data?.userGroups ?? []).map((ug) => ({ id: ug.id, name: ug.name })));
-    } catch {
+    } catch (caught) {
+      reportError("admin.events.user-groups", caught, { sectionId });
       setAllUserGroups([]);
     } finally {
       setLoadingUserGroups(false);
     }
-  }, []);
+  }, [sectionId]);
 
   const openEventDialog = (event?: EventRow | null) => {
     if (event) {
@@ -218,7 +287,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setEventDialogOpen(false);
       showSuccess(`Event ${editingEvent ? "updated" : "created"}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save event");
+      reportError("admin.events.save", err, { sectionId, editing: Boolean(editingEvent) });
+      setError(toAdminUserFacingError(err, "events").message);
     } finally {
       setSubmitting(false);
     }
@@ -250,7 +320,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
       showSuccess(`Event "${event.title}" deleted`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to delete event");
+      reportError("admin.events.delete", err, { sectionId, eventId: event.id });
+      setError(toAdminUserFacingError(err, "events").message);
     } finally {
       setDeletingEventId(null);
     }
@@ -322,7 +393,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setTicketTypeDialogOpen(false);
       showSuccess(`Ticket type ${editingTicketType ? "updated" : "created"}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save ticket type");
+      reportError("admin.tickets.save", err, { eventId: ticketTypesEventId, editing: Boolean(editingTicketType) });
+      setError(toAdminUserFacingError(err, "tickets").message);
     } finally {
       setSubmittingTicketType(false);
     }
@@ -338,7 +410,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       refetchEvents();
       showSuccess("Ticket type deleted");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to delete ticket type");
+      reportError("admin.tickets.delete", err, { ticketTypeId: id });
+      setError(toAdminUserFacingError(err, "tickets").message);
     } finally {
       setDeletingTicketTypeId(null);
     }
@@ -374,7 +447,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       refetchGuestRequests();
       showSuccess(`Guest ticket request ${status === GuestTicketRequestStatus.APPROVED ? "approved" : "rejected"}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to review guest ticket request");
+      reportError("admin.guest-moderation.review", err, { requestId: request.id, status });
+      setError(toAdminUserFacingError(err, "guest-moderation").message);
     } finally {
       setReviewingRequestId(null);
     }

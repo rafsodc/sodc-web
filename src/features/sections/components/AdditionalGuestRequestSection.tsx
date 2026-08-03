@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
 import { submitGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
+import { reportError, toBookingUserFacingError } from "../../../shared/errors";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 
 type BookingList = NonNullable<GetMyBookingsForEventData["user"]>["bookings"];
@@ -126,11 +127,8 @@ export default function AdditionalGuestRequestSection({
       setDietaryNote("");
       await onRequestCreated();
     } catch (e: unknown) {
-      const msg =
-        e && typeof (e as { message?: string }).message === "string"
-          ? (e as { message: string }).message
-          : "Could not submit request. Please try again.";
-      setError(msg);
+      reportError("booking.guest-request", e);
+      setError(toBookingUserFacingError(e, "guest-request").message);
     } finally {
       setSubmitting(false);
     }

@@ -15,6 +15,8 @@ let enabledClaim = false;
 let enabledClaimResolved = true;
 let adminClaim = false;
 let profileReviewedAt: string | null = new Date().toISOString();
+let headerShouldThrow = false;
+let memberWelcomeShouldThrow = false;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
   return {
@@ -145,12 +147,15 @@ vi.mock("../shared/appShell/useUnenabledProfileCheck", () => ({
 }));
 
 vi.mock("../shared/components/Header", () => ({
-  default: ({ onAccountClick, onProfileClick }: { onAccountClick: () => void; onProfileClick?: () => void }) => (
-    <header>
-      <button onClick={onAccountClick}>Account</button>
-      <button onClick={onProfileClick}>Profile</button>
-    </header>
-  ),
+  default: ({ onAccountClick, onProfileClick }: { onAccountClick: () => void; onProfileClick?: () => void }) => {
+    if (headerShouldThrow) throw new Error("raw header implementation detail");
+    return (
+      <header>
+        <button onClick={onAccountClick}>Account</button>
+        <button onClick={onProfileClick}>Profile</button>
+      </header>
+    );
+  },
 }));
 
 vi.mock("../features/welcome/components/PublicHomePage", () => ({
@@ -158,7 +163,10 @@ vi.mock("../features/welcome/components/PublicHomePage", () => ({
 }));
 
 vi.mock("../features/welcome/components/MemberWelcomePage", () => ({
-  default: () => <h1>Welcome Dashboard</h1>,
+  default: () => {
+    if (memberWelcomeShouldThrow) throw new Error("raw lazy route implementation detail");
+    return <h1>Welcome Dashboard</h1>;
+  },
 }));
 
 vi.mock("../features/auth/components/AuthGate", () => ({
@@ -313,6 +321,8 @@ describe("App routing", () => {
     enabledClaimResolved = true;
     adminClaim = false;
     profileReviewedAt = new Date().toISOString();
+    headerShouldThrow = false;
+    memberWelcomeShouldThrow = false;
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
@@ -410,6 +420,40 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it("shows a safe route failure and recovers when navigation changes", async () => {
+    const interaction = userEvent.setup();
+    signInEnabledUser();
+    memberWelcomeShouldThrow = true;
+
+    renderApp([ROUTES.MY_BOOKINGS, ROUTES.HOME]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Page unavailable" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/raw lazy route implementation detail/i)).not.toBeInTheDocument();
+
+    memberWelcomeShouldThrow = false;
+    await interaction.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "My Bookings Page" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MY_BOOKINGS);
+  });
+
+  it("uses the top-level safety boundary for app-shell render failures", async () => {
+    headerShouldThrow = true;
+
+    renderApp([ROUTES.HOME]);
+
+    expect(
+      await screen.findByRole("heading", { name: "SODC is temporarily unavailable" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/raw header implementation detail/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
   });
 
   it("prompts an enabled verified user whose profile has never been reviewed", async () => {

@@ -1,6 +1,7 @@
 import { httpsCallable } from "firebase/functions";
 import type { MembershipStatus } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
+import { extractDomainErrorCode, reportError } from "../../errors";
 
 // ============================================================================
 // Admin Functions
@@ -31,10 +32,11 @@ export async function grantAdminClaim(
 
     const result = await grantAdminCallable({ uid });
     return { success: true, message: result.data.message };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("callable.grant-admin", error);
     return {
       success: false,
-      error: error?.message || "Failed to grant admin claim"
+      error: "Administrator access could not be granted. Please try again."
     };
   }
 }
@@ -64,10 +66,11 @@ export async function revokeAdminClaim(
 
     const result = await revokeAdminCallable({ uid });
     return { success: true, message: result.data.message };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("callable.revoke-admin", error);
     return {
       success: false,
-      error: error?.message || "Failed to revoke admin claim"
+      error: "Administrator access could not be revoked. Please try again."
     };
   }
 }
@@ -101,10 +104,11 @@ export async function updateDisplayName(
 
     const result = await updateDisplayNameCallable({ displayName });
     return { success: result.data.success };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("callable.update-display-name", error);
     return {
       success: false,
-      error: error?.message || "Failed to update display name"
+      error: "The display name could not be updated. Please try again."
     };
   }
 }
@@ -137,10 +141,11 @@ export async function updateUserDisplayName(
 
     const result = await updateUserDisplayNameCallable({ userId, displayName });
     return { success: result.data.success };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("callable.update-user-display-name", error, { userId });
     return {
       success: false,
-      error: error?.message || "Failed to update user display name"
+      error: "The display name could not be updated. Please try again."
     };
   }
 }
@@ -195,11 +200,8 @@ export async function listUsersWithoutDataConnectProfile(): Promise<{
     const result = await callable();
     return { success: true, users: result.data.users };
   } catch (error: unknown) {
-    const message =
-      error && typeof (error as { message?: string }).message === "string"
-        ? (error as { message: string }).message
-        : "Failed to load users without profile";
-    return { success: false, error: message };
+    reportError("callable.list-users-without-profile", error);
+    return { success: false, error: "Users without profiles could not be loaded. Please try again." };
   }
 }
 
@@ -219,11 +221,8 @@ export async function listUsersPendingApproval(): Promise<{
     const result = await callable();
     return { success: true, users: result.data.users };
   } catch (error: unknown) {
-    const message =
-      error && typeof (error as { message?: string }).message === "string"
-        ? (error as { message: string }).message
-        : "Failed to load pending users";
-    return { success: false, error: message };
+    reportError("callable.list-pending-users", error);
+    return { success: false, error: "Pending users could not be loaded. Please try again." };
   }
 }
 
@@ -246,11 +245,8 @@ export async function syncPendingUserClaims(): Promise<{
     const result = await callable();
     return { success: result.data.success };
   } catch (error: unknown) {
-    const message =
-      error && typeof (error as { message?: string }).message === "string"
-        ? (error as { message: string }).message
-        : "Failed to sync account status";
-    return { success: false, error: message };
+    reportError("callable.sync-pending-user-claims", error);
+    return { success: false, error: "The account status could not be synchronised. Please try again." };
   }
 }
 
@@ -278,7 +274,7 @@ interface UpdateMembershipStatusResponse {
 export async function updateMembershipStatus(
   userId: string,
   newStatus: MembershipStatus
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; domainCode?: string }> {
   try {
     const updateMembershipStatusCallable = httpsCallable<
       UpdateMembershipStatusRequest,
@@ -287,10 +283,12 @@ export async function updateMembershipStatus(
 
     const result = await updateMembershipStatusCallable({ userId, newStatus });
     return { success: result.data.success };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("callable.update-membership-status", error, { userId, newStatus });
     return {
       success: false,
-      error: error?.message || "Failed to update membership status"
+      error: "The membership status could not be updated. Please try again.",
+      domainCode: extractDomainErrorCode(error),
     };
   }
 }
@@ -303,7 +301,11 @@ interface ResignMembershipResponse {
 /**
  * Resigns the current user's membership (non-restricted status → RESIGNED).
  */
-export async function resignMembership(): Promise<{ success: boolean; error?: string }> {
+export async function resignMembership(): Promise<{
+  success: boolean;
+  error?: string;
+  domainCode?: string;
+}> {
   try {
     const resignMembershipCallable = httpsCallable<
       Record<string, never>,
@@ -312,10 +314,12 @@ export async function resignMembership(): Promise<{ success: boolean; error?: st
 
     const result = await resignMembershipCallable({});
     return { success: result.data.success };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("callable.resign-membership", error);
     return {
       success: false,
-      error: error?.message || "Failed to resign membership",
+      error: "The membership could not be resigned. Please try again.",
+      domainCode: extractDomainErrorCode(error),
     };
   }
 }

@@ -32,6 +32,8 @@ import {
   groupTicketOrdersForDisplay,
   ticketOrderStatusChipColor,
 } from "../utils/myPaymentsDisplay";
+import { reportError, toBookingUserFacingError } from "../../../shared/errors";
+import FailureState from "../../../shared/components/FailureState";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -65,6 +67,10 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   );
 
   useEffect(() => {
+    if (isError) reportError("payments.history", error);
+  }, [error, isError]);
+
+  useEffect(() => {
     if (isLoading || paymentGroups.length === 0) {
       return;
     }
@@ -84,7 +90,8 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
           Object.entries(artifacts.artifactsByOrderId).map(([orderId, value]) => [artifactKey(orderId), value])
         );
         setStripeArtifactsByOrderId((prev) => ({ ...prev, ...normalizedArtifacts }));
-      } catch {
+      } catch (artifactError) {
+        reportError("payments.receipts", artifactError);
         // Receipt links are optional; fail silently on the member UI.
       }
     };
@@ -117,7 +124,8 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     attemptedReconcileSessions.current.add(sessionKey);
     void reconcileMyCheckoutSessionOrders({ orderId: reconcileAnchor.id })
       .then(() => refetch())
-      .catch(() => {
+      .catch((reconciliationError) => {
+        reportError("payments.reconciliation", reconciliationError);
         attemptedReconcileSessions.current.delete(sessionKey);
       });
   }, [isLoading, orders, refetch]);
@@ -134,16 +142,11 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
           <CircularProgress size={28} aria-label="Loading payments" />
         </Box>
       ) : isError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => refetch()}>
-              Retry
-            </Button>
-          }
-        >
-          {error instanceof Error ? error.message : "We could not load your payment history. Please try again."}
-        </Alert>
+        <FailureState
+          title={toBookingUserFacingError(error, "payment-history").title}
+          message={toBookingUserFacingError(error, "payment-history").message}
+          onRetry={() => void refetch()}
+        />
       ) : paymentGroups.length === 0 ? (
         <Alert severity="info">
           You have not made any ticket payments yet. After you pay for an event, your receipts will appear here.

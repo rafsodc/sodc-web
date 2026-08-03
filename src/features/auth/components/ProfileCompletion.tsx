@@ -25,6 +25,7 @@ import { auth } from "../../../config/firebase";
 import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/firebaseFunctions";
 import RankSelect from "../../../shared/components/RankSelect";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
+import { reportError, toProfileUserFacingError } from "../../../shared/errors";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -107,8 +108,10 @@ export default function ProfileCompletion({
       if (displayName) {
         const displayNameResult = await updateDisplayName(displayName);
         if (!displayNameResult.success) {
-          // Log but do not block completion
-          console.warn("Failed to update display name:", displayNameResult.error);
+          reportError(
+            "profile.completion.display-name",
+            new Error(displayNameResult.error ?? "Display name update failed"),
+          );
         }
       }
 
@@ -128,8 +131,9 @@ export default function ProfileCompletion({
           onComplete();
         }, 1500);
       }
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to save profile");
+    } catch (err: unknown) {
+      reportError("profile.completion", err);
+      setError(toProfileUserFacingError(err, "completion").message);
     } finally {
       setSubmitting(false);
     }

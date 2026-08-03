@@ -72,7 +72,8 @@ describe("grantAdminClaim", () => {
     const result = await grantAdminClaim("uid-123");
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Permission denied");
+    expect(result.error).toBe("Administrator access could not be granted. Please try again.");
+    expect(result.error).not.toContain("Permission denied");
   });
 });
 
@@ -91,7 +92,8 @@ describe("revokeAdminClaim", () => {
     const result = await revokeAdminClaim("uid-456");
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("Last admin");
+    expect(result.error).toBe("Administrator access could not be revoked. Please try again.");
+    expect(result.error).not.toContain("Last admin");
   });
 });
 
@@ -114,7 +116,7 @@ describe("updateDisplayName", () => {
     const result = await updateDisplayName("New Name");
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Update failed");
+    expect(result.error).toBe("The display name could not be updated. Please try again.");
   });
 });
 
@@ -133,7 +135,7 @@ describe("updateUserDisplayName", () => {
     const result = await updateUserDisplayName("user-123", "Admin Name");
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Not found");
+    expect(result.error).toBe("The display name could not be updated. Please try again.");
   });
 });
 
@@ -160,7 +162,7 @@ describe("listUsersWithoutDataConnectProfile", () => {
     const result = await listUsersWithoutDataConnectProfile();
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Unauthorized");
+    expect(result.error).toBe("Users without profiles could not be loaded. Please try again.");
   });
 });
 
@@ -180,7 +182,7 @@ describe("listUsersPendingApproval", () => {
     const result = await listUsersPendingApproval();
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Service unavailable");
+    expect(result.error).toBe("Pending users could not be loaded. Please try again.");
   });
 });
 
@@ -198,7 +200,7 @@ describe("syncPendingUserClaims", () => {
     const result = await syncPendingUserClaims();
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Claims sync failed");
+    expect(result.error).toBe("The account status could not be synchronised. Please try again.");
   });
 });
 
@@ -217,11 +219,18 @@ describe("updateMembershipStatus", () => {
   });
 
   it("returns success: false on error", async () => {
-    makeFailingCallable("Invalid status transition");
+    vi.mocked(httpsCallable).mockReturnValue(
+      vi.fn().mockRejectedValue({
+        message: "Invalid status transition",
+        details: { code: "CURRENT_STATUS_RESTRICTED" },
+      }) as any,
+    );
     const result = await updateMembershipStatus("user-789", "REGULAR" as MembershipStatus);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Invalid status transition");
+    expect(result.error).toBe("The membership status could not be updated. Please try again.");
+    expect(result.error).not.toContain("Invalid status transition");
+    expect(result.domainCode).toBe("CURRENT_STATUS_RESTRICTED");
   });
 });
 
@@ -236,11 +245,18 @@ describe("resignMembership", () => {
   });
 
   it("returns success: false on error", async () => {
-    makeFailingCallable("Cannot resign as admin");
+    vi.mocked(httpsCallable).mockReturnValue(
+      vi.fn().mockRejectedValue({
+        message: "Cannot resign as admin",
+        details: { code: "ADMIN_RESIGNATION_NOT_ALLOWED" },
+      }) as any,
+    );
     const result = await resignMembership();
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Cannot resign as admin");
+    expect(result.error).toBe("The membership could not be resigned. Please try again.");
+    expect(result.error).not.toContain("Cannot resign as admin");
+    expect(result.domainCode).toBe("ADMIN_RESIGNATION_NOT_ALLOWED");
   });
 });
 

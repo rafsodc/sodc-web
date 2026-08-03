@@ -39,6 +39,7 @@ import {
 import { MembershipStatus } from "@dataconnect/generated";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface UserGroupMembershipsProps {
   userId: string;
@@ -68,8 +69,9 @@ export default function UserGroupMemberships({
       const ref = getUserWithAccessGroupsRef(dataConnect, { id: userId });
       const result = await executeQuery(ref);
       setUserData(result.data?.user || null);
-    } catch (err: any) {
-      setError(err?.message || "Failed to fetch user user groups");
+    } catch (caught) {
+      reportError("admin.user-memberships.load", caught, { userId });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setLoading(false);
     }
@@ -80,10 +82,10 @@ export default function UserGroupMemberships({
       const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
       setAllGroups(result.data?.userGroups || []);
-    } catch (err: any) {
-      console.error("Failed to fetch user groups:", err);
+    } catch (caught) {
+      reportError("admin.user-memberships.available-groups", caught, { userId });
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchUserData();
@@ -109,8 +111,9 @@ export default function UserGroupMemberships({
       }
       setAddDialogOpen(false);
       showSuccess(`Added to "${allGroups.find((g) => g.id === groupId)?.name ?? "group"}"`);
-    } catch (err: any) {
-      setError(err?.message || "Failed to add user to user group");
+    } catch (caught) {
+      reportError("admin.user-memberships.add", caught, { userId, groupId });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setAddingGroupId(null);
     }
@@ -135,8 +138,9 @@ export default function UserGroupMemberships({
         onUpdate();
       }
       showSuccess(`Removed from "${groupName}"`);
-    } catch (err: any) {
-      setError(err?.message || "Failed to remove user from user group");
+    } catch (caught) {
+      reportError("admin.user-memberships.remove", caught, { userId, groupId });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setRemovingGroupId(null);
     }

@@ -18,6 +18,10 @@ import {
   PASSWORD_POLICY_HELPER_TEXT,
   validateNewPassword,
 } from "../utils/passwordValidation";
+import {
+  reportError,
+  toAuthUserFacingError,
+} from "../../../shared/errors";
 
 interface RegisterProps {
   onSuccess?: () => void;
@@ -88,21 +92,9 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
       if (onSuccess) {
         onSuccess();
       }
-    } catch (e: any) {
-      let errorMessage = "Registration failed";
-      if (e?.code === "auth/email-already-in-use") {
-        errorMessage = "This email is already registered. Please sign in instead.";
-      } else if (e?.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      } else if (e?.code === "auth/weak-password") {
-        errorMessage = "Password is too weak";
-      } else if (String(e?.code ?? "").startsWith("functions/")) {
-        errorMessage =
-          "Your account was created, but we couldn’t send the verification email. Sign in to request another.";
-      } else if (e?.message) {
-        errorMessage = e.message;
-      }
-      setError(errorMessage);
+    } catch (error: unknown) {
+      reportError("registration", error);
+      setError(toAuthUserFacingError(error, "register").message);
     } finally {
       setSubmitting(false);
     }

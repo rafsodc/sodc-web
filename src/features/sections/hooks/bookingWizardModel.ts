@@ -118,11 +118,3 @@ export function buildBookingSubmissionLines(args: {
   }
   return lines;
 }
-
-export function extractCallableErrorCode(error: unknown): string | undefined {
-  const callableError = error as {
-    details?: { code?: string };
-    customData?: { code?: string };
-  };
-  return callableError?.details?.code ?? callableError?.customData?.code;
-}

@@ -66,7 +66,8 @@ describe("AuthGate sign-in", () => {
     });
     renderGate();
     await enterCredentials("mistyped-password");
-    expect(await screen.findByText(/auth\/invalid-credential/)).toBeInTheDocument();
+    expect(await screen.findByText("Email or password is incorrect.")).toBeInTheDocument();
+    expect(screen.queryByText(/auth\/invalid-credential/)).not.toBeInTheDocument();
     expect(screen.queryByText(/password no longer meets/i)).not.toBeInTheDocument();
   });
 

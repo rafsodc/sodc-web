@@ -3,7 +3,6 @@ import {
   Box,
   Alert,
   CircularProgress,
-  Button,
 } from "@mui/material";
 import { useGetSectionsForUser, useListSections } from "@dataconnect/generated/react";
 import { dataConnect } from "../../../config/firebase";
@@ -15,6 +14,8 @@ import type { SectionType, SectionUserGroupPurpose } from "@dataconnect/generate
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import SectionListCard from "./SectionListCard";
 import "../../../shared/components/PageContainer.css";
+import FailureState from "../../../shared/components/FailureState";
+import { reportError, toMemberDataError } from "../../../shared/errors";
 
 interface SectionsListProps {
   onBack: () => void;
@@ -59,12 +60,12 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
   // Surface query errors without logging successful query state on every render.
   useEffect(() => {
     if (userSectionsError) {
-      console.error('GetSectionsForUser error:', userSectionsError);
-      setErrorMessage(userSectionsError instanceof Error ? userSectionsError.message : 'Failed to load sections');
+      reportError("sections.member-list", userSectionsError);
+      setErrorMessage("query");
     }
     if (allSectionsError) {
-      console.error('ListSections error:', allSectionsError);
-      setErrorMessage(allSectionsError instanceof Error ? allSectionsError.message : 'Failed to load sections');
+      reportError("sections.admin-list", allSectionsError);
+      setErrorMessage("query");
     }
   }, [userSectionsError, allSectionsError]);
 
@@ -125,8 +126,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
         return [];
       }
     } catch (error) {
-      console.error('Error extracting sections:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred');
+      reportError("sections.list-display", error);
       return [];
     }
   }, [isAdmin, allSectionsData, userSectionsData]);
@@ -159,7 +159,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Sections" onBack={onBack} />
         <Box className="loading-container">
-          <CircularProgress />
+          <CircularProgress aria-label="Loading sections" />
         </Box>
       </Box>
     );
@@ -167,15 +167,20 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
 
   // Early return for error state
   if (error || errorMessage) {
+    const userFacingError = toMemberDataError(
+      isAdmin ? allSectionsError : userSectionsError,
+      "sections",
+    );
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Sections" onBack={onBack} />
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {errorMessage || "Failed to load sections. Please try again."}
-        </Alert>
-        <Button variant="outlined" onClick={handleRefresh} sx={{ mt: 2 }}>
-          Retry
-        </Button>
+        <Box sx={{ mt: 2 }}>
+          <FailureState
+            title={userFacingError.title}
+            message={userFacingError.message}
+            onRetry={userFacingError.retryable ? handleRefresh : undefined}
+          />
+        </Box>
       </Box>
     );
   }
@@ -225,13 +230,13 @@ export default function SectionsList(props: SectionsListProps) {
   try {
     return <SectionsListComponent {...props} />;
   } catch (error) {
-    console.error('SectionsList render error:', error);
+    reportError("sections.list-render", error);
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Sections" onBack={props.onBack} />
-        <Alert severity="error" sx={{ mt: 2 }}>
-          An error occurred while loading sections. Please refresh the page.
-        </Alert>
+        <Box sx={{ mt: 2 }}>
+          <FailureState message="We could not display your sections. Please reload the page." />
+        </Box>
       </Box>
     );
   }
