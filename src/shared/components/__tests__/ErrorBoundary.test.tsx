@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ErrorBoundary } from "../ErrorBoundary";
 
 // Suppress React's console.error output for expected boundary errors
@@ -11,10 +12,6 @@ beforeEach(() => {
 
 function Boom({ message }: { message: string }): never {
   throw new Error(message);
-}
-
-function BoomNoMessage(): never {
-  throw new Error();
 }
 
 function Fine() {
@@ -33,16 +30,17 @@ describe("ErrorBoundary", () => {
     expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
   });
 
-  it("renders error UI when a child throws", () => {
+  it("renders safe error UI without exposing the thrown message", () => {
     render(
-      <ErrorBoundary title="Test Page" onBack={vi.fn()}>
+      <ErrorBoundary onBack={vi.fn()}>
         <Boom message="Test explosion" />
       </ErrorBoundary>
     );
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    expect(screen.getByText("Test explosion")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /reload page/i })).toBeInTheDocument();
+    expect(screen.queryByText("Test explosion")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
   });
 
   it("shows the page title in the error state", () => {
@@ -52,35 +50,73 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText("My Feature Page")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "My Feature Page" })).toBeInTheDocument();
   });
 
-  it("shows fallback message when error has no message", () => {
+  it("offers configured back and home recovery actions", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const onHome = vi.fn();
     render(
-      <ErrorBoundary title="Test" onBack={vi.fn()}>
-        <BoomNoMessage />
-      </ErrorBoundary>
-    );
-
-    expect(screen.getByText("An unexpected error occurred")).toBeInTheDocument();
-  });
-
-  it("calls window.location.reload when Reload Page is clicked", () => {
-    const reloadMock = vi.fn();
-    Object.defineProperty(window, "location", {
-      value: { reload: reloadMock },
-      writable: true,
-    });
-
-    render(
-      <ErrorBoundary title="Test Page" onBack={vi.fn()}>
+      <ErrorBoundary title="Test" onBack={onBack} onHome={onHome}>
         <Boom message="Crash" />
       </ErrorBoundary>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /reload page/i }));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Home" }));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(onHome).toHaveBeenCalledOnce();
+  });
 
-    expect(reloadMock).toHaveBeenCalledOnce();
+  it("calls the configured reload action", async () => {
+    const user = userEvent.setup();
+    const onReload = vi.fn();
+
+    render(
+      <ErrorBoundary title="Test Page" onReload={onReload}>
+        <Boom message="Crash" />
+      </ErrorBoundary>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reload page" }));
+
+    expect(onReload).toHaveBeenCalledOnce();
+  });
+
+  it("can recover by retrying after a transient render failure", async () => {
+    const user = userEvent.setup();
+    let shouldThrow = true;
+    function Transient() {
+      if (shouldThrow) throw new Error("temporary detail");
+      return <Fine />;
+    }
+
+    render(
+      <ErrorBoundary>
+        <Transient />
+      </ErrorBoundary>
+    );
+    shouldThrow = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(screen.getByText("All good")).toBeInTheDocument();
+  });
+
+  it("clears stale failure state when the reset key changes", () => {
+    const { rerender } = render(
+      <ErrorBoundary resetKey="first">
+        <Boom message="route failure" />
+      </ErrorBoundary>
+    );
+
+    rerender(
+      <ErrorBoundary resetKey="second">
+        <Fine />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText("All good")).toBeInTheDocument();
   });
 
   it("logs error details via componentDidCatch", () => {

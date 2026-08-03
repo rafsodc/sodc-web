@@ -1,55 +1,71 @@
 import { Component, type ReactNode, type ErrorInfo } from "react";
-import { Box, Alert, Button, Typography } from "@mui/material";
-import PageHeader from "./PageHeader";
-import "./PageContainer.css";
+import { Box } from "@mui/material";
+import { reportError } from "../errors";
+import FailureState from "./FailureState";
 
 interface Props {
   children: ReactNode;
-  title: string;
-  onBack: () => void;
+  title?: string;
+  resetKey?: string;
+  variant?: "inline" | "page";
+  onBack?: () => void;
+  onHome?: () => void;
+  onReload?: () => void;
 }
 
 interface State {
   hasError: boolean;
-  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught error:", error, errorInfo);
+    reportError("render-boundary", error, {
+      componentStack: errorInfo.componentStack ?? "",
+    });
+  }
+
+  componentDidUpdate(previousProps: Props) {
+    if (
+      this.state.hasError &&
+      previousProps.resetKey !== this.props.resetKey
+    ) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  private reset = () => {
+    this.setState({ hasError: false });
+  };
+
+  private reload = () => {
+    if (this.props.onReload) {
+      this.props.onReload();
+      return;
+    }
+    window.location.reload();
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
-          <PageHeader title={this.props.title} onBack={this.props.onBack} />
-          <Alert severity="error" sx={{ mt: 2 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Something went wrong
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              {this.state.error?.message || "An unexpected error occurred"}
-            </Typography>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                this.setState({ hasError: false, error: null });
-                window.location.reload();
-              }}
-            >
-              Reload Page
-            </Button>
-          </Alert>
+        <Box sx={{ width: "100%" }}>
+          <FailureState
+            title={this.props.title}
+            variant={this.props.variant}
+            onRetry={this.reset}
+            onReload={this.reload}
+            onBack={this.props.onBack}
+            onHome={this.props.onHome}
+          />
         </Box>
       );
     }
