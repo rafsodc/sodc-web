@@ -5,6 +5,7 @@ import {
   extractErrorCode,
   reportError,
   toAuthUserFacingError,
+  toProfileDomainUserFacingError,
   toProfileUserFacingError,
   toUserFacingError,
 } from "../index";
@@ -138,6 +139,20 @@ describe("shared error handling", () => {
     );
     expect(mapped.message).toBe("We couldn’t save your profile. Check your connection and try again.");
     expect(mapped.message).not.toContain("SQL");
+  });
+
+  it("maps trusted membership outcome codes to specific guidance", () => {
+    expect(
+      toProfileDomainUserFacingError(
+        "ADMIN_RESIGNATION_NOT_ALLOWED",
+        "resignation",
+      ).message,
+    ).toBe(
+      "Admin accounts cannot resign through this flow. Contact another administrator for help.",
+    );
+    expect(
+      toProfileDomainUserFacingError("UNRECOGNISED_BACKEND_TEXT", "update").message,
+    ).toBe("We couldn’t save your profile. Check your connection and try again.");
   });
 
   it("reports the original failure separately from display mapping", () => {

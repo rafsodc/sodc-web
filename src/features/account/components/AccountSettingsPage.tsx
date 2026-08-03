@@ -54,6 +54,7 @@ import { getAnnouncementSections } from "../utils/announcementPreferences";
 import {
   reportError,
   toAuthUserFacingError,
+  toProfileDomainUserFacingError,
   toProfileUserFacingError,
 } from "../../../shared/errors";
 
@@ -363,7 +364,9 @@ export default function AccountSettingsPage({
       if (!result.success) {
         const error = new Error(result.error ?? "Membership resignation failed");
         reportError("account.membership-resignation", error);
-        setResignError(toProfileUserFacingError(error, "resignation").message);
+        setResignError(
+          toProfileDomainUserFacingError(result.domainCode, "resignation").message,
+        );
         return;
       }
       setResignDialogOpen(false);

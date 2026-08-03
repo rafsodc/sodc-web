@@ -33,7 +33,11 @@ import RankSelect from "../../../shared/components/RankSelect";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
-import { reportError, toProfileUserFacingError } from "../../../shared/errors";
+import {
+  reportError,
+  toProfileDomainUserFacingError,
+  toProfileUserFacingError,
+} from "../../../shared/errors";
 
 interface ProfileProps {
   userData: UserData | null;
@@ -123,7 +127,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
         if (!statusResult.success) {
           const statusError = new Error(statusResult.error || "Membership status update failed");
           reportError("profile.update.membership-status", statusError);
-          setError(toProfileUserFacingError(statusError, "update").message);
+          setError(toProfileDomainUserFacingError(statusResult.domainCode, "update").message);
           setSubmitting(false);
           return;
         }

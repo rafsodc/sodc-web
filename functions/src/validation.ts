@@ -34,6 +34,21 @@ type MembershipStatus =
 /** Values from Data Connect or legacy rows (may be blank). */
 export type MembershipStatusInput = MembershipStatus | null | undefined | string;
 
+export type MembershipValidationCode =
+  | "ADMIN_RESTRICTED_STATUS"
+  | "ACCOUNT_NOT_ENABLED"
+  | "CURRENT_STATUS_RESTRICTED"
+  | "TARGET_STATUS_RESTRICTED"
+  | "MEMBERSHIP_STATUS_CHANGE_NOT_ALLOWED"
+  | "ADMIN_RESIGNATION_NOT_ALLOWED"
+  | "MEMBERSHIP_RESIGNATION_NOT_ALLOWED";
+
+interface MembershipValidationResult {
+  allowed: boolean;
+  error?: string;
+  code?: MembershipValidationCode;
+}
+
 /**
  * Checks if a membership status is restricted
  */
@@ -88,12 +103,13 @@ export function canUserChangeStatus(
   isAdmin: boolean,
   targetUserIsAdmin: boolean = false,
   callerEnabled: boolean = false
-): { allowed: boolean; error?: string } {
+): MembershipValidationResult {
   // If target user is an admin, they cannot have a restricted status
   if (targetUserIsAdmin && isRestrictedStatus(newStatus)) {
     return {
       allowed: false,
       error: "Admins cannot have restricted membership statuses",
+      code: "ADMIN_RESTRICTED_STATUS",
     };
   }
 
@@ -106,6 +122,7 @@ export function canUserChangeStatus(
     return {
       allowed: false,
       error: "Account must be enabled",
+      code: "ACCOUNT_NOT_ENABLED",
     };
   }
 
@@ -113,6 +130,7 @@ export function canUserChangeStatus(
     return {
       allowed: false,
       error: "Cannot change from restricted status",
+      code: "CURRENT_STATUS_RESTRICTED",
     };
   }
 
@@ -120,6 +138,7 @@ export function canUserChangeStatus(
     return {
       allowed: false,
       error: "Cannot change to restricted status",
+      code: "TARGET_STATUS_RESTRICTED",
     };
   }
 
@@ -130,6 +149,7 @@ export function canUserChangeStatus(
     return {
       allowed: false,
       error: "Cannot change membership status",
+      code: "MEMBERSHIP_STATUS_CHANGE_NOT_ALLOWED",
     };
   }
 
@@ -143,11 +163,12 @@ export function canUserResignMembership(
   currentStatus: MembershipStatusInput,
   targetUserIsAdmin: boolean,
   callerEnabled: boolean
-): { allowed: boolean; error?: string } {
+): MembershipValidationResult {
   if (targetUserIsAdmin) {
     return {
       allowed: false,
       error: "Admin accounts cannot resign through this flow",
+      code: "ADMIN_RESIGNATION_NOT_ALLOWED",
     };
   }
 
@@ -155,6 +176,7 @@ export function canUserResignMembership(
     return {
       allowed: false,
       error: "Account must be enabled",
+      code: "ACCOUNT_NOT_ENABLED",
     };
   }
 
@@ -162,6 +184,7 @@ export function canUserResignMembership(
     return {
       allowed: false,
       error: "Cannot resign from current membership status",
+      code: "MEMBERSHIP_RESIGNATION_NOT_ALLOWED",
     };
   }
 
@@ -172,6 +195,7 @@ export function canUserResignMembership(
     return {
       allowed: false,
       error: "Cannot resign from current membership status",
+      code: "MEMBERSHIP_RESIGNATION_NOT_ALLOWED",
     };
   }
 

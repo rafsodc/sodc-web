@@ -35,7 +35,11 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import { canUserChangeStatus, membershipStatusSaveAction, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
-import { reportError, toProfileUserFacingError } from "../../../shared/errors";
+import {
+  reportError,
+  toProfileDomainUserFacingError,
+  toProfileUserFacingError,
+} from "../../../shared/errors";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -210,7 +214,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
           reportError("profile.admin-edit.membership-status", statusError);
           setUpdateMessage({
             type: "error",
-            text: toProfileUserFacingError(statusError, "update").message,
+            text: toProfileDomainUserFacingError(statusResult.domainCode, "update").message,
           });
           setSubmitting(false);
           return; // Keep dialog open on error

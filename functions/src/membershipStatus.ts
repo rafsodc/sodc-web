@@ -152,7 +152,11 @@ export const updateMembershipStatus = onCall(
     
     if (!validation.allowed) {
       logger.warn(`Invalid membership status transition attempted: userId=${userId}, current=${currentStatus || "unknown"}, new=${newStatus}, admin=${isAdmin}, targetIsAdmin=${targetUserIsAdmin}`);
-      throw new HttpsError("permission-denied", validation.error || "Invalid membership status transition");
+      throw new HttpsError(
+        "permission-denied",
+        validation.error || "Invalid membership status transition",
+        validation.code ? { code: validation.code } : undefined
+      );
     }
     
     await persistMembershipStatusWithEnabledClaim(
@@ -206,7 +210,11 @@ export const resignMembership = onCall(
         logger.warn(
           `Resign membership rejected: userId=${userId}, current=${currentStatus || "unknown"}, targetIsAdmin=${targetUserIsAdmin}`
         );
-        throw new HttpsError("permission-denied", validation.error || "Cannot resign membership");
+        throw new HttpsError(
+          "permission-denied",
+          validation.error || "Cannot resign membership",
+          validation.code ? { code: validation.code } : undefined
+        );
       }
 
       await persistMembershipStatusWithEnabledClaim(userId, newStatus);

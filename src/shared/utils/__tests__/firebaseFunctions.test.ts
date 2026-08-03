@@ -217,11 +217,17 @@ describe("updateMembershipStatus", () => {
   });
 
   it("returns success: false on error", async () => {
-    makeFailingCallable("Invalid status transition");
+    vi.mocked(httpsCallable).mockReturnValue(
+      vi.fn().mockRejectedValue({
+        message: "Invalid status transition",
+        details: { code: "CURRENT_STATUS_RESTRICTED" },
+      }) as any,
+    );
     const result = await updateMembershipStatus("user-789", "REGULAR" as MembershipStatus);
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Invalid status transition");
+    expect(result.domainCode).toBe("CURRENT_STATUS_RESTRICTED");
   });
 });
 
@@ -236,11 +242,17 @@ describe("resignMembership", () => {
   });
 
   it("returns success: false on error", async () => {
-    makeFailingCallable("Cannot resign as admin");
+    vi.mocked(httpsCallable).mockReturnValue(
+      vi.fn().mockRejectedValue({
+        message: "Cannot resign as admin",
+        details: { code: "ADMIN_RESIGNATION_NOT_ALLOWED" },
+      }) as any,
+    );
     const result = await resignMembership();
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Cannot resign as admin");
+    expect(result.domainCode).toBe("ADMIN_RESIGNATION_NOT_ALLOWED");
   });
 });
 

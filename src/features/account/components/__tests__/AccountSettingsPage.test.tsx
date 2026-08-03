@@ -424,6 +424,7 @@ describe("AccountSettingsPage", () => {
     vi.mocked(firebaseFunctions.resignMembership).mockResolvedValue({
       success: false,
       error: "Membership cannot be resigned at this time",
+      domainCode: "MEMBERSHIP_RESIGNATION_NOT_ALLOWED",
     });
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
@@ -433,7 +434,9 @@ describe("AccountSettingsPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("We couldn’t resign your membership. Please try again or contact an administrator."),
+        screen.getByText(
+          "You cannot resign while your membership has its current status. Contact an administrator for help.",
+        ),
       ).toBeInTheDocument();
       expect(screen.queryByText("Membership cannot be resigned at this time")).not.toBeInTheDocument();
     });
