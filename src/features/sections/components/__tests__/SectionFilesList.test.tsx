@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import SectionFilesList from "../SectionFilesList";
@@ -15,6 +15,10 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
 describe("SectionFilesList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("shows safe member-facing file metadata", async () => {
@@ -50,8 +54,10 @@ describe("SectionFilesList", () => {
   });
 
   it("uses a non-enumerating error and supports retry", async () => {
+    const failure = new Error("permission denied");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(listSectionFiles)
-      .mockRejectedValueOnce(new Error("permission denied"))
+      .mockRejectedValueOnce(failure)
       .mockResolvedValueOnce([]);
     render(<SectionFilesList sectionId="section-1" />);
 
@@ -59,10 +65,14 @@ describe("SectionFilesList", () => {
     reload.click();
     await waitFor(() => expect(listSectionFiles).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("No files are available for this section.")).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith("[sections.files.list]", failure, {});
+    consoleError.mockRestore();
   });
 
   it("keeps the file list visible and shows a download-specific error", async () => {
     const user = userEvent.setup();
+    const failure = new Error("permission denied");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(listSectionFiles).mockResolvedValue([
       {
         id: "file-1",
@@ -78,7 +88,7 @@ describe("SectionFilesList", () => {
         canonicalUrl: "https://members.example.org/sections/section-1/files/file-1",
       },
     ]);
-    vi.mocked(requestSectionFileDownload).mockRejectedValue(new Error("permission denied"));
+    vi.mocked(requestSectionFileDownload).mockRejectedValue(failure);
     render(<SectionFilesList sectionId="section-1" />);
 
     await user.click(
@@ -88,5 +98,7 @@ describe("SectionFilesList", () => {
     expect(await screen.findByText(/could not be downloaded/i)).toBeInTheDocument();
     expect(screen.getByText("Joining instructions")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith("[sections.files.download]", failure, {});
+    consoleError.mockRestore();
   });
 });

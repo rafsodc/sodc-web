@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import FailureState from "../../../shared/components/FailureState";
+import { reportError } from "../../../shared/errors";
 import {
   listSectionFiles,
   requestSectionFileDownload,
@@ -44,7 +45,8 @@ export default function SectionFilesList({ sectionId }: { sectionId: string }) {
     setDownloadError(false);
     try {
       setFiles(await listSectionFiles(sectionId));
-    } catch {
+    } catch (error) {
+      reportError("sections.files.list", error);
       setFiles([]);
       setLoadError(true);
     } finally {
@@ -62,7 +64,8 @@ export default function SectionFilesList({ sectionId }: { sectionId: string }) {
     try {
       const result = await requestSectionFileDownload(sectionId, file.id);
       window.location.assign(result.downloadUrl);
-    } catch {
+    } catch (error) {
+      reportError("sections.files.download", error);
       setDownloadError(true);
     } finally {
       setDownloadingId(null);

@@ -95,8 +95,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       const result = await getSectionForUser(sectionId);
       if (sectionRequestIdRef.current !== requestId) return;
       setSectionData({ section: result.section });
-    } catch {
+    } catch (error) {
       if (sectionRequestIdRef.current !== requestId) return;
+      reportError("sections.detail", error);
       setSectionData(undefined);
       setErrorSection(true);
     } finally {
@@ -172,8 +173,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       const result = await getSectionEventsForUser(sectionId);
       if (eventsRequestIdRef.current !== requestId) return;
       setEventsData({ section: { events: result.events } });
-    } catch {
+    } catch (error) {
       if (eventsRequestIdRef.current !== requestId) return;
+      reportError("sections.events", error);
       setEventsData(undefined);
       setErrorEvents(true);
     } finally {
@@ -200,7 +202,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     try {
       const result = await getEventForUser(selectedEventId);
       setEventDetailData({ event: result.event });
-    } catch {
+    } catch (error) {
+      reportError("sections.event-detail", error);
       setEventDetailData(undefined);
       setErrorEventDetail(true);
     } finally {

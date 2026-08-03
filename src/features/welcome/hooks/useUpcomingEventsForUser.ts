@@ -4,6 +4,7 @@ import type { UUIDString } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import type { AccessibleSection } from "../../../shared/navigation/extractAccessibleSections";
+import { reportError } from "../../../shared/errors";
 import {
   isUpcomingSectionEvent,
   sortUpcomingSectionEvents,
@@ -102,8 +103,9 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
           setEvents(upcoming);
           setIsError(false);
         }
-      } catch {
+      } catch (error) {
         if (alive) {
+          reportError("welcome.upcoming-events", error);
           setIsError(true);
           // Keep any previously loaded events visible while the retry option is shown.
         }

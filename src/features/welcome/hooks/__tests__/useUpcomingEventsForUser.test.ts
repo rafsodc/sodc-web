@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { SectionType } from "@dataconnect/generated";
 import { getEventsForSection } from "@dataconnect/generated";
@@ -53,6 +53,10 @@ describe("useUpcomingEventsForUser", () => {
     } as unknown as Awaited<ReturnType<typeof getEventsForSection>>);
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("does not refetch when the sections array reference changes but content is the same", async () => {
     const { result, rerender } = renderHook(
       ({ sections }) => useUpcomingEventsForUser(sections),
@@ -69,8 +73,10 @@ describe("useUpcomingEventsForUser", () => {
   });
 
   it("can retry a failed request and recover", async () => {
+    const failure = new Error("temporary network failure");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(getEventsForSection)
-      .mockRejectedValueOnce(new Error("temporary network failure"))
+      .mockRejectedValueOnce(failure)
       .mockResolvedValueOnce({
         data: {
           section: {
@@ -87,5 +93,7 @@ describe("useUpcomingEventsForUser", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(false));
     expect(getEventsForSection).toHaveBeenCalledTimes(2);
+    expect(consoleError).toHaveBeenCalledWith("[welcome.upcoming-events]", failure, {});
+    consoleError.mockRestore();
   });
 });
