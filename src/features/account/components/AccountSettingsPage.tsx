@@ -51,6 +51,12 @@ import {
   validateNewPassword,
 } from "../../auth/utils/passwordValidation";
 import { getAnnouncementSections } from "../utils/announcementPreferences";
+import {
+  reportError,
+  toAuthUserFacingError,
+  toProfileDomainUserFacingError,
+  toProfileUserFacingError,
+} from "../../../shared/errors";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -58,21 +64,6 @@ export interface AccountSettingsPageProps {
   userDataLoading?: boolean;
   isAdmin: boolean;
   onBack?: () => void;
-}
-
-function getAuthErrorMessage(error: unknown): string {
-  const code = (error as { code?: string })?.code;
-  switch (code) {
-    case "auth/wrong-password":
-    case "auth/invalid-credential":
-      return "Current password is incorrect";
-    case "auth/weak-password":
-      return "New password is too weak";
-    case "auth/requires-recent-login":
-      return "Please sign out and sign in again, then try changing your password";
-    default:
-      return (error as Error)?.message ?? "Something went wrong";
-  }
 }
 
 function usesEmailPassword(user: User): boolean {
@@ -120,7 +111,8 @@ function AnnouncementPreferencesList() {
           ? "Opted out of all announcement emails"
           : "Announcement emails enabled",
       );
-    } catch {
+    } catch (error) {
+      reportError("account.announcement-preferences.global", error);
       setGlobalOverride(null);
     } finally {
       setGlobalBusy(false);
@@ -149,7 +141,8 @@ function AnnouncementPreferencesList() {
       );
       setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
       setSnackbar(newOptedOut ? "Opted out of announcements" : "Opted in to announcements");
-    } catch {
+    } catch (error) {
+      reportError("account.announcement-preferences.section", error);
       setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
     } finally {
       setBusy(null);
@@ -289,7 +282,8 @@ export default function AccountSettingsPage({
       setConfirmPassword("");
       setPasswordSuccess(true);
     } catch (error) {
-      setPasswordError(getAuthErrorMessage(error));
+      reportError("account.password-change", error);
+      setPasswordError(toAuthUserFacingError(error, "password-change").message);
     } finally {
       setPasswordSubmitting(false);
     }
@@ -323,18 +317,8 @@ export default function AccountSettingsPage({
       setEmailCurrentPassword("");
       setEmailSuccess(true);
     } catch (error: unknown) {
-      const code = (error as { code?: string })?.code ?? "";
-      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
-        setEmailError("Current password is incorrect");
-      } else if (code.includes("resource-exhausted")) {
-        setEmailError("Too many email-change requests. Please wait before trying again.");
-      } else if (code.includes("already-exists")) {
-        setEmailError(
-          "This email address cannot be used. It may already be linked to another account.",
-        );
-      } else {
-        setEmailError("The email change could not be started. Check the address and try again.");
-      }
+      reportError("account.email-change", error);
+      setEmailError(toAuthUserFacingError(error, "email-change").message);
     } finally {
       setEmailSubmitting(false);
     }
@@ -364,8 +348,9 @@ export default function AccountSettingsPage({
       };
       await upsertUser(dataConnect, vars);
     } catch (error) {
+      reportError("account.privacy-setting", error);
       setShareContactInfoOverride(null);
-      setShareContactInfoError((error as Error)?.message ?? "Failed to update privacy setting");
+      setShareContactInfoError(toProfileUserFacingError(error, "privacy").message);
     } finally {
       setShareContactInfoSubmitting(false);
     }
@@ -377,13 +362,18 @@ export default function AccountSettingsPage({
     try {
       const result = await resignMembership();
       if (!result.success) {
-        setResignError(result.error ?? "Failed to resign membership");
+        const error = new Error(result.error ?? "Membership resignation failed");
+        reportError("account.membership-resignation", error);
+        setResignError(
+          toProfileDomainUserFacingError(result.domainCode, "resignation").message,
+        );
         return;
       }
       setResignDialogOpen(false);
       await signOut(auth);
     } catch (error) {
-      setResignError(getAuthErrorMessage(error));
+      reportError("account.membership-resignation", error);
+      setResignError(toProfileUserFacingError(error, "resignation").message);
     } finally {
       setResignSubmitting(false);
     }

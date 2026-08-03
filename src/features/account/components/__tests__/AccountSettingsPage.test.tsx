@@ -219,7 +219,9 @@ describe("AccountSettingsPage", () => {
     await user.click(toggle);
 
     await waitFor(() => {
-      expect(screen.getByText("Network error")).toBeInTheDocument();
+      expect(
+        screen.getByText("We couldn’t update your privacy setting. Check your connection and try again."),
+      ).toBeInTheDocument();
     });
     expect(toggle).toBeChecked();
   });
@@ -292,7 +294,7 @@ describe("AccountSettingsPage", () => {
 
     expect(
       await screen.findByText(
-        "This email address cannot be used. It may already be linked to another account.",
+        "That email address is already used by another account.",
       ),
     ).toBeInTheDocument();
   });
@@ -422,6 +424,7 @@ describe("AccountSettingsPage", () => {
     vi.mocked(firebaseFunctions.resignMembership).mockResolvedValue({
       success: false,
       error: "Membership cannot be resigned at this time",
+      domainCode: "MEMBERSHIP_RESIGNATION_NOT_ALLOWED",
     });
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
@@ -430,7 +433,12 @@ describe("AccountSettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Confirm resign" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Membership cannot be resigned at this time")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You cannot resign while your membership has its current status. Contact an administrator for help.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Membership cannot be resigned at this time")).not.toBeInTheDocument();
     });
   });
 
@@ -470,7 +478,7 @@ describe("AccountSettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Current password is incorrect")).toBeInTheDocument();
+      expect(screen.getByText("Current password is incorrect.")).toBeInTheDocument();
     });
   });
 
@@ -493,7 +501,9 @@ describe("AccountSettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
-      expect(screen.getByText("New password is too weak")).toBeInTheDocument();
+      expect(
+        screen.getByText("Password does not meet the current account security policy."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -517,7 +527,8 @@ describe("AccountSettingsPage", () => {
     await user.click(screen.getByRole("button", { name: "Update password" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Something unexpected happened")).toBeInTheDocument();
+      expect(screen.getByText("We couldn’t change your password. Please try again.")).toBeInTheDocument();
+      expect(screen.queryByText("Something unexpected happened")).not.toBeInTheDocument();
     });
   });
 });

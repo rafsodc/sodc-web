@@ -170,7 +170,10 @@ describe("ProfileReviewDialog", () => {
     await interaction.click(await screen.findByRole("checkbox", { name: "Golf" }));
     await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
 
-    expect(await screen.findByText("Preference save failed")).toBeInTheDocument();
+    expect(
+      await screen.findByText("We couldn’t save your profile review. Check your connection and try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Preference save failed")).not.toBeInTheDocument();
     expect(generated.confirmProfileReview).not.toHaveBeenCalled();
     expect(onReviewed).not.toHaveBeenCalled();
   });
@@ -251,7 +254,10 @@ describe("ProfileReviewDialog", () => {
 
     await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
 
-    expect(await screen.findByText("Network unavailable")).toBeInTheDocument();
+    expect(
+      await screen.findByText("We couldn’t save your profile review. Check your connection and try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Network unavailable")).not.toBeInTheDocument();
     expect(onReviewed).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Confirm profile" })).toBeEnabled();
   });

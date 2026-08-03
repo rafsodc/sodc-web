@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { ROUTES } from "../../../constants";
 import { requestPasswordResetEmail } from "../../../shared/utils/firebaseFunctions";
+import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 const NEUTRAL_CONFIRMATION =
   "If an account exists for that address, we’ll send a password reset link.";
@@ -34,15 +35,8 @@ export default function PasswordResetRequestPage() {
       await requestPasswordResetEmail(email.trim());
       setSent(true);
     } catch (requestError: unknown) {
-      const code =
-        typeof requestError === "object" && requestError && "code" in requestError
-          ? String(requestError.code)
-          : "";
-      setError(
-        code.includes("resource-exhausted")
-          ? "Too many reset requests. Please wait before trying again."
-          : "We couldn’t request a reset link. Check your connection and try again.",
-      );
+      reportError("auth.password-reset.request", requestError);
+      setError(toAuthUserFacingError(requestError, "password-reset-request").message);
     } finally {
       setSubmitting(false);
     }

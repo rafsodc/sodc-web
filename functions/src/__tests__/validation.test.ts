@@ -81,6 +81,7 @@ describe("validation", () => {
         const result = canUserChangeStatus("REGULAR", "PENDING", true, true);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe("Admins cannot have restricted membership statuses");
+        expect(result.code).toBe("ADMIN_RESTRICTED_STATUS");
       });
     });
 
@@ -94,12 +95,14 @@ describe("validation", () => {
         const result = canUserChangeStatus("REGULAR", "RETIRED", false, false, false);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe("Account must be enabled");
+        expect(result.code).toBe("ACCOUNT_NOT_ENABLED");
       });
 
       it("should not allow user to change from PENDING", () => {
         const result = canUserChangeStatus("PENDING", "REGULAR", false, false, true);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe("Cannot change from restricted status");
+        expect(result.code).toBe("CURRENT_STATUS_RESTRICTED");
       });
 
       it("should not allow user to self-activate from null status", () => {
@@ -118,6 +121,7 @@ describe("validation", () => {
         const result = canUserChangeStatus("REGULAR", "PENDING", false, false, true);
         expect(result.allowed).toBe(false);
         expect(result.error).toBe("Cannot change to restricted status");
+        expect(result.code).toBe("TARGET_STATUS_RESTRICTED");
       });
     });
   });
@@ -132,16 +136,21 @@ describe("validation", () => {
       const result = canUserResignMembership("REGULAR", false, false);
       expect(result.allowed).toBe(false);
       expect(result.error).toBe("Account must be enabled");
+      expect(result.code).toBe("ACCOUNT_NOT_ENABLED");
     });
 
     it("rejects admin accounts", () => {
       const result = canUserResignMembership("REGULAR", true, true);
       expect(result.allowed).toBe(false);
       expect(result.error).toBe("Admin accounts cannot resign through this flow");
+      expect(result.code).toBe("ADMIN_RESIGNATION_NOT_ALLOWED");
     });
 
     it("rejects restricted current statuses", () => {
-      expect(canUserResignMembership("PENDING", false, true).allowed).toBe(false);
+      expect(canUserResignMembership("PENDING", false, true)).toMatchObject({
+        allowed: false,
+        code: "MEMBERSHIP_RESIGNATION_NOT_ALLOWED",
+      });
       expect(canUserResignMembership("RESIGNED", false, true).allowed).toBe(false);
       expect(canUserResignMembership(null, false, true).allowed).toBe(false);
     });

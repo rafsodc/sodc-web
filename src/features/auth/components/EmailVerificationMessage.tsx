@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import { reload, type User } from "firebase/auth";
 import { requestEmailVerification } from "../../../shared/utils/firebaseFunctions";
+import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 interface EmailVerificationMessageProps {
   user: User;
@@ -32,12 +33,8 @@ export default function EmailVerificationMessage({
       setSent(true);
       setTimeout(() => setSent(false), 60_000);
     } catch (e: unknown) {
-      const code = typeof e === "object" && e && "code" in e ? String(e.code) : "";
-      setError(
-        code.includes("resource-exhausted")
-          ? "Too many verification emails requested. Please wait before trying again."
-          : "We couldn’t resend the verification email. Check your connection and try again.",
-      );
+      reportError("auth.email-verification.resend", e);
+      setError(toAuthUserFacingError(e, "email-verification").message);
     } finally {
       setSending(false);
     }
@@ -58,8 +55,9 @@ export default function EmailVerificationMessage({
       } else {
         setError("Email not yet verified. Please check your inbox and click the verification link.");
       }
-    } catch {
-      setError("We couldn’t check your verification status. Please try again.");
+    } catch (verificationError) {
+      reportError("auth.email-verification.check", verificationError);
+      setError(toAuthUserFacingError(verificationError, "email-verification").message);
     } finally {
       setChecking(false);
     }

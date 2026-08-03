@@ -1,6 +1,7 @@
 import { httpsCallable } from "firebase/functions";
 import type { MembershipStatus } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
+import { extractDomainErrorCode } from "../../errors";
 
 // ============================================================================
 // Admin Functions
@@ -278,7 +279,7 @@ interface UpdateMembershipStatusResponse {
 export async function updateMembershipStatus(
   userId: string,
   newStatus: MembershipStatus
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; domainCode?: string }> {
   try {
     const updateMembershipStatusCallable = httpsCallable<
       UpdateMembershipStatusRequest,
@@ -290,7 +291,8 @@ export async function updateMembershipStatus(
   } catch (error: any) {
     return {
       success: false,
-      error: error?.message || "Failed to update membership status"
+      error: error?.message || "Failed to update membership status",
+      domainCode: extractDomainErrorCode(error),
     };
   }
 }
@@ -303,7 +305,11 @@ interface ResignMembershipResponse {
 /**
  * Resigns the current user's membership (non-restricted status → RESIGNED).
  */
-export async function resignMembership(): Promise<{ success: boolean; error?: string }> {
+export async function resignMembership(): Promise<{
+  success: boolean;
+  error?: string;
+  domainCode?: string;
+}> {
   try {
     const resignMembershipCallable = httpsCallable<
       Record<string, never>,
@@ -316,6 +322,7 @@ export async function resignMembership(): Promise<{ success: boolean; error?: st
     return {
       success: false,
       error: error?.message || "Failed to resign membership",
+      domainCode: extractDomainErrorCode(error),
     };
   }
 }

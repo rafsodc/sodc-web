@@ -138,6 +138,34 @@ describe("Profile", () => {
     });
   });
 
+  it("shows trusted guidance when a membership transition is rejected", async () => {
+    vi.mocked(firebaseFunctions.updateMembershipStatus).mockResolvedValueOnce({
+      success: false,
+      error: "FirebaseError: permission denied implementation detail",
+      domainCode: "CURRENT_STATUS_RESTRICTED",
+    });
+    const user = userEvent.setup();
+    renderProfile({ userData, userEmail: userData.email });
+
+    const selectRoot = screen.getByTestId("membership-status-select");
+    const trigger =
+      selectRoot.querySelector('[role="combobox"]') ??
+      selectRoot.querySelector(".MuiSelect-select") ??
+      selectRoot;
+    fireEvent.mouseDown(trigger);
+    await user.click(await screen.findByRole("option", { name: "Reserve" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(
+      await screen.findByText(
+        "Membership status cannot be changed from its current restricted status.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/FirebaseError: permission denied implementation detail/),
+    ).not.toBeInTheDocument();
+  });
+
   it("includes the selected rank when saving", async () => {
     const user = userEvent.setup();
     renderProfile({ userData, userEmail: userData.email });
