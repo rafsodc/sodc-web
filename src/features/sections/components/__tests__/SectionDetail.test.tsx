@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '../../../../test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import SectionDetail from '../SectionDetail';
@@ -225,6 +225,10 @@ describe('SectionDetail', () => {
     });
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should render loading state', () => {
     vi.mocked(getSectionMembersMerged).mockReturnValue(new Promise(() => undefined));
 
@@ -247,6 +251,7 @@ describe('SectionDetail', () => {
   });
 
   it('should render error state', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     mockGetSectionById({
       data: undefined,
       isLoading: false,
@@ -265,6 +270,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText(/could not load this section/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith('[sections.detail]', expect.any(Error), {});
   });
 
   it('should render section description above the members list', async () => {
@@ -1497,6 +1503,7 @@ describe('SectionDetail', () => {
   });
 
   it('shows events list retry button when events fail to load', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const mockSectionData = {
       section: {
         id: sectionId,
@@ -1520,6 +1527,52 @@ describe('SectionDetail', () => {
       expect(screen.getByText(/could not load the events for this section/i)).toBeInTheDocument();
     });
     expect(screen.getAllByRole('button', { name: /try again/i })).not.toHaveLength(0);
+    expect(consoleError).toHaveBeenCalledWith('[sections.events]', expect.any(Error), {});
+  });
+
+  it('reports an event-detail failure', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const eventId = 'event-1';
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        purposeLinks: [],
+      },
+    };
+    const mockEventsData = {
+      section: {
+        id: sectionId,
+        events: [
+          {
+            id: eventId,
+            title: 'Annual Dinner',
+            ...upcomingEventTimes,
+            location: 'Main Hall',
+            guestOfHonour: null,
+          },
+        ],
+      },
+    };
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventsForSection({ data: mockEventsData, isLoading: false, isError: false });
+    mockGetEventById({ data: undefined, isLoading: false, isError: true });
+
+    renderSectionDetail();
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /annual dinner/i }));
+
+    expect(await screen.findByText(/could not load this event/i)).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith('[sections.event-detail]', expect.any(Error), {});
   });
 
   it('shows members refresh button and calls refetch when clicked', async () => {
