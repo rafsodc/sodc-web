@@ -32,6 +32,7 @@ import {
   SectionEditorDialogSurface,
 } from "./ManageSectionsSurfaces";
 import type { SectionUserGroupRow, SectionWithDetails } from "./manageSectionsTypes";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface ManageSectionsProps {
   onBack: () => void;
@@ -120,8 +121,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       existingSections.sort((a, b) => a.name.localeCompare(b.name));
       
       setSections(existingSections);
-    } catch (err: any) {
-      setError(err?.message || "Failed to fetch sections");
+    } catch (caught) {
+      reportError("admin.sections.load", caught);
+      setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
       setLoading(false);
     }
@@ -136,8 +138,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       const ref = listUserGroupsRef(dataConnect);
       const result = await executeQuery(ref);
       setAllUserGroups(result.data?.userGroups || []);
-    } catch (err: any) {
-      console.error("Failed to fetch user groups:", err);
+    } catch (caught) {
+      reportError("admin.sections.available-groups", caught);
     }
   }, []);
 
@@ -167,8 +169,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       } else {
         setSectionUserGroups([]);
       }
-    } catch (err: any) {
-      console.error("Failed to fetch section user groups:", err);
+    } catch (caught) {
+      reportError("admin.sections.assigned-groups", caught, { sectionId });
+      setError(toAdminUserFacingError(caught, "sections").message);
       setSectionUserGroups([]);
     } finally {
       setLoadingUserGroups(false);
@@ -223,8 +226,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       await executeMutation(ref);
       await fetchSections();
       showSuccess(`Section "${section.name}" deleted`);
-    } catch (err: any) {
-      setError(err?.message || "Failed to delete section");
+    } catch (caught) {
+      reportError("admin.sections.delete", caught, { sectionId: section.id });
+      setError(toAdminUserFacingError(caught, "sections").message);
     }
   };
 
@@ -257,8 +261,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       setDialogOpen(false);
       await fetchSections();
       showSuccess(`Section ${editingSection ? "updated" : "created"}`);
-    } catch (err: any) {
-      setError(err?.message || `Failed to ${editingSection ? "update" : "create"} section`);
+    } catch (caught) {
+      reportError("admin.sections.save", caught, { editing: Boolean(editingSection) });
+      setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
       setSubmitting(false);
     }
@@ -292,8 +297,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
       setAddUserGroupDialogOpen(false);
       showSuccess("User group added to section");
-    } catch (err: any) {
-      setError(err?.message || "Failed to add user group");
+    } catch (caught) {
+      reportError("admin.sections.add-group", caught, { sectionId: editingSection.id });
+      setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
       setAddingUserGroup(false);
     }
@@ -335,8 +341,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       // Refresh section user groups
       await fetchSectionUserGroups(editingSection.id);
       showSuccess("User group removed from section");
-    } catch (err: any) {
-      setError(err?.message || "Failed to remove user group");
+    } catch (caught) {
+      reportError("admin.sections.remove-group", caught, { sectionId: editingSection.id, userGroupId });
+      setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
       setRemovingUserGroupId(null);
     }

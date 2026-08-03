@@ -145,8 +145,9 @@ describe("AnnouncementSendHistory", () => {
     render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load send history: network")).toBeInTheDocument();
+      expect(screen.getByText("We could not complete the announcement operation. Please try again.")).toBeInTheDocument();
     });
+    expect(screen.queryByText(/network/i)).not.toBeInTheDocument();
   });
 
   it("renders send rows with date, template name, and counts", async () => {
@@ -190,9 +191,10 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.getByText("Eve Black")).toBeInTheDocument();
     expect(screen.getByText("Frank Green")).toBeInTheDocument();
     expect(screen.getByText("Grace Blue")).toBeInTheDocument();
-    expect(screen.getByText("opted_out")).toBeInTheDocument();
-    expect(screen.getByText("GOV Notify rejected")).toBeInTheDocument();
-    expect(screen.getByText("GOV Notify reported permanent-failure")).toBeInTheDocument();
+    expect(screen.getByText("Recipient opted out")).toBeInTheDocument();
+    expect(screen.getAllByText("Delivery failed; diagnostic detail is available in secure logs.")).toHaveLength(2);
+    expect(screen.queryByText("GOV Notify rejected")).not.toBeInTheDocument();
+    expect(screen.queryByText("GOV Notify reported permanent-failure")).not.toBeInTheDocument();
 
     // Status chips — "Sent"/"Skipped"/"Failed" also appear as column headers, so use getAllByText
     expect(screen.getAllByText("Sent").length).toBeGreaterThanOrEqual(1);
@@ -218,8 +220,9 @@ describe("AnnouncementSendHistory", () => {
     await user.click(screen.getAllByRole("button", { name: "Expand" })[0]);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load recipients")).toBeInTheDocument();
+      expect(screen.getByText("We could not complete the announcement operation. Please try again.")).toBeInTheDocument();
     });
+    expect(screen.queryByText(/network/i)).not.toBeInTheDocument();
   });
 
   it("collapses an expanded row on second click", async () => {

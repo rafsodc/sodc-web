@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { searchUsers } from "../utils/searchUsers";
 import type { SearchUser } from "../../../types";
 import { ITEMS_PER_PAGE } from "../../../constants";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface UseUserSearchResult {
   users: SearchUser[];
@@ -53,13 +54,14 @@ export function useUserSearch(
         setTotalPages(result.data.totalPages);
         setTotal(result.data.total);
       } else {
-        setError(result.error || "Failed to search users");
+        setError("Users could not be searched. Please try again.");
         setUsers([]);
         setTotalPages(1);
         setTotal(0);
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to search users");
+    } catch (caught) {
+      reportError("admin.users.search", caught);
+      setError(toAdminUserFacingError(caught, "users").message);
       setUsers([]);
       setTotalPages(1);
       setTotal(0);
@@ -118,4 +120,3 @@ export function useUserSearch(
     refetch,
   };
 }
-

@@ -28,6 +28,7 @@ import {
 } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface AuditLogsProps {
   onBack: () => void;
@@ -47,8 +48,8 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
       const ref = listUsersRef(dataConnect);
       const result = await executeQuery(ref);
       setAllUsers(result.data?.users || []);
-    } catch (err: any) {
-      console.error("Failed to fetch users for audit log lookup:", err);
+    } catch (error) {
+      reportError("admin.audit-logs.user-lookup", error);
     }
   }, []);
 
@@ -69,8 +70,9 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
         const result = await executeQuery(ref);
         setSections(result.data?.sections || []);
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to load audit logs");
+    } catch (caught) {
+      reportError("admin.audit-logs.load", caught, { tab: tabValue });
+      setError(toAdminUserFacingError(caught, "audit-logs").message);
     } finally {
       setLoading(false);
     }

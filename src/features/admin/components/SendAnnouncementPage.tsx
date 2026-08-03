@@ -28,6 +28,7 @@ import {
 } from "../../../shared/utils/firebaseFunctions";
 import TemplateEditor from "./TemplateEditor";
 import AnnouncementSendHistory from "./AnnouncementSendHistory";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface SendAnnouncementPageProps {
   sectionId: string;
@@ -73,7 +74,10 @@ export default function SendAnnouncementPage({
     setTemplatesError(null);
     getAnnouncementTemplates(sectionId)
       .then(setTemplates)
-      .catch(() => setTemplatesError("Failed to load templates from GOV Notify"))
+      .catch((caught) => {
+        reportError("admin.announcements.templates", caught, { sectionId });
+        setTemplatesError(toAdminUserFacingError(caught, "announcements").message);
+      })
       .finally(() => setLoadingTemplates(false));
   }, [sectionId, templatesTrigger]);
 
@@ -84,7 +88,10 @@ export default function SendAnnouncementPage({
         setSiteDeliveryMode(configuredMode);
         setDeliveryMode(configuredMode === "SIMULATION" ? "SIMULATION" : configuredMode);
       })
-      .catch(() => setDeliveryModeError("The site-wide email delivery mode is unavailable."));
+      .catch((caught) => {
+        reportError("admin.announcements.delivery-mode", caught, { sectionId });
+        setDeliveryModeError(toAdminUserFacingError(caught, "email-configuration").message);
+      });
   }, [sectionId]);
 
   const handleTemplateChange = async (e: SelectChangeEvent) => {
@@ -103,7 +110,8 @@ export default function SendAnnouncementPage({
       setPreviewHtml(html);
       setPreviewSubject(subject);
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : "Failed to load preview");
+      reportError("admin.announcements.preview", err, { sectionId, templateId: id });
+      setPreviewError(toAdminUserFacingError(err, "announcements").message);
     } finally {
       setLoadingPreview(false);
     }
@@ -127,8 +135,9 @@ export default function SendAnnouncementPage({
       );
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
-    } catch {
-      setSendError("Failed to send announcement. Please try again.");
+    } catch (caught) {
+      reportError("admin.announcements.send", caught, { sectionId, templateId: selectedId });
+      setSendError(toAdminUserFacingError(caught, "announcements").message);
     } finally {
       setSending(false);
     }

@@ -28,6 +28,7 @@ import {
   type SectionFile,
 } from "../../../shared/utils/firebaseFunctions";
 import PageHeader from "../../../shared/components/PageHeader";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -49,17 +50,6 @@ function validateFile(file: File): string | null {
   if (file.size > MAX_BYTES) return "Files must be 25 MB or smaller.";
   if (!ALLOWED_TYPES.includes(file.type)) return "This file type is not supported.";
   return null;
-}
-
-function errorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : "";
-  if (/permission|unauth|denied/i.test(message)) {
-    return "You no longer have permission to manage files for this section.";
-  }
-  if (/precondition|changed|current state/i.test(message)) {
-    return "The file changed. Refresh the list and try again.";
-  }
-  return "The operation could not be completed. Please try again.";
 }
 
 export default function ManageSectionFiles({
@@ -89,8 +79,9 @@ export default function ManageSectionFiles({
     try {
       setFiles(await listSectionFiles(sectionId));
     } catch (error) {
+      reportError("admin.section-files.load", error, { sectionId });
       setFiles([]);
-      setNotice({ severity: "error", text: errorMessage(error) });
+      setNotice({ severity: "error", text: toAdminUserFacingError(error, "files").message });
     } finally {
       setLoading(false);
     }
@@ -108,7 +99,8 @@ export default function ManageSectionFiles({
       setNotice({ severity: "success", text: success });
       await load();
     } catch (error) {
-      setNotice({ severity: "error", text: errorMessage(error) });
+      reportError("admin.section-files.operation", error, { sectionId });
+      setNotice({ severity: "error", text: toAdminUserFacingError(error, "files").message });
     } finally {
       setBusy(false);
       setStage(null);
@@ -170,7 +162,8 @@ export default function ManageSectionFiles({
     try {
       await navigator.clipboard.writeText(file.canonicalUrl);
       setNotice({ severity: "success", text: "Stable file link copied." });
-    } catch {
+    } catch (error) {
+      reportError("admin.section-files.copy-link", error, { sectionId, fileId: file.id });
       setNotice({ severity: "error", text: "The link could not be copied. Try again." });
     }
   };

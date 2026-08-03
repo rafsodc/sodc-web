@@ -1,6 +1,7 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { firebaseApp } from "../../../config/firebase";
 import type { AdminUser } from "../../../types";
+import { reportError } from "../../../shared/errors";
 
 export type { AdminUser };
 
@@ -20,11 +21,11 @@ export async function listAdminUsers(): Promise<{ success: boolean; users?: Admi
     const result = await listAdminUsersCallable();
     const data = result.data as ListAdminUsersResponse;
     return { success: true, users: data.users };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("admin.users.list-admins", error);
     return { 
       success: false, 
-      error: error?.message || "Failed to list admin users" 
+      error: "Administrator accounts could not be loaded. Please try again."
     };
   }
 }
-

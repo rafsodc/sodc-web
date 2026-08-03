@@ -28,6 +28,11 @@ import {
   type UserWithoutDataConnectProfileRow,
 } from "../../../shared/utils/firebaseFunctions";
 import "../../../shared/components/PageContainer.css";
+import {
+  reportError,
+  toAdminUserFacingError,
+  toProfileDomainUserFacingError,
+} from "../../../shared/errors";
 
 interface ApproveUsersProps {
   onBack: () => void;
@@ -63,7 +68,7 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
       ]);
 
       if (!withoutProfileResult.success || !withoutProfileResult.users) {
-        throw new Error(withoutProfileResult.error || "Failed to load users without profile");
+        throw new Error("Users without profiles could not be loaded");
       }
       setUsersWithoutProfile(withoutProfileResult.users);
 
@@ -72,12 +77,9 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
       } else {
         setPendingUsers([]);
       }
-    } catch (err: unknown) {
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Failed to load users";
-      setError(message);
+    } catch (caught) {
+      reportError("admin.user-approval.load", caught);
+      setError(toAdminUserFacingError(caught, "user-approval").message);
       setUsersWithoutProfile([]);
       setPendingUsers([]);
     } finally {
@@ -142,14 +144,15 @@ export default function ApproveUsers({ onBack }: ApproveUsersProps) {
         );
         await fetchData();
       } else {
-        setErrorMessage(result.error || "Failed to approve user");
+        setErrorMessage(
+          result.domainCode
+            ? toProfileDomainUserFacingError(result.domainCode, "update").message
+            : "The user could not be approved. Please refresh and try again.",
+        );
       }
-    } catch (err: unknown) {
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Failed to approve user";
-      setErrorMessage(message);
+    } catch (caught) {
+      reportError("admin.user-approval.approve", caught, { userId: user.id });
+      setErrorMessage(toAdminUserFacingError(caught, "user-approval").message);
     } finally {
       setApprovingUserId(null);
     }

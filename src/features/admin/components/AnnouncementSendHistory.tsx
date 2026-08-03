@@ -23,6 +23,7 @@ import {
   type AnnouncementSend,
   type AnnouncementRecipient,
 } from "../../../shared/utils/firebaseFunctions";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface Props {
   sectionId: string;
@@ -58,6 +59,16 @@ function formatDate(iso: string) {
   });
 }
 
+function recipientDetail(recipient: AnnouncementRecipient): string {
+  if (recipient.status === "skipped" && recipient.skippedReason === "opted_out") {
+    return "Recipient opted out";
+  }
+  if (recipient.status === "failed" || recipient.status === "enqueue_failed" || recipient.status === "bounced") {
+    return "Delivery failed; diagnostic detail is available in secure logs.";
+  }
+  return "";
+}
+
 function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: string }) {
   const [open, setOpen] = useState(false);
   const [recipients, setRecipients] = useState<AnnouncementRecipient[] | null>(null);
@@ -71,8 +82,9 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
     try {
       const data = await getAnnouncementSendRecipients(send.id, sectionId);
       setRecipients(data);
-    } catch {
-      setError("Failed to load recipients");
+    } catch (caught) {
+      reportError("admin.announcements.recipients", caught, { sendId: send.id });
+      setError(toAdminUserFacingError(caught, "announcements").message);
     } finally {
       setLoading(false);
     }
@@ -169,7 +181,7 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
                         <TableCell>{r.effectiveDeliveryMode.replace("_", " ")}</TableCell>
                         <TableCell>
                           <Typography variant="caption" color="text.secondary">
-                            {r.skippedReason ?? r.failureReason ?? ""}
+                            {recipientDetail(r)}
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -195,11 +207,9 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
     setError(null);
     getAnnouncementSendHistory(sectionId)
       .then(setSends)
-      .catch((err: unknown) => {
-        const msg = err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Unknown error";
-        setError(`Failed to load send history: ${msg}`);
+      .catch((caught: unknown) => {
+        reportError("admin.announcements.history", caught, { sectionId });
+        setError(toAdminUserFacingError(caught, "announcements").message);
       })
       .finally(() => setLoading(false));
   }, [sectionId, refreshTrigger]);
