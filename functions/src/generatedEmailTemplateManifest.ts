@@ -88,7 +88,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     body: "Hello ((firstName)),\n\nUnfortunately, your request for guest places at ((eventTitle)) was not approved.\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nGuest: ((guestDisplayName))\n\nGuest places requested: ((requestedGuestCount))\n\nNote from organiser: ((moderatorNote))\n\nView your booking:\n\n((myBookingsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   guestTicketRequestSubmittedModerator: {
-    subject: "Guest ticket request — ((eventTitle))",
+    subject: "[SODC] Guest ticket request — ((eventTitle))",
     variables: [
     "eventTitle",
     "sectionName",
@@ -99,7 +99,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "dietaryNote",
     "moderationUrl"
     ],
-    body: "A guest ticket request has been submitted for your review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nGuest name: ((guestDisplayName))\n\nGuest count: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary note: ((dietaryNote))\n\n---\n\nReview and approve or decline this request in the admin panel:\n\n((moderationUrl))\n\nSODC",
+    body: "A guest ticket request is ready for review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nGuest: ((guestDisplayName))\n\nPlaces requested: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary requirements: ((dietaryNote))\n\n---\n\nReview the request in SODC:\n\n((moderationUrl))\n\nKind regards,\n\nSODC Admin",
   },
   membershipAccessRestricted: {
     subject: "Your SODC membership status has changed",
@@ -122,7 +122,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     body: "Hello ((firstName)),\n\nWe are pleased to confirm that your SODC membership is now active. Your membership status is ((membershipStatusLabel)).\n\nYou can now access sections, view upcoming events, and make bookings.\n\nSign in to get started:\n\n((appUrl))\n\nYou can review your profile and communication preferences here:\n\n((profileUrl))\n\nWelcome to SODC.\n\nKind regards,\n\nSODC Admin",
   },
   newUserPendingApprovalAlert: {
-    subject: "[SODC] New member awaiting approval — ((firstName)) ((lastName))",
+    subject: "[SODC] New member awaiting approval",
     variables: [
     "firstName",
     "lastName",
@@ -132,7 +132,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "requestedMembershipStatus",
     "approveUsersUrl"
     ],
-    body: "A new member has completed their profile and is awaiting approval.\n\nName: ((firstName)) ((lastName))\nEmail: ((email))\nService number: ((serviceNumber))\nService background: ((serviceBackgroundSummary))\nRequested status: ((requestedMembershipStatus))\n\nReview in Approve Users:\n((approveUsersUrl))",
+    body: "A new member has completed their profile and is ready for review.\n\nName: ((firstName)) ((lastName))\n\nEmail: ((email))\n\nService number: ((serviceNumber))\n\nService background: ((serviceBackgroundSummary))\n\nRequested status: ((requestedMembershipStatus))\n\n---\n\nReview the member in Approve Users:\n\n((approveUsersUrl))\n\nKind regards,\n\nSODC Admin",
   },
   passwordReset: {
     subject: "Reset your SODC password",
@@ -142,7 +142,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     body: "Hello,\n\nWe received a request to reset the password for your SODC account.\n\nUse this secure link to choose a new password:\n\n((resetLink))\n\nIf you did not request this, you can ignore this email. Your password will not change.\n\nKind regards,\n\nSODC Admin",
   },
   paymentDisputeOpsAlert: {
-    subject: "[SODC OPS] Payment dispute — ((orderId))",
+    subject: "[SODC] Payment dispute — ((orderId))",
     variables: [
     "orderId",
     "eventTitle",
@@ -155,10 +155,10 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "reconciliationDashboardUrl",
     "stripeEventId"
     ],
-    body: "A payment dispute event has been received.\n\nOrder ID: ((orderId))\n\nEvent: ((eventTitle))\n\nCustomer: ((customerDisplay))\n\nDispute ID: ((stripeDisputeId))\n\nStripe status: ((disputeStripeStatus))\n\nReason: ((disputeReason))\n\nLocal state: ((disputeLocalState))\n\nStripe event type: ((stripeEventType))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nSODC Ops",
+    body: "A Stripe payment dispute needs review.\n\nTicket order ID: ((orderId))\n\nEvent: ((eventTitle))\n\nMember: ((customerDisplay))\n\nStripe dispute ID: ((stripeDisputeId))\n\nStripe dispute status: ((disputeStripeStatus))\n\nStripe dispute reason: ((disputeReason))\n\nSODC dispute state: ((disputeLocalState))\n\nStripe event type: ((stripeEventType))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview the dispute in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nKind regards,\n\nSODC Admin",
   },
   paymentReconciliationExceptionAlert: {
-    subject: "[SODC OPS] Reconciliation exception — ((orderId))",
+    subject: "[SODC] Payment reconciliation exception — ((orderId))",
     variables: [
     "orderId",
     "eventTitle",
@@ -168,7 +168,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "reconciliationDashboardUrl",
     "stripeEventId"
     ],
-    body: "A payment reconciliation exception requires your attention.\n\nOrder ID: ((orderId))\n\nEvent: ((eventTitle))\n\nCustomer: ((customerDisplay))\n\nException type: ((exceptionType))\n\nNote: ((exceptionNote))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nSODC Ops",
+    body: "A payment reconciliation exception needs review.\n\nTicket order ID: ((orderId))\n\nEvent: ((eventTitle))\n\nMember: ((customerDisplay))\n\nException type: ((exceptionType))\n\nRecorded note: ((exceptionNote))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview the exception in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nKind regards,\n\nSODC Admin",
   },
   ticketOrderFailed: {
     subject: "Payment unsuccessful — ((eventTitle))",

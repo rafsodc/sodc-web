@@ -41,6 +41,9 @@ Client UI uses these callables instead of direct Data Connect mutations for subm
 
 ## Template 1: moderator alert — `guestTicketRequestSubmittedModerator`
 
+The subject uses the common `[SODC]` internal prefix. The body uses concise
+review labels and the standard automated `Kind regards, SODC Admin` sign-off.
+
 | Key | Semantics |
 |-----|-----------|
 | `eventTitle` | Event title |

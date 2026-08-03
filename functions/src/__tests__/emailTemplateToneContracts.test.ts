@@ -34,6 +34,13 @@ const MEMBER_TEMPLATES = [
   ...ACCOUNT_ACTION_TEMPLATES,
 ] as const;
 
+const INTERNAL_TEMPLATES = [
+  "guestTicketRequestSubmittedModerator",
+  "newUserPendingApprovalAlert",
+  "paymentReconciliationExceptionAlert",
+  "paymentDisputeOpsAlert",
+] as const;
+
 describe("member email tone contract (#476)", () => {
   it.each(MEMBER_TEMPLATES)("uses the automated sign-off in %s", (templateKey) => {
     expect(EMAIL_TEMPLATE_MANIFEST[templateKey].body).toMatch(
@@ -65,5 +72,45 @@ describe("member email tone contract (#476)", () => {
     expect(variables).toEqual(
       expect.arrayContaining(["eventTitle", "eventDateTime", "eventLocation"]),
     );
+  });
+});
+
+describe("internal email tone contract (#477)", () => {
+  it.each(INTERNAL_TEMPLATES)("uses the common subject prefix in %s", (templateKey) => {
+    expect(EMAIL_TEMPLATE_MANIFEST[templateKey].subject).toMatch(/^\[SODC\] /);
+  });
+
+  it.each(INTERNAL_TEMPLATES)("uses the automated sign-off in %s", (templateKey) => {
+    expect(EMAIL_TEMPLATE_MANIFEST[templateKey].body).toMatch(
+      /Kind regards,\n\nSODC Admin$/,
+    );
+  });
+
+  it.each(INTERNAL_TEMPLATES)("does not invite a reply in %s", (templateKey) => {
+    expect(EMAIL_TEMPLATE_MANIFEST[templateKey].body).not.toMatch(
+      /\brepl(?:y|ies|ied|ying)\b/i,
+    );
+  });
+
+  it("keeps member personal data out of the pending-approval subject", () => {
+    const subject = EMAIL_TEMPLATE_MANIFEST.newUserPendingApprovalAlert.subject;
+    expect(subject).not.toMatch(/\(\((firstName|lastName|email)\)\)/);
+  });
+
+  it.each([
+    ["guestTicketRequestSubmittedModerator", "moderationUrl"],
+    ["newUserPendingApprovalAlert", "approveUsersUrl"],
+    ["paymentReconciliationExceptionAlert", "reconciliationDashboardUrl"],
+    ["paymentDisputeOpsAlert", "reconciliationDashboardUrl"],
+  ] as const)("retains the remediation link in %s", (templateKey, linkVariable) => {
+    expect(EMAIL_TEMPLATE_MANIFEST[templateKey].variables).toContain(linkVariable);
+  });
+
+  it.each([
+    "paymentReconciliationExceptionAlert",
+    "paymentDisputeOpsAlert",
+  ] as const)("uses member rather than customer wording in %s", (templateKey) => {
+    expect(EMAIL_TEMPLATE_MANIFEST[templateKey].body).toContain("Member: ((customerDisplay))");
+    expect(EMAIL_TEMPLATE_MANIFEST[templateKey].body).not.toContain("Customer:");
   });
 });
