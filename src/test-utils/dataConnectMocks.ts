@@ -4,6 +4,7 @@ export interface DataConnectQueryResultOverrides {
   data?: unknown;
   isLoading?: boolean;
   isError?: boolean;
+  error?: unknown;
   refetch?: ReturnType<typeof vi.fn>;
 }
 

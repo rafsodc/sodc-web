@@ -101,4 +101,20 @@ describe("AdditionalGuestRequestSection", () => {
     expect(screen.getByText("Vegan")).toBeInTheDocument();
     expect(screen.getByText("OK")).toBeInTheDocument();
   });
+
+  it("does not expose a raw callable error", async () => {
+    vi.mocked(firebaseFunctions.submitGuestTicketRequest).mockRejectedValueOnce(
+      new Error("FirebaseError: SQL guest_ticket_requests failed"),
+    );
+    const user = userEvent.setup();
+    render(<AdditionalGuestRequestSection {...baseProps} requests={[]} />);
+
+    await user.type(screen.getByLabelText(/^guest name/i), "Alex Patron");
+    await user.click(screen.getByRole("button", { name: /submit request/i }));
+
+    expect(
+      await screen.findByText("We couldn’t submit the guest request. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/SQL guest_ticket_requests/)).not.toBeInTheDocument();
+  });
 });

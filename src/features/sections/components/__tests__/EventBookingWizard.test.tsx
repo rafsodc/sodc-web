@@ -222,7 +222,7 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByText(/Your booking is confirmed/i)).not.toBeInTheDocument();
   });
 
-  it("submits booking edits with base revision metadata", async () => {
+  it("retries booking edits with the same idempotency key and safe error copy", async () => {
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
       data: {
         user: {
@@ -237,6 +237,9 @@ describe("EventBookingWizard", () => {
       },
       isLoading: false,
     } as never);
+    vi.mocked(firebaseFunctions.submitEventBooking)
+      .mockRejectedValueOnce(new Error("SQL booking revision implementation detail"))
+      .mockResolvedValueOnce({ bookingId: "booking-new", status: "SUBMITTED" });
 
     const user = userEvent.setup();
     render(
@@ -289,8 +292,17 @@ describe("EventBookingWizard", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
     await user.click(screen.getByRole("button", { name: "Save booking changes" }));
 
+    expect(
+      await screen.findByText("We couldn’t submit your booking. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/SQL booking revision/)).not.toBeInTheDocument();
+
+    const firstSubmission = vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[0]?.[0];
+    await user.click(screen.getByRole("button", { name: "Save booking changes" }));
+
     await waitFor(() => {
-      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledWith(
+      expect(firebaseFunctions.submitEventBooking).toHaveBeenNthCalledWith(
+        2,
         expect.objectContaining({
           eventId: "event-1",
           baseBookingId: "booking-1",
@@ -298,6 +310,8 @@ describe("EventBookingWizard", () => {
         })
       );
     });
+    const retrySubmission = vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[1]?.[0];
+    expect(retrySubmission?.idempotencyKey).toBe(firstSubmission?.idempotencyKey);
   });
 
   it("shows moderation notice when guest count exceeds policy on review step", async () => {
