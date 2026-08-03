@@ -1,5 +1,5 @@
 ---
-subject: "[SODC OPS] Payment dispute — ((orderId))"
+subject: "[SODC] Payment dispute — ((orderId))"
 templateKey: paymentDisputeOpsAlert
 variables:
   - orderId
@@ -13,21 +13,21 @@ variables:
   - reconciliationDashboardUrl
   - stripeEventId
 ---
-A payment dispute event has been received.
+A Stripe payment dispute needs review.
 
-Order ID: ((orderId))
+Ticket order ID: ((orderId))
 
 Event: ((eventTitle))
 
-Customer: ((customerDisplay))
+Member: ((customerDisplay))
 
-Dispute ID: ((stripeDisputeId))
+Stripe dispute ID: ((stripeDisputeId))
 
-Stripe status: ((disputeStripeStatus))
+Stripe dispute status: ((disputeStripeStatus))
 
-Reason: ((disputeReason))
+Stripe dispute reason: ((disputeReason))
 
-Local state: ((disputeLocalState))
+SODC dispute state: ((disputeLocalState))
 
 Stripe event type: ((stripeEventType))
 
@@ -35,8 +35,10 @@ Stripe event ID: ((stripeEventId))
 
 ---
 
-Review in the reconciliation dashboard:
+Review the dispute in the reconciliation dashboard:
 
 ((reconciliationDashboardUrl))
 
-SODC Ops
+Kind regards,
+
+SODC Admin

@@ -34,6 +34,10 @@ Also required for sends: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIF
 
 ## Template: `newUserPendingApprovalAlert`
 
+The subject deliberately omits the member's name and email address. Those details
+remain in the body for authorised administrators reviewing the account. The body
+uses the standard automated `Kind regards, SODC Admin` sign-off.
+
 | Key | Semantics |
 |-----|-----------|
 | `firstName` | User's first name |
