@@ -30,6 +30,21 @@ describe("paymentLifecycleEmailDispatcher helpers", () => {
       ),
     ).toContain("19:00 – 23:00");
   });
+
+  it("formats both UK-local dates and times for a multi-day event", () => {
+    expect(
+      formatTransactionalEventDateTime(
+        "2026-07-01T18:00:00.000Z",
+        "2026-07-02T10:00:00.000Z",
+      ),
+    ).toBe("Wednesday, 1 July 2026, 19:00 – Thursday, 2 July 2026, 11:00");
+  });
+
+  it("preserves the supplied values when an event date is invalid", () => {
+    expect(
+      formatTransactionalEventDateTime("not-a-start-date", "not-an-end-date"),
+    ).toBe("not-a-start-date – not-an-end-date");
+  });
 });
 
 const baseOrder = {
