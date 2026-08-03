@@ -5,6 +5,7 @@ import { useGetMyTicketOrderById } from "@dataconnect/generated/react";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { formatPaymentAmount } from "../../../shared/utils/currencyDisplay";
 import { reconcileMyCheckoutSessionOrders } from "../../../shared/utils/firebaseFunctions";
+import { reportError } from "../../../shared/errors";
 
 type CheckoutState = "success" | "cancel";
 
@@ -35,7 +36,7 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
   }, [orderId]);
 
   const shouldQuery = checkoutState === "success" && Boolean(canonicalOrderId);
-  const { data, isLoading, isError, refetch } = useGetMyTicketOrderById(
+  const { data, isLoading, isError, error, refetch } = useGetMyTicketOrderById(
     dataConnect,
     { id: canonicalOrderId ?? "00000000-0000-0000-0000-000000000000" },
     { enabled: shouldQuery },
@@ -46,10 +47,16 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
   const shouldPoll = shouldQuery && status === "PENDING" && pollCount < MAX_POLLS;
 
   useEffect(() => {
+    if (isError) reportError("payments.checkout-status", error);
+  }, [error, isError]);
+
+  useEffect(() => {
     if (!shouldQuery || !canonicalOrderId) {
       return;
     }
-    void reconcileMyCheckoutSessionOrders({ orderId: canonicalOrderId }).catch(() => undefined);
+    void reconcileMyCheckoutSessionOrders({ orderId: canonicalOrderId }).catch(
+      (reconciliationError) => reportError("payments.checkout-reconciliation", reconciliationError),
+    );
   }, [shouldQuery, canonicalOrderId]);
 
   useEffect(() => {
@@ -92,7 +99,28 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
     return (
       <Alert severity="error" onClose={onDismiss} sx={{ mb: 2 }}>
         <AlertTitle>Unable to load order status</AlertTitle>
-        Please refresh the page in a moment, or contact support if this continues.
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2">We couldn’t load the latest payment status.</Typography>
+          <Button color="inherit" size="small" onClick={() => void refetch()}>
+            Retry
+          </Button>
+        </Stack>
+      </Alert>
+    );
+  }
+
+  if (status === "PENDING" && pollCount >= MAX_POLLS) {
+    return (
+      <Alert severity="warning" onClose={onDismiss} sx={{ mb: 2 }}>
+        <AlertTitle>Payment confirmation is taking longer than expected</AlertTitle>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2">
+            Your payment may still be processing. Refresh the status before trying to pay again.
+          </Typography>
+          <Button color="inherit" size="small" onClick={() => void refetch()}>
+            Refresh status
+          </Button>
+        </Stack>
       </Alert>
     );
   }
@@ -136,12 +164,30 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
     );
   }
 
+  if (status === "FAILED") {
+    return (
+      <Alert severity="warning" onClose={onDismiss} sx={{ mb: 2 }}>
+        <AlertTitle>Payment not completed</AlertTitle>
+        This payment was not confirmed. Review your booking before starting checkout again.
+      </Alert>
+    );
+  }
+
+  if (status === "REFUNDED") {
+    return (
+      <Alert severity="info" onClose={onDismiss} sx={{ mb: 2 }}>
+        <AlertTitle>Payment refunded</AlertTitle>
+        This ticket payment has been refunded. Your payment history contains the latest details.
+      </Alert>
+    );
+  }
+
   return (
     <Alert severity="warning" onClose={onDismiss} sx={{ mb: 2 }}>
       <AlertTitle>Payment update required</AlertTitle>
       <Box>
         <Typography variant="body2" sx={{ mb: 1 }}>
-          Current order status: {status}.
+          We received an unexpected payment status. Refresh before trying to pay again, or contact support if this continues.
         </Typography>
         <Button size="small" onClick={() => void refetch()}>
           Refresh status

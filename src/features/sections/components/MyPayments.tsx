@@ -32,6 +32,7 @@ import {
   groupTicketOrdersForDisplay,
   ticketOrderStatusChipColor,
 } from "../utils/myPaymentsDisplay";
+import { reportError, toBookingUserFacingError } from "../../../shared/errors";
 
 interface MyPaymentsProps {
   onBack: () => void;
@@ -65,6 +66,10 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   );
 
   useEffect(() => {
+    if (isError) reportError("payments.history", error);
+  }, [error, isError]);
+
+  useEffect(() => {
     if (isLoading || paymentGroups.length === 0) {
       return;
     }
@@ -84,7 +89,8 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
           Object.entries(artifacts.artifactsByOrderId).map(([orderId, value]) => [artifactKey(orderId), value])
         );
         setStripeArtifactsByOrderId((prev) => ({ ...prev, ...normalizedArtifacts }));
-      } catch {
+      } catch (artifactError) {
+        reportError("payments.receipts", artifactError);
         // Receipt links are optional; fail silently on the member UI.
       }
     };
@@ -117,7 +123,8 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
     attemptedReconcileSessions.current.add(sessionKey);
     void reconcileMyCheckoutSessionOrders({ orderId: reconcileAnchor.id })
       .then(() => refetch())
-      .catch(() => {
+      .catch((reconciliationError) => {
+        reportError("payments.reconciliation", reconciliationError);
         attemptedReconcileSessions.current.delete(sessionKey);
       });
   }, [isLoading, orders, refetch]);
@@ -142,7 +149,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
             </Button>
           }
         >
-          {error instanceof Error ? error.message : "We could not load your payment history. Please try again."}
+          {toBookingUserFacingError(error, "payment-history").message}
         </Alert>
       ) : paymentGroups.length === 0 ? (
         <Alert severity="info">
