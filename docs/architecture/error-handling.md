@@ -32,6 +32,19 @@ try {
 optional recommended action. UI components should use `retryable` only when the
 operation itself is safe to repeat.
 
+## Failure presentation and render boundaries
+
+Use `FailureState` for unexpected inline or full-page failures. Supply only
+reviewed title/message copy and only offer Retry when repeating the operation is
+safe. The component provides consistent recovery actions, an accessible alert or
+main landmark, and moves focus to the failure heading.
+
+`ErrorBoundary` protects the complete app shell and every routed page. It reports
+the original render error through `reportError`, displays fixed safe copy, and
+supports Try again, Reload, Back, and Home recovery. Route boundaries receive a
+location-based `resetKey`; changing route clears stale failure state and mounts
+the destination normally. Do not add feature-specific boundary implementations.
+
 ## Provider and domain codes
 
 `extractErrorCode` reads provider codes such as `functions/unavailable` and uses
