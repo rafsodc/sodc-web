@@ -18,11 +18,9 @@ import type { UserData } from "../../../types";
 import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
 import { ROUTES } from "../../../constants";
-import {
-  canAttemptSignIn,
-  isPasswordPolicyAuthError,
-} from "../utils/passwordValidation";
+import { canAttemptSignIn } from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
+import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 interface AuthGateProps {
   userData?: UserData | null;
@@ -58,7 +56,8 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
       if (userCredential.user.emailVerified) {
         try {
           await reconcileMyEmail();
-        } catch {
+        } catch (reconciliationError) {
+          reportError("auth.sign-in.reconcile-email", reconciliationError);
           // Accounts without a Data Connect profile have nothing to reconcile;
           // a later sign-in retries after profile creation.
         }
@@ -68,11 +67,8 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
         onRegisterComplete();
       }
     } catch (e: unknown) {
-      setError(
-        isPasswordPolicyAuthError(e)
-          ? "This password no longer meets the account security policy. Reset your password to continue."
-          : (e as { message?: string })?.message ?? "Sign-in failed",
-      );
+      reportError("auth.sign-in", e);
+      setError(toAuthUserFacingError(e, "sign-in").message);
     } finally {
       setSubmitting(false);
     }

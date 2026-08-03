@@ -5,6 +5,7 @@ import {
   extractErrorCode,
   reportError,
   toAuthUserFacingError,
+  toProfileUserFacingError,
   toUserFacingError,
 } from "../index";
 
@@ -113,6 +114,30 @@ describe("shared error handling", () => {
     );
     expect(mapped.message).toBe("This email is already registered. Please sign in instead.");
     expect(mapped.message).not.toContain("Firebase");
+  });
+
+  it("maps account changes and one-time links to contextual safe messages", () => {
+    expect(
+      toAuthUserFacingError({ code: "auth/wrong-password" }, "password-change").message,
+    ).toBe("Current password is incorrect.");
+    expect(
+      toAuthUserFacingError(
+        { code: "functions/failed-precondition", details: { code: "RECENT_LOGIN_REQUIRED" } },
+        "email-change",
+      ).message,
+    ).toContain("sign out and sign in again");
+    expect(
+      toAuthUserFacingError({ code: "auth/expired-action-code" }, "email-action").message,
+    ).toContain("Sign in to request a new one");
+  });
+
+  it("does not expose raw profile service failures", () => {
+    const mapped = toProfileUserFacingError(
+      new Error("SQL constraint user_private_record leaked"),
+      "update",
+    );
+    expect(mapped.message).toBe("We couldn’t save your profile. Check your connection and try again.");
+    expect(mapped.message).not.toContain("SQL");
   });
 
   it("reports the original failure separately from display mapping", () => {

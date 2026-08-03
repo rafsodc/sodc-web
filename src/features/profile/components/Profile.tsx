@@ -33,6 +33,7 @@ import RankSelect from "../../../shared/components/RankSelect";
 import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
 import { auth } from "../../../config/firebase";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
+import { reportError, toProfileUserFacingError } from "../../../shared/errors";
 
 interface ProfileProps {
   userData: UserData | null;
@@ -120,7 +121,9 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
           membershipStatus as MembershipStatus
         );
         if (!statusResult.success) {
-          setError(statusResult.error || "Failed to update membership status");
+          const statusError = new Error(statusResult.error || "Membership status update failed");
+          reportError("profile.update.membership-status", statusError);
+          setError(toProfileUserFacingError(statusError, "update").message);
           setSubmitting(false);
           return;
         }
@@ -130,7 +133,10 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
       if (displayName) {
         const displayNameResult = await updateDisplayName(displayName);
         if (!displayNameResult.success) {
-          console.warn("Failed to update display name:", displayNameResult.error);
+          reportError(
+            "profile.update.display-name",
+            new Error(displayNameResult.error ?? "Display name update failed"),
+          );
         }
       }
 
@@ -138,8 +144,9 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
       if (onUpdate) {
         onUpdate();
       }
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to save profile");
+    } catch (err: unknown) {
+      reportError("profile.update", err);
+      setError(toProfileUserFacingError(err, "update").message);
     } finally {
       setSubmitting(false);
     }

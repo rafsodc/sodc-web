@@ -35,6 +35,7 @@ import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import { canUserChangeStatus, membershipStatusSaveAction, NON_RESTRICTED_STATUSES, RESTRICTED_STATUSES } from "../../users/utils/membershipStatusValidation";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
+import { reportError, toProfileUserFacingError } from "../../../shared/errors";
 
 interface EditUserDialogProps {
   open: boolean;
@@ -118,7 +119,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         setIsCivilServant(false);
         setIsIndustry(false);
       }
-    } catch (_err) {
+    } catch (loadError) {
+      reportError("profile.admin-edit.load", loadError);
       // Fallback if getUserById fails
       const parsed = parseDisplayName(userToLoad.displayName);
       setFirstName(parsed.firstName);
@@ -204,7 +206,12 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       if (statusSaveAction !== "none") {
         const statusResult = await updateMembershipStatus(user.uid, membershipStatus);
         if (!statusResult.success) {
-          setUpdateMessage({ type: "error", text: statusResult.error || "Failed to update membership status" });
+          const statusError = new Error(statusResult.error || "Membership status update failed");
+          reportError("profile.admin-edit.membership-status", statusError);
+          setUpdateMessage({
+            type: "error",
+            text: toProfileUserFacingError(statusError, "update").message,
+          });
           setSubmitting(false);
           return; // Keep dialog open on error
         }
@@ -215,8 +222,10 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       if (displayName) {
         const displayNameResult = await updateUserDisplayName(user.uid, displayName);
         if (!displayNameResult.success) {
-          // Log error but don't fail the whole operation
-          console.warn("Failed to update display name:", displayNameResult.error);
+          reportError(
+            "profile.admin-edit.display-name",
+            new Error(displayNameResult.error ?? "Display name update failed"),
+          );
         }
       }
       
@@ -228,9 +237,12 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         onSuccess(successMessage);
       }
       handleClose();
-    } catch (err: any) {
-      // Error - keep dialog open and show error message
-      setUpdateMessage({ type: "error", text: err?.message || "Failed to update user profile" });
+    } catch (err: unknown) {
+      reportError("profile.admin-edit", err);
+      setUpdateMessage({
+        type: "error",
+        text: toProfileUserFacingError(err, "update").message,
+      });
       setSubmitting(false);
     }
   };
