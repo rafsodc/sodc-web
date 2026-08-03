@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -30,18 +30,24 @@ import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import "../../../shared/components/PageContainer.css";
+import FailureState from "../../../shared/components/FailureState";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface PaymentReconciliationDashboardProps {
   onBack: () => void;
 }
 
 export default function PaymentReconciliationDashboard({ onBack }: PaymentReconciliationDashboardProps) {
-  const { data, isLoading, refetch } = useListOpenPaymentReconciliationExceptions(dataConnect);
+  const { data, isLoading, isError, error: queryError, refetch } = useListOpenPaymentReconciliationExceptions(dataConnect);
   const [typeFilter, setTypeFilter] = useState<"ALL" | PaymentReconciliationExceptionType>("ALL");
   const [eventSearch, setEventSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    if (isError) reportError("admin.payment-reconciliation.load", queryError);
+  }, [isError, queryError]);
 
   const filteredRows = useMemo(() => {
     const rows = data?.paymentReconciliationExceptions ?? [];
@@ -66,7 +72,8 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
       await refetch();
       showSuccess("Exception marked reviewed");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to mark exception reviewed");
+      reportError("admin.payment-reconciliation.resolve", err, { exceptionId: id });
+      setError(toAdminUserFacingError(err, "payment-reconciliation").message);
     } finally {
       setResolvingId(null);
     }
@@ -109,6 +116,12 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
 
       {isLoading ? (
         <CircularProgress size={24} />
+      ) : isError ? (
+        <FailureState
+          title={toAdminUserFacingError(queryError, "payment-reconciliation").title}
+          message={toAdminUserFacingError(queryError, "payment-reconciliation").message}
+          onRetry={() => void refetch()}
+        />
       ) : filteredRows.length === 0 ? (
         <Alert severity="info">No open reconciliation exceptions match current filters.</Alert>
       ) : (

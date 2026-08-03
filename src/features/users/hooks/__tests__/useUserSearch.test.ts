@@ -122,7 +122,7 @@ describe("useUserSearch", () => {
 
     const { result } = renderHook(() => useUserSearch("test", 0));
 
-    await waitFor(() => expect(result.current.error).toBe("Search failed"));
+    await waitFor(() => expect(result.current.error).toBe("Users could not be searched. Please try again."));
 
     expect(result.current.users).toEqual([]);
     expect(result.current.loading).toBe(false);
@@ -134,7 +134,8 @@ describe("useUserSearch", () => {
 
     const { result } = renderHook(() => useUserSearch("test", 0));
 
-    await waitFor(() => expect(result.current.error).toBe("Network error"));
+    await waitFor(() => expect(result.current.error).toBe("We could not complete the user operation. Please try again."));
+    expect(result.current.error).not.toContain("Network error");
   });
 
   it("clears results when search term is cleared", async () => {

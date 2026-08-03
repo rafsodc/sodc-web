@@ -27,6 +27,7 @@ import { grantAdminClaim, revokeAdminClaim } from "../../../shared/utils/firebas
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
 import "../../../shared/components/PageContainer.css";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface ManageUsersProps {
   onBack: () => void;
@@ -80,16 +81,13 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
         setAdminUsers(result.users);
         setAdminCount(result.users.length);
       } else {
-        setAdminListError(result.error || "Failed to fetch admin users");
+        setAdminListError("Administrator accounts could not be loaded. Please try again.");
         setAdminUsers([]);
         setAdminCount(0);
       }
-    } catch (err: unknown) {
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Failed to fetch admin users";
-      setAdminListError(message);
+    } catch (caught) {
+      reportError("admin.users.list-admins", caught);
+      setAdminListError(toAdminUserFacingError(caught, "users").message);
       setAdminUsers([]);
       setAdminCount(0);
     } finally {
@@ -151,15 +149,12 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
       } else {
         setUpdateMessage({
           type: "error",
-          text: result.error || "Failed to grant admin claim",
+          text: "Administrator access could not be granted. Please try again.",
         });
       }
-    } catch (err: unknown) {
-      const message =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Failed to grant admin claim";
-      setUpdateMessage({ type: "error", text: message });
+    } catch (caught) {
+      reportError("admin.users.grant-admin", caught, { userId: uid });
+      setUpdateMessage({ type: "error", text: toAdminUserFacingError(caught, "admin-claims").message });
     } finally {
       setUpdatingUserId(null);
       setTimeout(() => setUpdateMessage(null), ERROR_MESSAGE_TIMEOUT);
@@ -192,15 +187,12 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
       } else {
         setUpdateMessage({
           type: "error",
-          text: result.error || "Failed to revoke admin claim",
+          text: "Administrator access could not be revoked. Please try again.",
         });
       }
-    } catch (err: unknown) {
-      const errorMessage =
-        err && typeof (err as { message?: string }).message === "string"
-          ? (err as { message: string }).message
-          : "Failed to revoke admin claim";
-      setUpdateMessage({ type: "error", text: errorMessage });
+    } catch (caught) {
+      reportError("admin.users.revoke-admin", caught, { userId: uid });
+      setUpdateMessage({ type: "error", text: toAdminUserFacingError(caught, "admin-claims").message });
     } finally {
       setUpdatingUserId(null);
       setTimeout(() => setUpdateMessage(null), ERROR_MESSAGE_TIMEOUT);

@@ -2,6 +2,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { firebaseApp } from "../../../config/firebase";
 import type { SearchUsersRequest, SearchUsersResponse } from "../../../types";
 import { ITEMS_PER_PAGE } from "../../../constants";
+import { reportError } from "../../../shared/errors";
 
 /**
  * Searches for users by email or display name
@@ -24,11 +25,11 @@ export async function searchUsers(
     
     const result = await searchUsersCallable({ searchTerm, page, pageSize });
     return { success: true, data: result.data };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    reportError("admin.users.search-callable", error);
     return { 
       success: false, 
-      error: error?.message || "Failed to search users" 
+      error: "Users could not be searched. Please try again."
     };
   }
 }
-

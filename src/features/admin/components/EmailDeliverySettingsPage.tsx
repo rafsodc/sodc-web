@@ -26,6 +26,7 @@ import {
   type GovNotifyDeliveryAdminConfiguration,
 } from "../../../shared/utils/firebaseFunctions/govNotifyDeliveryConfiguration";
 import "../../../shared/components/PageContainer.css";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 const MODES: GovNotifyDeliveryMode[] = ["SIMULATION", "TEAM_TEST", "LIVE"];
 const RANK: Record<GovNotifyDeliveryMode, number> = {
@@ -48,10 +49,6 @@ interface Props {
   onBack: () => void;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "The operation could not be completed.";
-}
-
 export default function EmailDeliverySettingsPage({ onBack }: Props) {
   const [configuration, setConfiguration] =
     useState<GovNotifyDeliveryAdminConfiguration | null>(null);
@@ -70,7 +67,8 @@ export default function EmailDeliverySettingsPage({ onBack }: Props) {
       setConfiguration(result);
       setSelectedMode(result.runtimeMode);
     } catch (loadError) {
-      setError(errorMessage(loadError));
+      reportError("admin.email-delivery.load", loadError);
+      setError(toAdminUserFacingError(loadError, "email-configuration").message);
     } finally {
       setLoading(false);
     }
@@ -106,7 +104,8 @@ export default function EmailDeliverySettingsPage({ onBack }: Props) {
       setReason("");
       setConfirmOpen(false);
     } catch (saveError) {
-      setError(errorMessage(saveError));
+      reportError("admin.email-delivery.save", saveError, { selectedMode });
+      setError(toAdminUserFacingError(saveError, "email-configuration").message);
       setConfirmOpen(false);
     } finally {
       setSaving(false);

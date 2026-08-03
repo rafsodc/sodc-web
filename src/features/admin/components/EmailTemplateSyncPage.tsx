@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { CheckCircle, ContentCopy, Error, ExpandLess, ExpandMore, OpenInNew, Warning } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import {
   getTemplateSyncStatus,
   type TemplateSyncResult,
@@ -299,8 +300,9 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
     try {
       const data = await getTemplateSyncStatus();
       setResults(data.results);
-    } catch {
-      setError("Failed to fetch template sync status");
+    } catch (caught) {
+      reportError("admin.email-templates.sync-status", caught);
+      setError(toAdminUserFacingError(caught, "email-configuration").message);
     } finally {
       setLoading(false);
     }

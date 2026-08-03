@@ -101,3 +101,28 @@ same sign-in response.
 - Always retain the safe unknown fallback.
 - Test the known code, malformed/unknown input, raw-message non-disclosure, and
   retryability or privacy behaviour.
+
+## Administration audit (#467)
+
+The administration audit completed on 3 August 2026 covers user and approval
+management, groups, sections, events, tickets and guest moderation, section
+files, announcements and delivery settings, payment reconciliation, and audit
+logs. These surfaces map failures through `toAdminUserFacingError`, report the
+original error separately, and do not display arbitrary provider messages.
+
+The following cases are intentionally retained:
+
+- Application-owned validation copy, such as required-field and date-order
+  messages, is displayed directly because it is reviewed UI text rather than
+  exception content.
+- Stable application domain codes may select reviewed feature-specific copy;
+  the associated server message is never displayed.
+- Announcement delivery failure reasons remain available in controlled logs and
+  persisted operational records, while the UI displays only a safe summary.
+- `useUserData` still inspects a caught message to classify a missing profile,
+  but that message is not rendered. Replacing this internal compatibility check
+  with a stable Data Connect code is deferred until that API exposes one.
+
+Any newly added administration workflow must follow the map, report, display
+contract above and include a regression assertion that an arbitrary technical
+message is absent from rendered output.

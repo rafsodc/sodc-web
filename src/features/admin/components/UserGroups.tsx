@@ -39,6 +39,7 @@ import type {
   UserSearchResult,
   UserSummary,
 } from "./userGroupsTypes";
+import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface UserGroupsProps {
   onBack: () => void;
@@ -101,8 +102,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       existingGroups.sort((a, b) => a.name.localeCompare(b.name));
       
       setUserGroups(existingGroups);
-    } catch (err: any) {
-      setError(err?.message || "Failed to fetch user groups");
+    } catch (caught) {
+      reportError("admin.user-groups.load", caught);
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setLoading(false);
     }
@@ -124,8 +126,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
           [groupId]: result.data.userGroup!,
         }));
       }
-    } catch (err: any) {
-      console.error(`Failed to fetch details for group ${groupId}:`, err);
+    } catch (caught) {
+      reportError("admin.user-groups.details", caught, { groupId });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
     }
@@ -164,8 +167,12 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
             }))
           );
         }
-      } catch {
-        if (!cancelled) setAllUsers([]);
+      } catch (caught) {
+        reportError("admin.user-groups.members", caught);
+        if (!cancelled) {
+          setAllUsers([]);
+          setError(toAdminUserFacingError(caught, "user-groups").message);
+        }
       } finally {
         if (!cancelled) setLoadingAllUsers(false);
       }
@@ -231,7 +238,8 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
                   membershipStatus: userResult.data.user.membershipStatus,
                 };
               }
-            } catch (_err) {
+            } catch (caught) {
+              reportError("admin.user-groups.user-detail", caught, { userId: user.uid });
               // If we can't fetch user data, use display name from search
               const nameParts = user.displayName?.split(", ") || [];
               return {
@@ -247,8 +255,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         );
         setSearchResults(usersWithData.filter((u): u is NonNullable<typeof u> => u !== null));
       }
-    } catch (err: any) {
-      console.error("Failed to search users:", err);
+    } catch (caught) {
+      reportError("admin.user-groups.search", caught);
+      setError(toAdminUserFacingError(caught, "users").message);
       setSearchResults([]);
     } finally {
       setSearchingUsers(false);
@@ -293,8 +302,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       setUserSearchTerm("");
       setSearchResults([]);
       showSuccess("User added to group");
-    } catch (err: any) {
-      setError(err?.message || "Failed to add user to group");
+    } catch (caught) {
+      reportError("admin.user-groups.add-user", caught, { groupId: addingToGroupId, userId });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setAddingUserId(null);
     }
@@ -317,8 +327,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       setGroupDetails({ ...groupDetails });
       await fetchGroupDetails(groupId);
       showSuccess("User removed from group");
-    } catch (err: any) {
-      setError(err?.message || "Failed to remove user from group");
+    } catch (caught) {
+      reportError("admin.user-groups.remove-user", caught, { groupId, userId });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     }
   };
 
@@ -353,8 +364,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       delete groupDetails[group.id];
       setGroupDetails({ ...groupDetails });
       showSuccess(`User group "${group.name}" deleted`);
-    } catch (err: any) {
-      setError(err?.message || "Failed to delete user group");
+    } catch (caught) {
+      reportError("admin.user-groups.delete", caught, { groupId: group.id });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     }
   };
 
@@ -388,8 +400,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       setDialogOpen(false);
       await fetchUserGroupsList();
       showSuccess(`User group ${editingGroup ? "updated" : "created"}`);
-    } catch (err: any) {
-      setError(err?.message || `Failed to ${editingGroup ? "update" : "create"} user group`);
+    } catch (caught) {
+      reportError("admin.user-groups.save", caught, { editing: Boolean(editingGroup) });
+      setError(toAdminUserFacingError(caught, "user-groups").message);
     } finally {
       setSubmitting(false);
     }
