@@ -165,7 +165,7 @@ getGovNotifyDeliveryConfigurationRef.operationName = 'GetGovNotifyDeliveryConfig
 exports.getGovNotifyDeliveryConfigurationRef = getGovNotifyDeliveryConfigurationRef;
 
 exports.getGovNotifyDeliveryConfiguration = function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
   return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -180,7 +180,7 @@ listGovNotifyDeliveryModeAuditsRef.operationName = 'ListGovNotifyDeliveryModeAud
 exports.listGovNotifyDeliveryModeAuditsRef = listGovNotifyDeliveryModeAuditsRef;
 
 exports.listGovNotifyDeliveryModeAudits = function listGovNotifyDeliveryModeAudits(dcOrVars, varsOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(listGovNotifyDeliveryModeAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -223,7 +223,7 @@ getNotifyReplyToConfigurationRef.operationName = 'GetNotifyReplyToConfiguration'
 exports.getNotifyReplyToConfigurationRef = getNotifyReplyToConfigurationRef;
 
 exports.getNotifyReplyToConfiguration = function getNotifyReplyToConfiguration(dcOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
   return executeQuery(getNotifyReplyToConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
@@ -238,7 +238,7 @@ listNotifyReplyToAuditsRef.operationName = 'ListNotifyReplyToAudits';
 exports.listNotifyReplyToAuditsRef = listNotifyReplyToAuditsRef;
 
 exports.listNotifyReplyToAudits = function listNotifyReplyToAudits(dcOrVars, varsOrOptions, options) {
-
+  
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(listNotifyReplyToAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }

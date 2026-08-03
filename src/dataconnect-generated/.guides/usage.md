@@ -87,13 +87,13 @@ const { data } = await CreateGovNotifyDeliveryConfiguration(dataConnect);
 // Operation ChangeGovNotifyDeliveryMode:  For variables, look at type ChangeGovNotifyDeliveryModeVars in ../index.d.ts
 const { data } = await ChangeGovNotifyDeliveryMode(dataConnect, changeGovNotifyDeliveryModeVars);
 
-// Operation GetNotifyReplyToConfiguration:
+// Operation GetNotifyReplyToConfiguration: 
 const { data } = await GetNotifyReplyToConfiguration(dataConnect);
 
 // Operation ListNotifyReplyToAudits:  For variables, look at type ListNotifyReplyToAuditsVars in ../index.d.ts
 const { data } = await ListNotifyReplyToAudits(dataConnect, listNotifyReplyToAuditsVars);
 
-// Operation CreateNotifyEmailConfiguration:
+// Operation CreateNotifyEmailConfiguration: 
 const { data } = await CreateNotifyEmailConfiguration(dataConnect);
 
 // Operation CreateNotifyReplyToAddress:  For variables, look at type CreateNotifyReplyToAddressVars in ../index.d.ts
