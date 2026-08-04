@@ -106,21 +106,24 @@
       "viteMode": "development",
       "hostingSite": "sodc-web",
       "hostingUrl": "https://sodc-web.web.app",
-      "storageBucket": "sodc-web.firebasestorage.app"
+      "storageBucket": "sodc-web.firebasestorage.app",
+      "requireCloudSqlResilience": false
     },
     "beta": {
       "projectId": "sodc-web-beta",
       "viteMode": "staging",
       "hostingSite": "sodc-web-beta",
       "hostingUrl": "https://sodc-web-beta.web.app",
-      "storageBucket": "sodc-web-beta.firebasestorage.app"
+      "storageBucket": "sodc-web-beta.firebasestorage.app",
+      "requireCloudSqlResilience": true
     },
     "prod": {
       "projectId": "sodc-web-production",
       "viteMode": "production",
       "hostingSite": "sodc-web-production",
       "hostingUrl": "https://sodc-web-production.web.app",
-      "storageBucket": "sodc-web-production.firebasestorage.app"
+      "storageBucket": "sodc-web-production.firebasestorage.app",
+      "requireCloudSqlResilience": true
     }
   }
 }
