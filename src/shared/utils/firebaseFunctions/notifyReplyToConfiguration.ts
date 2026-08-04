@@ -42,7 +42,7 @@ export interface NotifyReplyToAdminConfiguration {
     previousValue?: string | null;
     newValue?: string | null;
     changedBy: string;
-    reason: string;
+    reason?: string | null;
     changedAt: string;
   }>;
 }
@@ -55,32 +55,32 @@ export const getNotifyReplyToAdminConfiguration = () =>
   call<void, NotifyReplyToAdminConfiguration>("getNotifyReplyToAdminConfiguration", undefined);
 
 export const createNotifyReplyToAddress = (data: {
-  displayLabel: string; emailAddress: string; notifyUuid: string; reason: string;
+  displayLabel: string; emailAddress: string; notifyUuid: string;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("createNotifyReplyToAddress", data);
 
 export const updateNotifyReplyToAddress = (data: {
   addressId: string; expectedVersion: number; displayLabel: string;
-  emailAddress: string; notifyUuid: string; reason: string;
+  emailAddress: string; notifyUuid: string;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("updateNotifyReplyToAddress", data);
 
 export const sendNotifyReplyToVerificationTest = (data: {
-  addressId: string; expectedVersion: number; reason: string;
+  addressId: string; expectedVersion: number;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("sendNotifyReplyToVerificationTest", data);
 
 export const confirmNotifyReplyToVerification = (data: {
-  addressId: string; expectedVersion: number; reason: string;
+  addressId: string; expectedVersion: number;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("confirmNotifyReplyToVerification", data);
 
 export const updateNotifyReplyToAvailability = (data: {
   addressId: string; expectedVersion: number; expectedConfigurationVersion: number;
   enabled: boolean; announcementSelectable: boolean; clearDefault?: boolean;
-  replacementAddressId?: string; reason: string;
+  replacementAddressId?: string;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("updateNotifyReplyToAvailability", data);
 
 export const changeNotifyReplyToDefault = (data: {
-  addressId?: string; clearDefault?: boolean; expectedVersion: number; reason: string;
+  addressId?: string; clearDefault?: boolean; expectedVersion: number;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("changeNotifyReplyToDefault", data);
 
 export const setNotifyTemplateReplyToOverride = (data: {
-  templateKey: string; addressId?: string; reason: string;
+  templateKey: string; addressId?: string;
 }) => call<typeof data, NotifyReplyToAdminConfiguration>("setNotifyTemplateReplyToOverride", data);

@@ -36,7 +36,6 @@ import { getGovNotifyEmailReplyToId } from "./govNotifyReplyToId";
 import { enforceRateLimit } from "./rateLimiter";
 
 const AUDIT_LIMIT = 50;
-const REASON_MIN_LENGTH = 5;
 const APP_BASE_URL = (process.env.APP_BASE_URL || "http://localhost:5173").replace(/\/$/, "");
 
 type Configuration = Awaited<ReturnType<typeof getOrCreateNotifyReplyToConfiguration>>;
@@ -51,8 +50,12 @@ export interface NotifyReplyToAdminConfiguration {
   audits: Awaited<ReturnType<typeof listNotifyReplyToAudits>>["data"]["notifyReplyToAudits"];
 }
 
-function reason(value: unknown): string {
-  return validateStringLength(requireString(value, "reason"), "reason", 500, REASON_MIN_LENGTH);
+// Reply-to actions do not require a reason; only the site-wide delivery mode
+// audit (functions/src/govNotifyDeliveryAdmin.ts) does.
+function optionalReason(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? validateStringLength(trimmed, "reason", 500, 0) : undefined;
 }
 
 function expectedVersion(value: unknown, fieldName = "expectedVersion"): number {
@@ -138,7 +141,7 @@ export const createNotifyReplyToAddress = onCall(
       emailAddress,
       notifyUuid,
       changedBy: request.auth!.uid,
-      reason: reason(request.data?.reason),
+      reason: optionalReason(request.data?.reason),
       newValue: JSON.stringify({ id, displayLabel, emailAddress, notifyUuid }),
     });
     return readAdminConfiguration();
@@ -164,7 +167,7 @@ export const updateNotifyReplyToAddress = onCall(
       emailAddress,
       notifyUuid,
       changedBy: request.auth!.uid,
-      reason: reason(request.data?.reason),
+      reason: optionalReason(request.data?.reason),
       previousValue: addressValue(address),
       newValue: JSON.stringify({ id: address.id, displayLabel, emailAddress, notifyUuid }),
     });
@@ -181,7 +184,7 @@ export const sendNotifyReplyToVerificationTest = onCall(
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const address = requireAddress(configuration, request.data?.addressId);
     const version = expectedVersion(request.data?.expectedVersion);
-    const changeReason = reason(request.data?.reason);
+    const changeReason = optionalReason(request.data?.reason);
     if (address.version !== version) throw new HttpsError("aborted", "Reply-to address changed; reload and try again");
     const adminEmail = request.auth!.token.email;
     if (typeof adminEmail !== "string" || request.auth!.token.email_verified !== true) {
@@ -230,7 +233,7 @@ export const confirmNotifyReplyToVerification = onCall(
       id: address.id,
       expectedVersion: expectedVersion(request.data?.expectedVersion),
       changedBy: request.auth!.uid,
-      reason: reason(request.data?.reason),
+      reason: optionalReason(request.data?.reason),
     });
     assertChanged(result.data.changed, "Reply-to address changed; reload and try again");
     return readAdminConfiguration();
@@ -244,7 +247,7 @@ export const updateNotifyReplyToAvailability = onCall(
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const address = requireAddress(configuration, request.data?.addressId);
     const version = expectedVersion(request.data?.expectedVersion);
-    const changeReason = reason(request.data?.reason);
+    const changeReason = optionalReason(request.data?.reason);
     const enabled = request.data?.enabled === true;
     const announcementSelectable = enabled && request.data?.announcementSelectable === true;
     if (enabled && address.verificationStatus !== "VERIFIED") {
@@ -304,7 +307,7 @@ export const changeNotifyReplyToDefault = onCall(
       previousAddressId,
       newAddressId,
       changedBy: request.auth!.uid,
-      reason: reason(request.data?.reason),
+      reason: optionalReason(request.data?.reason),
       previousValue: JSON.stringify({ addressId: previousAddressId }),
       newValue: JSON.stringify({ addressId: newAddressId }),
     });
@@ -321,7 +324,7 @@ export const setNotifyTemplateReplyToOverride = onCall(
     if (!EMAIL_TEMPLATE_MANIFEST[templateKey]) throw new HttpsError("invalid-argument", "Unknown automated email template");
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const existing = configuration.notifyTemplateReplyToOverrides.find((row) => row.templateKey === templateKey);
-    const changeReason = reason(request.data?.reason);
+    const changeReason = optionalReason(request.data?.reason);
     if (!request.data?.addressId) {
       if (!existing) throw new HttpsError("failed-precondition", "This template already uses the system default");
       await dcClearOverride({

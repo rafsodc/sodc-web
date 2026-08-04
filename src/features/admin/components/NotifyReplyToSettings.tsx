@@ -40,7 +40,6 @@ export default function NotifyReplyToSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reason, setReason] = useState("");
   const [editing, setEditing] = useState<NotifyReplyToAddress | null>(null);
   const [displayLabel, setDisplayLabel] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
@@ -66,7 +65,6 @@ export default function NotifyReplyToSettings() {
       address.enabled && address.verificationStatus === "VERIFIED") ?? [],
     [configuration],
   );
-  const canChange = reason.trim().length >= 5 && !saving;
 
   const run = async (
     label: string,
@@ -76,7 +74,6 @@ export default function NotifyReplyToSettings() {
     setError(null);
     try {
       setConfiguration(await action());
-      setReason("");
     } catch (caught) {
       reportError(`admin.notify-reply-to.${label}`, caught);
       setError(toAdminUserFacingError(caught, "email-configuration").message);
@@ -100,7 +97,6 @@ export default function NotifyReplyToSettings() {
   };
 
   const saveAddress = async () => {
-    if (!canChange) return;
     await run(editing ? "update" : "create", () => editing
       ? updateNotifyReplyToAddress({
         addressId: editing.id,
@@ -108,9 +104,8 @@ export default function NotifyReplyToSettings() {
         displayLabel,
         emailAddress,
         notifyUuid,
-        reason: reason.trim(),
       })
-      : createNotifyReplyToAddress({ displayLabel, emailAddress, notifyUuid, reason: reason.trim() }));
+      : createNotifyReplyToAddress({ displayLabel, emailAddress, notifyUuid }));
     resetForm();
   };
 
@@ -136,15 +131,6 @@ export default function NotifyReplyToSettings() {
                 : "No site-wide default is set; GOV.UK Notify's service default will be used."}
           </Alert>
 
-          <TextField
-            fullWidth
-            label="Reason for change"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            inputProps={{ maxLength: 500 }}
-            helperText="Required for every change and verification step (at least 5 characters)."
-          />
-
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography variant="h6">{editing ? "Edit reply-to address" : "Add reply-to address"}</Typography>
             {editing && (
@@ -159,7 +145,7 @@ export default function NotifyReplyToSettings() {
               <Stack direction="row" spacing={1}>
                 <Button
                   variant="contained"
-                  disabled={!canChange || !displayLabel.trim() || !emailAddress.trim() || !notifyUuid.trim()}
+                  disabled={saving || !displayLabel.trim() || !emailAddress.trim() || !notifyUuid.trim()}
                   onClick={() => void saveAddress()}
                 >
                   {editing ? "Save and reverify" : "Add address"}
@@ -198,41 +184,38 @@ export default function NotifyReplyToSettings() {
                     <Stack direction="row" spacing={1} flexWrap="wrap" alignContent="flex-start">
                       <Button size="small" onClick={() => beginEdit(address)} disabled={saving || isDefault}>Edit</Button>
                       {address.verificationStatus !== "VERIFIED" && (
-                        <Button size="small" disabled={!canChange} onClick={() => void run("test", () => sendNotifyReplyToVerificationTest({
-                          addressId: address.id, expectedVersion: address.version, reason: reason.trim(),
+                        <Button size="small" disabled={saving} onClick={() => void run("test", () => sendNotifyReplyToVerificationTest({
+                          addressId: address.id, expectedVersion: address.version,
                         }))}>Send test</Button>
                       )}
                       {address.verificationStatus === "PROVIDER_ACCEPTED" && (
-                        <Button size="small" variant="outlined" disabled={!canChange} onClick={() => void run("confirm", () => confirmNotifyReplyToVerification({
-                          addressId: address.id, expectedVersion: address.version, reason: reason.trim(),
+                        <Button size="small" variant="outlined" disabled={saving} onClick={() => void run("confirm", () => confirmNotifyReplyToVerification({
+                          addressId: address.id, expectedVersion: address.version,
                         }))}>Confirm Reply-To</Button>
                       )}
                       {address.verificationStatus === "VERIFIED" && (
-                        <Button size="small" disabled={!canChange} onClick={() => void run("availability", () => updateNotifyReplyToAvailability({
+                        <Button size="small" disabled={saving} onClick={() => void run("availability", () => updateNotifyReplyToAvailability({
                           addressId: address.id,
                           expectedVersion: address.version,
                           expectedConfigurationVersion: configuration.configuration.version,
                           enabled: !address.enabled,
                           announcementSelectable: address.enabled ? false : address.announcementSelectable,
                           clearDefault: isDefault && address.enabled,
-                          reason: reason.trim(),
                         }))}>{address.enabled ? "Disable" : "Enable"}</Button>
                       )}
                       {address.enabled && (
-                        <Button size="small" disabled={!canChange} onClick={() => void run("announcement", () => updateNotifyReplyToAvailability({
+                        <Button size="small" disabled={saving} onClick={() => void run("announcement", () => updateNotifyReplyToAvailability({
                           addressId: address.id,
                           expectedVersion: address.version,
                           expectedConfigurationVersion: configuration.configuration.version,
                           enabled: true,
                           announcementSelectable: !address.announcementSelectable,
-                          reason: reason.trim(),
                         }))}>{address.announcementSelectable ? "Remove from announcements" : "Allow for announcements"}</Button>
                       )}
                       {address.enabled && !isDefault && (
-                        <Button size="small" disabled={!canChange} onClick={() => void run("default", () => changeNotifyReplyToDefault({
+                        <Button size="small" disabled={saving} onClick={() => void run("default", () => changeNotifyReplyToDefault({
                           addressId: address.id,
                           expectedVersion: configuration.configuration.version,
-                          reason: reason.trim(),
                         }))}>Make default</Button>
                       )}
                     </Stack>
@@ -245,11 +228,10 @@ export default function NotifyReplyToSettings() {
           {configuration.configuration.defaultAddressId && (
             <Button
               color="warning"
-              disabled={!canChange}
+              disabled={saving}
               onClick={() => void run("clear-default", () => changeNotifyReplyToDefault({
                 clearDefault: true,
                 expectedVersion: configuration.configuration.version,
-                reason: reason.trim(),
               }))}
             >
               Clear system default
@@ -271,11 +253,10 @@ export default function NotifyReplyToSettings() {
                       labelId={`reply-to-${templateKey}`}
                       label={templateKey}
                       value={override?.addressId ?? ""}
-                      disabled={!canChange}
+                      disabled={saving}
                       onChange={(event) => void run("template-override", () => setNotifyTemplateReplyToOverride({
                         templateKey,
                         addressId: event.target.value || undefined,
-                        reason: reason.trim(),
                       }))}
                     >
                       <MenuItem value="">System default</MenuItem>
@@ -302,7 +283,7 @@ export default function NotifyReplyToSettings() {
                     {new Date(audit.changedAt).toLocaleString()} · {audit.changedBy}
                     {audit.templateKey ? ` · ${audit.templateKey}` : ""}
                   </Typography>
-                  <Typography variant="body2">{audit.reason}</Typography>
+                  {audit.reason && <Typography variant="body2">{audit.reason}</Typography>}
                 </Box>
               ))}
           </Paper>

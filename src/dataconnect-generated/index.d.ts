@@ -352,7 +352,7 @@ export interface ChangeNotifyReplyToDefaultVariables {
   previousAddressId?: UUIDString | null;
   newAddressId?: UUIDString | null;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue?: string | null;
   newValue?: string | null;
 }
@@ -400,7 +400,7 @@ export interface ClearNotifyTemplateReplyToOverrideData {
 export interface ClearNotifyTemplateReplyToOverrideVariables {
   templateKey: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
 }
 
@@ -413,7 +413,7 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   id: UUIDString;
   expectedVersion: number;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
 }
 
 export interface ConfirmProfileReviewData {
@@ -682,7 +682,7 @@ export interface CreateNotifyReplyToAddressVariables {
   emailAddress: string;
   notifyUuid: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   newValue: string;
 }
 
@@ -875,7 +875,7 @@ export interface DisableDefaultNotifyReplyToAddressVariables {
   expectedConfigurationVersion: number;
   replacementAddressId?: UUIDString | null;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
 }
 
@@ -2545,7 +2545,7 @@ export interface ListNotifyReplyToAuditsData {
     previousValue?: string | null;
     newValue?: string | null;
     changedBy: string;
-    reason: string;
+    reason?: string | null;
     changedAt: TimestampString;
   } & NotifyReplyToAudit_Key)[];
 }
@@ -2968,7 +2968,7 @@ export interface RecordNotifyReplyToProviderAcceptanceVariables {
   providerNotificationId: string;
   verificationMode: GovNotifyDeliveryMode;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
 }
 
 export interface RecordSectionFileAuditData {
@@ -3064,7 +3064,7 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   templateKey: string;
   replyToAddressId: UUIDString;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue?: string | null;
   newValue: string;
 }
@@ -3249,7 +3249,7 @@ export interface UpdateNotifyReplyToAddressIdentityVariables {
   emailAddress: string;
   notifyUuid: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
   newValue: string;
 }
@@ -3265,7 +3265,7 @@ export interface UpdateNotifyReplyToAvailabilityVariables {
   enabled: boolean;
   announcementSelectable: boolean;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
   newValue: string;
 }

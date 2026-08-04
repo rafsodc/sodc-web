@@ -657,7 +657,7 @@ export interface ListNotifyReplyToAuditsData {
     previousValue?: string | null;
     newValue?: string | null;
     changedBy: string;
-    reason: string;
+    reason?: string | null;
     changedAt: TimestampString;
   } & NotifyReplyToAudit_Key)[];
 }
@@ -9747,7 +9747,7 @@ export interface CreateNotifyReplyToAddressVariables {
   emailAddress: string;
   notifyUuid: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   newValue: string;
 }
 ```
@@ -9774,7 +9774,7 @@ const createNotifyReplyToAddressVars: CreateNotifyReplyToAddressVariables = {
   emailAddress: ..., 
   notifyUuid: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   newValue: ..., 
 };
 
@@ -9812,7 +9812,7 @@ const createNotifyReplyToAddressVars: CreateNotifyReplyToAddressVariables = {
   emailAddress: ..., 
   notifyUuid: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   newValue: ..., 
 };
 
@@ -9880,7 +9880,7 @@ export interface UpdateNotifyReplyToAddressIdentityVariables {
   emailAddress: string;
   notifyUuid: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
   newValue: string;
 }
@@ -9909,7 +9909,7 @@ const updateNotifyReplyToAddressIdentityVars: UpdateNotifyReplyToAddressIdentity
   emailAddress: ..., 
   notifyUuid: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
   newValue: ..., 
 };
@@ -9949,7 +9949,7 @@ const updateNotifyReplyToAddressIdentityVars: UpdateNotifyReplyToAddressIdentity
   emailAddress: ..., 
   notifyUuid: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
   newValue: ..., 
 };
@@ -10017,7 +10017,7 @@ export interface RecordNotifyReplyToProviderAcceptanceVariables {
   providerNotificationId: string;
   verificationMode: GovNotifyDeliveryMode;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
 }
 ```
 ### Return Type
@@ -10043,7 +10043,7 @@ const recordNotifyReplyToProviderAcceptanceVars: RecordNotifyReplyToProviderAcce
   providerNotificationId: ..., 
   verificationMode: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
 };
 
 // Call the `recordNotifyReplyToProviderAcceptance()` function to execute the mutation.
@@ -10080,7 +10080,7 @@ const recordNotifyReplyToProviderAcceptanceVars: RecordNotifyReplyToProviderAcce
   providerNotificationId: ..., 
   verificationMode: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
 };
 
 // Call the `recordNotifyReplyToProviderAcceptanceRef()` function to get a reference to the mutation.
@@ -10144,7 +10144,7 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   id: UUIDString;
   expectedVersion: number;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
 }
 ```
 ### Return Type
@@ -10168,7 +10168,7 @@ const confirmNotifyReplyToVerificationVars: ConfirmNotifyReplyToVerificationVari
   id: ..., 
   expectedVersion: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
 };
 
 // Call the `confirmNotifyReplyToVerification()` function to execute the mutation.
@@ -10203,7 +10203,7 @@ const confirmNotifyReplyToVerificationVars: ConfirmNotifyReplyToVerificationVari
   id: ..., 
   expectedVersion: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
 };
 
 // Call the `confirmNotifyReplyToVerificationRef()` function to get a reference to the mutation.
@@ -10269,7 +10269,7 @@ export interface UpdateNotifyReplyToAvailabilityVariables {
   enabled: boolean;
   announcementSelectable: boolean;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
   newValue: string;
 }
@@ -10297,7 +10297,7 @@ const updateNotifyReplyToAvailabilityVars: UpdateNotifyReplyToAvailabilityVariab
   enabled: ..., 
   announcementSelectable: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
   newValue: ..., 
 };
@@ -10336,7 +10336,7 @@ const updateNotifyReplyToAvailabilityVars: UpdateNotifyReplyToAvailabilityVariab
   enabled: ..., 
   announcementSelectable: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
   newValue: ..., 
 };
@@ -10403,7 +10403,7 @@ export interface ChangeNotifyReplyToDefaultVariables {
   previousAddressId?: UUIDString | null;
   newAddressId?: UUIDString | null;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue?: string | null;
   newValue?: string | null;
 }
@@ -10430,7 +10430,7 @@ const changeNotifyReplyToDefaultVars: ChangeNotifyReplyToDefaultVariables = {
   previousAddressId: ..., // optional
   newAddressId: ..., // optional
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., // optional
   newValue: ..., // optional
 };
@@ -10468,7 +10468,7 @@ const changeNotifyReplyToDefaultVars: ChangeNotifyReplyToDefaultVariables = {
   previousAddressId: ..., // optional
   newAddressId: ..., // optional
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., // optional
   newValue: ..., // optional
 };
@@ -10536,7 +10536,7 @@ export interface DisableDefaultNotifyReplyToAddressVariables {
   expectedConfigurationVersion: number;
   replacementAddressId?: UUIDString | null;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
 }
 ```
@@ -10564,7 +10564,7 @@ const disableDefaultNotifyReplyToAddressVars: DisableDefaultNotifyReplyToAddress
   expectedConfigurationVersion: ..., 
   replacementAddressId: ..., // optional
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
 };
 
@@ -10604,7 +10604,7 @@ const disableDefaultNotifyReplyToAddressVars: DisableDefaultNotifyReplyToAddress
   expectedConfigurationVersion: ..., 
   replacementAddressId: ..., // optional
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
 };
 
@@ -10671,7 +10671,7 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   templateKey: string;
   replyToAddressId: UUIDString;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue?: string | null;
   newValue: string;
 }
@@ -10697,7 +10697,7 @@ const setNotifyTemplateReplyToOverrideVars: SetNotifyTemplateReplyToOverrideVari
   templateKey: ..., 
   replyToAddressId: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., // optional
   newValue: ..., 
 };
@@ -10734,7 +10734,7 @@ const setNotifyTemplateReplyToOverrideVars: SetNotifyTemplateReplyToOverrideVari
   templateKey: ..., 
   replyToAddressId: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., // optional
   newValue: ..., 
 };
@@ -10799,7 +10799,7 @@ The `ClearNotifyTemplateReplyToOverride` mutation requires an argument of type `
 export interface ClearNotifyTemplateReplyToOverrideVariables {
   templateKey: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
 }
 ```
@@ -10823,7 +10823,7 @@ import { connectorConfig, clearNotifyTemplateReplyToOverride, ClearNotifyTemplat
 const clearNotifyTemplateReplyToOverrideVars: ClearNotifyTemplateReplyToOverrideVariables = {
   templateKey: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
 };
 
@@ -10858,7 +10858,7 @@ import { connectorConfig, clearNotifyTemplateReplyToOverrideRef, ClearNotifyTemp
 const clearNotifyTemplateReplyToOverrideVars: ClearNotifyTemplateReplyToOverrideVariables = {
   templateKey: ..., 
   changedBy: ..., 
-  reason: ..., 
+  reason: ..., // optional
   previousValue: ..., 
 };
 
