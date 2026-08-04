@@ -321,7 +321,7 @@ function TemplateRow({
   onSaved: (results: TemplateSyncResult[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const showToggle = result.status === "drift" || result.status === "fetch_error";
+  const showToggle = result.status === "drift" || result.status === "fetch_error" || result.status === "not_configured";
 
   return (
     <>
@@ -385,6 +385,15 @@ function TemplateRow({
                   <Alert severity="error" sx={{ mb: 2 }}>
                     {result.errorMessage ?? "Unknown error fetching template from GOV Notify."}
                   </Alert>
+                ) : result.status === "not_configured" ? (
+                  <>
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      No binding saved yet. Create the template in GOV Notify using the values
+                      below, named exactly <strong>{result.templateKey}</strong>, then select it
+                      from the dropdown and save.
+                    </Alert>
+                    <UpdateInstructions result={result} />
+                  </>
                 ) : (
                   <>
                     <UpdateInstructions result={result} />
