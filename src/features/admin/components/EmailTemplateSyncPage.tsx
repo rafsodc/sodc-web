@@ -213,15 +213,13 @@ function BindingControls({
   onSaved: (results: TemplateSyncResult[]) => void;
 }) {
   const [pendingTemplateId, setPendingTemplateId] = useState(result.boundTemplateId ?? "");
-  const [pendingVersion, setPendingVersion] = useState(result.reviewedVersion ?? 1);
   const [saving, setSaving] = useState(false);
   const [rowError, setRowError] = useState<string | null>(null);
 
   // Stay in sync when the parent refreshes (Refresh / Move all to latest version).
   useEffect(() => {
     setPendingTemplateId(result.boundTemplateId ?? "");
-    setPendingVersion(result.reviewedVersion ?? 1);
-  }, [result.boundTemplateId, result.reviewedVersion]);
+  }, [result.boundTemplateId]);
 
   const options: NotifyTemplateCandidate[] = useMemo(() => {
     const list = [...result.candidates];
@@ -238,23 +236,20 @@ function BindingControls({
   }, [result]);
 
   const selected = options.find((c) => c.id === pendingTemplateId);
-  const maxVersion = Math.max(selected?.version ?? 1, 1);
-
-  const handleTemplateChange = (id: string) => {
-    setPendingTemplateId(id);
-    const candidate = options.find((c) => c.id === id);
-    setPendingVersion(candidate?.version ?? 1);
-  };
 
   const handleSave = async () => {
-    if (!pendingTemplateId) return;
+    if (!selected) return;
     setSaving(true);
     setRowError(null);
     try {
+      // GOV Notify's send API has no version parameter -- it always sends
+      // whichever version is currently live. There is never a meaningful
+      // choice of version to "select"; reviewedVersion just records that an
+      // admin has confirmed the current live content, for drift detection.
       const { results } = await setNotifyTemplateBinding({
         templateKey: result.templateKey,
-        notifyTemplateId: pendingTemplateId,
-        reviewedVersion: pendingVersion,
+        notifyTemplateId: selected.id,
+        reviewedVersion: selected.version,
       });
       onSaved(results);
     } catch (caught) {
@@ -275,7 +270,7 @@ function BindingControls({
             label="Notify template"
             value={pendingTemplateId}
             disabled={saving}
-            onChange={(event) => handleTemplateChange(event.target.value)}
+            onChange={(event) => setPendingTemplateId(event.target.value)}
           >
             {options.length === 0 && (
               <MenuItem value="" disabled>No exact-name match found</MenuItem>
@@ -285,24 +280,10 @@ function BindingControls({
             ))}
           </Select>
         </FormControl>
-        <FormControl size="small" sx={{ minWidth: 90 }}>
-          <InputLabel id={`version-${result.templateKey}`}>Version</InputLabel>
-          <Select
-            labelId={`version-${result.templateKey}`}
-            label="Version"
-            value={pendingVersion}
-            disabled={saving || !pendingTemplateId}
-            onChange={(event) => setPendingVersion(Number(event.target.value))}
-          >
-            {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
-              <MenuItem key={v} value={v}>{v}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
         <Button
           size="small"
           variant="contained"
-          disabled={saving || !pendingTemplateId}
+          disabled={saving || !selected}
           onClick={() => void handleSave()}
         >
           Save
