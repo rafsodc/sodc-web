@@ -5,6 +5,7 @@ import {
   type GetNotifyReplyToConfigurationData,
 } from "@dataconnect/admin-generated";
 import { getGovNotifyEmailReplyToId } from "./govNotifyReplyToId";
+import { validateUUID } from "./helpers";
 
 type ConfigurationData = GetNotifyReplyToConfigurationData;
 type AddressRow = ConfigurationData["notifyReplyToAddresses"][number];
@@ -124,8 +125,9 @@ export async function resolveNotifyReplyToForAnnouncement(
 ): Promise<ResolvedNotifyReplyTo> {
   const configuration = await getOrCreateNotifyReplyToConfiguration();
   if (selectedAddressId) {
+    const normalizedSelectedAddressId = validateUUID(selectedAddressId, "replyToAddressId");
     const selected = configuration.notifyReplyToAddresses.find(
-      (address) => address.id === selectedAddressId,
+      (address) => validateUUID(address.id, "replyToAddressId") === normalizedSelectedAddressId,
     );
     if (!isUsable(selected) || !selected.announcementSelectable) {
       throw new NotifyReplyToSelectionError(

@@ -161,7 +161,7 @@ export default function EmailDeliverySettingsPage({ onBack }: Props) {
             </FormControl>
             <TextField
               fullWidth
-              label="Reason for change"
+              label="Reason for delivery mode change"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               inputProps={{ maxLength: 500 }}

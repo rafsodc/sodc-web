@@ -55,7 +55,9 @@ the deployment.
 1. In the target site's admin area, open **Email delivery**.
 2. Under **Reply-to addresses**, enter the display label, visible email address,
    and the environment's Notify reply-to UUID.
-3. Enter an audit reason and add the address. It starts disabled and unverified.
+3. Select **Add address**. It starts disabled and unverified. Only the
+   site-wide delivery mode change requires an audit reason; reply-to actions
+   are still recorded in "Recent reply-to changes" by who and when, without one.
 4. Set the site email mode to **Team test** or **Live**, then select **Send test**.
    The test goes only to the signed-in administrator's verified account email.
 5. Open the delivered message and inspect its `Reply-To` header. Confirm that it

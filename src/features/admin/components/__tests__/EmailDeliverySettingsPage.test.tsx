@@ -45,7 +45,7 @@ describe("EmailDeliverySettingsPage", () => {
     render(<EmailDeliverySettingsPage onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("radio", { name: /Team test/ }));
-    await user.type(screen.getByLabelText("Reason for change"), "Team verification");
+    await user.type(screen.getByLabelText("Reason for delivery mode change"), "Team verification");
     await user.click(screen.getByRole("button", { name: "Save delivery mode" }));
 
     expect(screen.getByRole("dialog")).toHaveTextContent("Increase email delivery scope?");

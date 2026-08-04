@@ -616,7 +616,7 @@ export interface ListNotifyReplyToAuditsData {
     previousValue?: string | null;
     newValue?: string | null;
     changedBy: string;
-    reason: string;
+    reason?: string | null;
     changedAt: TimestampString;
   } & NotifyReplyToAudit_Key)[];
 }
@@ -7797,7 +7797,7 @@ export interface CreateNotifyReplyToAddressVariables {
   emailAddress: string;
   notifyUuid: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   newValue: string;
 }
 ```
@@ -7854,7 +7854,7 @@ export default function CreateNotifyReplyToAddressComponent() {
     emailAddress: ..., 
     notifyUuid: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     newValue: ..., 
   };
   mutation.mutate(createNotifyReplyToAddressVars);
@@ -7906,7 +7906,7 @@ export interface UpdateNotifyReplyToAddressIdentityVariables {
   emailAddress: string;
   notifyUuid: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
   newValue: string;
 }
@@ -7965,7 +7965,7 @@ export default function UpdateNotifyReplyToAddressIdentityComponent() {
     emailAddress: ..., 
     notifyUuid: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     previousValue: ..., 
     newValue: ..., 
   };
@@ -8017,7 +8017,7 @@ export interface RecordNotifyReplyToProviderAcceptanceVariables {
   providerNotificationId: string;
   verificationMode: GovNotifyDeliveryMode;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
 }
 ```
 ### Return Type
@@ -8073,7 +8073,7 @@ export default function RecordNotifyReplyToProviderAcceptanceComponent() {
     providerNotificationId: ..., 
     verificationMode: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
   };
   mutation.mutate(recordNotifyReplyToProviderAcceptanceVars);
   // Variables can be defined inline as well.
@@ -8121,7 +8121,7 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   id: UUIDString;
   expectedVersion: number;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
 }
 ```
 ### Return Type
@@ -8175,7 +8175,7 @@ export default function ConfirmNotifyReplyToVerificationComponent() {
     id: ..., 
     expectedVersion: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
   };
   mutation.mutate(confirmNotifyReplyToVerificationVars);
   // Variables can be defined inline as well.
@@ -8225,7 +8225,7 @@ export interface UpdateNotifyReplyToAvailabilityVariables {
   enabled: boolean;
   announcementSelectable: boolean;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
   newValue: string;
 }
@@ -8283,7 +8283,7 @@ export default function UpdateNotifyReplyToAvailabilityComponent() {
     enabled: ..., 
     announcementSelectable: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     previousValue: ..., 
     newValue: ..., 
   };
@@ -8334,7 +8334,7 @@ export interface ChangeNotifyReplyToDefaultVariables {
   previousAddressId?: UUIDString | null;
   newAddressId?: UUIDString | null;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue?: string | null;
   newValue?: string | null;
 }
@@ -8391,7 +8391,7 @@ export default function ChangeNotifyReplyToDefaultComponent() {
     previousAddressId: ..., // optional
     newAddressId: ..., // optional
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     previousValue: ..., // optional
     newValue: ..., // optional
   };
@@ -8443,7 +8443,7 @@ export interface DisableDefaultNotifyReplyToAddressVariables {
   expectedConfigurationVersion: number;
   replacementAddressId?: UUIDString | null;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
 }
 ```
@@ -8501,7 +8501,7 @@ export default function DisableDefaultNotifyReplyToAddressComponent() {
     expectedConfigurationVersion: ..., 
     replacementAddressId: ..., // optional
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     previousValue: ..., 
   };
   mutation.mutate(disableDefaultNotifyReplyToAddressVars);
@@ -8551,7 +8551,7 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   templateKey: string;
   replyToAddressId: UUIDString;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue?: string | null;
   newValue: string;
 }
@@ -8607,7 +8607,7 @@ export default function SetNotifyTemplateReplyToOverrideComponent() {
     templateKey: ..., 
     replyToAddressId: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     previousValue: ..., // optional
     newValue: ..., 
   };
@@ -8656,7 +8656,7 @@ The `ClearNotifyTemplateReplyToOverride` Mutation requires an argument of type `
 export interface ClearNotifyTemplateReplyToOverrideVariables {
   templateKey: string;
   changedBy: string;
-  reason: string;
+  reason?: string | null;
   previousValue: string;
 }
 ```
@@ -8710,7 +8710,7 @@ export default function ClearNotifyTemplateReplyToOverrideComponent() {
   const clearNotifyTemplateReplyToOverrideVars: ClearNotifyTemplateReplyToOverrideVariables = {
     templateKey: ..., 
     changedBy: ..., 
-    reason: ..., 
+    reason: ..., // optional
     previousValue: ..., 
   };
   mutation.mutate(clearNotifyTemplateReplyToOverrideVars);

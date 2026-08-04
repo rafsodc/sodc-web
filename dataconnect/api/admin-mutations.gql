@@ -163,7 +163,7 @@ mutation CreateNotifyReplyToAddress(
   $emailAddress: String!
   $notifyUuid: String!
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $newValue: String!
 ) @auth(level: NO_ACCESS) @transaction {
   notifyReplyToAddress_insert(data: {
@@ -193,7 +193,7 @@ mutation UpdateNotifyReplyToAddressIdentity(
   $emailAddress: String!
   $notifyUuid: String!
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $previousValue: String!
   $newValue: String!
 ) @auth(level: NO_ACCESS) @transaction {
@@ -232,7 +232,7 @@ mutation RecordNotifyReplyToProviderAcceptance(
   $providerNotificationId: String!
   $verificationMode: GovNotifyDeliveryMode!
   $changedBy: String!
-  $reason: String!
+  $reason: String
 ) @auth(level: NO_ACCESS) @transaction {
   changed: notifyReplyToAddress_updateMany(
     where: { id: { eq: $id }, version: { eq: $expectedVersion } }
@@ -263,7 +263,7 @@ mutation ConfirmNotifyReplyToVerification(
   $id: UUID!
   $expectedVersion: Int!
   $changedBy: String!
-  $reason: String!
+  $reason: String
 ) @auth(level: NO_ACCESS) @transaction {
   changed: notifyReplyToAddress_updateMany(
     where: {
@@ -294,7 +294,7 @@ mutation UpdateNotifyReplyToAvailability(
   $enabled: Boolean!
   $announcementSelectable: Boolean!
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $previousValue: String!
   $newValue: String!
 ) @auth(level: NO_ACCESS) @transaction {
@@ -327,7 +327,7 @@ mutation ChangeNotifyReplyToDefault(
   $previousAddressId: UUID
   $newAddressId: UUID
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $previousValue: String
   $newValue: String
 ) @auth(level: NO_ACCESS) @transaction {
@@ -360,7 +360,7 @@ mutation DisableDefaultNotifyReplyToAddress(
   $expectedConfigurationVersion: Int!
   $replacementAddressId: UUID
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $previousValue: String!
 ) @auth(level: NO_ACCESS) @transaction {
   addressChanged: notifyReplyToAddress_updateMany(
@@ -403,7 +403,7 @@ mutation SetNotifyTemplateReplyToOverride(
   $templateKey: String!
   $replyToAddressId: UUID!
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $previousValue: String
   $newValue: String!
 ) @auth(level: NO_ACCESS) @transaction {
@@ -427,7 +427,7 @@ mutation SetNotifyTemplateReplyToOverride(
 mutation ClearNotifyTemplateReplyToOverride(
   $templateKey: String!
   $changedBy: String!
-  $reason: String!
+  $reason: String
   $previousValue: String!
 ) @auth(level: NO_ACCESS) @transaction {
   notifyTemplateReplyToOverride_delete(key: { templateKey: $templateKey })

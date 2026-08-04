@@ -171,7 +171,8 @@ type NotifyReplyToAudit @table {
   previousValue: String
   newValue: String
   changedBy: String!
-  reason: String!
+  # Optional: only the site-wide delivery mode audit requires a reason.
+  reason: String
   changedAt: Timestamp! @default(expr: "request.time")
 }
 
