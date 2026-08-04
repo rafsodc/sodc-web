@@ -79,7 +79,9 @@ function addressValue(address: Address): string {
 
 function requireAddress(configuration: Configuration, idValue: unknown): Address {
   const id = validateUUID(requireString(idValue, "addressId"), "addressId");
-  const address = configuration.notifyReplyToAddresses.find((candidate) => candidate.id === id);
+  const address = configuration.notifyReplyToAddresses.find(
+    (candidate) => validateUUID(candidate.id, "addressId") === id
+  );
   if (!address) throw new HttpsError("not-found", "Reply-to address not found");
   return address;
 }
