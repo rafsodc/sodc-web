@@ -3,9 +3,22 @@ import { functions } from "../../../config/firebase";
 
 export type TemplateSyncStatus = "in_sync" | "drift" | "not_configured" | "fetch_error";
 
+export interface NotifyTemplateCandidate {
+  id: string;
+  name: string;
+  version: number;
+}
+
 export interface TemplateSyncResult {
   templateKey: string;
-  templateUuid?: string;
+  candidates: NotifyTemplateCandidate[];
+  boundTemplateId?: string;
+  boundTemplateName?: string;
+  reviewedVersion?: number;
+  currentLiveVersion?: number;
+  versionDrift?: boolean;
+  bindingUpdatedAt?: string;
+  bindingUpdatedBy?: string;
   notifyEditUrl?: string;
   status: TemplateSyncStatus;
   liveSubject?: string;
@@ -16,10 +29,33 @@ export interface TemplateSyncResult {
   bodyMatch?: boolean;
   errorMessage?: string;
 }
+
 export async function getTemplateSyncStatus(): Promise<{ results: TemplateSyncResult[] }> {
   const callable = httpsCallable<void, { results: TemplateSyncResult[] }>(
     functions,
     "getTemplateSyncStatus"
+  );
+  const result = await callable();
+  return result.data;
+}
+
+export async function setNotifyTemplateBinding(data: {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+}): Promise<{ results: TemplateSyncResult[] }> {
+  const callable = httpsCallable<typeof data, { results: TemplateSyncResult[] }>(
+    functions,
+    "setNotifyTemplateBinding"
+  );
+  const result = await callable(data);
+  return result.data;
+}
+
+export async function moveAllNotifyTemplateBindingsToLatestVersion(): Promise<{ results: TemplateSyncResult[] }> {
+  const callable = httpsCallable<void, { results: TemplateSyncResult[] }>(
+    functions,
+    "moveAllNotifyTemplateBindingsToLatestVersion"
   );
   const result = await callable();
   return result.data;

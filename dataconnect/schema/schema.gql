@@ -176,6 +176,42 @@ type NotifyReplyToAudit @table {
   changedAt: Timestamp! @default(expr: "request.time")
 }
 
+# Admin-managed binding from a logical transactional template key (e.g.
+# "bookingConfirmation") to a live GOV.UK Notify template. Replaces the
+# GOV_NOTIFY_TEMPLATE_* env var mechanism as the source of truth for sends.
+type NotifyTemplateBinding @table(key: ["templateKey"]) {
+  templateKey: String!
+  # GOV.UK Notify's own UUID, held as an opaque string. Not the UUID scalar:
+  # Data Connect's UUID scalar serialises as compact (no-hyphen) hex, which
+  # breaks naive equality checks against a canonicalised client-supplied UUID.
+  notifyTemplateId: String!
+  # The Notify template version an admin last confirmed matches the repo
+  # content. Notify's send API has no version parameter -- it always sends
+  # whatever is currently live for notifyTemplateId -- so this is a
+  # last-reviewed marker, not a send-time pin.
+  reviewedVersion: Int!
+  version: Int! @default(value: 1)
+  updatedAt: Timestamp! @default(expr: "request.time")
+  updatedBy: String!
+}
+
+enum NotifyTemplateBindingAuditAction {
+  CREATED
+  TEMPLATE_CHANGED
+  VERSION_REVIEWED
+}
+
+type NotifyTemplateBindingAudit @table {
+  id: UUID! @default(expr: "uuidV4()")
+  action: NotifyTemplateBindingAuditAction!
+  templateKey: String!
+  previousValue: String
+  newValue: String
+  changedBy: String!
+  reason: String
+  changedAt: Timestamp! @default(expr: "request.time")
+}
+
 enum NotifyDeliveryReceiptProcessingStatus {
   PENDING
   PROCESSED

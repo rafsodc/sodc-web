@@ -75,6 +75,11 @@ export enum NotifyReplyToVerificationStatus {
   PROVIDER_ACCEPTED = "PROVIDER_ACCEPTED",
   VERIFIED = "VERIFIED",
 }
+export enum NotifyTemplateBindingAuditAction {
+  CREATED = "CREATED",
+  TEMPLATE_CHANGED = "TEMPLATE_CHANGED",
+  VERSION_REVIEWED = "VERSION_REVIEWED",
+}
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -1711,6 +1716,17 @@ export interface GetNotifyReplyToConfigurationData {
   } & NotifyTemplateReplyToOverride_Key)[];
 }
 
+export interface GetNotifyTemplateBindingsData {
+  notifyTemplateBindings: ({
+    templateKey: string;
+    notifyTemplateId: string;
+    reviewedVersion: number;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateBinding_Key)[];
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -2533,6 +2549,23 @@ export interface ListNotifyReplyToAuditsVariables {
   limit: number;
 }
 
+export interface ListNotifyTemplateBindingAuditsData {
+  notifyTemplateBindingAudits: ({
+    id: UUIDString;
+    action: NotifyTemplateBindingAuditAction;
+    templateKey: string;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyTemplateBindingAudit_Key)[];
+}
+
+export interface ListNotifyTemplateBindingAuditsVariables {
+  limit: number;
+}
+
 export interface ListOpenPaymentReconciliationExceptionsData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -2889,6 +2922,16 @@ export interface NotifyReplyToAddress_Key {
 export interface NotifyReplyToAudit_Key {
   id: UUIDString;
   __typename?: 'NotifyReplyToAudit_Key';
+}
+
+export interface NotifyTemplateBindingAudit_Key {
+  id: UUIDString;
+  __typename?: 'NotifyTemplateBindingAudit_Key';
+}
+
+export interface NotifyTemplateBinding_Key {
+  templateKey: string;
+  __typename?: 'NotifyTemplateBinding_Key';
 }
 
 export interface NotifyTemplateReplyToOverride_Key {
@@ -3341,6 +3384,22 @@ export interface UpsertCallableInvocationVariables {
   count: number;
 }
 
+export interface UpsertNotifyTemplateBindingData {
+  notifyTemplateBinding_upsert: NotifyTemplateBinding_Key;
+  notifyTemplateBindingAudit_insert: NotifyTemplateBindingAudit_Key;
+}
+
+export interface UpsertNotifyTemplateBindingVariables {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+  changedBy: string;
+  reason?: string | null;
+  auditAction: NotifyTemplateBindingAuditAction;
+  previousValue?: string | null;
+  newValue: string;
+}
+
 export interface UpsertPaymentReconciliationExceptionData {
   paymentReconciliationException_upsert: PaymentReconciliationException_Key;
 }
@@ -3485,6 +3544,21 @@ export function setNotifyTemplateReplyToOverride(vars: SetNotifyTemplateReplyToO
 export function clearNotifyTemplateReplyToOverride(dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClearNotifyTemplateReplyToOverrideData>>;
 /** Generated Node Admin SDK operation action function for the 'ClearNotifyTemplateReplyToOverride' Mutation. Allow users to pass in custom DataConnect instances. */
 export function clearNotifyTemplateReplyToOverride(vars: ClearNotifyTemplateReplyToOverrideVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClearNotifyTemplateReplyToOverrideData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetNotifyTemplateBindings' Query. Allow users to execute without passing in DataConnect. */
+export function getNotifyTemplateBindings(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyTemplateBindingsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotifyTemplateBindings' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotifyTemplateBindings(options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyTemplateBindingsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListNotifyTemplateBindingAudits' Query. Allow users to execute without passing in DataConnect. */
+export function listNotifyTemplateBindingAudits(dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNotifyTemplateBindingAuditsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListNotifyTemplateBindingAudits' Query. Allow users to pass in custom DataConnect instances. */
+export function listNotifyTemplateBindingAudits(vars: ListNotifyTemplateBindingAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNotifyTemplateBindingAuditsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpsertNotifyTemplateBinding' Mutation. Allow users to execute without passing in DataConnect. */
+export function upsertNotifyTemplateBinding(dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertNotifyTemplateBindingData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertNotifyTemplateBinding' Mutation. Allow users to pass in custom DataConnect instances. */
+export function upsertNotifyTemplateBinding(vars: UpsertNotifyTemplateBindingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertNotifyTemplateBindingData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreatePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
 export function createPendingSectionFile(dc: DataConnect, vars: CreatePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePendingSectionFileData>>;

@@ -90,6 +90,13 @@ const NotifyReplyToVerificationStatus = {
 }
 exports.NotifyReplyToVerificationStatus = NotifyReplyToVerificationStatus;
 
+const NotifyTemplateBindingAuditAction = {
+  CREATED: "CREATED",
+  TEMPLATE_CHANGED: "TEMPLATE_CHANGED",
+  VERSION_REVIEWED: "VERSION_REVIEWED",
+}
+exports.NotifyTemplateBindingAuditAction = NotifyTemplateBindingAuditAction;
+
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -267,6 +274,27 @@ function clearNotifyTemplateReplyToOverride(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeMutation('ClearNotifyTemplateReplyToOverride', inputVars, inputOpts);
 }
 exports.clearNotifyTemplateReplyToOverride = clearNotifyTemplateReplyToOverride;
+
+function getNotifyTemplateBindings(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotifyTemplateBindings', undefined, inputOpts);
+}
+exports.getNotifyTemplateBindings = getNotifyTemplateBindings;
+
+function listNotifyTemplateBindingAudits(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNotifyTemplateBindingAudits', inputVars, inputOpts);
+}
+exports.listNotifyTemplateBindingAudits = listNotifyTemplateBindingAudits;
+
+function upsertNotifyTemplateBinding(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpsertNotifyTemplateBinding', inputVars, inputOpts);
+}
+exports.upsertNotifyTemplateBinding = upsertNotifyTemplateBinding;
 
 function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

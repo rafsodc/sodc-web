@@ -79,6 +79,12 @@ export const NotifyReplyToVerificationStatus = {
   VERIFIED: "VERIFIED",
 }
 
+export const NotifyTemplateBindingAuditAction = {
+  CREATED: "CREATED",
+  TEMPLATE_CHANGED: "TEMPLATE_CHANGED",
+  VERSION_REVIEWED: "VERSION_REVIEWED",
+}
+
 export const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -329,6 +335,44 @@ clearNotifyTemplateReplyToOverrideRef.operationName = 'ClearNotifyTemplateReplyT
 export function clearNotifyTemplateReplyToOverride(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(clearNotifyTemplateReplyToOverrideRef(dcInstance, inputVars));
+}
+
+export const getNotifyTemplateBindingsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotifyTemplateBindings');
+}
+getNotifyTemplateBindingsRef.operationName = 'GetNotifyTemplateBindings';
+
+export function getNotifyTemplateBindings(dcOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyTemplateBindingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const listNotifyTemplateBindingAuditsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListNotifyTemplateBindingAudits', inputVars);
+}
+listNotifyTemplateBindingAuditsRef.operationName = 'ListNotifyTemplateBindingAudits';
+
+export function listNotifyTemplateBindingAudits(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listNotifyTemplateBindingAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const upsertNotifyTemplateBindingRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertNotifyTemplateBinding', inputVars);
+}
+upsertNotifyTemplateBindingRef.operationName = 'UpsertNotifyTemplateBinding';
+
+export function upsertNotifyTemplateBinding(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(upsertNotifyTemplateBindingRef(dcInstance, inputVars));
 }
 
 export const createPendingSectionFileRef = (dcOrVars, vars) => {

@@ -14,6 +14,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListGovNotifyDeliveryModeAudits*](#listgovnotifydeliverymodeaudits)
   - [*GetNotifyReplyToConfiguration*](#getnotifyreplytoconfiguration)
   - [*ListNotifyReplyToAudits*](#listnotifyreplytoaudits)
+  - [*GetNotifyTemplateBindings*](#getnotifytemplatebindings)
+  - [*ListNotifyTemplateBindingAudits*](#listnotifytemplatebindingaudits)
   - [*GetSectionFileById*](#getsectionfilebyid)
   - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
   - [*ListStaleSectionFiles*](#liststalesectionfiles)
@@ -97,6 +99,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*DisableDefaultNotifyReplyToAddress*](#disabledefaultnotifyreplytoaddress)
   - [*SetNotifyTemplateReplyToOverride*](#setnotifytemplatereplytooverride)
   - [*ClearNotifyTemplateReplyToOverride*](#clearnotifytemplatereplytooverride)
+  - [*UpsertNotifyTemplateBinding*](#upsertnotifytemplatebinding)
   - [*CreatePendingSectionFile*](#creatependingsectionfile)
   - [*RecordSectionFileAudit*](#recordsectionfileaudit)
   - [*AbandonPendingSectionFile*](#abandonpendingsectionfile)
@@ -722,6 +725,222 @@ console.log(data.notifyReplyToAudits);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.notifyReplyToAudits);
+});
+```
+
+## GetNotifyTemplateBindings
+You can execute the `GetNotifyTemplateBindings` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNotifyTemplateBindings(options?: ExecuteQueryOptions): QueryPromise<GetNotifyTemplateBindingsData, undefined>;
+
+interface GetNotifyTemplateBindingsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNotifyTemplateBindingsData, undefined>;
+}
+export const getNotifyTemplateBindingsRef: GetNotifyTemplateBindingsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNotifyTemplateBindings(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNotifyTemplateBindingsData, undefined>;
+
+interface GetNotifyTemplateBindingsRef {
+  ...
+  (dc: DataConnect): QueryRef<GetNotifyTemplateBindingsData, undefined>;
+}
+export const getNotifyTemplateBindingsRef: GetNotifyTemplateBindingsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNotifyTemplateBindingsRef:
+```typescript
+const name = getNotifyTemplateBindingsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNotifyTemplateBindings` query has no variables.
+### Return Type
+Recall that executing the `GetNotifyTemplateBindings` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNotifyTemplateBindingsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNotifyTemplateBindingsData {
+  notifyTemplateBindings: ({
+    templateKey: string;
+    notifyTemplateId: string;
+    reviewedVersion: number;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateBinding_Key)[];
+}
+```
+### Using `GetNotifyTemplateBindings`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNotifyTemplateBindings } from '@dataconnect/generated';
+
+
+// Call the `getNotifyTemplateBindings()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNotifyTemplateBindings();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNotifyTemplateBindings(dataConnect);
+
+console.log(data.notifyTemplateBindings);
+
+// Or, you can use the `Promise` API.
+getNotifyTemplateBindings().then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateBindings);
+});
+```
+
+### Using `GetNotifyTemplateBindings`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNotifyTemplateBindingsRef } from '@dataconnect/generated';
+
+
+// Call the `getNotifyTemplateBindingsRef()` function to get a reference to the query.
+const ref = getNotifyTemplateBindingsRef();
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNotifyTemplateBindingsRef(dataConnect);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyTemplateBindings);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateBindings);
+});
+```
+
+## ListNotifyTemplateBindingAudits
+You can execute the `ListNotifyTemplateBindingAudits` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listNotifyTemplateBindingAudits(vars: ListNotifyTemplateBindingAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+
+interface ListNotifyTemplateBindingAuditsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNotifyTemplateBindingAuditsVariables): QueryRef<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+}
+export const listNotifyTemplateBindingAuditsRef: ListNotifyTemplateBindingAuditsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listNotifyTemplateBindingAudits(dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+
+interface ListNotifyTemplateBindingAuditsRef {
+  ...
+  (dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables): QueryRef<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+}
+export const listNotifyTemplateBindingAuditsRef: ListNotifyTemplateBindingAuditsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listNotifyTemplateBindingAuditsRef:
+```typescript
+const name = listNotifyTemplateBindingAuditsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListNotifyTemplateBindingAudits` query requires an argument of type `ListNotifyTemplateBindingAuditsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListNotifyTemplateBindingAuditsVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListNotifyTemplateBindingAudits` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListNotifyTemplateBindingAuditsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListNotifyTemplateBindingAuditsData {
+  notifyTemplateBindingAudits: ({
+    id: UUIDString;
+    action: NotifyTemplateBindingAuditAction;
+    templateKey: string;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyTemplateBindingAudit_Key)[];
+}
+```
+### Using `ListNotifyTemplateBindingAudits`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listNotifyTemplateBindingAudits, ListNotifyTemplateBindingAuditsVariables } from '@dataconnect/generated';
+
+// The `ListNotifyTemplateBindingAudits` query requires an argument of type `ListNotifyTemplateBindingAuditsVariables`:
+const listNotifyTemplateBindingAuditsVars: ListNotifyTemplateBindingAuditsVariables = {
+  limit: ..., 
+};
+
+// Call the `listNotifyTemplateBindingAudits()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listNotifyTemplateBindingAudits(listNotifyTemplateBindingAuditsVars);
+// Variables can be defined inline as well.
+const { data } = await listNotifyTemplateBindingAudits({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listNotifyTemplateBindingAudits(dataConnect, listNotifyTemplateBindingAuditsVars);
+
+console.log(data.notifyTemplateBindingAudits);
+
+// Or, you can use the `Promise` API.
+listNotifyTemplateBindingAudits(listNotifyTemplateBindingAuditsVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateBindingAudits);
+});
+```
+
+### Using `ListNotifyTemplateBindingAudits`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listNotifyTemplateBindingAuditsRef, ListNotifyTemplateBindingAuditsVariables } from '@dataconnect/generated';
+
+// The `ListNotifyTemplateBindingAudits` query requires an argument of type `ListNotifyTemplateBindingAuditsVariables`:
+const listNotifyTemplateBindingAuditsVars: ListNotifyTemplateBindingAuditsVariables = {
+  limit: ..., 
+};
+
+// Call the `listNotifyTemplateBindingAuditsRef()` function to get a reference to the query.
+const ref = listNotifyTemplateBindingAuditsRef(listNotifyTemplateBindingAuditsVars);
+// Variables can be defined inline as well.
+const ref = listNotifyTemplateBindingAuditsRef({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listNotifyTemplateBindingAuditsRef(dataConnect, listNotifyTemplateBindingAuditsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notifyTemplateBindingAudits);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateBindingAudits);
 });
 ```
 
@@ -10883,6 +11102,141 @@ executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.notifyTemplateReplyToOverride_delete);
   console.log(data.notifyReplyToAudit_insert);
+});
+```
+
+## UpsertNotifyTemplateBinding
+You can execute the `UpsertNotifyTemplateBinding` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+upsertNotifyTemplateBinding(vars: UpsertNotifyTemplateBindingVariables): MutationPromise<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+
+interface UpsertNotifyTemplateBindingRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertNotifyTemplateBindingVariables): MutationRef<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+}
+export const upsertNotifyTemplateBindingRef: UpsertNotifyTemplateBindingRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+upsertNotifyTemplateBinding(dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables): MutationPromise<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+
+interface UpsertNotifyTemplateBindingRef {
+  ...
+  (dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables): MutationRef<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+}
+export const upsertNotifyTemplateBindingRef: UpsertNotifyTemplateBindingRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertNotifyTemplateBindingRef:
+```typescript
+const name = upsertNotifyTemplateBindingRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpsertNotifyTemplateBinding` mutation requires an argument of type `UpsertNotifyTemplateBindingVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpsertNotifyTemplateBindingVariables {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+  changedBy: string;
+  reason?: string | null;
+  auditAction: NotifyTemplateBindingAuditAction;
+  previousValue?: string | null;
+  newValue: string;
+}
+```
+### Return Type
+Recall that executing the `UpsertNotifyTemplateBinding` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpsertNotifyTemplateBindingData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpsertNotifyTemplateBindingData {
+  notifyTemplateBinding_upsert: NotifyTemplateBinding_Key;
+  notifyTemplateBindingAudit_insert: NotifyTemplateBindingAudit_Key;
+}
+```
+### Using `UpsertNotifyTemplateBinding`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, upsertNotifyTemplateBinding, UpsertNotifyTemplateBindingVariables } from '@dataconnect/generated';
+
+// The `UpsertNotifyTemplateBinding` mutation requires an argument of type `UpsertNotifyTemplateBindingVariables`:
+const upsertNotifyTemplateBindingVars: UpsertNotifyTemplateBindingVariables = {
+  templateKey: ..., 
+  notifyTemplateId: ..., 
+  reviewedVersion: ..., 
+  changedBy: ..., 
+  reason: ..., // optional
+  auditAction: ..., 
+  previousValue: ..., // optional
+  newValue: ..., 
+};
+
+// Call the `upsertNotifyTemplateBinding()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await upsertNotifyTemplateBinding(upsertNotifyTemplateBindingVars);
+// Variables can be defined inline as well.
+const { data } = await upsertNotifyTemplateBinding({ templateKey: ..., notifyTemplateId: ..., reviewedVersion: ..., changedBy: ..., reason: ..., auditAction: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await upsertNotifyTemplateBinding(dataConnect, upsertNotifyTemplateBindingVars);
+
+console.log(data.notifyTemplateBinding_upsert);
+console.log(data.notifyTemplateBindingAudit_insert);
+
+// Or, you can use the `Promise` API.
+upsertNotifyTemplateBinding(upsertNotifyTemplateBindingVars).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateBinding_upsert);
+  console.log(data.notifyTemplateBindingAudit_insert);
+});
+```
+
+### Using `UpsertNotifyTemplateBinding`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, upsertNotifyTemplateBindingRef, UpsertNotifyTemplateBindingVariables } from '@dataconnect/generated';
+
+// The `UpsertNotifyTemplateBinding` mutation requires an argument of type `UpsertNotifyTemplateBindingVariables`:
+const upsertNotifyTemplateBindingVars: UpsertNotifyTemplateBindingVariables = {
+  templateKey: ..., 
+  notifyTemplateId: ..., 
+  reviewedVersion: ..., 
+  changedBy: ..., 
+  reason: ..., // optional
+  auditAction: ..., 
+  previousValue: ..., // optional
+  newValue: ..., 
+};
+
+// Call the `upsertNotifyTemplateBindingRef()` function to get a reference to the mutation.
+const ref = upsertNotifyTemplateBindingRef(upsertNotifyTemplateBindingVars);
+// Variables can be defined inline as well.
+const ref = upsertNotifyTemplateBindingRef({ templateKey: ..., notifyTemplateId: ..., reviewedVersion: ..., changedBy: ..., reason: ..., auditAction: ..., previousValue: ..., newValue: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = upsertNotifyTemplateBindingRef(dataConnect, upsertNotifyTemplateBindingVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notifyTemplateBinding_upsert);
+console.log(data.notifyTemplateBindingAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notifyTemplateBinding_upsert);
+  console.log(data.notifyTemplateBindingAudit_insert);
 });
 ```
 

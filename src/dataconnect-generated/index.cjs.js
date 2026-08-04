@@ -90,6 +90,13 @@ const NotifyReplyToVerificationStatus = {
 }
 exports.NotifyReplyToVerificationStatus = NotifyReplyToVerificationStatus;
 
+const NotifyTemplateBindingAuditAction = {
+  CREATED: "CREATED",
+  TEMPLATE_CHANGED: "TEMPLATE_CHANGED",
+  VERSION_REVIEWED: "VERSION_REVIEWED",
+}
+exports.NotifyTemplateBindingAuditAction = NotifyTemplateBindingAuditAction;
+
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -381,6 +388,50 @@ exports.clearNotifyTemplateReplyToOverrideRef = clearNotifyTemplateReplyToOverri
 exports.clearNotifyTemplateReplyToOverride = function clearNotifyTemplateReplyToOverride(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(clearNotifyTemplateReplyToOverrideRef(dcInstance, inputVars));
+}
+;
+
+const getNotifyTemplateBindingsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotifyTemplateBindings');
+}
+getNotifyTemplateBindingsRef.operationName = 'GetNotifyTemplateBindings';
+exports.getNotifyTemplateBindingsRef = getNotifyTemplateBindingsRef;
+
+exports.getNotifyTemplateBindings = function getNotifyTemplateBindings(dcOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyTemplateBindingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listNotifyTemplateBindingAuditsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListNotifyTemplateBindingAudits', inputVars);
+}
+listNotifyTemplateBindingAuditsRef.operationName = 'ListNotifyTemplateBindingAudits';
+exports.listNotifyTemplateBindingAuditsRef = listNotifyTemplateBindingAuditsRef;
+
+exports.listNotifyTemplateBindingAudits = function listNotifyTemplateBindingAudits(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listNotifyTemplateBindingAuditsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const upsertNotifyTemplateBindingRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertNotifyTemplateBinding', inputVars);
+}
+upsertNotifyTemplateBindingRef.operationName = 'UpsertNotifyTemplateBinding';
+exports.upsertNotifyTemplateBindingRef = upsertNotifyTemplateBindingRef;
+
+exports.upsertNotifyTemplateBinding = function upsertNotifyTemplateBinding(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(upsertNotifyTemplateBindingRef(dcInstance, inputVars));
 }
 ;
 

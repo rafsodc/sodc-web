@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -7,8 +7,12 @@ import {
   CircularProgress,
   Collapse,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -23,6 +27,9 @@ import PageHeader from "../../../shared/components/PageHeader";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import {
   getTemplateSyncStatus,
+  moveAllNotifyTemplateBindingsToLatestVersion,
+  setNotifyTemplateBinding,
+  type NotifyTemplateCandidate,
   type TemplateSyncResult,
   type TemplateSyncStatus,
 } from "../../../shared/utils/firebaseFunctions";
@@ -41,7 +48,7 @@ function statusChipColor(status: TemplateSyncStatus): "success" | "error" | "war
 function statusLabel(status: TemplateSyncStatus): string {
   if (status === "in_sync") return "In sync";
   if (status === "drift") return "Drift detected";
-  if (status === "not_configured") return "UUID not configured";
+  if (status === "not_configured") return "Not bound";
   return "Fetch error";
 }
 
@@ -198,7 +205,121 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
   );
 }
 
-function TemplateRow({ result }: { result: TemplateSyncResult }) {
+function BindingControls({
+  result,
+  onSaved,
+}: {
+  result: TemplateSyncResult;
+  onSaved: (results: TemplateSyncResult[]) => void;
+}) {
+  const [pendingTemplateId, setPendingTemplateId] = useState(result.boundTemplateId ?? "");
+  const [pendingVersion, setPendingVersion] = useState(result.reviewedVersion ?? 1);
+  const [saving, setSaving] = useState(false);
+  const [rowError, setRowError] = useState<string | null>(null);
+
+  // Stay in sync when the parent refreshes (Refresh / Move all to latest version).
+  useEffect(() => {
+    setPendingTemplateId(result.boundTemplateId ?? "");
+    setPendingVersion(result.reviewedVersion ?? 1);
+  }, [result.boundTemplateId, result.reviewedVersion]);
+
+  const options: NotifyTemplateCandidate[] = useMemo(() => {
+    const list = [...result.candidates];
+    if (result.boundTemplateId && !list.some((c) => c.id === result.boundTemplateId)) {
+      list.push({
+        id: result.boundTemplateId,
+        name: result.boundTemplateName
+          ? `${result.boundTemplateName} (not an exact key match)`
+          : `${result.boundTemplateId} (not found in GOV Notify)`,
+        version: result.currentLiveVersion ?? result.reviewedVersion ?? 1,
+      });
+    }
+    return list;
+  }, [result]);
+
+  const selected = options.find((c) => c.id === pendingTemplateId);
+  const maxVersion = Math.max(selected?.version ?? 1, 1);
+
+  const handleTemplateChange = (id: string) => {
+    setPendingTemplateId(id);
+    const candidate = options.find((c) => c.id === id);
+    setPendingVersion(candidate?.version ?? 1);
+  };
+
+  const handleSave = async () => {
+    if (!pendingTemplateId) return;
+    setSaving(true);
+    setRowError(null);
+    try {
+      const { results } = await setNotifyTemplateBinding({
+        templateKey: result.templateKey,
+        notifyTemplateId: pendingTemplateId,
+        reviewedVersion: pendingVersion,
+      });
+      onSaved(results);
+    } catch (caught) {
+      reportError("admin.email-templates.set-binding", caught, { templateKey: result.templateKey });
+      setRowError(toAdminUserFacingError(caught, "email-configuration").message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Box onClick={(e) => e.stopPropagation()}>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id={`template-${result.templateKey}`}>Notify template</InputLabel>
+          <Select
+            labelId={`template-${result.templateKey}`}
+            label="Notify template"
+            value={pendingTemplateId}
+            disabled={saving}
+            onChange={(event) => handleTemplateChange(event.target.value)}
+          >
+            {options.length === 0 && (
+              <MenuItem value="" disabled>No exact-name match found</MenuItem>
+            )}
+            {options.map((candidate) => (
+              <MenuItem key={candidate.id} value={candidate.id}>{candidate.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 90 }}>
+          <InputLabel id={`version-${result.templateKey}`}>Version</InputLabel>
+          <Select
+            labelId={`version-${result.templateKey}`}
+            label="Version"
+            value={pendingVersion}
+            disabled={saving || !pendingTemplateId}
+            onChange={(event) => setPendingVersion(Number(event.target.value))}
+          >
+            {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
+              <MenuItem key={v} value={v}>{v}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button
+          size="small"
+          variant="contained"
+          disabled={saving || !pendingTemplateId}
+          onClick={() => void handleSave()}
+        >
+          Save
+        </Button>
+      </Stack>
+      {rowError && <Alert severity="error" sx={{ mt: 1 }}>{rowError}</Alert>}
+    </Box>
+  );
+}
+
+function TemplateRow({
+  result,
+  onSaved,
+}: {
+  result: TemplateSyncResult;
+  onSaved: (results: TemplateSyncResult[]) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const showToggle = result.status === "drift" || result.status === "fetch_error";
 
@@ -220,16 +341,21 @@ function TemplateRow({ result }: { result: TemplateSyncResult }) {
           </Stack>
         </TableCell>
         <TableCell>
-          <Chip
-            size="small"
-            label={statusLabel(result.status)}
-            color={statusChipColor(result.status)}
-          />
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            <Chip
+              size="small"
+              label={statusLabel(result.status)}
+              color={statusChipColor(result.status)}
+            />
+            {result.versionDrift && (
+              <Tooltip title="GOV Notify's live version has moved past the version an admin last reviewed">
+                <Chip size="small" label={`v${result.reviewedVersion} → v${result.currentLiveVersion}`} color="warning" variant="outlined" />
+              </Tooltip>
+            )}
+          </Stack>
         </TableCell>
         <TableCell>
-          <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
-            {result.expectedSubject}
-          </Typography>
+          <BindingControls result={result} onSaved={onSaved} />
         </TableCell>
         <TableCell align="right">
           {showToggle ? (
@@ -291,10 +417,11 @@ function TemplateRow({ result }: { result: TemplateSyncResult }) {
 
 export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageProps) {
   const [loading, setLoading] = useState(false);
+  const [bulkMoving, setBulkMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<TemplateSyncResult[] | null>(null);
 
-  const runCheck = async () => {
+  const refresh = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -308,26 +435,55 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
     }
   };
 
+  const moveAllToLatest = async () => {
+    setBulkMoving(true);
+    setError(null);
+    try {
+      const data = await moveAllNotifyTemplateBindingsToLatestVersion();
+      setResults(data.results);
+    } catch (caught) {
+      reportError("admin.email-templates.move-all-latest", caught);
+      setError(toAdminUserFacingError(caught, "email-configuration").message);
+    } finally {
+      setBulkMoving(false);
+    }
+  };
+
   const driftCount = results?.filter((r) => r.status === "drift").length ?? 0;
   const unconfiguredCount = results?.filter((r) => r.status === "not_configured").length ?? 0;
   const errorCount = results?.filter((r) => r.status === "fetch_error").length ?? 0;
+  const versionDriftCount = results?.filter((r) => r.versionDrift).length ?? 0;
+  const anyBound = results?.some((r) => r.boundTemplateId) ?? false;
 
   return (
     <Box className="page-container">
-      <PageHeader title="Email Template Sync" onBack={onBack} />
+      <PageHeader title="Email Templates" onBack={onBack} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Compares the GOV Notify templates (fetched live) against the{" "}
+        Bind each transactional template key to a live GOV Notify template whose name exactly
+        matches the key, and record the version you've reviewed. Drift means the reviewed
+        content no longer matches the live GOV Notify template, or the code in{" "}
         <Typography component="span" variant="body2" fontFamily="monospace">
           functions/email-templates/
         </Typography>{" "}
-        files in the codebase. Drift means the dashboard was updated without updating the code, or
-        vice versa. Click a drifted template to see the diff and copy the correct values.
+        no longer matches what's bound. Click a drifted or errored template to see details.
       </Typography>
 
-      <Button variant="contained" onClick={runCheck} disabled={loading} sx={{ mb: 3 }}>
-        {loading ? <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} /> : null}
-        {loading ? "Checking…" : results ? "Re-check" : "Check sync status"}
-      </Button>
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <Button variant="contained" onClick={() => void refresh()} disabled={loading || bulkMoving}>
+          {loading ? <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} /> : null}
+          {loading ? "Refreshing…" : "Refresh"}
+        </Button>
+        {results && (
+          <Button
+            variant="outlined"
+            onClick={() => void moveAllToLatest()}
+            disabled={loading || bulkMoving || !anyBound}
+          >
+            {bulkMoving ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+            {bulkMoving ? "Moving…" : "Move all to latest version"}
+          </Button>
+        )}
+      </Stack>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -337,9 +493,9 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
 
       {results && (
         <>
-          {driftCount + unconfiguredCount + errorCount === 0 ? (
+          {driftCount + unconfiguredCount + errorCount + versionDriftCount === 0 ? (
             <Alert severity="success" sx={{ mb: 2 }}>
-              All {results.length} templates are in sync.
+              All {results.length} templates are bound, reviewed, and in sync.
             </Alert>
           ) : (
             <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
@@ -347,7 +503,10 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
                 <Chip label={`${driftCount} drift detected`} color="error" size="small" />
               )}
               {unconfiguredCount > 0 && (
-                <Chip label={`${unconfiguredCount} UUID not configured`} color="warning" size="small" />
+                <Chip label={`${unconfiguredCount} not bound`} color="warning" size="small" />
+              )}
+              {versionDriftCount > 0 && (
+                <Chip label={`${versionDriftCount} live version changed since review`} color="warning" size="small" variant="outlined" />
               )}
               {errorCount > 0 && (
                 <Chip label={`${errorCount} fetch error`} color="default" size="small" />
@@ -362,13 +521,13 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
               <TableRow>
                 <TableCell>Template</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Expected subject</TableCell>
+                <TableCell>Binding</TableCell>
                 <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
               {results.map((result) => (
-                <TemplateRow key={result.templateKey} result={result} />
+                <TemplateRow key={result.templateKey} result={result} onSaved={setResults} />
               ))}
             </TableBody>
           </Table>
