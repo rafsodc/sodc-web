@@ -72,7 +72,14 @@ function values(value) {
 function resourceNames(items) {
   return items.map((item) =>
     normalizeResourceName(
-      item.name ?? item.id ?? item.projectId ?? item.site ?? item.siteId ?? item.service ?? item.appId
+      item.name ??
+        item.metadata?.name ??
+        item.id ??
+        item.projectId ??
+        item.site ??
+        item.siteId ??
+        item.service ??
+        item.appId
     )
   );
 }
@@ -268,6 +275,7 @@ async function main() {
     id: "cloud-sql",
     label: "Cloud SQL resilience audit failed",
     command: "gcloud",
+    optional: !target.requireCloudSqlResilience,
     args: [
       "sql",
       "instances",

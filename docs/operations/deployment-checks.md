@@ -46,6 +46,10 @@ tokens, signed URLs, or raw log messages.
 - the expected Data Connect service and `api` connector exist;
 - the declared Cloud SQL instance/database use the expected region and have
   automated backups, point-in-time recovery, and deletion protection enabled;
+  this is a hard failure on Beta and Prod, and a warning-only check on Dev per
+  each environment's `requireCloudSqlResilience` flag in
+  `config/deployment-check.json` — Dev data is disposable and does not warrant
+  the backup-storage cost;
 - the expected Hosting site exists;
 - every Function exported from `functions/src` is deployed, Gen 2, `ACTIVE`,
   and in `europe-west2`; unexpected Functions are reported as warnings;
