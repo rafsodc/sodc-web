@@ -440,6 +440,59 @@ mutation ClearNotifyTemplateReplyToOverride(
   })
 }
 
+# ── GOV.UK Notify transactional template bindings ───────────────────────────
+
+query GetNotifyTemplateBindings @auth(level: NO_ACCESS) {
+  notifyTemplateBindings {
+    templateKey
+    notifyTemplateId
+    reviewedVersion
+    version
+    updatedAt
+    updatedBy
+  }
+}
+
+query ListNotifyTemplateBindingAudits($limit: Int!) @auth(level: NO_ACCESS) {
+  notifyTemplateBindingAudits(orderBy: { changedAt: DESC }, limit: $limit) {
+    id
+    action
+    templateKey
+    previousValue
+    newValue
+    changedBy
+    reason
+    changedAt
+  }
+}
+
+mutation UpsertNotifyTemplateBinding(
+  $templateKey: String!
+  $notifyTemplateId: String!
+  $reviewedVersion: Int!
+  $changedBy: String!
+  $reason: String
+  $auditAction: NotifyTemplateBindingAuditAction!
+  $previousValue: String
+  $newValue: String!
+) @auth(level: NO_ACCESS) @transaction {
+  notifyTemplateBinding_upsert(data: {
+    templateKey: $templateKey
+    notifyTemplateId: $notifyTemplateId
+    reviewedVersion: $reviewedVersion
+    updatedAt_expr: "request.time"
+    updatedBy: $changedBy
+  })
+  notifyTemplateBindingAudit_insert(data: {
+    action: $auditAction
+    templateKey: $templateKey
+    previousValue: $previousValue
+    newValue: $newValue
+    changedBy: $changedBy
+    reason: $reason
+  })
+}
+
 # ── Section file storage lifecycle ───────────────────────────────────────────
 
 # The caller generates both the opaque file ID and object path. This makes it

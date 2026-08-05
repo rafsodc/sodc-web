@@ -21,6 +21,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListGovNotifyDeliveryModeAudits*](#listgovnotifydeliverymodeaudits)
   - [*GetNotifyReplyToConfiguration*](#getnotifyreplytoconfiguration)
   - [*ListNotifyReplyToAudits*](#listnotifyreplytoaudits)
+  - [*GetNotifyTemplateBindings*](#getnotifytemplatebindings)
+  - [*ListNotifyTemplateBindingAudits*](#listnotifytemplatebindingaudits)
   - [*GetSectionFileById*](#getsectionfilebyid)
   - [*ListSectionFilesByStatus*](#listsectionfilesbystatus)
   - [*ListStaleSectionFiles*](#liststalesectionfiles)
@@ -104,6 +106,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*DisableDefaultNotifyReplyToAddress*](#disabledefaultnotifyreplytoaddress)
   - [*SetNotifyTemplateReplyToOverride*](#setnotifytemplatereplytooverride)
   - [*ClearNotifyTemplateReplyToOverride*](#clearnotifytemplatereplytooverride)
+  - [*UpsertNotifyTemplateBinding*](#upsertnotifytemplatebinding)
   - [*CreatePendingSectionFile*](#creatependingsectionfile)
   - [*RecordSectionFileAudit*](#recordsectionfileaudit)
   - [*AbandonPendingSectionFile*](#abandonpendingsectionfile)
@@ -668,6 +671,173 @@ export default function ListNotifyReplyToAuditsComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.notifyReplyToAudits);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNotifyTemplateBindings
+You can execute the `GetNotifyTemplateBindings` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotifyTemplateBindings(dc: DataConnect, options?: useDataConnectQueryOptions<GetNotifyTemplateBindingsData>): UseDataConnectQueryResult<GetNotifyTemplateBindingsData, undefined>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotifyTemplateBindings(options?: useDataConnectQueryOptions<GetNotifyTemplateBindingsData>): UseDataConnectQueryResult<GetNotifyTemplateBindingsData, undefined>;
+```
+
+### Variables
+The `GetNotifyTemplateBindings` Query has no variables.
+### Return Type
+Recall that calling the `GetNotifyTemplateBindings` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotifyTemplateBindings` Query is of type `GetNotifyTemplateBindingsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotifyTemplateBindingsData {
+  notifyTemplateBindings: ({
+    templateKey: string;
+    notifyTemplateId: string;
+    reviewedVersion: number;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateBinding_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotifyTemplateBindings`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@dataconnect/generated';
+import { useGetNotifyTemplateBindings } from '@dataconnect/generated/react'
+
+export default function GetNotifyTemplateBindingsComponent() {
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotifyTemplateBindings();
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotifyTemplateBindings(dataConnect);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyTemplateBindings(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyTemplateBindings(dataConnect, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyTemplateBindings);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListNotifyTemplateBindingAudits
+You can execute the `ListNotifyTemplateBindingAudits` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListNotifyTemplateBindingAudits(dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables, options?: useDataConnectQueryOptions<ListNotifyTemplateBindingAuditsData>): UseDataConnectQueryResult<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListNotifyTemplateBindingAudits(vars: ListNotifyTemplateBindingAuditsVariables, options?: useDataConnectQueryOptions<ListNotifyTemplateBindingAuditsData>): UseDataConnectQueryResult<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+```
+
+### Variables
+The `ListNotifyTemplateBindingAudits` Query requires an argument of type `ListNotifyTemplateBindingAuditsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListNotifyTemplateBindingAuditsVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListNotifyTemplateBindingAudits` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListNotifyTemplateBindingAudits` Query is of type `ListNotifyTemplateBindingAuditsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListNotifyTemplateBindingAuditsData {
+  notifyTemplateBindingAudits: ({
+    id: UUIDString;
+    action: NotifyTemplateBindingAuditAction;
+    templateKey: string;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyTemplateBindingAudit_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListNotifyTemplateBindingAudits`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListNotifyTemplateBindingAuditsVariables } from '@dataconnect/generated';
+import { useListNotifyTemplateBindingAudits } from '@dataconnect/generated/react'
+
+export default function ListNotifyTemplateBindingAuditsComponent() {
+  // The `useListNotifyTemplateBindingAudits` Query hook requires an argument of type `ListNotifyTemplateBindingAuditsVariables`:
+  const listNotifyTemplateBindingAuditsVars: ListNotifyTemplateBindingAuditsVariables = {
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListNotifyTemplateBindingAudits(listNotifyTemplateBindingAuditsVars);
+  // Variables can be defined inline as well.
+  const query = useListNotifyTemplateBindingAudits({ limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListNotifyTemplateBindingAudits(dataConnect, listNotifyTemplateBindingAuditsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNotifyTemplateBindingAudits(listNotifyTemplateBindingAuditsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNotifyTemplateBindingAudits(dataConnect, listNotifyTemplateBindingAuditsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notifyTemplateBindingAudits);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -8736,6 +8906,116 @@ export default function ClearNotifyTemplateReplyToOverrideComponent() {
   if (mutation.isSuccess) {
     console.log(mutation.data.notifyTemplateReplyToOverride_delete);
     console.log(mutation.data.notifyReplyToAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpsertNotifyTemplateBinding
+You can execute the `UpsertNotifyTemplateBinding` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpsertNotifyTemplateBinding(options?: useDataConnectMutationOptions<UpsertNotifyTemplateBindingData, FirebaseError, UpsertNotifyTemplateBindingVariables>): UseDataConnectMutationResult<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpsertNotifyTemplateBinding(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertNotifyTemplateBindingData, FirebaseError, UpsertNotifyTemplateBindingVariables>): UseDataConnectMutationResult<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+```
+
+### Variables
+The `UpsertNotifyTemplateBinding` Mutation requires an argument of type `UpsertNotifyTemplateBindingVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpsertNotifyTemplateBindingVariables {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+  changedBy: string;
+  reason?: string | null;
+  auditAction: NotifyTemplateBindingAuditAction;
+  previousValue?: string | null;
+  newValue: string;
+}
+```
+### Return Type
+Recall that calling the `UpsertNotifyTemplateBinding` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpsertNotifyTemplateBinding` Mutation is of type `UpsertNotifyTemplateBindingData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpsertNotifyTemplateBindingData {
+  notifyTemplateBinding_upsert: NotifyTemplateBinding_Key;
+  notifyTemplateBindingAudit_insert: NotifyTemplateBindingAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpsertNotifyTemplateBinding`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpsertNotifyTemplateBindingVariables } from '@dataconnect/generated';
+import { useUpsertNotifyTemplateBinding } from '@dataconnect/generated/react'
+
+export default function UpsertNotifyTemplateBindingComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpsertNotifyTemplateBinding();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpsertNotifyTemplateBinding(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpsertNotifyTemplateBinding(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpsertNotifyTemplateBinding(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpsertNotifyTemplateBinding` Mutation requires an argument of type `UpsertNotifyTemplateBindingVariables`:
+  const upsertNotifyTemplateBindingVars: UpsertNotifyTemplateBindingVariables = {
+    templateKey: ..., 
+    notifyTemplateId: ..., 
+    reviewedVersion: ..., 
+    changedBy: ..., 
+    reason: ..., // optional
+    auditAction: ..., 
+    previousValue: ..., // optional
+    newValue: ..., 
+  };
+  mutation.mutate(upsertNotifyTemplateBindingVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ templateKey: ..., notifyTemplateId: ..., reviewedVersion: ..., changedBy: ..., reason: ..., auditAction: ..., previousValue: ..., newValue: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(upsertNotifyTemplateBindingVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notifyTemplateBinding_upsert);
+    console.log(mutation.data.notifyTemplateBindingAudit_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

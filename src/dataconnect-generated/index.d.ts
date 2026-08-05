@@ -87,6 +87,12 @@ export enum NotifyReplyToVerificationStatus {
   VERIFIED = "VERIFIED",
 };
 
+export enum NotifyTemplateBindingAuditAction {
+  CREATED = "CREATED",
+  TEMPLATE_CHANGED = "TEMPLATE_CHANGED",
+  VERSION_REVIEWED = "VERSION_REVIEWED",
+};
+
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -1732,6 +1738,17 @@ export interface GetNotifyReplyToConfigurationData {
   } & NotifyTemplateReplyToOverride_Key)[];
 }
 
+export interface GetNotifyTemplateBindingsData {
+  notifyTemplateBindings: ({
+    templateKey: string;
+    notifyTemplateId: string;
+    reviewedVersion: number;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateBinding_Key)[];
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -2554,6 +2571,23 @@ export interface ListNotifyReplyToAuditsVariables {
   limit: number;
 }
 
+export interface ListNotifyTemplateBindingAuditsData {
+  notifyTemplateBindingAudits: ({
+    id: UUIDString;
+    action: NotifyTemplateBindingAuditAction;
+    templateKey: string;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyTemplateBindingAudit_Key)[];
+}
+
+export interface ListNotifyTemplateBindingAuditsVariables {
+  limit: number;
+}
+
 export interface ListOpenPaymentReconciliationExceptionsData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -2910,6 +2944,16 @@ export interface NotifyReplyToAddress_Key {
 export interface NotifyReplyToAudit_Key {
   id: UUIDString;
   __typename?: 'NotifyReplyToAudit_Key';
+}
+
+export interface NotifyTemplateBindingAudit_Key {
+  id: UUIDString;
+  __typename?: 'NotifyTemplateBindingAudit_Key';
+}
+
+export interface NotifyTemplateBinding_Key {
+  templateKey: string;
+  __typename?: 'NotifyTemplateBinding_Key';
 }
 
 export interface NotifyTemplateReplyToOverride_Key {
@@ -3362,6 +3406,22 @@ export interface UpsertCallableInvocationVariables {
   count: number;
 }
 
+export interface UpsertNotifyTemplateBindingData {
+  notifyTemplateBinding_upsert: NotifyTemplateBinding_Key;
+  notifyTemplateBindingAudit_insert: NotifyTemplateBindingAudit_Key;
+}
+
+export interface UpsertNotifyTemplateBindingVariables {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+  changedBy: string;
+  reason?: string | null;
+  auditAction: NotifyTemplateBindingAuditAction;
+  previousValue?: string | null;
+  newValue: string;
+}
+
 export interface UpsertPaymentReconciliationExceptionData {
   paymentReconciliationException_upsert: PaymentReconciliationException_Key;
 }
@@ -3618,6 +3678,42 @@ export const clearNotifyTemplateReplyToOverrideRef: ClearNotifyTemplateReplyToOv
 
 export function clearNotifyTemplateReplyToOverride(vars: ClearNotifyTemplateReplyToOverrideVariables): MutationPromise<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
 export function clearNotifyTemplateReplyToOverride(dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables): MutationPromise<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+
+interface GetNotifyTemplateBindingsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNotifyTemplateBindingsData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetNotifyTemplateBindingsData, undefined>;
+  operationName: string;
+}
+export const getNotifyTemplateBindingsRef: GetNotifyTemplateBindingsRef;
+
+export function getNotifyTemplateBindings(options?: ExecuteQueryOptions): QueryPromise<GetNotifyTemplateBindingsData, undefined>;
+export function getNotifyTemplateBindings(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNotifyTemplateBindingsData, undefined>;
+
+interface ListNotifyTemplateBindingAuditsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNotifyTemplateBindingAuditsVariables): QueryRef<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables): QueryRef<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+  operationName: string;
+}
+export const listNotifyTemplateBindingAuditsRef: ListNotifyTemplateBindingAuditsRef;
+
+export function listNotifyTemplateBindingAudits(vars: ListNotifyTemplateBindingAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+export function listNotifyTemplateBindingAudits(dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+
+interface UpsertNotifyTemplateBindingRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertNotifyTemplateBindingVariables): MutationRef<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables): MutationRef<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+  operationName: string;
+}
+export const upsertNotifyTemplateBindingRef: UpsertNotifyTemplateBindingRef;
+
+export function upsertNotifyTemplateBinding(vars: UpsertNotifyTemplateBindingVariables): MutationPromise<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+export function upsertNotifyTemplateBinding(dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables): MutationPromise<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
 
 interface CreatePendingSectionFileRef {
   /* Allow users to create refs without passing in DataConnect */
