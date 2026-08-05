@@ -41,17 +41,3 @@ export function navigateBackOr(
   }
   navigate(fallbackRoute, { replace: true });
 }
-
-export function selectedAdminSectionId(pathname: string, manageSectionsRoute: string, state: unknown) {
-  if (pathname !== manageSectionsRoute) {
-    return null;
-  }
-  return ((state as { managedSection?: { id?: string } } | null)?.managedSection?.id ?? null);
-}
-
-export function selectedAdminUserGroupId(pathname: string, userGroupsRoute: string, state: unknown) {
-  if (pathname !== userGroupsRoute) {
-    return null;
-  }
-  return ((state as { expandedGroupId?: string } | null)?.expandedGroupId ?? null);
-}

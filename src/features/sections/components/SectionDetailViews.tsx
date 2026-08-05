@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Paper,
   Tab,
@@ -22,11 +21,9 @@ import { ViewList as ViewListIcon, ViewModule as ViewModuleIcon } from "@mui/ico
 import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
-import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetailTabs";
-import AnnouncementOptOutToggle from "./AnnouncementOptOutToggle";
 import ContactDetailsDialog from "./ContactDetailsDialog";
 import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
@@ -47,12 +44,10 @@ interface SectionDescriptionHeaderProps {
   hasCurrentUser: boolean;
   canSubscribe: boolean;
   userIsMember: boolean;
-  userHasSectionAccess: boolean;
   hasSubscribableMemberGroup: boolean;
   subscribing: boolean;
   onSubscribe: () => void;
   onUnsubscribe: () => void;
-  sectionId: string;
 }
 
 export function SectionDescriptionHeader({
@@ -61,22 +56,13 @@ export function SectionDescriptionHeader({
   hasCurrentUser,
   canSubscribe,
   userIsMember,
-  userHasSectionAccess,
   hasSubscribableMemberGroup,
   subscribing,
   onSubscribe,
   onUnsubscribe,
-  sectionId,
 }: SectionDescriptionHeaderProps) {
   return (
     <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
-        <Chip
-          label={getSectionTypeLabel(section.type)}
-          size="small"
-          color={isMembersSectionType(section.type) ? "primary" : "secondary"}
-        />
-      </Box>
       <Typography variant="body1" color="text.secondary">
         {section.description?.trim() || "No description provided for this section."}
       </Typography>
@@ -105,11 +91,6 @@ export function SectionDescriptionHeader({
               {subscribing ? "Unsubscribing..." : "Unsubscribe"}
             </Button>
           )}
-        </Box>
-      )}
-      {hasCurrentUser && userHasSectionAccess && (
-        <Box sx={{ mt: 2 }}>
-          <AnnouncementOptOutToggle sectionId={sectionId} />
         </Box>
       )}
     </Box>

@@ -9,6 +9,7 @@ import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/gene
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import PageHeader from "../../../shared/components/PageHeader";
+import AnnouncementOptOutToggle from "./AnnouncementOptOutToggle";
 import FailureState from "../../../shared/components/FailureState";
 import { reportError } from "../../../shared/errors";
 import {
@@ -47,7 +48,6 @@ import {
   SectionEventsListView,
   SectionMembersView,
 } from "./SectionDetailViews";
-import SectionFilesList from "./SectionFilesList";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -504,25 +504,25 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         onBack={handleHeaderBack}
         adminAction={sectionAdminAction}
         breadcrumbs={headerBreadcrumbs}
+        extraActions={
+          !selectedEventId && currentUser && userHasSectionAccess ? (
+            <AnnouncementOptOutToggle sectionId={sectionId} />
+          ) : null
+        }
       />
 
       {!selectedEventId && (
-        <>
-          <SectionDescriptionHeader
-            section={section}
-            isMembers={isMembers}
-            hasCurrentUser={Boolean(currentUser)}
-            canSubscribe={canSubscribe}
-            userIsMember={userIsMember}
-            userHasSectionAccess={userHasSectionAccess}
-            hasSubscribableMemberGroup={hasSubscribableMemberGroup}
-            subscribing={subscribing}
-            onSubscribe={handleSubscribe}
-            onUnsubscribe={handleUnsubscribe}
-            sectionId={sectionId}
-          />
-          <SectionFilesList sectionId={sectionId} />
-        </>
+        <SectionDescriptionHeader
+          section={section}
+          isMembers={isMembers}
+          hasCurrentUser={Boolean(currentUser)}
+          canSubscribe={canSubscribe}
+          userIsMember={userIsMember}
+          hasSubscribableMemberGroup={hasSubscribableMemberGroup}
+          subscribing={subscribing}
+          onSubscribe={handleSubscribe}
+          onUnsubscribe={handleUnsubscribe}
+        />
       )}
 
       {isMembers ? (

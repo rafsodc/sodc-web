@@ -21,8 +21,6 @@ interface MobileNavigationMenuProps {
   sections: NavigationLink[];
   adminLinks: NavigationLink[];
   pathname: string;
-  selectedAdminSectionId?: string | null;
-  selectedAdminUserGroupId?: string | null;
 }
 
 export default function MobileNavigationMenu({
@@ -31,8 +29,6 @@ export default function MobileNavigationMenu({
   sections,
   adminLinks,
   pathname,
-  selectedAdminSectionId,
-  selectedAdminUserGroupId,
 }: MobileNavigationMenuProps) {
   const { openSettings } = useCookiePreferences();
   const hasNavigation = sections.length > 0 || adminLinks.length > 0;
@@ -67,8 +63,6 @@ export default function MobileNavigationMenu({
             sections={sections}
             adminLinks={adminLinks}
             pathname={pathname}
-            selectedAdminSectionId={selectedAdminSectionId}
-            selectedAdminUserGroupId={selectedAdminUserGroupId}
             onItemNavigate={onClose}
           />
         ) : null}

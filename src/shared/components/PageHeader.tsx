@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { AdminPanelSettings } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
 import "./PageHeader.css";
@@ -8,35 +8,20 @@ export interface PageHeaderAdminAction {
   onClick: () => void;
 }
 
-const PageHeaderAdminActionContext = createContext<PageHeaderAdminAction>({
-  visible: false,
-  onClick: () => {},
-});
-
 interface PageHeaderProps {
   title: string;
-  onBack: () => void;
+  // Accepted for compatibility with existing callers but no longer rendered -- the Back
+  // button was removed as unnecessary navigation chrome.
+  onBack?: () => void;
   adminAction?: PageHeaderAdminAction;
   breadcrumbs?: ReactNode;
+  // Extra page-specific controls rendered alongside the Admin button, e.g. the section
+  // detail page's announcement-emails toggle.
+  extraActions?: ReactNode;
 }
 
-interface PageHeaderAdminActionProviderProps {
-  value: PageHeaderAdminAction;
-  children: ReactNode;
-}
-
-export function PageHeaderAdminActionProvider({ value, children }: PageHeaderAdminActionProviderProps) {
-  return (
-    <PageHeaderAdminActionContext.Provider value={value}>
-      {children}
-    </PageHeaderAdminActionContext.Provider>
-  );
-}
-
-export default function PageHeader({ title, onBack, adminAction: adminActionOverride, breadcrumbs }: PageHeaderProps) {
-  const contextAdminAction = useContext(PageHeaderAdminActionContext);
-  const adminAction = adminActionOverride ?? contextAdminAction;
-
+export default function PageHeader({ title, adminAction, breadcrumbs, extraActions }: PageHeaderProps) {
+  const hasActions = adminAction?.visible || extraActions;
   return (
     <Box sx={{ mb: 3 }}>
       {breadcrumbs}
@@ -44,18 +29,17 @@ export default function PageHeader({ title, onBack, adminAction: adminActionOver
         <Typography variant="h4" sx={{ color: "primary.light" }}>
           {title}
         </Typography>
-        <Box className="page-header-actions">
-          {adminAction.visible && (
-            <Button variant="contained" startIcon={<AdminPanelSettings />} onClick={adminAction.onClick}>
-              Admin
-            </Button>
-          )}
-          <Button variant="outlined" onClick={onBack}>
-            Back
-          </Button>
-        </Box>
+        {hasActions && (
+          <Box className="page-header-actions">
+            {extraActions}
+            {adminAction?.visible && (
+              <Button variant="contained" startIcon={<AdminPanelSettings />} onClick={adminAction.onClick}>
+                Admin
+              </Button>
+            )}
+          </Box>
+        )}
       </Box>
     </Box>
   );
 }
-

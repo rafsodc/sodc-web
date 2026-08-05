@@ -12,7 +12,13 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      refetchOnWindowFocus: false,
+      // Data Connect's fetch has no client-side timeout, so a request issued on a
+      // connection the browser/OS silently dropped while the tab was idle/backgrounded
+      // can hang forever, leaving a page stuck on its loading spinner. Refetching on
+      // window focus (the default we were previously opting out of) gives an already-
+      // mounted stuck query a fresh attempt as soon as the user comes back to the tab.
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
     },
   },
 })

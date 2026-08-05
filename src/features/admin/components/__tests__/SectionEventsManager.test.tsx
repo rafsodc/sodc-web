@@ -116,18 +116,14 @@ describe("SectionEventsManager", () => {
     });
   });
 
-  it("renders events list with section name and Back returns to sections", async () => {
+  it("renders events list with section name", async () => {
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Events: Events Section/)).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add event/i })).toBeInTheDocument();
     expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
-
-    screen.getByRole("button", { name: /back/i }).click();
-    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("shows events table when section has events", async () => {

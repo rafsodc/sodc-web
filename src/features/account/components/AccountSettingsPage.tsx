@@ -174,6 +174,13 @@ function AnnouncementPreferencesList() {
         Turning this off also applies to sections added in the future. Your individual section
         choices are preserved.
       </Typography>
+      {announcementOptOutAll && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You will not receive announcement emails from any section while this is off, even for
+          sections switched on below. Turn it back on to have those section choices take effect
+          again.
+        </Alert>
+      )}
       {isLoading ? (
         <CircularProgress size={20} aria-label="Loading communication preferences" />
       ) : isError ? (

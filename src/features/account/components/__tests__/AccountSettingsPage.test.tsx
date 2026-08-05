@@ -682,6 +682,10 @@ describe("AnnouncementPreferencesList", () => {
 
     renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
+    expect(
+      screen.queryByText(/will not receive announcement emails from any section/i),
+    ).not.toBeInTheDocument();
+
     await interaction.click(
       screen.getByRole("switch", { name: "Receive announcement emails" }),
     );
@@ -693,6 +697,31 @@ describe("AnnouncementPreferencesList", () => {
     });
     expect(screen.getByRole("switch", { name: "Alpha Section" })).toBeDisabled();
     expect(screen.getByText("Opted out of all announcement emails")).toBeInTheDocument();
+    expect(
+      screen.getByText(/will not receive announcement emails from any section/i),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that section choices are overridden when loaded with the global opt-out already on", () => {
+    vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({
+      data: {
+        user: {
+          membershipStatus: MembershipStatus.REGULAR,
+          announcementOptOutAll: true,
+          userGroups: [{ userGroup: sectionWithAccess }],
+          optOuts: [],
+        },
+        allUserGroups: [],
+      },
+      isLoading: false,
+    } as never);
+
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+
+    expect(screen.getByRole("switch", { name: "Alpha Section" })).toBeDisabled();
+    expect(
+      screen.getByText(/will not receive announcement emails from any section/i),
+    ).toBeInTheDocument();
   });
 
   it("shows section with MODERATOR access (tests || branch in grantsAccess)", () => {

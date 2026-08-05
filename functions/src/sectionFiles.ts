@@ -518,7 +518,7 @@ export const requestSectionFileDownload = onCall(
           version: "v4",
           action: "read",
           expires: Date.now() + SIGNED_DOWNLOAD_TTL_MS,
-          responseDisposition: `attachment; filename="${safeFilename}"`,
+          responseDisposition: `inline; filename="${safeFilename}"`,
           responseType: file.contentType,
         });
       logger.info("Section file download granted", { sectionId, fileId, actorUid: uid });

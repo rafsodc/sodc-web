@@ -69,7 +69,7 @@ describe("buildNavigationLinks", () => {
     expect(links.admin).toEqual([]);
   });
 
-  it("nests moderator section links under Manage Sections", () => {
+  it("shows Manage Sections (with no children) for a section moderator", () => {
     const links = buildNavigationLinks({
       isEnabled: true,
       isAdmin: false,
@@ -92,36 +92,12 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      {
-        label: "Signals",
-        to: "/sections/section-1",
-        state: homeSectionState,
-        children: [
-          {
-            label: "Administer",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
-            state: { sectionName: "Signals", sectionType: "EVENTS" },
-          },
-        ],
-      },
+      { label: "Signals", to: "/sections/section-1", state: homeSectionState },
     ]);
-    expect(links.admin).toEqual([
-      {
-        label: "Manage Sections",
-        to: ROUTES.MANAGE_SECTIONS,
-        state: null,
-        children: [
-          {
-            label: "Signals",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
-            state: { sectionName: "Signals", sectionType: "EVENTS" },
-          },
-        ],
-      },
-    ]);
+    expect(links.admin).toEqual([{ label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS }]);
   });
 
-  it("nests status-based moderator section links under Manage Sections", () => {
+  it("shows Manage Sections for a status-based moderator", () => {
     const links = buildNavigationLinks({
       isEnabled: true,
       isAdmin: false,
@@ -138,36 +114,12 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      {
-        label: "Events",
-        to: "/sections/section-2",
-        state: homeSectionState,
-        children: [
-          {
-            label: "Administer",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
-            state: { sectionName: "Events", sectionType: "EVENTS" },
-          },
-        ],
-      },
+      { label: "Events", to: "/sections/section-2", state: homeSectionState },
     ]);
-    expect(links.admin).toEqual([
-      {
-        label: "Manage Sections",
-        to: ROUTES.MANAGE_SECTIONS,
-        state: null,
-        children: [
-          {
-            label: "Events",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
-            state: { sectionName: "Events", sectionType: "EVENTS" },
-          },
-        ],
-      },
-    ]);
+    expect(links.admin).toEqual([{ label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS }]);
   });
 
-  it("shows global admin links with section and user group children only for admins", () => {
+  it("shows the full global admin link set only for admins", () => {
     const nonAdmin = buildNavigationLinks({
       isEnabled: true,
       isAdmin: false,
@@ -186,14 +138,6 @@ describe("buildNavigationLinks", () => {
             },
           ],
         },
-        allUserGroups: [
-          {
-            id: "group-1",
-            name: "Access group",
-            membershipStatuses: ["REGULAR"],
-            purposeLinks: [purposeLink("ACCESS", "section-1", "Signals")],
-          },
-        ],
       } as Partial<GetSectionsForUserData>),
     });
     const admin = buildNavigationLinks({
@@ -214,14 +158,6 @@ describe("buildNavigationLinks", () => {
             },
           ],
         },
-        allUserGroups: [
-          {
-            id: "group-1",
-            name: "Access group",
-            membershipStatuses: ["REGULAR"],
-            purposeLinks: [purposeLink("ACCESS", "section-1", "Signals")],
-          },
-        ],
       } as Partial<GetSectionsForUserData>),
     });
 
@@ -230,52 +166,21 @@ describe("buildNavigationLinks", () => {
       { label: "Signals", to: "/sections/section-1", state: homeSectionState },
     ]);
     expect(admin.sections).toEqual([
-      {
-        label: "Signals",
-        to: "/sections/section-1",
-        state: homeSectionState,
-        children: [
-          {
-            label: "Administer",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
-            state: { sectionName: "Signals", sectionType: "EVENTS" },
-          },
-        ],
-      },
+      { label: "Signals", to: "/sections/section-1", state: homeSectionState },
     ]);
-    expect(admin.admin).toEqual(
-      expect.arrayContaining([
-        { label: "Manage Users", to: ROUTES.MANAGE_USERS },
-        {
-          label: "Manage Sections",
-          to: ROUTES.MANAGE_SECTIONS,
-          state: null,
-          children: [
-            {
-              label: "Signals",
-              to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
-              state: { sectionName: "Signals", sectionType: "EVENTS" },
-            },
-          ],
-        },
-        {
-          label: "User Groups",
-          to: ROUTES.USER_GROUPS,
-          state: null,
-          children: [
-            {
-              label: "Access group",
-              to: ROUTES.USER_GROUPS,
-              state: { expandedGroupId: "group-1" },
-            },
-          ],
-        },
-      ])
-    );
-    expect(admin.admin.at(-1)).toEqual({ label: "Audit Logs", to: ROUTES.AUDIT_LOGS });
+    expect(admin.admin).toEqual([
+      { label: "Manage Users", to: ROUTES.MANAGE_USERS },
+      { label: "Approvals", to: ROUTES.APPROVE_USERS },
+      { label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS },
+      { label: "User Groups", to: ROUTES.USER_GROUPS },
+      { label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION },
+      { label: "Email Templates", to: ROUTES.EMAIL_TEMPLATES },
+      { label: "Email Delivery", to: ROUTES.EMAIL_DELIVERY },
+      { label: "Audit Logs", to: ROUTES.AUDIT_LOGS },
+    ]);
   });
 
-  it("deduplicates and sorts section links and admin section children", () => {
+  it("deduplicates and sorts section links", () => {
     const links = buildNavigationLinks({
       isEnabled: true,
       isAdmin: true,
@@ -302,50 +207,9 @@ describe("buildNavigationLinks", () => {
     });
 
     expect(links.sections).toEqual([
-      {
-        label: "Alpha",
-        to: "/sections/section-1",
-        state: homeSectionState,
-        children: [
-          {
-            label: "Administer",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
-            state: { sectionName: "Alpha", sectionType: "EVENTS" },
-          },
-        ],
-      },
-      {
-        label: "Zulu",
-        to: "/sections/section-2",
-        state: homeSectionState,
-        children: [
-          {
-            label: "Administer",
-            to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
-            state: { sectionName: "Zulu", sectionType: "EVENTS" },
-          },
-        ],
-      },
+      { label: "Alpha", to: "/sections/section-1", state: homeSectionState },
+      { label: "Zulu", to: "/sections/section-2", state: homeSectionState },
     ]);
-    expect(links.admin).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          label: "Manage Sections",
-          children: [
-            {
-              label: "Alpha",
-              to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1"),
-              state: { sectionName: "Alpha", sectionType: "EVENTS" },
-            },
-            {
-              label: "Zulu",
-              to: ROUTES.SECTION_ADMIN.replace(":sectionId", "section-2"),
-              state: { sectionName: "Zulu", sectionType: "EVENTS" },
-            },
-          ],
-        }),
-      ])
-    );
   });
 
   it("moves Audit Logs to the bottom of admin links", () => {

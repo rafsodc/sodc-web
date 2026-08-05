@@ -678,7 +678,7 @@ describe("App routing", () => {
     expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
   });
 
-  it("shows moderator section admin links without admin-only management links", async () => {
+  it("shows a moderator the flat Manage Sections link without admin-only management links", async () => {
     signInEnabledUser({
       data: sectionsData({
         user: {
@@ -701,50 +701,26 @@ describe("App routing", () => {
     renderApp([ROUTES.HOME]);
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Administer" })).toHaveAttribute(
-      "href",
-      ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1")
-    );
     expect(screen.getByRole("link", { name: "Manage Sections" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
+    expect(screen.queryByRole("link", { name: "Administer" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
   });
 
-  it("navigates section admin links to the section admin hub", async () => {
+  it("navigates the flat Manage Sections nav link to the Manage Sections page", async () => {
     signInEnabledUser({ admin: true });
     const user = userEvent.setup();
 
     renderApp([ROUTES.HOME]);
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Administer" }));
-
-    expect(await screen.findByRole("heading", { name: "Section Admin Page" })).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent(
-      ROUTES.SECTION_ADMIN.replace(":sectionId", "section-1")
-    );
-    expect(screen.getByTestId("location-state")).toHaveTextContent(
-      JSON.stringify({ sectionName: "Signals", sectionType: "MEMBERS" })
-    );
-  });
-
-  it("clears route state when navigating from the section admin hub to the root Manage Sections link", async () => {
-    signInEnabledUser({ admin: true });
-    const user = userEvent.setup();
-
-    renderApp([ROUTES.HOME]);
-
-    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Administer" }));
-    await screen.findByRole("heading", { name: "Section Admin Page" });
-    expect(screen.getByTestId("location-state")).toHaveTextContent("Signals");
-
     await user.click(screen.getByRole("link", { name: "Manage Sections" }));
 
-    await waitFor(() => expect(screen.getByTestId("location-state")).toHaveTextContent("null"));
+    expect(await screen.findByRole("heading", { name: "Manage Sections Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_SECTIONS);
   });
 
-  it("navigates user group admin links with expanded group route state", async () => {
+  it("navigates the flat User Groups nav link to the User Groups page", async () => {
     signInEnabledUser({
       admin: true,
       data: sectionsData({
@@ -763,11 +739,11 @@ describe("App routing", () => {
     renderApp([ROUTES.HOME]);
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Access group" }));
+    expect(screen.queryByRole("link", { name: "Access group" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "User Groups" }));
 
     expect(await screen.findByRole("heading", { name: "User Groups Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.USER_GROUPS);
-    expect(screen.getByTestId("location-state")).toHaveTextContent(JSON.stringify({ expandedGroupId: "group-1" }));
   });
 
   it("uses browser history for admin Back when history exists", async () => {
