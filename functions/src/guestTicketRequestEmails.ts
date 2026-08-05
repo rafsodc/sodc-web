@@ -11,7 +11,7 @@ import {
   recipientScopedNotifyReference,
 } from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
-import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
+import { formatMinorCurrency, normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import { resolveGuestTicketModeratorEmails } from "./guestTicketRequestModerators";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
@@ -27,7 +27,6 @@ export type GuestTicketEmailTemplates = {
     eventTitle: string;
     sectionName: string;
     bookerDisplay: string;
-    guestDisplayName: string;
     requestedGuestCount: number;
     guestTicketTypeTitle: string;
     dietaryNote: string;
@@ -36,22 +35,54 @@ export type GuestTicketEmailTemplates = {
   guestTicketRequestApproved: {
     customerFirstName: string;
     eventTitle: string;
-    guestDisplayName: string;
-    requestedGuestCount: number;
     decisionLabel: string;
+    guestTicketCount: number;
+    totalAmountLine: string;
     moderatorNote: string;
     myBookingsUrl: string;
   };
   guestTicketRequestRejected: {
     customerFirstName: string;
     eventTitle: string;
-    guestDisplayName: string;
-    requestedGuestCount: number;
     decisionLabel: string;
+    guestTicketCount: number;
     moderatorNote: string;
     myBookingsUrl: string;
   };
 };
+
+interface GuestTicketRequestSibling {
+  status: GuestTicketRequestStatus;
+  requestedGuestCount: number;
+  guestTicketType?: { price: number } | null;
+}
+
+/**
+ * Sums requestedGuestCount (not row count) across a booking's sibling
+ * requests in the given status, so a legacy row with requestedGuestCount > 1
+ * still contributes its full count. Every current submission path creates
+ * one row per guest (requestedGuestCount: 1), so this reflects the booking's
+ * current total rather than naming one guest per notification -- GOV.UK
+ * Notify has no way to loop over a dynamic guest list in one template.
+ */
+export function aggregateGuestTicketRequests(
+  siblings: readonly GuestTicketRequestSibling[],
+  status: GuestTicketRequestStatus
+): { count: number; totalMinor: number } {
+  return siblings
+    .filter((r) => r.status === status)
+    .reduce(
+      (acc, r) => ({
+        count: acc.count + r.requestedGuestCount,
+        totalMinor: acc.totalMinor + Math.round((r.guestTicketType?.price ?? 0) * 100) * r.requestedGuestCount,
+      }),
+      { count: 0, totalMinor: 0 }
+    );
+}
+
+export function formatTotalAmountLine(totalMinor: number): string {
+  return totalMinor > 0 ? `Total additional cost: ${formatMinorCurrency(totalMinor, "GBP")}` : "";
+}
 
 export function formatModeratorNote(note: string | null | undefined): string {
   const trimmed = note?.trim();
@@ -124,7 +155,6 @@ export async function notifyModeratorsGuestTicketRequestSubmitted(args: {
       eventTitle: request.booking.event.title ?? "—",
       sectionName: section.name ?? "—",
       bookerDisplay,
-      guestDisplayName: request.guestDisplayName ?? "—",
       requestedGuestCount: request.requestedGuestCount,
       guestTicketTypeTitle: request.guestTicketType?.title ?? "—",
       dietaryNote: request.dietaryNote?.trim() || "—",
@@ -219,15 +249,32 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
     );
     const reference = `GUEST_REQUEST_${args.status}:${args.requestId}`;
 
-    const personalisation = {
-      customerFirstName,
-      eventTitle: request.booking.event.title ?? "—",
-      guestDisplayName: request.guestDisplayName ?? "—",
-      requestedGuestCount: request.requestedGuestCount,
-      decisionLabel,
-      moderatorNote: formatModeratorNote(request.moderatorNote),
-      myBookingsUrl,
-    };
+    const eventTitle = request.booking.event.title ?? "—";
+    const moderatorNote = formatModeratorNote(request.moderatorNote);
+    const { count: guestTicketCount, totalMinor } = aggregateGuestTicketRequests(
+      request.booking.guestTicketRequests,
+      args.status
+    );
+
+    const personalisation =
+      args.status === GuestTicketRequestStatus.APPROVED
+        ? {
+            customerFirstName,
+            eventTitle,
+            decisionLabel,
+            guestTicketCount,
+            totalAmountLine: formatTotalAmountLine(totalMinor),
+            moderatorNote,
+            myBookingsUrl,
+          }
+        : {
+            customerFirstName,
+            eventTitle,
+            decisionLabel,
+            guestTicketCount,
+            moderatorNote,
+            myBookingsUrl,
+          };
 
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,

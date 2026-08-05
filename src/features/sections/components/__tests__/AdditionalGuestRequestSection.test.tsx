@@ -5,7 +5,7 @@ import AdditionalGuestRequestSection from "../AdditionalGuestRequestSection";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
-  submitGuestTicketRequest: vi.fn().mockResolvedValue({ success: true, requestId: "req-new" }),
+  submitAdditionalGuestTicketRequests: vi.fn().mockResolvedValue([{ success: true, requestId: "req-new" }]),
 }));
 
 describe("AdditionalGuestRequestSection", () => {
@@ -22,36 +22,73 @@ describe("AdditionalGuestRequestSection", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(firebaseFunctions.submitGuestTicketRequest).mockResolvedValue({
-      success: true,
-      requestId: "req-new",
-    });
+    vi.mocked(firebaseFunctions.submitAdditionalGuestTicketRequests).mockResolvedValue([
+      { success: true, requestId: "req-new" },
+    ]);
   });
 
-  it("submits guest ticket request callable and refetches when count is valid", async () => {
+  it("submits a single-guest request when count is 1", async () => {
     const user = userEvent.setup();
     render(
       <AdditionalGuestRequestSection {...baseProps} requests={[]} />
     );
 
     await user.type(screen.getByLabelText(/^guest name/i), "Alex Patron");
-    await user.clear(screen.getByLabelText(/how many extra guest tickets/i));
-    await user.type(screen.getByLabelText(/how many extra guest tickets/i), "2");
     await user.click(screen.getByRole("button", { name: /submit request/i }));
 
     await vi.waitFor(() => {
-      expect(firebaseFunctions.submitGuestTicketRequest).toHaveBeenCalledTimes(1);
+      expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledTimes(1);
     });
-    expect(firebaseFunctions.submitGuestTicketRequest).toHaveBeenCalledWith(
-      expect.objectContaining({
-        bookingId: "550e8400-e29b-41d4-a716-446655440000",
-        requestedGuestCount: 2,
-        guestTicketTypeId: "660e8400-e29b-41d4-a716-446655440001",
-        guestDisplayName: "Alex Patron",
-        dietaryNote: null,
-      })
-    );
+    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
+      bookingId: "550e8400-e29b-41d4-a716-446655440000",
+      guestTicketTypeId: "660e8400-e29b-41d4-a716-446655440001",
+      guests: [{ guestDisplayName: "Alex Patron", dietaryNote: null }],
+    });
     expect(baseProps.onRequestCreated).toHaveBeenCalled();
+  });
+
+  it("shows one guest-name field per requested guest and submits each name", async () => {
+    const user = userEvent.setup();
+    render(
+      <AdditionalGuestRequestSection {...baseProps} requests={[]} />
+    );
+
+    await user.clear(screen.getByLabelText(/how many extra guest tickets/i));
+    await user.type(screen.getByLabelText(/how many extra guest tickets/i), "2");
+
+    const nameFields = screen.getAllByLabelText(/^guest name/i);
+    expect(nameFields).toHaveLength(2);
+    await user.type(nameFields[0], "Alex Patron");
+    await user.type(nameFields[1], "Jamie Lee");
+
+    await user.click(screen.getByRole("button", { name: /submit request/i }));
+
+    await vi.waitFor(() => {
+      expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledTimes(1);
+    });
+    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
+      bookingId: "550e8400-e29b-41d4-a716-446655440000",
+      guestTicketTypeId: "660e8400-e29b-41d4-a716-446655440001",
+      guests: [
+        { guestDisplayName: "Alex Patron", dietaryNote: null },
+        { guestDisplayName: "Jamie Lee", dietaryNote: null },
+      ],
+    });
+  });
+
+  it("rejects submission when any guest name is blank", async () => {
+    const user = userEvent.setup();
+    render(
+      <AdditionalGuestRequestSection {...baseProps} requests={[]} />
+    );
+
+    await user.clear(screen.getByLabelText(/how many extra guest tickets/i));
+    await user.type(screen.getByLabelText(/how many extra guest tickets/i), "2");
+    await user.type(screen.getAllByLabelText(/^guest name/i)[0], "Alex Patron");
+    await user.click(screen.getByRole("button", { name: /submit request/i }));
+
+    expect(await screen.findByText(/enter a name for additional guest 2/i)).toBeInTheDocument();
+    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).not.toHaveBeenCalled();
   });
 
   it("shows pending message and hides submit when a PENDING request exists", () => {
@@ -63,7 +100,7 @@ describe("AdditionalGuestRequestSection", () => {
           {
             id: "req-1",
             status: "PENDING",
-            requestedGuestCount: 3,
+            requestedGuestCount: 1,
             reviewedAt: null,
             moderatorNote: null,
           } as never,
@@ -71,11 +108,26 @@ describe("AdditionalGuestRequestSection", () => {
       />
     );
 
-    expect(screen.getByText(/you already have a pending request/i)).toBeInTheDocument();
+    expect(screen.getByText(/you already have 1 pending request for/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /submit request/i })).not.toBeInTheDocument();
   });
 
-  it("lists prior requests in the table", () => {
+  it("pluralizes the pending message when more than one request is pending", () => {
+    render(
+      <AdditionalGuestRequestSection
+        {...baseProps}
+        guestTicketTypes={[]}
+        requests={[
+          { id: "req-1", status: "PENDING", requestedGuestCount: 1, reviewedAt: null, moderatorNote: null } as never,
+          { id: "req-2", status: "PENDING", requestedGuestCount: 1, reviewedAt: null, moderatorNote: null } as never,
+        ]}
+      />
+    );
+
+    expect(screen.getByText(/you already have 2 pending requests for/i)).toBeInTheDocument();
+  });
+
+  it("lists prior requests in the table, including legacy multi-guest counts", () => {
     render(
       <AdditionalGuestRequestSection
         {...baseProps}
@@ -96,6 +148,7 @@ describe("AdditionalGuestRequestSection", () => {
     );
 
     expect(screen.getByText("Approved")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Guest standard")).toBeInTheDocument();
     expect(screen.getByText("Jamie Lee")).toBeInTheDocument();
     expect(screen.getByText("Vegan")).toBeInTheDocument();
@@ -103,7 +156,7 @@ describe("AdditionalGuestRequestSection", () => {
   });
 
   it("does not expose a raw callable error", async () => {
-    vi.mocked(firebaseFunctions.submitGuestTicketRequest).mockRejectedValueOnce(
+    vi.mocked(firebaseFunctions.submitAdditionalGuestTicketRequests).mockRejectedValueOnce(
       new Error("FirebaseError: SQL guest_ticket_requests failed"),
     );
     const user = userEvent.setup();

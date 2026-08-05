@@ -5,7 +5,6 @@ variables:
   - eventTitle
   - sectionName
   - bookerDisplay
-  - guestDisplayName
   - requestedGuestCount
   - guestTicketTypeTitle
   - dietaryNote
@@ -18,8 +17,6 @@ Event: ((eventTitle))
 Section: ((sectionName))
 
 Requested by: ((bookerDisplay))
-
-Guest name: ((guestDisplayName))
 
 Guest count: ((requestedGuestCount))
 

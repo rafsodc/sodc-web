@@ -34,6 +34,7 @@ import {
   getMyTicketOrderStripeArtifactsBatch,
   reconcileMyCheckoutSessionOrders,
   submitGuestTicketRequest,
+  submitAdditionalGuestTicketRequests,
   reviewGuestTicketRequest,
 } from "../firebaseFunctions";
 
@@ -527,6 +528,54 @@ describe("submitGuestTicketRequest", () => {
         requestedGuestCount: 1,
         guestTicketTypeId: TICKET_UUID,
         guestDisplayName: "Jane",
+      })
+    ).rejects.toThrow("Booking not found");
+  });
+});
+
+describe("submitAdditionalGuestTicketRequests", () => {
+  it("submits one request per guest, each with requestedGuestCount 1", async () => {
+    const callable = makeCallable({ data: { success: true, requestId: "r1" } });
+
+    const results = await submitAdditionalGuestTicketRequests({
+      bookingId: BOOKING_UUID,
+      guestTicketTypeId: TICKET_UUID,
+      guests: [
+        { guestDisplayName: "Jane Smith", dietaryNote: "gluten free" },
+        { guestDisplayName: "Sam Extra", dietaryNote: null },
+      ],
+    });
+
+    expect(callable).toHaveBeenCalledTimes(2);
+    expect(callable.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        bookingId: BOOKING_UUID,
+        requestedGuestCount: 1,
+        guestTicketTypeId: TICKET_UUID,
+        guestDisplayName: "Jane Smith",
+        dietaryNote: "gluten free",
+      })
+    );
+    expect(callable.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        requestedGuestCount: 1,
+        guestDisplayName: "Sam Extra",
+        dietaryNote: null,
+      })
+    );
+    expect(results).toEqual([
+      { success: true, requestId: "r1" },
+      { success: true, requestId: "r1" },
+    ]);
+  });
+
+  it("stops after the first failure and propagates the error", async () => {
+    makeFailingCallable("Booking not found");
+    await expect(
+      submitAdditionalGuestTicketRequests({
+        bookingId: BOOKING_UUID,
+        guestTicketTypeId: TICKET_UUID,
+        guests: [{ guestDisplayName: "Jane" }],
       })
     ).rejects.toThrow("Booking not found");
   });

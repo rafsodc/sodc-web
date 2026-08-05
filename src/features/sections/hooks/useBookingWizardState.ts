@@ -3,8 +3,8 @@ import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generate
 import { BookingStatus } from "@dataconnect/generated";
 import {
   createEventBookingCheckoutSession,
+  submitAdditionalGuestTicketRequests,
   submitEventBooking,
-  submitGuestTicketRequest,
 } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { bookingNeedsPayment } from "../utils/eventBookingStatusSummary";
@@ -294,15 +294,14 @@ export function useBookingWizardState({
   const submitAdditionalGuestRequest = async (bookingId: string) => {
     if (extraGuestRequestCount < 1 || !extraGuestTicketTypeId) return;
     const guests = extraGuestDetails.slice(0, extraGuestRequestCount);
-    for (const guest of guests) {
-      await submitGuestTicketRequest({
-        bookingId,
-        requestedGuestCount: 1,
-        guestTicketTypeId: extraGuestTicketTypeId,
+    await submitAdditionalGuestTicketRequests({
+      bookingId,
+      guestTicketTypeId: extraGuestTicketTypeId,
+      guests: guests.map((guest) => ({
         guestDisplayName: guest.guestDisplayName.trim(),
         dietaryNote: guest.dietaryNote.trim() || null,
-      });
-    }
+      })),
+    });
   };
 
   const handleConfirm = async () => {
