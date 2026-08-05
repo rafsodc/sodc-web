@@ -53,6 +53,9 @@ tokens, signed URLs, or raw log messages.
 - the expected Hosting site exists;
 - every Function exported from `functions/src` is deployed, Gen 2, `ACTIVE`,
   and in `europe-west2`; unexpected Functions are reported as warnings;
+- when the optional GOV.UK Notify migration reply-to value is present, it is a
+  valid UUID and is consistent across every deployed Function; absence is valid
+  because new environments use the admin-managed configuration;
 - every deployed Function's underlying Cloud Run service has the expected
   invoker IAM policy: HTTP/callable transports in the reviewed allowlist are
   public, while scheduled/task Functions and unexpected services must not grant
@@ -159,6 +162,11 @@ have been separately reviewed.
   or a stale build was deployed. Rebuild and redeploy the reviewed commit.
 - **Unexpected Function:** establish ownership and whether it is still used
   before deleting anything. The audit never deletes it.
+- **Notify reply-to failure:** if retaining the migration fallback, configure its
+  environment-specific UUID using [the reply-to runbook](./govuk-notify-email-reply-to.md),
+  deploy all Functions, and rerun the audit. A partial Functions deployment can
+  leave inconsistent values and is reported as a failure. No fallback is required
+  once verified admin-managed configuration is in place.
 - **Function invoker mismatch:** review both the exported trigger type and
   `expectedPublicInvokerFunctions`. Never add an endpoint to the allowlist only
   to make the check green; confirm its Firebase/app-level authentication and

@@ -1,24 +1,31 @@
 ---
-subject: "Guest ticket request update — ((eventTitle))"
+subject: "Update on your guest request for ((eventTitle))"
 templateKey: guestTicketRequestRejected
 variables:
-  - customerFirstName
+  - firstName
   - eventTitle
-  - decisionLabel
+  - eventDateTime
+  - eventLocation
   - guestTicketCount
   - moderatorNote
   - myBookingsUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
+Unfortunately, your request for guest places at ((eventTitle)) was not approved.
+
+Date and time: ((eventDateTime))
+
+Location: ((eventLocation))
 
 Guest tickets requested: ((guestTicketCount))
 
 Note from organiser: ((moderatorNote))
 
-If you have any questions, please contact your section organiser. You can view your booking at:
+View your booking:
 
 ((myBookingsUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

@@ -72,6 +72,31 @@ const NotifyDeliveryReceiptProcessingStatus = {
 }
 exports.NotifyDeliveryReceiptProcessingStatus = NotifyDeliveryReceiptProcessingStatus;
 
+const NotifyReplyToAuditAction = {
+  CREATED: "CREATED",
+  UPDATED: "UPDATED",
+  DISABLED: "DISABLED",
+  PROVIDER_TEST_ACCEPTED: "PROVIDER_TEST_ACCEPTED",
+  VERIFIED: "VERIFIED",
+  DEFAULT_CHANGED: "DEFAULT_CHANGED",
+  TEMPLATE_OVERRIDE_CHANGED: "TEMPLATE_OVERRIDE_CHANGED",
+}
+exports.NotifyReplyToAuditAction = NotifyReplyToAuditAction;
+
+const NotifyReplyToVerificationStatus = {
+  UNVERIFIED: "UNVERIFIED",
+  PROVIDER_ACCEPTED: "PROVIDER_ACCEPTED",
+  VERIFIED: "VERIFIED",
+}
+exports.NotifyReplyToVerificationStatus = NotifyReplyToVerificationStatus;
+
+const NotifyTemplateBindingAuditAction = {
+  CREATED: "CREATED",
+  TEMPLATE_CHANGED: "TEMPLATE_CHANGED",
+  VERSION_REVIEWED: "VERSION_REVIEWED",
+}
+exports.NotifyTemplateBindingAuditAction = NotifyTemplateBindingAuditAction;
+
 const PaymentReconciliationExceptionStatus = {
   OPEN: "OPEN",
   RESOLVED: "RESOLVED",
@@ -165,6 +190,111 @@ function changeGovNotifyDeliveryMode(dcOrVarsOrOptions, varsOrOptions, options) 
   return dcInstance.executeMutation('ChangeGovNotifyDeliveryMode', inputVars, inputOpts);
 }
 exports.changeGovNotifyDeliveryMode = changeGovNotifyDeliveryMode;
+
+function getNotifyReplyToConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotifyReplyToConfiguration', undefined, inputOpts);
+}
+exports.getNotifyReplyToConfiguration = getNotifyReplyToConfiguration;
+
+function listNotifyReplyToAudits(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNotifyReplyToAudits', inputVars, inputOpts);
+}
+exports.listNotifyReplyToAudits = listNotifyReplyToAudits;
+
+function createNotifyEmailConfiguration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateNotifyEmailConfiguration', undefined, inputOpts);
+}
+exports.createNotifyEmailConfiguration = createNotifyEmailConfiguration;
+
+function createNotifyReplyToAddress(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateNotifyReplyToAddress', inputVars, inputOpts);
+}
+exports.createNotifyReplyToAddress = createNotifyReplyToAddress;
+
+function updateNotifyReplyToAddressIdentity(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateNotifyReplyToAddressIdentity', inputVars, inputOpts);
+}
+exports.updateNotifyReplyToAddressIdentity = updateNotifyReplyToAddressIdentity;
+
+function recordNotifyReplyToProviderAcceptance(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordNotifyReplyToProviderAcceptance', inputVars, inputOpts);
+}
+exports.recordNotifyReplyToProviderAcceptance = recordNotifyReplyToProviderAcceptance;
+
+function confirmNotifyReplyToVerification(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmNotifyReplyToVerification', inputVars, inputOpts);
+}
+exports.confirmNotifyReplyToVerification = confirmNotifyReplyToVerification;
+
+function updateNotifyReplyToAvailability(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateNotifyReplyToAvailability', inputVars, inputOpts);
+}
+exports.updateNotifyReplyToAvailability = updateNotifyReplyToAvailability;
+
+function changeNotifyReplyToDefault(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ChangeNotifyReplyToDefault', inputVars, inputOpts);
+}
+exports.changeNotifyReplyToDefault = changeNotifyReplyToDefault;
+
+function disableDefaultNotifyReplyToAddress(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DisableDefaultNotifyReplyToAddress', inputVars, inputOpts);
+}
+exports.disableDefaultNotifyReplyToAddress = disableDefaultNotifyReplyToAddress;
+
+function setNotifyTemplateReplyToOverride(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('SetNotifyTemplateReplyToOverride', inputVars, inputOpts);
+}
+exports.setNotifyTemplateReplyToOverride = setNotifyTemplateReplyToOverride;
+
+function clearNotifyTemplateReplyToOverride(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ClearNotifyTemplateReplyToOverride', inputVars, inputOpts);
+}
+exports.clearNotifyTemplateReplyToOverride = clearNotifyTemplateReplyToOverride;
+
+function getNotifyTemplateBindings(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotifyTemplateBindings', undefined, inputOpts);
+}
+exports.getNotifyTemplateBindings = getNotifyTemplateBindings;
+
+function listNotifyTemplateBindingAudits(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNotifyTemplateBindingAudits', inputVars, inputOpts);
+}
+exports.listNotifyTemplateBindingAudits = listNotifyTemplateBindingAudits;
+
+function upsertNotifyTemplateBinding(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpsertNotifyTemplateBinding', inputVars, inputOpts);
+}
+exports.upsertNotifyTemplateBinding = upsertNotifyTemplateBinding;
 
 function createPendingSectionFile(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

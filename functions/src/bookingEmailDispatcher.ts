@@ -7,7 +7,11 @@ import {
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { createConfiguredGovNotifyMailer, GOV_NOTIFY_PROVIDER } from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
-import { formatMinorCurrency, normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
+import {
+  formatMinorCurrency,
+  formatTransactionalEventDateTime,
+  normaliseAppBaseUrl,
+} from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import type { BookingPaymentDelta } from "./bookingPaymentAdjustments";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
@@ -48,11 +52,10 @@ type BookingNotificationRow = {
 };
 
 export type BookingEmailPersonalisation = {
-  customerFirstName: string;
+  firstName: string;
   eventTitle: string;
   eventDateTime: string;
   eventLocation: string;
-  revisionNumber: number;
   ticketLinesSummary: string;
   bookerDietaryNote: string;
   // GOV.UK Notify optional-content condition -- must be the literal string
@@ -65,8 +68,6 @@ export type BookingEmailPersonalisation = {
 };
 
 export type BookingRevisionEmailPersonalisation = BookingEmailPersonalisation & {
-  previousRevisionNumber: number;
-  revisedRevisionNumber: number;
   paymentAdjustmentStatus: string;
   previousTotalFormatted: string;
   revisedTotalFormatted: string;
@@ -74,23 +75,7 @@ export type BookingRevisionEmailPersonalisation = BookingEmailPersonalisation & 
 };
 
 export function formatBookingEventDateTime(startDateTime: string, endDateTime: string): string {
-  const start = new Date(startDateTime);
-  const end = new Date(endDateTime);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return `${startDateTime} – ${endDateTime}`;
-  }
-  const dateFmt = new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const timeFmt = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
-  const sameDay = start.toDateString() === end.toDateString();
-  if (sameDay) {
-    return `${dateFmt.format(start)}, ${timeFmt.format(start)} – ${timeFmt.format(end)}`;
-  }
-  return `${dateFmt.format(start)} ${timeFmt.format(start)} – ${dateFmt.format(end)} ${timeFmt.format(end)}`;
+  return formatTransactionalEventDateTime(startDateTime, endDateTime);
 }
 
 function linePriceMinor(price: number): number {
@@ -103,7 +88,7 @@ export function bookingTotalMinorFromLines(lines: BookingLineRow[]): number {
 
 export function buildTicketLinesSummary(lines: BookingLineRow[]): string {
   if (lines.length === 0) {
-    return "—";
+    return "No tickets recorded";
   }
   return lines
     .map((line) => {
@@ -159,13 +144,12 @@ function buildBasePersonalisation(args: {
   const fn = booking.booker.firstName?.trim();
   const totalMinor = bookingTotalMinorFromLines(booking.lines);
   return {
-    customerFirstName: fn && fn.length > 0 ? fn : "there",
+    firstName: fn && fn.length > 0 ? fn : "Member",
     eventTitle: booking.event.title ?? "—",
     eventDateTime: formatBookingEventDateTime(booking.event.startDateTime, booking.event.endDateTime),
-    eventLocation: booking.event.location?.trim() || "—",
-    revisionNumber: booking.revisionNumber,
+    eventLocation: booking.event.location?.trim() || "To be confirmed",
     ticketLinesSummary: buildTicketLinesSummary(booking.lines),
-    bookerDietaryNote: booking.bookerDietaryNote?.trim() || "—",
+    bookerDietaryNote: booking.bookerDietaryNote?.trim() || "None provided",
     accommodationRequested: accommodationRequestedCondition(booking.accommodationRequested),
     bookingTotalFormatted: formatMinorCurrency(totalMinor, "GBP"),
     sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
@@ -274,13 +258,10 @@ export async function notifyBookingRevisionEmail(args: {
       return;
     }
 
-    const previousRevisionNumber = booking.supersedesBooking?.revisionNumber ?? booking.revisionNumber - 1;
     const mailer = (args.getMailer ?? createBookingMailer)();
     const base = buildBasePersonalisation({ booking, appBaseUrl: args.appBaseUrl });
     const personalisation: BookingRevisionEmailPersonalisation = {
       ...base,
-      previousRevisionNumber,
-      revisedRevisionNumber: booking.revisionNumber,
       paymentAdjustmentStatus: paymentAdjustmentStatusLabel(args.paymentDelta.status),
       previousTotalFormatted: formatMinorCurrency(args.paymentDelta.previousTotalMinor, "GBP"),
       revisedTotalFormatted: formatMinorCurrency(args.paymentDelta.revisedTotalMinor, "GBP"),

@@ -91,7 +91,7 @@ describe("notifyMembershipStatusEmailIfNeeded", () => {
         templateName: "membershipActivated",
         to: "alex@example.com",
         personalisation: expect.objectContaining({
-          customerFirstName: "Alex",
+          firstName: "Alex",
           membershipStatusLabel: "Regular",
           appUrl: "https://app.example",
           profileUrl: "https://app.example/profile",

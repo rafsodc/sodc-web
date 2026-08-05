@@ -10,13 +10,12 @@ export interface EmailTemplateDefinition {
 
 export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = {
   bookingConfirmation: {
-    subject: "Your SODC booking — ((eventTitle))",
+    subject: "Your booking for ((eventTitle)) is confirmed",
     variables: [
-    "customerFirstName",
+    "firstName",
     "eventTitle",
     "eventDateTime",
     "eventLocation",
-    "revisionNumber",
     "ticketLinesSummary",
     "bookerDietaryNote",
     "accommodationRequested",
@@ -24,72 +23,71 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "sectionBookingsUrl",
     "myPaymentsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been confirmed.\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking (revision ((revisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nYou can view your booking and payment status at any time:\n\n((sectionBookingsUrl))\n\nIf payment is outstanding, visit My Payments:\n\n((myPaymentsUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nThank you for booking your place at ((eventTitle)). Your booking is confirmed.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nIf you still need to make a payment, visit My Payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   bookingRevision: {
-    subject: "Your SODC booking has been updated — ((eventTitle))",
+    subject: "Your booking for ((eventTitle)) has been updated",
     variables: [
-    "customerFirstName",
+    "firstName",
     "eventTitle",
     "eventDateTime",
     "eventLocation",
-    "revisionNumber",
     "ticketLinesSummary",
     "bookerDietaryNote",
     "accommodationRequested",
     "bookingTotalFormatted",
     "sectionBookingsUrl",
     "myPaymentsUrl",
-    "previousRevisionNumber",
-    "revisedRevisionNumber",
     "paymentAdjustmentStatus",
     "previousTotalFormatted",
     "revisedTotalFormatted",
     "deltaAmountFormatted"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Updated booking (revision ((revisedRevisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nDifference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nManage payments:\n\n((myPaymentsUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nYour booking for ((eventTitle)) has been updated.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your updated booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nPayment difference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nView your payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   emailChangeVerification: {
     subject: "Confirm your new SODC email address",
     variables: [
     "verificationLink"
     ],
-    body: "We received a request to change the email address used for your SODC account.\n\nUse this secure link to confirm the new address:\n\n((verificationLink))\n\nIf you did not request this change, you can ignore this email. Your current address will remain unchanged.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+    body: "Hello,\n\nWe received a request to change the email address used for your SODC account.\n\nUse this secure link to confirm the new address:\n\n((verificationLink))\n\nIf you did not request this change, you can ignore this email. Your current address will remain unchanged.\n\nKind regards,\n\nSODC Admin",
   },
   emailVerification: {
     subject: "Verify your SODC email address",
     variables: [
     "verificationLink"
     ],
-    body: "Welcome to SODC.\n\nUse this secure link to verify your email address:\n\n((verificationLink))\n\nIf you did not create an SODC account, you can ignore this email.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+    body: "Hello,\n\nThank you for registering with SODC.\n\nUse this secure link to verify your email address:\n\n((verificationLink))\n\nIf you did not create an SODC account, you can ignore this email.\n\nKind regards,\n\nSODC Admin",
   },
   guestTicketRequestApproved: {
     subject: "Guest ticket request approved — ((eventTitle))",
     variables: [
-    "customerFirstName",
+    "firstName",
     "eventTitle",
-    "decisionLabel",
+    "eventDateTime",
+    "eventLocation",
     "guestTicketCount",
     "totalAmountLine",
     "moderatorNote",
     "myBookingsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour guest ticket request for ((eventTitle)) has been ((decisionLabel)).\n\nGuest tickets: ((guestTicketCount))\n\n((totalAmountLine))\n\nNote from organiser: ((moderatorNote))\n\nYou can now complete payment for your guest tickets. Visit your booking to continue:\n\n((myBookingsUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nYour request for guest places at ((eventTitle)) has been approved.\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nGuest tickets: ((guestTicketCount))\n\n((totalAmountLine))\n\nNote from organiser: ((moderatorNote))\n\nYou can now arrange payment for the guest places. View your booking to continue:\n\n((myBookingsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   guestTicketRequestRejected: {
-    subject: "Guest ticket request update — ((eventTitle))",
+    subject: "Update on your guest request for ((eventTitle))",
     variables: [
-    "customerFirstName",
+    "firstName",
     "eventTitle",
-    "decisionLabel",
+    "eventDateTime",
+    "eventLocation",
     "guestTicketCount",
     "moderatorNote",
     "myBookingsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour guest ticket request for ((eventTitle)) has been ((decisionLabel)).\n\nGuest tickets requested: ((guestTicketCount))\n\nNote from organiser: ((moderatorNote))\n\nIf you have any questions, please contact your section organiser. You can view your booking at:\n\n((myBookingsUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nUnfortunately, your request for guest places at ((eventTitle)) was not approved.\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nGuest tickets requested: ((guestTicketCount))\n\nNote from organiser: ((moderatorNote))\n\nView your booking:\n\n((myBookingsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   guestTicketRequestSubmittedModerator: {
-    subject: "Guest ticket request — ((eventTitle))",
+    subject: "[SODC] Guest ticket request — ((eventTitle))",
     variables: [
     "eventTitle",
     "sectionName",
@@ -99,30 +97,30 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "dietaryNote",
     "moderationUrl"
     ],
-    body: "A guest ticket request has been submitted for your review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nGuest count: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary note: ((dietaryNote))\n\n---\n\nReview and approve or decline this request in the admin panel:\n\n((moderationUrl))\n\nSODC",
+    body: "A guest ticket request is ready for review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nPlaces requested: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary requirements: ((dietaryNote))\n\n---\n\nReview the request in SODC:\n\n((moderationUrl))\n\nKind regards,\n\nSODC Admin",
   },
   membershipAccessRestricted: {
     subject: "Your SODC membership status has changed",
     variables: [
-    "customerFirstName",
+    "firstName",
     "membershipStatusLabel",
     "previousStatusLabel",
     "appUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour SODC membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)).\n\nYour access to the member area has been restricted. If you think this is an error, or would like to discuss your membership, please reply to this email.\n\n((appUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nYour SODC membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)).\n\nYour access to the member area has therefore changed.\n\nView SODC online:\n\n((appUrl))\n\nKind regards,\n\nSODC Admin",
   },
   membershipActivated: {
     subject: "Welcome to SODC — your membership is active",
     variables: [
-    "customerFirstName",
+    "firstName",
     "membershipStatusLabel",
     "appUrl",
     "profileUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour SODC membership is now active. Your membership status is ((membershipStatusLabel)).\n\nYou can now access sections, view upcoming events, and make bookings.\n\nSign in to get started:\n\n((appUrl))\n\nWe recommend completing your profile before making your first booking:\n\n((profileUrl))\n\nWelcome aboard.\n\nSODC",
+    body: "Hello ((firstName)),\n\nWe are pleased to confirm that your SODC membership is now active. Your membership status is ((membershipStatusLabel)).\n\nYou can now access sections, view upcoming events, and make bookings.\n\nSign in to get started:\n\n((appUrl))\n\nYou can review your profile and communication preferences here:\n\n((profileUrl))\n\nWelcome to SODC.\n\nKind regards,\n\nSODC Admin",
   },
   newUserPendingApprovalAlert: {
-    subject: "[SODC] New member awaiting approval — ((firstName)) ((lastName))",
+    subject: "[SODC] New member awaiting approval",
     variables: [
     "firstName",
     "lastName",
@@ -132,17 +130,17 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "requestedMembershipStatus",
     "approveUsersUrl"
     ],
-    body: "A new member has completed their profile and is awaiting approval.\n\nName: ((firstName)) ((lastName))\nEmail: ((email))\nService number: ((serviceNumber))\nService background: ((serviceBackgroundSummary))\nRequested status: ((requestedMembershipStatus))\n\nReview in Approve Users:\n((approveUsersUrl))",
+    body: "A new member has completed their profile and is ready for review.\n\nName: ((firstName)) ((lastName))\n\nEmail: ((email))\n\nService number: ((serviceNumber))\n\nService background: ((serviceBackgroundSummary))\n\nRequested status: ((requestedMembershipStatus))\n\n---\n\nReview the member in Approve Users:\n\n((approveUsersUrl))\n\nKind regards,\n\nSODC Admin",
   },
   passwordReset: {
     subject: "Reset your SODC password",
     variables: [
     "resetLink"
     ],
-    body: "We received a request to reset the password for your SODC account.\n\nUse this secure link to choose a new password:\n\n((resetLink))\n\nIf you did not request this, you can ignore this email. Your password will not change.\n\nFor your security, do not forward this email or share the link.\n\nSODC",
+    body: "Hello,\n\nWe received a request to reset the password for your SODC account.\n\nUse this secure link to choose a new password:\n\n((resetLink))\n\nIf you did not request this, you can ignore this email. Your password will not change.\n\nKind regards,\n\nSODC Admin",
   },
   paymentDisputeOpsAlert: {
-    subject: "[SODC OPS] Payment dispute — ((orderId))",
+    subject: "[SODC] Payment dispute — ((orderId))",
     variables: [
     "orderId",
     "eventTitle",
@@ -155,10 +153,10 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "reconciliationDashboardUrl",
     "stripeEventId"
     ],
-    body: "A payment dispute event has been received.\n\nOrder ID: ((orderId))\n\nEvent: ((eventTitle))\n\nCustomer: ((customerDisplay))\n\nDispute ID: ((stripeDisputeId))\n\nStripe status: ((disputeStripeStatus))\n\nReason: ((disputeReason))\n\nLocal state: ((disputeLocalState))\n\nStripe event type: ((stripeEventType))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nSODC Ops",
+    body: "A Stripe payment dispute needs review.\n\nTicket order ID: ((orderId))\n\nEvent: ((eventTitle))\n\nMember: ((customerDisplay))\n\nStripe dispute ID: ((stripeDisputeId))\n\nStripe dispute status: ((disputeStripeStatus))\n\nStripe dispute reason: ((disputeReason))\n\nSODC dispute state: ((disputeLocalState))\n\nStripe event type: ((stripeEventType))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview the dispute in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nKind regards,\n\nSODC Admin",
   },
   paymentReconciliationExceptionAlert: {
-    subject: "[SODC OPS] Reconciliation exception — ((orderId))",
+    subject: "[SODC] Payment reconciliation exception — ((orderId))",
     variables: [
     "orderId",
     "eventTitle",
@@ -168,55 +166,49 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "reconciliationDashboardUrl",
     "stripeEventId"
     ],
-    body: "A payment reconciliation exception requires your attention.\n\nOrder ID: ((orderId))\n\nEvent: ((eventTitle))\n\nCustomer: ((customerDisplay))\n\nException type: ((exceptionType))\n\nNote: ((exceptionNote))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nSODC Ops",
+    body: "A payment reconciliation exception needs review.\n\nTicket order ID: ((orderId))\n\nEvent: ((eventTitle))\n\nMember: ((customerDisplay))\n\nException type: ((exceptionType))\n\nRecorded note: ((exceptionNote))\n\nStripe event ID: ((stripeEventId))\n\n---\n\nReview the exception in the reconciliation dashboard:\n\n((reconciliationDashboardUrl))\n\nKind regards,\n\nSODC Admin",
   },
   ticketOrderFailed: {
     subject: "Payment unsuccessful — ((eventTitle))",
     variables: [
-    "customerFirstName",
     "firstName",
     "eventTitle",
+    "eventDateTime",
+    "eventLocation",
     "ticketTypeTitle",
     "quantity",
     "totalFormatted",
-    "currencyDisplay",
-    "orderStatusLabel",
-    "orderId",
     "myPaymentsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nUnfortunately your payment for ((eventTitle)) was unsuccessful.\n\nTicket: ((ticketTypeTitle))\n\nQuantity: ((quantity))\n\nAmount: ((totalFormatted)) ((currencyDisplay))\n\nStatus: ((orderStatusLabel))\n\nOrder reference: ((orderId))\n\nYour booking is still in place. You can return to My Payments to try again:\n\n((myPaymentsUrl))\n\nIf you continue to have problems, please reply to this email.\n\nSODC",
+    body: "Hello ((firstName)),\n\nWe could not complete your payment for ((eventTitle)).\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nTicket: ((ticketTypeTitle))\n\nQuantity: ((quantity))\n\nAmount: ((totalFormatted))\n\nYour booking is still in place. You can return to My Payments to try again:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   ticketOrderPaid: {
     subject: "Payment confirmed — ((eventTitle))",
     variables: [
-    "customerFirstName",
     "firstName",
     "eventTitle",
+    "eventDateTime",
+    "eventLocation",
     "ticketTypeTitle",
     "quantity",
     "totalFormatted",
-    "currencyDisplay",
-    "orderStatusLabel",
-    "orderId",
     "myPaymentsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour payment for ((eventTitle)) has been confirmed.\n\nTicket: ((ticketTypeTitle))\n\nQuantity: ((quantity))\n\nTotal paid: ((totalFormatted)) ((currencyDisplay))\n\nStatus: ((orderStatusLabel))\n\nOrder reference: ((orderId))\n\nYou can view your payment history at any time:\n\n((myPaymentsUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nThank you. We have received your payment for ((eventTitle)).\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nTicket: ((ticketTypeTitle))\n\nQuantity: ((quantity))\n\nTotal paid: ((totalFormatted))\n\nYou can view your payment history at any time:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   ticketOrderRefunded: {
     subject: "Refund processed — ((eventTitle))",
     variables: [
-    "customerFirstName",
     "firstName",
     "eventTitle",
+    "eventDateTime",
+    "eventLocation",
     "ticketTypeTitle",
     "quantity",
     "totalFormatted",
-    "currencyDisplay",
-    "orderStatusLabel",
-    "orderId",
     "myPaymentsUrl",
     "refundFormatted"
     ],
-    body: "Dear ((customerFirstName)),\n\nA refund of ((refundFormatted)) has been processed for your payment on ((eventTitle)).\n\nTicket: ((ticketTypeTitle))\n\nQuantity: ((quantity))\n\nOriginal total: ((totalFormatted)) ((currencyDisplay))\n\nStatus: ((orderStatusLabel))\n\nOrder reference: ((orderId))\n\nRefunds typically appear in your account within 5 to 10 working days depending on your bank.\n\nYou can view your payment history at:\n\n((myPaymentsUrl))\n\nSODC",
+    body: "Hello ((firstName)),\n\nWe have processed a refund of ((refundFormatted)) for your payment for ((eventTitle)).\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nTicket: ((ticketTypeTitle))\n\nQuantity: ((quantity))\n\nOriginal payment: ((totalFormatted))\n\nRefunds typically appear in your account within 5 to 10 working days depending on your bank.\n\nYou can view your payment history at:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
 };

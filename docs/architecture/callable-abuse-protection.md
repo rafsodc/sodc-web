@@ -45,9 +45,12 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `reconcileMyCheckoutSessionOrders` | 20 | 15 minutes | Stripe retrieval and reconciliation writes |
 | `getMyTicketOrderStripeArtifactsBatch` | 10 | 15 minutes | Batched Stripe retrieval |
 | `getTemplateSyncStatus` | 10 | 5 minutes | GOV.UK Notify template enumeration |
+| `setNotifyTemplateBinding` | 30 | 1 hour | GOV.UK Notify template lookup and binding write |
+| `moveAllNotifyTemplateBindingsToLatestVersion` | 10 | 1 hour | GOV.UK Notify template enumeration and bulk binding write |
 | `getAnnouncementTemplates` | 30 | 5 minutes | GOV.UK Notify template enumeration |
 | `previewAnnouncementTemplate` | 30 | 5 minutes | GOV.UK Notify preview API |
 | `sendSectionAnnouncement` | 5 | 1 hour | Recipient resolution and bulk task/email fan-out |
+| `sendNotifyReplyToVerificationTest` | 10 | 1 hour | GOV.UK Notify provider verification sends |
 | `getAnnouncementSendRecipients` | 60 | 5 minutes | Recipient PII enumeration |
 | `requestSectionFileUpload` | 20 | 1 hour | Signed upload capability and storage allocation |
 | `finalizeSectionFileUpload` | 30 | 1 hour | Object validation, hashing, copy, and metadata write |
@@ -94,10 +97,20 @@ Risk levels are relative to other authenticated callables in this application. â
 | `subscribeToUserGroup` | Low | None | None | Low | Enabled; subscribable-group check; idempotent upsert |
 | `registerForSectionCallable` | Medium | None | None | Low | Enabled; registration rules; idempotent upsert |
 | `getTemplateSyncStatus` | Medium | High | GOV.UK Notify | High | Admin + enabled; 10/5 minutes |
+| `setNotifyTemplateBinding` | Medium | Low | GOV.UK Notify | Medium | Admin + enabled; server-side exact-name re-validation; 30/hour; audit |
+| `moveAllNotifyTemplateBindingsToLatestVersion` | Medium | Low | GOV.UK Notify | High | Admin + enabled; bulk write across all bindings; 10/hour; audit |
 | `getAnnouncementTemplates` | Medium | Medium | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
 | `getAnnouncementDeliveryConfiguration` | Low | None | None | Low | Enabled + moderator; returns non-secret site mode |
 | `getGovNotifyDeliveryAdminConfiguration` | Medium | Low | None | Low | Admin + enabled; bounded configuration and audit history |
 | `updateGovNotifyDeliveryMode` | High | None | None | Medium | Admin + enabled; deployment ceiling, optimistic lock, reason and immutable audit row |
+| `getNotifyReplyToAdminConfiguration` | Medium | Low | None | Low | Admin + enabled; bounded reply-to configuration and audit history |
+| `createNotifyReplyToAddress` | High | None | None | Low | Admin + enabled; validated metadata, reason and immutable audit row |
+| `updateNotifyReplyToAddress` | High | None | None | Low | Admin + enabled; optimistic lock; resets verification and availability |
+| `sendNotifyReplyToVerificationTest` | High | None | GOV.UK Notify | Medium | Admin + enabled; recipient fixed to the verified admin identity; 10/hour; provider test and audit |
+| `confirmNotifyReplyToVerification` | High | None | None | Low | Admin + enabled; requires prior provider acceptance, optimistic lock and audit |
+| `updateNotifyReplyToAvailability` | High | None | None | Medium | Admin + enabled; verified-only enablement and atomic default replacement/clear |
+| `changeNotifyReplyToDefault` | High | None | None | Medium | Admin + enabled; verified enabled target, optimistic lock and audit |
+| `setNotifyTemplateReplyToOverride` | High | None | None | Medium | Admin + enabled; manifest allowlist, verified enabled target and audit |
 | `previewAnnouncementTemplate` | Medium | Low | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
 | `sendSectionAnnouncement` | High | High | GOV.UK Notify | Very high | Enabled + moderator; 5/hour; queued delivery |
 | `getAnnouncementSendHistory` | Low | Medium | None | Low | Enabled + moderator; bounded history query |

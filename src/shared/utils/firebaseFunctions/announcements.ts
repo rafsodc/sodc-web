@@ -3,9 +3,22 @@ import { functions } from "../../../config/firebase";
 
 export type TemplateSyncStatus = "in_sync" | "drift" | "not_configured" | "fetch_error";
 
+export interface NotifyTemplateCandidate {
+  id: string;
+  name: string;
+  version: number;
+}
+
 export interface TemplateSyncResult {
   templateKey: string;
-  templateUuid?: string;
+  candidates: NotifyTemplateCandidate[];
+  boundTemplateId?: string;
+  boundTemplateName?: string;
+  reviewedVersion?: number;
+  currentLiveVersion?: number;
+  versionDrift?: boolean;
+  bindingUpdatedAt?: string;
+  bindingUpdatedBy?: string;
   notifyEditUrl?: string;
   status: TemplateSyncStatus;
   liveSubject?: string;
@@ -16,10 +29,33 @@ export interface TemplateSyncResult {
   bodyMatch?: boolean;
   errorMessage?: string;
 }
+
 export async function getTemplateSyncStatus(): Promise<{ results: TemplateSyncResult[] }> {
   const callable = httpsCallable<void, { results: TemplateSyncResult[] }>(
     functions,
     "getTemplateSyncStatus"
+  );
+  const result = await callable();
+  return result.data;
+}
+
+export async function setNotifyTemplateBinding(data: {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+}): Promise<{ results: TemplateSyncResult[] }> {
+  const callable = httpsCallable<typeof data, { results: TemplateSyncResult[] }>(
+    functions,
+    "setNotifyTemplateBinding"
+  );
+  const result = await callable(data);
+  return result.data;
+}
+
+export async function moveAllNotifyTemplateBindingsToLatestVersion(): Promise<{ results: TemplateSyncResult[] }> {
+  const callable = httpsCallable<void, { results: TemplateSyncResult[] }>(
+    functions,
+    "moveAllNotifyTemplateBindingsToLatestVersion"
   );
   const result = await callable();
   return result.data;
@@ -40,10 +76,20 @@ export type GovNotifyDeliveryMode = "SIMULATION" | "TEAM_TEST" | "LIVE";
 
 export async function getAnnouncementDeliveryConfiguration(
   sectionId: string
-): Promise<{ siteDeliveryMode: GovNotifyDeliveryMode }> {
+): Promise<{
+  siteDeliveryMode: GovNotifyDeliveryMode;
+  replyToOptions?: Array<{ id: string; displayLabel: string; emailAddress: string }>;
+  defaultReplyToAddressId?: string | null;
+  replyToFallbackSource?: string;
+}> {
   const callable = httpsCallable<
     { sectionId: string },
-    { siteDeliveryMode: GovNotifyDeliveryMode }
+    {
+      siteDeliveryMode: GovNotifyDeliveryMode;
+      replyToOptions?: Array<{ id: string; displayLabel: string; emailAddress: string }>;
+      defaultReplyToAddressId?: string | null;
+      replyToFallbackSource?: string;
+    }
   >(functions, "getAnnouncementDeliveryConfiguration");
   return (await callable({ sectionId })).data;
 }
@@ -87,7 +133,8 @@ export async function sendSectionAnnouncement(
   templateUuid: string,
   requestId: string,
   templateName: string | undefined,
-  deliveryMode: GovNotifyDeliveryMode
+  deliveryMode: GovNotifyDeliveryMode,
+  replyToAddressId?: string,
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
     {
@@ -96,6 +143,7 @@ export async function sendSectionAnnouncement(
       requestId: string;
       templateName?: string;
       deliveryMode: GovNotifyDeliveryMode;
+      replyToAddressId?: string;
     },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
@@ -105,6 +153,7 @@ export async function sendSectionAnnouncement(
     requestId,
     templateName,
     deliveryMode,
+    replyToAddressId,
   });
   return result.data;
 }
@@ -123,6 +172,9 @@ export interface AnnouncementSend {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId?: string | null;
+  replyToDisplayLabel?: string | null;
+  replyToEmailAddress?: string | null;
 }
 
 export type AnnouncementRecipientStatus =

@@ -98,4 +98,47 @@ describe("SendAnnouncementPage", () => {
     await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
     expect(await screen.findByLabelText("Delivery mode")).toHaveTextContent("Simulation");
   });
+
+  it("offers only approved reply-to choices and submits the internal address ID", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementDeliveryConfiguration).mockResolvedValue({
+      siteDeliveryMode: "LIVE",
+      replyToOptions: [{
+        id: "22222222-2222-4222-8222-222222222222",
+        displayLabel: "Membership",
+        emailAddress: "membership@example.org",
+      }],
+      defaultReplyToAddressId: null,
+      replyToFallbackSource: "notify_default",
+    });
+    vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockResolvedValue({
+      sendId: "00000000-0000-4000-8000-000000000409",
+      queuedCount: 2,
+      failedToEnqueueCount: 0,
+      skippedCount: 0,
+      resumed: false,
+      requestedDeliveryMode: "LIVE",
+      siteDeliveryMode: "LIVE",
+      effectiveDeliveryMode: "LIVE",
+    });
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
+      "00000000-0000-4000-8000-000000000409",
+    );
+    const user = userEvent.setup();
+
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} />);
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
+    await user.click(await screen.findByLabelText("Replies go to"));
+    await user.click(screen.getByRole("option", { name: /Membership — membership@example.org/ }));
+    await user.click(screen.getByRole("button", { name: "Send to Signals members" }));
+
+    await waitFor(() => expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenCalledWith(
+      "section-1",
+      "template-1",
+      "00000000-0000-4000-8000-000000000409",
+      "BULK: Section update",
+      "LIVE",
+      "22222222-2222-4222-8222-222222222222",
+    ));
+  });
 });

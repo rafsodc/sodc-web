@@ -61,6 +61,25 @@ export enum NotifyDeliveryReceiptProcessingStatus {
   PROCESSED = "PROCESSED",
   FAILED = "FAILED",
 }
+export enum NotifyReplyToAuditAction {
+  CREATED = "CREATED",
+  UPDATED = "UPDATED",
+  DISABLED = "DISABLED",
+  PROVIDER_TEST_ACCEPTED = "PROVIDER_TEST_ACCEPTED",
+  VERIFIED = "VERIFIED",
+  DEFAULT_CHANGED = "DEFAULT_CHANGED",
+  TEMPLATE_OVERRIDE_CHANGED = "TEMPLATE_OVERRIDE_CHANGED",
+}
+export enum NotifyReplyToVerificationStatus {
+  UNVERIFIED = "UNVERIFIED",
+  PROVIDER_ACCEPTED = "PROVIDER_ACCEPTED",
+  VERIFIED = "VERIFIED",
+}
+export enum NotifyTemplateBindingAuditAction {
+  CREATED = "CREATED",
+  TEMPLATE_CHANGED = "TEMPLATE_CHANGED",
+  VERSION_REVIEWED = "VERSION_REVIEWED",
+}
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -307,6 +326,21 @@ export interface ChangeGovNotifyDeliveryModeVariables {
   reason: string;
 }
 
+export interface ChangeNotifyReplyToDefaultData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface ChangeNotifyReplyToDefaultVariables {
+  expectedVersion: number;
+  previousAddressId?: UUIDString | null;
+  newAddressId?: UUIDString | null;
+  changedBy: string;
+  reason?: string | null;
+  previousValue?: string | null;
+  newValue?: string | null;
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -340,6 +374,30 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
+}
+
+export interface ClearNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_delete?: NotifyTemplateReplyToOverride_Key | null;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface ClearNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+}
+
+export interface ConfirmNotifyReplyToVerificationData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface ConfirmNotifyReplyToVerificationVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  changedBy: string;
+  reason?: string | null;
 }
 
 export interface ConfirmProfileReviewData {
@@ -435,6 +493,10 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId?: UUIDString | null;
+  replyToDisplayLabel?: string | null;
+  replyToEmailAddress?: string | null;
+  replyToNotifyUuid?: string | null;
 }
 
 export interface CreateBookingDraftData {
@@ -587,6 +649,25 @@ export interface CreateNotifyDeliveryReceiptVariables {
   eventOrderingKey: string;
   affectsBounceState: boolean;
   lastAttemptedAt: TimestampString;
+}
+
+export interface CreateNotifyEmailConfigurationData {
+  notifyEmailConfiguration_insert: NotifyEmailConfiguration_Key;
+}
+
+export interface CreateNotifyReplyToAddressData {
+  notifyReplyToAddress_insert: NotifyReplyToAddress_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface CreateNotifyReplyToAddressVariables {
+  id: UUIDString;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason?: string | null;
+  newValue: string;
 }
 
 export interface CreatePaymentWebhookEventData {
@@ -766,6 +847,22 @@ export interface DeleteUserVariables {
   userId: string;
 }
 
+export interface DisableDefaultNotifyReplyToAddressData {
+  addressChanged: number;
+  configurationChanged: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface DisableDefaultNotifyReplyToAddressVariables {
+  id: UUIDString;
+  expectedAddressVersion: number;
+  expectedConfigurationVersion: number;
+  replacementAddressId?: UUIDString | null;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+}
+
 export interface EnsureCallableRateLimitBucketData {
   callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
 }
@@ -875,6 +972,10 @@ export interface GetAnnouncementSendByIdData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
+    replyToNotifyUuid?: string | null;
   } & AnnouncementSend_Key;
 }
 
@@ -894,6 +995,9 @@ export interface GetAnnouncementSendHistoryData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
   } & AnnouncementSend_Key)[];
 }
 
@@ -1228,6 +1332,9 @@ export interface GetGuestTicketRequestForNotificationData {
       event: {
         id: UUIDString;
         title: string;
+        location?: string | null;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
         section: {
           id: UUIDString;
           name: string;
@@ -1558,6 +1665,76 @@ export interface GetNotifyDeliveryReceiptVariables {
   id: string;
 }
 
+export interface GetNotifyReplyToConfigurationData {
+  notifyEmailConfiguration?: {
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+    defaultReplyToAddress?: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      announcementSelectable: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+      providerAcceptedAt?: TimestampString | null;
+      providerNotificationId?: string | null;
+      verificationMode?: GovNotifyDeliveryMode | null;
+      verifiedAt?: TimestampString | null;
+      verifiedBy?: string | null;
+      version: number;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy: string;
+      updatedBy: string;
+    } & NotifyReplyToAddress_Key;
+  };
+  notifyReplyToAddresses: ({
+    id: UUIDString;
+    displayLabel: string;
+    emailAddress: string;
+    notifyUuid: string;
+    enabled: boolean;
+    announcementSelectable: boolean;
+    verificationStatus: NotifyReplyToVerificationStatus;
+    providerAcceptedAt?: TimestampString | null;
+    providerNotificationId?: string | null;
+    verificationMode?: GovNotifyDeliveryMode | null;
+    verifiedAt?: TimestampString | null;
+    verifiedBy?: string | null;
+    version: number;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy: string;
+    updatedBy: string;
+  } & NotifyReplyToAddress_Key)[];
+  notifyTemplateReplyToOverrides: ({
+    templateKey: string;
+    replyToAddress: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+    } & NotifyReplyToAddress_Key;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateReplyToOverride_Key)[];
+}
+
+export interface GetNotifyTemplateBindingsData {
+  notifyTemplateBindings: ({
+    templateKey: string;
+    notifyTemplateId: string;
+    reviewedVersion: number;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateBinding_Key)[];
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -1792,6 +1969,9 @@ export interface GetTicketOrderForWebhookData {
     event: {
       id: UUIDString;
       title: string;
+      location?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
     } & Event_Key;
     ticketType: {
       id: UUIDString;
@@ -2359,6 +2539,41 @@ export interface ListMigrationUsersVariables {
   limit: number;
 }
 
+export interface ListNotifyReplyToAuditsData {
+  notifyReplyToAudits: ({
+    id: UUIDString;
+    action: NotifyReplyToAuditAction;
+    replyToAddressId?: UUIDString | null;
+    templateKey?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyReplyToAudit_Key)[];
+}
+
+export interface ListNotifyReplyToAuditsVariables {
+  limit: number;
+}
+
+export interface ListNotifyTemplateBindingAuditsData {
+  notifyTemplateBindingAudits: ({
+    id: UUIDString;
+    action: NotifyTemplateBindingAuditAction;
+    templateKey: string;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyTemplateBindingAudit_Key)[];
+}
+
+export interface ListNotifyTemplateBindingAuditsVariables {
+  limit: number;
+}
+
 export interface ListOpenPaymentReconciliationExceptionsData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -2702,6 +2917,36 @@ export interface NotifyDeliveryReceipt_Key {
   __typename?: 'NotifyDeliveryReceipt_Key';
 }
 
+export interface NotifyEmailConfiguration_Key {
+  id: string;
+  __typename?: 'NotifyEmailConfiguration_Key';
+}
+
+export interface NotifyReplyToAddress_Key {
+  id: UUIDString;
+  __typename?: 'NotifyReplyToAddress_Key';
+}
+
+export interface NotifyReplyToAudit_Key {
+  id: UUIDString;
+  __typename?: 'NotifyReplyToAudit_Key';
+}
+
+export interface NotifyTemplateBindingAudit_Key {
+  id: UUIDString;
+  __typename?: 'NotifyTemplateBindingAudit_Key';
+}
+
+export interface NotifyTemplateBinding_Key {
+  templateKey: string;
+  __typename?: 'NotifyTemplateBinding_Key';
+}
+
+export interface NotifyTemplateReplyToOverride_Key {
+  templateKey: string;
+  __typename?: 'NotifyTemplateReplyToOverride_Key';
+}
+
 export interface OptInSectionAnnouncementData {
   sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
 }
@@ -2740,6 +2985,20 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastAttemptedAt: TimestampString;
   lastErrorCode: string;
   lastErrorMessage: string;
+}
+
+export interface RecordNotifyReplyToProviderAcceptanceData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface RecordNotifyReplyToProviderAcceptanceVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  providerNotificationId: string;
+  verificationMode: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason?: string | null;
 }
 
 export interface RecordSectionFileAuditData {
@@ -2824,6 +3083,20 @@ export interface SectionUserGroupPurposeLink_Key {
 export interface Section_Key {
   id: UUIDString;
   __typename?: 'Section_Key';
+}
+
+export interface SetNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface SetNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  replyToAddressId: UUIDString;
+  changedBy: string;
+  reason?: string | null;
+  previousValue?: string | null;
+  newValue: string;
 }
 
 export interface SubscribeToUserGroupData {
@@ -2994,6 +3267,39 @@ export interface UpdateEventVariables {
   maxGuestsWithoutModeratorApproval?: number | null;
 }
 
+export interface UpdateNotifyReplyToAddressIdentityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface UpdateNotifyReplyToAddressIdentityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+  newValue: string;
+}
+
+export interface UpdateNotifyReplyToAvailabilityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface UpdateNotifyReplyToAvailabilityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  enabled: boolean;
+  announcementSelectable: boolean;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+  newValue: string;
+}
+
 export interface UpdateSectionData {
   section_update?: Section_Key | null;
 }
@@ -3086,6 +3392,22 @@ export interface UpsertCallableInvocationVariables {
   count: number;
 }
 
+export interface UpsertNotifyTemplateBindingData {
+  notifyTemplateBinding_upsert: NotifyTemplateBinding_Key;
+  notifyTemplateBindingAudit_insert: NotifyTemplateBindingAudit_Key;
+}
+
+export interface UpsertNotifyTemplateBindingVariables {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+  changedBy: string;
+  reason?: string | null;
+  auditAction: NotifyTemplateBindingAuditAction;
+  previousValue?: string | null;
+  newValue: string;
+}
+
 export interface UpsertPaymentReconciliationExceptionData {
   paymentReconciliationException_upsert: PaymentReconciliationException_Key;
 }
@@ -3170,6 +3492,81 @@ export function createGovNotifyDeliveryConfiguration(options?: OperationOptions)
 export function changeGovNotifyDeliveryMode(dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ChangeGovNotifyDeliveryModeData>>;
 /** Generated Node Admin SDK operation action function for the 'ChangeGovNotifyDeliveryMode' Mutation. Allow users to pass in custom DataConnect instances. */
 export function changeGovNotifyDeliveryMode(vars: ChangeGovNotifyDeliveryModeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ChangeGovNotifyDeliveryModeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetNotifyReplyToConfiguration' Query. Allow users to execute without passing in DataConnect. */
+export function getNotifyReplyToConfiguration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyReplyToConfigurationData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotifyReplyToConfiguration' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotifyReplyToConfiguration(options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyReplyToConfigurationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListNotifyReplyToAudits' Query. Allow users to execute without passing in DataConnect. */
+export function listNotifyReplyToAudits(dc: DataConnect, vars: ListNotifyReplyToAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNotifyReplyToAuditsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListNotifyReplyToAudits' Query. Allow users to pass in custom DataConnect instances. */
+export function listNotifyReplyToAudits(vars: ListNotifyReplyToAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNotifyReplyToAuditsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateNotifyEmailConfiguration' Mutation. Allow users to execute without passing in DataConnect. */
+export function createNotifyEmailConfiguration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotifyEmailConfigurationData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateNotifyEmailConfiguration' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createNotifyEmailConfiguration(options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotifyEmailConfigurationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateNotifyReplyToAddress' Mutation. Allow users to execute without passing in DataConnect. */
+export function createNotifyReplyToAddress(dc: DataConnect, vars: CreateNotifyReplyToAddressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotifyReplyToAddressData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateNotifyReplyToAddress' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createNotifyReplyToAddress(vars: CreateNotifyReplyToAddressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotifyReplyToAddressData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateNotifyReplyToAddressIdentity' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateNotifyReplyToAddressIdentity(dc: DataConnect, vars: UpdateNotifyReplyToAddressIdentityVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateNotifyReplyToAddressIdentityData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateNotifyReplyToAddressIdentity' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateNotifyReplyToAddressIdentity(vars: UpdateNotifyReplyToAddressIdentityVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateNotifyReplyToAddressIdentityData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RecordNotifyReplyToProviderAcceptance' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordNotifyReplyToProviderAcceptance(dc: DataConnect, vars: RecordNotifyReplyToProviderAcceptanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotifyReplyToProviderAcceptanceData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordNotifyReplyToProviderAcceptance' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordNotifyReplyToProviderAcceptance(vars: RecordNotifyReplyToProviderAcceptanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotifyReplyToProviderAcceptanceData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ConfirmNotifyReplyToVerification' Mutation. Allow users to execute without passing in DataConnect. */
+export function confirmNotifyReplyToVerification(dc: DataConnect, vars: ConfirmNotifyReplyToVerificationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmNotifyReplyToVerificationData>>;
+/** Generated Node Admin SDK operation action function for the 'ConfirmNotifyReplyToVerification' Mutation. Allow users to pass in custom DataConnect instances. */
+export function confirmNotifyReplyToVerification(vars: ConfirmNotifyReplyToVerificationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmNotifyReplyToVerificationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateNotifyReplyToAvailability' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateNotifyReplyToAvailability(dc: DataConnect, vars: UpdateNotifyReplyToAvailabilityVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateNotifyReplyToAvailabilityData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateNotifyReplyToAvailability' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateNotifyReplyToAvailability(vars: UpdateNotifyReplyToAvailabilityVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateNotifyReplyToAvailabilityData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ChangeNotifyReplyToDefault' Mutation. Allow users to execute without passing in DataConnect. */
+export function changeNotifyReplyToDefault(dc: DataConnect, vars: ChangeNotifyReplyToDefaultVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ChangeNotifyReplyToDefaultData>>;
+/** Generated Node Admin SDK operation action function for the 'ChangeNotifyReplyToDefault' Mutation. Allow users to pass in custom DataConnect instances. */
+export function changeNotifyReplyToDefault(vars: ChangeNotifyReplyToDefaultVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ChangeNotifyReplyToDefaultData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DisableDefaultNotifyReplyToAddress' Mutation. Allow users to execute without passing in DataConnect. */
+export function disableDefaultNotifyReplyToAddress(dc: DataConnect, vars: DisableDefaultNotifyReplyToAddressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DisableDefaultNotifyReplyToAddressData>>;
+/** Generated Node Admin SDK operation action function for the 'DisableDefaultNotifyReplyToAddress' Mutation. Allow users to pass in custom DataConnect instances. */
+export function disableDefaultNotifyReplyToAddress(vars: DisableDefaultNotifyReplyToAddressVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DisableDefaultNotifyReplyToAddressData>>;
+
+/** Generated Node Admin SDK operation action function for the 'SetNotifyTemplateReplyToOverride' Mutation. Allow users to execute without passing in DataConnect. */
+export function setNotifyTemplateReplyToOverride(dc: DataConnect, vars: SetNotifyTemplateReplyToOverrideVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SetNotifyTemplateReplyToOverrideData>>;
+/** Generated Node Admin SDK operation action function for the 'SetNotifyTemplateReplyToOverride' Mutation. Allow users to pass in custom DataConnect instances. */
+export function setNotifyTemplateReplyToOverride(vars: SetNotifyTemplateReplyToOverrideVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SetNotifyTemplateReplyToOverrideData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ClearNotifyTemplateReplyToOverride' Mutation. Allow users to execute without passing in DataConnect. */
+export function clearNotifyTemplateReplyToOverride(dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClearNotifyTemplateReplyToOverrideData>>;
+/** Generated Node Admin SDK operation action function for the 'ClearNotifyTemplateReplyToOverride' Mutation. Allow users to pass in custom DataConnect instances. */
+export function clearNotifyTemplateReplyToOverride(vars: ClearNotifyTemplateReplyToOverrideVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClearNotifyTemplateReplyToOverrideData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetNotifyTemplateBindings' Query. Allow users to execute without passing in DataConnect. */
+export function getNotifyTemplateBindings(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyTemplateBindingsData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotifyTemplateBindings' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotifyTemplateBindings(options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyTemplateBindingsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListNotifyTemplateBindingAudits' Query. Allow users to execute without passing in DataConnect. */
+export function listNotifyTemplateBindingAudits(dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNotifyTemplateBindingAuditsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListNotifyTemplateBindingAudits' Query. Allow users to pass in custom DataConnect instances. */
+export function listNotifyTemplateBindingAudits(vars: ListNotifyTemplateBindingAuditsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNotifyTemplateBindingAuditsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpsertNotifyTemplateBinding' Mutation. Allow users to execute without passing in DataConnect. */
+export function upsertNotifyTemplateBinding(dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertNotifyTemplateBindingData>>;
+/** Generated Node Admin SDK operation action function for the 'UpsertNotifyTemplateBinding' Mutation. Allow users to pass in custom DataConnect instances. */
+export function upsertNotifyTemplateBinding(vars: UpsertNotifyTemplateBindingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertNotifyTemplateBindingData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreatePendingSectionFile' Mutation. Allow users to execute without passing in DataConnect. */
 export function createPendingSectionFile(dc: DataConnect, vars: CreatePendingSectionFileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreatePendingSectionFileData>>;

@@ -2,17 +2,21 @@
 subject: "Your SODC membership status has changed"
 templateKey: membershipAccessRestricted
 variables:
-  - customerFirstName
+  - firstName
   - membershipStatusLabel
   - previousStatusLabel
   - appUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
 Your SODC membership status has changed from ((previousStatusLabel)) to ((membershipStatusLabel)).
 
-Your access to the member area has been restricted. If you think this is an error, or would like to discuss your membership, please reply to this email.
+Your access to the member area has therefore changed.
+
+View SODC online:
 
 ((appUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

@@ -2,33 +2,33 @@
 subject: "Payment confirmed — ((eventTitle))"
 templateKey: ticketOrderPaid
 variables:
-  - customerFirstName
   - firstName
   - eventTitle
+  - eventDateTime
+  - eventLocation
   - ticketTypeTitle
   - quantity
   - totalFormatted
-  - currencyDisplay
-  - orderStatusLabel
-  - orderId
   - myPaymentsUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Your payment for ((eventTitle)) has been confirmed.
+Thank you. We have received your payment for ((eventTitle)).
+
+Date and time: ((eventDateTime))
+
+Location: ((eventLocation))
 
 Ticket: ((ticketTypeTitle))
 
 Quantity: ((quantity))
 
-Total paid: ((totalFormatted)) ((currencyDisplay))
-
-Status: ((orderStatusLabel))
-
-Order reference: ((orderId))
+Total paid: ((totalFormatted))
 
 You can view your payment history at any time:
 
 ((myPaymentsUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

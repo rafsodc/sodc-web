@@ -43,14 +43,15 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `APP_BASE_URL` | env var | Public site origin used for checkout, internal ops, and Firebase Auth action links | yes for non-local |
 | `ENV_NAME` | env var | dev reset guardrail | required for reset tooling |
 | `PERMITTED_PROJECT_IDS` | env var | dev reset guardrail | required for reset tooling |
-| `GOV_NOTIFY_EMAIL_REPLY_TO_ID` | env var | Optional GOV.UK Notify reply-to selection | optional |
-| `GOV_NOTIFY_TEMPLATE_<TEMPLATE_NAME>` | env var | GOV.UK Notify template IDs for app-owned transactional email templates | required for each enabled app email template |
-| `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET` | env var | Notify template UUID for the site-managed password-reset email | required for password reset |
-| `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` | env var | Notify template UUID for the site-managed email-verification message | required for registration and verification resend |
-| `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION` | env var | Notify template UUID for verified email-address changes | required for self-service email change |
+| `GOV_NOTIFY_EMAIL_REPLY_TO_ID` | env var | Optional migration fallback UUID for GOV.UK Notify reply-to; prefer verified admin-managed configuration | optional |
+| `GOV_NOTIFY_SERVICE_ID` | env var | Notify service ID, used to build the Email Templates admin page's "Edit in GOV Notify" deep link | optional |
+| `GOV_NOTIFY_TEMPLATE_<TEMPLATE_NAME>` | env var | Automatic fallback GOV.UK Notify template IDs, used only if the admin-managed binding ([#487](https://github.com/rafsodc/sodc-web/issues/487)) is unreachable; templates are configured from **Admin → Email Templates**, not here | optional — a safety net, not the primary configuration path |
+| `GOV_NOTIFY_TEMPLATE_PASSWORD_RESET` | env var | Fallback Notify template UUID for the site-managed password-reset email | optional fallback |
+| `GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION` | env var | Fallback Notify template UUID for the site-managed email-verification message | optional fallback |
+| `GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION` | env var | Fallback Notify template UUID for verified email-address changes | optional fallback |
 | `PAYMENT_OPS_ALERT_EMAILS` | env var | Comma-separated internal recipient emails for payment reconciliation / dispute ops alerts (Stripe webhook path); unset disables sends | optional |
-| `GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT` | env var | Notify template UUID for internal reconciliation-exception alerts | required when `PAYMENT_OPS_ALERT_EMAILS` is set |
-| `GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT` | env var | Notify template UUID for internal dispute side-state alerts | required when `PAYMENT_OPS_ALERT_EMAILS` is set |
+| `GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT` | env var | Fallback Notify template UUID for internal reconciliation-exception alerts | optional fallback, when `PAYMENT_OPS_ALERT_EMAILS` is set |
+| `GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT` | env var | Fallback Notify template UUID for internal dispute side-state alerts | optional fallback, when `PAYMENT_OPS_ALERT_EMAILS` is set |
 | `BOOKING_DRAFT_EXPIRY_MINUTES` | env var | TTL for abandoned `DRAFT` bookings before scheduled cleanup cancels them (`expireUnpaidStagedBookings`) | optional (default `60`) |
 | `TICKET_ORDER_PENDING_EXPIRY_MINUTES` | env var | TTL for unpaid `PENDING` ticket orders before scheduled cleanup marks them `FAILED` | optional (default `60`) |
 | `STAGED_EXPIRY_BATCH_LIMIT` | env var | Max rows processed per category per scheduled run | optional (default `100`) |
@@ -58,9 +59,10 @@ Defined via `.env*` files and read from `import.meta.env`:
 ## Operational notes
 
 - **Transactional email overview** (triggers, idempotency, per-domain flows): [transactional-email-workflows.md](./transactional-email-workflows.md).
+- **Notify email reply-to address** (find the UUID, configure, deploy, and verify): [govuk-notify-email-reply-to.md](./govuk-notify-email-reply-to.md).
 - **Section file storage** (private bucket, IAM, lifecycle, CORS, and rollout): [section-file-storage.md](./section-file-storage.md).
 - **Deployment verification** (read-only Firebase/GCP configuration audit, release manifest, and smoke checks): [deployment-checks.md](./deployment-checks.md).
-- **Notify template copy and registration** (paste into dashboard, record UUIDs per env): [govuk-notify-template-copy.md](./govuk-notify-template-copy.md), [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+- **Notify source templates and registration** (paste into dashboard, record UUIDs per env): [`functions/email-templates/`](../../functions/email-templates/), [template index and tone guide](./govuk-notify-template-copy.md), [registration runbook](./govuk-notify-template-registration.md).
 - **Email policy** (operational vs optional): [transactional-email-policy.md](./transactional-email-policy.md).
 - Do not commit secret values to repo.
 - For project-specific non-secret Functions configuration, use the ignored file

@@ -1,5 +1,5 @@
 ---
-subject: "[SODC OPS] Reconciliation exception — ((orderId))"
+subject: "[SODC] Payment reconciliation exception — ((orderId))"
 templateKey: paymentReconciliationExceptionAlert
 variables:
   - orderId
@@ -10,24 +10,26 @@ variables:
   - reconciliationDashboardUrl
   - stripeEventId
 ---
-A payment reconciliation exception requires your attention.
+A payment reconciliation exception needs review.
 
-Order ID: ((orderId))
+Ticket order ID: ((orderId))
 
 Event: ((eventTitle))
 
-Customer: ((customerDisplay))
+Member: ((customerDisplay))
 
 Exception type: ((exceptionType))
 
-Note: ((exceptionNote))
+Recorded note: ((exceptionNote))
 
 Stripe event ID: ((stripeEventId))
 
 ---
 
-Review in the reconciliation dashboard:
+Review the exception in the reconciliation dashboard:
 
 ((reconciliationDashboardUrl))
 
-SODC Ops
+Kind regards,
+
+SODC Admin

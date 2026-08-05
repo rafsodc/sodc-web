@@ -154,6 +154,11 @@ function SendRow({ send, sectionId }: { send: AnnouncementSend; sectionId: strin
         <TableCell colSpan={7} sx={{ py: 0 }}>
           <Collapse in={open} unmountOnExit>
             <Box sx={{ px: 2, py: 1 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>
+                Replies: {send.replyToDisplayLabel
+                  ? `${send.replyToDisplayLabel}${send.replyToEmailAddress ? ` — ${send.replyToEmailAddress}` : ""}`
+                  : "system / GOV.UK Notify default"}
+              </Typography>
               {loading && <CircularProgress size={20} sx={{ my: 1 }} />}
               {error && <Alert severity="error" sx={{ my: 1 }}>{error}</Alert>}
               {recipients && recipients.length === 0 && (

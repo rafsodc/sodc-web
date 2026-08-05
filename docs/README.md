@@ -22,7 +22,8 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/environments-dev-beta-prod.md`: Dev / Beta / Prod Firebase projects, schema-first deploy flow, smoke-test and rollback checkpoints, and local setup (cloud-backed dev; no emulators).
 - `operations/new-production-instance.md`: first-time Firebase/GCP production provisioning, integrations, administrator bootstrap, deployment, and go-live checklist.
 - `operations/transactional-email-workflows.md`: transactional email triggers by domain (payments, bookings, membership, guest tickets, ops alerts) with links to GOV.UK Notify template specs.
-- `operations/govuk-notify-template-copy.md`: draft subject/body for all Notify templates; `govuk-notify-template-registration.md`: per-environment UUID checklist.
+- `operations/govuk-notify-email-reply-to.md`: admin-managed Notify reply-to addresses, verification, deployment, and migration fallback.
+- `operations/govuk-notify-template-copy.md`: Notify template index and automated-email tone guide; `functions/email-templates/`: source subject/body copy; `govuk-notify-template-registration.md`: per-environment UUID checklist.
 - `operations/transactional-email-policy.md`: operational vs optional/marketing email policy (#191).
 - `operations/section-announcement-audiences.md`: explicit and membership-status-derived audience, eligibility, deduplication, and opt-out rules for section announcements.
 - `operations/firebase-hosting-security-headers.md`: production CSP and browser hardening policy, HSTS ownership, and post-deploy verification.

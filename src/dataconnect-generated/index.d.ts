@@ -71,6 +71,28 @@ export enum NotifyDeliveryReceiptProcessingStatus {
   FAILED = "FAILED",
 };
 
+export enum NotifyReplyToAuditAction {
+  CREATED = "CREATED",
+  UPDATED = "UPDATED",
+  DISABLED = "DISABLED",
+  PROVIDER_TEST_ACCEPTED = "PROVIDER_TEST_ACCEPTED",
+  VERIFIED = "VERIFIED",
+  DEFAULT_CHANGED = "DEFAULT_CHANGED",
+  TEMPLATE_OVERRIDE_CHANGED = "TEMPLATE_OVERRIDE_CHANGED",
+};
+
+export enum NotifyReplyToVerificationStatus {
+  UNVERIFIED = "UNVERIFIED",
+  PROVIDER_ACCEPTED = "PROVIDER_ACCEPTED",
+  VERIFIED = "VERIFIED",
+};
+
+export enum NotifyTemplateBindingAuditAction {
+  CREATED = "CREATED",
+  TEMPLATE_CHANGED = "TEMPLATE_CHANGED",
+  VERSION_REVIEWED = "VERSION_REVIEWED",
+};
+
 export enum PaymentReconciliationExceptionStatus {
   OPEN = "OPEN",
   RESOLVED = "RESOLVED",
@@ -326,6 +348,21 @@ export interface ChangeGovNotifyDeliveryModeVariables {
   reason: string;
 }
 
+export interface ChangeNotifyReplyToDefaultData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface ChangeNotifyReplyToDefaultVariables {
+  expectedVersion: number;
+  previousAddressId?: UUIDString | null;
+  newAddressId?: UUIDString | null;
+  changedBy: string;
+  reason?: string | null;
+  previousValue?: string | null;
+  newValue?: string | null;
+}
+
 export interface CheckUserProfileExistsData {
   user?: {
     id: string;
@@ -359,6 +396,30 @@ export interface ClaimNotifyDeliveryReceiptVariables {
   expectedAttemptCount: number;
   attemptCount: number;
   lastAttemptedAt: TimestampString;
+}
+
+export interface ClearNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_delete?: NotifyTemplateReplyToOverride_Key | null;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface ClearNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+}
+
+export interface ConfirmNotifyReplyToVerificationData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface ConfirmNotifyReplyToVerificationVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  changedBy: string;
+  reason?: string | null;
 }
 
 export interface ConfirmProfileReviewData {
@@ -454,6 +515,10 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+  replyToAddressId?: UUIDString | null;
+  replyToDisplayLabel?: string | null;
+  replyToEmailAddress?: string | null;
+  replyToNotifyUuid?: string | null;
 }
 
 export interface CreateBookingDraftData {
@@ -606,6 +671,25 @@ export interface CreateNotifyDeliveryReceiptVariables {
   eventOrderingKey: string;
   affectsBounceState: boolean;
   lastAttemptedAt: TimestampString;
+}
+
+export interface CreateNotifyEmailConfigurationData {
+  notifyEmailConfiguration_insert: NotifyEmailConfiguration_Key;
+}
+
+export interface CreateNotifyReplyToAddressData {
+  notifyReplyToAddress_insert: NotifyReplyToAddress_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface CreateNotifyReplyToAddressVariables {
+  id: UUIDString;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason?: string | null;
+  newValue: string;
 }
 
 export interface CreatePaymentWebhookEventData {
@@ -785,6 +869,22 @@ export interface DeleteUserVariables {
   userId: string;
 }
 
+export interface DisableDefaultNotifyReplyToAddressData {
+  addressChanged: number;
+  configurationChanged: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface DisableDefaultNotifyReplyToAddressVariables {
+  id: UUIDString;
+  expectedAddressVersion: number;
+  expectedConfigurationVersion: number;
+  replacementAddressId?: UUIDString | null;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+}
+
 export interface EnsureCallableRateLimitBucketData {
   callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
 }
@@ -894,6 +994,10 @@ export interface GetAnnouncementSendByIdData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
+    replyToNotifyUuid?: string | null;
   } & AnnouncementSend_Key;
 }
 
@@ -913,6 +1017,9 @@ export interface GetAnnouncementSendHistoryData {
     requestedDeliveryMode: GovNotifyDeliveryMode;
     siteDeliveryMode: GovNotifyDeliveryMode;
     effectiveDeliveryMode: GovNotifyDeliveryMode;
+    replyToAddressId?: UUIDString | null;
+    replyToDisplayLabel?: string | null;
+    replyToEmailAddress?: string | null;
   } & AnnouncementSend_Key)[];
 }
 
@@ -1247,6 +1354,9 @@ export interface GetGuestTicketRequestForNotificationData {
       event: {
         id: UUIDString;
         title: string;
+        location?: string | null;
+        startDateTime: TimestampString;
+        endDateTime: TimestampString;
         section: {
           id: UUIDString;
           name: string;
@@ -1577,6 +1687,76 @@ export interface GetNotifyDeliveryReceiptVariables {
   id: string;
 }
 
+export interface GetNotifyReplyToConfigurationData {
+  notifyEmailConfiguration?: {
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy?: string | null;
+    defaultReplyToAddress?: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      announcementSelectable: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+      providerAcceptedAt?: TimestampString | null;
+      providerNotificationId?: string | null;
+      verificationMode?: GovNotifyDeliveryMode | null;
+      verifiedAt?: TimestampString | null;
+      verifiedBy?: string | null;
+      version: number;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy: string;
+      updatedBy: string;
+    } & NotifyReplyToAddress_Key;
+  };
+  notifyReplyToAddresses: ({
+    id: UUIDString;
+    displayLabel: string;
+    emailAddress: string;
+    notifyUuid: string;
+    enabled: boolean;
+    announcementSelectable: boolean;
+    verificationStatus: NotifyReplyToVerificationStatus;
+    providerAcceptedAt?: TimestampString | null;
+    providerNotificationId?: string | null;
+    verificationMode?: GovNotifyDeliveryMode | null;
+    verifiedAt?: TimestampString | null;
+    verifiedBy?: string | null;
+    version: number;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy: string;
+    updatedBy: string;
+  } & NotifyReplyToAddress_Key)[];
+  notifyTemplateReplyToOverrides: ({
+    templateKey: string;
+    replyToAddress: {
+      id: UUIDString;
+      displayLabel: string;
+      emailAddress: string;
+      notifyUuid: string;
+      enabled: boolean;
+      verificationStatus: NotifyReplyToVerificationStatus;
+    } & NotifyReplyToAddress_Key;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateReplyToOverride_Key)[];
+}
+
+export interface GetNotifyTemplateBindingsData {
+  notifyTemplateBindings: ({
+    templateKey: string;
+    notifyTemplateId: string;
+    reviewedVersion: number;
+    version: number;
+    updatedAt: TimestampString;
+    updatedBy: string;
+  } & NotifyTemplateBinding_Key)[];
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -1811,6 +1991,9 @@ export interface GetTicketOrderForWebhookData {
     event: {
       id: UUIDString;
       title: string;
+      location?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
     } & Event_Key;
     ticketType: {
       id: UUIDString;
@@ -2378,6 +2561,41 @@ export interface ListMigrationUsersVariables {
   limit: number;
 }
 
+export interface ListNotifyReplyToAuditsData {
+  notifyReplyToAudits: ({
+    id: UUIDString;
+    action: NotifyReplyToAuditAction;
+    replyToAddressId?: UUIDString | null;
+    templateKey?: string | null;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyReplyToAudit_Key)[];
+}
+
+export interface ListNotifyReplyToAuditsVariables {
+  limit: number;
+}
+
+export interface ListNotifyTemplateBindingAuditsData {
+  notifyTemplateBindingAudits: ({
+    id: UUIDString;
+    action: NotifyTemplateBindingAuditAction;
+    templateKey: string;
+    previousValue?: string | null;
+    newValue?: string | null;
+    changedBy: string;
+    reason?: string | null;
+    changedAt: TimestampString;
+  } & NotifyTemplateBindingAudit_Key)[];
+}
+
+export interface ListNotifyTemplateBindingAuditsVariables {
+  limit: number;
+}
+
 export interface ListOpenPaymentReconciliationExceptionsData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -2721,6 +2939,36 @@ export interface NotifyDeliveryReceipt_Key {
   __typename?: 'NotifyDeliveryReceipt_Key';
 }
 
+export interface NotifyEmailConfiguration_Key {
+  id: string;
+  __typename?: 'NotifyEmailConfiguration_Key';
+}
+
+export interface NotifyReplyToAddress_Key {
+  id: UUIDString;
+  __typename?: 'NotifyReplyToAddress_Key';
+}
+
+export interface NotifyReplyToAudit_Key {
+  id: UUIDString;
+  __typename?: 'NotifyReplyToAudit_Key';
+}
+
+export interface NotifyTemplateBindingAudit_Key {
+  id: UUIDString;
+  __typename?: 'NotifyTemplateBindingAudit_Key';
+}
+
+export interface NotifyTemplateBinding_Key {
+  templateKey: string;
+  __typename?: 'NotifyTemplateBinding_Key';
+}
+
+export interface NotifyTemplateReplyToOverride_Key {
+  templateKey: string;
+  __typename?: 'NotifyTemplateReplyToOverride_Key';
+}
+
 export interface OptInSectionAnnouncementData {
   sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
 }
@@ -2759,6 +3007,20 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastAttemptedAt: TimestampString;
   lastErrorCode: string;
   lastErrorMessage: string;
+}
+
+export interface RecordNotifyReplyToProviderAcceptanceData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface RecordNotifyReplyToProviderAcceptanceVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  providerNotificationId: string;
+  verificationMode: GovNotifyDeliveryMode;
+  changedBy: string;
+  reason?: string | null;
 }
 
 export interface RecordSectionFileAuditData {
@@ -2843,6 +3105,20 @@ export interface SectionUserGroupPurposeLink_Key {
 export interface Section_Key {
   id: UUIDString;
   __typename?: 'Section_Key';
+}
+
+export interface SetNotifyTemplateReplyToOverrideData {
+  notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface SetNotifyTemplateReplyToOverrideVariables {
+  templateKey: string;
+  replyToAddressId: UUIDString;
+  changedBy: string;
+  reason?: string | null;
+  previousValue?: string | null;
+  newValue: string;
 }
 
 export interface SubscribeToUserGroupData {
@@ -3013,6 +3289,39 @@ export interface UpdateEventVariables {
   maxGuestsWithoutModeratorApproval?: number | null;
 }
 
+export interface UpdateNotifyReplyToAddressIdentityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface UpdateNotifyReplyToAddressIdentityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  displayLabel: string;
+  emailAddress: string;
+  notifyUuid: string;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+  newValue: string;
+}
+
+export interface UpdateNotifyReplyToAvailabilityData {
+  changed: number;
+  notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
+}
+
+export interface UpdateNotifyReplyToAvailabilityVariables {
+  id: UUIDString;
+  expectedVersion: number;
+  enabled: boolean;
+  announcementSelectable: boolean;
+  changedBy: string;
+  reason?: string | null;
+  previousValue: string;
+  newValue: string;
+}
+
 export interface UpdateSectionData {
   section_update?: Section_Key | null;
 }
@@ -3103,6 +3412,22 @@ export interface UpsertCallableInvocationVariables {
   functionName: string;
   windowStart: TimestampString;
   count: number;
+}
+
+export interface UpsertNotifyTemplateBindingData {
+  notifyTemplateBinding_upsert: NotifyTemplateBinding_Key;
+  notifyTemplateBindingAudit_insert: NotifyTemplateBindingAudit_Key;
+}
+
+export interface UpsertNotifyTemplateBindingVariables {
+  templateKey: string;
+  notifyTemplateId: string;
+  reviewedVersion: number;
+  changedBy: string;
+  reason?: string | null;
+  auditAction: NotifyTemplateBindingAuditAction;
+  previousValue?: string | null;
+  newValue: string;
 }
 
 export interface UpsertPaymentReconciliationExceptionData {
@@ -3217,6 +3542,186 @@ export const changeGovNotifyDeliveryModeRef: ChangeGovNotifyDeliveryModeRef;
 
 export function changeGovNotifyDeliveryMode(vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
 export function changeGovNotifyDeliveryMode(dc: DataConnect, vars: ChangeGovNotifyDeliveryModeVariables): MutationPromise<ChangeGovNotifyDeliveryModeData, ChangeGovNotifyDeliveryModeVariables>;
+
+interface GetNotifyReplyToConfigurationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNotifyReplyToConfigurationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetNotifyReplyToConfigurationData, undefined>;
+  operationName: string;
+}
+export const getNotifyReplyToConfigurationRef: GetNotifyReplyToConfigurationRef;
+
+export function getNotifyReplyToConfiguration(options?: ExecuteQueryOptions): QueryPromise<GetNotifyReplyToConfigurationData, undefined>;
+export function getNotifyReplyToConfiguration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNotifyReplyToConfigurationData, undefined>;
+
+interface ListNotifyReplyToAuditsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNotifyReplyToAuditsVariables): QueryRef<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListNotifyReplyToAuditsVariables): QueryRef<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+  operationName: string;
+}
+export const listNotifyReplyToAuditsRef: ListNotifyReplyToAuditsRef;
+
+export function listNotifyReplyToAudits(vars: ListNotifyReplyToAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+export function listNotifyReplyToAudits(dc: DataConnect, vars: ListNotifyReplyToAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyReplyToAuditsData, ListNotifyReplyToAuditsVariables>;
+
+interface CreateNotifyEmailConfigurationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<CreateNotifyEmailConfigurationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): MutationRef<CreateNotifyEmailConfigurationData, undefined>;
+  operationName: string;
+}
+export const createNotifyEmailConfigurationRef: CreateNotifyEmailConfigurationRef;
+
+export function createNotifyEmailConfiguration(): MutationPromise<CreateNotifyEmailConfigurationData, undefined>;
+export function createNotifyEmailConfiguration(dc: DataConnect): MutationPromise<CreateNotifyEmailConfigurationData, undefined>;
+
+interface CreateNotifyReplyToAddressRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateNotifyReplyToAddressVariables): MutationRef<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateNotifyReplyToAddressVariables): MutationRef<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+  operationName: string;
+}
+export const createNotifyReplyToAddressRef: CreateNotifyReplyToAddressRef;
+
+export function createNotifyReplyToAddress(vars: CreateNotifyReplyToAddressVariables): MutationPromise<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+export function createNotifyReplyToAddress(dc: DataConnect, vars: CreateNotifyReplyToAddressVariables): MutationPromise<CreateNotifyReplyToAddressData, CreateNotifyReplyToAddressVariables>;
+
+interface UpdateNotifyReplyToAddressIdentityRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateNotifyReplyToAddressIdentityVariables): MutationRef<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateNotifyReplyToAddressIdentityVariables): MutationRef<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+  operationName: string;
+}
+export const updateNotifyReplyToAddressIdentityRef: UpdateNotifyReplyToAddressIdentityRef;
+
+export function updateNotifyReplyToAddressIdentity(vars: UpdateNotifyReplyToAddressIdentityVariables): MutationPromise<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+export function updateNotifyReplyToAddressIdentity(dc: DataConnect, vars: UpdateNotifyReplyToAddressIdentityVariables): MutationPromise<UpdateNotifyReplyToAddressIdentityData, UpdateNotifyReplyToAddressIdentityVariables>;
+
+interface RecordNotifyReplyToProviderAcceptanceRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationRef<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationRef<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+  operationName: string;
+}
+export const recordNotifyReplyToProviderAcceptanceRef: RecordNotifyReplyToProviderAcceptanceRef;
+
+export function recordNotifyReplyToProviderAcceptance(vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationPromise<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+export function recordNotifyReplyToProviderAcceptance(dc: DataConnect, vars: RecordNotifyReplyToProviderAcceptanceVariables): MutationPromise<RecordNotifyReplyToProviderAcceptanceData, RecordNotifyReplyToProviderAcceptanceVariables>;
+
+interface ConfirmNotifyReplyToVerificationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmNotifyReplyToVerificationVariables): MutationRef<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ConfirmNotifyReplyToVerificationVariables): MutationRef<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+  operationName: string;
+}
+export const confirmNotifyReplyToVerificationRef: ConfirmNotifyReplyToVerificationRef;
+
+export function confirmNotifyReplyToVerification(vars: ConfirmNotifyReplyToVerificationVariables): MutationPromise<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+export function confirmNotifyReplyToVerification(dc: DataConnect, vars: ConfirmNotifyReplyToVerificationVariables): MutationPromise<ConfirmNotifyReplyToVerificationData, ConfirmNotifyReplyToVerificationVariables>;
+
+interface UpdateNotifyReplyToAvailabilityRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateNotifyReplyToAvailabilityVariables): MutationRef<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateNotifyReplyToAvailabilityVariables): MutationRef<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+  operationName: string;
+}
+export const updateNotifyReplyToAvailabilityRef: UpdateNotifyReplyToAvailabilityRef;
+
+export function updateNotifyReplyToAvailability(vars: UpdateNotifyReplyToAvailabilityVariables): MutationPromise<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+export function updateNotifyReplyToAvailability(dc: DataConnect, vars: UpdateNotifyReplyToAvailabilityVariables): MutationPromise<UpdateNotifyReplyToAvailabilityData, UpdateNotifyReplyToAvailabilityVariables>;
+
+interface ChangeNotifyReplyToDefaultRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ChangeNotifyReplyToDefaultVariables): MutationRef<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ChangeNotifyReplyToDefaultVariables): MutationRef<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+  operationName: string;
+}
+export const changeNotifyReplyToDefaultRef: ChangeNotifyReplyToDefaultRef;
+
+export function changeNotifyReplyToDefault(vars: ChangeNotifyReplyToDefaultVariables): MutationPromise<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+export function changeNotifyReplyToDefault(dc: DataConnect, vars: ChangeNotifyReplyToDefaultVariables): MutationPromise<ChangeNotifyReplyToDefaultData, ChangeNotifyReplyToDefaultVariables>;
+
+interface DisableDefaultNotifyReplyToAddressRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DisableDefaultNotifyReplyToAddressVariables): MutationRef<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DisableDefaultNotifyReplyToAddressVariables): MutationRef<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+  operationName: string;
+}
+export const disableDefaultNotifyReplyToAddressRef: DisableDefaultNotifyReplyToAddressRef;
+
+export function disableDefaultNotifyReplyToAddress(vars: DisableDefaultNotifyReplyToAddressVariables): MutationPromise<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+export function disableDefaultNotifyReplyToAddress(dc: DataConnect, vars: DisableDefaultNotifyReplyToAddressVariables): MutationPromise<DisableDefaultNotifyReplyToAddressData, DisableDefaultNotifyReplyToAddressVariables>;
+
+interface SetNotifyTemplateReplyToOverrideRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SetNotifyTemplateReplyToOverrideVariables): MutationRef<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: SetNotifyTemplateReplyToOverrideVariables): MutationRef<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+  operationName: string;
+}
+export const setNotifyTemplateReplyToOverrideRef: SetNotifyTemplateReplyToOverrideRef;
+
+export function setNotifyTemplateReplyToOverride(vars: SetNotifyTemplateReplyToOverrideVariables): MutationPromise<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+export function setNotifyTemplateReplyToOverride(dc: DataConnect, vars: SetNotifyTemplateReplyToOverrideVariables): MutationPromise<SetNotifyTemplateReplyToOverrideData, SetNotifyTemplateReplyToOverrideVariables>;
+
+interface ClearNotifyTemplateReplyToOverrideRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClearNotifyTemplateReplyToOverrideVariables): MutationRef<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables): MutationRef<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+  operationName: string;
+}
+export const clearNotifyTemplateReplyToOverrideRef: ClearNotifyTemplateReplyToOverrideRef;
+
+export function clearNotifyTemplateReplyToOverride(vars: ClearNotifyTemplateReplyToOverrideVariables): MutationPromise<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+export function clearNotifyTemplateReplyToOverride(dc: DataConnect, vars: ClearNotifyTemplateReplyToOverrideVariables): MutationPromise<ClearNotifyTemplateReplyToOverrideData, ClearNotifyTemplateReplyToOverrideVariables>;
+
+interface GetNotifyTemplateBindingsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNotifyTemplateBindingsData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetNotifyTemplateBindingsData, undefined>;
+  operationName: string;
+}
+export const getNotifyTemplateBindingsRef: GetNotifyTemplateBindingsRef;
+
+export function getNotifyTemplateBindings(options?: ExecuteQueryOptions): QueryPromise<GetNotifyTemplateBindingsData, undefined>;
+export function getNotifyTemplateBindings(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNotifyTemplateBindingsData, undefined>;
+
+interface ListNotifyTemplateBindingAuditsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNotifyTemplateBindingAuditsVariables): QueryRef<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables): QueryRef<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+  operationName: string;
+}
+export const listNotifyTemplateBindingAuditsRef: ListNotifyTemplateBindingAuditsRef;
+
+export function listNotifyTemplateBindingAudits(vars: ListNotifyTemplateBindingAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+export function listNotifyTemplateBindingAudits(dc: DataConnect, vars: ListNotifyTemplateBindingAuditsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNotifyTemplateBindingAuditsData, ListNotifyTemplateBindingAuditsVariables>;
+
+interface UpsertNotifyTemplateBindingRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertNotifyTemplateBindingVariables): MutationRef<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables): MutationRef<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+  operationName: string;
+}
+export const upsertNotifyTemplateBindingRef: UpsertNotifyTemplateBindingRef;
+
+export function upsertNotifyTemplateBinding(vars: UpsertNotifyTemplateBindingVariables): MutationPromise<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
+export function upsertNotifyTemplateBinding(dc: DataConnect, vars: UpsertNotifyTemplateBindingVariables): MutationPromise<UpsertNotifyTemplateBindingData, UpsertNotifyTemplateBindingVariables>;
 
 interface CreatePendingSectionFileRef {
   /* Allow users to create refs without passing in DataConnect */

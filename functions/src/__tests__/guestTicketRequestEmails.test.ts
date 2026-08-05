@@ -17,7 +17,7 @@ const mockSendOnce = vi.spyOn(notificationDelivery, "sendNotificationOnce");
 
 describe("guest ticket email helpers", () => {
   it("formats moderator note", () => {
-    expect(formatModeratorNote(null)).toBe("—");
+    expect(formatModeratorNote(null)).toBe("No additional note");
     expect(formatModeratorNote("  OK  ")).toBe("OK");
   });
 
@@ -59,7 +59,7 @@ describe("guest ticket email helpers", () => {
 
   it("formatTotalAmountLine is blank for free tickets and formatted for paid ones", () => {
     expect(formatTotalAmountLine(0)).toBe("");
-    expect(formatTotalAmountLine(5000)).toBe("Total additional cost: 50.00 GBP");
+    expect(formatTotalAmountLine(5000)).toBe("Total additional cost: £50.00");
   });
 });
 
@@ -90,6 +90,9 @@ function mockGuestTicketRequest(overrides: {
           event: {
             id: "evt",
             title: "Annual dinner",
+            location: "Main Hall",
+            startDateTime: "2026-07-01T18:00:00.000Z",
+            endDateTime: "2026-07-01T22:00:00.000Z",
             section: { id: "sec-1", name: "Events" },
           },
           guestTicketRequests: siblings.map((s) => ({
@@ -142,11 +145,12 @@ describe("notifyBookerGuestTicketRequestReviewed", () => {
         templateName: "guestTicketRequestApproved",
         to: "sam@example.com",
         personalisation: {
-          customerFirstName: "Sam",
+          firstName: "Sam",
           eventTitle: "Annual dinner",
-          decisionLabel: "Approved",
+          eventDateTime: expect.stringContaining("19:00 – 23:00"),
+          eventLocation: "Main Hall",
           guestTicketCount: 2,
-          totalAmountLine: "Total additional cost: 30.00 GBP",
+          totalAmountLine: "Total additional cost: £30.00",
           moderatorNote: "Welcome",
           myBookingsUrl: "https://app.example/sections/sec-1",
         },
@@ -181,11 +185,12 @@ describe("notifyBookerGuestTicketRequestReviewed", () => {
       expect.objectContaining({
         templateName: "guestTicketRequestRejected",
         personalisation: {
-          customerFirstName: "Sam",
+          firstName: "Sam",
           eventTitle: "Annual dinner",
-          decisionLabel: "Rejected",
+          eventDateTime: expect.stringContaining("19:00 – 23:00"),
+          eventLocation: "Main Hall",
           guestTicketCount: 1,
-          moderatorNote: "—",
+          moderatorNote: "No additional note",
           myBookingsUrl: "https://app.example/sections/sec-1",
         },
       })

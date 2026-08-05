@@ -12,14 +12,10 @@ function readRepoFile(relativePath: string): string {
 }
 
 /**
- * functions/email-templates/*.md (compiled into EMAIL_TEMPLATE_MANIFEST) is the machine-readable
- * source consumed by getTemplateSyncStatus. docs/operations/govuk-notify-template-copy.md is a
- * separate, hand-maintained human reference with no code dependency on the source. #271 updated
- * the docs but never created the matching functions/email-templates/*.md file, so the new
- * template silently never appeared in the Email Template Sync page rather than showing as
- * unconfigured (see #378). These checks catch either direction of that drift — a template added
- * to one side without the other — even though they can't catch the docs' prose copy silently
- * diverging from the actual source content.
+ * functions/email-templates/*.md (compiled into EMAIL_TEMPLATE_MANIFEST) is the single source
+ * consumed by getTemplateSyncStatus. docs/operations/govuk-notify-template-copy.md is an index
+ * and tone guide rather than a hand-maintained duplicate. These checks catch a template added
+ * to either side without the corresponding source or index entry.
  */
 describe("GOV Notify template docs parity (#378)", () => {
   const docs = readRepoFile(DOCS_PATH);

@@ -18,6 +18,8 @@ const task: AnnouncementEmailTask = {
   templateUuid: "template-1",
 };
 
+const REPLY_TO_ID = "11111111-1111-4111-8111-111111111111";
+
 function harness(initialStatus: AnnouncementRecipientStatus = "queued") {
   let rejectedStatus: AnnouncementRecipientStatus | null = null;
   let row = {
@@ -77,9 +79,15 @@ describe("processAnnouncementEmailTask", () => {
       repository: test.repository,
       client: test.client,
       now: () => "2026-07-19T10:00:00.000Z",
+      emailReplyToId: REPLY_TO_ID,
     });
 
-    expect(test.sendEmail).toHaveBeenCalledOnce();
+    expect(test.sendEmail).toHaveBeenCalledWith(task.templateUuid, task.email, {
+      personalisation: task.personalisation,
+      reference: expect.any(String),
+      oneClickUnsubscribeURL: task.unsubscribeUrl,
+      emailReplyToId: REPLY_TO_ID,
+    });
     expect(test.row()).toMatchObject({
       status: "sent",
       processingVersion: 1,

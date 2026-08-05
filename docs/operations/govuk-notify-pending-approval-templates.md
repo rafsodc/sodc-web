@@ -6,7 +6,7 @@ Recipients are **all current Firebase Auth admins** (`getAdminUsers()`, same pat
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+**Source copy:** [`newUserPendingApprovalAlert.md`](../../functions/email-templates/newUserPendingApprovalAlert.md). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 
 ## Configuration
 
@@ -33,6 +33,10 @@ Also required for sends: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIF
 `pending-approval:<userId>:<adminEmail>` — deduped per admin, so adding a new admin later or `syncPendingUserClaims` firing again for the same still-pending user only emails admins who haven't already been notified about this user.
 
 ## Template: `newUserPendingApprovalAlert`
+
+The subject deliberately omits the member's name and email address. Those details
+remain in the body for authorised administrators reviewing the account. The body
+uses the standard automated `Kind regards, SODC Admin` sign-off.
 
 | Key | Semantics |
 |-----|-----------|

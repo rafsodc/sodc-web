@@ -1,5 +1,5 @@
 ---
-subject: "Guest ticket request — ((eventTitle))"
+subject: "[SODC] Guest ticket request — ((eventTitle))"
 templateKey: guestTicketRequestSubmittedModerator
 variables:
   - eventTitle
@@ -10,7 +10,7 @@ variables:
   - dietaryNote
   - moderationUrl
 ---
-A guest ticket request has been submitted for your review.
+A guest ticket request is ready for review.
 
 Event: ((eventTitle))
 
@@ -18,16 +18,18 @@ Section: ((sectionName))
 
 Requested by: ((bookerDisplay))
 
-Guest count: ((requestedGuestCount))
+Places requested: ((requestedGuestCount))
 
 Ticket type: ((guestTicketTypeTitle))
 
-Dietary note: ((dietaryNote))
+Dietary requirements: ((dietaryNote))
 
 ---
 
-Review and approve or decline this request in the admin panel:
+Review the request in SODC:
 
 ((moderationUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

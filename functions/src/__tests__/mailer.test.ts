@@ -28,6 +28,8 @@ type TestTemplates = {
   };
 };
 
+const REPLY_TO_ID = "11111111-1111-4111-8111-111111111111";
+
 function fakeLogger() {
   return {
     info: vi.fn(),
@@ -52,15 +54,21 @@ describe("mailer", () => {
   });
 
   it("reads the optional reply-to ID and builds the environment-configured mailer", () => {
-    expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id" })).toBe("reply-to-id");
+    expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: `  ${REPLY_TO_ID}  ` })).toBe(REPLY_TO_ID);
     expect(getGovNotifyEmailReplyToId({ GOV_NOTIFY_EMAIL_REPLY_TO_ID: "  " })).toBeUndefined();
     expect(
       createConfiguredGovNotifyMailer<TestTemplates>(["paymentConfirmation"], {
         GOV_NOTIFY_TEMPLATE_PAYMENT_CONFIRMATION: "template-paid",
-        GOV_NOTIFY_EMAIL_REPLY_TO_ID: "reply-to-id",
+        GOV_NOTIFY_EMAIL_REPLY_TO_ID: REPLY_TO_ID,
         GOV_NOTIFY_DELIVERY_MODE: "LIVE",
       })
     ).toHaveProperty("sendEmail");
+  });
+
+  it("ignores a malformed migration fallback so critical email can use Notify's default", () => {
+    expect(getGovNotifyEmailReplyToId({
+      GOV_NOTIFY_EMAIL_REPLY_TO_ID: "not-a-uuid",
+    })).toBeUndefined();
   });
 
   it("builds stable recipient-scoped references without exposing recipient PII", () => {
@@ -110,7 +118,7 @@ describe("mailer", () => {
       templateIds: {
         paymentConfirmation: "template-paid",
       },
-      emailReplyToId: "reply-to-id",
+      emailReplyToId: REPLY_TO_ID,
       clientFactory: () => ({ getNotifications, sendEmail }),
       logger,
     });
@@ -142,7 +150,7 @@ describe("mailer", () => {
         amount_paid: "GBP 10.00",
       },
       reference: "order-123:notify-live",
-      emailReplyToId: "reply-to-id",
+      emailReplyToId: REPLY_TO_ID,
     });
     expect(getNotifications).toHaveBeenCalledWith(
       "email",
@@ -294,6 +302,75 @@ describe("mailer", () => {
       `${firstReference}:notify-live`,
       `${secondReference}:notify-live`,
     ]);
+  });
+
+  it("prefers a resolved template id from resolveTemplateId over the static templateIds map", async () => {
+    const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>(async () => ({ data: { id: "notify-id" } }));
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
+      data: { notifications: [] },
+    }));
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      apiKey: "notify-api-key",
+      templateIds: { paymentConfirmation: "env-template-id" },
+      resolveTemplateId: async () => "db-bound-template-id",
+      clientFactory: () => ({ getNotifications, sendEmail }),
+      logger: fakeLogger(),
+    });
+
+    await mailer.sendEmail({
+      templateName: "paymentConfirmation",
+      to: "buyer@example.com",
+      personalisation: { event_title: "Dinner", amount_paid: "GBP 10.00" },
+    });
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      "db-bound-template-id",
+      "buyer@example.com",
+      expect.anything(),
+    );
+  });
+
+  it("falls back to the static templateIds map when resolveTemplateId finds no binding", async () => {
+    const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>(async () => ({ data: { id: "notify-id" } }));
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>(async () => ({
+      data: { notifications: [] },
+    }));
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      apiKey: "notify-api-key",
+      templateIds: { paymentConfirmation: "env-template-id" },
+      resolveTemplateId: async () => undefined,
+      clientFactory: () => ({ getNotifications, sendEmail }),
+      logger: fakeLogger(),
+    });
+
+    await mailer.sendEmail({
+      templateName: "paymentConfirmation",
+      to: "buyer@example.com",
+      personalisation: { event_title: "Dinner", amount_paid: "GBP 10.00" },
+    });
+
+    expect(sendEmail).toHaveBeenCalledWith("env-template-id", "buyer@example.com", expect.anything());
+  });
+
+  it("fails with a typed configuration error when neither resolveTemplateId nor templateIds has a binding", async () => {
+    const sendEmail = vi.fn<NotifyEmailClient["sendEmail"]>();
+    const getNotifications = vi.fn<NotifyEmailClient["getNotifications"]>();
+    const mailer = createGovNotifyMailer<TestTemplates>({
+      apiKey: "notify-api-key",
+      templateIds: {},
+      resolveTemplateId: async () => undefined,
+      clientFactory: () => ({ getNotifications, sendEmail }),
+      logger: fakeLogger(),
+    });
+
+    await expect(
+      mailer.sendEmail({
+        templateName: "paymentConfirmation",
+        to: "buyer@example.com",
+        personalisation: { event_title: "Dinner", amount_paid: "GBP 10.00" },
+      })
+    ).rejects.toBeInstanceOf(MailerConfigurationError);
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it("logs provider failures without recipient PII", async () => {

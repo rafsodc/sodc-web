@@ -2,17 +2,22 @@
 subject: "Guest ticket request approved — ((eventTitle))"
 templateKey: guestTicketRequestApproved
 variables:
-  - customerFirstName
+  - firstName
   - eventTitle
-  - decisionLabel
+  - eventDateTime
+  - eventLocation
   - guestTicketCount
   - totalAmountLine
   - moderatorNote
   - myBookingsUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
+Your request for guest places at ((eventTitle)) has been approved.
+
+Date and time: ((eventDateTime))
+
+Location: ((eventLocation))
 
 Guest tickets: ((guestTicketCount))
 
@@ -20,8 +25,10 @@ Guest tickets: ((guestTicketCount))
 
 Note from organiser: ((moderatorNote))
 
-You can now complete payment for your guest tickets. Visit your booking to continue:
+You can now arrange payment for the guest places. View your booking to continue:
 
 ((myBookingsUrl))
 
-SODC
+Kind regards,
+
+SODC Admin

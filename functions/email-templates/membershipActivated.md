@@ -2,14 +2,14 @@
 subject: "Welcome to SODC — your membership is active"
 templateKey: membershipActivated
 variables:
-  - customerFirstName
+  - firstName
   - membershipStatusLabel
   - appUrl
   - profileUrl
 ---
-Dear ((customerFirstName)),
+Hello ((firstName)),
 
-Your SODC membership is now active. Your membership status is ((membershipStatusLabel)).
+We are pleased to confirm that your SODC membership is now active. Your membership status is ((membershipStatusLabel)).
 
 You can now access sections, view upcoming events, and make bookings.
 
@@ -17,10 +17,12 @@ Sign in to get started:
 
 ((appUrl))
 
-We recommend completing your profile before making your first booking:
+You can review your profile and communication preferences here:
 
 ((profileUrl))
 
-Welcome aboard.
+Welcome to SODC.
 
-SODC
+Kind regards,
+
+SODC Admin

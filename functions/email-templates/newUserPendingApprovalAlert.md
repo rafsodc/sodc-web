@@ -1,5 +1,5 @@
 ---
-subject: "[SODC] New member awaiting approval — ((firstName)) ((lastName))"
+subject: "[SODC] New member awaiting approval"
 templateKey: newUserPendingApprovalAlert
 variables:
   - firstName
@@ -10,13 +10,24 @@ variables:
   - requestedMembershipStatus
   - approveUsersUrl
 ---
-A new member has completed their profile and is awaiting approval.
+A new member has completed their profile and is ready for review.
 
 Name: ((firstName)) ((lastName))
+
 Email: ((email))
+
 Service number: ((serviceNumber))
+
 Service background: ((serviceBackgroundSummary))
+
 Requested status: ((requestedMembershipStatus))
 
-Review in Approve Users:
+---
+
+Review the member in Approve Users:
+
 ((approveUsersUrl))
+
+Kind regards,
+
+SODC Admin

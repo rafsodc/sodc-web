@@ -4,6 +4,8 @@ subject: Reset your SODC password
 variables:
   - resetLink
 ---
+Hello,
+
 We received a request to reset the password for your SODC account.
 
 Use this secure link to choose a new password:
@@ -12,6 +14,6 @@ Use this secure link to choose a new password:
 
 If you did not request this, you can ignore this email. Your password will not change.
 
-For your security, do not forward this email or share the link.
+Kind regards,
 
-SODC
+SODC Admin

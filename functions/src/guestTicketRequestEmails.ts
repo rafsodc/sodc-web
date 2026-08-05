@@ -11,7 +11,11 @@ import {
   recipientScopedNotifyReference,
 } from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
-import { formatMinorCurrency, normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
+import {
+  formatMinorCurrency,
+  formatTransactionalEventDateTime,
+  normaliseAppBaseUrl,
+} from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import { resolveGuestTicketModeratorEmails } from "./guestTicketRequestModerators";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
@@ -33,18 +37,20 @@ export type GuestTicketEmailTemplates = {
     moderationUrl: string;
   };
   guestTicketRequestApproved: {
-    customerFirstName: string;
+    firstName: string;
     eventTitle: string;
-    decisionLabel: string;
+    eventDateTime: string;
+    eventLocation: string;
     guestTicketCount: number;
     totalAmountLine: string;
     moderatorNote: string;
     myBookingsUrl: string;
   };
   guestTicketRequestRejected: {
-    customerFirstName: string;
+    firstName: string;
     eventTitle: string;
-    decisionLabel: string;
+    eventDateTime: string;
+    eventLocation: string;
     guestTicketCount: number;
     moderatorNote: string;
     myBookingsUrl: string;
@@ -86,7 +92,7 @@ export function formatTotalAmountLine(totalMinor: number): string {
 
 export function formatModeratorNote(note: string | null | undefined): string {
   const trimmed = note?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : "—";
+  return trimmed && trimmed.length > 0 ? trimmed : "No additional note";
 }
 
 export function bookerDisplayName(firstName: string, lastName: string, email: string): string {
@@ -235,8 +241,7 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
     const sectionId = request.booking.event.section.id;
     const myBookingsUrl = `${base}/sections/${sectionId}`;
     const fn = booker.firstName?.trim();
-    const customerFirstName = fn && fn.length > 0 ? fn : "there";
-    const decisionLabel = args.status === GuestTicketRequestStatus.APPROVED ? "Approved" : "Rejected";
+    const firstName = fn && fn.length > 0 ? fn : "Member";
     const notificationType =
       args.status === GuestTicketRequestStatus.APPROVED ? "GUEST_REQUEST_APPROVED" : "GUEST_REQUEST_REJECTED";
     const templateName =
@@ -250,6 +255,11 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
     const reference = `GUEST_REQUEST_${args.status}:${args.requestId}`;
 
     const eventTitle = request.booking.event.title ?? "—";
+    const eventDateTime = formatTransactionalEventDateTime(
+      request.booking.event.startDateTime,
+      request.booking.event.endDateTime,
+    );
+    const eventLocation = request.booking.event.location?.trim() || "To be confirmed";
     const moderatorNote = formatModeratorNote(request.moderatorNote);
     const { count: guestTicketCount, totalMinor } = aggregateGuestTicketRequests(
       request.booking.guestTicketRequests,
@@ -259,18 +269,20 @@ export async function notifyBookerGuestTicketRequestReviewed(args: {
     const personalisation =
       args.status === GuestTicketRequestStatus.APPROVED
         ? {
-            customerFirstName,
+            firstName,
             eventTitle,
-            decisionLabel,
+            eventDateTime,
+            eventLocation,
             guestTicketCount,
             totalAmountLine: formatTotalAmountLine(totalMinor),
             moderatorNote,
             myBookingsUrl,
           }
         : {
-            customerFirstName,
+            firstName,
             eventTitle,
-            decisionLabel,
+            eventDateTime,
+            eventLocation,
             guestTicketCount,
             moderatorNote,
             myBookingsUrl,

@@ -4,7 +4,7 @@ Emails for **additional guest ticket** moderation: notify moderators/admins when
 
 **Source of truth:** Personalisation **keys** must match Notify template placeholders.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (guest ticket section).
+**Source copy:** [`functions/email-templates/`](../../functions/email-templates/) (see the [template index](./govuk-notify-template-copy.md)).
 
 ## Configuration
 
@@ -41,6 +41,9 @@ Client UI uses these callables instead of direct Data Connect mutations for subm
 
 ## Template 1: moderator alert — `guestTicketRequestSubmittedModerator`
 
+The subject uses the common `[SODC]` internal prefix. The body uses concise
+review labels and the standard automated `Kind regards, SODC Admin` sign-off.
+
 | Key | Semantics |
 |-----|-----------|
 | `eventTitle` | Event title |
@@ -56,12 +59,13 @@ Client UI uses these callables instead of direct Data Connect mutations for subm
 
 | Key | Semantics |
 |-----|-----------|
-| `customerFirstName` | Booker first name or `there` |
+| `firstName` | Booker first name, or `Member` if unexpectedly blank |
 | `eventTitle` | Event title |
+| `eventDateTime` | Formatted start/end in the `Europe/London` time zone |
+| `eventLocation` | Location or `To be confirmed` |
 | `guestDisplayName` | Guest name on request |
 | `requestedGuestCount` | Number |
-| `decisionLabel` | `Approved` or `Rejected` |
-| `moderatorNote` | Note from reviewer, or `—` |
+| `moderatorNote` | Note from reviewer, or `No additional note` |
 | `myBookingsUrl` | `APP_BASE_URL` + `/sections/{sectionId}` |
 
 ## Related docs

@@ -6,7 +6,7 @@ Recipients are **`PAYMENT_OPS_ALERT_EMAILS`** (comma-separated). If unset or emp
 
 **Source of truth:** Personalisation **keys** in this document must match the object sent to Notify.
 
-**Draft copy:** [govuk-notify-template-copy.md](./govuk-notify-template-copy.md) (payment ops section). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
+**Source copy:** [`paymentReconciliationExceptionAlert.md`](../../functions/email-templates/paymentReconciliationExceptionAlert.md) and [`paymentDisputeOpsAlert.md`](../../functions/email-templates/paymentDisputeOpsAlert.md). **Registration:** [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).
 
 ## Configuration
 
@@ -25,13 +25,18 @@ Functions set short references for Notify logs, e.g. `reconciliation-ops:<orderI
 
 ## Template 1: reconciliation exception — `paymentReconciliationExceptionAlert`
 
+Both payment-operations subjects use the common `[SODC]` internal prefix. The
+body labels the account holder as the member while retaining Stripe and ticket
+order identifiers required for investigation, and uses the standard automated
+`Kind regards, SODC Admin` sign-off.
+
 **Trigger:** A reconciliation exception row becomes **OPEN** (new row or reopened from **RESOLVED**). For **`ACTIVE_DISPUTE`**, the reconciliation-path alert is skipped when the snapshot upsert runs on the **dispute webhook** path (the dispute-specific template covers that case).
 
 | Key | Semantics |
 |-----|-----------|
 | `orderId` | Ticket order UUID |
 | `eventTitle` | Event title from order |
-| `customerDisplay` | Booker display, e.g. `Name <email>` |
+| `customerDisplay` | Member/booker display, e.g. `Name <email>` (historical payload key) |
 | `exceptionType` | Enum string, e.g. `ACTIVE_DISPUTE`, `MISSING_PAYMENT_INTENT`, `REFUND_AMOUNT_MISMATCH` |
 | `exceptionNote` | Stored exception note |
 | `reconciliationDashboardUrl` | `APP_BASE_URL` (normalised) + `/admin/payments/reconciliation` |
@@ -45,7 +50,7 @@ Functions set short references for Notify logs, e.g. `reconciliation-ops:<orderI
 |-----|-----------|
 | `orderId` | Ticket order UUID |
 | `eventTitle` | Event title |
-| `customerDisplay` | Booker display |
+| `customerDisplay` | Member/booker display (historical payload key) |
 | `disputeStripeStatus` | Stripe dispute `status` |
 | `disputeReason` | Stripe dispute `reason` |
 | `disputeLocalState` | Normalised dispute state label from webhook routing |
