@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js",
     "legacy-user-import": "ts-node --project tsconfig.scripts.json scripts/legacy-user-import.ts",
-    "legacy-user-postflight": "ts-node --project tsconfig.scripts.json scripts/legacy-user-postflight.ts"
+    "legacy-user-postflight": "ts-node --project tsconfig.scripts.json scripts/legacy-user-postflight.ts",
+    "legacy-bcrypt-pilot": "ts-node --project tsconfig.scripts.json scripts/legacy-bcrypt-pilot.ts"
   },
   "engines": {
     "node": "24"
@@ -35,6 +36,7 @@
     "@eslint/js": "^9.39.1",
     "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.9",
+    "bcryptjs": "^3.0.3",
     "eslint": "^9.39.1",
     "firebase-functions-test": "^0.3.3",
     "globals": "^16.5.0",
