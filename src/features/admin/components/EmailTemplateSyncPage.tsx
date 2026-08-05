@@ -22,6 +22,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { CheckCircle, ContentCopy, Error, ExpandLess, ExpandMore, OpenInNew, Warning } from "@mui/icons-material";
 import PageHeader from "../../../shared/components/PageHeader";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
@@ -109,18 +110,17 @@ function DiffBlock({ label, expected, live }: { label: string; expected: string;
           fontSize: "0.75rem",
           lineHeight: 1.6,
           overflowX: "auto",
-          bgcolor: "grey.50",
         }}
       >
         {lines.map((l, i) => (
           <Box
             key={i}
             sx={{
-              bgcolor:
+              bgcolor: (theme) =>
                 l.kind === "removed"
-                  ? "#fde8e8"
+                  ? alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.24 : 0.12)
                   : l.kind === "added"
-                    ? "#e8f5e9"
+                    ? alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.24 : 0.12)
                     : "transparent",
               px: 0.5,
               borderRadius: 0.5,
@@ -150,7 +150,7 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
       <Stack spacing={1}>
         <Stack direction="row" alignItems="center" gap={1}>
           <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Template name</Typography>
-          <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>
+          <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "action.hover", px: 1, py: 0.5, borderRadius: 1 }}>
             {result.templateKey}
           </Typography>
           <CopyButton value={result.templateKey} label="template name" />
@@ -159,7 +159,7 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
 
         <Stack direction="row" alignItems="center" gap={1}>
           <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 600 }}>Subject</Typography>
-          <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "grey.100", px: 1, py: 0.5, borderRadius: 1 }}>
+          <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1, bgcolor: "action.hover", px: 1, py: 0.5, borderRadius: 1 }}>
             {result.expectedSubject}
           </Typography>
           <CopyButton value={result.expectedSubject} label="subject" />
@@ -172,7 +172,7 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
             fontFamily="monospace"
             sx={{
               flex: 1,
-              bgcolor: "grey.100",
+              bgcolor: "action.hover",
               px: 1,
               py: 0.5,
               borderRadius: 1,
