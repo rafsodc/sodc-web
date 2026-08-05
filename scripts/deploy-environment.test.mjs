@@ -1,7 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import {
+  applyFromStage,
+  assertRequiredApisEnabled,
+  assertRequiredEnvironmentConfig,
+  checkEnvironmentConfig,
   createDeploymentPlan,
+  createPreflightSteps,
+  DEPLOY_STAGES,
+  enabledApiNames,
+  environmentConfigFileName,
   parseDeploymentEnvironment,
+  parseDotEnv,
+  REQUIRED_VITE_FIREBASE_KEYS,
   runDeploymentPlan,
   validateFirebaseAlias,
 } from "./deploy-environment-lib.mjs";
@@ -20,7 +33,7 @@ describe("environment deployment configuration", () => {
     ["beta", "sodc-web-beta"],
     ["prod", "sodc-web-production"],
   ])("pins %s to the reviewed Firebase project", (environment, projectId) => {
-    expect(parseDeploymentEnvironment(["--env", environment])).toBe(environment);
+    expect(parseDeploymentEnvironment(["--env", environment])).toEqual({ environment, fromStage: undefined });
     expect(validateFirebaseAlias(firebaseRc, environment)).toBe(projectId);
   });
 
@@ -33,12 +46,30 @@ describe("environment deployment configuration", () => {
     ).toThrow(/not expected project sodc-web-production/);
   });
 
-  it("orders schema, Functions, Hosting, and the live audit", () => {
+  it("parses an optional --from resume stage", () => {
+    expect(parseDeploymentEnvironment(["--env", "prod", "--from", "hosting"])).toEqual({
+      environment: "prod",
+      fromStage: "hosting",
+    });
+    expect(() => parseDeploymentEnvironment(["--env", "prod", "--from", "not-a-stage"])).toThrow(
+      /Unknown --from stage/,
+    );
+  });
+
+  it("orders preflight checks, then schema, Functions, Hosting, and the live audit", () => {
     const plan = createDeploymentPlan("prod", "abc123");
     expect(plan.map(({ id }) => id)).toEqual([
       "clean-checkout",
+      "required-apis-check",
       "generate-dataconnect-sdk",
       "generated-drift-check",
+      "environment-config-check",
+      "frontend-lint",
+      "frontend-test",
+      "frontend-build",
+      "functions-lint",
+      "functions-test",
+      "functions-build",
       "deploy-dataconnect",
       "deploy-functions",
       "deploy-hosting",
@@ -58,6 +89,34 @@ describe("environment deployment configuration", () => {
       expect(step.args).not.toContain("storage");
     }
   });
+
+  it("tags every step with its stage for --from resumption", () => {
+    const plan = createDeploymentPlan("dev", "abc123");
+    const stagesInOrder = [...new Set(plan.map(({ stage }) => stage))];
+    expect(stagesInOrder).toEqual(DEPLOY_STAGES);
+  });
+
+  it("createPreflightSteps never includes a mutating deploy command", () => {
+    const steps = createPreflightSteps("prod");
+    expect(steps.map(({ id }) => id)).not.toContain("deploy-dataconnect");
+    for (const step of steps) {
+      if (!step.command) continue; // the inline environment-config-check has no shell command
+      expect(step.args?.join(" ")).not.toMatch(/\bdeploy\b/);
+    }
+  });
+});
+
+describe("resuming a deployment with --from", () => {
+  it("skips to the requested stage, leaving earlier stages out entirely", () => {
+    const plan = createDeploymentPlan("beta", "abc123");
+    const resumed = applyFromStage(plan, "hosting");
+    expect(resumed.map(({ id }) => id)).toEqual(["deploy-hosting", "deployment-audit"]);
+  });
+
+  it("returns the full plan unchanged when no stage is given", () => {
+    const plan = createDeploymentPlan("beta", "abc123");
+    expect(applyFromStage(plan, undefined)).toEqual(plan);
+  });
 });
 
 describe("environment deployment execution", () => {
@@ -72,18 +131,14 @@ describe("environment deployment execution", () => {
     await expect(
       runDeploymentPlan(createDeploymentPlan("dev", "abc123"), execute),
     ).rejects.toThrow("Functions failed");
-    expect(visited).toEqual([
-      "clean-checkout",
-      "generate-dataconnect-sdk",
-      "generated-drift-check",
-      "deploy-dataconnect",
-      "deploy-functions",
-    ]);
+    expect(visited.at(-1)).toBe("deploy-functions");
+    expect(visited).not.toContain("deploy-hosting");
+    expect(visited).not.toContain("deployment-audit");
   });
 
   it.each([
     ["clean-checkout", 1],
-    ["generated-drift-check", 3],
+    ["generated-drift-check", 4],
   ])("blocks deployment when %s reports files", async (blockedStep, expectedCalls) => {
     const execute = vi.fn(async (step) => ({
       stdout: step.id === blockedStep ? " M generated/index.d.ts" : "",
@@ -93,5 +148,92 @@ describe("environment deployment execution", () => {
       runDeploymentPlan(createDeploymentPlan("beta", "abc123"), execute),
     ).rejects.toThrow(/unreviewed changes/);
     expect(execute).toHaveBeenCalledTimes(expectedCalls);
+  });
+});
+
+describe("required Google Cloud APIs check", () => {
+  it("extracts enabled API names from gcloud's config.name or top-level name", () => {
+    expect(
+      enabledApiNames([
+        { config: { name: "run.googleapis.com" } },
+        { name: "storage.googleapis.com" },
+        { config: {} },
+      ]),
+    ).toEqual(["run.googleapis.com", "storage.googleapis.com"]);
+  });
+
+  it("passes when every required API is enabled and fails listing what's missing", () => {
+    expect(() =>
+      assertRequiredApisEnabled(
+        ["run.googleapis.com", "storage.googleapis.com"],
+        ["run.googleapis.com", "storage.googleapis.com", "extra.googleapis.com"],
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      assertRequiredApisEnabled(
+        ["run.googleapis.com", "storage.googleapis.com"],
+        ["run.googleapis.com"],
+      ),
+    ).toThrow(/storage\.googleapis\.com/);
+  });
+});
+
+describe("environment config check", () => {
+  it("names the expected file per Vite mode", () => {
+    expect(environmentConfigFileName("development")).toBe(".env.development.local");
+    expect(environmentConfigFileName("staging")).toBe(".env.staging.local");
+    expect(environmentConfigFileName("production")).toBe(".env.production.local");
+  });
+
+  it("parses KEY=value lines, ignoring blanks, comments, and quoting", () => {
+    expect(
+      parseDotEnv(
+        [
+          "# comment",
+          "",
+          'VITE_FIREBASE_API_KEY="abc123"',
+          "VITE_FIREBASE_AUTH_DOMAIN=example.firebaseapp.com",
+          "  VITE_FIREBASE_PROJECT_ID = example  ",
+        ].join("\n"),
+      ),
+    ).toEqual({
+      VITE_FIREBASE_API_KEY: "abc123",
+      VITE_FIREBASE_AUTH_DOMAIN: "example.firebaseapp.com",
+      VITE_FIREBASE_PROJECT_ID: "example",
+    });
+  });
+
+  it("requires every VITE_FIREBASE_* key to be present and non-empty", () => {
+    const complete = Object.fromEntries(REQUIRED_VITE_FIREBASE_KEYS.map((key) => [key, "value"]));
+    expect(() => assertRequiredEnvironmentConfig(complete, ".env.development.local")).not.toThrow();
+
+    const missingOne = { ...complete, VITE_FIREBASE_APP_ID: "" };
+    expect(() => assertRequiredEnvironmentConfig(missingOne, ".env.development.local")).toThrow(
+      /VITE_FIREBASE_APP_ID/,
+    );
+  });
+
+  it("checkEnvironmentConfig passes for a complete file and fails for a missing or incomplete one", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "deploy-preflight-"));
+    try {
+      await expect(checkEnvironmentConfig(directory, "development")).rejects.toThrow(
+        /\.env\.development\.local does not exist/,
+      );
+
+      const complete = REQUIRED_VITE_FIREBASE_KEYS.map((key) => `${key}=value`).join("\n");
+      await writeFile(path.join(directory, ".env.development.local"), complete);
+      await expect(checkEnvironmentConfig(directory, "development")).resolves.toBeUndefined();
+
+      const incomplete = REQUIRED_VITE_FIREBASE_KEYS.slice(1)
+        .map((key) => `${key}=value`)
+        .join("\n");
+      await writeFile(path.join(directory, ".env.staging.local"), incomplete);
+      await expect(checkEnvironmentConfig(directory, "staging")).rejects.toThrow(
+        REQUIRED_VITE_FIREBASE_KEYS[0],
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

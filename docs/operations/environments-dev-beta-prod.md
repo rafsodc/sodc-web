@@ -94,6 +94,30 @@ calling Firebase and cannot reuse a stale `dist` directory. `--project` selects
 the remote Hosting project; it does not replace the Firebase configuration that
 Vite already embedded in the bundle.
 
+## Non-mutating preflight
+
+Before running a real deploy, or at any point to validate a checkout without
+touching a remote environment, run the shared preflight directly:
+
+```sh
+npm run deployment:preflight -- --env dev
+```
+
+This checks a clean, reviewed checkout; the Firebase alias and expected
+project configuration; that every API in `config/deployment-check.json`'s
+`requiredApis` is enabled on the target Google Cloud project (a read-only
+`gcloud services list`, so this needs `gcloud auth login` in addition to
+`firebase login`); that `.env.<mode>.local` exists for the target
+environment and carries every required `VITE_FIREBASE_*` value (see
+[environment-and-secrets.md](./environment-and-secrets.md)); that Data Connect
+SDK generation produces no tracked or untracked drift; and that frontend and
+Functions lint, tests, and builds all pass. It never invokes `firebase deploy`
+or otherwise mutates remote state, and exits non-zero on the first failing
+check. `npm run deploy:<env>` (below) runs exactly this same preflight
+automatically before its first remote mutation — running it standalone first
+is useful when you want to validate a checkout without also deploying, or to
+diagnose why a deploy stopped early.
+
 ## One-command application deployment
 
 For an ordinary reviewed application release, use the command pinned to the
@@ -105,12 +129,24 @@ npm run deploy:beta
 npm run deploy:prod
 ```
 
-Run only the command for the environment being promoted. Each command requires
-a clean checkout, verifies its Firebase alias, generates the Data Connect SDKs
-and rejects generated drift, then deploys Data Connect, all Functions, and a
+Run only the command for the environment being promoted. Each command runs
+the full preflight above, then deploys Data Connect, all Functions, and a
 freshly rebuilt Hosting bundle in that order. It stops on the first failure and
 finishes by checking the live deployment manifest against the deployed Git
 revision.
+
+To resume after stopping for a manual smoke-test checkpoint (see "Full-stack
+rollout sequence" below) without re-running already-completed stages, pass
+`--from <stage>`:
+
+```sh
+npm run deploy:prod -- --from functions   # Data Connect already validated
+npm run deploy:prod -- --from hosting     # Data Connect and Functions already validated
+```
+
+`--from` accepts `preflight` (default), `dataconnect`, `functions`, `hosting`,
+or `audit`. It only skips stages — it never reorders them, and Hosting still
+never deploys unless every earlier requested stage succeeds.
 
 These commands deliberately do not deploy Storage rules. Initial bucket setup
 remains an operator procedure, and rules changes must be reviewed and deployed
@@ -143,10 +179,13 @@ Start from a clean checkout of the reviewed release commit. Record the commit SH
 
 ### 2. Verify generated SDK compatibility
 
-Generate both the frontend and Admin SDKs from the checked-in schema and connector operations, then prove that the generated output is already committed and that both consumers compile:
+`npm run deployment:preflight -- --env "$FIREBASE_PROJECT"` automates this
+step (plus the environment-config, lint, and test checks below) and is what
+`npm run deploy:<env>` already runs first. Run it standalone here for the same
+effect, or run the equivalent commands by hand:
 
 ```sh
-npx firebase dataconnect:sdk:generate
+npx firebase dataconnect:sdk:generate --project "$FIREBASE_PROJECT"
 git diff --exit-code -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 git status --short -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 npm run build
@@ -231,12 +270,14 @@ permissions, JSON output, authenticated smoke checks, and manual checkpoints.
 |---|---|
 | SDK generation or either build fails | Stop. No remote state has changed; regenerate, fix, review, and restart. |
 | Data Connect migration or connector deployment fails | Do not deploy Functions or Hosting. Preserve CLI output, inspect the service state, and prefer a forward-compatible fix. A schema migration may already have run even if a later connector step failed. |
-| Data Connect smoke test fails | Stop before Functions. Restore the previous connector/schema from the last known-good commit only when that rollback is non-destructive; otherwise ship a reviewed forward fix. |
+| Data Connect smoke test fails | Stop before Functions. Restore the previous connector/schema from the last known-good commit only when that rollback is non-destructive; otherwise ship a reviewed forward fix. Once passing, resume with `npm run deploy:<env> -- --from functions`. |
 | Storage is not initialized, targets the wrong bucket, or rules verification fails | Do not deploy file Functions or Hosting. Correct the target/configuration and redeploy deny-all rules. Do not make the bucket public as a workaround. |
-| Functions deploy or smoke test fails | Do not deploy Hosting. Keep the backward-compatible expanded schema in place and redeploy Functions from the last known-good release commit, then repeat the Function checkpoint. |
-| Hosting build, deploy, or smoke test fails | Backend checkpoints remain valid. Rebuild/redeploy Hosting from the last known-good release commit with the correct environment variables. |
+| Functions deploy or smoke test fails | Do not deploy Hosting. Keep the backward-compatible expanded schema in place and redeploy Functions from the last known-good release commit, then repeat the Function checkpoint. Once passing, resume with `npm run deploy:<env> -- --from hosting`. |
+| Hosting build, deploy, or smoke test fails | Backend checkpoints remain valid. Rebuild/redeploy Hosting from the last known-good release commit with the correct environment variables — `npm run deploy:<env> -- --from hosting` re-runs Hosting and the audit without repeating Data Connect or Functions. |
 
 Checking out and redeploying a previous Data Connect definition cannot restore data removed by a destructive migration. Take a database backup and use a separately reviewed migration/rollback plan for destructive changes. Record the failed stage, target project, commit SHA, and corrective action before resuming promotion.
+
+`--from` only skips stages that already succeeded for the exact reviewed commit being deployed — if you've fixed anything and are deploying a new commit, restart promotion from preflight (the default, no `--from`) rather than resuming a stale partial run.
 
 ## Promotion flow (recommended)
 

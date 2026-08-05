@@ -441,9 +441,34 @@ before launch to avoid a single-person recovery dependency.
 Return to the exact commit that passed Beta. Recheck project targeting and build
 configuration, then follow the schema-first order:
 
-After all one-time Storage, IAM, secrets, and environment prerequisites in this
-guide are complete, the reviewed application deployment can be run as one
-fail-fast command:
+Before attempting a real deploy, run the non-mutating preflight as a dry run.
+It is safe to run repeatedly while bootstrap is still in progress -- it never
+calls `firebase deploy` or otherwise changes remote state:
+
+```sh
+npm run deployment:preflight -- --env prod
+```
+
+On a freshly created project this commonly fails its first few times on
+"Confirm required Google Cloud APIs are enabled": creating a Firebase project
+enables Firebase's own baseline APIs, but not every API Functions Gen2,
+Secret Manager, or App Check need (typically `artifactregistry`, `cloudbuild`,
+`firebaseappcheck`, `iamcredentials`, `run`, and `secretmanager`). Enable
+whatever the check reports missing -- reading the authoritative list straight
+from `config/deployment-check.json` rather than retyping it here, so this stays
+correct if that list changes:
+
+```sh
+gcloud services enable \
+  $(node -e "console.log(require('./config/deployment-check.json').requiredApis.join(' '))") \
+  --project prod
+```
+
+Re-run the preflight until it passes end to end (it also runs frontend and
+Functions lint/test/build, and confirms `.env.production.local` has every
+required `VITE_FIREBASE_*` value from step 4). Once it passes, the reviewed
+application deployment can be run as one fail-fast command -- it runs this
+same preflight automatically before its first remote mutation:
 
 ```sh
 npm run deploy:prod
@@ -542,6 +567,7 @@ Connect or user data.
 ## 14. Go-live checklist
 
 - [ ] Project ID, billing account, region, commit SHA, and owners recorded.
+- [ ] `npm run deployment:preflight -- --env prod` passes cleanly (required APIs, SDK drift, environment config, lint/test/build).
 - [ ] IAM reduced from temporary bootstrap access; CI uses short-lived identity.
 - [ ] SQL backups, point-in-time recovery, deletion protection, and restore test recorded.
 - [ ] Production environment files loaded and ignored by Git.
