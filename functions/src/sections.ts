@@ -10,6 +10,7 @@ import {
   getUserAccessGroupsById,
   getUserMembershipStatus,
   listUsers,
+  SectionType,
   type GetSectionByIdData,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
@@ -110,10 +111,21 @@ export const getSectionMembersMerged = onCall(
         return { members: [] };
       }
 
-      // A section only has members if it has an explicit MEMBER-purpose group — ACCESS/MODERATOR
-      // only grant seeing the section, not membership. See #322.
+      // A MEMBERS-type section only has members if it has an explicit MEMBER-purpose group —
+      // ACCESS/MODERATOR only grant seeing the section, not membership. See #322. EVENTS-type
+      // sections don't use a MEMBER roster at all (they're organised around ACCESS-purpose
+      // booking eligibility instead), so for those, fall back to ACCESS/MODERATOR groups —
+      // this endpoint also backs the booking wizard's "sit next to" picker, which needs the
+      // event's actual eligible population, not a member/access distinction that doesn't apply
+      // to EVENTS sections.
       const links = sectionData.purposeLinks ?? [];
-      const sourceLinks = links.filter((p) => linkHasPurpose(p, "MEMBER"));
+      const memberLinks = links.filter((p) => linkHasPurpose(p, "MEMBER"));
+      const sourceLinks =
+        memberLinks.length > 0
+          ? memberLinks
+          : sectionData.type === SectionType.EVENTS
+            ? links.filter((p) => linkHasPurpose(p, "ACCESS") || linkHasPurpose(p, "MODERATOR"))
+            : [];
 
       const statuses = new Set<string>();
       const explicitMap = new Map<string, SectionMemberResponse>();

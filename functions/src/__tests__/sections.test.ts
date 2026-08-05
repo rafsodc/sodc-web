@@ -367,4 +367,71 @@ describe("getSectionMembersMerged", () => {
 
     expect(result.members).toEqual([]);
   });
+
+  it("falls back to ACCESS/MODERATOR groups for an EVENTS-type section with no MEMBER group", async () => {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionId,
+          name: "Test Section",
+          type: "EVENTS",
+          description: null,
+          purposeLinks: [
+            {
+              purposes: ["ACCESS"],
+              userGroup: {
+                id: accessGroupId,
+                name: "Access",
+                membershipStatuses: null,
+                users: [{ user: member() }],
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members).toEqual([
+      expect.objectContaining({ id: "user-1", firstName: "Ada", lastName: "Lovelace" }),
+    ]);
+  });
+
+  it("prefers an explicit MEMBER group over the ACCESS fallback on an EVENTS-type section", async () => {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionId,
+          name: "Test Section",
+          type: "EVENTS",
+          description: null,
+          purposeLinks: [
+            {
+              purposes: ["ACCESS"],
+              userGroup: {
+                id: accessGroupId,
+                name: "Access",
+                membershipStatuses: null,
+                users: [{ user: member({ id: "access-only-user" }) }],
+              },
+            },
+            {
+              purposes: ["MEMBER"],
+              userGroup: {
+                id: "member-group-id",
+                name: "Members",
+                membershipStatuses: null,
+                users: [{ user: member({ id: "roster-user" }) }],
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+
+    expect(result.members).toEqual([expect.objectContaining({ id: "roster-user" })]);
+  });
 });
