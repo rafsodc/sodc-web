@@ -4400,12 +4400,12 @@ export interface GetGuestTicketRequestForNotificationData {
     id: UUIDString;
     status: GuestTicketRequestStatus;
     requestedGuestCount: number;
-    guestDisplayName?: string | null;
     dietaryNote?: string | null;
     moderatorNote?: string | null;
     guestTicketType?: {
       id: UUIDString;
       title: string;
+      price: number;
     } & TicketType_Key;
     booking: {
       id: UUIDString;
@@ -4426,6 +4426,14 @@ export interface GetGuestTicketRequestForNotificationData {
           name: string;
         } & Section_Key;
       } & Event_Key;
+      guestTicketRequests: ({
+        id: UUIDString;
+        status: GuestTicketRequestStatus;
+        requestedGuestCount: number;
+        guestTicketType?: {
+          price: number;
+        };
+      } & GuestTicketRequest_Key)[];
     } & Booking_Key;
   } & GuestTicketRequest_Key;
 }

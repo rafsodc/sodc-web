@@ -32,6 +32,33 @@ export async function submitGuestTicketRequest(
   return result.data;
 }
 
+/**
+ * A GuestTicketRequest row identifies exactly one named guest (see
+ * requestedGuestCount on the Data Connect type -- it exists for legacy rows
+ * only; every current submission path sends 1). Requesting several guest
+ * places means submitting one request per named guest, not a single request
+ * with a headcount and one shared name.
+ */
+export async function submitAdditionalGuestTicketRequests(args: {
+  bookingId: string;
+  guestTicketTypeId: string;
+  guests: { guestDisplayName: string; dietaryNote?: string | null }[];
+}): Promise<SubmitGuestTicketRequestResponse[]> {
+  const results: SubmitGuestTicketRequestResponse[] = [];
+  for (const guest of args.guests) {
+    results.push(
+      await submitGuestTicketRequest({
+        bookingId: args.bookingId,
+        requestedGuestCount: 1,
+        guestTicketTypeId: args.guestTicketTypeId,
+        guestDisplayName: guest.guestDisplayName,
+        dietaryNote: guest.dietaryNote,
+      })
+    );
+  }
+  return results;
+}
+
 export interface ReviewGuestTicketRequestPayload {
   id: string;
   status: "APPROVED" | "REJECTED";

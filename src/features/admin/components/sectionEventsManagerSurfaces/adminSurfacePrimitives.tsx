@@ -50,7 +50,7 @@ export function AdminAccordion({
           outline: "none",
           boxShadow: "none",
           "&:hover": {
-            bgcolor: "grey.50",
+            bgcolor: "action.hover",
           },
           "&:focus, &:focus-visible, &:active": {
             outline: "none",
@@ -80,7 +80,7 @@ export function AdminAccordion({
       >
         <Box sx={{ fontWeight: 700, color: "text.primary", letterSpacing: "0.01em" }}>{title}</Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ bgcolor: "grey.50", p: 2.5 }}>{children}</AccordionDetails>
+      <AccordionDetails sx={{ bgcolor: "action.hover", p: 2.5 }}>{children}</AccordionDetails>
     </Accordion>
   );
 }
@@ -103,7 +103,7 @@ export function AdminTable({ children, minWidth = 650 }: { children: ReactNode; 
         sx={{
           minWidth,
           "& .MuiTableCell-head": {
-            bgcolor: "grey.50",
+            bgcolor: "action.hover",
             color: "text.secondary",
             fontSize: "0.75rem",
             fontWeight: 700,

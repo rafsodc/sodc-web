@@ -6,8 +6,7 @@ variables:
   - eventTitle
   - eventDateTime
   - eventLocation
-  - guestDisplayName
-  - requestedGuestCount
+  - guestTicketCount
   - moderatorNote
   - myBookingsUrl
 ---
@@ -19,9 +18,7 @@ Date and time: ((eventDateTime))
 
 Location: ((eventLocation))
 
-Guest: ((guestDisplayName))
-
-Guest places requested: ((requestedGuestCount))
+Guest tickets requested: ((guestTicketCount))
 
 Note from organiser: ((moderatorNote))
 

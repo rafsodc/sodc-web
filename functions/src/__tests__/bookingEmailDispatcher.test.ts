@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingPaymentAdjustmentStatus } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
 import {
+  accommodationRequestedCondition,
   bookingConfirmationDeliveryKey,
   bookingRevisionDeliveryKey,
   bookingTotalMinorFromLines,
@@ -60,6 +61,13 @@ describe("bookingEmailDispatcher helpers", () => {
     );
     expect(formatSignedDeltaAmount(1500)).toBe("+£15.00");
     expect(formatSignedDeltaAmount(-500)).toBe("-£5.00");
+  });
+
+  it("accommodationRequestedCondition returns GOV.UK Notify's literal yes/no condition value", () => {
+    // The optional-content ((var??text)) syntax requires the personalisation
+    // value to be exactly "yes" or "no", not a boolean.
+    expect(accommodationRequestedCondition(true)).toBe("yes");
+    expect(accommodationRequestedCondition(false)).toBe("no");
   });
 });
 
