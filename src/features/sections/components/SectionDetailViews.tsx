@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Paper,
   Tab,
@@ -22,7 +21,6 @@ import { ViewList as ViewListIcon, ViewModule as ViewModuleIcon } from "@mui/ico
 import { type GetEventByIdData, type GetEventsForSectionData, type GetSectionByIdData } from "@dataconnect/generated";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import SearchBar from "../../../shared/components/SearchBar";
-import { getSectionTypeLabel, isMembersSectionType } from "../../../shared/utils/sectionTypeLabels";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetailTabs";
@@ -70,13 +68,6 @@ export function SectionDescriptionHeader({
 }: SectionDescriptionHeaderProps) {
   return (
     <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 1 }}>
-        <Chip
-          label={getSectionTypeLabel(section.type)}
-          size="small"
-          color={isMembersSectionType(section.type) ? "primary" : "secondary"}
-        />
-      </Box>
       <Typography variant="body1" color="text.secondary">
         {section.description?.trim() || "No description provided for this section."}
       </Typography>
@@ -108,7 +99,7 @@ export function SectionDescriptionHeader({
         </Box>
       )}
       {hasCurrentUser && userHasSectionAccess && (
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
           <AnnouncementOptOutToggle sectionId={sectionId} />
         </Box>
       )}
