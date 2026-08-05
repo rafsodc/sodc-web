@@ -917,7 +917,7 @@ describe('SectionDetail', () => {
     });
   });
 
-  it('should show breadcrumbs and return to events list when header Back is clicked from event detail', async () => {
+  it('should show breadcrumbs and return to events list when the section breadcrumb is clicked from event detail', async () => {
     const eventId = 'event-1';
     const mockSectionData = {
       section: {
@@ -995,7 +995,7 @@ describe('SectionDetail', () => {
       expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 4 })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: 'Back' }));
+    await user.click(screen.getByRole('button', { name: 'Events Section' }));
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Events Section', level: 4 })).toBeInTheDocument();
@@ -1450,7 +1450,7 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Turn Off Emails' })).toBeInTheDocument();
     });
   });
 
@@ -1498,7 +1498,7 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Turn Off Emails' })).toBeInTheDocument();
     });
   });
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FormControlLabel, Switch, Typography, Box, Snackbar } from "@mui/material";
+import { Button, Snackbar } from "@mui/material";
+import { NotificationsActive, NotificationsOff } from "@mui/icons-material";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetSectionAnnouncementOptOut,
@@ -57,22 +58,16 @@ export default function AnnouncementOptOutToggle({ sectionId }: AnnouncementOptO
   if (isLoading) return null;
 
   return (
-    <Box>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={!isOptedOut}
-            onChange={() => void handleChange()}
-            size="small"
-            disabled={busy}
-          />
-        }
-        label={
-          <Typography variant="body2" color="text.secondary">
-            Receive announcements from this section
-          </Typography>
-        }
-      />
+    <>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={isOptedOut ? <NotificationsOff /> : <NotificationsActive />}
+        onClick={() => void handleChange()}
+        disabled={busy}
+      >
+        {isOptedOut ? "Turn On Emails" : "Turn Off Emails"}
+      </Button>
       <Snackbar
         open={!!snackbar}
         autoHideDuration={3000}
@@ -80,6 +75,6 @@ export default function AnnouncementOptOutToggle({ sectionId }: AnnouncementOptO
         message={snackbar}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
-    </Box>
+    </>
   );
 }

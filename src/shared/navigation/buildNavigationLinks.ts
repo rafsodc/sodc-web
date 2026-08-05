@@ -7,7 +7,6 @@ export interface NavigationLink {
   label: string;
   to: string;
   state?: unknown;
-  children?: NavigationLink[];
 }
 
 export interface NavigationLinks {
@@ -34,19 +33,9 @@ function linkHasPurpose(link: SectionLinkSource, target: SectionUserGroupPurpose
   return link.purposes?.includes(target) ?? false;
 }
 
-function addSectionLink(
-  map: Map<string, NavigationLink>,
-  typeMap: Map<string, string | null | undefined>,
-  link: SectionLinkSource
-) {
+function addSectionLink(map: Map<string, NavigationLink>, link: SectionLinkSource) {
   const section = link.section;
-  if (!section?.id) {
-    return;
-  }
-  if (!typeMap.has(section.id)) {
-    typeMap.set(section.id, section.type);
-  }
-  if (map.has(section.id)) {
+  if (!section?.id || map.has(section.id)) {
     return;
   }
   const label = section.name || "Untitled section";
@@ -69,71 +58,13 @@ function sortLinks<T extends NavigationLink>(links: Iterable<T>): T[] {
   return Array.from(links).sort((a, b) => a.label.localeCompare(b.label));
 }
 
-// Same destination as the "Admin" button on a section's own page (see getSectionAdminDestination) —
-// both entry points should open the same hub of options, not diverge into a narrower admin surface.
-function sectionAdminLink({
-  label,
-  sectionId,
-  sectionName,
-  sectionType,
-}: {
-  label: string;
-  sectionId: string;
-  sectionName: string;
-  sectionType?: string | null;
-}): NavigationLink {
-  return {
-    label,
-    to: ROUTES.SECTION_ADMIN.replace(":sectionId", sectionId),
-    state: {
-      sectionName,
-      sectionType: sectionType ?? "MEMBERS",
-    },
-  };
-}
-
 function buildAdminLinks({
   isAdmin,
-  sectionMap,
   administerableSectionIds,
-  sectionTypeMap,
-  sectionsData,
 }: {
   isAdmin: boolean;
-  sectionMap: Map<string, NavigationLink>;
   administerableSectionIds: Map<string, boolean>;
-  sectionTypeMap: Map<string, string | null | undefined>;
-  sectionsData?: GetSectionsForUserData;
 }): NavigationLink[] {
-  const sectionAdminChildren = sortLinks(
-    Array.from(administerableSectionIds.keys()).flatMap((sectionId) => {
-      const section = sectionMap.get(sectionId);
-      if (!section) {
-        return [];
-      }
-      return [
-        sectionAdminLink({
-          label: section.label,
-          sectionId,
-          sectionName: section.label,
-          sectionType: sectionTypeMap.get(sectionId),
-        }),
-      ];
-    })
-  );
-
-  const userGroupChildren = isAdmin
-    ? sortLinks(
-        (sectionsData?.allUserGroups ?? []).map((group) => ({
-          label: group.name || "Untitled user group",
-          to: ROUTES.USER_GROUPS,
-          state: {
-            expandedGroupId: group.id,
-          },
-        }))
-      )
-    : [];
-
   const links: NavigationLink[] = [];
 
   if (isAdmin) {
@@ -141,22 +72,12 @@ function buildAdminLinks({
     links.push({ label: "Approvals", to: ROUTES.APPROVE_USERS });
   }
 
-  if (isAdmin || sectionAdminChildren.length > 0) {
-    links.push({
-      label: "Manage Sections",
-      to: ROUTES.MANAGE_SECTIONS,
-      state: null,
-      children: sectionAdminChildren,
-    });
+  if (isAdmin || administerableSectionIds.size > 0) {
+    links.push({ label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS });
   }
 
   if (isAdmin) {
-    links.push({
-      label: "User Groups",
-      to: ROUTES.USER_GROUPS,
-      state: null,
-      children: userGroupChildren,
-    });
+    links.push({ label: "User Groups", to: ROUTES.USER_GROUPS });
     links.push({ label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION });
     links.push({ label: "Email Templates", to: ROUTES.EMAIL_TEMPLATES });
     links.push({ label: "Email Delivery", to: ROUTES.EMAIL_DELIVERY });
@@ -176,7 +97,6 @@ export function buildNavigationLinks({
   }
 
   const sectionMap = new Map<string, NavigationLink>();
-  const sectionTypeMap = new Map<string, string | null | undefined>();
   const administerableSectionIds = new Map<string, boolean>();
   const explicitGroups = sectionsData?.user?.userGroups ?? [];
 
@@ -186,7 +106,7 @@ export function buildNavigationLinks({
         linkHasPurpose(purposeLink, SectionPurpose.ACCESS) ||
         linkHasPurpose(purposeLink, SectionPurpose.MODERATOR)
       ) {
-        addSectionLink(sectionMap, sectionTypeMap, purposeLink);
+        addSectionLink(sectionMap, purposeLink);
       }
       markSectionAdministerable(administerableSectionIds, purposeLink);
     }
@@ -203,7 +123,7 @@ export function buildNavigationLinks({
           linkHasPurpose(purposeLink, SectionPurpose.ACCESS) ||
           linkHasPurpose(purposeLink, SectionPurpose.MODERATOR)
         ) {
-          addSectionLink(sectionMap, sectionTypeMap, purposeLink);
+          addSectionLink(sectionMap, purposeLink);
         }
         markSectionAdministerable(administerableSectionIds, purposeLink);
       }
@@ -217,23 +137,7 @@ export function buildNavigationLinks({
   }
 
   return {
-    sections: sortLinks(sectionMap.values()).map((section) => {
-        const sectionId = section.to.replace("/sections/", "");
-        if (!administerableSectionIds.has(sectionId)) {
-          return section;
-        }
-        return {
-          ...section,
-          children: [
-            sectionAdminLink({
-              label: "Administer",
-              sectionId,
-              sectionName: section.label,
-              sectionType: sectionTypeMap.get(sectionId),
-            }),
-          ],
-        };
-      }),
-    admin: buildAdminLinks({ isAdmin, sectionMap, administerableSectionIds, sectionTypeMap, sectionsData }),
+    sections: sortLinks(sectionMap.values()),
+    admin: buildAdminLinks({ isAdmin, administerableSectionIds }),
   };
 }

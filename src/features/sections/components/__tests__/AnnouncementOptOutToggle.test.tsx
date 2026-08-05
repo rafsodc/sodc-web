@@ -33,29 +33,27 @@ describe("AnnouncementOptOutToggle", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows switch checked when not opted out", () => {
+  it("offers to turn emails off when not opted out", () => {
     vi.mocked(generated.useGetSectionAnnouncementOptOut).mockReturnValue({
       data: { sectionAnnouncementOptOut: null },
       isLoading: false,
     } as never);
 
     render(<AnnouncementOptOutToggle sectionId="s1" />);
-    const toggle = screen.getByRole("switch");
-    expect(toggle).toBeChecked();
+    expect(screen.getByRole("button", { name: "Turn Off Emails" })).toBeInTheDocument();
   });
 
-  it("shows switch unchecked when opted out", () => {
+  it("offers to turn emails on when opted out", () => {
     vi.mocked(generated.useGetSectionAnnouncementOptOut).mockReturnValue({
       data: { sectionAnnouncementOptOut: { createdAt: "2026-01-01T00:00:00Z" } },
       isLoading: false,
     } as never);
 
     render(<AnnouncementOptOutToggle sectionId="s1" />);
-    const toggle = screen.getByRole("switch");
-    expect(toggle).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Turn On Emails" })).toBeInTheDocument();
   });
 
-  it("calls opt-out mutation when toggling off and shows snackbar", async () => {
+  it("calls opt-out mutation when turning off and shows snackbar", async () => {
     const user = userEvent.setup();
     vi.mocked(generated.useGetSectionAnnouncementOptOut).mockReturnValue({
       data: { sectionAnnouncementOptOut: null },
@@ -67,7 +65,7 @@ describe("AnnouncementOptOutToggle", () => {
 
     render(<AnnouncementOptOutToggle sectionId="s1" />);
 
-    await user.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("button", { name: "Turn Off Emails" }));
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({ sectionId: "s1" });
@@ -85,7 +83,7 @@ describe("AnnouncementOptOutToggle", () => {
     });
   });
 
-  it("calls opt-in mutation when toggling on and shows snackbar", async () => {
+  it("calls opt-in mutation when turning on and shows snackbar", async () => {
     const user = userEvent.setup();
     vi.mocked(generated.useGetSectionAnnouncementOptOut).mockReturnValue({
       data: { sectionAnnouncementOptOut: { createdAt: "2026-01-01T00:00:00Z" } },
@@ -97,7 +95,7 @@ describe("AnnouncementOptOutToggle", () => {
 
     render(<AnnouncementOptOutToggle sectionId="s1" />);
 
-    await user.click(screen.getByRole("switch"));
+    await user.click(screen.getByRole("button", { name: "Turn On Emails" }));
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({ sectionId: "s1" });
@@ -119,13 +117,12 @@ describe("AnnouncementOptOutToggle", () => {
     } as never);
 
     render(<AnnouncementOptOutToggle sectionId="s1" />);
-    const toggle = screen.getByRole("switch");
-    expect(toggle).toBeChecked();
+    const toggle = screen.getByRole("button", { name: "Turn Off Emails" });
 
     await user.click(toggle);
 
     await waitFor(() => {
-      expect(toggle).toBeChecked();
+      expect(screen.getByRole("button", { name: "Turn Off Emails" })).toBeInTheDocument();
     });
   });
 });

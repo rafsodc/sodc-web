@@ -10,7 +10,6 @@ import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import Header from "./shared/components/Header";
 import AppSideNav from "./shared/components/AppSideNav";
 import MobileNavigationMenu from "./shared/components/MobileNavigationMenu";
-import { PageHeaderAdminActionProvider } from "./shared/components/PageHeader";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
@@ -18,8 +17,6 @@ import { useGetSectionsForUser } from "@dataconnect/generated/react";
 import {
   isCheckoutReturnSearch,
   navigateBackOr as navigateBackOrHelper,
-  selectedAdminSectionId as getSelectedAdminSectionId,
-  selectedAdminUserGroupId as getSelectedAdminUserGroupId,
 } from "./shared/appShell/appRoutingHelpers";
 import { getSectionReturnTo, sectionDetailLocationState } from "./shared/navigation/sectionNavigationState";
 import { useAppAuthSession } from "./shared/appShell/useAppAuthSession";
@@ -164,18 +161,6 @@ function AppContent() {
     [isAdmin, isEnabled, userSectionsData]
   );
 
-  const pageHeaderAdminAction = useMemo(
-    () => ({
-      visible: Boolean(user && isEnabled && isAdmin),
-      onClick: () => navigate(ROUTES.MANAGE_USERS),
-    }),
-    [isAdmin, isEnabled, navigate, user]
-  );
-  const selectedAdminSectionId =
-    getSelectedAdminSectionId(location.pathname, ROUTES.MANAGE_SECTIONS, location.state);
-  const selectedAdminUserGroupId =
-    getSelectedAdminUserGroupId(location.pathname, ROUTES.USER_GROUPS, location.state);
-
   const header = (
     <>
       <Header
@@ -195,8 +180,6 @@ function AppContent() {
         sections={navigationLinks.sections}
         adminLinks={navigationLinks.admin}
         pathname={location.pathname}
-        selectedAdminSectionId={selectedAdminSectionId}
-        selectedAdminUserGroupId={selectedAdminUserGroupId}
       />
     </>
   );
@@ -430,8 +413,6 @@ function AppContent() {
             sections={navigationLinks.sections}
             adminLinks={navigationLinks.admin}
             pathname={location.pathname}
-            selectedAdminSectionId={selectedAdminSectionId}
-            selectedAdminUserGroupId={selectedAdminUserGroupId}
           />
         ) : null}
         <Box
@@ -444,7 +425,6 @@ function AppContent() {
           }}
         >
           <Box sx={{ width: "100%", maxWidth: "1200px" }}>
-            <PageHeaderAdminActionProvider value={pageHeaderAdminAction}>
               {checkoutQueryState && (
                 <Box
                   sx={{
@@ -714,7 +694,6 @@ function AppContent() {
                 <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
                 </Routes>
               </ErrorBoundary>
-            </PageHeaderAdminActionProvider>
           </Box>
         </Box>
       </Box>

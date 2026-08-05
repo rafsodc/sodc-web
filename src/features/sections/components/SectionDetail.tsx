@@ -9,6 +9,7 @@ import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/gene
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import PageHeader from "../../../shared/components/PageHeader";
+import AnnouncementOptOutToggle from "./AnnouncementOptOutToggle";
 import FailureState from "../../../shared/components/FailureState";
 import { reportError } from "../../../shared/errors";
 import {
@@ -503,6 +504,11 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         onBack={handleHeaderBack}
         adminAction={sectionAdminAction}
         breadcrumbs={headerBreadcrumbs}
+        extraActions={
+          !selectedEventId && currentUser && userHasSectionAccess ? (
+            <AnnouncementOptOutToggle sectionId={sectionId} />
+          ) : null
+        }
       />
 
       {!selectedEventId && (
@@ -512,12 +518,10 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           hasCurrentUser={Boolean(currentUser)}
           canSubscribe={canSubscribe}
           userIsMember={userIsMember}
-          userHasSectionAccess={userHasSectionAccess}
           hasSubscribableMemberGroup={hasSubscribableMemberGroup}
           subscribing={subscribing}
           onSubscribe={handleSubscribe}
           onUnsubscribe={handleUnsubscribe}
-          sectionId={sectionId}
         />
       )}
 

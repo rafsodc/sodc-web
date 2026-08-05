@@ -3,8 +3,6 @@ import {
   dismissCheckoutQueryParams,
   getCheckoutQueryState,
   isCheckoutReturnSearch,
-  selectedAdminSectionId,
-  selectedAdminUserGroupId,
 } from "../appRoutingHelpers";
 
 describe("appRoutingHelpers", () => {
@@ -40,21 +38,5 @@ describe("appRoutingHelpers", () => {
     );
 
     expect(navigate).toHaveBeenCalledWith("/?keep=yes#receipt", { replace: true });
-  });
-
-  it("selects admin IDs only for their matching admin routes", () => {
-    expect(
-      selectedAdminSectionId("/admin/sections", "/admin/sections", {
-        managedSection: { id: "section-1" },
-      })
-    ).toBe("section-1");
-    expect(selectedAdminSectionId("/", "/admin/sections", { managedSection: { id: "section-1" } })).toBeNull();
-
-    expect(
-      selectedAdminUserGroupId("/admin/user-groups", "/admin/user-groups", {
-        expandedGroupId: "group-1",
-      })
-    ).toBe("group-1");
-    expect(selectedAdminUserGroupId("/", "/admin/user-groups", { expandedGroupId: "group-1" })).toBeNull();
   });
 });
