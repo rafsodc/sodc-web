@@ -152,6 +152,33 @@ First prove the legacy bcrypt variant in staging with test accounts. Supply
 `--bcrypt-proven` only after that proof; without it even structurally compatible
 hashes are omitted and those members use password reset.
 
+sodc-api's Symfony `auto` hasher stamps bcrypt hashes with the `$2y$` prefix
+(PHP's `password_hash()` marker), which is less common than the `$2a$`/`$2b$`
+prefixes most bcrypt tooling defaults to. Firebase Authentication's BCRYPT
+import has not otherwise been proven against that specific prefix. Prove it
+with a disposable synthetic account rather than real member data:
+
+```bash
+npm run legacy-bcrypt-pilot -- \
+  --project sodc-web \
+  --api-key <Firebase Web API key for that project>
+```
+
+This generates a fresh random password and a `$2y$`-prefixed bcrypt hash for
+it, imports one throwaway test account (`...@sodc-legacy-bcrypt-pilot.invalid`)
+using the same `admin.auth().importUsers(..., { hash: { algorithm: "BCRYPT" }
+})` call the real importer uses, attempts to sign in with the generated
+password via Firebase's REST API, then deletes the test account regardless of
+outcome. No real passwords, hashes, or member data are read or displayed. The
+Web API key is not secret -- it identifies the project, not a credential --
+but should come from your own environment configuration
+(`.env.<mode>.local`'s `VITE_FIREBASE_API_KEY`) rather than being hardcoded
+anywhere. It refuses to target the project aliased `prod` in `.firebaserc`
+unless `--allow-production` is passed; there is normally no reason to, since
+Firebase's BCRYPT import behaviour is a platform property rather than a
+per-project one, so proving it once in a non-production project is enough.
+Re-run it if Beta/Prod ever need independent confirmation.
+
 Use a new UUID and a state path in an access-controlled directory:
 
 ```bash
