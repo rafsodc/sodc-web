@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const RESULT_STATUS = Object.freeze({
@@ -209,13 +209,20 @@ export async function discoverFunctionContracts(functionsSourceDirectory) {
 }
 
 export function parseArguments(argv) {
-  const options = { json: false, authenticated: false, expectedSha: undefined, env: undefined };
+  const options = {
+    json: false,
+    authenticated: false,
+    expectedSha: undefined,
+    env: undefined,
+    out: undefined,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--json") options.json = true;
     else if (argument === "--authenticated") options.authenticated = true;
     else if (argument === "--env") options.env = argv[++index];
     else if (argument === "--expected-sha") options.expectedSha = argv[++index];
+    else if (argument === "--out") options.out = argv[++index];
     else if (argument === "--help" || argument === "-h") options.help = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -248,6 +255,19 @@ export function formatHumanReport(report) {
     `Summary: ${report.summary.pass} passed, ${report.summary.fail} failed, ${report.summary.warn} warnings, ${report.summary.skip} skipped.`
   );
   return lines.join("\n");
+}
+
+/**
+ * Prints the report (JSON or human form per options.json) and, when options.out
+ * is set, also writes the JSON form to that path so it can be retained as a
+ * short-lived release artifact.
+ */
+export async function emitReport(report, options, { log = console.log } = {}) {
+  const json = JSON.stringify(report, null, 2);
+  log(options.json ? json : formatHumanReport(report));
+  if (options.out) {
+    await writeFile(path.resolve(options.out), json);
+  }
 }
 
 export function createReport(target, results) {

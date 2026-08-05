@@ -11,8 +11,8 @@ import {
   compareExpected,
   createReport,
   discoverFunctionContracts,
+  emitReport,
   exitCodeFor,
-  formatHumanReport,
   isPublicInvokerPolicy,
   normalizeResourceName,
   parseArguments,
@@ -34,6 +34,8 @@ Options:
   --expected-sha <sha>  Fail if Hosting does not serve this Git revision
   --authenticated       Run the optional authenticated callable smoke check
   --json                Emit a machine-readable JSON report
+  --out <path>          Also write the JSON report to this file, for retention
+                         as a short-lived release artifact
   --help                Show this help
 
 Authenticated checks read SODC_DEPLOYMENT_CHECK_AUTH_TOKEN from the environment.
@@ -208,7 +210,7 @@ async function main() {
 
   if (!firebaseProjects) {
     const report = createReport(target, results);
-    console.log(options.json ? JSON.stringify(report, null, 2) : formatHumanReport(report));
+    await emitReport(report, options);
     process.exitCode = exitCodeFor(results);
     return;
   }
@@ -842,7 +844,7 @@ async function main() {
   );
 
   const report = createReport(target, results);
-  console.log(options.json ? JSON.stringify(report, null, 2) : formatHumanReport(report));
+  await emitReport(report, options);
   process.exitCode = exitCodeFor(results);
 }
 

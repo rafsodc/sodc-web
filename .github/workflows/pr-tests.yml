@@ -58,6 +58,25 @@ jobs:
       - name: Run frontend test suite
         run: node .github/scripts/fail-on-warning-output.mjs -- npm run test:run
 
+  deployment-safety-tests:
+    name: Deployment safety tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run deploy-script and deployment-safety tests
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm run test:deploy-safety
+
   functions-tests:
     name: Functions full test suite
     runs-on: ubuntu-latest

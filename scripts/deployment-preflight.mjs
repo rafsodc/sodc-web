@@ -4,9 +4,8 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  applyFromStage,
   checkEnvironmentConfig,
-  createDeploymentPlan,
+  createPreflightSteps,
   parseDeploymentEnvironment,
   runDeploymentPlan,
   validateFirebaseAlias,
@@ -30,6 +29,9 @@ function runCommand(command, args, captureOutput = false) {
 
 async function main() {
   const { environment, fromStage } = parseDeploymentEnvironment(process.argv.slice(2));
+  if (fromStage) {
+    throw new Error("deployment-preflight.mjs does not accept --from; it always runs every preflight check.");
+  }
   const [firebaseRc, deploymentCheckConfig] = await Promise.all([
     readFile(path.join(repositoryRoot, ".firebaserc"), "utf8").then(JSON.parse),
     readFile(path.join(repositoryRoot, "config/deployment-check.json"), "utf8").then(JSON.parse),
@@ -39,14 +41,9 @@ async function main() {
   if (!viteMode) {
     throw new Error(`config/deployment-check.json has no viteMode configured for "${environment}".`);
   }
-  const gitSha = runCommand("git", ["rev-parse", "HEAD"], true).stdout.trim();
-  const plan = applyFromStage(createDeploymentPlan(environment, gitSha), fromStage);
+  const plan = createPreflightSteps(environment);
 
-  console.log(
-    fromStage
-      ? `Resuming deployment of reviewed revision ${gitSha} to ${environment} (${projectId}) from the "${fromStage}" stage.`
-      : `Deploying reviewed revision ${gitSha} to ${environment} (${projectId}).`
-  );
+  console.log(`Running deployment preflight for ${environment} (${projectId}). No remote resource will change.`);
   await runDeploymentPlan(plan, async (step) => {
     console.log(`\n==> ${step.label}`);
     if (step.kind === "environment-config") {
@@ -55,10 +52,10 @@ async function main() {
     }
     return runCommand(step.command, step.args, step.expectEmptyOutput);
   });
-  console.log(`\nDeployment and audit completed for ${environment} (${projectId}).`);
+  console.log(`\nPreflight passed for ${environment} (${projectId}). Safe to run npm run deploy:${environment}.`);
 }
 
 main().catch((error) => {
-  console.error(`Deployment stopped: ${error instanceof Error ? error.message : "unknown error"}`);
+  console.error(`Preflight failed: ${error instanceof Error ? error.message : "unknown error"}`);
   process.exitCode = 1;
 });

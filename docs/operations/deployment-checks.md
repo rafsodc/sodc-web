@@ -30,13 +30,18 @@ audit before remote inspection.
 npm run deployment:check -- --env dev
 npm run deployment:check -- --env beta --expected-sha "$(git rev-parse HEAD)"
 npm run deployment:check -- --env prod --expected-sha "$(git rev-parse HEAD)" --json
+npm run deployment:check -- --env beta --expected-sha "$(git rev-parse HEAD)" --json --out report.json
 ```
 
 The command exits non-zero when a required check fails. Warnings identify
 manual review or unexpected resources but do not change the exit status. JSON
 output uses `sodc-deployment-check-report/v1` and is suitable for a short-lived
 CI artifact; it contains summaries and resource names, not secret values,
-tokens, signed URLs, or raw log messages.
+tokens, signed URLs, or raw log messages. Pass `--out <path>` to also write the
+JSON report to a file (the file is always the JSON form, regardless of
+whether `--json` is set for stdout) — this is how an operator or a future
+authenticated CI job retains a Beta/Production audit as a short-lived release
+artifact.
 
 ## What is checked automatically
 
@@ -139,13 +144,23 @@ report. A green command does not replace Beta UAT or production go/no-go review.
 
 ## CI usage
 
-Run the JSON form after deployment using read-only Workload Identity Federation:
+The **Deployment safety tests** job in `.github/workflows/pr-tests.yml` (`npm
+run test:deploy-safety`) runs on every PR and covers the deploy/preflight/audit
+scripts' own logic (plan ordering, `--from` resumption, drift/config checks,
+report generation) — it does not deploy or inspect any real environment, so it
+needs no cloud credentials.
+
+Actually running the audit itself against a live environment from CI is a
+separate, not-yet-taken step: it needs read-only Workload Identity Federation
+and a dedicated CI identity, which have not been set up. Once they are, the
+JSON form with `--out` is the intended shape:
 
 ```sh
 npm run deployment:check -- \
   --env beta \
   --expected-sha "$GITHUB_SHA" \
-  --json
+  --json \
+  --out deployment-check-report.json
 ```
 
 Retain reports only for the release-audit period. Do not enable authenticated

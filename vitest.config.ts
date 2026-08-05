@@ -8,7 +8,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-utils/setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.{test,spec}.mjs'],
+    // scripts/**/*.test.mjs (deploy-script/deployment-safety tests) run under their own
+    // vitest.deploy-safety.config.ts and CI job instead of here — see that file.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: true,
     coverage: {
       provider: 'v8',

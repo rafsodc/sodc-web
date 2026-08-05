@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,6 +10,7 @@ import {
   compareExpected,
   createReport,
   discoverFunctionContracts,
+  emitReport,
   exitCodeFor,
   isPublicInvokerPolicy,
   parseArguments,
@@ -60,6 +62,15 @@ describe("deployment check configuration", () => {
       env: "prod",
       expectedSha: "abc",
       json: true,
+    });
+  });
+
+  it("parses --out for retaining the JSON report as a file", () => {
+    expect(parseArguments(["--env", "beta", "--out", "report.json"])).toEqual({
+      authenticated: false,
+      env: "beta",
+      json: false,
+      out: "report.json",
     });
   });
 });
@@ -231,5 +242,33 @@ describe("deployment check parsing and comparison", () => {
     expect(report.schemaVersion).toBe("sodc-deployment-check-report/v1");
     expect(report.summary).toEqual({ pass: 1, fail: 0, warn: 1, skip: 0 });
     expect(report.results[1].details.secretValue).toBe("[REDACTED]");
+  });
+
+  it("prints only, without writing a file, when --out is omitted", async () => {
+    const report = createReport({ alias: "dev", projectId: "example-dev" }, [
+      { status: RESULT_STATUS.PASS, summary: "ok" },
+    ]);
+    const logged = [];
+    await emitReport(report, { json: true }, { log: (line) => logged.push(line) });
+    expect(logged).toHaveLength(1);
+    expect(JSON.parse(logged[0])).toEqual(report);
+  });
+
+  it("writes the exact JSON report to --out in addition to printing it", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "deployment-check-"));
+    const outPath = path.join(directory, "report.json");
+    try {
+      const report = createReport({ alias: "beta", projectId: "example-beta" }, [
+        { status: RESULT_STATUS.FAIL, summary: "broken" },
+      ]);
+      const logged = [];
+      await emitReport(report, { json: false, out: outPath }, { log: (line) => logged.push(line) });
+
+      expect(logged).toHaveLength(1);
+      expect(logged[0]).not.toBe(JSON.stringify(report, null, 2)); // human form on stdout when json isn't set
+      expect(JSON.parse(await readFile(outPath, "utf8"))).toEqual(report);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

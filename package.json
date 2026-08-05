@@ -16,11 +16,13 @@
     "deploy:beta": "node scripts/deploy-environment.mjs --env beta",
     "deploy:prod": "node scripts/deploy-environment.mjs --env prod",
     "deployment:check": "node scripts/deployment-check.mjs",
-    "lint": "eslint src scripts eslint.config.js vite.config.ts vitest.config.ts .github/scripts",
+    "deployment:preflight": "node scripts/deployment-preflight.mjs",
+    "lint": "eslint src scripts eslint.config.js vite.config.ts vitest.config.ts vitest.deploy-safety.config.ts .github/scripts",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:deploy-safety": "vitest run --config vitest.deploy-safety.config.ts",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
