@@ -68,7 +68,9 @@ The executable dry-run, apply, resume, and production approval procedure is in
 [`legacy-user-import.md`](legacy-user-import.md). The preflight report this
 schema describes can be turned into a structured review worksheet with the
 tooling in
-[`legacy-user-migration-review.md`](legacy-user-migration-review.md).
+[`legacy-user-migration-review.md`](legacy-user-migration-review.md). The
+sequenced rehearsal-to-cutover procedure is in
+[`legacy-user-migration-runbook.md`](legacy-user-migration-runbook.md).
 
 ## Announcement preferences
 

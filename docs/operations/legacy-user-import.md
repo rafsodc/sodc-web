@@ -5,7 +5,10 @@ This runbook covers the resumable importer introduced by issue #419. Read
 running dry-run, use
 [`legacy-user-migration-review.md`](legacy-user-migration-review.md) to turn
 the preflight report into a review worksheet and an approval-artifact stub for
-issue #420.
+issue #420. For the sequenced rehearsal-to-cutover procedure that uses this
+importer, see
+[`legacy-user-migration-runbook.md`](legacy-user-migration-runbook.md)
+(issue #417).
 
 The importer is intentionally fail-closed:
 
