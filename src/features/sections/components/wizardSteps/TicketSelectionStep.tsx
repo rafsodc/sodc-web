@@ -10,7 +10,6 @@ import {
   Typography,
 } from "@mui/material";
 import { formatGbpMajorAmount } from "../../../../shared/utils/currencyDisplay";
-import { getMembershipStatusLabel } from "../../../../shared/utils/membershipStatusLabels";
 
 interface TicketType {
   id: string;
@@ -115,9 +114,8 @@ export default function TicketSelectionStep({
         disabled={!canRequestAccommodation}
       />
       <Typography variant="caption" color="text.secondary">
-        {canRequestAccommodation
-          ? "Overnight accommodation at the venue, where available."
-          : `Accommodation requests are available for ${getMembershipStatusLabel("REGULAR")} or ${getMembershipStatusLabel("RESERVE")} members only.`}
+        Accommodation is only available for Serving Members.
+        {canRequestAccommodation ? " Overnight accommodation at the venue, where available." : ""}
       </Typography>
     </FormControl>
   );
