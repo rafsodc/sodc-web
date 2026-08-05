@@ -33,6 +33,7 @@ export const CALLABLE_RATE_LIMITS = {
   updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
   resignMembership: { limit: 3, windowMs: HOUR_MS },
   getSectionMembersMerged: { limit: 60, windowMs: 5 * MINUTE_MS },
+  searchSectionMembers: { limit: 60, windowMs: 5 * MINUTE_MS },
   createTicketCheckoutSession: { limit: 10, windowMs: 15 * MINUTE_MS },
   createEventBookingCheckoutSession: { limit: 10, windowMs: 15 * MINUTE_MS },
   reconcileMyCheckoutSessionOrders: { limit: 20, windowMs: 15 * MINUTE_MS },

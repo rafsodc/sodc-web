@@ -26,7 +26,7 @@ import {
   toBookingUserFacingError,
 } from "../../../shared/errors";
 import { useBookingWizardData } from "./useBookingWizardData";
-import { useSectionMemberSeatingOptions } from "./useSectionMemberSeatingOptions";
+import { useSectionMemberSeatingSearch } from "./useSectionMemberSeatingOptions";
 
 export {
   ADDITIONAL_GUEST_STEPS,
@@ -178,10 +178,12 @@ export function useBookingWizardState({
   const selectedMember = memberTicketTypes.find((t) => t.id === memberTicketTypeId);
   const selectedGuest = guestTicketTypes.find((t) => t.id === guestTicketTypeId);
   const canRequestAccommodation = membershipStatus === "REGULAR" || membershipStatus === "RESERVE";
-  const seatingOptions = useSectionMemberSeatingOptions(
-    section.id,
-    currentUserData?.user?.id
-  );
+  const {
+    inputValue: seatingSearchInputValue,
+    setInputValue: setSeatingSearchInputValue,
+    options: seatingOptions,
+    loading: seatingOptionsLoading,
+  } = useSectionMemberSeatingSearch(section.id, currentUserData?.user?.id, sitNextToUserIds);
 
   useEffect(() => {
     if (wizardMode !== "full" || activeStep !== 4 || canProceedToConfirmation) return;
@@ -493,6 +495,9 @@ export function useBookingWizardState({
     accommodationRequested,
     setAccommodationRequested,
     seatingOptions,
+    seatingSearchInputValue,
+    setSeatingSearchInputValue,
+    seatingOptionsLoading,
     submitError,
     setSubmitError,
     submitting,
