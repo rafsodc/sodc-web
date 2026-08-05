@@ -90,6 +90,7 @@
     "resignMembership",
     "reviewGuestTicketRequest",
     "revokeAdmin",
+    "searchSectionMembers",
     "searchUsers",
     "sendNotifyReplyToVerificationTest",
     "sendSectionAnnouncement",

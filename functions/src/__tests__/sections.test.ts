@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
 import { MembershipStatus } from "@dataconnect/admin-generated";
-import { getSectionForUser, getSectionEventsForUser, getEventForUser, getSectionMembersMerged } from "../sections";
+import {
+  getSectionForUser,
+  getSectionEventsForUser,
+  getEventForUser,
+  getSectionMembersMerged,
+  searchSectionMembers,
+} from "../sections";
 
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
 const mockGetUserAccessGroupsById = vi.spyOn(admin, "getUserAccessGroupsById");
@@ -433,5 +439,121 @@ describe("getSectionMembersMerged", () => {
     const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
 
     expect(result.members).toEqual([expect.objectContaining({ id: "roster-user" })]);
+  });
+});
+
+describe("searchSectionMembers", () => {
+  function eventsUser(id: string, firstName: string, lastName: string) {
+    return {
+      id,
+      firstName,
+      lastName,
+      email: `${id}@example.com`,
+      mobileNumber: null,
+      membershipStatus: MembershipStatus.REGULAR,
+      rank: null,
+      shareContactInfo: true,
+    };
+  }
+
+  function mockEventsSectionWithMembers(users: ReturnType<typeof eventsUser>[]) {
+    mockGetSectionMembers.mockResolvedValue({
+      data: {
+        section: {
+          id: sectionId,
+          name: "Test Section",
+          type: "EVENTS",
+          description: null,
+          purposeLinks: [
+            {
+              purposes: ["ACCESS"],
+              userGroup: {
+                id: accessGroupId,
+                name: "Access",
+                membershipStatuses: null,
+                users: users.map((u) => ({ user: u })),
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSection([{ purposes: ["ACCESS"], userGroupId: accessGroupId }]);
+    mockGetUserAccessGroupsById.mockResolvedValue({
+      data: { user: { id: "member-1", userGroups: [{ userGroup: { id: accessGroupId, name: "Access", description: null } }] } },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserAccessGroupsById>>);
+    mockGetUserMembershipStatus.mockResolvedValue({
+      data: { user: { membershipStatus: MembershipStatus.REGULAR } },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserMembershipStatus>>);
+  });
+
+  it("matches by first or last name, case-insensitively", async () => {
+    mockEventsSectionWithMembers([
+      eventsUser("user-2", "Grace", "Hopper"),
+      eventsUser("user-3", "Ada", "Lovelace"),
+      eventsUser("user-4", "Alan", "Turing"),
+    ]);
+
+    const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "grace" });
+
+    expect(result.members).toEqual([{ id: "user-2", firstName: "Grace", lastName: "Hopper" }]);
+  });
+
+  it("excludes the caller from results", async () => {
+    mockEventsSectionWithMembers([eventsUser("member-1", "Self", "Caller"), eventsUser("user-2", "Selma", "Case")]);
+
+    const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "sel" });
+
+    expect(result.members).toEqual([{ id: "user-2", firstName: "Selma", lastName: "Case" }]);
+  });
+
+  it("returns no matches for a blank search term with no includeIds", async () => {
+    mockEventsSectionWithMembers([eventsUser("user-2", "Grace", "Hopper")]);
+
+    const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "" });
+
+    expect(result.members).toEqual([]);
+  });
+
+  it("always resolves includeIds regardless of the search term", async () => {
+    mockEventsSectionWithMembers([
+      eventsUser("user-2", "Grace", "Hopper"),
+      eventsUser("user-3", "Ada", "Lovelace"),
+    ]);
+
+    const result = await callAs(searchSectionMembers, "member-1", false, {
+      sectionId,
+      searchTerm: "",
+      includeIds: ["user-3"],
+    });
+
+    expect(result.members).toEqual([{ id: "user-3", firstName: "Ada", lastName: "Lovelace" }]);
+  });
+
+  it("caps search matches to a manageable result set", async () => {
+    const users = Array.from({ length: 30 }, (_, i) => eventsUser(`user-${i}`, "Match", `Person${i}`));
+    mockEventsSectionWithMembers(users);
+
+    const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "match" });
+
+    expect(result.members).toHaveLength(20);
+  });
+
+  it("rejects a caller with no access to the section", async () => {
+    mockEventsSectionWithMembers([eventsUser("user-2", "Grace", "Hopper")]);
+    mockGetUserAccessGroupsById.mockResolvedValue({
+      data: { user: { id: "stranger-1", userGroups: [] } },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserAccessGroupsById>>);
+    mockGetUserMembershipStatus.mockResolvedValue({
+      data: { user: { membershipStatus: null } },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserMembershipStatus>>);
+
+    await expect(
+      callAs(searchSectionMembers, "stranger-1", false, { sectionId, searchTerm: "grace" })
+    ).rejects.toMatchObject({ code: "permission-denied" });
   });
 });

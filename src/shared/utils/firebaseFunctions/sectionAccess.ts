@@ -37,6 +37,42 @@ export async function getSectionMembersMerged(
   return result.data;
 }
 
+export interface SearchSectionMembersRequest {
+  sectionId: string;
+  searchTerm: string;
+  includeIds?: string[];
+}
+
+export interface SearchSectionMembersMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface SearchSectionMembersResponse {
+  members: SearchSectionMembersMember[];
+}
+
+/**
+ * Typeahead search over a section's eligible population (name match, capped result set) —
+ * for pickers like the booking wizard's "sit next to" field, where a section's full member
+ * list can run into the hundreds and is too large for a plain dropdown. `includeIds` are
+ * always resolved and returned regardless of match, so already-selected people (e.g. from an
+ * existing booking being edited) can be labelled without needing to reappear in a search.
+ */
+export async function searchSectionMembers(
+  sectionId: string,
+  searchTerm: string,
+  includeIds?: string[]
+): Promise<SearchSectionMembersResponse> {
+  const callable = httpsCallable<SearchSectionMembersRequest, SearchSectionMembersResponse>(
+    functions,
+    "searchSectionMembers"
+  );
+  const result = await callable({ sectionId, searchTerm, includeIds });
+  return result.data;
+}
+
 // ============================================================================
 // Section/event lookup (callable — GetSectionById/GetEventsForSection/GetEventById
 // are admin-only in Data Connect since they accept an arbitrary id with no relationship

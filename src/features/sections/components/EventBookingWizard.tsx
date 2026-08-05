@@ -173,6 +173,9 @@ export default function EventBookingWizard({
                 bookerDietaryNote={w.bookerDietaryNote}
                 onBookerDietaryNoteChange={w.setBookerDietaryNote}
                 seatingOptions={w.seatingOptions}
+                seatingSearchInputValue={w.seatingSearchInputValue}
+                onSeatingSearchInputValueChange={w.setSeatingSearchInputValue}
+                seatingOptionsLoading={w.seatingOptionsLoading}
                 sitNextToUserIds={w.sitNextToUserIds}
                 onSitNextToUserIdsChange={w.setSitNextToUserIds}
                 accommodationRequested={w.accommodationRequested}

@@ -2,6 +2,7 @@ import {
   Autocomplete,
   Box,
   Checkbox,
+  CircularProgress,
   FormControl,
   FormControlLabel,
   Radio,
@@ -29,6 +30,9 @@ interface TicketSelectionStepProps {
   bookerDietaryNote: string;
   onBookerDietaryNoteChange: (value: string) => void;
   seatingOptions: SeatingOption[];
+  seatingSearchInputValue: string;
+  onSeatingSearchInputValueChange: (value: string) => void;
+  seatingOptionsLoading: boolean;
   sitNextToUserIds: string[];
   onSitNextToUserIdsChange: (ids: string[]) => void;
   accommodationRequested: boolean;
@@ -43,6 +47,9 @@ export default function TicketSelectionStep({
   bookerDietaryNote,
   onBookerDietaryNoteChange,
   seatingOptions,
+  seatingSearchInputValue,
+  onSeatingSearchInputValueChange,
+  seatingOptionsLoading,
   sitNextToUserIds,
   onSitNextToUserIdsChange,
   accommodationRequested,
@@ -87,11 +94,20 @@ export default function TicketSelectionStep({
       />
       <Autocomplete
         multiple
+        filterOptions={(x) => x}
         options={seatingOptions}
         value={seatingOptions.filter((o) => sitNextToUserIds.includes(o.id))}
         onChange={(_, next) => onSitNextToUserIdsChange(next.map((n) => n.id))}
+        inputValue={seatingSearchInputValue}
+        onInputChange={(_, next, reason) => {
+          if (reason === "input") onSeatingSearchInputValueChange(next);
+        }}
+        loading={seatingOptionsLoading}
         getOptionLabel={(o) => o.label}
         isOptionEqualToValue={(a, b) => a.id === b.id}
+        noOptionsText={
+          seatingSearchInputValue.trim() ? "No matching members" : "Type a name to search"
+        }
         renderInput={(params) => (
           <TextField
             {...params}
@@ -99,6 +115,17 @@ export default function TicketSelectionStep({
             helperText="We'll do our best to seat you together."
             size="small"
             sx={{ mt: 2 }}
+            slotProps={{
+              input: {
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {seatingOptionsLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              },
+            }}
           />
         )}
       />

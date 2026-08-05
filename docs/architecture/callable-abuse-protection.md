@@ -40,6 +40,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `updateMembershipStatus` | 20 | 1 hour | Auth/Data Connect writes and transactional email |
 | `resignMembership` | 3 | 1 hour | Auth/Data Connect writes and transactional email |
 | `getSectionMembersMerged` | 60 | 5 minutes | Member-directory enumeration |
+| `searchSectionMembers` | 60 | 5 minutes | Member-directory enumeration (bounded, name-match only) |
 | `createTicketCheckoutSession` | 10 | 15 minutes | Stripe session creation |
 | `createEventBookingCheckoutSession` | 10 | 15 minutes | Stripe session creation |
 | `reconcileMyCheckoutSessionOrders` | 20 | 15 minutes | Stripe retrieval and reconciliation writes |
@@ -84,6 +85,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `updateMembershipStatus` | High | None | Firebase Auth, GOV.UK Notify | High | Enabled; ownership/transition checks; 20/hour |
 | `resignMembership` | Medium | None | Firebase Auth, GOV.UK Notify | Medium | Enabled; terminal transition; 3/hour |
 | `getSectionMembersMerged` | High | High | None | High | Enabled + section access; 60/5 minutes |
+| `searchSectionMembers` | Medium | Medium | None | Low | Enabled + section access; 60/5 minutes; name-match only, capped result set |
 | `getSectionForUser` | Low | Low | None | Low | Enabled + section access; bounded lookup |
 | `getSectionEventsForUser` | Low | Medium | None | Medium | Enabled + section access; bounded section query |
 | `getEventForUser` | Low | Low | None | Low | Enabled + section access; single-event query |
