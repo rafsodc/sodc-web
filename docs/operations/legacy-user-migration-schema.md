@@ -65,7 +65,10 @@ account gates, persists profile corrections and the server review timestamp in
 one Data Connect write, and requires missing mobile/rank details to be resolved.
 
 The executable dry-run, apply, resume, and production approval procedure is in
-[`legacy-user-import.md`](legacy-user-import.md).
+[`legacy-user-import.md`](legacy-user-import.md). The preflight report this
+schema describes can be turned into a structured review worksheet with the
+tooling in
+[`legacy-user-migration-review.md`](legacy-user-migration-review.md).
 
 ## Announcement preferences
 
