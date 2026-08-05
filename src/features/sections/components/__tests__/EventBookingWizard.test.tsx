@@ -27,7 +27,7 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   }),
   createTicketCheckoutSession: vi.fn(),
   createEventBookingCheckoutSession: vi.fn(),
-  submitGuestTicketRequest: vi.fn().mockResolvedValue({ success: true, requestId: "req-1" }),
+  submitAdditionalGuestTicketRequests: vi.fn().mockResolvedValue([{ success: true, requestId: "req-1" }]),
 }));
 
 describe("EventBookingWizard", () => {
@@ -673,12 +673,10 @@ describe("EventBookingWizard", () => {
       );
     });
 
-    expect(firebaseFunctions.submitGuestTicketRequest).toHaveBeenCalledWith({
+    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
       bookingId: "booking-new",
-      requestedGuestCount: 1,
       guestTicketTypeId: "ticket-guest",
-      guestDisplayName: "Sam Extra",
-      dietaryNote: "Gluten free",
+      guests: [{ guestDisplayName: "Sam Extra", dietaryNote: "Gluten free" }],
     });
   });
 

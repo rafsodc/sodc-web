@@ -19,9 +19,15 @@ import {
   Typography,
 } from "@mui/material";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
-import { submitGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
+import { submitAdditionalGuestTicketRequests } from "../../../shared/utils/firebaseFunctions";
 import { reportError, toBookingUserFacingError } from "../../../shared/errors";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
+import {
+  EMPTY_GUEST_DETAIL,
+  guestDetailsValidationError,
+  resizeExtraGuestDetails,
+  type ExtraGuestDetailRow,
+} from "../hooks/bookingWizardModel";
 
 type BookingList = NonNullable<GetMyBookingsForEventData["user"]>["bookings"];
 export type GuestTicketRequestRow = BookingList[number]["guestTicketRequests"][number];
@@ -77,11 +83,17 @@ export default function AdditionalGuestRequestSection({
   onRequestCreated,
 }: AdditionalGuestRequestSectionProps) {
   const [guestTicketTypeId, setGuestTicketTypeId] = useState<string | null>(null);
-  const [guestDisplayName, setGuestDisplayName] = useState("");
-  const [dietaryNote, setDietaryNote] = useState("");
   const [countInput, setCountInput] = useState("1");
+  const [guestDetails, setGuestDetails] = useState<ExtraGuestDetailRow[]>([{ ...EMPTY_GUEST_DETAIL }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const parsedCount = Number.parseInt(countInput.trim(), 10);
+  const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0;
+
+  useEffect(() => {
+    setGuestDetails((previous) => resizeExtraGuestDetails(previous, count, "additionalGuests"));
+  }, [count]);
 
   useEffect(() => {
     if (!guestTicketTypes.length) {
@@ -94,37 +106,35 @@ export default function AdditionalGuestRequestSection({
     });
   }, [guestTicketTypes]);
 
-  const pendingRequest = requests.find((r) => r.status === "PENDING");
+  const pendingRequests = requests.filter((r) => r.status === "PENDING");
 
   const handleSubmit = async () => {
-    const n = Number.parseInt(countInput.trim(), 10);
-    if (!Number.isFinite(n) || n < 1) {
-      setError("Enter a whole number of at least 1.");
-      return;
-    }
-    if (!guestTicketTypes.length || !guestTicketTypeId) {
-      setError("Select a guest ticket type.");
-      return;
-    }
-    const name = guestDisplayName.trim();
-    if (!name) {
-      setError("Enter the guest name as it should appear on the ticket.");
+    const validationError = guestDetailsValidationError({
+      mode: "additionalGuests",
+      includeGuest: false,
+      guestTicketTypeId: null,
+      guestDisplayName: "",
+      extraGuestRequestCount: count,
+      extraGuestTicketTypeId: guestTicketTypeId,
+      extraGuestDetails: guestDetails,
+    });
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
-      const dietary = dietaryNote.trim();
-      await submitGuestTicketRequest({
+      await submitAdditionalGuestTicketRequests({
         bookingId,
-        requestedGuestCount: n,
-        guestTicketTypeId,
-        guestDisplayName: name,
-        dietaryNote: dietary.length > 0 ? dietary : null,
+        guestTicketTypeId: guestTicketTypeId!,
+        guests: guestDetails.slice(0, count).map((guest) => ({
+          guestDisplayName: guest.guestDisplayName.trim(),
+          dietaryNote: guest.dietaryNote.trim() || null,
+        })),
       });
       setCountInput("1");
-      setGuestDisplayName("");
-      setDietaryNote("");
+      setGuestDetails([{ ...EMPTY_GUEST_DETAIL }]);
       await onRequestCreated();
     } catch (e: unknown) {
       reportError("booking.guest-request", e);
@@ -186,10 +196,11 @@ export default function AdditionalGuestRequestSection({
         </TableContainer>
       )}
 
-      {pendingRequest ? (
+      {pendingRequests.length > 0 ? (
         <Alert severity="info">
-          You already have a pending request for <strong>{pendingRequest.requestedGuestCount}</strong> additional guest
-          ticket(s). You can submit another request after it has been reviewed.
+          You already have {pendingRequests.length} pending request{pendingRequests.length > 1 ? "s" : ""} for
+          additional guest tickets. You can submit another request after{" "}
+          {pendingRequests.length > 1 ? "they have" : "it has"} been reviewed.
         </Alert>
       ) : !hasGuestTypes ? (
         <Alert severity="warning">
@@ -223,26 +234,7 @@ export default function AdditionalGuestRequestSection({
                 ))}
               </RadioGroup>
             </FormControl>
-            <TextField
-              label="Guest name"
-              fullWidth
-              size="small"
-              value={guestDisplayName}
-              onChange={(e) => setGuestDisplayName(e.target.value)}
-              disabled={submitting}
-              helperText="Shown on the guest ticket"
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Dietary requirements (optional)"
-              fullWidth
-              size="small"
-              value={dietaryNote}
-              onChange={(e) => setDietaryNote(e.target.value)}
-              disabled={submitting}
-            />
-          </Box>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-start" }}>
+
             <TextField
               label="How many extra guest tickets?"
               type="number"
@@ -251,17 +243,62 @@ export default function AdditionalGuestRequestSection({
               value={countInput}
               onChange={(e) => setCountInput(e.target.value)}
               disabled={submitting}
-              sx={{ minWidth: 220 }}
+              sx={{ minWidth: 220, mb: 2 }}
             />
-            <Button
-              variant="contained"
-              onClick={() => void handleSubmit()}
-              disabled={submitting}
-              sx={{ mt: 0.5, backgroundColor: "secondary.main" }}
-            >
-              {submitting ? "Submitting…" : "Submit request"}
-            </Button>
+
+            {Array.from({ length: count }, (_, index) => {
+              const guest = guestDetails[index] ?? EMPTY_GUEST_DETAIL;
+              return (
+                <Box key={index} sx={{ mb: index < count - 1 ? 2 : 0 }}>
+                  {count > 1 && (
+                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                      Guest {index + 1}
+                    </Typography>
+                  )}
+                  <TextField
+                    label="Guest name"
+                    fullWidth
+                    size="small"
+                    value={guest.guestDisplayName}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setGuestDetails((prev) => {
+                        const next = [...prev];
+                        next[index] = { ...(next[index] ?? EMPTY_GUEST_DETAIL), guestDisplayName: value };
+                        return next;
+                      });
+                    }}
+                    disabled={submitting}
+                    helperText="Shown on the guest ticket"
+                  />
+                  <TextField
+                    label="Dietary requirements (optional)"
+                    fullWidth
+                    size="small"
+                    value={guest.dietaryNote}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setGuestDetails((prev) => {
+                        const next = [...prev];
+                        next[index] = { ...(next[index] ?? EMPTY_GUEST_DETAIL), dietaryNote: value };
+                        return next;
+                      });
+                    }}
+                    disabled={submitting}
+                    sx={{ mt: 1.5 }}
+                  />
+                </Box>
+              );
+            })}
           </Box>
+          <Button
+            variant="contained"
+            onClick={() => void handleSubmit()}
+            disabled={submitting}
+            sx={{ backgroundColor: "secondary.main" }}
+          >
+            {submitting ? "Submitting…" : "Submit request"}
+          </Button>
         </>
       )}
     </Paper>
