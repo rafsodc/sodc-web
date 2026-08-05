@@ -104,7 +104,10 @@ npm run deployment:preflight -- --env dev
 ```
 
 This checks a clean, reviewed checkout; the Firebase alias and expected
-project configuration; that `.env.<mode>.local` exists for the target
+project configuration; that every API in `config/deployment-check.json`'s
+`requiredApis` is enabled on the target Google Cloud project (a read-only
+`gcloud services list`, so this needs `gcloud auth login` in addition to
+`firebase login`); that `.env.<mode>.local` exists for the target
 environment and carries every required `VITE_FIREBASE_*` value (see
 [environment-and-secrets.md](./environment-and-secrets.md)); that Data Connect
 SDK generation produces no tracked or untracked drift; and that frontend and

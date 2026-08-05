@@ -5,12 +5,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   applyFromStage,
+  assertRequiredApisEnabled,
   checkEnvironmentConfig,
   createDeploymentPlan,
+  enabledApiNames,
   parseDeploymentEnvironment,
   runDeploymentPlan,
   validateFirebaseAlias,
 } from "./deploy-environment-lib.mjs";
+import { parseJsonOutput } from "./deployment-check-lib.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -51,6 +54,15 @@ async function main() {
     console.log(`\n==> ${step.label}`);
     if (step.kind === "environment-config") {
       await checkEnvironmentConfig(repositoryRoot, viteMode);
+      return { stdout: "" };
+    }
+    if (step.kind === "required-apis") {
+      const { stdout } = runCommand(
+        "gcloud",
+        ["services", "list", "--enabled", "--project", projectId, "--format=json"],
+        true
+      );
+      assertRequiredApisEnabled(deploymentCheckConfig.requiredApis, enabledApiNames(parseJsonOutput(stdout)));
       return { stdout: "" };
     }
     return runCommand(step.command, step.args, step.expectEmptyOutput);

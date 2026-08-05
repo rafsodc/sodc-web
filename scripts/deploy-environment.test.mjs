@@ -4,11 +4,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   applyFromStage,
+  assertRequiredApisEnabled,
   assertRequiredEnvironmentConfig,
   checkEnvironmentConfig,
   createDeploymentPlan,
   createPreflightSteps,
   DEPLOY_STAGES,
+  enabledApiNames,
   environmentConfigFileName,
   parseDeploymentEnvironment,
   parseDotEnv,
@@ -58,6 +60,7 @@ describe("environment deployment configuration", () => {
     const plan = createDeploymentPlan("prod", "abc123");
     expect(plan.map(({ id }) => id)).toEqual([
       "clean-checkout",
+      "required-apis-check",
       "generate-dataconnect-sdk",
       "generated-drift-check",
       "environment-config-check",
@@ -135,7 +138,7 @@ describe("environment deployment execution", () => {
 
   it.each([
     ["clean-checkout", 1],
-    ["generated-drift-check", 3],
+    ["generated-drift-check", 4],
   ])("blocks deployment when %s reports files", async (blockedStep, expectedCalls) => {
     const execute = vi.fn(async (step) => ({
       stdout: step.id === blockedStep ? " M generated/index.d.ts" : "",
@@ -145,6 +148,34 @@ describe("environment deployment execution", () => {
       runDeploymentPlan(createDeploymentPlan("beta", "abc123"), execute),
     ).rejects.toThrow(/unreviewed changes/);
     expect(execute).toHaveBeenCalledTimes(expectedCalls);
+  });
+});
+
+describe("required Google Cloud APIs check", () => {
+  it("extracts enabled API names from gcloud's config.name or top-level name", () => {
+    expect(
+      enabledApiNames([
+        { config: { name: "run.googleapis.com" } },
+        { name: "storage.googleapis.com" },
+        { config: {} },
+      ]),
+    ).toEqual(["run.googleapis.com", "storage.googleapis.com"]);
+  });
+
+  it("passes when every required API is enabled and fails listing what's missing", () => {
+    expect(() =>
+      assertRequiredApisEnabled(
+        ["run.googleapis.com", "storage.googleapis.com"],
+        ["run.googleapis.com", "storage.googleapis.com", "extra.googleapis.com"],
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      assertRequiredApisEnabled(
+        ["run.googleapis.com", "storage.googleapis.com"],
+        ["run.googleapis.com"],
+      ),
+    ).toThrow(/storage\.googleapis\.com/);
   });
 });
 

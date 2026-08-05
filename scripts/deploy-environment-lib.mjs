@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { compareExpected } from "./deployment-check-lib.mjs";
 
 export const DEPLOYMENT_ENVIRONMENTS = Object.freeze({
   dev: Object.freeze({ projectId: "sodc-web" }),
@@ -79,6 +80,21 @@ export async function checkEnvironmentConfig(repositoryRoot, viteMode) {
   assertRequiredEnvironmentConfig(parseDotEnv(content), fileName);
 }
 
+export function assertRequiredApisEnabled(requiredApis, enabledApis) {
+  const missing = compareExpected(requiredApis, enabledApis);
+  if (missing.length > 0) {
+    throw new Error(`Required Google Cloud APIs are not enabled: ${missing.join(", ")}.`);
+  }
+}
+
+/**
+ * Extracts enabled API names from `gcloud services list --enabled --format=json` output,
+ * matching deployment-check.mjs's own extraction so both read the same shape consistently.
+ */
+export function enabledApiNames(services) {
+  return services.map((service) => service.config?.name ?? service.name).filter(Boolean);
+}
+
 export function parseDeploymentEnvironment(args) {
   const usage =
     "Usage: --env <dev|beta|prod> [--from <preflight|dataconnect|functions|hosting|audit>]";
@@ -130,6 +146,11 @@ export function createPreflightSteps(environment) {
       command: "git",
       args: ["status", "--porcelain", "--untracked-files=all"],
       expectEmptyOutput: true,
+    },
+    {
+      id: "required-apis-check",
+      label: "Confirm required Google Cloud APIs are enabled",
+      kind: "required-apis",
     },
     {
       id: "generate-dataconnect-sdk",
