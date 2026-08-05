@@ -4,9 +4,8 @@ templateKey: guestTicketRequestRejected
 variables:
   - customerFirstName
   - eventTitle
-  - guestDisplayName
-  - requestedGuestCount
   - decisionLabel
+  - guestTicketCount
   - moderatorNote
   - myBookingsUrl
 ---
@@ -14,9 +13,7 @@ Dear ((customerFirstName)),
 
 Your guest ticket request for ((eventTitle)) has been ((decisionLabel)).
 
-Guest: ((guestDisplayName))
-
-Guest tickets requested: ((requestedGuestCount))
+Guest tickets requested: ((guestTicketCount))
 
 Note from organiser: ((moderatorNote))
 

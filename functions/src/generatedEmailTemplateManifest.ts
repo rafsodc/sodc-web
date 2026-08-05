@@ -68,26 +68,25 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     variables: [
     "customerFirstName",
     "eventTitle",
-    "guestDisplayName",
-    "requestedGuestCount",
     "decisionLabel",
+    "guestTicketCount",
+    "totalAmountLine",
     "moderatorNote",
     "myBookingsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour guest ticket request for ((eventTitle)) has been ((decisionLabel)).\n\nGuest: ((guestDisplayName))\n\nGuest tickets: ((requestedGuestCount))\n\nNote from organiser: ((moderatorNote))\n\nYou can now complete payment for your guest tickets. Visit your booking to continue:\n\n((myBookingsUrl))\n\nSODC",
+    body: "Dear ((customerFirstName)),\n\nYour guest ticket request for ((eventTitle)) has been ((decisionLabel)).\n\nGuest tickets: ((guestTicketCount))\n\n((totalAmountLine))\n\nNote from organiser: ((moderatorNote))\n\nYou can now complete payment for your guest tickets. Visit your booking to continue:\n\n((myBookingsUrl))\n\nSODC",
   },
   guestTicketRequestRejected: {
     subject: "Guest ticket request update — ((eventTitle))",
     variables: [
     "customerFirstName",
     "eventTitle",
-    "guestDisplayName",
-    "requestedGuestCount",
     "decisionLabel",
+    "guestTicketCount",
     "moderatorNote",
     "myBookingsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour guest ticket request for ((eventTitle)) has been ((decisionLabel)).\n\nGuest: ((guestDisplayName))\n\nGuest tickets requested: ((requestedGuestCount))\n\nNote from organiser: ((moderatorNote))\n\nIf you have any questions, please contact your section organiser. You can view your booking at:\n\n((myBookingsUrl))\n\nSODC",
+    body: "Dear ((customerFirstName)),\n\nYour guest ticket request for ((eventTitle)) has been ((decisionLabel)).\n\nGuest tickets requested: ((guestTicketCount))\n\nNote from organiser: ((moderatorNote))\n\nIf you have any questions, please contact your section organiser. You can view your booking at:\n\n((myBookingsUrl))\n\nSODC",
   },
   guestTicketRequestSubmittedModerator: {
     subject: "Guest ticket request — ((eventTitle))",
@@ -95,13 +94,12 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "eventTitle",
     "sectionName",
     "bookerDisplay",
-    "guestDisplayName",
     "requestedGuestCount",
     "guestTicketTypeTitle",
     "dietaryNote",
     "moderationUrl"
     ],
-    body: "A guest ticket request has been submitted for your review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nGuest name: ((guestDisplayName))\n\nGuest count: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary note: ((dietaryNote))\n\n---\n\nReview and approve or decline this request in the admin panel:\n\n((moderationUrl))\n\nSODC",
+    body: "A guest ticket request has been submitted for your review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nGuest count: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary note: ((dietaryNote))\n\n---\n\nReview and approve or decline this request in the admin panel:\n\n((moderationUrl))\n\nSODC",
   },
   membershipAccessRestricted: {
     subject: "Your SODC membership status has changed",
