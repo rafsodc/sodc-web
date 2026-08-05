@@ -9,7 +9,7 @@ variables:
   - revisionNumber
   - ticketLinesSummary
   - bookerDietaryNote
-  - accommodationSummary
+  - accommodationRequested
   - bookingTotalFormatted
   - sectionBookingsUrl
   - myPaymentsUrl
@@ -34,7 +34,7 @@ Where: ((eventLocation))
 
 Your dietary note: ((bookerDietaryNote))
 
-Accommodation: ((accommodationSummary))
+((accommodationRequested??Accommodation requested — see your booking for details.))
 
 Total: ((bookingTotalFormatted))
 

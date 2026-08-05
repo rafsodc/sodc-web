@@ -55,7 +55,10 @@ export type BookingEmailPersonalisation = {
   revisionNumber: number;
   ticketLinesSummary: string;
   bookerDietaryNote: string;
-  accommodationSummary: string;
+  // GOV.UK Notify optional-content condition -- must be the literal string
+  // "yes"/"no", not a boolean, and its ((var??text)) text cannot itself
+  // contain a placeholder, so the accommodation note isn't shown here.
+  accommodationRequested: "yes" | "no";
   bookingTotalFormatted: string;
   sectionBookingsUrl: string;
   myPaymentsUrl: string;
@@ -117,12 +120,9 @@ export function buildTicketLinesSummary(lines: BookingLineRow[]): string {
     .join("\n");
 }
 
-export function buildAccommodationSummary(requested: boolean, note: string | null | undefined): string {
-  if (!requested) {
-    return "Not requested";
-  }
-  const trimmed = note?.trim();
-  return trimmed && trimmed.length > 0 ? `Requested — ${trimmed}` : "Requested";
+/** GOV.UK Notify optional-content conditions must be the literal string "yes"/"no". */
+export function accommodationRequestedCondition(requested: boolean): "yes" | "no" {
+  return requested ? "yes" : "no";
 }
 
 export function paymentAdjustmentStatusLabel(status: BookingPaymentAdjustmentStatus): string {
@@ -166,10 +166,7 @@ function buildBasePersonalisation(args: {
     revisionNumber: booking.revisionNumber,
     ticketLinesSummary: buildTicketLinesSummary(booking.lines),
     bookerDietaryNote: booking.bookerDietaryNote?.trim() || "—",
-    accommodationSummary: buildAccommodationSummary(
-      booking.accommodationRequested,
-      booking.accommodationNote
-    ),
+    accommodationRequested: accommodationRequestedCondition(booking.accommodationRequested),
     bookingTotalFormatted: formatMinorCurrency(totalMinor, "GBP"),
     sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
     myPaymentsUrl: `${base}/payments`,

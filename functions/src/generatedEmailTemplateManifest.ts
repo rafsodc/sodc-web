@@ -19,12 +19,12 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "revisionNumber",
     "ticketLinesSummary",
     "bookerDietaryNote",
-    "accommodationSummary",
+    "accommodationRequested",
     "bookingTotalFormatted",
     "sectionBookingsUrl",
     "myPaymentsUrl"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been confirmed.\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking (revision ((revisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\nAccommodation: ((accommodationSummary))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nYou can view your booking and payment status at any time:\n\n((sectionBookingsUrl))\n\nIf payment is outstanding, visit My Payments:\n\n((myPaymentsUrl))\n\nSODC",
+    body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been confirmed.\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking (revision ((revisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nYou can view your booking and payment status at any time:\n\n((sectionBookingsUrl))\n\nIf payment is outstanding, visit My Payments:\n\n((myPaymentsUrl))\n\nSODC",
   },
   bookingRevision: {
     subject: "Your SODC booking has been updated — ((eventTitle))",
@@ -36,7 +36,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "revisionNumber",
     "ticketLinesSummary",
     "bookerDietaryNote",
-    "accommodationSummary",
+    "accommodationRequested",
     "bookingTotalFormatted",
     "sectionBookingsUrl",
     "myPaymentsUrl",
@@ -47,7 +47,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "revisedTotalFormatted",
     "deltaAmountFormatted"
     ],
-    body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Updated booking (revision ((revisedRevisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\nAccommodation: ((accommodationSummary))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nDifference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nManage payments:\n\n((myPaymentsUrl))\n\nSODC",
+    body: "Dear ((customerFirstName)),\n\nYour booking for ((eventTitle)) has been updated (revision ((previousRevisionNumber)) to ((revisedRevisionNumber))).\n\n---\n\n# Event details\n\nWhen: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Updated booking (revision ((revisedRevisionNumber)))\n\n((ticketLinesSummary))\n\nYour dietary note: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nDifference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nManage payments:\n\n((myPaymentsUrl))\n\nSODC",
   },
   emailChangeVerification: {
     subject: "Confirm your new SODC email address",
