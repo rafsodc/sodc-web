@@ -31,6 +31,7 @@ This folder captures architecture, domain decisions, and contributor-facing guid
 - `operations/legacy-user-migration-schema.md`: approved legacy-user field mapping, secure Data Connect write boundary, staged profile completion, and deployment order.
 - `operations/legacy-user-import.md`: guarded dry-run/apply/resume workflow and PII-minimised postflight reconciliation.
 - `operations/legacy-user-migration-review.md`: turns a non-PII preflight report into a structured issue #420 review worksheet and approval-artifact stub.
+- `operations/legacy-user-migration-runbook.md`: rehearsal and cutover runbook -- maintenance window strategy, staging rehearsal, stop conditions, recovery, go/no-go, and post-cutover reconciliation.
 
 ## User Guides
 
