@@ -1,7 +1,11 @@
 # Legacy user import runbook
 
 This runbook covers the resumable importer introduced by issue #419. Read
-`legacy-user-migration-schema.md` first for the approved field mapping.
+`legacy-user-migration-schema.md` first for the approved field mapping. Before
+running dry-run, use
+[`legacy-user-migration-review.md`](legacy-user-migration-review.md) to turn
+the preflight report into a review worksheet and an approval-artifact stub for
+issue #420.
 
 The importer is intentionally fail-closed:
 

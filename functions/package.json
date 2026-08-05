@@ -18,6 +18,7 @@
     "dev-reset": "npm run build && node lib/scripts/cli-dev-reset.js",
     "legacy-user-import": "ts-node --project tsconfig.scripts.json scripts/legacy-user-import.ts",
     "legacy-user-postflight": "ts-node --project tsconfig.scripts.json scripts/legacy-user-postflight.ts",
+    "legacy-user-preflight-review": "ts-node --project tsconfig.scripts.json scripts/legacy-user-preflight-review.ts",
     "legacy-bcrypt-pilot": "ts-node --project tsconfig.scripts.json scripts/legacy-bcrypt-pilot.ts"
   },
   "engines": {
