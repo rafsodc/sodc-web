@@ -171,6 +171,154 @@ export function assessFunctionInvokerPolicies(records, expectedPublicFunctions) 
   return { unreadable, unexpectedlyPublic, unexpectedlyPrivate, missingAudits };
 }
 
+/**
+ * Assesses Firebase App Check enforcement mode per service, matching what the read-only
+ * `firebaseappcheck.googleapis.com` API can prove: FAIL when App Check was never registered
+ * for any service (an empty list), WARN when registered but still in monitoring-only mode
+ * (any service not ENFORCED), PASS only once every checked service is ENFORCED.
+ */
+export function assessAppCheckEnforcement(services) {
+  const entries = (services ?? []).map((service) => ({
+    name: normalizeResourceName(service.name),
+    enforcementMode: service.enforcementMode,
+  }));
+  if (entries.length === 0) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: "App Check has no services registered; enforcement is not configured.",
+    };
+  }
+  const unenforced = entries.filter((entry) => entry.enforcementMode !== "ENFORCED");
+  if (unenforced.length > 0) {
+    return {
+      status: RESULT_STATUS.WARN,
+      summary: "App Check is registered but not yet enforced for all services (monitoring only).",
+      details: { services: entries },
+    };
+  }
+  return {
+    status: RESULT_STATUS.PASS,
+    summary: "App Check is registered and enforced for all checked services.",
+    details: { services: entries },
+  };
+}
+
+/**
+ * Assesses Identity Platform sign-in configuration: email/password sign-in is the site's
+ * only supported method, every expected canonical domain must be authorized, and `localhost`
+ * must only be authorized in environments that explicitly allow it (dev).
+ */
+export function assessAuthConfiguration(config, expectedAuthorizedDomains, allowLocalhost) {
+  const authorizedDomains = config?.authorizedDomains ?? [];
+  const issues = [];
+  if (config?.signIn?.email?.enabled !== true) {
+    issues.push("email/password sign-in is not enabled");
+  }
+  const missingDomains = expectedAuthorizedDomains.filter(
+    (domain) => !authorizedDomains.includes(domain)
+  );
+  if (missingDomains.length) {
+    issues.push(`missing authorized domain(s): ${missingDomains.join(", ")}`);
+  }
+  if (!allowLocalhost && authorizedDomains.includes("localhost")) {
+    issues.push("localhost is authorized outside of dev");
+  }
+  if (issues.length) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: `Auth configuration audit failed: ${issues.join("; ")}.`,
+      details: { authorizedDomains },
+    };
+  }
+  return {
+    status: RESULT_STATUS.PASS,
+    summary: "Auth sign-in method and authorized domains are configured correctly.",
+    details: { authorizedDomains },
+  };
+}
+
+/**
+ * Compares the deployed Firebase Storage ruleset's source against the checked-in
+ * `storage.rules`, normalizing line endings/trailing whitespace so formatting-only
+ * differences don't produce a false failure.
+ */
+export function assessStorageRulesContent(deployedContent, checkedInContent) {
+  const normalize = (value) =>
+    String(value ?? "")
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .join("\n")
+      .trim();
+  if (normalize(deployedContent) !== normalize(checkedInContent)) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: "Deployed Storage rules do not match the checked-in storage.rules.",
+    };
+  }
+  return {
+    status: RESULT_STATUS.PASS,
+    summary: "Deployed Storage rules match the checked-in storage.rules.",
+  };
+}
+
+/**
+ * Confirms a service account carries no project-level IAM bindings at all -- the expected
+ * shape for a least-privilege service account whose only grants are the specific
+ * resource-level bindings checked elsewhere (e.g. objectViewer on one bucket).
+ */
+export function assessServiceAccountProjectScope(serviceAccountEmail, projectRoles) {
+  if (projectRoles.length > 0) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: `${serviceAccountEmail} has unexpected project-level IAM role(s): ${projectRoles.join(", ")}.`,
+    };
+  }
+  return {
+    status: RESULT_STATUS.PASS,
+    summary: `${serviceAccountEmail} has no project-level IAM roles beyond its explicit resource-level grants.`,
+  };
+}
+
+/**
+ * Assesses whether the ClamAV definitions refresh schedule is enabled and its most recent
+ * attempt ran recently without error. Deliberately checks the scheduler's own execution
+ * health rather than the definitions file's content timestamp: ClamAV's upstream daily.cld
+ * doesn't necessarily change every time the refresh job runs, so a content-age check would
+ * false-fail whenever the job runs successfully but finds nothing new to download.
+ */
+export function assessDefinitionsFreshness({
+  schedulerState,
+  lastAttemptTime,
+  lastAttemptFailed,
+  now,
+  maxAgeHours,
+}) {
+  const issues = [];
+  if (schedulerState !== "ENABLED") {
+    issues.push(`refresh schedule is ${schedulerState ?? "unknown"}, not ENABLED`);
+  }
+  if (lastAttemptFailed) {
+    issues.push("the most recent refresh attempt failed");
+  }
+  const ageHours = (now.getTime() - new Date(lastAttemptTime).getTime()) / (60 * 60 * 1000);
+  if (!Number.isFinite(ageHours) || ageHours > maxAgeHours) {
+    issues.push(
+      `the last refresh attempt was ${Number.isFinite(ageHours) ? `${ageHours.toFixed(1)}h` : "an unknown time"} ago, older than the ${maxAgeHours}h limit`
+    );
+  }
+  if (issues.length) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: `Malware-definition refresh audit failed: ${issues.join("; ")}.`,
+    };
+  }
+  return {
+    status: RESULT_STATUS.PASS,
+    summary: "Malware-definition refresh schedule is enabled and its last attempt succeeded recently.",
+  };
+}
+
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];

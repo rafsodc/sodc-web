@@ -5,8 +5,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
+  assessAppCheckEnforcement,
+  assessAuthConfiguration,
+  assessDefinitionsFreshness,
   assessGovNotifyReplyToConfiguration,
   assessFunctionInvokerPolicies,
+  assessServiceAccountProjectScope,
+  assessStorageRulesContent,
   compareExpected,
   createReport,
   discoverFunctionContracts,
@@ -270,5 +275,140 @@ describe("deployment check parsing and comparison", () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
+  });
+
+  it("fails App Check audit when no services are registered", () => {
+    expect(assessAppCheckEnforcement([]).status).toBe(RESULT_STATUS.FAIL);
+  });
+
+  it("warns when App Check is registered but not fully enforced", () => {
+    const outcome = assessAppCheckEnforcement([
+      { name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
+      { name: "projects/1/services/identitytoolkit.googleapis.com", enforcementMode: "UNENFORCED" },
+    ]);
+    expect(outcome.status).toBe(RESULT_STATUS.WARN);
+    expect(outcome.details.services).toEqual([
+      { name: "firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
+      { name: "identitytoolkit.googleapis.com", enforcementMode: "UNENFORCED" },
+    ]);
+  });
+
+  it("passes App Check audit once every checked service is enforced", () => {
+    expect(
+      assessAppCheckEnforcement([
+        { name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
+      ]).status
+    ).toBe(RESULT_STATUS.PASS);
+  });
+
+  it("fails auth audit for disabled sign-in, missing domains, or stray localhost", () => {
+    expect(
+      assessAuthConfiguration(
+        { signIn: { email: { enabled: false } }, authorizedDomains: ["example.web.app"] },
+        ["example.web.app"],
+        false
+      ).status
+    ).toBe(RESULT_STATUS.FAIL);
+
+    const missingDomain = assessAuthConfiguration(
+      { signIn: { email: { enabled: true } }, authorizedDomains: ["example.web.app"] },
+      ["example.web.app", "example.firebaseapp.com"],
+      false
+    );
+    expect(missingDomain.status).toBe(RESULT_STATUS.FAIL);
+    expect(missingDomain.summary).toMatch(/example\.firebaseapp\.com/);
+
+    expect(
+      assessAuthConfiguration(
+        {
+          signIn: { email: { enabled: true } },
+          authorizedDomains: ["example.web.app", "localhost"],
+        },
+        ["example.web.app"],
+        false
+      ).status
+    ).toBe(RESULT_STATUS.FAIL);
+  });
+
+  it("passes auth audit when localhost is explicitly allowed", () => {
+    expect(
+      assessAuthConfiguration(
+        {
+          signIn: { email: { enabled: true } },
+          authorizedDomains: ["example.web.app", "localhost"],
+        },
+        ["example.web.app"],
+        true
+      ).status
+    ).toBe(RESULT_STATUS.PASS);
+  });
+
+  it("compares deployed and checked-in Storage rules ignoring trailing whitespace", () => {
+    expect(assessStorageRulesContent("allow read;\n", "allow read;  \n").status).toBe(
+      RESULT_STATUS.PASS
+    );
+    expect(assessStorageRulesContent("allow read;", "allow read, write;").status).toBe(
+      RESULT_STATUS.FAIL
+    );
+  });
+
+  it("fails service-account project scope audit when any project-level role exists", () => {
+    const outcome = assessServiceAccountProjectScope("scanner@example.iam.gserviceaccount.com", [
+      "roles/editor",
+    ]);
+    expect(outcome.status).toBe(RESULT_STATUS.FAIL);
+    expect(outcome.summary).toMatch(/roles\/editor/);
+  });
+
+  it("passes service-account project scope audit when no project-level roles exist", () => {
+    expect(assessServiceAccountProjectScope("scanner@example.iam.gserviceaccount.com", []).status).toBe(
+      RESULT_STATUS.PASS
+    );
+  });
+
+  it("fails definitions freshness audit for a disabled schedule, failed attempt, or stale attempt", () => {
+    const now = new Date("2026-01-01T12:00:00Z");
+    expect(
+      assessDefinitionsFreshness({
+        schedulerState: "PAUSED",
+        lastAttemptTime: "2026-01-01T11:00:00Z",
+        lastAttemptFailed: false,
+        now,
+        maxAgeHours: 3,
+      }).status
+    ).toBe(RESULT_STATUS.FAIL);
+
+    expect(
+      assessDefinitionsFreshness({
+        schedulerState: "ENABLED",
+        lastAttemptTime: "2026-01-01T11:00:00Z",
+        lastAttemptFailed: true,
+        now,
+        maxAgeHours: 3,
+      }).status
+    ).toBe(RESULT_STATUS.FAIL);
+
+    expect(
+      assessDefinitionsFreshness({
+        schedulerState: "ENABLED",
+        lastAttemptTime: "2026-01-01T08:00:00Z",
+        lastAttemptFailed: false,
+        now,
+        maxAgeHours: 3,
+      }).status
+    ).toBe(RESULT_STATUS.FAIL);
+  });
+
+  it("passes definitions freshness audit for an enabled schedule with a recent successful attempt", () => {
+    const now = new Date("2026-01-01T12:00:00Z");
+    expect(
+      assessDefinitionsFreshness({
+        schedulerState: "ENABLED",
+        lastAttemptTime: "2026-01-01T10:00:00Z",
+        lastAttemptFailed: false,
+        now,
+        maxAgeHours: 3,
+      }).status
+    ).toBe(RESULT_STATUS.PASS);
   });
 });

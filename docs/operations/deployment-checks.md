@@ -124,17 +124,50 @@ The report does not include it. Production use requires an approved dedicated
 test identity and secret-handling mechanism; do not borrow a member or operator
 session token.
 
+## Automated checks added after initial release
+
+The following were originally "manual checks that remain" (below) but are now
+read-only automated checks, added once production use surfaced real gaps they
+would have caught:
+
+- **App Check enforcement** -- `firebaseappcheck.googleapis.com`'s services
+  API reports per-service `enforcementMode`. FAILs if App Check has no
+  services registered at all; WARNs if registered but any checked service is
+  still `UNENFORCED` (monitoring-only); PASSes once every checked service is
+  `ENFORCED`.
+- **Auth providers and authorized domains** -- Identity Platform's admin
+  config API confirms email/password sign-in is enabled, every expected
+  canonical domain is authorized, and `localhost` is authorized only in `dev`.
+- **Deployed Storage rules content and a negative unauthenticated probe** --
+  the Firebase Security Rules API's deployed ruleset is byte-compared
+  (whitespace-normalized) against the checked-in `storage.rules`, and an
+  unauthenticated fetch against the bucket confirms it is denied.
+- **Scanner service-account scope** -- confirms the malware scanner's service
+  account carries no project-level IAM roles at all, only the specific
+  resource-level grants checked elsewhere.
+- **Malware-definition refresh health** -- confirms the Cloud Scheduler
+  refresh job is `ENABLED` and its most recent attempt succeeded within the
+  last few hours. Deliberately checks the scheduler's own execution health
+  rather than the definitions file's content timestamp -- ClamAV's upstream
+  `daily.cld` doesn't necessarily change every time the refresh job runs, so a
+  content-age check would false-fail on a job that ran successfully but found
+  nothing new to download.
+
+These calls a raw access token against Google/Firebase Management REST APIs
+that have no `gcloud`/`firebase` CLI equivalent (App Check, Identity
+Toolkit config, Firebase Security Rules) using the same credentials already
+required for every other check -- no new authentication surface.
+
 ## Manual checks that remain
 
 The CLI deliberately reports a warning for controls that cannot be proved
 safely and completely through the current read-only APIs:
 
-- App Check registration, valid-token metrics, and enforcement state;
-- Authentication providers and authorized domains;
-- the active Firebase Storage ruleset and a negative unauthenticated probe;
-- scanner service-account scope beyond the required invocation permission;
-- malware-definition freshness and the scheduled refresh job;
-- SQL backups, point-in-time recovery, deletion protection, and restore tests;
+- App Check valid-token traffic metrics (enforcement mode itself is now
+  automated -- see above);
+- SQL restore-test results (backups, point-in-time recovery, and deletion
+  protection are automated; actually performing a restore is destructive and
+  out of scope for a read-only audit);
 - alerts, incident contacts, budget notifications, and external dashboard
   configuration; and
 - end-to-end member journeys that require real test data.
