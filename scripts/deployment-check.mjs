@@ -6,8 +6,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
+  assessAppCheckEnforcement,
+  assessAuthConfiguration,
+  assessDefinitionsFreshness,
   assessGovNotifyReplyToConfiguration,
   assessFunctionInvokerPolicies,
+  assessServiceAccountProjectScope,
+  assessStorageRulesContent,
   compareExpected,
   createReport,
   discoverFunctionContracts,
@@ -26,6 +31,30 @@ import {
 const execFileAsync = promisify(execFile);
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let gcloudReady = true;
+let cachedAccessToken;
+
+async function accessToken() {
+  if (!cachedAccessToken) {
+    cachedAccessToken = (await run("gcloud", ["auth", "print-access-token"])).trim();
+  }
+  return cachedAccessToken;
+}
+
+/**
+ * Calls a Google/Firebase Management REST API that has no gcloud/firebase CLI equivalent
+ * (App Check, Identity Toolkit, Firebase Security Rules). Read-only GETs only.
+ */
+async function googleApiFetch(url, projectId) {
+  const token = await accessToken();
+  const response = await fetchWithTimeout(url, {
+    headers: { Authorization: `Bearer ${token}`, "X-Goog-User-Project": projectId },
+  });
+  const body = await response.json().catch(() => undefined);
+  if (!response.ok) {
+    throw new Error(body?.error?.message ?? `request to ${url} failed with HTTP ${response.status}`);
+  }
+  return body;
+}
 
 const help = `Usage:
   npm run deployment:check -- --env <dev|beta|prod> [options]
@@ -244,6 +273,37 @@ async function main() {
     },
   });
 
+  if (gcloudReady) {
+    try {
+      const authConfig = await googleApiFetch(
+        `https://identitytoolkit.googleapis.com/admin/v2/projects/${target.projectId}/config`,
+        target.projectId
+      );
+      const expectedAuthorizedDomains = [
+        `${target.projectId}.firebaseapp.com`,
+        new URL(target.hostingUrl).hostname,
+      ];
+      const outcome = assessAuthConfiguration(
+        authConfig,
+        expectedAuthorizedDomains,
+        target.allowLocalhostAuthDomain === true
+      );
+      results.push(result("auth-config", outcome.status, outcome.summary, outcome.details));
+    } catch (error) {
+      results.push(
+        result("auth-config", RESULT_STATUS.FAIL, `Auth configuration audit failed: ${safeErrorMessage(error)}`)
+      );
+    }
+  } else {
+    results.push(
+      result(
+        "auth-config",
+        RESULT_STATUS.SKIP,
+        "Auth configuration audit skipped because the gcloud project/authentication preflight failed."
+      )
+    );
+  }
+
   await commandCheck(results, {
     id: "required-apis",
     label: "Required API audit failed",
@@ -256,6 +316,32 @@ async function main() {
       return { status: RESULT_STATUS.PASS, summary: "All required Google Cloud APIs are enabled." };
     },
   });
+
+  if (gcloudReady) {
+    try {
+      const appCheck = await googleApiFetch(
+        `https://firebaseappcheck.googleapis.com/v1/projects/${target.projectId}/services`,
+        target.projectId
+      );
+      const relevant = (appCheck.services ?? []).filter((service) =>
+        configuration.appCheck.services.includes(normalizeResourceName(service.name))
+      );
+      const outcome = assessAppCheckEnforcement(relevant);
+      results.push(result("app-check", outcome.status, outcome.summary, outcome.details));
+    } catch (error) {
+      results.push(
+        result("app-check", RESULT_STATUS.FAIL, `App Check audit failed: ${safeErrorMessage(error)}`)
+      );
+    }
+  } else {
+    results.push(
+      result(
+        "app-check",
+        RESULT_STATUS.SKIP,
+        "App Check audit skipped because the gcloud project/authentication preflight failed."
+      )
+    );
+  }
 
   await commandCheck(results, {
     id: "dataconnect",
@@ -293,7 +379,7 @@ async function main() {
         data.region === target.region &&
         backups?.enabled === true &&
         backups?.pointInTimeRecoveryEnabled === true &&
-        data.deletionProtectionEnabled === true;
+        data.settings?.deletionProtectionEnabled === true;
       if (!healthy) {
         throw new Error("region, automated backups, point-in-time recovery, or deletion protection differs");
       }
@@ -352,6 +438,46 @@ async function main() {
       return { status: RESULT_STATUS.PASS, summary: "Required malware-definition job exists." };
     },
   });
+
+  if (gcloudReady) {
+    try {
+      const scheduler = await runJson("gcloud", [
+        "scheduler",
+        "jobs",
+        "describe",
+        configuration.requiredCloudRunJobs[0],
+        "--project",
+        target.projectId,
+        "--location",
+        target.region,
+        "--format=json",
+      ]);
+      const outcome = assessDefinitionsFreshness({
+        schedulerState: scheduler.state,
+        lastAttemptTime: scheduler.lastAttemptTime,
+        lastAttemptFailed: Boolean(scheduler.status?.code),
+        now: new Date(),
+        maxAgeHours: 3,
+      });
+      results.push(result("malware-definitions-freshness", outcome.status, outcome.summary));
+    } catch (error) {
+      results.push(
+        result(
+          "malware-definitions-freshness",
+          RESULT_STATUS.FAIL,
+          `Malware-definition freshness audit failed: ${safeErrorMessage(error)}`
+        )
+      );
+    }
+  } else {
+    results.push(
+      result(
+        "malware-definitions-freshness",
+        RESULT_STATUS.SKIP,
+        "Malware-definition freshness audit skipped because the gcloud project/authentication preflight failed."
+      )
+    );
+  }
 
   const deployedFunctions = await commandCheck(results, {
     id: "functions",
@@ -567,6 +693,55 @@ async function main() {
     },
   });
 
+  if (gcloudReady) {
+    try {
+      const releases = await googleApiFetch(
+        `https://firebaserules.googleapis.com/v1/projects/${target.projectId}/releases`,
+        target.projectId
+      );
+      const release = (releases.releases ?? []).find((entry) =>
+        entry.name.endsWith(`firebase.storage/${target.storageBucket}`)
+      );
+      if (!release) throw new Error(`no Storage rules release found for ${target.storageBucket}`);
+      const ruleset = await googleApiFetch(
+        `https://firebaserules.googleapis.com/v1/${release.rulesetName}`,
+        target.projectId
+      );
+      const deployedContent = ruleset.source?.files?.[0]?.content;
+      const checkedInContent = await readFile(path.join(repositoryRoot, "storage.rules"), "utf8");
+      const outcome = assessStorageRulesContent(deployedContent, checkedInContent);
+      results.push(result("storage-rules-content", outcome.status, outcome.summary));
+
+      const probeUrl = `https://firebasestorage.googleapis.com/v0/b/${target.storageBucket}/o/_deployment-check-probe`;
+      const probeResponse = await fetchWithTimeout(probeUrl);
+      results.push(
+        result(
+          "storage-unauthenticated-probe",
+          probeResponse.status === 200 ? RESULT_STATUS.FAIL : RESULT_STATUS.PASS,
+          probeResponse.status === 200
+            ? "Unauthenticated Storage read succeeded; deployed rules do not deny read."
+            : `Unauthenticated Storage read was denied (HTTP ${probeResponse.status}).`
+        )
+      );
+    } catch (error) {
+      results.push(
+        result(
+          "storage-rules-content",
+          RESULT_STATUS.FAIL,
+          `Storage rules audit failed: ${safeErrorMessage(error)}`
+        )
+      );
+    }
+  } else {
+    results.push(
+      result(
+        "storage-rules-content",
+        RESULT_STATUS.SKIP,
+        "Storage rules audit skipped because the gcloud project/authentication preflight failed."
+      )
+    );
+  }
+
   let runtimeServiceAccount;
   if (deployedFunctions) {
     const uploadFunction = values(deployedFunctions).find(
@@ -706,6 +881,51 @@ async function main() {
     );
   }
 
+  if (gcloudReady) {
+    try {
+      const scannerService = await runJson("gcloud", [
+        "run",
+        "services",
+        "describe",
+        "section-file-malware-scanner",
+        "--region",
+        target.region,
+        "--project",
+        target.projectId,
+        "--format=json",
+      ]);
+      const scannerServiceAccount = scannerService.spec?.template?.spec?.serviceAccountName;
+      if (!scannerServiceAccount) throw new Error("scanner service did not report a service account");
+      const projectPolicy = await runJson("gcloud", [
+        "projects",
+        "get-iam-policy",
+        target.projectId,
+        "--flatten=bindings[].members",
+        `--filter=bindings.members:serviceAccount:${scannerServiceAccount}`,
+        "--format=json",
+      ]);
+      const projectRoles = values(projectPolicy).map((binding) => binding.bindings?.role ?? binding.role).filter(Boolean);
+      const outcome = assessServiceAccountProjectScope(scannerServiceAccount, projectRoles);
+      results.push(result("scanner-project-scope", outcome.status, outcome.summary));
+    } catch (error) {
+      results.push(
+        result(
+          "scanner-project-scope",
+          RESULT_STATUS.FAIL,
+          `Scanner service-account scope audit failed: ${safeErrorMessage(error)}`
+        )
+      );
+    }
+  } else {
+    results.push(
+      result(
+        "scanner-project-scope",
+        RESULT_STATUS.SKIP,
+        "Scanner service-account scope audit skipped because the gcloud project/authentication preflight failed."
+      )
+    );
+  }
+
   try {
     const rootResponse = await fetchWithTimeout(target.hostingUrl, { redirect: "follow" });
     if (!rootResponse.ok) throw new Error(`root returned HTTP ${rootResponse.status}`);
@@ -839,7 +1059,7 @@ async function main() {
     result(
       "manual-controls",
       RESULT_STATUS.WARN,
-      "Manually confirm App Check enforcement, Auth authorized domains/providers, deployed Storage rules, scanner definitions freshness, backups, and alerts."
+      "Manually confirm App Check valid-token traffic metrics, SQL restore-test results, alerting/incident-contact/budget-notification/external-dashboard configuration, and end-to-end member journeys with real test data."
     )
   );
 

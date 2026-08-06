@@ -8,6 +8,13 @@
     "sqlInstance": "sodc-web-instance",
     "database": "fdcdb"
   },
+  "appCheck": {
+    "services": [
+      "firebasedataconnect.googleapis.com",
+      "firebasestorage.googleapis.com",
+      "identitytoolkit.googleapis.com"
+    ]
+  },
   "requiredApis": [
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
@@ -118,7 +125,8 @@
       "hostingSite": "sodc-web",
       "hostingUrl": "https://sodc-web.web.app",
       "storageBucket": "sodc-web.firebasestorage.app",
-      "requireCloudSqlResilience": false
+      "requireCloudSqlResilience": false,
+      "allowLocalhostAuthDomain": true
     },
     "beta": {
       "projectId": "sodc-web-beta",
