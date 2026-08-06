@@ -172,6 +172,7 @@ function AppContent() {
         onMyBookingsClick={() => navigate(ROUTES.MY_BOOKINGS)}
         onMyPaymentsClick={() => navigate(ROUTES.MY_PAYMENTS)}
         onJoinClick={() => navigate(ROUTES.REGISTER)}
+        onLogoClick={() => navigate(ROUTES.HOME)}
         onNavMenuOpen={setMobileNavAnchorEl}
       />
       <MobileNavigationMenu
