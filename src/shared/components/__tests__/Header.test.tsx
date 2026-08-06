@@ -28,6 +28,7 @@ describe("Header account menu", () => {
         userData={null}
         onAccountClick={vi.fn()}
         onJoinClick={vi.fn()}
+        onLogoClick={vi.fn()}
         onNavMenuOpen={onNavMenuOpen}
       />
     );
@@ -41,6 +42,23 @@ describe("Header account menu", () => {
     expect(onNavMenuOpen).toHaveBeenCalledWith(menuButton);
   });
 
+  it("navigates home when the SODC logo is clicked", async () => {
+    const user = userEvent.setup();
+    const onLogoClick = vi.fn();
+
+    render(
+      <Header
+        user={null}
+        userData={null}
+        onAccountClick={vi.fn()}
+        onLogoClick={onLogoClick}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Go to home" }));
+    expect(onLogoClick).toHaveBeenCalledOnce();
+  });
+
   it("shows My Bookings and My Payments for enabled users", async () => {
     const user = userEvent.setup();
     const onMyBookingsClick = vi.fn();
@@ -51,6 +69,7 @@ describe("Header account menu", () => {
         user={enabledUser}
         userData={null}
         onAccountClick={vi.fn()}
+        onLogoClick={vi.fn()}
         onMyBookingsClick={onMyBookingsClick}
         onMyPaymentsClick={onMyPaymentsClick}
       />
@@ -74,6 +93,7 @@ describe("Header account menu", () => {
         user={enabledUser}
         userData={null}
         onAccountClick={vi.fn()}
+        onLogoClick={vi.fn()}
         onAccountSettingsClick={onAccountSettingsClick}
       />
     );
@@ -98,6 +118,7 @@ describe("Header account menu", () => {
         user={enabledUser}
         userData={null}
         onAccountClick={vi.fn()}
+        onLogoClick={vi.fn()}
         onMyPaymentsClick={vi.fn()}
       />
     );

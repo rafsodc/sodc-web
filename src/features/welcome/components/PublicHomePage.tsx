@@ -34,8 +34,9 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
       </Typography>
 
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-        A place for serving and retired RAF Signal Officers to come together — for dinners, events,
-        and the company of fellow members.
+        A place for serving and retired RAF officers, who have held RAF Signals appointments, to
+        come together and share their knowledge and experience through various organised
+        functions.
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
         Membership is open to those with a connection to RAF Signals. If you&apos;d like to join,

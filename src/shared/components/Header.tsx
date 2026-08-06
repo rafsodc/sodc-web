@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AppBar, Avatar, Box, Button, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
+import { AppBar, Avatar, Box, Button, ButtonBase, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
 import { ExpandMore, Menu as MenuIcon, Person } from "@mui/icons-material";
 import { signOut, type User } from "firebase/auth";
 import { auth } from "../../config/firebase";
@@ -15,6 +15,7 @@ interface HeaderProps {
   onAccountSettingsClick?: () => void;
   onMyBookingsClick?: () => void;
   onMyPaymentsClick?: () => void;
+  onLogoClick: () => void;
   /** Opens the responsive navigation and settings menu from this anchor. */
   onNavMenuOpen?: (anchorEl: HTMLElement) => void;
 }
@@ -39,6 +40,7 @@ export default function Header({
   onAccountSettingsClick,
   onMyBookingsClick,
   onMyPaymentsClick,
+  onLogoClick,
   onNavMenuOpen,
 }: HeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -119,9 +121,23 @@ export default function Header({
             <MenuIcon />
           </IconButton>
         ) : null}
-        <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
-          SODC
-        </Typography>
+        <ButtonBase
+          onClick={onLogoClick}
+          aria-label="Go to home"
+          sx={{
+            borderRadius: 1,
+            px: 0.5,
+            "&:focus-visible": {
+              outline: "2px solid",
+              outlineColor: "common.white",
+              outlineOffset: 2,
+            },
+          }}
+        >
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+            SODC
+          </Typography>
+        </ButtonBase>
         <Box sx={{ flexGrow: 1 }} />
         {user ? (
           <>
