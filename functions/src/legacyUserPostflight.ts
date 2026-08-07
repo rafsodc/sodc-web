@@ -89,6 +89,20 @@ function correlationId(sourceChecksum: string, legacyUserId: string): string {
   return sha256Hex(`${sourceChecksum}:${legacyUserId}`).slice(0, 20);
 }
 
+/**
+ * Data Connect's generated SDK returns some UUID-typed fields without hyphens
+ * (32 hex characters) on this query path -- confirmed for both
+ * `legacyUserIdentities.legacyUserId` and `legacyUserIdentities.migrationBatchId`
+ * -- even though the schema types them as UUID and `user.id` on the same
+ * response round-trips with hyphens intact. The ledger and decrypted source
+ * records always use the canonical 36-character hyphenated form. Normalize
+ * both sides before comparing any UUID sourced from this query so lookups and
+ * provenance checks aren't defeated by this formatting difference alone.
+ */
+function normalizeUuid(value: string): string {
+  return value.replace(/-/g, "").toLowerCase();
+}
+
 function sameNullable(left: unknown, right: unknown): boolean {
   return (left ?? null) === (right ?? null);
 }
@@ -146,10 +160,11 @@ export function buildLegacyUserPostflightReport(input: {
   );
   const identityById = new Map<string, PostflightIdentity>();
   for (const identity of input.identities) {
-    if (identityById.has(identity.legacyUserId)) {
+    const normalizedId = normalizeUuid(identity.legacyUserId);
+    if (identityById.has(normalizedId)) {
       add(identity.legacyUserId, "identity-provenance-mismatch");
     }
-    identityById.set(identity.legacyUserId, identity);
+    identityById.set(normalizedId, identity);
   }
 
   for (const legacyUserId of sourceById.keys()) {
@@ -176,20 +191,21 @@ export function buildLegacyUserPostflightReport(input: {
     if (!hasMigrationStage(input.ledger, legacyUserId, "access-reconciled")) {
       add(legacyUserId, "ledger-stage-incomplete");
     }
-    const identity = identityById.get(legacyUserId);
+    const identity = identityById.get(normalizeUuid(legacyUserId));
     if (!identity) {
       add(legacyUserId, "identity-mapping-missing");
       continue;
     }
     if (
       identity.sourceSystem !== LEGACY_SOURCE_SYSTEM ||
-      identity.migrationBatchId !== input.ledger.migrationBatchId ||
+      normalizeUuid(identity.migrationBatchId) !==
+        normalizeUuid(input.ledger.migrationBatchId) ||
       identity.recordSchemaVersion !== LEGACY_RECORD_SCHEMA_VERSION ||
       identity.sourceChecksum !== input.ledger.sourceChecksum ||
       !sameNullable(identity.oldUid, source.oldUid)
     ) add(legacyUserId, "identity-provenance-mismatch");
     if (
-      identity.user.id !== ledgerRecord.canonicalUid
+      normalizeUuid(identity.user.id) !== normalizeUuid(ledgerRecord.canonicalUid)
     ) add(legacyUserId, "canonical-uid-mismatch");
 
     const auth = input.authUsers.get(ledgerRecord.canonicalUid);
@@ -236,8 +252,11 @@ export function buildLegacyUserPostflightReport(input: {
       add(legacyUserId, "profile-field-mismatch");
     }
   }
+  const normalizedLedgerIds = new Set(
+    Object.keys(input.ledger.records).map(normalizeUuid)
+  );
   for (const identity of input.identities) {
-    if (!input.ledger.records[identity.legacyUserId]) {
+    if (!normalizedLedgerIds.has(normalizeUuid(identity.legacyUserId))) {
       add(identity.legacyUserId, "identity-mapping-additional");
     }
   }
