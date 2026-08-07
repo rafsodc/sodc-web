@@ -29,6 +29,7 @@ import {
   MAX_NAME_LENGTH,
   MAX_POST_NOMINALS_LENGTH,
   MAX_SERVICE_NUMBER_LENGTH,
+  MEMBERSHIP_STATUS_OPTIONS,
 } from "../../../constants";
 import RankSelect from "../../../shared/components/RankSelect";
 import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
@@ -212,6 +213,17 @@ export default function ProfileReviewDialog({
               helperText="This verified sign-in address can be changed later in Account settings."
             />
             <TextField
+              label="Membership status"
+              value={
+                MEMBERSHIP_STATUS_OPTIONS.find(
+                  (option) => option.value === userData.membershipStatus,
+                )?.label ?? userData.membershipStatus
+              }
+              fullWidth
+              inputProps={{ readOnly: true }}
+              helperText="This can be changed on your Profile page."
+            />
+            <TextField
               label="Service number"
               value={serviceNumber}
               onChange={(event) => setServiceNumber(event.target.value)}
@@ -260,6 +272,32 @@ export default function ProfileReviewDialog({
               }
               label="Share my email address and mobile number with members in my sections"
             />
+            <Box component="section" aria-labelledby="review-service-background-heading">
+              <Typography id="review-service-background-heading" variant="h6" component="h2">
+                Service background
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                This can be changed on your Profile page.
+              </Typography>
+              <FormGroup>
+                <FormControlLabel
+                  control={<Checkbox checked={userData.isRegular ?? false} disabled />}
+                  label="Regular"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={userData.isReserve ?? false} disabled />}
+                  label="Reserve"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={userData.isCivilServant ?? false} disabled />}
+                  label="Civil Servant"
+                />
+                <FormControlLabel
+                  control={<Checkbox checked={userData.isIndustry ?? false} disabled />}
+                  label="Industry"
+                />
+              </FormGroup>
+            </Box>
             <Box component="section" aria-labelledby="review-announcements-heading">
               <Typography id="review-announcements-heading" variant="h6" component="h2">
                 Announcement emails
