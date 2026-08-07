@@ -59,6 +59,10 @@ const userData: UserData = {
   rank: "Wing Commander",
   shareContactInfo: true,
   membershipStatus: MembershipStatus.REGULAR,
+  isRegular: true,
+  isReserve: false,
+  isCivilServant: false,
+  isIndustry: true,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
   profileReviewedAt: null,
@@ -200,11 +204,18 @@ describe("ProfileReviewDialog", () => {
     );
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue("verified@example.com");
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("readonly");
+    expect(screen.getByRole("textbox", { name: "Membership status" })).toHaveValue("Regular");
+    expect(screen.getByRole("textbox", { name: "Membership status" })).toHaveAttribute("readonly");
     expect(
       screen.getByRole("checkbox", {
         name: "Share my email address and mobile number with members in my sections",
       }),
     ).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Regular" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Regular" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Reserve" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Civil Servant" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Industry" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Receive announcement emails" })).toBeChecked();
   });
 
