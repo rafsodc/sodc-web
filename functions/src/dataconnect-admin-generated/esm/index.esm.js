@@ -640,6 +640,12 @@ export function createGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOp
   return dcInstance.executeMutation('CreateGuestTicketRequestFromCallable', inputVars, inputOpts);
 }
 
+export function getGuestTicketRequestByIdForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGuestTicketRequestByIdForCallable', inputVars, inputOpts);
+}
+
 export function adminReviewGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

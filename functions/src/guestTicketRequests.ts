@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
   adminReviewGuestTicketRequestFromCallable,
   createGuestTicketRequestFromCallable,
   getBookingForGuestTicketCallable,
+  getGuestTicketRequestByIdForCallable,
   GuestTicketRequestStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
@@ -21,6 +23,13 @@ import {
   consumeGuestRequestPoolsForExistingRequests,
   resolveGuestTicketRequestSubmission,
 } from "./guestTicketRequestCarryForward";
+import {
+  IdempotencyConflictError,
+  guestTicketRequestId,
+  runIdempotentBatch,
+} from "./guestTicketRequestIdempotency";
+
+const MAX_GUEST_REQUEST_BATCH = 20;
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -105,6 +114,7 @@ export const submitGuestTicketRequest = onCall(
           : GuestTicketRequestStatus.PENDING;
 
       const insertResult = await createGuestTicketRequestFromCallable({
+        id: randomUUID() as UUIDString,
         bookingId,
         requestedGuestCount,
         guestTicketTypeId,
@@ -139,6 +149,155 @@ export const submitGuestTicketRequest = onCall(
       handleFunctionError(e, "submitting guest ticket request");
     }
   }
+);
+
+type GuestSubmission = { guestDisplayName: string; dietaryNote: string | null };
+type ExistingGuestRequest = NonNullable<
+  Awaited<ReturnType<typeof getGuestTicketRequestByIdForCallable>>["data"]["guestTicketRequest"]
+>;
+
+function validateGuestSubmission(value: unknown, index: number): GuestSubmission {
+  if (!value || typeof value !== "object") {
+    throw new HttpsError("invalid-argument", `guests[${index}] must be an object`);
+  }
+  const raw = value as { guestDisplayName?: unknown; dietaryNote?: unknown };
+  const guestDisplayName = typeof raw.guestDisplayName === "string" ? raw.guestDisplayName.trim() : "";
+  if (!guestDisplayName) {
+    throw new HttpsError("invalid-argument", `guests[${index}].guestDisplayName is required`);
+  }
+  if (guestDisplayName.length > MAX_NAME_LENGTH) {
+    throw new HttpsError(
+      "invalid-argument",
+      `guests[${index}].guestDisplayName must be no more than ${MAX_NAME_LENGTH} characters`,
+    );
+  }
+  const rawDietaryNote = typeof raw.dietaryNote === "string" ? raw.dietaryNote.trim() : null;
+  if (rawDietaryNote && rawDietaryNote.length > MAX_DESCRIPTION_LENGTH) {
+    throw new HttpsError(
+      "invalid-argument",
+      `guests[${index}].dietaryNote must be no more than ${MAX_DESCRIPTION_LENGTH} characters`,
+    );
+  }
+  return { guestDisplayName, dietaryNote: rawDietaryNote || null };
+}
+
+function existingRequestMatches(
+  existing: ExistingGuestRequest | undefined,
+  expected: { bookingId: string; guestTicketTypeId: string; guest: GuestSubmission },
+): boolean {
+  return Boolean(
+    existing &&
+      validateUUID(existing.booking.id, "bookingId") === expected.bookingId &&
+      existing.guestTicketType?.id &&
+      validateUUID(existing.guestTicketType.id, "guestTicketTypeId") === expected.guestTicketTypeId &&
+      existing.requestedGuestCount === 1 &&
+      existing.guestDisplayName?.trim() === expected.guest.guestDisplayName &&
+      (existing.dietaryNote?.trim() || null) === expected.guest.dietaryNote,
+  );
+}
+
+export const submitAdditionalGuestTicketRequests = onCall(
+  { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
+  async (request) => {
+    requireEnabled(request);
+    const callerUid = request.auth!.uid;
+    await enforceRateLimit("submitAdditionalGuestTicketRequests", callerUid);
+
+    const bookingId = validateUUID(request.data?.bookingId, "bookingId") as UUIDString;
+    const guestTicketTypeId = validateUUID(request.data?.guestTicketTypeId, "guestTicketTypeId") as UUIDString;
+    const idempotencyKey = validateUUID(request.data?.idempotencyKey, "idempotencyKey");
+    if (!Array.isArray(request.data?.guests) || request.data.guests.length < 1) {
+      throw new HttpsError("invalid-argument", "guests must contain at least one guest");
+    }
+    if (request.data.guests.length > MAX_GUEST_REQUEST_BATCH) {
+      throw new HttpsError(
+        "invalid-argument",
+        `guests must contain no more than ${MAX_GUEST_REQUEST_BATCH} guests`,
+      );
+    }
+    const guests: GuestSubmission[] = request.data.guests.map(validateGuestSubmission);
+
+    try {
+      const bookingRow = await getBookingForGuestTicketCallable({ bookingId });
+      const booking = bookingRow.data?.booking;
+      if (!booking) throw new HttpsError("not-found", "Booking not found");
+      if (booking.booker.id !== callerUid) {
+        throw new HttpsError("permission-denied", "You can only submit guest requests for your own booking");
+      }
+
+      let { approvedPool, pendingPool } = consumeGuestRequestPoolsForExistingRequests(
+        buildApprovedGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
+        buildPendingGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
+        booking.guestTicketRequests,
+      );
+      const notifyAfterCreate = new Set<string>();
+      let results;
+      try {
+        results = await runIdempotentBatch<
+          GuestSubmission,
+          ExistingGuestRequest,
+          { success: true; requestId: string }
+        >({
+          items: guests,
+          idForIndex: (index) => guestTicketRequestId({ callerUid, bookingId, idempotencyKey, index }),
+          load: async (id) =>
+            (await getGuestTicketRequestByIdForCallable({ id: id as UUIDString })).data.guestTicketRequest,
+          create: async (guest, _index, id) => {
+            const resolved = resolveGuestTicketRequestSubmission({
+              approvedPool,
+              pendingPool,
+              guestDisplayName: guest.guestDisplayName,
+              guestTicketTypeId,
+            });
+            approvedPool = resolved.remainingApprovedPool;
+            pendingPool = resolved.remainingPendingPool;
+            const decision = resolved.decision;
+            if (decision.kind === "create_pending") notifyAfterCreate.add(id);
+            const status =
+              decision.kind === "carry_forward_approved"
+                ? GuestTicketRequestStatus.APPROVED
+                : GuestTicketRequestStatus.PENDING;
+            await createGuestTicketRequestFromCallable({
+              id: id as UUIDString,
+              bookingId,
+              requestedGuestCount: 1,
+              guestTicketTypeId,
+              guestDisplayName: guest.guestDisplayName,
+              dietaryNote: guest.dietaryNote,
+              status,
+              reviewedById: decision.kind === "carry_forward_approved" ? decision.reviewedById : null,
+              reviewedAt: decision.kind === "carry_forward_approved" ? decision.reviewedAt : null,
+              moderatorNote: decision.kind === "carry_forward_approved" ? decision.moderatorNote : null,
+            });
+          },
+          matches: (existing, guest) =>
+            existingRequestMatches(existing, { bookingId, guestTicketTypeId, guest }),
+          result: async (existing, id, replayed) => {
+            if (notifyAfterCreate.has(id) || (replayed && existing.status === GuestTicketRequestStatus.PENDING)) {
+              await sendGuestTicketRequestSubmittedEmails({ requestId: id, appBaseUrl: APP_BASE_URL });
+            }
+            return { success: true as const, requestId: id };
+          },
+        });
+      } catch (error) {
+        if (error instanceof IdempotencyConflictError) {
+          throw new HttpsError("already-exists", "idempotencyKey is already bound to different guest details");
+        }
+        throw error;
+      }
+
+      logger.info("additional guest ticket request batch submitted", {
+        bookingId,
+        bookerId: callerUid,
+        idempotencyKey,
+        requestCount: results.length,
+      });
+      return { success: true, requests: results };
+    } catch (e: unknown) {
+      if (e instanceof HttpsError) throw e;
+      handleFunctionError(e, "submitting additional guest ticket requests");
+    }
+  },
 );
 
 export const reviewGuestTicketRequest = onCall(

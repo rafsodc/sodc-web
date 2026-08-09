@@ -295,10 +295,12 @@ export function useBookingWizardState({
 
   const submitAdditionalGuestRequest = async (bookingId: string) => {
     if (extraGuestRequestCount < 1 || !extraGuestTicketTypeId) return;
+    idempotencyKeyRef.current ??= crypto.randomUUID();
     const guests = extraGuestDetails.slice(0, extraGuestRequestCount);
     await submitAdditionalGuestTicketRequests({
       bookingId,
       guestTicketTypeId: extraGuestTicketTypeId,
+      idempotencyKey: idempotencyKeyRef.current,
       guests: guests.map((guest) => ({
         guestDisplayName: guest.guestDisplayName.trim(),
         dietaryNote: guest.dietaryNote.trim() || null,

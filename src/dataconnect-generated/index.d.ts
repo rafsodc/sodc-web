@@ -597,6 +597,7 @@ export interface CreateGuestTicketRequestFromCallableData {
 }
 
 export interface CreateGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
@@ -1333,6 +1334,26 @@ export interface GetGovNotifyDeliveryConfigurationData {
     updatedAt: TimestampString;
     updatedBy?: string | null;
   };
+}
+
+export interface GetGuestTicketRequestByIdForCallableData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    booking: {
+      id: UUIDString;
+    } & Booking_Key;
+    guestTicketType?: {
+      id: UUIDString;
+    } & TicketType_Key;
+  } & GuestTicketRequest_Key;
+}
+
+export interface GetGuestTicketRequestByIdForCallableVariables {
+  id: UUIDString;
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -4494,6 +4515,18 @@ export const createGuestTicketRequestFromCallableRef: CreateGuestTicketRequestFr
 
 export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
 export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+
+interface GetGuestTicketRequestByIdForCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetGuestTicketRequestByIdForCallableVariables): QueryRef<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables): QueryRef<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+  operationName: string;
+}
+export const getGuestTicketRequestByIdForCallableRef: GetGuestTicketRequestByIdForCallableRef;
+
+export function getGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+export function getGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
 
 interface AdminReviewGuestTicketRequestFromCallableRef {
   /* Allow users to create refs without passing in DataConnect */

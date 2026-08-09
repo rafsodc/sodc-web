@@ -1929,6 +1929,7 @@ mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
 
 # submitGuestTicketRequest callable — admin SDK has no auth.uid; override HasAudit defaults.
 mutation CreateGuestTicketRequestFromCallable(
+  $id: UUID!
   $bookingId: UUID!
   $requestedGuestCount: Int!
   $guestTicketTypeId: UUID!
@@ -1941,6 +1942,7 @@ mutation CreateGuestTicketRequestFromCallable(
 ) @auth(level: NO_ACCESS) {
   guestTicketRequest_insert(
     data: {
+      id: $id
       bookingId: $bookingId
       requestedGuestCount: $requestedGuestCount
       guestTicketTypeId: $guestTicketTypeId
@@ -1954,6 +1956,18 @@ mutation CreateGuestTicketRequestFromCallable(
       updatedBy: "system"
     }
   )
+}
+
+query GetGuestTicketRequestByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  guestTicketRequest(id: $id) {
+    id
+    status
+    requestedGuestCount
+    guestDisplayName
+    dietaryNote
+    booking { id }
+    guestTicketType { id }
+  }
 }
 
 # reviewGuestTicketRequest callable — admin SDK has no auth.uid for reviewedBy / HasAudit.

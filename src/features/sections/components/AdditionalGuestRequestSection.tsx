@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -87,6 +87,7 @@ export default function AdditionalGuestRequestSection({
   const [guestDetails, setGuestDetails] = useState<ExtraGuestDetailRow[]>([{ ...EMPTY_GUEST_DETAIL }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submissionKeyRef = useRef<string | null>(null);
 
   const parsedCount = Number.parseInt(countInput.trim(), 10);
   const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0;
@@ -125,9 +126,11 @@ export default function AdditionalGuestRequestSection({
     setError(null);
     setSubmitting(true);
     try {
+      submissionKeyRef.current ??= crypto.randomUUID();
       await submitAdditionalGuestTicketRequests({
         bookingId,
         guestTicketTypeId: guestTicketTypeId!,
+        idempotencyKey: submissionKeyRef.current,
         guests: guestDetails.slice(0, count).map((guest) => ({
           guestDisplayName: guest.guestDisplayName.trim(),
           dietaryNote: guest.dietaryNote.trim() || null,
@@ -135,6 +138,7 @@ export default function AdditionalGuestRequestSection({
       });
       setCountInput("1");
       setGuestDetails([{ ...EMPTY_GUEST_DETAIL }]);
+      submissionKeyRef.current = null;
       await onRequestCreated();
     } catch (e: unknown) {
       reportError("booking.guest-request", e);

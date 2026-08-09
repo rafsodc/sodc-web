@@ -575,6 +575,7 @@ export interface CreateGuestTicketRequestFromCallableData {
 }
 
 export interface CreateGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
@@ -1311,6 +1312,26 @@ export interface GetGovNotifyDeliveryConfigurationData {
     updatedAt: TimestampString;
     updatedBy?: string | null;
   };
+}
+
+export interface GetGuestTicketRequestByIdForCallableData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    booking: {
+      id: UUIDString;
+    } & Booking_Key;
+    guestTicketType?: {
+      id: UUIDString;
+    } & TicketType_Key;
+  } & GuestTicketRequest_Key;
+}
+
+export interface GetGuestTicketRequestByIdForCallableVariables {
+  id: UUIDString;
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -3891,6 +3912,11 @@ export function deleteBookingLineFromCallable(vars: DeleteBookingLineFromCallabl
 export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequestFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestFromCallableData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestByIdForCallable' Query. Allow users to execute without passing in DataConnect. */
+export function getGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestByIdForCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestByIdForCallable' Query. Allow users to pass in custom DataConnect instances. */
+export function getGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestByIdForCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequestFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function adminReviewGuestTicketRequestFromCallable(dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestFromCallableData>>;

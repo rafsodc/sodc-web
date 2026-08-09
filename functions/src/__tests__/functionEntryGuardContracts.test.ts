@@ -188,7 +188,7 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(bookings, "submitEventBooking", "enforceRateLimit(\"submitEventBooking\"", 200);
 
     const guestTicketRequests = readSource("guestTicketRequests.ts");
-    for (const fn of ["submitGuestTicketRequest", "reviewGuestTicketRequest"]) {
+    for (const fn of ["submitGuestTicketRequest", "submitAdditionalGuestTicketRequests", "reviewGuestTicketRequest"]) {
       assertOnCallGuard(guestTicketRequests, fn, `enforceRateLimit("${fn}"`, 300);
     }
 

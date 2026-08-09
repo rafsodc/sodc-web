@@ -46,6 +46,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
   - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
+  - [*GetGuestTicketRequestByIdForCallable*](#getguestticketrequestbyidforcallable)
   - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
   - [*ListStaleDraftBookingsForScheduler*](#liststaledraftbookingsforscheduler)
@@ -3080,6 +3081,100 @@ export default function GetPaymentReconciliationExceptionByOrderAndTypeComponent
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.paymentReconciliationExceptions);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetGuestTicketRequestByIdForCallable
+You can execute the `GetGuestTicketRequestByIdForCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestByIdForCallableData>): UseDataConnectQueryResult<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestByIdForCallableData>): UseDataConnectQueryResult<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+```
+
+### Variables
+The `GetGuestTicketRequestByIdForCallable` Query requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetGuestTicketRequestByIdForCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetGuestTicketRequestByIdForCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetGuestTicketRequestByIdForCallable` Query is of type `GetGuestTicketRequestByIdForCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetGuestTicketRequestByIdForCallableData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    booking: {
+      id: UUIDString;
+    } & Booking_Key;
+    guestTicketType?: {
+      id: UUIDString;
+    } & TicketType_Key;
+  } & GuestTicketRequest_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetGuestTicketRequestByIdForCallable`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetGuestTicketRequestByIdForCallableVariables } from '@dataconnect/generated';
+import { useGetGuestTicketRequestByIdForCallable } from '@dataconnect/generated/react'
+
+export default function GetGuestTicketRequestByIdForCallableComponent() {
+  // The `useGetGuestTicketRequestByIdForCallable` Query hook requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`:
+  const getGuestTicketRequestByIdForCallableVars: GetGuestTicketRequestByIdForCallableVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetGuestTicketRequestByIdForCallable(getGuestTicketRequestByIdForCallableVars);
+  // Variables can be defined inline as well.
+  const query = useGetGuestTicketRequestByIdForCallable({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetGuestTicketRequestByIdForCallable(dataConnect, getGuestTicketRequestByIdForCallableVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetGuestTicketRequestByIdForCallable(getGuestTicketRequestByIdForCallableVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetGuestTicketRequestByIdForCallable(dataConnect, getGuestTicketRequestByIdForCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.guestTicketRequest);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -13164,6 +13259,7 @@ The `CreateGuestTicketRequestFromCallable` Mutation requires an argument of type
 
 ```javascript
 export interface CreateGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
@@ -13222,6 +13318,7 @@ export default function CreateGuestTicketRequestFromCallableComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateGuestTicketRequestFromCallable` Mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
   const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
+    id: ..., 
     bookingId: ..., 
     requestedGuestCount: ..., 
     guestTicketTypeId: ..., 
@@ -13234,7 +13331,7 @@ export default function CreateGuestTicketRequestFromCallableComponent() {
   };
   mutation.mutate(createGuestTicketRequestFromCallableVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
+  mutation.mutate({ id: ..., bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

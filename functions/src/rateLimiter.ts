@@ -29,6 +29,7 @@ export const CALLABLE_RATE_LIMITS = {
   syncPendingUserClaims: { limit: 10, windowMs: HOUR_MS },
   submitEventBooking: { limit: 20, windowMs: HOUR_MS },
   submitGuestTicketRequest: { limit: 20, windowMs: HOUR_MS },
+  submitAdditionalGuestTicketRequests: { limit: 20, windowMs: HOUR_MS },
   reviewGuestTicketRequest: { limit: 30, windowMs: HOUR_MS },
   updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
   resignMembership: { limit: 3, windowMs: HOUR_MS },

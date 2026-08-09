@@ -744,6 +744,13 @@ function createGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOptions, 
 }
 exports.createGuestTicketRequestFromCallable = createGuestTicketRequestFromCallable;
 
+function getGuestTicketRequestByIdForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGuestTicketRequestByIdForCallable', inputVars, inputOpts);
+}
+exports.getGuestTicketRequestByIdForCallable = getGuestTicketRequestByIdForCallable;
+
 function adminReviewGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
