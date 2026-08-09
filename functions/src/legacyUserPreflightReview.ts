@@ -1,6 +1,7 @@
 import {
   LEGACY_PREFLIGHT_SCHEMA_VERSION,
   LEGACY_RECORD_SCHEMA_VERSION,
+  sha256Hex,
 } from "./legacyUserMigration";
 
 /**
@@ -75,6 +76,7 @@ interface PreflightCohort {
 export interface LegacyPreflightReport {
   schemaVersion: string;
   recordSchemaVersion: string;
+  sourceChecksum: string;
   generatedAt: string;
   overall: PreflightCohort;
   byOldUid: { set: PreflightCohort; missing: PreflightCohort };
@@ -177,6 +179,9 @@ export function parseLegacyPreflightReport(raw: unknown): LegacyPreflightReport 
   if (typeof report.generatedAt !== "string" || !report.generatedAt) {
     throw new Error("preflight report generatedAt must be a non-empty string");
   }
+  if (typeof report.sourceChecksum !== "string" || !/^[0-9a-f]{64}$/.test(report.sourceChecksum)) {
+    throw new Error("preflight report sourceChecksum must be a lowercase SHA-256 digest");
+  }
   const overall = requireCohort(report.overall, "overall");
   const byOldUid = report.byOldUid as Record<string, unknown> | undefined;
   if (!byOldUid) {
@@ -185,6 +190,7 @@ export function parseLegacyPreflightReport(raw: unknown): LegacyPreflightReport 
   return {
     schemaVersion: report.schemaVersion,
     recordSchemaVersion: report.recordSchemaVersion,
+    sourceChecksum: report.sourceChecksum,
     generatedAt: report.generatedAt,
     overall,
     byOldUid: {
@@ -392,11 +398,12 @@ export function buildLegacyPreflightReviewWorksheet(report: LegacyPreflightRepor
 }
 
 export interface LegacyMigrationApprovalStub {
-  schemaVersion: "sodc-legacy-user-migration-approval/v1";
+  schemaVersion: "sodc-legacy-user-migration-approval/v2";
   issue: 420;
   approved: false;
   projectId: string;
   sourceChecksum: string;
+  preflightChecksum: string;
   recordSchemaVersion: string;
   expectedRecordCount: number;
 }
@@ -411,15 +418,25 @@ export interface LegacyMigrationApprovalStub {
  */
 export function buildLegacyMigrationApprovalStub(
   report: LegacyPreflightReport,
-  projectId: string
+  projectId: string,
+  preflightChecksum: string,
 ): LegacyMigrationApprovalStub {
+  if (!/^[0-9a-f]{64}$/.test(preflightChecksum)) {
+    throw new Error("preflightChecksum must be a lowercase SHA-256 digest");
+  }
   return {
-    schemaVersion: "sodc-legacy-user-migration-approval/v1",
+    schemaVersion: "sodc-legacy-user-migration-approval/v2",
     issue: 420,
     approved: false,
     projectId,
     sourceChecksum: "<fill in from importer dry-run output>",
+    preflightChecksum,
     recordSchemaVersion: report.recordSchemaVersion,
     expectedRecordCount: report.overall.recordCount,
   };
+}
+
+/** Binds approval to the exact preflight file bytes reviewed by the operator. */
+export function legacyPreflightChecksum(content: string): string {
+  return sha256Hex(content);
 }

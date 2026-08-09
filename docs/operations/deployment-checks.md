@@ -131,17 +131,20 @@ read-only automated checks, added once production use surfaced real gaps they
 would have caught:
 
 - **App Check enforcement** -- `firebaseappcheck.googleapis.com`'s services
-  API reports per-service `enforcementMode`. FAILs if App Check has no
-  services registered at all; WARNs if registered but any checked service is
-  still `UNENFORCED` (monitoring-only); PASSes once every checked service is
-  `ENFORCED`.
+  API reports per-service `enforcementMode`. FAILs if any configured service
+  is absent; WARNs while every service is registered but at least one remains
+  `UNENFORCED` (monitoring-only); PASSes only once every configured service is
+  present and `ENFORCED`.
 - **Auth providers and authorized domains** -- Identity Platform's admin
   config API confirms email/password sign-in is enabled, every expected
   canonical domain is authorized, and `localhost` is authorized only in `dev`.
 - **Deployed Storage rules content and a negative unauthenticated probe** --
   the Firebase Security Rules API's deployed ruleset is byte-compared
   (whitespace-normalized) against the checked-in `storage.rules`, and an
-  unauthenticated fetch against the bucket confirms it is denied.
+  authenticated inventory selects a known existing object, then an
+  unauthenticated fetch must receive an explicit HTTP 401/403 denial. Missing
+  objects and provider errors fail the check rather than masquerading as a
+  successful authorization denial.
 - **Scanner service-account scope** -- confirms the malware scanner's service
   account carries no project-level IAM roles at all, only the specific
   resource-level grants checked elsewhere.

@@ -15,7 +15,11 @@ vi.mock("../generatedEmailTemplateManifest", () => ({
   },
 }));
 
-import { buildTemplateSyncResults, type NotifyTemplateBindingRow } from "../emailTemplateSync";
+import {
+  buildTemplateSyncResults,
+  notifyTemplateActivationError,
+  type NotifyTemplateBindingRow,
+} from "../emailTemplateSync";
 
 function liveTemplate(overrides: Record<string, unknown> = {}) {
   return {
@@ -54,6 +58,19 @@ describe("buildTemplateSyncResults", () => {
     ];
     const result = resultFor(buildTemplateSyncResults(templates, [], undefined), "bookingConfirmation");
     expect(result.candidates.map((c) => c.id)).toEqual(["match"]);
+  });
+
+  it("marks same-name candidates whose content does not match the manifest", () => {
+    const templates = [
+      liveTemplate({ id: "matching" }),
+      liveTemplate({ id: "wrong-body", body: "Unexpected content" }),
+    ];
+    const result = resultFor(buildTemplateSyncResults(templates, [], undefined), "bookingConfirmation");
+
+    expect(result.candidates).toEqual([
+      expect.objectContaining({ id: "matching", contentMatches: true }),
+      expect.objectContaining({ id: "wrong-body", bodyMatch: false, contentMatches: false }),
+    ]);
   });
 
   it("reports not_configured when no binding exists, even if a matching candidate is live", () => {
@@ -153,5 +170,46 @@ describe("buildTemplateSyncResults", () => {
     const results = buildTemplateSyncResults([], [], undefined);
     expect(results.map((r) => r.templateKey).sort()).toEqual(["bookingConfirmation", "passwordReset"]);
     expect(results.every((r) => r.status === "not_configured")).toBe(true);
+  });
+});
+
+describe("notifyTemplateActivationError", () => {
+  it("accepts only the current version of an exact manifest match", () => {
+    expect(notifyTemplateActivationError("bookingConfirmation", liveTemplate(), 1)).toBeUndefined();
+  });
+
+  it("normalises surrounding whitespace and line endings before activation", () => {
+    expect(notifyTemplateActivationError(
+      "bookingConfirmation",
+      liveTemplate({
+        subject: "  Booking confirmed  ",
+        body: "Hi ((firstName)), your booking is confirmed.\r\n",
+      }),
+      1,
+    )).toBeUndefined();
+  });
+
+  it("rejects a same-name template with a mismatched subject or body", () => {
+    expect(notifyTemplateActivationError(
+      "bookingConfirmation",
+      liveTemplate({ subject: "Wrong", body: "Wrong" }),
+      1,
+    )).toMatch(/subject and body/);
+  });
+
+  it("rejects a stale reviewed version even when content still matches", () => {
+    expect(notifyTemplateActivationError(
+      "bookingConfirmation",
+      liveTemplate({ version: 2 }),
+      1,
+    )).toMatch(/changed after this page was loaded/);
+  });
+
+  it("allows activation after the same candidate's content is synchronized", () => {
+    const mismatched = liveTemplate({ id: "duplicate", body: "Wrong body" });
+    expect(notifyTemplateActivationError("bookingConfirmation", mismatched, 1)).toMatch(/body/);
+
+    const synchronized = liveTemplate({ id: "duplicate", version: 2 });
+    expect(notifyTemplateActivationError("bookingConfirmation", synchronized, 2)).toBeUndefined();
   });
 });

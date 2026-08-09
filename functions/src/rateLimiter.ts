@@ -29,6 +29,7 @@ export const CALLABLE_RATE_LIMITS = {
   syncPendingUserClaims: { limit: 10, windowMs: HOUR_MS },
   submitEventBooking: { limit: 20, windowMs: HOUR_MS },
   submitGuestTicketRequest: { limit: 20, windowMs: HOUR_MS },
+  submitAdditionalGuestTicketRequests: { limit: 20, windowMs: HOUR_MS },
   reviewGuestTicketRequest: { limit: 30, windowMs: HOUR_MS },
   updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
   resignMembership: { limit: 3, windowMs: HOUR_MS },
@@ -78,12 +79,12 @@ function isRateLimitExceeded(error: unknown): boolean {
 }
 
 /**
- * Consume one request from a callable's per-user fixed-window allowance.
+ * Consume a weighted cost (one by default) from a callable's per-user fixed-window allowance.
  *
  * Two sequential Data Connect calls, not one: EnsureCallableRateLimitBucket first
  * guarantees the current window's row exists (idempotent upsert, always committed
  * before the next call starts), then ConsumeCallableRateLimit conditionally
- * increments it in its own transaction. `count_update: { inc: 1 }` serializes
+ * increments it in its own transaction. The atomic weighted increment serializes
  * concurrent increments and a failed in-transaction check rolls the increment back.
  * These cannot be combined into one @transaction — a row created by the upsert is
  * not visible to a same-transaction updateMany's `where` filter, which previously
@@ -91,9 +92,13 @@ function isRateLimitExceeded(error: unknown): boolean {
  */
 export async function enforceRateLimit(
   functionName: RateLimitedCallableName,
-  callerUid: string
+  callerUid: string,
+  cost = 1
 ): Promise<void> {
   const { limit, windowMs } = CALLABLE_RATE_LIMITS[functionName];
+  if (!Number.isInteger(cost) || cost < 1 || cost > limit) {
+    throw new Error("rate-limit cost must be a positive integer no greater than the policy limit");
+  }
   const windowStartMs = Math.floor(Date.now() / windowMs) * windowMs;
   const windowStart = new Date(windowStartMs).toISOString();
 
@@ -104,7 +109,8 @@ export async function enforceRateLimit(
       userId: callerUid,
       functionName,
       windowStart,
-      limit,
+      cost,
+      ceiling: limit - cost,
     });
   } catch (error: unknown) {
     if (isRateLimitExceeded(error)) {

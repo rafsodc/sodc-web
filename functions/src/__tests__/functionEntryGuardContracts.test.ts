@@ -191,6 +191,13 @@ describe("function entry guard contracts", () => {
     for (const fn of ["submitGuestTicketRequest", "reviewGuestTicketRequest"]) {
       assertOnCallGuard(guestTicketRequests, fn, `enforceRateLimit("${fn}"`, 300);
     }
+    // This callable must validate the batch length before charging its weighted row cost.
+    assertOnCallGuard(
+      guestTicketRequests,
+      "submitAdditionalGuestTicketRequests",
+      "enforceRateLimit(\"submitAdditionalGuestTicketRequests\"",
+      1_100
+    );
 
     const membership = readSource("membershipStatus.ts");
     assertOnCallGuard(

@@ -23,6 +23,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetLegacyUserIdentity*](#getlegacyuseridentity)
   - [*ListLegacyUserIdentitiesByBatch*](#listlegacyuseridentitiesbybatch)
   - [*ListMigrationUsers*](#listmigrationusers)
+  - [*SearchSectionMemberCandidates*](#searchsectionmembercandidates)
   - [*ListLegacyUserIdentitiesForMigration*](#listlegacyuseridentitiesformigration)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
@@ -39,6 +40,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
   - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
+  - [*GetGuestTicketRequestByIdForCallable*](#getguestticketrequestbyidforcallable)
   - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
   - [*ListStaleDraftBookingsForScheduler*](#liststaledraftbookingsforscheduler)
@@ -1807,6 +1809,162 @@ console.log(data.users);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.users);
+});
+```
+
+## SearchSectionMemberCandidates
+You can execute the `SearchSectionMemberCandidates` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+searchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+
+interface SearchSectionMemberCandidatesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+}
+export const searchSectionMemberCandidatesRef: SearchSectionMemberCandidatesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+searchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+
+interface SearchSectionMemberCandidatesRef {
+  ...
+  (dc: DataConnect, vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+}
+export const searchSectionMemberCandidatesRef: SearchSectionMemberCandidatesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the searchSectionMemberCandidatesRef:
+```typescript
+const name = searchSectionMemberCandidatesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SearchSectionMemberCandidates` query requires an argument of type `SearchSectionMemberCandidatesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `SearchSectionMemberCandidates` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SearchSectionMemberCandidatesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  includedExplicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  includedInherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+```
+### Using `SearchSectionMemberCandidates`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, searchSectionMemberCandidates, SearchSectionMemberCandidatesVariables } from '@dataconnect/generated';
+
+// The `SearchSectionMemberCandidates` query requires an argument of type `SearchSectionMemberCandidatesVariables`:
+const searchSectionMemberCandidatesVars: SearchSectionMemberCandidatesVariables = {
+  userGroupIds: ..., 
+  membershipStatuses: ..., 
+  searchPattern: ..., 
+  includeIds: ..., 
+  limit: ..., 
+};
+
+// Call the `searchSectionMemberCandidates()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await searchSectionMemberCandidates(searchSectionMemberCandidatesVars);
+// Variables can be defined inline as well.
+const { data } = await searchSectionMemberCandidates({ userGroupIds: ..., membershipStatuses: ..., searchPattern: ..., includeIds: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await searchSectionMemberCandidates(dataConnect, searchSectionMemberCandidatesVars);
+
+console.log(data.explicit);
+console.log(data.inherited);
+console.log(data.includedExplicit);
+console.log(data.includedInherited);
+
+// Or, you can use the `Promise` API.
+searchSectionMemberCandidates(searchSectionMemberCandidatesVars).then((response) => {
+  const data = response.data;
+  console.log(data.explicit);
+  console.log(data.inherited);
+  console.log(data.includedExplicit);
+  console.log(data.includedInherited);
+});
+```
+
+### Using `SearchSectionMemberCandidates`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, searchSectionMemberCandidatesRef, SearchSectionMemberCandidatesVariables } from '@dataconnect/generated';
+
+// The `SearchSectionMemberCandidates` query requires an argument of type `SearchSectionMemberCandidatesVariables`:
+const searchSectionMemberCandidatesVars: SearchSectionMemberCandidatesVariables = {
+  userGroupIds: ..., 
+  membershipStatuses: ..., 
+  searchPattern: ..., 
+  includeIds: ..., 
+  limit: ..., 
+};
+
+// Call the `searchSectionMemberCandidatesRef()` function to get a reference to the query.
+const ref = searchSectionMemberCandidatesRef(searchSectionMemberCandidatesVars);
+// Variables can be defined inline as well.
+const ref = searchSectionMemberCandidatesRef({ userGroupIds: ..., membershipStatuses: ..., searchPattern: ..., includeIds: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = searchSectionMemberCandidatesRef(dataConnect, searchSectionMemberCandidatesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.explicit);
+console.log(data.inherited);
+console.log(data.includedExplicit);
+console.log(data.includedInherited);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.explicit);
+  console.log(data.inherited);
+  console.log(data.includedExplicit);
+  console.log(data.includedInherited);
 });
 ```
 
@@ -3819,6 +3977,127 @@ console.log(data.paymentReconciliationExceptions);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.paymentReconciliationExceptions);
+});
+```
+
+## GetGuestTicketRequestByIdForCallable
+You can execute the `GetGuestTicketRequestByIdForCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+
+interface GetGuestTicketRequestByIdForCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetGuestTicketRequestByIdForCallableVariables): QueryRef<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+}
+export const getGuestTicketRequestByIdForCallableRef: GetGuestTicketRequestByIdForCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+
+interface GetGuestTicketRequestByIdForCallableRef {
+  ...
+  (dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables): QueryRef<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+}
+export const getGuestTicketRequestByIdForCallableRef: GetGuestTicketRequestByIdForCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getGuestTicketRequestByIdForCallableRef:
+```typescript
+const name = getGuestTicketRequestByIdForCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetGuestTicketRequestByIdForCallable` query requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetGuestTicketRequestByIdForCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetGuestTicketRequestByIdForCallable` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetGuestTicketRequestByIdForCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetGuestTicketRequestByIdForCallableData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    booking: {
+      id: UUIDString;
+    } & Booking_Key;
+    guestTicketType?: {
+      id: UUIDString;
+    } & TicketType_Key;
+  } & GuestTicketRequest_Key;
+}
+```
+### Using `GetGuestTicketRequestByIdForCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getGuestTicketRequestByIdForCallable, GetGuestTicketRequestByIdForCallableVariables } from '@dataconnect/generated';
+
+// The `GetGuestTicketRequestByIdForCallable` query requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`:
+const getGuestTicketRequestByIdForCallableVars: GetGuestTicketRequestByIdForCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getGuestTicketRequestByIdForCallable()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getGuestTicketRequestByIdForCallable(getGuestTicketRequestByIdForCallableVars);
+// Variables can be defined inline as well.
+const { data } = await getGuestTicketRequestByIdForCallable({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getGuestTicketRequestByIdForCallable(dataConnect, getGuestTicketRequestByIdForCallableVars);
+
+console.log(data.guestTicketRequest);
+
+// Or, you can use the `Promise` API.
+getGuestTicketRequestByIdForCallable(getGuestTicketRequestByIdForCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.guestTicketRequest);
+});
+```
+
+### Using `GetGuestTicketRequestByIdForCallable`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getGuestTicketRequestByIdForCallableRef, GetGuestTicketRequestByIdForCallableVariables } from '@dataconnect/generated';
+
+// The `GetGuestTicketRequestByIdForCallable` query requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`:
+const getGuestTicketRequestByIdForCallableVars: GetGuestTicketRequestByIdForCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getGuestTicketRequestByIdForCallableRef()` function to get a reference to the query.
+const ref = getGuestTicketRequestByIdForCallableRef(getGuestTicketRequestByIdForCallableVars);
+// Variables can be defined inline as well.
+const ref = getGuestTicketRequestByIdForCallableRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getGuestTicketRequestByIdForCallableRef(dataConnect, getGuestTicketRequestByIdForCallableVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.guestTicketRequest);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.guestTicketRequest);
 });
 ```
 
@@ -16184,6 +16463,7 @@ The `CreateGuestTicketRequestFromCallable` mutation requires an argument of type
 
 ```typescript
 export interface CreateGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
@@ -16212,6 +16492,7 @@ import { connectorConfig, createGuestTicketRequestFromCallable, CreateGuestTicke
 
 // The `CreateGuestTicketRequestFromCallable` mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
 const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
+  id: ..., 
   bookingId: ..., 
   requestedGuestCount: ..., 
   guestTicketTypeId: ..., 
@@ -16227,7 +16508,7 @@ const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCall
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createGuestTicketRequestFromCallable(createGuestTicketRequestFromCallableVars);
 // Variables can be defined inline as well.
-const { data } = await createGuestTicketRequestFromCallable({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
+const { data } = await createGuestTicketRequestFromCallable({ id: ..., bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -16250,6 +16531,7 @@ import { connectorConfig, createGuestTicketRequestFromCallableRef, CreateGuestTi
 
 // The `CreateGuestTicketRequestFromCallable` mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
 const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
+  id: ..., 
   bookingId: ..., 
   requestedGuestCount: ..., 
   guestTicketTypeId: ..., 
@@ -16264,7 +16546,7 @@ const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCall
 // Call the `createGuestTicketRequestFromCallableRef()` function to get a reference to the mutation.
 const ref = createGuestTicketRequestFromCallableRef(createGuestTicketRequestFromCallableVars);
 // Variables can be defined inline as well.
-const ref = createGuestTicketRequestFromCallableRef({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
+const ref = createGuestTicketRequestFromCallableRef({ id: ..., bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -18570,7 +18852,8 @@ export interface ConsumeCallableRateLimitVariables {
   userId: string;
   functionName: string;
   windowStart: TimestampString;
-  limit: number;
+  cost: number;
+  ceiling: number;
 }
 ```
 ### Return Type
@@ -18594,14 +18877,15 @@ const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
   userId: ..., 
   functionName: ..., 
   windowStart: ..., 
-  limit: ..., 
+  cost: ..., 
+  ceiling: ..., 
 };
 
 // Call the `consumeCallableRateLimit()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await consumeCallableRateLimit(consumeCallableRateLimitVars);
 // Variables can be defined inline as well.
-const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ..., windowStart: ..., cost: ..., ceiling: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -18629,13 +18913,14 @@ const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
   userId: ..., 
   functionName: ..., 
   windowStart: ..., 
-  limit: ..., 
+  cost: ..., 
+  ceiling: ..., 
 };
 
 // Call the `consumeCallableRateLimitRef()` function to get a reference to the mutation.
 const ref = consumeCallableRateLimitRef(consumeCallableRateLimitVars);
 // Variables can be defined inline as well.
-const ref = consumeCallableRateLimitRef({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+const ref = consumeCallableRateLimitRef({ userId: ..., functionName: ..., windowStart: ..., cost: ..., ceiling: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

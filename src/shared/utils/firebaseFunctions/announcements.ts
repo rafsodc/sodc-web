@@ -7,6 +7,9 @@ export interface NotifyTemplateCandidate {
   id: string;
   name: string;
   version: number;
+  subjectMatch: boolean;
+  bodyMatch: boolean;
+  contentMatches: boolean;
 }
 
 export interface TemplateSyncResult {

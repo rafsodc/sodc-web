@@ -42,6 +42,7 @@ describe("AdditionalGuestRequestSection", () => {
     expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
       bookingId: "550e8400-e29b-41d4-a716-446655440000",
       guestTicketTypeId: "660e8400-e29b-41d4-a716-446655440001",
+      idempotencyKey: expect.any(String),
       guests: [{ guestDisplayName: "Alex Patron", dietaryNote: null }],
     });
     expect(baseProps.onRequestCreated).toHaveBeenCalled();
@@ -69,6 +70,7 @@ describe("AdditionalGuestRequestSection", () => {
     expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
       bookingId: "550e8400-e29b-41d4-a716-446655440000",
       guestTicketTypeId: "660e8400-e29b-41d4-a716-446655440001",
+      idempotencyKey: expect.any(String),
       guests: [
         { guestDisplayName: "Alex Patron", dietaryNote: null },
         { guestDisplayName: "Jamie Lee", dietaryNote: null },

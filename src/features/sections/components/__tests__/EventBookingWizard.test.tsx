@@ -676,6 +676,7 @@ describe("EventBookingWizard", () => {
     expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
       bookingId: "booking-new",
       guestTicketTypeId: "ticket-guest",
+      idempotencyKey: expect.any(String),
       guests: [{ guestDisplayName: "Sam Extra", dietaryNote: "Gluten free" }],
     });
   });

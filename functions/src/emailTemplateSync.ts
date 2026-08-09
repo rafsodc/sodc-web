@@ -21,6 +21,9 @@ export interface NotifyTemplateCandidate {
   id: string;
   name: string;
   version: number;
+  subjectMatch: boolean;
+  bodyMatch: boolean;
+  contentMatches: boolean;
 }
 
 export interface TemplateSyncResult {
@@ -54,6 +57,41 @@ interface NotifyLiveTemplate {
 
 function normaliseBody(body: string): string {
   return body.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function compareTemplateContent(
+  live: Pick<NotifyLiveTemplate, "subject" | "body">,
+  expected: { subject: string; body: string },
+): { subjectMatch: boolean; bodyMatch: boolean; contentMatches: boolean } {
+  const subjectMatch = normaliseBody(live.subject ?? "") === normaliseBody(expected.subject);
+  const bodyMatch = normaliseBody(live.body ?? "") === normaliseBody(expected.body);
+  return { subjectMatch, bodyMatch, contentMatches: subjectMatch && bodyMatch };
+}
+
+/** Pure validation used at the callable authority boundary and by unit tests. */
+export function notifyTemplateActivationError(
+  templateKey: string,
+  live: NotifyLiveTemplate,
+  reviewedVersion: number,
+): string | undefined {
+  const expected = EMAIL_TEMPLATE_MANIFEST[templateKey];
+  if (!expected) return "Unknown template key";
+  if (live.name !== templateKey) {
+    return "The selected Notify template's name no longer matches this template key exactly";
+  }
+  const comparison = compareTemplateContent(live, expected);
+  if (!comparison.contentMatches) {
+    const mismatches = [
+      !comparison.subjectMatch ? "subject" : undefined,
+      !comparison.bodyMatch ? "body" : undefined,
+    ].filter(Boolean).join(" and ");
+    const verb = mismatches.includes(" and ") ? "do not" : "does not";
+    return `The selected Notify template's ${mismatches} ${verb} match the application manifest`;
+  }
+  if (live.version !== reviewedVersion) {
+    return "The selected Notify template changed after this page was loaded; refresh and review the latest version";
+  }
+  return undefined;
 }
 
 function buildEditUrl(serviceId: string, templateId: string): string {
@@ -91,11 +129,16 @@ export function buildTemplateSyncResults(
   const bindingsByKey = new Map(bindings.map((b) => [b.templateKey, b]));
 
   return Object.entries(EMAIL_TEMPLATE_MANIFEST).map(([templateKey, definition]) => {
-    const candidates: NotifyTemplateCandidate[] = templates
-      .filter((t) => t.name === templateKey)
-      .map((t) => ({ id: t.id, name: t.name, version: t.version }));
     const expectedSubject = definition.subject;
     const expectedBody = normaliseBody(definition.body);
+    const candidates: NotifyTemplateCandidate[] = templates
+      .filter((t) => t.name === templateKey)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        version: t.version,
+        ...compareTemplateContent(t, definition),
+      }));
     const binding = bindingsByKey.get(templateKey);
 
     if (!binding) {
@@ -128,8 +171,7 @@ export function buildTemplateSyncResults(
 
     const liveSubject = live.subject ?? "";
     const liveBody = normaliseBody(live.body ?? "");
-    const subjectMatch = liveSubject === expectedSubject;
-    const bodyMatch = liveBody === expectedBody;
+    const { subjectMatch, bodyMatch } = compareTemplateContent(live, definition);
 
     return {
       templateKey,
@@ -209,14 +251,11 @@ export const setNotifyTemplateBinding = onCall(
       } catch {
         throw new HttpsError("not-found", "Notify template could not be found");
       }
-      // The frontend dropdown only ever offers exact-name matches, but this
-      // callable is the real authority boundary and this table now drives
-      // actual sends, so re-assert the match rather than trusting the client.
-      if (live.name !== templateKey) {
-        throw new HttpsError(
-          "failed-precondition",
-          "The selected Notify template's name no longer matches this template key exactly"
-        );
+      // This callable is the authority boundary for a binding that drives actual sends.
+      // Re-fetch and validate name, content, and version instead of trusting dropdown data.
+      const activationError = notifyTemplateActivationError(templateKey, live, reviewedVersion);
+      if (activationError) {
+        throw new HttpsError("failed-precondition", activationError);
       }
 
       const existingResult = await getNotifyTemplateBindings();
@@ -264,6 +303,11 @@ export const moveAllNotifyTemplateBindingsToLatestVersion = onCall(
       for (const binding of bindingsResult.data.notifyTemplateBindings) {
         const live = templatesById.get(binding.notifyTemplateId);
         if (!live || live.version === binding.reviewedVersion) continue;
+        if (notifyTemplateActivationError(binding.templateKey, live, live.version)) {
+          // A bulk review must never acknowledge drifted content. Leave the old
+          // reviewed version in place so the row remains visibly actionable.
+          continue;
+        }
         await upsertNotifyTemplateBinding({
           templateKey: binding.templateKey,
           notifyTemplateId: binding.notifyTemplateId,

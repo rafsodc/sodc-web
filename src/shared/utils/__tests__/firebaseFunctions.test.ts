@@ -534,38 +534,41 @@ describe("submitGuestTicketRequest", () => {
 });
 
 describe("submitAdditionalGuestTicketRequests", () => {
-  it("submits one request per guest, each with requestedGuestCount 1", async () => {
-    const callable = makeCallable({ data: { success: true, requestId: "r1" } });
+  it("submits the complete guest batch through one idempotent callable", async () => {
+    const callable = makeCallable({
+      data: {
+        success: true,
+        requests: [
+          { success: true, requestId: "r1" },
+          { success: true, requestId: "r2" },
+        ],
+      },
+    });
 
     const results = await submitAdditionalGuestTicketRequests({
       bookingId: BOOKING_UUID,
       guestTicketTypeId: TICKET_UUID,
+      idempotencyKey: BOOKING_UUID,
       guests: [
         { guestDisplayName: "Jane Smith", dietaryNote: "gluten free" },
         { guestDisplayName: "Sam Extra", dietaryNote: null },
       ],
     });
 
-    expect(callable).toHaveBeenCalledTimes(2);
-    expect(callable.mock.calls[0][0]).toEqual(
-      expect.objectContaining({
-        bookingId: BOOKING_UUID,
-        requestedGuestCount: 1,
-        guestTicketTypeId: TICKET_UUID,
-        guestDisplayName: "Jane Smith",
-        dietaryNote: "gluten free",
-      })
-    );
-    expect(callable.mock.calls[1][0]).toEqual(
-      expect.objectContaining({
-        requestedGuestCount: 1,
-        guestDisplayName: "Sam Extra",
-        dietaryNote: null,
-      })
-    );
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "submitAdditionalGuestTicketRequests");
+    expect(callable).toHaveBeenCalledTimes(1);
+    expect(callable.mock.calls[0][0]).toEqual({
+      bookingId: BOOKING_UUID,
+      guestTicketTypeId: TICKET_UUID,
+      idempotencyKey: BOOKING_UUID,
+      guests: [
+        { guestDisplayName: "Jane Smith", dietaryNote: "gluten free" },
+        { guestDisplayName: "Sam Extra", dietaryNote: null },
+      ],
+    });
     expect(results).toEqual([
       { success: true, requestId: "r1" },
-      { success: true, requestId: "r1" },
+      { success: true, requestId: "r2" },
     ]);
   });
 
@@ -575,6 +578,7 @@ describe("submitAdditionalGuestTicketRequests", () => {
       submitAdditionalGuestTicketRequests({
         bookingId: BOOKING_UUID,
         guestTicketTypeId: TICKET_UUID,
+        idempotencyKey: BOOKING_UUID,
         guests: [{ guestDisplayName: "Jane" }],
       })
     ).rejects.toThrow("Booking not found");

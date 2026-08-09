@@ -51,6 +51,8 @@ export interface SearchSectionMembersMember {
 
 export interface SearchSectionMembersResponse {
   members: SearchSectionMembersMember[];
+  /** Search is deliberately cursorless; refine the typeahead when more matches exist. */
+  hasMore: boolean;
 }
 
 /**

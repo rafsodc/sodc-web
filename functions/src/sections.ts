@@ -10,8 +10,10 @@ import {
   getUserAccessGroupsById,
   getUserMembershipStatus,
   listUsers,
+  searchSectionMemberCandidates,
   SectionType,
   type GetSectionByIdData,
+  type MembershipStatus,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { linkHasPurpose, resolveSectionAccess } from "./sectionAccess";
@@ -65,10 +67,7 @@ interface RawSectionMemberUser {
 
 /**
  * Loads merged section members (explicit UserUserGroup + inherited by membership status).
- * Throws not-found/permission-denied for a section the caller can't see. Shared by
- * getSectionMembersMerged (full list, section member directory) and searchSectionMembers
- * (typeahead over the same population, for pickers where the full list is too large to
- * dump into a dropdown).
+ * Throws not-found/permission-denied for a section the caller can't see.
  */
 async function loadSectionMemberPopulation(
   sectionId: string,
@@ -192,6 +191,71 @@ export const getSectionMembersMerged = onCall(
 const SEARCH_SECTION_MEMBERS_MAX_RESULTS = 20;
 const SEARCH_SECTION_MEMBERS_MAX_INCLUDE_IDS = 10;
 
+interface SectionMemberSearchScope {
+  userGroupIds: string[];
+  membershipStatuses: MembershipStatus[];
+}
+
+/**
+ * Resolves the same explicit-group and inherited-status population used by the full
+ * directory, without materialising either population. The actual name lookup stays in
+ * Data Connect so the picker has a fixed backend row bound.
+ */
+async function loadSectionMemberSearchScope(
+  sectionId: string,
+  callerUid: string
+): Promise<SectionMemberSearchScope> {
+  const [sectionResult, callerGroupsResult, userStatusResult] = await Promise.all([
+    getSectionById({ id: sectionId }),
+    getUserAccessGroupsById({ userId: callerUid }),
+    getUserMembershipStatus({ id: callerUid }),
+  ]);
+
+  const section = sectionResult.data?.section;
+  if (!section) {
+    throw new HttpsError("not-found", "Section not found");
+  }
+
+  const links = section.purposeLinks ?? [];
+  const accessLinks = links.filter(
+    (link) => linkHasPurpose(link, "ACCESS") || linkHasPurpose(link, "MODERATOR")
+  );
+  const callerGroupIds = new Set(
+    (callerGroupsResult.data?.user?.userGroups || []).map(
+      (membership: { userGroup: { id: string } }) => membership.userGroup.id
+    )
+  );
+  const callerStatus = userStatusResult.data?.user?.membershipStatus;
+  const canAccess = accessLinks.some(
+    (link) =>
+      callerGroupIds.has(link.userGroup.id) ||
+      Boolean(callerStatus && link.userGroup.membershipStatuses?.includes(callerStatus))
+  );
+  if (!canAccess) {
+    throw new HttpsError("permission-denied", "You do not have permission to view this section");
+  }
+
+  const memberLinks = links.filter((link) => linkHasPurpose(link, "MEMBER"));
+  const sourceLinks =
+    memberLinks.length > 0
+      ? memberLinks
+      : section.type === SectionType.EVENTS
+        ? accessLinks
+        : [];
+
+  return {
+    userGroupIds: [...new Set(sourceLinks.map((link) => link.userGroup.id))],
+    membershipStatuses: [
+      ...new Set(sourceLinks.flatMap((link) => link.userGroup.membershipStatuses ?? [])),
+    ],
+  };
+}
+
+function caseInsensitiveContainsPattern(searchTerm: string): string {
+  const escaped = searchTerm.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+  return `(?i).*${escaped}.*`;
+}
+
 export interface SectionMemberSearchResult {
   id: string;
   firstName: string;
@@ -213,7 +277,7 @@ export const searchSectionMembers = onCall(
     await enforceRateLimit("searchSectionMembers", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const searchTerm = typeof request.data?.searchTerm === "string" ? request.data.searchTerm.trim() : "";
-    const includeIds = new Set(
+    const includeIds = new Set<string>(
       (Array.isArray(request.data?.includeIds) ? request.data.includeIds : [])
         .filter((v: unknown): v is string => typeof v === "string")
         .slice(0, SEARCH_SECTION_MEMBERS_MAX_INCLUDE_IDS)
@@ -221,23 +285,51 @@ export const searchSectionMembers = onCall(
     const callerUid = request.auth!.uid;
 
     try {
-      const population = await loadSectionMemberPopulation(sectionId, callerUid);
-      const term = searchTerm.toLowerCase();
-
-      const included: SectionMemberSearchResult[] = [];
-      const searched: SectionMemberSearchResult[] = [];
-      for (const m of population) {
-        if (m.id === callerUid) continue;
-        const result: SectionMemberSearchResult = { id: m.id, firstName: m.firstName, lastName: m.lastName };
-        if (includeIds.has(m.id)) {
-          included.push(result);
-        } else if (term && `${m.firstName} ${m.lastName}`.toLowerCase().includes(term)) {
-          searched.push(result);
-        }
+      const scope = await loadSectionMemberSearchScope(sectionId, callerUid);
+      if (!searchTerm && includeIds.size === 0) {
+        return { members: [], hasMore: false };
       }
 
-      const members = [...included, ...searched.slice(0, SEARCH_SECTION_MEMBERS_MAX_RESULTS)];
-      return { members };
+      const result = await searchSectionMemberCandidates({
+        userGroupIds: scope.userGroupIds,
+        membershipStatuses: scope.membershipStatuses,
+        searchPattern: caseInsensitiveContainsPattern(searchTerm),
+        includeIds: [...includeIds],
+        limit: SEARCH_SECTION_MEMBERS_MAX_RESULTS + 1,
+      });
+
+      const included = [
+        ...(result.data.includedExplicit ?? []).map((membership) => membership.user),
+        ...(result.data.includedInherited ?? []),
+      ];
+      const searched = [
+        ...(result.data.explicit ?? []).map((membership) => membership.user),
+        ...(result.data.inherited ?? []),
+      ].sort((a, b) =>
+        a.lastName.localeCompare(b.lastName) ||
+        a.firstName.localeCompare(b.firstName) ||
+        a.id.localeCompare(b.id)
+      );
+      const seen = new Set<string>();
+      const selectedMembers: SectionMemberSearchResult[] = [];
+      const searchMembers: SectionMemberSearchResult[] = [];
+      for (const member of included) {
+        if (member.id === callerUid || seen.has(member.id)) continue;
+        seen.add(member.id);
+        selectedMembers.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
+      }
+      if (searchTerm) {
+        for (const member of searched) {
+          if (member.id === callerUid || seen.has(member.id)) continue;
+          seen.add(member.id);
+          searchMembers.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
+        }
+      }
+      const hasMore = searchMembers.length > SEARCH_SECTION_MEMBERS_MAX_RESULTS;
+      return {
+        members: [...selectedMembers, ...searchMembers.slice(0, SEARCH_SECTION_MEMBERS_MAX_RESULTS)],
+        hasMore,
+      };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "searchSectionMembers");

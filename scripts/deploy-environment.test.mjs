@@ -14,9 +14,12 @@ import {
   environmentConfigFileName,
   parseDeploymentEnvironment,
   parseDotEnv,
+  preflightAttestationPath,
   REQUIRED_VITE_FIREBASE_KEYS,
   runDeploymentPlan,
   validateFirebaseAlias,
+  verifyPreflightAttestation,
+  writePreflightAttestation,
 } from "./deploy-environment-lib.mjs";
 
 const firebaseRc = {
@@ -70,6 +73,7 @@ describe("environment deployment configuration", () => {
       "functions-lint",
       "functions-test",
       "functions-build",
+      "record-preflight-attestation",
       "deploy-dataconnect",
       "deploy-functions",
       "deploy-hosting",
@@ -107,15 +111,41 @@ describe("environment deployment configuration", () => {
 });
 
 describe("resuming a deployment with --from", () => {
-  it("skips to the requested stage, leaving earlier stages out entirely", () => {
+  it("retains the clean-checkout and attestation gates before the requested stage", () => {
     const plan = createDeploymentPlan("beta", "abc123");
     const resumed = applyFromStage(plan, "hosting");
-    expect(resumed.map(({ id }) => id)).toEqual(["deploy-hosting", "deployment-audit"]);
+    expect(resumed.map(({ id }) => id)).toEqual([
+      "clean-checkout",
+      "verify-preflight-attestation",
+      "deploy-hosting",
+      "deployment-audit",
+    ]);
   });
 
   it("returns the full plan unchanged when no stage is given", () => {
     const plan = createDeploymentPlan("beta", "abc123");
     expect(applyFromStage(plan, undefined)).toEqual(plan);
+  });
+});
+
+describe("deployment preflight attestation", () => {
+  it("binds a resume to the exact environment, project, and Git revision", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "deploy-attestation-"));
+    try {
+      const expected = { environment: "beta", projectId: "sodc-web-beta", gitSha: "abc123" };
+      await writePreflightAttestation(directory, expected);
+      await expect(verifyPreflightAttestation(directory, expected)).resolves.toMatchObject(expected);
+      expect(preflightAttestationPath(directory, "beta")).toContain("deployment-preflight/beta.json");
+
+      await expect(
+        verifyPreflightAttestation(directory, { ...expected, gitSha: "different" }),
+      ).rejects.toThrow(/does not match/);
+      await expect(
+        verifyPreflightAttestation(directory, { environment: "prod", projectId: "sodc-web-production", gitSha: "abc123" }),
+      ).rejects.toThrow(/No valid preflight attestation/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });
 

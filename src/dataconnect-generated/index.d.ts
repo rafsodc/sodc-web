@@ -450,7 +450,8 @@ export interface ConsumeCallableRateLimitVariables {
   userId: string;
   functionName: string;
   windowStart: TimestampString;
-  limit: number;
+  cost: number;
+  ceiling: number;
 }
 
 export interface CreateAnnouncementRecipientData {
@@ -597,6 +598,7 @@ export interface CreateGuestTicketRequestFromCallableData {
 }
 
 export interface CreateGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
@@ -1333,6 +1335,26 @@ export interface GetGovNotifyDeliveryConfigurationData {
     updatedAt: TimestampString;
     updatedBy?: string | null;
   };
+}
+
+export interface GetGuestTicketRequestByIdForCallableData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    booking: {
+      id: UUIDString;
+    } & Booking_Key;
+    guestTicketType?: {
+      id: UUIDString;
+    } & TicketType_Key;
+  } & GuestTicketRequest_Key;
+}
+
+export interface GetGuestTicketRequestByIdForCallableVariables {
+  id: UUIDString;
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -3084,6 +3106,41 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
   userGroupId: UUIDString;
 }
 
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  includedExplicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  includedInherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+
 export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
@@ -4003,6 +4060,18 @@ export const listMigrationUsersRef: ListMigrationUsersRef;
 export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
 export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
 
+interface SearchSectionMemberCandidatesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+  operationName: string;
+}
+export const searchSectionMemberCandidatesRef: SearchSectionMemberCandidatesRef;
+
+export function searchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+export function searchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+
 interface ListLegacyUserIdentitiesForMigrationRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: ListLegacyUserIdentitiesForMigrationVariables): QueryRef<ListLegacyUserIdentitiesForMigrationData, ListLegacyUserIdentitiesForMigrationVariables>;
@@ -4494,6 +4563,18 @@ export const createGuestTicketRequestFromCallableRef: CreateGuestTicketRequestFr
 
 export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
 export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables): MutationPromise<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
+
+interface GetGuestTicketRequestByIdForCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetGuestTicketRequestByIdForCallableVariables): QueryRef<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables): QueryRef<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+  operationName: string;
+}
+export const getGuestTicketRequestByIdForCallableRef: GetGuestTicketRequestByIdForCallableRef;
+
+export function getGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
+export function getGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
 
 interface AdminReviewGuestTicketRequestFromCallableRef {
   /* Allow users to create refs without passing in DataConnect */

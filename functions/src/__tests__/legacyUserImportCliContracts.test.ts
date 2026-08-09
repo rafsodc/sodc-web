@@ -70,8 +70,7 @@ describe("legacy user import CLI safety contracts", () => {
     expect(cli).toContain("production apply requires --approval");
     expect(cli).toContain("approval.issue !== 420");
     expect(cli).toContain("approval.sourceChecksum !== sourceChecksum");
-    expect(cli).toContain(
-      "approval.expectedRecordCount !== recordCount"
-    );
+    expect(cli).toContain("approval.expectedRecordCount !== recordCount");
+    expect(cli).toContain("approval.preflightChecksum !== preflightChecksum");
   });
 });

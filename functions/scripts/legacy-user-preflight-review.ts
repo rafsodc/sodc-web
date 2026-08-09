@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   buildLegacyMigrationApprovalStub,
   buildLegacyPreflightReviewWorksheet,
+  legacyPreflightChecksum,
   parseLegacyPreflightReport,
 } from "../src/legacyUserPreflightReview";
 
@@ -65,14 +66,19 @@ function writeFile(outputPath: string, content: string): void {
 
 function main(): void {
   const options = parseArguments(process.argv.slice(2));
-  const raw: unknown = JSON.parse(fs.readFileSync(options.inputPath, "utf8"));
+  const preflightContent = fs.readFileSync(options.inputPath, "utf8");
+  const raw: unknown = JSON.parse(preflightContent);
   const report = parseLegacyPreflightReport(raw);
 
   const worksheet = buildLegacyPreflightReviewWorksheet(report);
   console.log(worksheet);
   if (options.outputPath) writeFile(options.outputPath, worksheet);
 
-  const approvalStub = buildLegacyMigrationApprovalStub(report, options.projectId);
+  const approvalStub = buildLegacyMigrationApprovalStub(
+    report,
+    options.projectId,
+    legacyPreflightChecksum(preflightContent),
+  );
   const approvalJson = `${JSON.stringify(approvalStub, null, 2)}\n`;
   if (options.approvalOutputPath) {
     writeFile(options.approvalOutputPath, approvalJson);

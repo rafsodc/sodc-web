@@ -8,6 +8,13 @@ export const RESULT_STATUS = Object.freeze({
   SKIP: "skip",
 });
 
+export function firebaseStorageDownloadUrl(bucket, objectName) {
+  return (
+    `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}` +
+    `/o/${encodeURIComponent(objectName)}?alt=media`
+  );
+}
+
 export function parseJsonOutput(output) {
   const trimmed = String(output).trim();
   if (!trimmed) throw new Error("command returned no JSON");
@@ -177,29 +184,52 @@ export function assessFunctionInvokerPolicies(records, expectedPublicFunctions) 
  * for any service (an empty list), WARN when registered but still in monitoring-only mode
  * (any service not ENFORCED), PASS only once every checked service is ENFORCED.
  */
-export function assessAppCheckEnforcement(services) {
+export function assessAppCheckEnforcement(services, expectedServiceNames = []) {
   const entries = (services ?? []).map((service) => ({
     name: normalizeResourceName(service.name),
     enforcementMode: service.enforcementMode,
   }));
+  const returnedNames = new Set(entries.map(({ name }) => name));
+  const missingServices = expectedServiceNames
+    .map(normalizeResourceName)
+    .filter((name) => !returnedNames.has(name));
+  const expectedServices = expectedServiceNames.map(normalizeResourceName);
+  const returnedServices = entries.map(({ name }) => name);
+  const unenforcedServices = entries
+    .filter((entry) => entry.enforcementMode !== "ENFORCED")
+    .map(({ name }) => name);
+  const details = {
+    expectedServices,
+    returnedServices,
+    missingServices,
+    unenforcedServices,
+    services: entries,
+  };
+  if (missingServices.length > 0) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: `App Check is missing configured service(s): ${missingServices.join(", ")}.`,
+      details,
+    };
+  }
   if (entries.length === 0) {
     return {
       status: RESULT_STATUS.FAIL,
       summary: "App Check has no services registered; enforcement is not configured.",
+      details,
     };
   }
-  const unenforced = entries.filter((entry) => entry.enforcementMode !== "ENFORCED");
-  if (unenforced.length > 0) {
+  if (unenforcedServices.length > 0) {
     return {
       status: RESULT_STATUS.WARN,
       summary: "App Check is registered but not yet enforced for all services (monitoring only).",
-      details: { services: entries },
+      details,
     };
   }
   return {
     status: RESULT_STATUS.PASS,
     summary: "App Check is registered and enforced for all checked services.",
-    details: { services: entries },
+    details,
   };
 }
 
@@ -259,6 +289,30 @@ export function assessStorageRulesContent(deployedContent, checkedInContent) {
   return {
     status: RESULT_STATUS.PASS,
     summary: "Deployed Storage rules match the checked-in storage.rules.",
+  };
+}
+
+/**
+ * A Storage rules probe is only conclusive when the provider explicitly rejects the
+ * unauthenticated request. Missing objects and provider failures must never be treated
+ * as proof that access control is working.
+ */
+export function assessUnauthenticatedStorageProbe(status) {
+  if (status === 401 || status === 403) {
+    return {
+      status: RESULT_STATUS.PASS,
+      summary: `Unauthenticated Storage read was explicitly denied (HTTP ${status}).`,
+    };
+  }
+  if (status === 200) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: "Unauthenticated Storage read succeeded; deployed rules do not deny read.",
+    };
+  }
+  return {
+    status: RESULT_STATUS.FAIL,
+    summary: `Unauthenticated Storage probe was inconclusive (HTTP ${status}); expected an explicit 401/403 denial.`,
   };
 }
 

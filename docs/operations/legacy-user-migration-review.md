@@ -5,7 +5,7 @@ user import is approved. Read `legacy-user-migration-schema.md` first for the
 approved field mapping and `legacy-user-import.md` for the importer runbook
 this review gates.
 
-`sodc-api`'s exporter produces a non-PII aggregate `sodc-legacy-user-preflight/v2`
+`sodc-api`'s exporter produces a non-PII aggregate `sodc-legacy-user-preflight/v3`
 report (record counts, rank/status distributions, missing-field counts -- no
 names, emails, or other member-identifying data). Reviewing that raw JSON by
 hand against #420's acceptance criteria is manual spreadsheet work. This CLI
@@ -13,7 +13,9 @@ turns the report into a structured Markdown worksheet with the relevant counts
 already placed under each review question, plus an approval-artifact stub
 ready for the importer's `--approval` flag.
 
-The tool only reads the non-PII preflight report. It never touches the
+The report also carries the SHA-256 digest of the exact plaintext JSONL bytes,
+allowing the importer to prove that the reviewed counts came from its decrypted
+source without exposing member data. The tool only reads the non-PII preflight report. It never touches the
 encrypted member artifact and performs no writes to Firebase or Data Connect.
 
 ## Usage
@@ -72,10 +74,11 @@ that happens, confirm the CLI's `APPROVED_LEGACY_RANK_TARGETS` /
 
 ## Approval artifact stub
 
-The tool also emits a `sodc-legacy-user-migration-approval/v1` stub with
-`approved: false` and `sourceChecksum` left as an explicit placeholder --
-the checksum is only known once the importer's dry-run decrypts and hashes
-the real encrypted artifact (see `legacy-user-import.md`). Fill in the
-checksum from that dry-run, complete every checklist item in the worksheet,
-and only then flip `approved` to `true` before using it with
+The tool also emits a `sodc-legacy-user-migration-approval/v2` stub with
+`approved: false`, `sourceChecksum` left as an explicit placeholder, and a
+`preflightChecksum` binding the approval to the exact preflight file reviewed.
+The separate `sourceChecksum` is only known once the importer's dry-run
+decrypts and hashes the real encrypted artifact (see `legacy-user-import.md`).
+Fill in that source checksum from the dry-run, complete every checklist item in
+the worksheet, and only then flip `approved` to `true` before using it with
 `legacy-user-import.ts --approval`.

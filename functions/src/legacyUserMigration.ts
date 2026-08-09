@@ -3,7 +3,7 @@ import type { MembershipStatus } from "./validation";
 
 export const LEGACY_SOURCE_SYSTEM = "sodc-legacy";
 export const LEGACY_RECORD_SCHEMA_VERSION = "sodc-legacy-user/v1";
-export const LEGACY_PREFLIGHT_SCHEMA_VERSION = "sodc-legacy-user-preflight/v2";
+export const LEGACY_PREFLIGHT_SCHEMA_VERSION = "sodc-legacy-user-preflight/v3";
 
 const SOURCE_FIELDS = [
   "legacyUserId",

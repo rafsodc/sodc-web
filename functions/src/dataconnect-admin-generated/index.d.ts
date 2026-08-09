@@ -428,7 +428,8 @@ export interface ConsumeCallableRateLimitVariables {
   userId: string;
   functionName: string;
   windowStart: TimestampString;
-  limit: number;
+  cost: number;
+  ceiling: number;
 }
 
 export interface CreateAnnouncementRecipientData {
@@ -575,6 +576,7 @@ export interface CreateGuestTicketRequestFromCallableData {
 }
 
 export interface CreateGuestTicketRequestFromCallableVariables {
+  id: UUIDString;
   bookingId: UUIDString;
   requestedGuestCount: number;
   guestTicketTypeId: UUIDString;
@@ -1311,6 +1313,26 @@ export interface GetGovNotifyDeliveryConfigurationData {
     updatedAt: TimestampString;
     updatedBy?: string | null;
   };
+}
+
+export interface GetGuestTicketRequestByIdForCallableData {
+  guestTicketRequest?: {
+    id: UUIDString;
+    status: GuestTicketRequestStatus;
+    requestedGuestCount: number;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    booking: {
+      id: UUIDString;
+    } & Booking_Key;
+    guestTicketType?: {
+      id: UUIDString;
+    } & TicketType_Key;
+  } & GuestTicketRequest_Key;
+}
+
+export interface GetGuestTicketRequestByIdForCallableVariables {
+  id: UUIDString;
 }
 
 export interface GetGuestTicketRequestForNotificationData {
@@ -3062,6 +3084,41 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
   userGroupId: UUIDString;
 }
 
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  includedExplicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  includedInherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+
 export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
@@ -3687,6 +3744,11 @@ export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVari
 /** Generated Node Admin SDK operation action function for the 'ListMigrationUsers' Query. Allow users to pass in custom DataConnect instances. */
 export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListMigrationUsersData>>;
 
+/** Generated Node Admin SDK operation action function for the 'SearchSectionMemberCandidates' Query. Allow users to execute without passing in DataConnect. */
+export function searchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SearchSectionMemberCandidatesData>>;
+/** Generated Node Admin SDK operation action function for the 'SearchSectionMemberCandidates' Query. Allow users to pass in custom DataConnect instances. */
+export function searchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SearchSectionMemberCandidatesData>>;
+
 /** Generated Node Admin SDK operation action function for the 'ListLegacyUserIdentitiesForMigration' Query. Allow users to execute without passing in DataConnect. */
 export function listLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyUserIdentitiesForMigrationData>>;
 /** Generated Node Admin SDK operation action function for the 'ListLegacyUserIdentitiesForMigration' Query. Allow users to pass in custom DataConnect instances. */
@@ -3891,6 +3953,11 @@ export function deleteBookingLineFromCallable(vars: DeleteBookingLineFromCallabl
 export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequestFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestFromCallableData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestByIdForCallable' Query. Allow users to execute without passing in DataConnect. */
+export function getGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestByIdForCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestByIdForCallable' Query. Allow users to pass in custom DataConnect instances. */
+export function getGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestByIdForCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequestFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function adminReviewGuestTicketRequestFromCallable(dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestFromCallableData>>;

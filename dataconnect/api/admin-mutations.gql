@@ -1068,6 +1068,66 @@ query ListMigrationUsers($limit: Int!) @auth(level: NO_ACCESS) {
   }
 }
 
+# Bounded section-member typeahead. The callable first resolves which groups and
+# membership statuses define the section's population, then this query performs
+# name filtering in Data Connect rather than loading the complete User table.
+query SearchSectionMemberCandidates(
+  $userGroupIds: [UUID!]!
+  $membershipStatuses: [MembershipStatus!]!
+  $searchPattern: String!
+  $includeIds: [String!]!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  explicit: userUserGroups(
+    where: {
+      _and: [
+        { userGroupId: { in: $userGroupIds } }
+        { _or: [
+          { user: { firstName: { pattern: { regex: $searchPattern } } } }
+          { user: { lastName: { pattern: { regex: $searchPattern } } } }
+        ] }
+      ]
+    }
+    orderBy: [{ user: { lastName: ASC } }, { user: { firstName: ASC } }, { userId: ASC }]
+    limit: $limit
+  ) {
+    user { id firstName lastName }
+  }
+  inherited: users(
+    where: {
+      _and: [
+        { membershipStatus: { in: $membershipStatuses } }
+        { _or: [
+          { firstName: { pattern: { regex: $searchPattern } } }
+          { lastName: { pattern: { regex: $searchPattern } } }
+        ] }
+      ]
+    }
+    orderBy: [{ lastName: ASC }, { firstName: ASC }]
+    limit: $limit
+  ) {
+    id firstName lastName
+  }
+  includedExplicit: userUserGroups(
+    where: {
+      userGroupId: { in: $userGroupIds }
+      userId: { in: $includeIds }
+    }
+    limit: 10
+  ) {
+    user { id firstName lastName }
+  }
+  includedInherited: users(
+    where: {
+      membershipStatus: { in: $membershipStatuses }
+      id: { in: $includeIds }
+    }
+    limit: 10
+  ) {
+    id firstName lastName
+  }
+}
+
 query ListLegacyUserIdentitiesForMigration(
   $sourceSystem: String!
   $limit: Int!
@@ -1929,6 +1989,7 @@ mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
 
 # submitGuestTicketRequest callable — admin SDK has no auth.uid; override HasAudit defaults.
 mutation CreateGuestTicketRequestFromCallable(
+  $id: UUID!
   $bookingId: UUID!
   $requestedGuestCount: Int!
   $guestTicketTypeId: UUID!
@@ -1941,6 +2002,7 @@ mutation CreateGuestTicketRequestFromCallable(
 ) @auth(level: NO_ACCESS) {
   guestTicketRequest_insert(
     data: {
+      id: $id
       bookingId: $bookingId
       requestedGuestCount: $requestedGuestCount
       guestTicketTypeId: $guestTicketTypeId
@@ -1954,6 +2016,18 @@ mutation CreateGuestTicketRequestFromCallable(
       updatedBy: "system"
     }
   )
+}
+
+query GetGuestTicketRequestByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  guestTicketRequest(id: $id) {
+    id
+    status
+    requestedGuestCount
+    guestDisplayName
+    dietaryNote
+    booking { id }
+    guestTicketType { id }
+  }
 }
 
 # reviewGuestTicketRequest callable — admin SDK has no auth.uid for reviewedBy / HasAudit.
@@ -2740,16 +2814,17 @@ mutation ConsumeCallableRateLimit(
   $userId: String!
   $functionName: String!
   $windowStart: Timestamp!
-  $limit: Int!
+  $cost: Int!
+  $ceiling: Int!
 ) @auth(level: NO_ACCESS) @transaction {
   consumed: callableRateLimitBucket_updateMany(
     where: {
       userId: { eq: $userId }
       functionName: { eq: $functionName }
       windowStart: { eq: $windowStart }
-      count: { lt: $limit }
+      count: { le: $ceiling }
     }
-    data: { count_update: { inc: 1 } }
+    data: { count_update: { inc: $cost } }
   ) @check(expr: "this == 1", message: "RATE_LIMIT_EXCEEDED")
 
   callableRateLimitBucket_deleteMany(

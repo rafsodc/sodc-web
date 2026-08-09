@@ -36,6 +36,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `syncPendingUserClaims` | 10 | 1 hour | Firebase Auth read/write |
 | `submitEventBooking` | 20 | 1 hour | Mutation and transactional email |
 | `submitGuestTicketRequest` | 20 | 1 hour | Mutation and transactional email |
+| `submitAdditionalGuestTicketRequests` | 20 guest rows | 1 hour | Weighted by batch size; one atomic bulk mutation and deduplicated email fan-out |
 | `reviewGuestTicketRequest` | 30 | 1 hour | Mutation and transactional email |
 | `updateMembershipStatus` | 20 | 1 hour | Auth/Data Connect writes and transactional email |
 | `resignMembership` | 3 | 1 hour | Auth/Data Connect writes and transactional email |
@@ -91,6 +92,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `getEventForUser` | Low | Low | None | Low | Enabled + section access; single-event query |
 | `submitEventBooking` | High | None | GOV.UK Notify | High | Enabled; validation/idempotency; 20/hour |
 | `submitGuestTicketRequest` | High | None | GOV.UK Notify | High | Enabled; validation; 20/hour |
+| `submitAdditionalGuestTicketRequests` | High | None | GOV.UK Notify | High | Enabled; booking ownership; idempotency; max 20 guests; weighted cap of 20 guest rows/hour |
 | `reviewGuestTicketRequest` | High | None | GOV.UK Notify | Medium | Admin + enabled; transition check; 30/hour |
 | `createTicketCheckoutSession` | High | None | Stripe | High | Enabled; ownership/eligibility; 10/15 minutes |
 | `createEventBookingCheckoutSession` | High | None | Stripe | High | Enabled; booking ownership; 10/15 minutes |

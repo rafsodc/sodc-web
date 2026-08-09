@@ -394,6 +394,12 @@ export function listMigrationUsers(dcOrVarsOrOptions, varsOrOptions, options) {
   return dcInstance.executeQuery('ListMigrationUsers', inputVars, inputOpts);
 }
 
+export function searchSectionMemberCandidates(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('SearchSectionMemberCandidates', inputVars, inputOpts);
+}
+
 export function listLegacyUserIdentitiesForMigration(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -638,6 +644,12 @@ export function createGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOp
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CreateGuestTicketRequestFromCallable', inputVars, inputOpts);
+}
+
+export function getGuestTicketRequestByIdForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetGuestTicketRequestByIdForCallable', inputVars, inputOpts);
 }
 
 export function adminReviewGuestTicketRequestFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {

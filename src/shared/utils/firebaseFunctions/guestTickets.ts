@@ -42,21 +42,28 @@ export async function submitGuestTicketRequest(
 export async function submitAdditionalGuestTicketRequests(args: {
   bookingId: string;
   guestTicketTypeId: string;
+  idempotencyKey: string;
   guests: { guestDisplayName: string; dietaryNote?: string | null }[];
 }): Promise<SubmitGuestTicketRequestResponse[]> {
-  const results: SubmitGuestTicketRequestResponse[] = [];
-  for (const guest of args.guests) {
-    results.push(
-      await submitGuestTicketRequest({
-        bookingId: args.bookingId,
-        requestedGuestCount: 1,
-        guestTicketTypeId: args.guestTicketTypeId,
-        guestDisplayName: guest.guestDisplayName,
-        dietaryNote: guest.dietaryNote,
-      })
-    );
-  }
-  return results;
+  const callable = httpsCallable<
+    {
+      bookingId: string;
+      guestTicketTypeId: string;
+      idempotencyKey: string;
+      guests: { guestDisplayName: string; dietaryNote?: string | null }[];
+    },
+    { success: boolean; requests: SubmitGuestTicketRequestResponse[] }
+  >(functions, "submitAdditionalGuestTicketRequests");
+  const result = await callable({
+    bookingId: toCanonicalUuid(args.bookingId),
+    guestTicketTypeId: toCanonicalUuid(args.guestTicketTypeId),
+    idempotencyKey: toCanonicalUuid(args.idempotencyKey),
+    guests: args.guests.map((guest) => ({
+      guestDisplayName: guest.guestDisplayName.trim(),
+      dietaryNote: guest.dietaryNote?.trim() || null,
+    })),
+  });
+  return result.data.requests;
 }
 
 export interface ReviewGuestTicketRequestPayload {

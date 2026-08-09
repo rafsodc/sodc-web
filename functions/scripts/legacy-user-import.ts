@@ -26,6 +26,7 @@ import {
 } from "../src/legacyUserMigration";
 import {
   decryptLegacyArtifact,
+  assertLegacyPreflightSourceBinding,
   effectiveLegacySourceChecksum,
   emailLessLegacyUserIds,
   readLegacyPreflight,
@@ -72,6 +73,7 @@ interface ProductionApproval {
   approved: boolean;
   projectId: string;
   sourceChecksum: string;
+  preflightChecksum: string;
   recordSchemaVersion: string;
   expectedRecordCount: number;
 }
@@ -421,6 +423,7 @@ function printPlan(
 function assertApplyGuards(
   options: CliOptions,
   sourceChecksum: string,
+  preflightChecksum: string,
   recordCount: number,
   quarantineCount: number,
   isProduction: boolean
@@ -461,11 +464,12 @@ function assertApplyGuards(
     ) as ProductionApproval;
     if (
       approval.schemaVersion !==
-        "sodc-legacy-user-migration-approval/v1" ||
+        "sodc-legacy-user-migration-approval/v2" ||
       approval.issue !== 420 ||
       approval.approved !== true ||
       approval.projectId !== options.projectId ||
       approval.sourceChecksum !== sourceChecksum ||
+      approval.preflightChecksum !== preflightChecksum ||
       approval.recordSchemaVersion !== LEGACY_RECORD_SCHEMA_VERSION ||
       approval.expectedRecordCount !== recordCount
     ) {
@@ -657,8 +661,10 @@ async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
   const isProduction = assertProjectAllowed(options);
   const preflight = readLegacyPreflight(options.preflightPath);
+  const preflightChecksum = sha256Hex(fs.readFileSync(options.preflightPath, "utf8"));
   console.log("Decrypting and validating the canonical artifact in memory...");
   const decrypted = await decryptLegacyArtifact(options.inputPath);
+  assertLegacyPreflightSourceBinding(preflight, decrypted.artifactChecksum);
   const remediated = options.interactiveRemediation
     ? await remediateLegacyContacts(decrypted.plaintextLines)
     : { lines: decrypted.plaintextLines, remediations: [] };
@@ -702,6 +708,7 @@ async function main(): Promise<void> {
   assertApplyGuards(
     options,
     sourceChecksum,
+    preflightChecksum,
     validation.recordCount,
     quarantineCount,
     isProduction
