@@ -177,15 +177,27 @@ export function assessFunctionInvokerPolicies(records, expectedPublicFunctions) 
  * for any service (an empty list), WARN when registered but still in monitoring-only mode
  * (any service not ENFORCED), PASS only once every checked service is ENFORCED.
  */
-export function assessAppCheckEnforcement(services) {
+export function assessAppCheckEnforcement(services, expectedServiceNames = []) {
   const entries = (services ?? []).map((service) => ({
     name: normalizeResourceName(service.name),
     enforcementMode: service.enforcementMode,
   }));
+  const returnedNames = new Set(entries.map(({ name }) => name));
+  const missingServices = expectedServiceNames
+    .map(normalizeResourceName)
+    .filter((name) => !returnedNames.has(name));
+  if (missingServices.length > 0) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: `App Check is missing configured service(s): ${missingServices.join(", ")}.`,
+      details: { services: entries, missingServices },
+    };
+  }
   if (entries.length === 0) {
     return {
       status: RESULT_STATUS.FAIL,
       summary: "App Check has no services registered; enforcement is not configured.",
+      details: { services: entries, missingServices: [] },
     };
   }
   const unenforced = entries.filter((entry) => entry.enforcementMode !== "ENFORCED");

@@ -327,7 +327,7 @@ async function main() {
       const relevant = (appCheck.services ?? []).filter((service) =>
         configuration.appCheck.services.includes(normalizeResourceName(service.name))
       );
-      const outcome = assessAppCheckEnforcement(relevant);
+      const outcome = assessAppCheckEnforcement(relevant, configuration.appCheck.services);
       results.push(result("app-check", outcome.status, outcome.summary, outcome.details));
     } catch (error) {
       results.push(

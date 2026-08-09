@@ -131,10 +131,10 @@ read-only automated checks, added once production use surfaced real gaps they
 would have caught:
 
 - **App Check enforcement** -- `firebaseappcheck.googleapis.com`'s services
-  API reports per-service `enforcementMode`. FAILs if App Check has no
-  services registered at all; WARNs if registered but any checked service is
-  still `UNENFORCED` (monitoring-only); PASSes once every checked service is
-  `ENFORCED`.
+  API reports per-service `enforcementMode`. FAILs if any configured service
+  is absent; WARNs while every service is registered but at least one remains
+  `UNENFORCED` (monitoring-only); PASSes only once every configured service is
+  present and `ENFORCED`.
 - **Auth providers and authorized domains** -- Identity Platform's admin
   config API confirms email/password sign-in is enabled, every expected
   canonical domain is authorized, and `localhost` is authorized only in `dev`.

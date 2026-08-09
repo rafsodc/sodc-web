@@ -282,11 +282,24 @@ describe("deployment check parsing and comparison", () => {
     expect(assessAppCheckEnforcement([]).status).toBe(RESULT_STATUS.FAIL);
   });
 
+  it("fails when any configured App Check service is absent from the provider response", () => {
+    const outcome = assessAppCheckEnforcement(
+      [{ name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" }],
+      ["firebasestorage.googleapis.com", "identitytoolkit.googleapis.com"],
+    );
+    expect(outcome.status).toBe(RESULT_STATUS.FAIL);
+    expect(outcome.details.missingServices).toEqual(["identitytoolkit.googleapis.com"]);
+  });
+
   it("warns when App Check is registered but not fully enforced", () => {
-    const outcome = assessAppCheckEnforcement([
+    const services = [
       { name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
       { name: "projects/1/services/identitytoolkit.googleapis.com", enforcementMode: "UNENFORCED" },
-    ]);
+    ];
+    const outcome = assessAppCheckEnforcement(
+      services,
+      ["firebasestorage.googleapis.com", "identitytoolkit.googleapis.com"],
+    );
     expect(outcome.status).toBe(RESULT_STATUS.WARN);
     expect(outcome.details.services).toEqual([
       { name: "firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
@@ -296,9 +309,10 @@ describe("deployment check parsing and comparison", () => {
 
   it("passes App Check audit once every checked service is enforced", () => {
     expect(
-      assessAppCheckEnforcement([
-        { name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
-      ]).status
+      assessAppCheckEnforcement(
+        [{ name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" }],
+        ["firebasestorage.googleapis.com"],
+      ).status
     ).toBe(RESULT_STATUS.PASS);
   });
 
