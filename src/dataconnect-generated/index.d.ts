@@ -435,6 +435,10 @@ export interface ConfirmProfileReviewVariables {
   rank: string;
   shareContactInfo: boolean;
   announcementOptOutAll: boolean;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 
 export interface ConsumeCallableRateLimitData {

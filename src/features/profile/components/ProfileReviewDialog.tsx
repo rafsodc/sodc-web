@@ -59,6 +59,10 @@ export default function ProfileReviewDialog({
   const [postNominals, setPostNominals] = useState("");
   const [rank, setRank] = useState("");
   const [shareContactInfo, setShareContactInfo] = useState(true);
+  const [isRegular, setIsRegular] = useState(false);
+  const [isReserve, setIsReserve] = useState(false);
+  const [isCivilServant, setIsCivilServant] = useState(false);
+  const [isIndustry, setIsIndustry] = useState(false);
   const [announcementOptOutAll, setAnnouncementOptOutAll] = useState(false);
   const [sectionOptOutIds, setSectionOptOutIds] = useState<Set<string>>(new Set());
   const [preferencesInitialised, setPreferencesInitialised] = useState(false);
@@ -78,6 +82,10 @@ export default function ProfileReviewDialog({
     setPostNominals(userData.postNominals || "");
     setRank(userData.rank || "");
     setShareContactInfo(userData.shareContactInfo ?? true);
+    setIsRegular(userData.isRegular ?? false);
+    setIsReserve(userData.isReserve ?? false);
+    setIsCivilServant(userData.isCivilServant ?? false);
+    setIsIndustry(userData.isIndustry ?? false);
   }, [userData]);
 
   useEffect(() => {
@@ -130,6 +138,10 @@ export default function ProfileReviewDialog({
         rank,
         shareContactInfo,
         announcementOptOutAll,
+        isRegular,
+        isReserve,
+        isCivilServant,
+        isIndustry,
       });
 
       const displayName = `${lastName.trim()}, ${firstName.trim()}`;
@@ -276,24 +288,45 @@ export default function ProfileReviewDialog({
               <Typography id="review-service-background-heading" variant="h6" component="h2">
                 Service background
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                This can be changed on your Profile page.
-              </Typography>
               <FormGroup>
                 <FormControlLabel
-                  control={<Checkbox checked={userData.isRegular ?? false} disabled />}
+                  control={
+                    <Checkbox
+                      checked={isRegular}
+                      onChange={(event) => setIsRegular(event.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
                   label="Regular"
                 />
                 <FormControlLabel
-                  control={<Checkbox checked={userData.isReserve ?? false} disabled />}
+                  control={
+                    <Checkbox
+                      checked={isReserve}
+                      onChange={(event) => setIsReserve(event.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
                   label="Reserve"
                 />
                 <FormControlLabel
-                  control={<Checkbox checked={userData.isCivilServant ?? false} disabled />}
+                  control={
+                    <Checkbox
+                      checked={isCivilServant}
+                      onChange={(event) => setIsCivilServant(event.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
                   label="Civil Servant"
                 />
                 <FormControlLabel
-                  control={<Checkbox checked={userData.isIndustry ?? false} disabled />}
+                  control={
+                    <Checkbox
+                      checked={isIndustry}
+                      onChange={(event) => setIsIndustry(event.target.checked)}
+                      disabled={submitting}
+                    />
+                  }
                   label="Industry"
                 />
               </FormGroup>

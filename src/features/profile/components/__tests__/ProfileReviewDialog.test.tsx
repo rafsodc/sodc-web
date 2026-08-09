@@ -212,7 +212,7 @@ describe("ProfileReviewDialog", () => {
       }),
     ).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Regular" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Regular" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Regular" })).toBeEnabled();
     expect(screen.getByRole("checkbox", { name: "Reserve" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Civil Servant" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Industry" })).toBeChecked();
@@ -244,10 +244,43 @@ describe("ProfileReviewDialog", () => {
           rank: "Wing Commander",
           shareContactInfo: true,
           announcementOptOutAll: false,
+          isRegular: true,
+          isReserve: false,
+          isCivilServant: false,
+          isIndustry: true,
         },
       );
     });
     expect(firebaseFunctions.updateDisplayName).toHaveBeenCalledWith("Member, Alex");
+    expect(onReviewed).toHaveBeenCalledTimes(1);
+  });
+
+  it("submits edited service background selections", async () => {
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={onReviewed}
+      />,
+    );
+
+    await interaction.click(screen.getByRole("checkbox", { name: "Regular" }));
+    await interaction.click(screen.getByRole("checkbox", { name: "Reserve" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    await waitFor(() => {
+      expect(generated.confirmProfileReview).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({
+          isRegular: false,
+          isReserve: true,
+          isCivilServant: false,
+          isIndustry: true,
+        }),
+      );
+    });
     expect(onReviewed).toHaveBeenCalledTimes(1);
   });
 
