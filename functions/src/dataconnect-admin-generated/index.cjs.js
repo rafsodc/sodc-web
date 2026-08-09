@@ -457,6 +457,13 @@ function listMigrationUsers(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.listMigrationUsers = listMigrationUsers;
 
+function searchSectionMemberCandidates(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('SearchSectionMemberCandidates', inputVars, inputOpts);
+}
+exports.searchSectionMemberCandidates = searchSectionMemberCandidates;
+
 function listLegacyUserIdentitiesForMigration(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

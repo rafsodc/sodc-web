@@ -764,6 +764,21 @@ exports.listMigrationUsers = function listMigrationUsers(dcOrVars, varsOrOptions
 }
 ;
 
+const searchSectionMemberCandidatesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'SearchSectionMemberCandidates', inputVars);
+}
+searchSectionMemberCandidatesRef.operationName = 'SearchSectionMemberCandidates';
+exports.searchSectionMemberCandidatesRef = searchSectionMemberCandidatesRef;
+
+exports.searchSectionMemberCandidates = function searchSectionMemberCandidates(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(searchSectionMemberCandidatesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const listLegacyUserIdentitiesForMigrationRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

@@ -23,6 +23,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetLegacyUserIdentity*](#getlegacyuseridentity)
   - [*ListLegacyUserIdentitiesByBatch*](#listlegacyuseridentitiesbybatch)
   - [*ListMigrationUsers*](#listmigrationusers)
+  - [*SearchSectionMemberCandidates*](#searchsectionmembercandidates)
   - [*ListLegacyUserIdentitiesForMigration*](#listlegacyuseridentitiesformigration)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
@@ -1808,6 +1809,151 @@ console.log(data.users);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.users);
+});
+```
+
+## SearchSectionMemberCandidates
+You can execute the `SearchSectionMemberCandidates` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+searchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+
+interface SearchSectionMemberCandidatesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+}
+export const searchSectionMemberCandidatesRef: SearchSectionMemberCandidatesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+searchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+
+interface SearchSectionMemberCandidatesRef {
+  ...
+  (dc: DataConnect, vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+}
+export const searchSectionMemberCandidatesRef: SearchSectionMemberCandidatesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the searchSectionMemberCandidatesRef:
+```typescript
+const name = searchSectionMemberCandidatesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SearchSectionMemberCandidates` query requires an argument of type `SearchSectionMemberCandidatesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `SearchSectionMemberCandidates` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SearchSectionMemberCandidatesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  included: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+```
+### Using `SearchSectionMemberCandidates`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, searchSectionMemberCandidates, SearchSectionMemberCandidatesVariables } from '@dataconnect/generated';
+
+// The `SearchSectionMemberCandidates` query requires an argument of type `SearchSectionMemberCandidatesVariables`:
+const searchSectionMemberCandidatesVars: SearchSectionMemberCandidatesVariables = {
+  userGroupIds: ..., 
+  membershipStatuses: ..., 
+  searchPattern: ..., 
+  includeIds: ..., 
+  limit: ..., 
+};
+
+// Call the `searchSectionMemberCandidates()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await searchSectionMemberCandidates(searchSectionMemberCandidatesVars);
+// Variables can be defined inline as well.
+const { data } = await searchSectionMemberCandidates({ userGroupIds: ..., membershipStatuses: ..., searchPattern: ..., includeIds: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await searchSectionMemberCandidates(dataConnect, searchSectionMemberCandidatesVars);
+
+console.log(data.explicit);
+console.log(data.inherited);
+console.log(data.included);
+
+// Or, you can use the `Promise` API.
+searchSectionMemberCandidates(searchSectionMemberCandidatesVars).then((response) => {
+  const data = response.data;
+  console.log(data.explicit);
+  console.log(data.inherited);
+  console.log(data.included);
+});
+```
+
+### Using `SearchSectionMemberCandidates`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, searchSectionMemberCandidatesRef, SearchSectionMemberCandidatesVariables } from '@dataconnect/generated';
+
+// The `SearchSectionMemberCandidates` query requires an argument of type `SearchSectionMemberCandidatesVariables`:
+const searchSectionMemberCandidatesVars: SearchSectionMemberCandidatesVariables = {
+  userGroupIds: ..., 
+  membershipStatuses: ..., 
+  searchPattern: ..., 
+  includeIds: ..., 
+  limit: ..., 
+};
+
+// Call the `searchSectionMemberCandidatesRef()` function to get a reference to the query.
+const ref = searchSectionMemberCandidatesRef(searchSectionMemberCandidatesVars);
+// Variables can be defined inline as well.
+const ref = searchSectionMemberCandidatesRef({ userGroupIds: ..., membershipStatuses: ..., searchPattern: ..., includeIds: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = searchSectionMemberCandidatesRef(dataConnect, searchSectionMemberCandidatesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.explicit);
+console.log(data.inherited);
+console.log(data.included);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.explicit);
+  console.log(data.inherited);
+  console.log(data.included);
 });
 ```
 

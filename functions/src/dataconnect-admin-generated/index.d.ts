@@ -3083,6 +3083,34 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
   userGroupId: UUIDString;
 }
 
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  included: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+
 export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
@@ -3707,6 +3735,11 @@ export function listLegacyUserIdentitiesByBatch(vars: ListLegacyUserIdentitiesBy
 export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListMigrationUsersData>>;
 /** Generated Node Admin SDK operation action function for the 'ListMigrationUsers' Query. Allow users to pass in custom DataConnect instances. */
 export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListMigrationUsersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'SearchSectionMemberCandidates' Query. Allow users to execute without passing in DataConnect. */
+export function searchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SearchSectionMemberCandidatesData>>;
+/** Generated Node Admin SDK operation action function for the 'SearchSectionMemberCandidates' Query. Allow users to pass in custom DataConnect instances. */
+export function searchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SearchSectionMemberCandidatesData>>;
 
 /** Generated Node Admin SDK operation action function for the 'ListLegacyUserIdentitiesForMigration' Query. Allow users to execute without passing in DataConnect. */
 export function listLegacyUserIdentitiesForMigration(dc: DataConnect, vars: ListLegacyUserIdentitiesForMigrationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyUserIdentitiesForMigrationData>>;

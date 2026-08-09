@@ -16,6 +16,7 @@ const mockGetEventsForSection = vi.spyOn(admin, "getEventsForSection");
 const mockGetEventById = vi.spyOn(admin, "getEventById");
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockSearchSectionMemberCandidates = vi.spyOn(admin, "searchSectionMemberCandidates");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 
@@ -456,33 +457,54 @@ describe("searchSectionMembers", () => {
     };
   }
 
-  function mockEventsSectionWithMembers(users: ReturnType<typeof eventsUser>[]) {
-    mockGetSectionMembers.mockResolvedValue({
+  function mockEventsSection(membershipStatuses: MembershipStatus[] | null = null) {
+    mockGetSectionById.mockResolvedValue({
       data: {
         section: {
           id: sectionId,
           name: "Test Section",
           type: "EVENTS",
           description: null,
+          isOpenForRegistration: false,
+          allowedUserGroups: null,
           purposeLinks: [
             {
               purposes: ["ACCESS"],
               userGroup: {
                 id: accessGroupId,
                 name: "Access",
-                membershipStatuses: null,
-                users: users.map((u) => ({ user: u })),
+                description: null,
+                subscribable: false,
+                membershipStatuses,
               },
             },
           ],
         },
       },
-    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+    } as unknown as Awaited<ReturnType<typeof admin.getSectionById>>);
+  }
+
+  function mockCandidates({
+    explicit = [],
+    inherited = [],
+    included = [],
+  }: {
+    explicit?: ReturnType<typeof eventsUser>[];
+    inherited?: ReturnType<typeof eventsUser>[];
+    included?: ReturnType<typeof eventsUser>[];
+  }) {
+    mockSearchSectionMemberCandidates.mockResolvedValue({
+      data: {
+        explicit: explicit.map((user) => ({ user })),
+        inherited,
+        included,
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.searchSectionMemberCandidates>>);
   }
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSection([{ purposes: ["ACCESS"], userGroupId: accessGroupId }]);
+    mockEventsSection();
     mockGetUserAccessGroupsById.mockResolvedValue({
       data: { user: { id: "member-1", userGroups: [{ userGroup: { id: accessGroupId, name: "Access", description: null } }] } },
     } as unknown as Awaited<ReturnType<typeof admin.getUserAccessGroupsById>>);
@@ -492,19 +514,21 @@ describe("searchSectionMembers", () => {
   });
 
   it("matches by first or last name, case-insensitively", async () => {
-    mockEventsSectionWithMembers([
-      eventsUser("user-2", "Grace", "Hopper"),
-      eventsUser("user-3", "Ada", "Lovelace"),
-      eventsUser("user-4", "Alan", "Turing"),
-    ]);
+    mockCandidates({ explicit: [eventsUser("user-2", "Grace", "Hopper")] });
 
     const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "grace" });
 
     expect(result.members).toEqual([{ id: "user-2", firstName: "Grace", lastName: "Hopper" }]);
+    expect(mockSearchSectionMemberCandidates).toHaveBeenCalledWith(expect.objectContaining({
+      searchPattern: "(?i).*grace.*",
+      limit: 20,
+    }));
+    expect(mockListUsers).not.toHaveBeenCalled();
+    expect(mockGetSectionMembers).not.toHaveBeenCalled();
   });
 
   it("excludes the caller from results", async () => {
-    mockEventsSectionWithMembers([eventsUser("member-1", "Self", "Caller"), eventsUser("user-2", "Selma", "Case")]);
+    mockCandidates({ explicit: [eventsUser("member-1", "Self", "Caller"), eventsUser("user-2", "Selma", "Case")] });
 
     const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "sel" });
 
@@ -512,18 +536,14 @@ describe("searchSectionMembers", () => {
   });
 
   it("returns no matches for a blank search term with no includeIds", async () => {
-    mockEventsSectionWithMembers([eventsUser("user-2", "Grace", "Hopper")]);
-
     const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "" });
 
     expect(result.members).toEqual([]);
+    expect(mockSearchSectionMemberCandidates).not.toHaveBeenCalled();
   });
 
   it("always resolves includeIds regardless of the search term", async () => {
-    mockEventsSectionWithMembers([
-      eventsUser("user-2", "Grace", "Hopper"),
-      eventsUser("user-3", "Ada", "Lovelace"),
-    ]);
+    mockCandidates({ included: [eventsUser("user-3", "Ada", "Lovelace")] });
 
     const result = await callAs(searchSectionMembers, "member-1", false, {
       sectionId,
@@ -536,15 +556,43 @@ describe("searchSectionMembers", () => {
 
   it("caps search matches to a manageable result set", async () => {
     const users = Array.from({ length: 30 }, (_, i) => eventsUser(`user-${i}`, "Match", `Person${i}`));
-    mockEventsSectionWithMembers(users);
+    mockCandidates({ explicit: users });
 
     const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "match" });
 
     expect(result.members).toHaveLength(20);
   });
 
+  it("passes explicit groups and inherited statuses to one bounded database query", async () => {
+    mockEventsSection([MembershipStatus.REGULAR, MembershipStatus.RESERVE]);
+    mockCandidates({
+      explicit: [eventsUser("explicit-1", "Ada", "Lovelace")],
+      inherited: [eventsUser("inherited-1", "Grace", "Hopper")],
+    });
+
+    const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "a" });
+
+    expect(result.members.map((member) => member.id)).toEqual(["inherited-1", "explicit-1"]);
+    expect(mockSearchSectionMemberCandidates).toHaveBeenCalledWith({
+      userGroupIds: [accessGroupId],
+      membershipStatuses: [MembershipStatus.REGULAR, MembershipStatus.RESERVE],
+      searchPattern: "(?i).*a.*",
+      includeIds: [],
+      limit: 20,
+    });
+  });
+
+  it("escapes regular-expression metacharacters before querying", async () => {
+    mockCandidates({});
+
+    await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "A. (Test)?" });
+
+    expect(mockSearchSectionMemberCandidates).toHaveBeenCalledWith(expect.objectContaining({
+      searchPattern: String.raw`(?i).*A\. \(Test\)\?.*`,
+    }));
+  });
+
   it("rejects a caller with no access to the section", async () => {
-    mockEventsSectionWithMembers([eventsUser("user-2", "Grace", "Hopper")]);
     mockGetUserAccessGroupsById.mockResolvedValue({
       data: { user: { id: "stranger-1", userGroups: [] } },
     } as unknown as Awaited<ReturnType<typeof admin.getUserAccessGroupsById>>);

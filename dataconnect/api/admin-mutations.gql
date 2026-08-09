@@ -1068,6 +1068,51 @@ query ListMigrationUsers($limit: Int!) @auth(level: NO_ACCESS) {
   }
 }
 
+# Bounded section-member typeahead. The callable first resolves which groups and
+# membership statuses define the section's population, then this query performs
+# name filtering in Data Connect rather than loading the complete User table.
+query SearchSectionMemberCandidates(
+  $userGroupIds: [UUID!]!
+  $membershipStatuses: [MembershipStatus!]!
+  $searchPattern: String!
+  $includeIds: [String!]!
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  explicit: userUserGroups(
+    where: {
+      _and: [
+        { userGroupId: { in: $userGroupIds } }
+        { _or: [
+          { user: { firstName: { pattern: { regex: $searchPattern } } } }
+          { user: { lastName: { pattern: { regex: $searchPattern } } } }
+        ] }
+      ]
+    }
+    orderBy: [{ userId: ASC }]
+    limit: $limit
+  ) {
+    user { id firstName lastName }
+  }
+  inherited: users(
+    where: {
+      _and: [
+        { membershipStatus: { in: $membershipStatuses } }
+        { _or: [
+          { firstName: { pattern: { regex: $searchPattern } } }
+          { lastName: { pattern: { regex: $searchPattern } } }
+        ] }
+      ]
+    }
+    orderBy: [{ lastName: ASC }, { firstName: ASC }]
+    limit: $limit
+  ) {
+    id firstName lastName
+  }
+  included: users(where: { id: { in: $includeIds } }, limit: 10) {
+    id firstName lastName
+  }
+}
+
 query ListLegacyUserIdentitiesForMigration(
   $sourceSystem: String!
   $limit: Int!

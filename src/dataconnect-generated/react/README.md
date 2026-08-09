@@ -30,6 +30,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetLegacyUserIdentity*](#getlegacyuseridentity)
   - [*ListLegacyUserIdentitiesByBatch*](#listlegacyuseridentitiesbybatch)
   - [*ListMigrationUsers*](#listmigrationusers)
+  - [*SearchSectionMemberCandidates*](#searchsectionmembercandidates)
   - [*ListLegacyUserIdentitiesForMigration*](#listlegacyuseridentitiesformigration)
   - [*GetUserGroupByName*](#getusergroupbyname)
   - [*GetUserUserGroupsForAdmin*](#getuserusergroupsforadmin)
@@ -1510,6 +1511,114 @@ export default function ListMigrationUsersComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.users);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## SearchSectionMemberCandidates
+You can execute the `SearchSectionMemberCandidates` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useSearchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: useDataConnectQueryOptions<SearchSectionMemberCandidatesData>): UseDataConnectQueryResult<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useSearchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: useDataConnectQueryOptions<SearchSectionMemberCandidatesData>): UseDataConnectQueryResult<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+```
+
+### Variables
+The `SearchSectionMemberCandidates` Query requires an argument of type `SearchSectionMemberCandidatesVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `SearchSectionMemberCandidates` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `SearchSectionMemberCandidates` Query is of type `SearchSectionMemberCandidatesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  included: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `SearchSectionMemberCandidates`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, SearchSectionMemberCandidatesVariables } from '@dataconnect/generated';
+import { useSearchSectionMemberCandidates } from '@dataconnect/generated/react'
+
+export default function SearchSectionMemberCandidatesComponent() {
+  // The `useSearchSectionMemberCandidates` Query hook requires an argument of type `SearchSectionMemberCandidatesVariables`:
+  const searchSectionMemberCandidatesVars: SearchSectionMemberCandidatesVariables = {
+    userGroupIds: ..., 
+    membershipStatuses: ..., 
+    searchPattern: ..., 
+    includeIds: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useSearchSectionMemberCandidates(searchSectionMemberCandidatesVars);
+  // Variables can be defined inline as well.
+  const query = useSearchSectionMemberCandidates({ userGroupIds: ..., membershipStatuses: ..., searchPattern: ..., includeIds: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useSearchSectionMemberCandidates(dataConnect, searchSectionMemberCandidatesVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useSearchSectionMemberCandidates(searchSectionMemberCandidatesVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useSearchSectionMemberCandidates(dataConnect, searchSectionMemberCandidatesVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.explicit);
+    console.log(query.data.inherited);
+    console.log(query.data.included);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }

@@ -3105,6 +3105,34 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
   userGroupId: UUIDString;
 }
 
+export interface SearchSectionMemberCandidatesData {
+  explicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  inherited: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+  included: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface SearchSectionMemberCandidatesVariables {
+  userGroupIds: UUIDString[];
+  membershipStatuses: MembershipStatus[];
+  searchPattern: string;
+  includeIds: string[];
+  limit: number;
+}
+
 export interface SectionAnnouncementOptOut_Key {
   userId: string;
   sectionId: UUIDString;
@@ -4023,6 +4051,18 @@ export const listMigrationUsersRef: ListMigrationUsersRef;
 
 export function listMigrationUsers(vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
 export function listMigrationUsers(dc: DataConnect, vars: ListMigrationUsersVariables, options?: ExecuteQueryOptions): QueryPromise<ListMigrationUsersData, ListMigrationUsersVariables>;
+
+interface SearchSectionMemberCandidatesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: SearchSectionMemberCandidatesVariables): QueryRef<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+  operationName: string;
+}
+export const searchSectionMemberCandidatesRef: SearchSectionMemberCandidatesRef;
+
+export function searchSectionMemberCandidates(vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
+export function searchSectionMemberCandidates(dc: DataConnect, vars: SearchSectionMemberCandidatesVariables, options?: ExecuteQueryOptions): QueryPromise<SearchSectionMemberCandidatesData, SearchSectionMemberCandidatesVariables>;
 
 interface ListLegacyUserIdentitiesForMigrationRef {
   /* Allow users to create refs without passing in DataConnect */
