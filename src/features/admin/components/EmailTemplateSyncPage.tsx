@@ -230,6 +230,9 @@ function BindingControls({
           ? `${result.boundTemplateName} (not an exact key match)`
           : `${result.boundTemplateId} (not found in GOV Notify)`,
         version: result.currentLiveVersion ?? result.reviewedVersion ?? 1,
+        subjectMatch: result.subjectMatch ?? false,
+        bodyMatch: result.bodyMatch ?? false,
+        contentMatches: result.subjectMatch === true && result.bodyMatch === true,
       });
     }
     return list;
@@ -276,14 +279,16 @@ function BindingControls({
               <MenuItem value="" disabled>No exact-name match found</MenuItem>
             )}
             {options.map((candidate) => (
-              <MenuItem key={candidate.id} value={candidate.id}>{candidate.name}</MenuItem>
+              <MenuItem key={candidate.id} value={candidate.id} disabled={!candidate.contentMatches}>
+                {candidate.name} — v{candidate.version} — {candidate.id.slice(0, 8)} — {candidate.contentMatches ? "content matches" : "content differs"}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
         <Button
           size="small"
           variant="contained"
-          disabled={saving || !selected}
+          disabled={saving || !selected || !selected.contentMatches}
           onClick={() => void handleSave()}
         >
           Save
