@@ -65,6 +65,7 @@ describe("environment deployment configuration", () => {
       "clean-checkout",
       "required-apis-check",
       "generate-dataconnect-sdk",
+      "normalize-generated-sdk",
       "generated-drift-check",
       "environment-config-check",
       "frontend-lint",
@@ -168,7 +169,7 @@ describe("environment deployment execution", () => {
 
   it.each([
     ["clean-checkout", 1],
-    ["generated-drift-check", 4],
+    ["generated-drift-check", 5],
   ])("blocks deployment when %s reports files", async (blockedStep, expectedCalls) => {
     const execute = vi.fn(async (step) => ({
       stdout: step.id === blockedStep ? " M generated/index.d.ts" : "",
