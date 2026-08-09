@@ -263,6 +263,30 @@ export function assessStorageRulesContent(deployedContent, checkedInContent) {
 }
 
 /**
+ * A Storage rules probe is only conclusive when the provider explicitly rejects the
+ * unauthenticated request. Missing objects and provider failures must never be treated
+ * as proof that access control is working.
+ */
+export function assessUnauthenticatedStorageProbe(status) {
+  if (status === 401 || status === 403) {
+    return {
+      status: RESULT_STATUS.PASS,
+      summary: `Unauthenticated Storage read was explicitly denied (HTTP ${status}).`,
+    };
+  }
+  if (status === 200) {
+    return {
+      status: RESULT_STATUS.FAIL,
+      summary: "Unauthenticated Storage read succeeded; deployed rules do not deny read.",
+    };
+  }
+  return {
+    status: RESULT_STATUS.FAIL,
+    summary: `Unauthenticated Storage probe was inconclusive (HTTP ${status}); expected an explicit 401/403 denial.`,
+  };
+}
+
+/**
  * Confirms a service account carries no project-level IAM bindings at all -- the expected
  * shape for a least-privilege service account whose only grants are the specific
  * resource-level bindings checked elsewhere (e.g. objectViewer on one bucket).

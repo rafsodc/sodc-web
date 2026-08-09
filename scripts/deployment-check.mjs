@@ -13,6 +13,7 @@ import {
   assessFunctionInvokerPolicies,
   assessServiceAccountProjectScope,
   assessStorageRulesContent,
+  assessUnauthenticatedStorageProbe,
   compareExpected,
   createReport,
   discoverFunctionContracts,
@@ -711,18 +712,6 @@ async function main() {
       const checkedInContent = await readFile(path.join(repositoryRoot, "storage.rules"), "utf8");
       const outcome = assessStorageRulesContent(deployedContent, checkedInContent);
       results.push(result("storage-rules-content", outcome.status, outcome.summary));
-
-      const probeUrl = `https://firebasestorage.googleapis.com/v0/b/${target.storageBucket}/o/_deployment-check-probe`;
-      const probeResponse = await fetchWithTimeout(probeUrl);
-      results.push(
-        result(
-          "storage-unauthenticated-probe",
-          probeResponse.status === 200 ? RESULT_STATUS.FAIL : RESULT_STATUS.PASS,
-          probeResponse.status === 200
-            ? "Unauthenticated Storage read succeeded; deployed rules do not deny read."
-            : `Unauthenticated Storage read was denied (HTTP ${probeResponse.status}).`
-        )
-      );
     } catch (error) {
       results.push(
         result(
@@ -732,12 +721,44 @@ async function main() {
         )
       );
     }
+
+    try {
+      const inventory = await googleApiFetch(
+        `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(target.storageBucket)}/o?maxResults=1&fields=items(name)`,
+        target.projectId
+      );
+      const objectName = inventory.items?.[0]?.name;
+      if (!objectName) {
+        throw new Error("the bucket has no known object available for an authorization probe");
+      }
+      const probeUrl =
+        `https://storage.googleapis.com/download/storage/v1/b/${encodeURIComponent(target.storageBucket)}` +
+        `/o/${encodeURIComponent(objectName)}?alt=media`;
+      const probeResponse = await fetchWithTimeout(probeUrl);
+      const outcome = assessUnauthenticatedStorageProbe(probeResponse.status);
+      results.push(result("storage-unauthenticated-probe", outcome.status, outcome.summary));
+    } catch (error) {
+      results.push(
+        result(
+          "storage-unauthenticated-probe",
+          RESULT_STATUS.FAIL,
+          `Unauthenticated Storage probe failed: ${safeErrorMessage(error)}`
+        )
+      );
+    }
   } else {
     results.push(
       result(
         "storage-rules-content",
         RESULT_STATUS.SKIP,
         "Storage rules audit skipped because the gcloud project/authentication preflight failed."
+      )
+    );
+    results.push(
+      result(
+        "storage-unauthenticated-probe",
+        RESULT_STATUS.SKIP,
+        "Unauthenticated Storage probe skipped because the gcloud project/authentication preflight failed."
       )
     );
   }

@@ -141,7 +141,10 @@ would have caught:
 - **Deployed Storage rules content and a negative unauthenticated probe** --
   the Firebase Security Rules API's deployed ruleset is byte-compared
   (whitespace-normalized) against the checked-in `storage.rules`, and an
-  unauthenticated fetch against the bucket confirms it is denied.
+  authenticated inventory selects a known existing object, then an
+  unauthenticated fetch must receive an explicit HTTP 401/403 denial. Missing
+  objects and provider errors fail the check rather than masquerading as a
+  successful authorization denial.
 - **Scanner service-account scope** -- confirms the malware scanner's service
   account carries no project-level IAM roles at all, only the specific
   resource-level grants checked elsewhere.

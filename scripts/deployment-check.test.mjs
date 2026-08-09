@@ -12,6 +12,7 @@ import {
   assessFunctionInvokerPolicies,
   assessServiceAccountProjectScope,
   assessStorageRulesContent,
+  assessUnauthenticatedStorageProbe,
   compareExpected,
   createReport,
   discoverFunctionContracts,
@@ -351,6 +352,17 @@ describe("deployment check parsing and comparison", () => {
       RESULT_STATUS.FAIL
     );
   });
+
+  it.each([401, 403])("passes the Storage probe only for an explicit HTTP %s denial", (status) => {
+    expect(assessUnauthenticatedStorageProbe(status).status).toBe(RESULT_STATUS.PASS);
+  });
+
+  it.each([200, 404, 429, 500, 503])(
+    "fails the Storage probe for HTTP %s instead of treating it as denied",
+    (status) => {
+      expect(assessUnauthenticatedStorageProbe(status).status).toBe(RESULT_STATUS.FAIL);
+    }
+  );
 
   it("fails service-account project scope audit when any project-level role exists", () => {
     const outcome = assessServiceAccountProjectScope("scanner@example.iam.gserviceaccount.com", [
