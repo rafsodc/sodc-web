@@ -207,6 +207,12 @@ export function createPreflightSteps(environment) {
       args: ["dataconnect:sdk:generate", "--project", environment],
     },
     {
+      id: "normalize-generated-sdk",
+      label: "Normalize generated SDK formatting",
+      command: "node",
+      args: ["scripts/normalize-generated-sdk.mjs"],
+    },
+    {
       id: "generated-drift-check",
       label: "Confirm generated SDKs match the reviewed commit",
       command: "git",
