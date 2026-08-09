@@ -65,7 +65,12 @@ query GetUserById($id: String!) @auth(expr: "auth.token.admin == true && auth.to
 
 # List all users (admin only - admins must also be enabled)
 query ListUsers @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  users {
+  # Without an explicit limit, Data Connect silently caps this at its default
+  # of 100 rows -- confirmed live against production, where it truncated the
+  # User Groups and Audit Logs admin views to the first 100 of 918 members
+  # with no error. 5000 gives headroom well past current membership; move to
+  # real server-side pagination before membership approaches that ceiling.
+  users(limit: 5000) {
     id
     firstName
     lastName
