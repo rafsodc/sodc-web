@@ -140,21 +140,6 @@ export default function ProfileReviewDialog({
         else await optInSection.mutateAsync({ sectionId: section.id });
       }
 
-      await confirmProfileReview(dataConnect, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        serviceNumber: serviceNumber.trim(),
-        mobileNumber: normalizedMobileNumber,
-        postNominals: postNominals.trim() || null,
-        rank,
-        shareContactInfo,
-        announcementOptOutAll,
-        isRegular,
-        isReserve,
-        isCivilServant,
-        isIndustry,
-      });
-
       const currentStatus = userData.membershipStatus || null;
       if (membershipStatus && membershipStatus !== currentStatus) {
         const currentUser = auth.currentUser;
@@ -173,6 +158,21 @@ export default function ProfileReviewDialog({
           return;
         }
       }
+
+      await confirmProfileReview(dataConnect, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        serviceNumber: serviceNumber.trim(),
+        mobileNumber: normalizedMobileNumber,
+        postNominals: postNominals.trim() || null,
+        rank,
+        shareContactInfo,
+        announcementOptOutAll,
+        isRegular,
+        isReserve,
+        isCivilServant,
+        isIndustry,
+      });
 
       const displayName = `${lastName.trim()}, ${firstName.trim()}`;
       try {

@@ -320,6 +320,37 @@ describe("ProfileReviewDialog", () => {
     expect(onReviewed).toHaveBeenCalledTimes(1);
   });
 
+  it("does not confirm the review when the membership status update fails", async () => {
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    vi.mocked(firebaseFunctions.updateMembershipStatus).mockResolvedValueOnce({
+      success: false,
+      error: "Membership status update failed",
+    });
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={onReviewed}
+      />,
+    );
+
+    const selectRoot = screen.getByTestId("review-membership-status-select");
+    const trigger =
+      selectRoot.querySelector('[role="combobox"]') ??
+      selectRoot.querySelector(".MuiSelect-select") ??
+      selectRoot;
+    fireEvent.mouseDown(trigger);
+    await interaction.click(await screen.findByRole("option", { name: "Reserve" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.updateMembershipStatus).toHaveBeenCalledWith("user-1", "RESERVE");
+    });
+    expect(generated.confirmProfileReview).not.toHaveBeenCalled();
+    expect(onReviewed).not.toHaveBeenCalled();
+  });
+
   it("does not call updateMembershipStatus when the status is unchanged", async () => {
     const interaction = userEvent.setup();
     const onReviewed = vi.fn();
