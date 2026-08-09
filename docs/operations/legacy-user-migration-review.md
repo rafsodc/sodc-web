@@ -72,10 +72,11 @@ that happens, confirm the CLI's `APPROVED_LEGACY_RANK_TARGETS` /
 
 ## Approval artifact stub
 
-The tool also emits a `sodc-legacy-user-migration-approval/v1` stub with
-`approved: false` and `sourceChecksum` left as an explicit placeholder --
-the checksum is only known once the importer's dry-run decrypts and hashes
-the real encrypted artifact (see `legacy-user-import.md`). Fill in the
-checksum from that dry-run, complete every checklist item in the worksheet,
-and only then flip `approved` to `true` before using it with
+The tool also emits a `sodc-legacy-user-migration-approval/v2` stub with
+`approved: false`, `sourceChecksum` left as an explicit placeholder, and a
+`preflightChecksum` binding the approval to the exact preflight file reviewed.
+The separate `sourceChecksum` is only known once the importer's dry-run
+decrypts and hashes the real encrypted artifact (see `legacy-user-import.md`).
+Fill in that source checksum from the dry-run, complete every checklist item in
+the worksheet, and only then flip `approved` to `true` before using it with
 `legacy-user-import.ts --approval`.

@@ -4,6 +4,7 @@ import {
   APPROVED_LEGACY_RANK_TARGETS,
   buildLegacyMigrationApprovalStub,
   buildLegacyPreflightReviewWorksheet,
+  legacyPreflightChecksum,
   parseLegacyPreflightReport,
   type LegacyPreflightReport,
 } from "../legacyUserPreflightReview";
@@ -138,15 +139,22 @@ describe("buildLegacyPreflightReviewWorksheet", () => {
 
 describe("buildLegacyMigrationApprovalStub", () => {
   it("carries the record schema version and expected count, unapproved by default", () => {
-    const stub = buildLegacyMigrationApprovalStub(preflight(), "sodc-web-production");
+    const checksum = legacyPreflightChecksum(JSON.stringify(preflight()));
+    const stub = buildLegacyMigrationApprovalStub(preflight(), "sodc-web-production", checksum);
     expect(stub).toEqual({
-      schemaVersion: "sodc-legacy-user-migration-approval/v1",
+      schemaVersion: "sodc-legacy-user-migration-approval/v2",
       issue: 420,
       approved: false,
       projectId: "sodc-web-production",
       sourceChecksum: expect.stringContaining("fill in"),
+      preflightChecksum: checksum,
       recordSchemaVersion: "sodc-legacy-user/v1",
       expectedRecordCount: 3,
     });
+  });
+
+  it("rejects an approval stub without a valid preflight digest", () => {
+    expect(() => buildLegacyMigrationApprovalStub(preflight(), "sodc-web-production", "bad"))
+      .toThrow(/preflightChecksum/);
   });
 });

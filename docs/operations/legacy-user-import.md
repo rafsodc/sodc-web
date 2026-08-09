@@ -248,11 +248,12 @@ and exception set. Store the approval outside the repository:
 
 ```json
 {
-  "schemaVersion": "sodc-legacy-user-migration-approval/v1",
+  "schemaVersion": "sodc-legacy-user-migration-approval/v2",
   "issue": 420,
   "approved": true,
   "projectId": "sodc-web-production",
   "sourceChecksum": "<64 lowercase hexadecimal characters from dry-run>",
+  "preflightChecksum": "<64 lowercase hexadecimal characters emitted by the review tool>",
   "recordSchemaVersion": "sodc-legacy-user/v1",
   "expectedRecordCount": 918
 }

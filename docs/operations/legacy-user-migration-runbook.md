@@ -148,12 +148,15 @@ Before production apply, both the operator and reviewer (section 2)
 independently confirm:
 
 - [ ] Section 4's staging rehearsal is complete with no unresolved failures.
-- [ ] The approval artifact (`sodc-legacy-user-migration-approval/v1`) has
+- [ ] The approval artifact (`sodc-legacy-user-migration-approval/v2`) has
       `approved: true`, and its `sourceChecksum` has been reconfirmed against
       a fresh dry-run targeting `sodc-web-production` itself (the checksum in
       the #420 approval was generated from a dev dry-run; per
       [`legacy-user-import.md`](legacy-user-import.md#3-non-production-apply),
       it must be reconfirmed for production specifically).
+- [ ] Its `preflightChecksum` still matches the exact preflight file supplied
+      to the production importer; reformatting or replacing that file requires
+      a fresh review artifact.
 - [ ] The bcrypt pilot (step 3) has passed for `sodc-web-production`
       specifically.
 - [ ] Both signatures recorded: operator ******\_\_\_******, reviewer
