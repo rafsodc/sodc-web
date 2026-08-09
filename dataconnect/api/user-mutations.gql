@@ -220,6 +220,10 @@ mutation ConfirmProfileReview(
   $rank: String!
   $shareContactInfo: Boolean!
   $announcementOptOutAll: Boolean!
+  $isRegular: Boolean
+  $isReserve: Boolean
+  $isCivilServant: Boolean
+  $isIndustry: Boolean
 ) @auth(expr: "auth.token.enabled == true") {
   user_update(
     id_expr: "auth.uid"
@@ -232,6 +236,10 @@ mutation ConfirmProfileReview(
       rank: $rank
       shareContactInfo: $shareContactInfo
       announcementOptOutAll: $announcementOptOutAll
+      isRegular: $isRegular
+      isReserve: $isReserve
+      isCivilServant: $isCivilServant
+      isIndustry: $isIndustry
       profileReviewedAt_expr: "request.time"
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"

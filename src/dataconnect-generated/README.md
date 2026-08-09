@@ -22777,6 +22777,10 @@ export interface ConfirmProfileReviewVariables {
   rank: string;
   shareContactInfo: boolean;
   announcementOptOutAll: boolean;
+  isRegular?: boolean | null;
+  isReserve?: boolean | null;
+  isCivilServant?: boolean | null;
+  isIndustry?: boolean | null;
 }
 ```
 ### Return Type
@@ -22804,13 +22808,17 @@ const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
   rank: ..., 
   shareContactInfo: ..., 
   announcementOptOutAll: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
 };
 
 // Call the `confirmProfileReview()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await confirmProfileReview(confirmProfileReviewVars);
 // Variables can be defined inline as well.
-const { data } = await confirmProfileReview({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., });
+const { data } = await confirmProfileReview({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22841,12 +22849,16 @@ const confirmProfileReviewVars: ConfirmProfileReviewVariables = {
   rank: ..., 
   shareContactInfo: ..., 
   announcementOptOutAll: ..., 
+  isRegular: ..., // optional
+  isReserve: ..., // optional
+  isCivilServant: ..., // optional
+  isIndustry: ..., // optional
 };
 
 // Call the `confirmProfileReviewRef()` function to get a reference to the mutation.
 const ref = confirmProfileReviewRef(confirmProfileReviewVars);
 // Variables can be defined inline as well.
-const ref = confirmProfileReviewRef({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., });
+const ref = confirmProfileReviewRef({ firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., rank: ..., shareContactInfo: ..., announcementOptOutAll: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
