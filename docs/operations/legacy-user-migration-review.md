@@ -5,7 +5,7 @@ user import is approved. Read `legacy-user-migration-schema.md` first for the
 approved field mapping and `legacy-user-import.md` for the importer runbook
 this review gates.
 
-`sodc-api`'s exporter produces a non-PII aggregate `sodc-legacy-user-preflight/v2`
+`sodc-api`'s exporter produces a non-PII aggregate `sodc-legacy-user-preflight/v3`
 report (record counts, rank/status distributions, missing-field counts -- no
 names, emails, or other member-identifying data). Reviewing that raw JSON by
 hand against #420's acceptance criteria is manual spreadsheet work. This CLI
@@ -13,7 +13,9 @@ turns the report into a structured Markdown worksheet with the relevant counts
 already placed under each review question, plus an approval-artifact stub
 ready for the importer's `--approval` flag.
 
-The tool only reads the non-PII preflight report. It never touches the
+The report also carries the SHA-256 digest of the exact plaintext JSONL bytes,
+allowing the importer to prove that the reviewed counts came from its decrypted
+source without exposing member data. The tool only reads the non-PII preflight report. It never touches the
 encrypted member artifact and performs no writes to Firebase or Data Connect.
 
 ## Usage

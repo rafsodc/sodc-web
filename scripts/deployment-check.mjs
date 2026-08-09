@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
   assessAppCheckEnforcement,
+  firebaseStorageDownloadUrl,
   assessAuthConfiguration,
   assessDefinitionsFreshness,
   assessGovNotifyReplyToConfiguration,
@@ -731,9 +732,7 @@ async function main() {
       if (!objectName) {
         throw new Error("the bucket has no known object available for an authorization probe");
       }
-      const probeUrl =
-        `https://storage.googleapis.com/download/storage/v1/b/${encodeURIComponent(target.storageBucket)}` +
-        `/o/${encodeURIComponent(objectName)}?alt=media`;
+      const probeUrl = firebaseStorageDownloadUrl(target.storageBucket, objectName);
       const probeResponse = await fetchWithTimeout(probeUrl);
       const outcome = assessUnauthenticatedStorageProbe(probeResponse.status);
       results.push(result("storage-unauthenticated-probe", outcome.status, outcome.summary));

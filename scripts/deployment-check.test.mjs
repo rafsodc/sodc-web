@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   RESULT_STATUS,
   assessAppCheckEnforcement,
+  firebaseStorageDownloadUrl,
   assessAuthConfiguration,
   assessDefinitionsFreshness,
   assessGovNotifyReplyToConfiguration,
@@ -282,6 +283,12 @@ describe("deployment check parsing and comparison", () => {
     expect(assessAppCheckEnforcement([]).status).toBe(RESULT_STATUS.FAIL);
   });
 
+  it("probes Firebase Storage through the Rules-enforcing download endpoint", () => {
+    expect(firebaseStorageDownloadUrl("bucket name", "private/a b.txt")).toBe(
+      "https://firebasestorage.googleapis.com/v0/b/bucket%20name/o/private%2Fa%20b.txt?alt=media"
+    );
+  });
+
   it("fails when any configured App Check service is absent from the provider response", () => {
     const outcome = assessAppCheckEnforcement(
       [{ name: "projects/1/services/firebasestorage.googleapis.com", enforcementMode: "ENFORCED" }],
@@ -289,6 +296,11 @@ describe("deployment check parsing and comparison", () => {
     );
     expect(outcome.status).toBe(RESULT_STATUS.FAIL);
     expect(outcome.details.missingServices).toEqual(["identitytoolkit.googleapis.com"]);
+    expect(outcome.details).toMatchObject({
+      expectedServices: ["firebasestorage.googleapis.com", "identitytoolkit.googleapis.com"],
+      returnedServices: ["firebasestorage.googleapis.com"],
+      unenforcedServices: [],
+    });
   });
 
   it("warns when App Check is registered but not fully enforced", () => {
@@ -305,6 +317,7 @@ describe("deployment check parsing and comparison", () => {
       { name: "firebasestorage.googleapis.com", enforcementMode: "ENFORCED" },
       { name: "identitytoolkit.googleapis.com", enforcementMode: "UNENFORCED" },
     ]);
+    expect(outcome.details.unenforcedServices).toEqual(["identitytoolkit.googleapis.com"]);
   });
 
   it("passes App Check audit once every checked service is enforced", () => {

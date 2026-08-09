@@ -26,8 +26,8 @@ describe("rate limiter persistence contracts", () => {
 
     expect(operation).toContain("@auth(level: NO_ACCESS) @transaction");
     expect(operation).toContain("callableRateLimitBucket_updateMany(");
-    expect(operation).toContain("count: { lt: $limit }");
-    expect(operation).toContain("data: { count_update: { inc: 1 } }");
+    expect(operation).toContain("count: { le: $ceiling }");
+    expect(operation).toContain("data: { count_update: { inc: $cost } }");
     expect(operation).toContain(
       "@check(expr: \"this == 1\", message: \"RATE_LIMIT_EXCEEDED\")"
     );

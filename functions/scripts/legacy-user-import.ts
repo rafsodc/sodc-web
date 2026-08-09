@@ -26,6 +26,7 @@ import {
 } from "../src/legacyUserMigration";
 import {
   decryptLegacyArtifact,
+  assertLegacyPreflightSourceBinding,
   effectiveLegacySourceChecksum,
   emailLessLegacyUserIds,
   readLegacyPreflight,
@@ -663,6 +664,7 @@ async function main(): Promise<void> {
   const preflightChecksum = sha256Hex(fs.readFileSync(options.preflightPath, "utf8"));
   console.log("Decrypting and validating the canonical artifact in memory...");
   const decrypted = await decryptLegacyArtifact(options.inputPath);
+  assertLegacyPreflightSourceBinding(preflight, decrypted.artifactChecksum);
   const remediated = options.interactiveRemediation
     ? await remediateLegacyContacts(decrypted.plaintextLines)
     : { lines: decrypted.plaintextLines, remediations: [] };

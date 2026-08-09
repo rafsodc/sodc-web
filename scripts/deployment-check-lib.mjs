@@ -8,6 +8,13 @@ export const RESULT_STATUS = Object.freeze({
   SKIP: "skip",
 });
 
+export function firebaseStorageDownloadUrl(bucket, objectName) {
+  return (
+    `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}` +
+    `/o/${encodeURIComponent(objectName)}?alt=media`
+  );
+}
+
 export function parseJsonOutput(output) {
   const trimmed = String(output).trim();
   if (!trimmed) throw new Error("command returned no JSON");
@@ -186,32 +193,43 @@ export function assessAppCheckEnforcement(services, expectedServiceNames = []) {
   const missingServices = expectedServiceNames
     .map(normalizeResourceName)
     .filter((name) => !returnedNames.has(name));
+  const expectedServices = expectedServiceNames.map(normalizeResourceName);
+  const returnedServices = entries.map(({ name }) => name);
+  const unenforcedServices = entries
+    .filter((entry) => entry.enforcementMode !== "ENFORCED")
+    .map(({ name }) => name);
+  const details = {
+    expectedServices,
+    returnedServices,
+    missingServices,
+    unenforcedServices,
+    services: entries,
+  };
   if (missingServices.length > 0) {
     return {
       status: RESULT_STATUS.FAIL,
       summary: `App Check is missing configured service(s): ${missingServices.join(", ")}.`,
-      details: { services: entries, missingServices },
+      details,
     };
   }
   if (entries.length === 0) {
     return {
       status: RESULT_STATUS.FAIL,
       summary: "App Check has no services registered; enforcement is not configured.",
-      details: { services: entries, missingServices: [] },
+      details,
     };
   }
-  const unenforced = entries.filter((entry) => entry.enforcementMode !== "ENFORCED");
-  if (unenforced.length > 0) {
+  if (unenforcedServices.length > 0) {
     return {
       status: RESULT_STATUS.WARN,
       summary: "App Check is registered but not yet enforced for all services (monitoring only).",
-      details: { services: entries },
+      details,
     };
   }
   return {
     status: RESULT_STATUS.PASS,
     summary: "App Check is registered and enforced for all checked services.",
-    details: { services: entries },
+    details,
   };
 }
 

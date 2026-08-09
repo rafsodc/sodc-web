@@ -53,7 +53,8 @@ describe("reconcileMyCheckoutSessionOrders", () => {
       userId: "user-1",
       functionName: "reconcileMyCheckoutSessionOrders",
       windowStart: expect.any(String),
-      limit: 20,
+      cost: 1,
+      ceiling: 19,
     });
     expect(reconciliationMocks.reconcile).toHaveBeenCalledWith({
       uid: "user-1",

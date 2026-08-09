@@ -76,6 +76,7 @@ interface PreflightCohort {
 export interface LegacyPreflightReport {
   schemaVersion: string;
   recordSchemaVersion: string;
+  sourceChecksum: string;
   generatedAt: string;
   overall: PreflightCohort;
   byOldUid: { set: PreflightCohort; missing: PreflightCohort };
@@ -178,6 +179,9 @@ export function parseLegacyPreflightReport(raw: unknown): LegacyPreflightReport 
   if (typeof report.generatedAt !== "string" || !report.generatedAt) {
     throw new Error("preflight report generatedAt must be a non-empty string");
   }
+  if (typeof report.sourceChecksum !== "string" || !/^[0-9a-f]{64}$/.test(report.sourceChecksum)) {
+    throw new Error("preflight report sourceChecksum must be a lowercase SHA-256 digest");
+  }
   const overall = requireCohort(report.overall, "overall");
   const byOldUid = report.byOldUid as Record<string, unknown> | undefined;
   if (!byOldUid) {
@@ -186,6 +190,7 @@ export function parseLegacyPreflightReport(raw: unknown): LegacyPreflightReport 
   return {
     schemaVersion: report.schemaVersion,
     recordSchemaVersion: report.recordSchemaVersion,
+    sourceChecksum: report.sourceChecksum,
     generatedAt: report.generatedAt,
     overall,
     byOldUid: {

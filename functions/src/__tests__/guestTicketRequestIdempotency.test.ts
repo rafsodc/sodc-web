@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { guestTicketRequestId, runIdempotentBatch } from "../guestTicketRequestIdempotency";
+import { describe, expect, it, vi } from "vitest";
+import {
+  guestTicketRequestId,
+  runIdempotentAtomicBatch,
+  runIdempotentBatch,
+} from "../guestTicketRequestIdempotency";
 
 const base = {
   callerUid: "firebase-user",
@@ -47,5 +51,30 @@ describe("runIdempotentBatch", () => {
       { existing: "Sam", id: "request-1", replayed: false },
     ]);
     expect(stored).toHaveLength(2);
+  });
+});
+
+describe("runIdempotentAtomicBatch", () => {
+  it("writes all missing rows in one call and replays without another write", async () => {
+    const stored = new Map<string, string>();
+    const insertMany = vi.fn(async (rows: readonly { id: string; value: string }[]) => {
+      for (const row of rows) stored.set(row.id, row.value);
+    });
+    const args = {
+      items: ["Ada", "Grace"],
+      loadAll: async () => [stored.get("id-1"), stored.get("id-2")],
+      buildMissingRows: (existing: readonly (string | undefined)[]) =>
+        ["Ada", "Grace"].flatMap((value, index) => existing[index] ? [] : [{ id: `id-${index + 1}`, value }]),
+      insertMany,
+      matches: (existing: string, item: string) => existing === item,
+    };
+
+    await expect(runIdempotentAtomicBatch(args)).resolves.toEqual(["Ada", "Grace"]);
+    await expect(runIdempotentAtomicBatch(args)).resolves.toEqual(["Ada", "Grace"]);
+    expect(insertMany).toHaveBeenCalledTimes(1);
+    expect(insertMany).toHaveBeenCalledWith([
+      { id: "id-1", value: "Ada" },
+      { id: "id-2", value: "Grace" },
+    ]);
   });
 });

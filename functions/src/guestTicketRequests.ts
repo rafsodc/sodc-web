@@ -7,7 +7,9 @@ import {
   getBookingForGuestTicketCallable,
   getGuestTicketRequestByIdForCallable,
   GuestTicketRequestStatus,
+  connectorConfig,
 } from "@dataconnect/admin-generated";
+import { getDataConnect } from "firebase-admin/data-connect";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireAdmin, requireEnabled, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
@@ -26,7 +28,7 @@ import {
 import {
   IdempotencyConflictError,
   guestTicketRequestId,
-  runIdempotentBatch,
+  runIdempotentAtomicBatch,
 } from "./guestTicketRequestIdempotency";
 
 const MAX_GUEST_REQUEST_BATCH = 20;
@@ -201,8 +203,6 @@ export const submitAdditionalGuestTicketRequests = onCall(
   async (request) => {
     requireEnabled(request);
     const callerUid = request.auth!.uid;
-    await enforceRateLimit("submitAdditionalGuestTicketRequests", callerUid);
-
     const bookingId = validateUUID(request.data?.bookingId, "bookingId") as UUIDString;
     const guestTicketTypeId = validateUUID(request.data?.guestTicketTypeId, "guestTicketTypeId") as UUIDString;
     const idempotencyKey = validateUUID(request.data?.idempotencyKey, "idempotencyKey");
@@ -216,6 +216,7 @@ export const submitAdditionalGuestTicketRequests = onCall(
       );
     }
     const guests: GuestSubmission[] = request.data.guests.map(validateGuestSubmission);
+    await enforceRateLimit("submitAdditionalGuestTicketRequests", callerUid, guests.length);
 
     try {
       const bookingRow = await getBookingForGuestTicketCallable({ bookingId });
@@ -230,55 +231,65 @@ export const submitAdditionalGuestTicketRequests = onCall(
         buildPendingGuestTicketRequestPool(booking.supersedesBooking?.guestTicketRequests),
         booking.guestTicketRequests,
       );
-      const notifyAfterCreate = new Set<string>();
-      let results;
+      const ids = guests.map((_guest, index) =>
+        guestTicketRequestId({ callerUid, bookingId, idempotencyKey, index })
+      );
+      let results: Array<{ success: true; requestId: string }>;
       try {
-        results = await runIdempotentBatch<
-          GuestSubmission,
-          ExistingGuestRequest,
-          { success: true; requestId: string }
-        >({
+        const loadAll = () => Promise.all(ids.map(async (id) =>
+          (await getGuestTicketRequestByIdForCallable({ id: id as UUIDString })).data.guestTicketRequest
+        ));
+        const existing = await runIdempotentAtomicBatch({
           items: guests,
-          idForIndex: (index) => guestTicketRequestId({ callerUid, bookingId, idempotencyKey, index }),
-          load: async (id) =>
-            (await getGuestTicketRequestByIdForCallable({ id: id as UUIDString })).data.guestTicketRequest,
-          create: async (guest, _index, id) => {
-            const resolved = resolveGuestTicketRequestSubmission({
-              approvedPool,
-              pendingPool,
-              guestDisplayName: guest.guestDisplayName,
-              guestTicketTypeId,
-            });
-            approvedPool = resolved.remainingApprovedPool;
-            pendingPool = resolved.remainingPendingPool;
-            const decision = resolved.decision;
-            if (decision.kind === "create_pending") notifyAfterCreate.add(id);
-            const status =
-              decision.kind === "carry_forward_approved"
-                ? GuestTicketRequestStatus.APPROVED
-                : GuestTicketRequestStatus.PENDING;
-            await createGuestTicketRequestFromCallable({
-              id: id as UUIDString,
-              bookingId,
-              requestedGuestCount: 1,
-              guestTicketTypeId,
-              guestDisplayName: guest.guestDisplayName,
-              dietaryNote: guest.dietaryNote,
-              status,
-              reviewedById: decision.kind === "carry_forward_approved" ? decision.reviewedById : null,
-              reviewedAt: decision.kind === "carry_forward_approved" ? decision.reviewedAt : null,
-              moderatorNote: decision.kind === "carry_forward_approved" ? decision.moderatorNote : null,
-            });
-          },
-          matches: (existing, guest) =>
-            existingRequestMatches(existing, { bookingId, guestTicketTypeId, guest }),
-          result: async (existing, id, replayed) => {
-            if (notifyAfterCreate.has(id) || (replayed && existing.status === GuestTicketRequestStatus.PENDING)) {
-              await sendGuestTicketRequestSubmittedEmails({ requestId: id, appBaseUrl: APP_BASE_URL });
+          loadAll,
+          matches: (requestRow, guest) =>
+            existingRequestMatches(requestRow, { bookingId, guestTicketTypeId, guest }),
+          buildMissingRows: (loaded) => {
+            const rows = [];
+            for (const [index, guest] of guests.entries()) {
+              if (loaded[index]) continue;
+              const id = ids[index]!;
+              const resolved = resolveGuestTicketRequestSubmission({
+                approvedPool,
+                pendingPool,
+                guestDisplayName: guest.guestDisplayName,
+                guestTicketTypeId,
+              });
+              approvedPool = resolved.remainingApprovedPool;
+              pendingPool = resolved.remainingPendingPool;
+              const decision = resolved.decision;
+              const status =
+                decision.kind === "carry_forward_approved"
+                  ? GuestTicketRequestStatus.APPROVED
+                  : GuestTicketRequestStatus.PENDING;
+              rows.push({
+                id,
+                bookingId,
+                requestedGuestCount: 1,
+                guestTicketTypeId,
+                guestDisplayName: guest.guestDisplayName,
+                dietaryNote: guest.dietaryNote,
+                status,
+                reviewedById: decision.kind === "carry_forward_approved" ? decision.reviewedById : null,
+                reviewedAt: decision.kind === "carry_forward_approved" ? decision.reviewedAt : null,
+                moderatorNote: decision.kind === "carry_forward_approved" ? decision.moderatorNote : null,
+                createdBy: "system",
+                updatedBy: "system",
+              });
             }
-            return { success: true as const, requestId: id };
+            return rows;
+          },
+          insertMany: async (rows) => {
+            // insertMany is one atomic bulk operation: either every missing row is committed or none is.
+            await getDataConnect(connectorConfig).insertMany("guestTicketRequest", [...rows]);
           },
         });
+        for (const [index, requestRow] of existing.entries()) {
+          if (requestRow.status === GuestTicketRequestStatus.PENDING) {
+            await sendGuestTicketRequestSubmittedEmails({ requestId: ids[index]!, appBaseUrl: APP_BASE_URL });
+          }
+        }
+        results = ids.map((id) => ({ success: true as const, requestId: id }));
       } catch (error) {
         if (error instanceof IdempotencyConflictError) {
           throw new HttpsError("already-exists", "idempotencyKey is already bound to different guest details");

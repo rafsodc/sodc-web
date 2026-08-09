@@ -170,7 +170,8 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
       userId: USER_ID,
       functionName: "getMyTicketOrderStripeArtifactsBatch",
       windowStart: expect.any(String),
-      limit: 10,
+      cost: 1,
+      ceiling: 9,
     });
     expect(getOrder).toHaveBeenCalledWith({ id: ORDER_1 });
     expect(consumeRateLimit.mock.invocationCallOrder[0]).toBeLessThan(

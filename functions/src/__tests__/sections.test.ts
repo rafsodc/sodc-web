@@ -497,7 +497,8 @@ describe("searchSectionMembers", () => {
       data: {
         explicit: explicit.map((user) => ({ user })),
         inherited,
-        included,
+        includedExplicit: included.map((user) => ({ user })),
+        includedInherited: [],
       },
     } as unknown as Awaited<ReturnType<typeof admin.searchSectionMemberCandidates>>);
   }
@@ -521,7 +522,7 @@ describe("searchSectionMembers", () => {
     expect(result.members).toEqual([{ id: "user-2", firstName: "Grace", lastName: "Hopper" }]);
     expect(mockSearchSectionMemberCandidates).toHaveBeenCalledWith(expect.objectContaining({
       searchPattern: "(?i).*grace.*",
-      limit: 20,
+      limit: 21,
     }));
     expect(mockListUsers).not.toHaveBeenCalled();
     expect(mockGetSectionMembers).not.toHaveBeenCalled();
@@ -561,6 +562,22 @@ describe("searchSectionMembers", () => {
     const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "match" });
 
     expect(result.members).toHaveLength(20);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("sorts deterministically before applying the old 20-result boundary", async () => {
+    const users = Array.from({ length: 21 }, (_, i) =>
+      eventsUser(`user-${String(i).padStart(2, "0")}`, "Member", `Name${String(20 - i).padStart(2, "0")}`)
+    );
+    mockCandidates({ explicit: users });
+
+    const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "member" });
+
+    expect(result.members).toHaveLength(20);
+    expect(result.members.map((member) => member.lastName)).toEqual(
+      Array.from({ length: 20 }, (_, i) => `Name${String(i).padStart(2, "0")}`)
+    );
+    expect(result.hasMore).toBe(true);
   });
 
   it("passes explicit groups and inherited statuses to one bounded database query", async () => {
@@ -578,7 +595,7 @@ describe("searchSectionMembers", () => {
       membershipStatuses: [MembershipStatus.REGULAR, MembershipStatus.RESERVE],
       searchPattern: "(?i).*a.*",
       includeIds: [],
-      limit: 20,
+      limit: 21,
     });
   });
 

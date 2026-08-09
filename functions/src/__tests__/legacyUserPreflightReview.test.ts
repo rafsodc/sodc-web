@@ -41,8 +41,9 @@ function cohort(recordCount: number): LegacyPreflightReport["overall"] {
 
 function preflight(overrides: Partial<LegacyPreflightReport> = {}): LegacyPreflightReport {
   return {
-    schemaVersion: "sodc-legacy-user-preflight/v2",
+    schemaVersion: "sodc-legacy-user-preflight/v3",
     recordSchemaVersion: "sodc-legacy-user/v1",
+    sourceChecksum: "a".repeat(64),
     generatedAt: "2026-07-19T14:00:00Z",
     overall: cohort(3),
     byOldUid: { set: cohort(2), missing: cohort(1) },

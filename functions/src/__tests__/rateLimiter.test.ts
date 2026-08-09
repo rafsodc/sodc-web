@@ -26,8 +26,18 @@ describe("enforceRateLimit", () => {
       userId: uid,
       functionName: "updateDisplayName",
       windowStart: "2026-07-17T12:00:00.000Z",
-      limit: CALLABLE_RATE_LIMITS.updateDisplayName.limit,
+      cost: 1,
+      ceiling: CALLABLE_RATE_LIMITS.updateDisplayName.limit - 1,
     });
+  });
+
+  it("charges batch fan-out against the same row budget", async () => {
+    await enforceRateLimit("submitAdditionalGuestTicketRequests", uid, 20);
+
+    expect(mockConsumeCallableRateLimit).toHaveBeenCalledWith(expect.objectContaining({
+      cost: 20,
+      ceiling: 0,
+    }));
   });
 
   it("ensures the bucket row exists in a prior, separately-committed call before consuming it (#401)", async () => {

@@ -1871,7 +1871,14 @@ export interface SearchSectionMemberCandidatesData {
     firstName: string;
     lastName: string;
   } & User_Key)[];
-  included: ({
+  includedExplicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  includedInherited: ({
     id: string;
     firstName: string;
     lastName: string;
@@ -1905,14 +1912,16 @@ const { data } = await searchSectionMemberCandidates(dataConnect, searchSectionM
 
 console.log(data.explicit);
 console.log(data.inherited);
-console.log(data.included);
+console.log(data.includedExplicit);
+console.log(data.includedInherited);
 
 // Or, you can use the `Promise` API.
 searchSectionMemberCandidates(searchSectionMemberCandidatesVars).then((response) => {
   const data = response.data;
   console.log(data.explicit);
   console.log(data.inherited);
-  console.log(data.included);
+  console.log(data.includedExplicit);
+  console.log(data.includedInherited);
 });
 ```
 
@@ -1946,14 +1955,16 @@ const { data } = await executeQuery(ref);
 
 console.log(data.explicit);
 console.log(data.inherited);
-console.log(data.included);
+console.log(data.includedExplicit);
+console.log(data.includedInherited);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.explicit);
   console.log(data.inherited);
-  console.log(data.included);
+  console.log(data.includedExplicit);
+  console.log(data.includedInherited);
 });
 ```
 
@@ -18841,7 +18852,8 @@ export interface ConsumeCallableRateLimitVariables {
   userId: string;
   functionName: string;
   windowStart: TimestampString;
-  limit: number;
+  cost: number;
+  ceiling: number;
 }
 ```
 ### Return Type
@@ -18865,14 +18877,15 @@ const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
   userId: ..., 
   functionName: ..., 
   windowStart: ..., 
-  limit: ..., 
+  cost: ..., 
+  ceiling: ..., 
 };
 
 // Call the `consumeCallableRateLimit()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await consumeCallableRateLimit(consumeCallableRateLimitVars);
 // Variables can be defined inline as well.
-const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+const { data } = await consumeCallableRateLimit({ userId: ..., functionName: ..., windowStart: ..., cost: ..., ceiling: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -18900,13 +18913,14 @@ const consumeCallableRateLimitVars: ConsumeCallableRateLimitVariables = {
   userId: ..., 
   functionName: ..., 
   windowStart: ..., 
-  limit: ..., 
+  cost: ..., 
+  ceiling: ..., 
 };
 
 // Call the `consumeCallableRateLimitRef()` function to get a reference to the mutation.
 const ref = consumeCallableRateLimitRef(consumeCallableRateLimitVars);
 // Variables can be defined inline as well.
-const ref = consumeCallableRateLimitRef({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+const ref = consumeCallableRateLimitRef({ userId: ..., functionName: ..., windowStart: ..., cost: ..., ceiling: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

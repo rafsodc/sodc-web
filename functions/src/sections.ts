@@ -287,7 +287,7 @@ export const searchSectionMembers = onCall(
     try {
       const scope = await loadSectionMemberSearchScope(sectionId, callerUid);
       if (!searchTerm && includeIds.size === 0) {
-        return { members: [] };
+        return { members: [], hasMore: false };
       }
 
       const result = await searchSectionMemberCandidates({
@@ -295,10 +295,13 @@ export const searchSectionMembers = onCall(
         membershipStatuses: scope.membershipStatuses,
         searchPattern: caseInsensitiveContainsPattern(searchTerm),
         includeIds: [...includeIds],
-        limit: SEARCH_SECTION_MEMBERS_MAX_RESULTS,
+        limit: SEARCH_SECTION_MEMBERS_MAX_RESULTS + 1,
       });
 
-      const included = result.data.included ?? [];
+      const included = [
+        ...(result.data.includedExplicit ?? []).map((membership) => membership.user),
+        ...(result.data.includedInherited ?? []),
+      ];
       const searched = [
         ...(result.data.explicit ?? []).map((membership) => membership.user),
         ...(result.data.inherited ?? []),
@@ -308,14 +311,25 @@ export const searchSectionMembers = onCall(
         a.id.localeCompare(b.id)
       );
       const seen = new Set<string>();
-      const members: SectionMemberSearchResult[] = [];
-      for (const member of [...included, ...(searchTerm ? searched : [])]) {
+      const selectedMembers: SectionMemberSearchResult[] = [];
+      const searchMembers: SectionMemberSearchResult[] = [];
+      for (const member of included) {
         if (member.id === callerUid || seen.has(member.id)) continue;
         seen.add(member.id);
-        members.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
-        if (members.length >= includeIds.size + SEARCH_SECTION_MEMBERS_MAX_RESULTS) break;
+        selectedMembers.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
       }
-      return { members };
+      if (searchTerm) {
+        for (const member of searched) {
+          if (member.id === callerUid || seen.has(member.id)) continue;
+          seen.add(member.id);
+          searchMembers.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
+        }
+      }
+      const hasMore = searchMembers.length > SEARCH_SECTION_MEMBERS_MAX_RESULTS;
+      return {
+        members: [...selectedMembers, ...searchMembers.slice(0, SEARCH_SECTION_MEMBERS_MAX_RESULTS)],
+        hasMore,
+      };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "searchSectionMembers");

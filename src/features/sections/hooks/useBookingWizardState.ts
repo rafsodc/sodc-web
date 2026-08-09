@@ -306,6 +306,7 @@ export function useBookingWizardState({
         dietaryNote: guest.dietaryNote.trim() || null,
       })),
     });
+    idempotencyKeyRef.current = null;
   };
 
   const handleConfirm = async () => {

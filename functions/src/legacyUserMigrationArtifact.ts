@@ -16,6 +16,7 @@ import {
 export interface LegacyPreflight {
   schemaVersion: string;
   recordSchemaVersion: string;
+  sourceChecksum: string;
   overall: { recordCount: number };
 }
 
@@ -38,6 +39,9 @@ export function readLegacyPreflight(preflightPath: string): LegacyPreflight {
   if (preflight.recordSchemaVersion !== LEGACY_RECORD_SCHEMA_VERSION) {
     throw new Error("unsupported legacy record schema version");
   }
+  if (!/^[0-9a-f]{64}$/.test(preflight.sourceChecksum)) {
+    throw new Error("preflight source checksum is invalid");
+  }
   if (
     !preflight.overall ||
     !Number.isInteger(preflight.overall.recordCount) ||
@@ -46,6 +50,16 @@ export function readLegacyPreflight(preflightPath: string): LegacyPreflight {
     throw new Error("preflight record count is invalid");
   }
   return preflight;
+}
+
+/** Proves that the reviewed preflight was produced from these exact decrypted bytes. */
+export function assertLegacyPreflightSourceBinding(
+  preflight: LegacyPreflight,
+  artifactChecksum: string
+): void {
+  if (preflight.sourceChecksum !== artifactChecksum) {
+    throw new Error("preflight does not match the decrypted legacy source artifact");
+  }
 }
 
 export async function decryptLegacyArtifact(inputPath: string): Promise<{

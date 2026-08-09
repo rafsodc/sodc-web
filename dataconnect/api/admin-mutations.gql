@@ -1088,7 +1088,7 @@ query SearchSectionMemberCandidates(
         ] }
       ]
     }
-    orderBy: [{ userId: ASC }]
+    orderBy: [{ user: { lastName: ASC } }, { user: { firstName: ASC } }, { userId: ASC }]
     limit: $limit
   ) {
     user { id firstName lastName }
@@ -1108,7 +1108,22 @@ query SearchSectionMemberCandidates(
   ) {
     id firstName lastName
   }
-  included: users(where: { id: { in: $includeIds } }, limit: 10) {
+  includedExplicit: userUserGroups(
+    where: {
+      userGroupId: { in: $userGroupIds }
+      userId: { in: $includeIds }
+    }
+    limit: 10
+  ) {
+    user { id firstName lastName }
+  }
+  includedInherited: users(
+    where: {
+      membershipStatus: { in: $membershipStatuses }
+      id: { in: $includeIds }
+    }
+    limit: 10
+  ) {
     id firstName lastName
   }
 }
@@ -2799,16 +2814,17 @@ mutation ConsumeCallableRateLimit(
   $userId: String!
   $functionName: String!
   $windowStart: Timestamp!
-  $limit: Int!
+  $cost: Int!
+  $ceiling: Int!
 ) @auth(level: NO_ACCESS) @transaction {
   consumed: callableRateLimitBucket_updateMany(
     where: {
       userId: { eq: $userId }
       functionName: { eq: $functionName }
       windowStart: { eq: $windowStart }
-      count: { lt: $limit }
+      count: { le: $ceiling }
     }
-    data: { count_update: { inc: 1 } }
+    data: { count_update: { inc: $cost } }
   ) @check(expr: "this == 1", message: "RATE_LIMIT_EXCEEDED")
 
   callableRateLimitBucket_deleteMany(

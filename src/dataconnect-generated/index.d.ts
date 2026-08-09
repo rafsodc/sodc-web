@@ -450,7 +450,8 @@ export interface ConsumeCallableRateLimitVariables {
   userId: string;
   functionName: string;
   windowStart: TimestampString;
-  limit: number;
+  cost: number;
+  ceiling: number;
 }
 
 export interface CreateAnnouncementRecipientData {
@@ -3118,7 +3119,14 @@ export interface SearchSectionMemberCandidatesData {
     firstName: string;
     lastName: string;
   } & User_Key)[];
-  included: ({
+  includedExplicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  includedInherited: ({
     id: string;
     firstName: string;
     lastName: string;

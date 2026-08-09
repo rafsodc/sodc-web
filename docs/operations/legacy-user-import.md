@@ -63,14 +63,18 @@ decryption check can make a subsequent importer run succeed without prompting.
 
 The preflight must have:
 
-- `schemaVersion: sodc-legacy-user-preflight/v2`;
+- `schemaVersion: sodc-legacy-user-preflight/v3`;
 - `recordSchemaVersion: sodc-legacy-user/v1`;
+- `sourceChecksum` equal to SHA-256 of the exact decrypted JSONL byte stream;
 - `overall.recordCount` equal to the decrypted non-empty JSONL record count.
 
 Every JSONL object must contain exactly the fields listed in
 `legacy-user-migration-schema.md`. Unexpected or missing fields fail closed.
-The CLI computes SHA-256 over the exact decrypted byte stream; this checksum
-binds provenance, resume state, and production approval to one source artifact.
+The CLI computes SHA-256 over the exact decrypted byte stream and requires it
+to match the digest embedded by the exporter in the reviewed preflight. This
+cross-binding prevents an independently valid, same-count preflight from being
+paired with different source data; the checksum also binds provenance, resume
+state, and production approval to one source artifact.
 
 ## 1. Build and test
 

@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   effectiveLegacySourceChecksum,
+  assertLegacyPreflightSourceBinding,
   emailLessLegacyUserIds,
   readLegacyPreflight,
 } from "../legacyUserMigrationArtifact";
@@ -27,13 +28,28 @@ describe("legacy migration artifact helpers", () => {
     fs.writeFileSync(
       preflightPath,
       JSON.stringify({
-        schemaVersion: "sodc-legacy-user-preflight/v2",
+        schemaVersion: "sodc-legacy-user-preflight/v3",
         recordSchemaVersion: "sodc-legacy-user/v1",
+        sourceChecksum: "a".repeat(64),
         overall: { recordCount: 918 },
       })
     );
 
     expect(readLegacyPreflight(preflightPath).overall.recordCount).toBe(918);
+  });
+
+  it("rejects a same-count preflight produced from different source bytes", () => {
+    const preflight = {
+      schemaVersion: "sodc-legacy-user-preflight/v3",
+      recordSchemaVersion: "sodc-legacy-user/v1",
+      sourceChecksum: "a".repeat(64),
+      overall: { recordCount: 918 },
+    };
+
+    expect(() => assertLegacyPreflightSourceBinding(preflight, "b".repeat(64))).toThrow(
+      /does not match/
+    );
+    expect(() => assertLegacyPreflightSourceBinding(preflight, "a".repeat(64))).not.toThrow();
   });
 
   it("binds remediation decisions into the effective checksum", () => {

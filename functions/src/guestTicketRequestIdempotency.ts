@@ -59,3 +59,37 @@ export async function runIdempotentBatch<TItem, TExisting, TResult>(args: {
   }
   return results;
 }
+
+/**
+ * Creates every missing row through one atomic bulk write. A concurrent retry that
+ * wins the race is accepted only when every deterministic row matches its input.
+ */
+export async function runIdempotentAtomicBatch<TItem, TExisting, TRow>(args: {
+  items: readonly TItem[];
+  loadAll: () => Promise<Array<TExisting | undefined>>;
+  buildMissingRows: (existing: readonly (TExisting | undefined)[]) => TRow[];
+  insertMany: (rows: readonly TRow[]) => Promise<void>;
+  matches: (existing: TExisting, item: TItem) => boolean;
+}): Promise<TExisting[]> {
+  const allMatch = (rows: readonly (TExisting | undefined)[]) =>
+    rows.length === args.items.length && rows.every(
+      (row, index) => row && args.matches(row, args.items[index]!)
+    );
+  let existing = await args.loadAll();
+  for (const [index, row] of existing.entries()) {
+    if (row && !args.matches(row, args.items[index]!)) throw new IdempotencyConflictError();
+  }
+  const rows = args.buildMissingRows(existing);
+  if (rows.length > 0) {
+    try {
+      await args.insertMany(rows);
+    } catch (error) {
+      existing = await args.loadAll();
+      if (!allMatch(existing)) throw error;
+      return existing as TExisting[];
+    }
+  }
+  existing = await args.loadAll();
+  if (!allMatch(existing)) throw new IdempotencyConflictError();
+  return existing as TExisting[];
+}

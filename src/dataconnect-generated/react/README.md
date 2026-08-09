@@ -1559,7 +1559,14 @@ export interface SearchSectionMemberCandidatesData {
     firstName: string;
     lastName: string;
   } & User_Key)[];
-  included: ({
+  includedExplicit: ({
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } & User_Key;
+  })[];
+  includedInherited: ({
     id: string;
     firstName: string;
     lastName: string;
@@ -1618,7 +1625,8 @@ export default function SearchSectionMemberCandidatesComponent() {
   if (query.isSuccess) {
     console.log(query.data.explicit);
     console.log(query.data.inherited);
-    console.log(query.data.included);
+    console.log(query.data.includedExplicit);
+    console.log(query.data.includedInherited);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -15367,7 +15375,8 @@ export interface ConsumeCallableRateLimitVariables {
   userId: string;
   functionName: string;
   windowStart: TimestampString;
-  limit: number;
+  cost: number;
+  ceiling: number;
 }
 ```
 ### Return Type
@@ -15421,11 +15430,12 @@ export default function ConsumeCallableRateLimitComponent() {
     userId: ..., 
     functionName: ..., 
     windowStart: ..., 
-    limit: ..., 
+    cost: ..., 
+    ceiling: ..., 
   };
   mutation.mutate(consumeCallableRateLimitVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., functionName: ..., windowStart: ..., limit: ..., });
+  mutation.mutate({ userId: ..., functionName: ..., windowStart: ..., cost: ..., ceiling: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
