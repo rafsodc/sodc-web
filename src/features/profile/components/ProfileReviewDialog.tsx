@@ -9,21 +9,25 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
   FormGroup,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { confirmProfileReview } from "@dataconnect/generated";
+import { confirmProfileReview, MembershipStatus } from "@dataconnect/generated";
 import {
   useGetMyAnnouncementPreferences,
   useOptInSectionAnnouncement,
   useOptOutSectionAnnouncement,
 } from "@dataconnect/generated/react";
-import { dataConnect } from "../../../config/firebase";
+import { dataConnect, auth } from "../../../config/firebase";
 import {
   MAX_MOBILE_NUMBER_LENGTH,
   MAX_NAME_LENGTH,
@@ -32,11 +36,16 @@ import {
   MEMBERSHIP_STATUS_OPTIONS,
 } from "../../../constants";
 import RankSelect from "../../../shared/components/RankSelect";
-import { updateDisplayName } from "../../../shared/utils/firebaseFunctions";
+import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 import type { UserData } from "../../../types";
 import { getAnnouncementSections } from "../../account/utils/announcementPreferences";
-import { reportError, toProfileUserFacingError } from "../../../shared/errors";
+import { NON_RESTRICTED_STATUSES, isRestrictedStatus } from "../../users/utils/membershipStatusValidation";
+import {
+  reportError,
+  toProfileDomainUserFacingError,
+  toProfileUserFacingError,
+} from "../../../shared/errors";
 import FailureState from "../../../shared/components/FailureState";
 
 interface ProfileReviewDialogProps {
@@ -58,6 +67,7 @@ export default function ProfileReviewDialog({
   const [mobileNumber, setMobileNumber] = useState("");
   const [postNominals, setPostNominals] = useState("");
   const [rank, setRank] = useState("");
+  const [membershipStatus, setMembershipStatus] = useState<MembershipStatus | "">("");
   const [shareContactInfo, setShareContactInfo] = useState(true);
   const [isRegular, setIsRegular] = useState(false);
   const [isReserve, setIsReserve] = useState(false);
@@ -81,6 +91,7 @@ export default function ProfileReviewDialog({
     setMobileNumber(userData.mobileNumber || "");
     setPostNominals(userData.postNominals || "");
     setRank(userData.rank || "");
+    setMembershipStatus(userData.membershipStatus || "");
     setShareContactInfo(userData.shareContactInfo ?? true);
     setIsRegular(userData.isRegular ?? false);
     setIsReserve(userData.isReserve ?? false);
@@ -144,6 +155,25 @@ export default function ProfileReviewDialog({
         isIndustry,
       });
 
+      const currentStatus = userData.membershipStatus || null;
+      if (membershipStatus && membershipStatus !== currentStatus) {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error("You must be logged in to update your membership status");
+        }
+        const statusResult = await updateMembershipStatus(
+          currentUser.uid,
+          membershipStatus as MembershipStatus,
+        );
+        if (!statusResult.success) {
+          const statusError = new Error(statusResult.error || "Membership status update failed");
+          reportError("profile.review.membership-status", statusError);
+          setError(toProfileDomainUserFacingError(statusResult.domainCode, "update").message);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const displayName = `${lastName.trim()}, ${firstName.trim()}`;
       try {
         const displayNameResult = await updateDisplayName(displayName);
@@ -166,12 +196,16 @@ export default function ProfileReviewDialog({
     }
   };
 
+  const statusLocked =
+    userData.membershipStatus != null && isRestrictedStatus(userData.membershipStatus);
+
   const missingRequiredField =
     !firstName.trim() ||
     !lastName.trim() ||
     !serviceNumber.trim() ||
     !mobileNumber.trim() ||
-    !rank;
+    !rank ||
+    !membershipStatus;
 
   return (
     <Dialog
@@ -224,17 +258,39 @@ export default function ProfileReviewDialog({
               inputProps={{ readOnly: true }}
               helperText="This verified sign-in address can be changed later in Account settings."
             />
-            <TextField
-              label="Membership status"
-              value={
-                MEMBERSHIP_STATUS_OPTIONS.find(
-                  (option) => option.value === userData.membershipStatus,
-                )?.label ?? userData.membershipStatus
-              }
-              fullWidth
-              inputProps={{ readOnly: true }}
-              helperText="This can be changed on your Profile page."
-            />
+            <FormControl fullWidth required>
+              <InputLabel>Membership status</InputLabel>
+              <Select
+                value={membershipStatus}
+                label="Membership status"
+                onChange={(event) => setMembershipStatus(event.target.value as MembershipStatus)}
+                disabled={submitting || statusLocked}
+                data-testid="review-membership-status-select"
+              >
+                {statusLocked ? (
+                  MEMBERSHIP_STATUS_OPTIONS.filter(
+                    (option) => option.value === userData.membershipStatus,
+                  ).map((status) => (
+                    <MenuItem key={status.value} value={status.value}>
+                      {status.label}
+                    </MenuItem>
+                  ))
+                ) : (
+                  MEMBERSHIP_STATUS_OPTIONS.filter((option) =>
+                    NON_RESTRICTED_STATUSES.includes(option.value),
+                  ).map((status) => (
+                    <MenuItem key={status.value} value={status.value}>
+                      {status.label}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+              {statusLocked && (
+                <Typography variant="caption" sx={{ color: "text.secondary", mt: 1, ml: 1.5 }}>
+                  Cannot change from restricted status
+                </Typography>
+              )}
+            </FormControl>
             <TextField
               label="Service number"
               value={serviceNumber}
