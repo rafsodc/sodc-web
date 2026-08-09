@@ -110,6 +110,7 @@ function AppContent() {
   const [profileReviewCompletedForUid, setProfileReviewCompletedForUid] = useState<string | null>(
     null,
   );
+  const [profileReviewSaved, setProfileReviewSaved] = useState(false);
   const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
   const checkoutReturn = isCheckoutReturnSearch(location.search);
   const authReturnTo = safeReturnTo(location.search);
@@ -141,6 +142,7 @@ function AppContent() {
     if (!user) return;
     setProfileReviewCompletedForUid(user.uid);
     await refetch?.();
+    setProfileReviewSaved(true);
   }, [refetch, user]);
 
   // Check if email is verified
@@ -387,6 +389,21 @@ function AppContent() {
       >
         <Alert onClose={handleCloseLogoutSnackbar} severity="success" sx={{ width: "100%" }}>
           You have been successfully logged out.
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={profileReviewSaved}
+        autoHideDuration={6000}
+        onClose={() => setProfileReviewSaved(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ mt: 10 }}
+      >
+        <Alert
+          onClose={() => setProfileReviewSaved(false)}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          Your profile has been saved.
         </Alert>
       </Snackbar>
       {header}

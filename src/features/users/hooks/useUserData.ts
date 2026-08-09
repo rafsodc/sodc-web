@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { type User } from "firebase/auth";
-import { executeQuery } from "firebase/data-connect";
+import { executeQuery, QueryFetchPolicy } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import { getCurrentUserRef } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
@@ -58,7 +58,10 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
     setError(null);
     try {
       const ref = getCurrentUserRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeQuery(
+        ref,
+        force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
+      );
       if (result.data?.user) {
         setUserData(result.data.user as UserData);
         authErrorRef.current = false; // Reset auth error flag on success
@@ -141,4 +144,3 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
 
   return { userData, loading, error, refetch: () => fetchUserData(true) };
 }
-

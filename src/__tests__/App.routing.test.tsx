@@ -10,6 +10,8 @@ import { ROUTES } from "../constants";
 import { sectionDetailLocationState } from "../shared/navigation/sectionNavigationState";
 import { createMockUser } from "../test-utils/mocks/firebase";
 
+const mockRefetchUserData = vi.hoisted(() => vi.fn());
+
 let currentUser: User | null = null;
 let enabledClaim = false;
 let enabledClaimResolved = true;
@@ -98,7 +100,7 @@ vi.mock("../features/users/hooks/useUserData", () => ({
       : null,
     loading: false,
     error: null,
-    refetch: vi.fn(),
+    refetch: mockRefetchUserData,
   })),
 }));
 
@@ -323,6 +325,7 @@ describe("App routing", () => {
     profileReviewedAt = new Date().toISOString();
     headerShouldThrow = false;
     memberWelcomeShouldThrow = false;
+    mockRefetchUserData.mockResolvedValue(undefined);
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
@@ -483,6 +486,8 @@ describe("App routing", () => {
         screen.queryByRole("dialog", { name: "Please review your profile" }),
       ).not.toBeInTheDocument();
     });
+    expect(mockRefetchUserData).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Your profile has been saved.")).toBeInTheDocument();
   });
 
   it("does not show profile review before email verification", async () => {
