@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { compareExpected } from "./deployment-check-lib.mjs";
 
@@ -29,6 +29,54 @@ export const REQUIRED_VITE_FIREBASE_KEYS = Object.freeze([
 
 /** Deployment stages in execution order; `--from` resumes at the start of one of these. */
 export const DEPLOY_STAGES = Object.freeze(["preflight", "dataconnect", "functions", "hosting", "audit"]);
+export const PREFLIGHT_ATTESTATION_SCHEMA_VERSION = "sodc-deployment-preflight/v1";
+
+export function preflightAttestationPath(repositoryRoot, environment) {
+  return path.join(repositoryRoot, ".firebase", "deployment-preflight", `${environment}.json`);
+}
+
+export async function writePreflightAttestation(repositoryRoot, { environment, projectId, gitSha }) {
+  const outputPath = preflightAttestationPath(repositoryRoot, environment);
+  const temporaryPath = `${outputPath}.tmp`;
+  await mkdir(path.dirname(outputPath), { recursive: true, mode: 0o700 });
+  await writeFile(
+    temporaryPath,
+    `${JSON.stringify({
+      schemaVersion: PREFLIGHT_ATTESTATION_SCHEMA_VERSION,
+      environment,
+      projectId,
+      gitSha: gitSha.trim(),
+      completedAt: new Date().toISOString(),
+    }, null, 2)}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
+  await rename(temporaryPath, outputPath);
+  return outputPath;
+}
+
+export async function verifyPreflightAttestation(repositoryRoot, expected) {
+  const inputPath = preflightAttestationPath(repositoryRoot, expected.environment);
+  let attestation;
+  try {
+    attestation = JSON.parse(await readFile(inputPath, "utf8"));
+  } catch {
+    throw new Error(
+      `No valid preflight attestation exists for ${expected.environment}. Run the full deployment preflight before using --from.`,
+    );
+  }
+  const matches =
+    attestation.schemaVersion === PREFLIGHT_ATTESTATION_SCHEMA_VERSION &&
+    attestation.environment === expected.environment &&
+    attestation.projectId === expected.projectId &&
+    attestation.gitSha === expected.gitSha.trim();
+  if (!matches) {
+    throw new Error(
+      `The saved preflight attestation does not match ${expected.environment} at revision ${expected.gitSha.trim()}. ` +
+        "Run the full deployment preflight again before using --from.",
+    );
+  }
+  return attestation;
+}
 
 export function environmentConfigFileName(viteMode) {
   return `.env.${viteMode}.local`;
@@ -206,6 +254,11 @@ export function createPreflightSteps(environment) {
       command: "npm",
       args: ["--prefix", "functions", "run", "build"],
     },
+    {
+      id: "record-preflight-attestation",
+      label: "Record the verified environment and revision",
+      kind: "record-preflight-attestation",
+    },
   ];
 }
 
@@ -247,9 +300,20 @@ export function createDeploymentPlan(environment, gitSha) {
 
 /** Slices a plan built by createDeploymentPlan to resume at the start of the given stage. */
 export function applyFromStage(plan, fromStage) {
-  if (!fromStage) return plan;
+  if (!fromStage || fromStage === "preflight") return plan;
   const startIndex = plan.findIndex((step) => step.stage === fromStage);
-  return startIndex === -1 ? plan : plan.slice(startIndex);
+  if (startIndex === -1) return plan;
+  const cleanCheckout = plan.find((step) => step.id === "clean-checkout");
+  return [
+    cleanCheckout,
+    {
+      id: "verify-preflight-attestation",
+      stage: "preflight",
+      label: "Confirm this revision passed preflight for the target environment",
+      kind: "verify-preflight-attestation",
+    },
+    ...plan.slice(startIndex),
+  ].filter(Boolean);
 }
 
 export async function runDeploymentPlan(plan, execute) {

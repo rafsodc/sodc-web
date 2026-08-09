@@ -12,6 +12,8 @@ import {
   parseDeploymentEnvironment,
   runDeploymentPlan,
   validateFirebaseAlias,
+  verifyPreflightAttestation,
+  writePreflightAttestation,
 } from "./deploy-environment-lib.mjs";
 import { parseJsonOutput } from "./deployment-check-lib.mjs";
 
@@ -63,6 +65,15 @@ async function main() {
         true
       );
       assertRequiredApisEnabled(deploymentCheckConfig.requiredApis, enabledApiNames(parseJsonOutput(stdout)));
+      return { stdout: "" };
+    }
+    if (step.kind === "record-preflight-attestation") {
+      const outputPath = await writePreflightAttestation(repositoryRoot, { environment, projectId, gitSha });
+      console.log(`Preflight attestation recorded at ${path.relative(repositoryRoot, outputPath)}.`);
+      return { stdout: "" };
+    }
+    if (step.kind === "verify-preflight-attestation") {
+      await verifyPreflightAttestation(repositoryRoot, { environment, projectId, gitSha });
       return { stdout: "" };
     }
     return runCommand(step.command, step.args, step.expectEmptyOutput);

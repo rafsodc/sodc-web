@@ -277,7 +277,7 @@ permissions, JSON output, authenticated smoke checks, and manual checkpoints.
 
 Checking out and redeploying a previous Data Connect definition cannot restore data removed by a destructive migration. Take a database backup and use a separately reviewed migration/rollback plan for destructive changes. Record the failed stage, target project, commit SHA, and corrective action before resuming promotion.
 
-`--from` only skips stages that already succeeded for the exact reviewed commit being deployed — if you've fixed anything and are deploying a new commit, restart promotion from preflight (the default, no `--from`) rather than resuming a stale partial run.
+`--from` only skips stages that already succeeded for the exact reviewed commit being deployed. A successful preflight records a local, gitignored attestation under `.firebase/deployment-preflight/`, bound to the target environment, Firebase project, and Git revision. Resume always rechecks that the checkout is clean and refuses to continue if the attestation is missing or does not match. If you've fixed anything and are deploying a new commit, restart promotion from preflight (the default, no `--from`) rather than resuming a stale partial run.
 
 ## Promotion flow (recommended)
 

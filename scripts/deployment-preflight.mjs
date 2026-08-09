@@ -11,6 +11,7 @@ import {
   parseDeploymentEnvironment,
   runDeploymentPlan,
   validateFirebaseAlias,
+  writePreflightAttestation,
 } from "./deploy-environment-lib.mjs";
 import { parseJsonOutput } from "./deployment-check-lib.mjs";
 
@@ -40,6 +41,7 @@ async function main() {
     readFile(path.join(repositoryRoot, "config/deployment-check.json"), "utf8").then(JSON.parse),
   ]);
   const projectId = validateFirebaseAlias(firebaseRc, environment);
+  const gitSha = runCommand("git", ["rev-parse", "HEAD"], true).stdout.trim();
   const viteMode = deploymentCheckConfig.environments?.[environment]?.viteMode;
   if (!viteMode) {
     throw new Error(`config/deployment-check.json has no viteMode configured for "${environment}".`);
@@ -60,6 +62,11 @@ async function main() {
         true
       );
       assertRequiredApisEnabled(deploymentCheckConfig.requiredApis, enabledApiNames(parseJsonOutput(stdout)));
+      return { stdout: "" };
+    }
+    if (step.kind === "record-preflight-attestation") {
+      const outputPath = await writePreflightAttestation(repositoryRoot, { environment, projectId, gitSha });
+      console.log(`Preflight attestation recorded at ${path.relative(repositoryRoot, outputPath)}.`);
       return { stdout: "" };
     }
     return runCommand(step.command, step.args, step.expectEmptyOutput);
