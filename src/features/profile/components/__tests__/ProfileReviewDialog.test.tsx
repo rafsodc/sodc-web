@@ -11,7 +11,15 @@ import ProfileReviewDialog from "../ProfileReviewDialog";
 vi.mock("@dataconnect/generated", () => ({
   confirmProfileReview: vi.fn().mockResolvedValue({ data: {} }),
   MembershipStatus: {
+    PENDING: "PENDING",
     REGULAR: "REGULAR",
+    RESERVE: "RESERVE",
+    CIVIL_SERVICE: "CIVIL_SERVICE",
+    INDUSTRY: "INDUSTRY",
+    RETIRED: "RETIRED",
+    RESIGNED: "RESIGNED",
+    LOST: "LOST",
+    DECEASED: "DECEASED",
   },
   SectionUserGroupPurpose: {
     ACCESS: "ACCESS",
@@ -42,10 +50,12 @@ vi.mock("@dataconnect/generated/react", () => ({
 
 vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
+  auth: { currentUser: { uid: "user-1" } },
 }));
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   updateDisplayName: vi.fn().mockResolvedValue({ success: true }),
+  updateMembershipStatus: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 const userData: UserData = {
@@ -73,6 +83,7 @@ describe("ProfileReviewDialog", () => {
     vi.clearAllMocks();
     vi.mocked(generated.confirmProfileReview).mockResolvedValue({ data: {} } as never);
     vi.mocked(firebaseFunctions.updateDisplayName).mockResolvedValue({ success: true });
+    vi.mocked(firebaseFunctions.updateMembershipStatus).mockResolvedValue({ success: true });
     mockOptOut.mockResolvedValue(undefined);
     mockOptIn.mockResolvedValue(undefined);
     vi.mocked(generatedReact.useGetMyAnnouncementPreferences).mockReturnValue({
@@ -204,8 +215,7 @@ describe("ProfileReviewDialog", () => {
     );
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue("verified@example.com");
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("readonly");
-    expect(screen.getByRole("textbox", { name: "Membership status" })).toHaveValue("Regular");
-    expect(screen.getByRole("textbox", { name: "Membership status" })).toHaveAttribute("readonly");
+    expect(screen.getByTestId("review-membership-status-select")).toHaveTextContent("Regular");
     expect(
       screen.getByRole("checkbox", {
         name: "Share my email address and mobile number with members in my sections",
@@ -282,6 +292,80 @@ describe("ProfileReviewDialog", () => {
       );
     });
     expect(onReviewed).toHaveBeenCalledTimes(1);
+  });
+
+  it("submits an updated membership status", async () => {
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={onReviewed}
+      />,
+    );
+
+    const selectRoot = screen.getByTestId("review-membership-status-select");
+    const trigger =
+      selectRoot.querySelector('[role="combobox"]') ??
+      selectRoot.querySelector(".MuiSelect-select") ??
+      selectRoot;
+    fireEvent.mouseDown(trigger);
+    await interaction.click(await screen.findByRole("option", { name: "Reserve" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.updateMembershipStatus).toHaveBeenCalledWith("user-1", "RESERVE");
+    });
+    expect(onReviewed).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not confirm the review when the membership status update fails", async () => {
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    vi.mocked(firebaseFunctions.updateMembershipStatus).mockResolvedValueOnce({
+      success: false,
+      error: "Membership status update failed",
+    });
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={onReviewed}
+      />,
+    );
+
+    const selectRoot = screen.getByTestId("review-membership-status-select");
+    const trigger =
+      selectRoot.querySelector('[role="combobox"]') ??
+      selectRoot.querySelector(".MuiSelect-select") ??
+      selectRoot;
+    fireEvent.mouseDown(trigger);
+    await interaction.click(await screen.findByRole("option", { name: "Reserve" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.updateMembershipStatus).toHaveBeenCalledWith("user-1", "RESERVE");
+    });
+    expect(generated.confirmProfileReview).not.toHaveBeenCalled();
+    expect(onReviewed).not.toHaveBeenCalled();
+  });
+
+  it("does not call updateMembershipStatus when the status is unchanged", async () => {
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    render(
+      <ProfileReviewDialog
+        userData={userData}
+        userEmail="verified@example.com"
+        onReviewed={onReviewed}
+      />,
+    );
+
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+
+    await waitFor(() => expect(onReviewed).toHaveBeenCalledTimes(1));
+    expect(firebaseFunctions.updateMembershipStatus).not.toHaveBeenCalled();
   });
 
   it("keeps the review open and allows retry when saving fails", async () => {

@@ -7,6 +7,9 @@ import { getCurrentUserRef } from "@dataconnect/generated";
 
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn(),
+  QueryFetchPolicy: {
+    SERVER_ONLY: "SERVER_ONLY",
+  },
 }));
 
 vi.mock("@dataconnect/generated", () => ({
@@ -173,5 +176,9 @@ describe("useUserData", () => {
     await waitFor(() => {
       expect(vi.mocked(dataConnect.executeQuery).mock.calls.length).toBeGreaterThan(callCount);
     });
+    expect(vi.mocked(dataConnect.executeQuery)).toHaveBeenLastCalledWith(
+      mockRef,
+      { fetchPolicy: "SERVER_ONLY" },
+    );
   });
 });
