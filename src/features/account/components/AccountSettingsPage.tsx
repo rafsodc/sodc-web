@@ -59,6 +59,7 @@ import {
   toMemberDataError,
 } from "../../../shared/errors";
 import FailureState from "../../../shared/components/FailureState";
+import { invalidateAnnouncementPreferences } from "../../../shared/query/invalidation";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -66,6 +67,7 @@ export interface AccountSettingsPageProps {
   userDataLoading?: boolean;
   isAdmin: boolean;
   onBack?: () => void;
+  onUserDataUpdate?: () => void | Promise<void>;
 }
 
 function usesEmailPassword(user: User): boolean {
@@ -108,6 +110,7 @@ function AnnouncementPreferencesList() {
             ? { ...old, user: { ...old.user, announcementOptOutAll: newOptOut } }
             : old,
       );
+      await invalidateAnnouncementPreferences(queryClient);
       setSnackbar(
         newOptOut
           ? "Opted out of all announcement emails"
@@ -141,6 +144,7 @@ function AnnouncementPreferencesList() {
           return { ...old, user: { ...old.user, optOuts: newOptOuts } };
         }
       );
+      await invalidateAnnouncementPreferences(queryClient);
       setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
       setSnackbar(newOptedOut ? "Opted out of announcements" : "Opted in to announcements");
     } catch (error) {
@@ -232,6 +236,7 @@ export default function AccountSettingsPage({
   userDataLoading = false,
   isAdmin,
   onBack,
+  onUserDataUpdate,
 }: AccountSettingsPageProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -362,6 +367,10 @@ export default function AccountSettingsPage({
         shareContactInfo: newValue,
       };
       await upsertUser(dataConnect, vars);
+      if (onUserDataUpdate) {
+        await onUserDataUpdate();
+        setShareContactInfoOverride(null);
+      }
     } catch (error) {
       reportError("account.privacy-setting", error);
       setShareContactInfoOverride(null);

@@ -33,6 +33,8 @@ import {
 } from "./ManageSectionsSurfaces";
 import type { SectionUserGroupRow, SectionWithDetails } from "./manageSectionsTypes";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateSectionsForUser } from "../../../shared/query/invalidation";
 
 interface ManageSectionsProps {
   onBack: () => void;
@@ -48,6 +50,7 @@ interface ManageSectionsLocationState {
 }
 
 export default function ManageSections({ onBack }: ManageSectionsProps) {
+  const queryClient = useQueryClient();
   const location = useLocation();
   const initialState = location.state as ManageSectionsLocationState | null;
   const isAdmin = useAdminClaim(auth.currentUser);
@@ -224,7 +227,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     try {
       const ref = deleteSectionRef(dataConnect, { id: section.id });
       await executeMutation(ref);
-      await fetchSections();
+      await Promise.all([fetchSections(), invalidateSectionsForUser(queryClient)]);
       showSuccess(`Section "${section.name}" deleted`);
     } catch (caught) {
       reportError("admin.sections.delete", caught, { sectionId: section.id });
@@ -259,7 +262,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         await executeMutation(ref);
       }
       setDialogOpen(false);
-      await fetchSections();
+      await Promise.all([fetchSections(), invalidateSectionsForUser(queryClient)]);
       showSuccess(`Section ${editingSection ? "updated" : "created"}`);
     } catch (caught) {
       reportError("admin.sections.save", caught, { editing: Boolean(editingSection) });
@@ -292,6 +295,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       await executeMutation(ref);
 
       await fetchSectionUserGroups(editingSection.id);
+      await invalidateSectionsForUser(queryClient);
 
       setSelectedUserGroup(null);
       setSelectedPurpose(SectionUserGroupPurpose.ACCESS);
@@ -340,6 +344,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       
       // Refresh section user groups
       await fetchSectionUserGroups(editingSection.id);
+      await invalidateSectionsForUser(queryClient);
       showSuccess("User group removed from section");
     } catch (caught) {
       reportError("admin.sections.remove-group", caught, { sectionId: editingSection.id, userGroupId });

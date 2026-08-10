@@ -91,16 +91,18 @@ export default function ManageSectionFiles({
     void load();
   }, [load]);
 
-  const run = async (operation: () => Promise<void>, success: string) => {
+  const run = async (operation: () => Promise<void>, success: string): Promise<boolean> => {
     setBusy(true);
     setNotice(null);
     try {
       await operation();
       setNotice({ severity: "success", text: success });
       await load();
+      return true;
     } catch (error) {
       reportError("admin.section-files.operation", error, { sectionId });
       setNotice({ severity: "error", text: toAdminUserFacingError(error, "files").message });
+      return false;
     } finally {
       setBusy(false);
       setStage(null);
@@ -315,7 +317,9 @@ export default function ManageSectionFiles({
                   description: value.description?.trim() || null,
                 }),
                 "File details updated.",
-              ).then(() => setEditing(null));
+              ).then((saved) => {
+                if (saved) setEditing(null);
+              });
             }}
           >
             Save
@@ -340,7 +344,9 @@ export default function ManageSectionFiles({
               if (!deleting) return;
               const value = deleting;
               void run(() => deleteSectionFile(sectionId, value.id), "File deleted.")
-                .then(() => setDeleting(null));
+                .then((deleted) => {
+                  if (deleted) setDeleting(null);
+                });
             }}
           >
             Delete file

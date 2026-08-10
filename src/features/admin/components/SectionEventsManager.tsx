@@ -283,7 +283,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           })
         );
       }
-      refetchEvents();
+      const refreshes: Array<Promise<unknown>> = [refetchEvents()];
+      if (editingEvent && ticketTypesEventId === editingEvent.id) {
+        refreshes.push(refetchEventDetail());
+      }
+      await Promise.all(refreshes);
       setEventDialogOpen(false);
       showSuccess(`Event ${editingEvent ? "updated" : "created"}`);
     } catch (err: unknown) {

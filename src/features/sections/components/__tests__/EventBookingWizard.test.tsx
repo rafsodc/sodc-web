@@ -6,6 +6,11 @@ import EventBookingWizard from "../EventBookingWizard";
 import { BookingStatus, GuestTicketRequestStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
+import { invalidateMyBookings } from "../../../../shared/query/invalidation";
+
+vi.mock("../../../../shared/query/invalidation", () => ({
+  invalidateMyBookings: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@dataconnect/generated/react", () => ({
   useGetCurrentUser: vi.fn(),
@@ -574,6 +579,7 @@ describe("EventBookingWizard", () => {
     await waitFor(() => {
       expect(firebaseFunctions.submitEventBooking).toHaveBeenCalled();
     });
+    expect(invalidateMyBookings).toHaveBeenCalledOnce();
 
     rerender(
       <MemoryRouter>

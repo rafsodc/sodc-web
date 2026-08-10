@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { searchUsers } from "../utils/searchUsers";
 import type { SearchUser } from "../../../types";
 import { ITEMS_PER_PAGE } from "../../../constants";
@@ -34,8 +34,10 @@ export function useUserSearch(
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const searchRequestIdRef = useRef(0);
 
   const performSearch = useCallback(async (term: string, pageNum: number = 1) => {
+    const requestId = ++searchRequestIdRef.current;
     if (!term.trim()) {
       setUsers([]);
       setError(null);
@@ -49,6 +51,7 @@ export function useUserSearch(
     setError(null);
     try {
       const result = await searchUsers(term, pageNum, ITEMS_PER_PAGE);
+      if (searchRequestIdRef.current !== requestId) return;
       if (result.success && result.data) {
         setUsers(result.data.users);
         setTotalPages(result.data.totalPages);
@@ -60,14 +63,21 @@ export function useUserSearch(
         setTotal(0);
       }
     } catch (caught) {
+      if (searchRequestIdRef.current !== requestId) return;
       reportError("admin.users.search", caught);
       setError(toAdminUserFacingError(caught, "users").message);
       setUsers([]);
       setTotalPages(1);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (searchRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
+  }, []);
+
+  useEffect(() => () => {
+    searchRequestIdRef.current += 1;
   }, []);
 
   // Debounced search - only triggers when searchTerm changes
@@ -78,6 +88,7 @@ export function useUserSearch(
         setPage(1);
       } else {
         // Clear results when search term is empty
+        searchRequestIdRef.current += 1;
         setUsers([]);
         setError(null);
         setTotalPages(1);
@@ -100,6 +111,7 @@ export function useUserSearch(
   }, [page, performSearch]); // searchTerm intentionally omitted to prevent immediate searches on typing
 
   const setSearchTerm = useCallback((term: string) => {
+    searchRequestIdRef.current += 1;
     setSearchTermState(term);
   }, []);
 

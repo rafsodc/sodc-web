@@ -45,7 +45,7 @@ interface EditUserDialogProps {
   open: boolean;
   user: SearchUser | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   onSuccess?: (message: string) => void;
 }
 
@@ -235,7 +235,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       
       // Success - reset submitting, close dialog immediately and show success message via callback
       setSubmitting(false);
-      onSave();
+      await onSave();
       const successMessage = "User profile updated successfully";
       if (onSuccess) {
         onSuccess(successMessage);

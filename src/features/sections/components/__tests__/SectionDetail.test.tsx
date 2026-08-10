@@ -14,6 +14,11 @@ import {
   dataConnectQueryResult,
   type DataConnectQueryResultOverrides,
 } from '../../../../test-utils/dataConnectMocks';
+import { invalidateUserSectionAccess } from '../../../../shared/query/invalidation';
+
+vi.mock('../../../../shared/query/invalidation', () => ({
+  invalidateUserSectionAccess: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Mock the DataConnect hooks (SectionDetail uses getSectionMembersMerged callable, not useGetSectionMembers)
 vi.mock('@dataconnect/generated/react', () => ({
@@ -1340,6 +1345,7 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByText(/successfully subscribed/i)).toBeInTheDocument();
     });
+    expect(invalidateUserSectionAccess).toHaveBeenCalledOnce();
 
     // click outside to dismiss snackbar (exercises handleCloseSnackbar)
     await user.click(document.body);
@@ -1404,6 +1410,7 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByText(/successfully unsubscribed/i)).toBeInTheDocument();
     });
+    expect(invalidateUserSectionAccess).toHaveBeenCalledOnce();
   });
 
   it('shows announcement toggle for user with MODERATOR access (tests || branch in grantsAccess)', async () => {

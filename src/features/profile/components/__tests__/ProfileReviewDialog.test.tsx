@@ -7,6 +7,11 @@ import * as generatedReact from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import type { UserData } from "../../../../types";
 import ProfileReviewDialog from "../ProfileReviewDialog";
+import { invalidateAnnouncementPreferences } from "../../../../shared/query/invalidation";
+
+vi.mock("../../../../shared/query/invalidation", () => ({
+  invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@dataconnect/generated", () => ({
   confirmProfileReview: vi.fn().mockResolvedValue({ data: {} }),
@@ -263,6 +268,7 @@ describe("ProfileReviewDialog", () => {
     });
     expect(firebaseFunctions.updateDisplayName).toHaveBeenCalledWith("Member, Alex");
     expect(onReviewed).toHaveBeenCalledTimes(1);
+    expect(invalidateAnnouncementPreferences).toHaveBeenCalledOnce();
   });
 
   it("submits edited service background selections", async () => {

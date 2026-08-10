@@ -131,4 +131,21 @@ describe("ManageSectionFiles", () => {
     expect(screen.queryByText(/permission-denied/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Joining instructions")).not.toBeInTheDocument();
   });
+
+  it("keeps the edit dialog and entered values open when saving fails", async () => {
+    vi.mocked(updateSectionFileMetadata).mockRejectedValue(new Error("save failed"));
+    const user = userEvent.setup();
+    render(<ManageSectionFiles sectionId="section-1" sectionName="Test Section" onBack={vi.fn()} />);
+    await screen.findByText("Joining instructions");
+
+    await user.click(screen.getByRole("button", { name: "Edit Joining instructions" }));
+    const name = screen.getByLabelText("Display name");
+    await user.clear(name);
+    await user.type(name, "Keep this value");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText(/could not complete the file operation/i)).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Edit file details" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toHaveValue("Keep this value");
+  });
 });

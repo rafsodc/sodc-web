@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Alert,
   Box,
@@ -206,17 +206,27 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
   const [sends, setSends] = useState<AnnouncementSend[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const historyRequestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++historyRequestIdRef.current;
     setLoading(true);
     setError(null);
     getAnnouncementSendHistory(sectionId)
-      .then(setSends)
+      .then((result) => {
+        if (historyRequestIdRef.current === requestId) setSends(result);
+      })
       .catch((caught: unknown) => {
+        if (historyRequestIdRef.current !== requestId) return;
         reportError("admin.announcements.history", caught, { sectionId });
         setError(toAdminUserFacingError(caught, "announcements").message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (historyRequestIdRef.current === requestId) setLoading(false);
+      });
+    return () => {
+      if (historyRequestIdRef.current === requestId) historyRequestIdRef.current += 1;
+    };
   }, [sectionId, refreshTrigger]);
 
   return (

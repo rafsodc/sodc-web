@@ -7,6 +7,7 @@ import {
   useOptOutSectionAnnouncement,
   useOptInSectionAnnouncement,
 } from "@dataconnect/generated/react";
+import { invalidateAnnouncementPreferences } from "../../../shared/query/invalidation";
 
 interface AnnouncementOptOutToggleProps {
   sectionId: string;
@@ -42,6 +43,7 @@ export default function AnnouncementOptOutToggle({ sectionId }: AnnouncementOptO
           ? { sectionAnnouncementOptOut: { createdAt: new Date().toISOString() } }
           : { sectionAnnouncementOptOut: null }
       );
+      await invalidateAnnouncementPreferences(queryClient);
       setLocalOptedOut(null);
       setSnackbar(
         newOptedOut

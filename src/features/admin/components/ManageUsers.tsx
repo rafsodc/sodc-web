@@ -31,9 +31,10 @@ import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface ManageUsersProps {
   onBack: () => void;
+  onCurrentUserUpdate?: () => void | Promise<void>;
 }
 
-export default function ManageUsers({ onBack }: ManageUsersProps) {
+export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsersProps) {
   const isAdmin = useAdminClaim(auth.currentUser);
   const [tabValue, setTabValue] = useState(0);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -209,9 +210,12 @@ export default function ManageUsers({ onBack }: ManageUsersProps) {
     setEditingUser(null);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     refetchSearch();
-    void fetchAdminUsers();
+    await fetchAdminUsers();
+    if (editingUser?.uid === auth.currentUser?.uid) {
+      await onCurrentUserUpdate?.();
+    }
   };
 
   const handleSuccessSnackbar = (message: string) => {

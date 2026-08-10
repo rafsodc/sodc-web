@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Alert,
 } from "@mui/material";
-import { executeQuery, executeMutation } from "firebase/data-connect";
+import { executeQuery, executeMutation, QueryFetchPolicy } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
   listUserGroupsRef,
@@ -74,6 +74,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const userSearchRequestIdRef = useRef(0);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   // All users: for merged group membership (explicit + by membership status)
@@ -110,15 +111,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     }
   }, []);
 
-  const fetchGroupDetails = useCallback(async (groupId: string) => {
-    if (groupDetails[groupId]) {
+  const fetchGroupDetails = useCallback(async (groupId: string, force = false) => {
+    if (!force && groupDetails[groupId]) {
       return;
     }
 
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
       const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
-      const result = await executeQuery(ref);
+      const result = await executeQuery(
+        ref,
+        force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
+      );
       
       if (result.data?.userGroup) {
         setGroupDetails((prev) => ({
@@ -214,8 +218,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   };
 
   const handleSearchUsers = useCallback(async (term: string) => {
+    const requestId = ++userSearchRequestIdRef.current;
     if (!term.trim() || term.length < 2) {
       setSearchResults([]);
+      setSearchingUsers(false);
       return;
     }
 
@@ -253,14 +259,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
             return null;
           })
         );
+        if (userSearchRequestIdRef.current !== requestId) return;
         setSearchResults(usersWithData.filter((u): u is NonNullable<typeof u> => u !== null));
       }
     } catch (caught) {
+      if (userSearchRequestIdRef.current !== requestId) return;
       reportError("admin.user-groups.search", caught);
       setError(toAdminUserFacingError(caught, "users").message);
       setSearchResults([]);
     } finally {
-      setSearchingUsers(false);
+      if (userSearchRequestIdRef.current === requestId) {
+        setSearchingUsers(false);
+      }
     }
   }, []);
 
@@ -399,6 +409,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       }
       setDialogOpen(false);
       await fetchUserGroupsList();
+      if (editingGroup) {
+        await fetchGroupDetails(editingGroup.id, true);
+      }
       showSuccess(`User group ${editingGroup ? "updated" : "created"}`);
     } catch (caught) {
       reportError("admin.user-groups.save", caught, { editing: Boolean(editingGroup) });
