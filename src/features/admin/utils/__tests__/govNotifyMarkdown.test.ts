@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { getContrastRatio } from "@mui/material/styles";
 import {
   STANDARD_FOOTER,
   UNSUPPORTED_PATTERNS,
+  getGovNotifyPreviewColors,
   renderGovNotifyMarkdown,
 } from "../govNotifyMarkdown";
 
@@ -151,7 +153,14 @@ describe("renderGovNotifyMarkdown", () => {
   it("renders optional content with green highlight", () => {
     const html = renderGovNotifyMarkdown("((show_extra??Extra info here))");
     expect(html).toContain("Extra info here");
-    expect(html).toContain("e8f5e9");
+    expect(html).toContain("--notify-optional-bg");
+    expect(html).toContain("--notify-optional-text");
+  });
+
+  it("renders variable highlights with theme-aware text and background colours", () => {
+    const html = renderGovNotifyMarkdown("Dear ((firstName)),");
+    expect(html).toContain("--notify-variable-bg");
+    expect(html).toContain("--notify-variable-text");
   });
 
   it("does not render H3 as heading", () => {
@@ -203,4 +212,20 @@ describe("renderGovNotifyMarkdown", () => {
     expect(html).toContain("<ul");
     expect(html).toContain("<a href=\"#\">Unsubscribe</a>");
   });
+});
+
+describe("getGovNotifyPreviewColors", () => {
+  it.each(["light", "dark"] as const)(
+    "keeps optional and variable highlights readable in %s mode",
+    (mode) => {
+      const colors = getGovNotifyPreviewColors(mode);
+
+      expect(
+        getContrastRatio(colors.optionalText, colors.optionalBackground)
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        getContrastRatio(colors.variableText, colors.variableBackground)
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  );
 });

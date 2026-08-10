@@ -75,7 +75,7 @@ export function SectionDescriptionHeader({
               color="primary"
               onClick={onSubscribe}
               disabled={subscribing}
-              sx={{ backgroundColor: "secondary.main" }}
+              sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
             >
               {subscribing ? "Subscribing..." : "Subscribe"}
             </Button>
@@ -357,15 +357,7 @@ export function SectionEventDetailView({
             <Tabs
               value={activeTab}
               onChange={(_, v: EventDetailTab) => setActiveTab(v)}
-              sx={{
-                mb: 2,
-                borderBottom: 1,
-                borderColor: "divider",
-                "& .MuiTab-root": {
-                  "&:focus": { outline: "none" },
-                  "&:focus-visible": { outline: "none" },
-                },
-              }}
+              sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
             >
               <Tab label={eventDetailTabLabel("about")} value="about" />
               <Tab label={eventDetailTabLabel("book")} value="book" />
@@ -380,7 +372,7 @@ export function SectionEventDetailView({
                   <Button
                     variant="contained"
                     onClick={handleGoToBook}
-                    sx={{ backgroundColor: "secondary.main" }}
+                    sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
                   >
                     {hasExistingBooking ? "View my booking" : "Book this event"}
                   </Button>

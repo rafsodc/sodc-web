@@ -143,17 +143,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
       <Tabs
         value={tabValue}
         onChange={(_, newValue) => setTabValue(newValue)}
-        sx={{
-          mb: 3,
-          "& .MuiTab-root": {
-            "&:focus": {
-              outline: "none",
-            },
-            "&:focus-visible": {
-              outline: "none",
-            },
-          },
-        }}
+        sx={{ mb: 3 }}
       >
         <Tab label="Users" />
         <Tab label="User Groups" />

@@ -299,7 +299,7 @@ export default function AdditionalGuestRequestSection({
             variant="contained"
             onClick={() => void handleSubmit()}
             disabled={submitting}
-            sx={{ backgroundColor: "secondary.main" }}
+            sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
           >
             {submitting ? "Submitting…" : "Submit request"}
           </Button>

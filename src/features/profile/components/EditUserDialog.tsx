@@ -259,20 +259,22 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
           maxHeight: "70vh",
           overflowY: "auto",
           overflowX: "hidden",
+          scrollbarColor: (theme) =>
+            `${theme.palette.text.disabled} ${theme.palette.action.hover}`,
           pr: 1, // Padding for scrollbar
           // Ensure scrollbar is always visible when content overflows
           "&::-webkit-scrollbar": {
             width: "8px",
           },
           "&::-webkit-scrollbar-track": {
-            backgroundColor: "rgba(0, 0, 0, 0.05)",
+            backgroundColor: "action.hover",
             borderRadius: "4px",
           },
           "&::-webkit-scrollbar-thumb": {
-            backgroundColor: "rgba(0, 0, 0, 0.2)",
+            backgroundColor: "text.disabled",
             borderRadius: "4px",
             "&:hover": {
-              backgroundColor: "rgba(0, 0, 0, 0.3)",
+              backgroundColor: "text.secondary",
             },
           },
         }}
@@ -450,6 +452,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
           disabled={submitting || loading || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
           sx={{
             backgroundColor: "secondary.main",
+            color: "secondary.contrastText",
             "&:hover": {
               backgroundColor: "secondary.main",
               opacity: 0.9,

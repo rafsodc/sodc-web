@@ -33,10 +33,6 @@ export function AdminAccordion({
         "&:before": {
           display: "none",
         },
-        "&:focus, &:focus-visible, &:focus-within": {
-          outline: "none",
-          boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
-        },
       }}
     >
       <AccordionSummary
@@ -47,19 +43,14 @@ export function AdminAccordion({
           minHeight: 58,
           px: 2.5,
           transition: "background-color 150ms ease",
-          outline: "none",
-          boxShadow: "none",
           "&:hover": {
             bgcolor: "action.hover",
           },
-          "&:focus, &:focus-visible, &:active": {
-            outline: "none",
-            boxShadow: "none",
-          },
           "&.Mui-focusVisible": {
-            bgcolor: "background.paper",
-            outline: "none",
-            boxShadow: "none",
+            bgcolor: "action.focus",
+            outline: "3px solid",
+            outlineColor: "primary.main",
+            outlineOffset: -3,
           },
           "& .MuiTouchRipple-root": {
             display: "none",

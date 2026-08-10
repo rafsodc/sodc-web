@@ -83,7 +83,7 @@ export default function AccountStatusMessage({ userData }: AccountStatusMessageP
             variant="contained"
             onClick={handleSignOut}
             disabled={submitting}
-            sx={{ backgroundColor: "secondary.main" }}
+            sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
           >
             Sign out
           </Button>
@@ -92,4 +92,3 @@ export default function AccountStatusMessage({ userData }: AccountStatusMessageP
     </Box>
   );
 }
-

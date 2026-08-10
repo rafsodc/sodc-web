@@ -48,7 +48,11 @@ export default function PublicHomePage({ onJoinClick, onLogInClick }: PublicHome
           variant="contained"
           size="large"
           onClick={onJoinClick}
-          sx={{ backgroundColor: "secondary.main", "&:hover": { backgroundColor: "secondary.main" } }}
+          sx={{
+            backgroundColor: "secondary.main",
+            color: "secondary.contrastText",
+            "&:hover": { backgroundColor: "secondary.main" },
+          }}
         >
           Join SODC
         </Button>
