@@ -208,6 +208,26 @@ describe("AccountSettingsPage", () => {
     expect(toggle).not.toBeChecked();
   });
 
+  it("refreshes App-owned user data after saving the privacy setting", async () => {
+    const user = userEvent.setup();
+    const onUserDataUpdate = vi.fn().mockResolvedValue(undefined);
+    renderAccountSettings({
+      user: mockUser,
+      userData,
+      isAdmin: false,
+      onUserDataUpdate,
+    });
+
+    await user.click(screen.getByRole("switch", {
+      name: "Share my contact details with other section members",
+    }));
+
+    await waitFor(() => expect(onUserDataUpdate).toHaveBeenCalledOnce());
+    expect(onUserDataUpdate.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockUpsertUser.mock.invocationCallOrder[0],
+    );
+  });
+
   it("reverts the toggle and shows an error if the upsert fails", async () => {
     const user = userEvent.setup();
     mockUpsertUser.mockRejectedValueOnce(new Error("Network error"));

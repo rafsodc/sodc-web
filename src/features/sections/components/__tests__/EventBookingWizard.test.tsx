@@ -6,6 +6,11 @@ import EventBookingWizard from "../EventBookingWizard";
 import { BookingStatus, GuestTicketRequestStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
+import { invalidateMyBookings } from "../../../../shared/query/invalidation";
+
+vi.mock("../../../../shared/query/invalidation", () => ({
+  invalidateMyBookings: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@dataconnect/generated/react", () => ({
   useGetCurrentUser: vi.fn(),
@@ -574,6 +579,7 @@ describe("EventBookingWizard", () => {
     await waitFor(() => {
       expect(firebaseFunctions.submitEventBooking).toHaveBeenCalled();
     });
+    expect(invalidateMyBookings).toHaveBeenCalledOnce();
 
     rerender(
       <MemoryRouter>
@@ -934,7 +940,7 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
   });
 
-  it("starts additional guest requests with blank guest details when guests are already approved", async () => {
+  it("starts additional guest requests blank and invalidates My Bookings after submission", async () => {
     const user = userEvent.setup();
 
     vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
@@ -1064,6 +1070,21 @@ describe("EventBookingWizard", () => {
     expect(screen.getByLabelText("Dietary requirements (optional)")).toHaveValue("");
     expect(screen.queryByDisplayValue("Alex Approved")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("Jamie Included")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Guest name"), "New Guest");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Submit request" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
+        bookingId: "booking-1",
+        guestTicketTypeId: "ticket-guest",
+        idempotencyKey: expect.any(String),
+        guests: [{ guestDisplayName: "New Guest", dietaryNote: null }],
+      });
+    });
+    expect(invalidateMyBookings).toHaveBeenCalledOnce();
+    expect(await screen.findByText("Your booking")).toBeInTheDocument();
   });
 
   it("omits declined extra guests when editing a booking", async () => {

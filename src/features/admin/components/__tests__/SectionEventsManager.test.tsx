@@ -73,7 +73,10 @@ function mockTicketOrders(overrides: DataConnectQueryResultOverrides) {
 
 vi.mock("@dataconnect/generated", async () => {
   const actual = await vi.importActual("@dataconnect/generated");
-  return { ...actual };
+  return {
+    ...actual,
+    updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+  };
 });
 
 describe("SectionEventsManager", () => {
@@ -389,6 +392,66 @@ describe("SectionEventsManager", () => {
     expect(screen.getByLabelText(/title/i)).toHaveValue("Annual Dinner");
     expect(screen.getByLabelText(/location/i)).toHaveValue("Main Hall");
     expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
+  });
+
+  it("renders refreshed selected-event details after editing", async () => {
+    const user = userEvent.setup();
+    const event = {
+      id: "ev-1",
+      title: "Annual Dinner",
+      startDateTime: "2025-03-01T18:00:00Z",
+      endDateTime: "2025-03-01T22:00:00Z",
+      bookingStartDateTime: "2025-02-01T00:00:00Z",
+      bookingEndDateTime: "2025-02-28T23:59:59Z",
+      location: "Main Hall",
+      guestOfHonour: "Jane Doe",
+      maxGuestsWithoutModeratorApproval: 2,
+    };
+    const updatedEvent = { ...event, title: "Updated Dinner" };
+    const refetchEvents = vi.fn().mockImplementation(async () => {
+      mockGetEventsForSection({
+        data: { section: { id: sectionId, events: [updatedEvent] } },
+        isLoading: false,
+        isError: false,
+        refetch: refetchEvents,
+      });
+      return {};
+    });
+    const refetchEventDetail = vi.fn().mockImplementation(async () => {
+      mockGetEventById({
+        data: { event: { ...updatedEvent, ticketTypes: [] } },
+        isLoading: false,
+        isError: false,
+        refetch: refetchEventDetail,
+      });
+      return {};
+    });
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [event] } },
+      isLoading: false,
+      isError: false,
+      refetch: refetchEvents,
+    });
+    mockGetEventById({
+      data: { event: { ...event, ticketTypes: [] } },
+      isLoading: false,
+      isError: false,
+      refetch: refetchEventDetail,
+    });
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^event details$/i }));
+    await user.click(screen.getByRole("button", { name: /edit event details/i }));
+    await user.clear(screen.getByLabelText(/title/i));
+    await user.type(screen.getByLabelText(/title/i), "Updated Dinner");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(refetchEvents).toHaveBeenCalledOnce();
+      expect(refetchEventDetail).toHaveBeenCalledOnce();
+    });
+    expect(await screen.findByText("Updated Dinner")).toBeInTheDocument();
   });
 
   it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {

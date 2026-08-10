@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import { MembershipStatus } from "@dataconnect/generated";
@@ -7,6 +8,11 @@ import * as generatedReact from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import type { UserData } from "../../../../types";
 import ProfileReviewDialog from "../ProfileReviewDialog";
+import { invalidateAnnouncementPreferences } from "../../../../shared/query/invalidation";
+
+vi.mock("../../../../shared/query/invalidation", () => ({
+  invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@dataconnect/generated", () => ({
   confirmProfileReview: vi.fn().mockResolvedValue({ data: {} }),
@@ -232,13 +238,21 @@ describe("ProfileReviewDialog", () => {
   it("normalises and atomically submits the reviewed fields before completing", async () => {
     const interaction = userEvent.setup();
     const onReviewed = vi.fn();
-    render(
-      <ProfileReviewDialog
-        userData={{ ...userData, mobileNumber: "07700 900123" }}
-        userEmail="verified@example.com"
-        onReviewed={onReviewed}
-      />,
-    );
+    function ReviewHarness() {
+      const [complete, setComplete] = useState(false);
+      if (complete) return <div>Profile review complete</div>;
+      return (
+        <ProfileReviewDialog
+          userData={{ ...userData, mobileNumber: "07700 900123" }}
+          userEmail="verified@example.com"
+          onReviewed={() => {
+            onReviewed();
+            setComplete(true);
+          }}
+        />
+      );
+    }
+    render(<ReviewHarness />);
 
     await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
 
@@ -263,6 +277,8 @@ describe("ProfileReviewDialog", () => {
     });
     expect(firebaseFunctions.updateDisplayName).toHaveBeenCalledWith("Member, Alex");
     expect(onReviewed).toHaveBeenCalledTimes(1);
+    expect(invalidateAnnouncementPreferences).toHaveBeenCalledOnce();
+    expect(await screen.findByText("Profile review complete")).toBeInTheDocument();
   });
 
   it("submits edited service background selections", async () => {

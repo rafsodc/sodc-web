@@ -69,14 +69,16 @@ export default function NotifyReplyToSettings() {
   const run = async (
     label: string,
     action: () => Promise<NotifyReplyToAdminConfiguration>,
-  ) => {
+  ): Promise<boolean> => {
     setSaving(true);
     setError(null);
     try {
       setConfiguration(await action());
+      return true;
     } catch (caught) {
       reportError(`admin.notify-reply-to.${label}`, caught);
       setError(toAdminUserFacingError(caught, "email-configuration").message);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -97,7 +99,7 @@ export default function NotifyReplyToSettings() {
   };
 
   const saveAddress = async () => {
-    await run(editing ? "update" : "create", () => editing
+    const saved = await run(editing ? "update" : "create", () => editing
       ? updateNotifyReplyToAddress({
         addressId: editing.id,
         expectedVersion: editing.version,
@@ -106,7 +108,7 @@ export default function NotifyReplyToSettings() {
         notifyUuid,
       })
       : createNotifyReplyToAddress({ displayLabel, emailAddress, notifyUuid }));
-    resetForm();
+    if (saved) resetForm();
   };
 
   return (

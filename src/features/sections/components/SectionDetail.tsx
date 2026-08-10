@@ -6,6 +6,7 @@ import {
   Snackbar,
 } from "@mui/material";
 import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/generated/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { dataConnect } from "../../../config/firebase";
 import { executeMutation } from "firebase/data-connect";
 import PageHeader from "../../../shared/components/PageHeader";
@@ -48,6 +49,7 @@ import {
   SectionEventsListView,
   SectionMembersView,
 } from "./SectionDetailViews";
+import { invalidateUserSectionAccess } from "../../../shared/query/invalidation";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -55,6 +57,7 @@ interface SectionDetailProps {
 }
 
 export default function SectionDetail({ sectionId, onBack }: SectionDetailProps) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as SectionDetailLocationState | null;
@@ -339,10 +342,11 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         message: "Successfully subscribed to this section.",
         severity: "success",
       });
-      // Refetch to update UI
-      refetchSection();
-      refetchMembers();
-      // The user's user groups will be refetched automatically by the hook
+      await Promise.all([
+        refetchSection(),
+        refetchMembers(),
+        invalidateUserSectionAccess(queryClient),
+      ]);
     } catch (error) {
       console.error("Error subscribing:", error);
       setSnackbar({
@@ -380,9 +384,11 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         message: "Successfully unsubscribed from this section.",
         severity: "success",
       });
-      // Refetch to update UI
-      refetchSection();
-      refetchMembers();
+      await Promise.all([
+        refetchSection(),
+        refetchMembers(),
+        invalidateUserSectionAccess(queryClient),
+      ]);
     } catch (error) {
       console.error("Error unsubscribing:", error);
       setSnackbar({

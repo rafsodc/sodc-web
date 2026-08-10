@@ -150,6 +150,28 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.queryByText(/network/i)).not.toBeInTheDocument();
   });
 
+  it("ignores a superseded history response", async () => {
+    let resolveFirst!: (value: firebaseFunctions.AnnouncementSend[]) => void;
+    let resolveSecond!: (value: firebaseFunctions.AnnouncementSend[]) => void;
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+
+    const { rerender } = render(
+      <AnnouncementSendHistory sectionId={SECTION_ID} refreshTrigger={0} />,
+    );
+    rerender(<AnnouncementSendHistory sectionId={SECTION_ID} refreshTrigger={1} />);
+
+    resolveSecond([mockSends[1]]);
+    expect(await screen.findByText("uuid-2")).toBeInTheDocument();
+
+    resolveFirst([mockSends[0]]);
+    await waitFor(() => {
+      expect(screen.getByText("uuid-2")).toBeInTheDocument();
+      expect(screen.queryByText("BULK: Alpha Update")).not.toBeInTheDocument();
+    });
+  });
+
   it("renders send rows with date, template name, and counts", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
 

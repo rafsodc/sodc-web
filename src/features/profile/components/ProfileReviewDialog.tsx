@@ -47,6 +47,8 @@ import {
   toProfileUserFacingError,
 } from "../../../shared/errors";
 import FailureState from "../../../shared/components/FailureState";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateAnnouncementPreferences } from "../../../shared/query/invalidation";
 
 interface ProfileReviewDialogProps {
   userData: UserData;
@@ -59,6 +61,7 @@ export default function ProfileReviewDialog({
   userEmail,
   onReviewed,
 }: ProfileReviewDialogProps) {
+  const queryClient = useQueryClient();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const [firstName, setFirstName] = useState("");
@@ -187,6 +190,7 @@ export default function ProfileReviewDialog({
         reportError("profile.review.display-name", displayNameError);
       }
 
+      await invalidateAnnouncementPreferences(queryClient);
       await onReviewed();
     } catch (caught) {
       reportError("profile.review", caught);

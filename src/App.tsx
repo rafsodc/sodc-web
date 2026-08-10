@@ -133,9 +133,7 @@ function AppContent() {
 
   const handleProfileUpdate = useCallback(() => {
     // Refetch user data after profile update
-    if (refetch) {
-      refetch();
-    }
+    return refetch?.();
   }, [refetch]);
 
   const handleProfileReviewed = useCallback(async () => {
@@ -595,6 +593,7 @@ function AppContent() {
                             userDataLoading={userDataLoading}
                             isAdmin={isAdmin}
                             onBack={() => navigateBackOr(ROUTES.HOME)}
+                            onUserDataUpdate={handleProfileUpdate}
                           />
                         </Suspense>
                       ) : user ? (
@@ -606,7 +605,7 @@ function AppContent() {
                   }
                 />
                 <Route path={ROUTES.PERMISSIONS} element={<Navigate to={ROUTES.MANAGE_USERS} replace />} />
-                <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigateBackOr(ROUTES.HOME)} /></Suspense>)} />
+                <Route path={ROUTES.MANAGE_USERS} element={renderAdminOnly("Manage Users", <Suspense fallback={<LoadingFallback />}><ManageUsers onBack={() => navigateBackOr(ROUTES.HOME)} onCurrentUserUpdate={handleProfileUpdate} /></Suspense>)} />
                 <Route path={ROUTES.APPROVE_USERS} element={renderAdminOnly("Approve Users", <Suspense fallback={<LoadingFallback />}><ApproveUsers onBack={() => navigateBackOr(ROUTES.HOME)} /></Suspense>)} />
                 <Route path={ROUTES.USER_GROUPS} element={renderAdminOnly("User Groups", <Suspense fallback={<LoadingFallback />}><UserGroups onBack={() => navigateBackOr(ROUTES.HOME)} /></Suspense>)} />
                 <Route

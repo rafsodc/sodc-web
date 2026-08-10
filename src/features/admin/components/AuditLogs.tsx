@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Alert,
@@ -42,6 +42,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   const [allUsers, setAllUsers] = useState<ListUsersData["users"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const dataRequestIdRef = useRef(0);
 
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -54,27 +55,34 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   }, []);
 
   const fetchData = useCallback(async () => {
+    const requestId = ++dataRequestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       if (tabValue === 0) {
         const ref = listUsersRef(dataConnect);
         const result = await executeQuery(ref);
+        if (dataRequestIdRef.current !== requestId) return;
         setUsers(result.data?.users || []);
       } else if (tabValue === 1) {
         const ref = listUserGroupsRef(dataConnect);
         const result = await executeQuery(ref);
+        if (dataRequestIdRef.current !== requestId) return;
         setUserGroups(result.data?.userGroups || []);
       } else if (tabValue === 2) {
         const ref = listSectionsRef(dataConnect);
         const result = await executeQuery(ref);
+        if (dataRequestIdRef.current !== requestId) return;
         setSections(result.data?.sections || []);
       }
     } catch (caught) {
+      if (dataRequestIdRef.current !== requestId) return;
       reportError("admin.audit-logs.load", caught, { tab: tabValue });
       setError(toAdminUserFacingError(caught, "audit-logs").message);
     } finally {
-      setLoading(false);
+      if (dataRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, [tabValue]);
 

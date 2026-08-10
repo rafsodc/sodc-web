@@ -27,6 +27,8 @@ import {
 } from "../../../shared/errors";
 import { useBookingWizardData } from "./useBookingWizardData";
 import { useSectionMemberSeatingSearch } from "./useSectionMemberSeatingOptions";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateMyBookings } from "../../../shared/query/invalidation";
 
 export {
   ADDITIONAL_GUEST_STEPS,
@@ -59,6 +61,7 @@ export function useBookingWizardState({
   onBookingComplete,
   onHasExistingBookingChange,
 }: UseBookingWizardStateProps) {
+  const queryClient = useQueryClient();
   const [wizardMode, setWizardMode] = useState<WizardMode>("full");
   const [activeStep, setActiveStep] = useState(0);
   const [memberTicketTypeId, setMemberTicketTypeId] = useState<string | null>(null);
@@ -319,7 +322,10 @@ export function useBookingWizardState({
           return;
         }
         await submitAdditionalGuestRequest(existingTerminalBooking.id);
-        await refetchMyBookings();
+        await Promise.all([
+          refetchMyBookings(),
+          invalidateMyBookings(queryClient),
+        ]);
         onBookingComplete?.();
         closeWizard();
         return;
@@ -365,7 +371,10 @@ export function useBookingWizardState({
       }
 
       hydratedBookingIdRef.current = result.bookingId;
-      await refetchMyBookings();
+      await Promise.all([
+        refetchMyBookings(),
+        invalidateMyBookings(queryClient),
+      ]);
       setIsEditingBooking(false);
       setPostSubmitFlow(true);
       setActiveStep(3);

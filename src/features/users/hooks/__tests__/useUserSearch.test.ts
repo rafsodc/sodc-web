@@ -200,4 +200,35 @@ describe("useUserSearch", () => {
       expect(vi.mocked(searchUsersModule.searchUsers).mock.calls.length).toBeGreaterThan(callsBefore)
     );
   });
+
+  it("ignores an older search response that resolves after a newer term", async () => {
+    vi.useRealTimers();
+    type SearchResponse = Awaited<ReturnType<typeof searchUsersModule.searchUsers>>;
+    let resolveOld!: (value: SearchResponse) => void;
+    let resolveNew!: (value: SearchResponse) => void;
+    mockSearchUsers.mockImplementation((term) => new Promise((resolve) => {
+      if (term === "old") resolveOld = resolve;
+      if (term === "new") resolveNew = resolve;
+    }));
+
+    const { result } = renderHook(() => useUserSearch("", 0));
+    act(() => result.current.setSearchTerm("old"));
+    await waitFor(() => expect(mockSearchUsers).toHaveBeenCalledWith("old", 1, 25));
+
+    act(() => result.current.setSearchTerm("new"));
+    await waitFor(() => expect(mockSearchUsers).toHaveBeenCalledWith("new", 1, 25));
+
+    await act(async () => resolveNew({
+      success: true,
+      data: { users: [mockUsers[1]], total: 1, page: 1, pageSize: 25, totalPages: 1 },
+    }));
+    await waitFor(() => expect(result.current.users).toEqual([mockUsers[1]]));
+
+    await act(async () => resolveOld({
+      success: true,
+      data: { users: [mockUsers[0]], total: 1, page: 1, pageSize: 25, totalPages: 1 },
+    }));
+    expect(result.current.users).toEqual([mockUsers[1]]);
+    expect(result.current.loading).toBe(false);
+  });
 });

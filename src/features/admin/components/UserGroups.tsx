@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Alert,
 } from "@mui/material";
-import { executeQuery, executeMutation } from "firebase/data-connect";
+import { executeQuery, executeMutation, QueryFetchPolicy } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import {
   listUserGroupsRef,
@@ -58,6 +58,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [groupDetails, setGroupDetails] = useState<Record<string, UserGroupDetails>>({});
+  const groupDetailsRef = useRef<Record<string, UserGroupDetails>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
   
   // Create/Edit dialog state
@@ -74,6 +75,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const userSearchRequestIdRef = useRef(0);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   // All users: for merged group membership (explicit + by membership status)
@@ -110,21 +112,25 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     }
   }, []);
 
-  const fetchGroupDetails = useCallback(async (groupId: string) => {
-    if (groupDetails[groupId]) {
+  const fetchGroupDetails = useCallback(async (groupId: string, force = false) => {
+    if (!force && groupDetailsRef.current[groupId]) {
       return;
     }
 
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
       const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
-      const result = await executeQuery(ref);
+      const result = await executeQuery(
+        ref,
+        force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
+      );
       
       if (result.data?.userGroup) {
-        setGroupDetails((prev) => ({
-          ...prev,
-          [groupId]: result.data.userGroup!,
-        }));
+        setGroupDetails((prev) => {
+          const next = { ...prev, [groupId]: result.data.userGroup! };
+          groupDetailsRef.current = next;
+          return next;
+        });
       }
     } catch (caught) {
       reportError("admin.user-groups.details", caught, { groupId });
@@ -132,7 +138,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     } finally {
       setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
     }
-  }, [groupDetails]);
+  }, []);
 
   useEffect(() => {
     fetchUserGroupsList();
@@ -214,8 +220,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   };
 
   const handleSearchUsers = useCallback(async (term: string) => {
+    const requestId = ++userSearchRequestIdRef.current;
     if (!term.trim() || term.length < 2) {
       setSearchResults([]);
+      setSearchingUsers(false);
       return;
     }
 
@@ -253,14 +261,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
             return null;
           })
         );
+        if (userSearchRequestIdRef.current !== requestId) return;
         setSearchResults(usersWithData.filter((u): u is NonNullable<typeof u> => u !== null));
       }
     } catch (caught) {
+      if (userSearchRequestIdRef.current !== requestId) return;
       reportError("admin.user-groups.search", caught);
       setError(toAdminUserFacingError(caught, "users").message);
       setSearchResults([]);
     } finally {
-      setSearchingUsers(false);
+      if (userSearchRequestIdRef.current === requestId) {
+        setSearchingUsers(false);
+      }
     }
   }, []);
 
@@ -293,8 +305,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       await executeMutation(ref);
 
       // Refresh group details
-      delete groupDetails[addingToGroupId];
-      setGroupDetails({ ...groupDetails });
+      const nextGroupDetails = { ...groupDetails };
+      delete nextGroupDetails[addingToGroupId];
+      groupDetailsRef.current = nextGroupDetails;
+      setGroupDetails(nextGroupDetails);
       await fetchGroupDetails(addingToGroupId);
 
       setAddUserDialogOpen(false);
@@ -323,8 +337,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       await executeMutation(ref);
 
       // Refresh group details
-      delete groupDetails[groupId];
-      setGroupDetails({ ...groupDetails });
+      const nextGroupDetails = { ...groupDetails };
+      delete nextGroupDetails[groupId];
+      groupDetailsRef.current = nextGroupDetails;
+      setGroupDetails(nextGroupDetails);
       await fetchGroupDetails(groupId);
       showSuccess("User removed from group");
     } catch (caught) {
@@ -361,8 +377,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       if (expandedGroupId === group.id) {
         setExpandedGroupId(null);
       }
-      delete groupDetails[group.id];
-      setGroupDetails({ ...groupDetails });
+      const nextGroupDetails = { ...groupDetails };
+      delete nextGroupDetails[group.id];
+      groupDetailsRef.current = nextGroupDetails;
+      setGroupDetails(nextGroupDetails);
       showSuccess(`User group "${group.name}" deleted`);
     } catch (caught) {
       reportError("admin.user-groups.delete", caught, { groupId: group.id });
@@ -399,6 +417,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       }
       setDialogOpen(false);
       await fetchUserGroupsList();
+      if (editingGroup) {
+        await fetchGroupDetails(editingGroup.id, true);
+      }
       showSuccess(`User group ${editingGroup ? "updated" : "created"}`);
     } catch (caught) {
       reportError("admin.user-groups.save", caught, { editing: Boolean(editingGroup) });

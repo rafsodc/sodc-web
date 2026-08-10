@@ -14,6 +14,11 @@ import {
   dataConnectQueryResult,
   type DataConnectQueryResultOverrides,
 } from '../../../../test-utils/dataConnectMocks';
+import { invalidateUserSectionAccess } from '../../../../shared/query/invalidation';
+
+vi.mock('../../../../shared/query/invalidation', () => ({
+  invalidateUserSectionAccess: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Mock the DataConnect hooks (SectionDetail uses getSectionMembersMerged callable, not useGetSectionMembers)
 vi.mock('@dataconnect/generated/react', () => ({
@@ -1335,11 +1340,29 @@ describe('SectionDetail', () => {
       expect(screen.getByRole('button', { name: /^subscribe$/i })).toBeInTheDocument();
     });
 
+    vi.mocked(invalidateUserSectionAccess).mockImplementationOnce(async () => {
+      mockGetUserAccessGroups({
+        data: {
+          user: {
+            id: 'user-1',
+            userGroups: [
+              { userGroup: { id: 'view-group-1' } },
+              { userGroup: { id: 'member-group-1' } },
+            ],
+          },
+        },
+        isLoading: false,
+        isError: false,
+      });
+    });
+
     await user.click(screen.getByRole('button', { name: /^subscribe$/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/successfully subscribed/i)).toBeInTheDocument();
     });
+    expect(invalidateUserSectionAccess).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
 
     // click outside to dismiss snackbar (exercises handleCloseSnackbar)
     await user.click(document.body);
@@ -1399,11 +1422,26 @@ describe('SectionDetail', () => {
       expect(screen.getByRole('button', { name: /unsubscribe/i })).toBeInTheDocument();
     });
 
+    vi.mocked(invalidateUserSectionAccess).mockImplementationOnce(async () => {
+      mockGetUserAccessGroups({
+        data: {
+          user: {
+            id: 'user-1',
+            userGroups: [{ userGroup: { id: 'view-group-1' } }],
+          },
+        },
+        isLoading: false,
+        isError: false,
+      });
+    });
+
     await user.click(screen.getByRole('button', { name: /unsubscribe/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/successfully unsubscribed/i)).toBeInTheDocument();
     });
+    expect(invalidateUserSectionAccess).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('button', { name: /^subscribe$/i })).toBeInTheDocument();
   });
 
   it('shows announcement toggle for user with MODERATOR access (tests || branch in grantsAccess)', async () => {
