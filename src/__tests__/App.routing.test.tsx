@@ -11,6 +11,7 @@ import { sectionDetailLocationState } from "../shared/navigation/sectionNavigati
 import { createMockUser } from "../test-utils/mocks/firebase";
 
 const mockRefetchUserData = vi.hoisted(() => vi.fn());
+const mockRetrySession = vi.hoisted(() => vi.fn());
 
 let currentUser: User | null = null;
 let enabledClaim = false;
@@ -19,6 +20,9 @@ let adminClaim = false;
 let profileReviewedAt: string | null = new Date().toISOString();
 let headerShouldThrow = false;
 let memberWelcomeShouldThrow = false;
+let sessionRecoveryStatus: "idle" | "recovering" | "failed" = "idle";
+let sessionRecoveryFailure: "refresh-failed" | "request-timeout" | null = null;
+let sessionRecoveryOnRecovered: (() => void | Promise<void>) | undefined;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
   return {
@@ -113,6 +117,20 @@ vi.mock("../features/users/hooks/useEnabledClaim", () => ({
 
 vi.mock("../features/users/hooks/useAdminClaim", () => ({
   useAdminClaim: vi.fn((user: User | null) => Boolean(user && adminClaim)),
+}));
+
+vi.mock("../shared/appShell/useSessionRecovery", () => ({
+  useSessionRecovery: (
+    _user: User | null,
+    options?: { onRecovered?: () => void | Promise<void> },
+  ) => {
+    sessionRecoveryOnRecovered = options?.onRecovered;
+    return {
+      status: sessionRecoveryStatus,
+      failure: sessionRecoveryFailure,
+      retry: mockRetrySession,
+    };
+  },
 }));
 
 vi.mock("@dataconnect/generated/react", () => ({
@@ -325,6 +343,9 @@ describe("App routing", () => {
     profileReviewedAt = new Date().toISOString();
     headerShouldThrow = false;
     memberWelcomeShouldThrow = false;
+    sessionRecoveryStatus = "idle";
+    sessionRecoveryFailure = null;
+    sessionRecoveryOnRecovered = undefined;
     mockRefetchUserData.mockResolvedValue(undefined);
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
@@ -336,6 +357,52 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Public Home Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it("preserves the protected destination while refreshing an idle session", async () => {
+    signInEnabledUser();
+    sessionRecoveryStatus = "recovering";
+
+    renderApp([ROUTES.SECTIONS]);
+
+    expect(screen.getByLabelText("Refreshing your session")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.SECTIONS);
+    expect(screen.queryByRole("heading", { name: "Sections Page" })).not.toBeInTheDocument();
+  });
+
+  it("replaces an indefinite spinner with retry actions after a request timeout", async () => {
+    signInEnabledUser();
+    sessionRecoveryStatus = "failed";
+    sessionRecoveryFailure = "request-timeout";
+    const user = userEvent.setup();
+
+    renderApp([ROUTES.SECTIONS]);
+
+    expect(screen.getByText(/request took too long/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mockRetrySession).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.SECTIONS);
+  });
+
+  it("refreshes the member profile after session recovery", async () => {
+    signInEnabledUser();
+    renderApp([ROUTES.SECTIONS]);
+
+    await sessionRecoveryOnRecovered?.();
+
+    expect(mockRefetchUserData).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves an admin destination while refreshing an idle session", () => {
+    signInEnabledUser({ admin: true });
+    sessionRecoveryStatus = "recovering";
+
+    renderApp([ROUTES.MANAGE_USERS]);
+
+    expect(screen.getByLabelText("Refreshing your session")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_USERS);
+    expect(screen.queryByRole("heading", { name: "Manage Users Page" })).not.toBeInTheDocument();
   });
 
   it("keeps the footer at the viewport edge on short pages without fixing it over content", async () => {

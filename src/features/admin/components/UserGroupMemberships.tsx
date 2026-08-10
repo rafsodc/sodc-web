@@ -26,8 +26,11 @@ import {
   PersonRemove as PersonRemoveIcon,
   PersonAdd as PersonAddIcon,
 } from "@mui/icons-material";
-import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
+import {
+  executeDataConnectMutation,
+  executeDataConnectQuery,
+} from "../../../shared/query/dataConnectExecution";
 import {
   getUserWithAccessGroupsRef,
   listUserGroupsRef,
@@ -67,7 +70,7 @@ export default function UserGroupMemberships({
     setError(null);
     try {
       const ref = getUserWithAccessGroupsRef(dataConnect, { id: userId });
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       setUserData(result.data?.user || null);
     } catch (caught) {
       reportError("admin.user-memberships.load", caught, { userId });
@@ -80,7 +83,7 @@ export default function UserGroupMemberships({
   const fetchAllGroups = useCallback(async () => {
     try {
       const ref = listUserGroupsRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       setAllGroups(result.data?.userGroups || []);
     } catch (caught) {
       reportError("admin.user-memberships.available-groups", caught, { userId });
@@ -104,7 +107,7 @@ export default function UserGroupMemberships({
         userId,
         userGroupId: groupId,
       });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
       await fetchUserData();
       if (onUpdate) {
         onUpdate();
@@ -132,7 +135,7 @@ export default function UserGroupMemberships({
         userId,
         userGroupId: groupId,
       });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
       await fetchUserData();
       if (onUpdate) {
         onUpdate();

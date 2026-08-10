@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { queryRef, executeQuery } from "firebase/data-connect";
+import { queryRef } from "firebase/data-connect";
 import type { User } from "firebase/auth";
 import { dataConnect } from "../../config/firebase";
 import type { UserData } from "../../types";
+import { executeDataConnectQuery } from "../query/dataConnectExecution";
 
 export function useUnenabledProfileCheck(
   user: User | null,
@@ -35,7 +36,7 @@ export function useUnenabledProfileCheck(
 
     checkingProfileRef.current = true;
     const ref = queryRef(dataConnect, "CheckUserProfileExists", {});
-    executeQuery(ref)
+    executeDataConnectQuery(ref)
       .then((result) => {
         const profileData = (result.data as { user?: { membershipStatus?: string } | null })?.user;
         setProfileExists(profileData !== null && profileData !== undefined);

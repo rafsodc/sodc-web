@@ -16,8 +16,8 @@ import {
   IconButton,
 } from "@mui/material";
 import { Refresh as RefreshIcon } from "@mui/icons-material";
-import { executeQuery } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
+import { executeDataConnectQuery } from "../../../shared/query/dataConnectExecution";
 import {
   listUsersRef,
   listUserGroupsRef,
@@ -47,7 +47,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   const fetchAllUsers = useCallback(async () => {
     try {
       const ref = listUsersRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       setAllUsers(result.data?.users || []);
     } catch (error) {
       reportError("admin.audit-logs.user-lookup", error);
@@ -61,17 +61,17 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
     try {
       if (tabValue === 0) {
         const ref = listUsersRef(dataConnect);
-        const result = await executeQuery(ref);
+        const result = await executeDataConnectQuery(ref);
         if (dataRequestIdRef.current !== requestId) return;
         setUsers(result.data?.users || []);
       } else if (tabValue === 1) {
         const ref = listUserGroupsRef(dataConnect);
-        const result = await executeQuery(ref);
+        const result = await executeDataConnectQuery(ref);
         if (dataRequestIdRef.current !== requestId) return;
         setUserGroups(result.data?.userGroups || []);
       } else if (tabValue === 2) {
         const ref = listSectionsRef(dataConnect);
-        const result = await executeQuery(ref);
+        const result = await executeDataConnectQuery(ref);
         if (dataRequestIdRef.current !== requestId) return;
         setSections(result.data?.sections || []);
       }

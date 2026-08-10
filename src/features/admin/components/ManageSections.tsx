@@ -3,8 +3,11 @@ import {
   Box,
   Alert,
 } from "@mui/material";
-import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
+import {
+  executeDataConnectMutation,
+  executeDataConnectQuery,
+} from "../../../shared/query/dataConnectExecution";
 import {
   listSectionsRef,
   createSectionRef,
@@ -108,7 +111,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setError(null);
     try {
       const ref = listSectionsRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       
       // Get existing sections from database
       const existingSections: SectionWithDetails[] = result.data?.sections?.map((section) => ({
@@ -139,7 +142,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const fetchAllUserGroups = useCallback(async () => {
     try {
       const ref = listUserGroupsRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       setAllUserGroups(result.data?.userGroups || []);
     } catch (caught) {
       reportError("admin.sections.available-groups", caught);
@@ -150,7 +153,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setLoadingUserGroups(true);
     try {
       const ref = getSectionByIdRef(dataConnect, { id: sectionId });
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       const section = result.data?.section;
       
       if (section?.purposeLinks?.length) {
@@ -226,7 +229,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
 
     try {
       const ref = deleteSectionRef(dataConnect, { id: section.id });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
       await Promise.all([fetchSections(), invalidateSectionsForUser(queryClient)]);
       showSuccess(`Section "${section.name}" deleted`);
     } catch (caught) {
@@ -251,7 +254,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
           name: sectionName.trim(),
           description: sectionDescription.trim() || null,
         });
-        await executeMutation(ref);
+        await executeDataConnectMutation(ref);
       } else {
         // Create new section
         const ref = createSectionRef(dataConnect, {
@@ -259,7 +262,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
           type: sectionType,
           description: sectionDescription.trim() || null,
         });
-        await executeMutation(ref);
+        await executeDataConnectMutation(ref);
       }
       setDialogOpen(false);
       await Promise.all([fetchSections(), invalidateSectionsForUser(queryClient)]);
@@ -292,7 +295,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
           )
         ),
       });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
 
       await fetchSectionUserGroups(editingSection.id);
       await invalidateSectionsForUser(queryClient);
@@ -323,7 +326,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setError(null);
     try {
       const refetch = getSectionByIdRef(dataConnect, { id: editingSection.id });
-      const currentSection = await executeQuery(refetch);
+      const currentSection = await executeDataConnectQuery(refetch);
       const currentLink = currentSection.data?.section?.purposeLinks?.find((link) => link.userGroup?.id === userGroupId);
       const currentPurposes = (currentLink?.purposes ?? []).filter((item) => item !== purpose);
 
@@ -332,14 +335,14 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
           sectionId: editingSection.id,
           userGroupId,
         });
-        await executeMutation(deleteRef);
+        await executeDataConnectMutation(deleteRef);
       } else {
         const updateRef = grantUserGroupToSectionForPurposeRef(dataConnect, {
           sectionId: editingSection.id,
           userGroupId,
           purposes: currentPurposes,
         });
-        await executeMutation(updateRef);
+        await executeDataConnectMutation(updateRef);
       }
       
       // Refresh section user groups

@@ -4,8 +4,17 @@ import { executeQuery, QueryFetchPolicy } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
 import { getCurrentUserRef } from "@dataconnect/generated";
 import type { UserData } from "../../../types";
+import { withTimeout } from "../../../shared/utils/withTimeout";
+import { refreshToken } from "./useTokenRefresh";
+import { isAuthenticationFailure } from "../../../shared/auth/isAuthenticationFailure";
 
-export function useUserData(firebaseUser: User | null, accountEnabled?: boolean) {
+export const USER_DATA_REQUEST_TIMEOUT_MS = 30_000;
+
+export function useUserData(
+  firebaseUser: User | null,
+  accountEnabled?: boolean,
+  requestTimeoutMs = USER_DATA_REQUEST_TIMEOUT_MS,
+) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -24,7 +33,11 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
     // Check if user has enabled claim before attempting query
     // GetCurrentUser requires enabled claim, so don't call it if user doesn't have it
     try {
-      const tokenResult = await firebaseUser.getIdTokenResult();
+      const tokenResult = await withTimeout(
+        firebaseUser.getIdTokenResult(),
+        requestTimeoutMs,
+        "Checking the current user's claims timed out",
+      );
       const isEnabled = tokenResult.claims.enabled === true;
       
       if (!isEnabled) {
@@ -58,9 +71,13 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
     setError(null);
     try {
       const ref = getCurrentUserRef(dataConnect);
-      const result = await executeQuery(
-        ref,
-        force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
+      const result = await withTimeout(
+        executeQuery(
+          ref,
+          force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
+        ),
+        requestTimeoutMs,
+        "Loading the current user timed out",
       );
       if (result.data?.user) {
         setUserData(result.data.user as UserData);
@@ -71,9 +88,7 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
       hasFetchedRef.current = firebaseUser.uid;
     } catch (err: any) {
       // Check if it's an auth error (401/403) - might be stale token or user doesn't have enabled claim
-      const isAuthError = err?.code === 401 || err?.code === 403 || 
-                         err?.message?.includes("unauthorized") ||
-                         err?.message?.includes("permission");
+      const isAuthError = isAuthenticationFailure(err);
       
       if (isAuthError) {
         // Mark that we've hit an auth error for this user
@@ -82,9 +97,13 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
         // Only try refreshing token if we haven't already tried (first time)
         if (hasFetchedRef.current !== firebaseUser.uid) {
           try {
-            await firebaseUser.getIdToken(true);
+            await refreshToken(firebaseUser);
             const ref = getCurrentUserRef(dataConnect);
-            const result = await executeQuery(ref);
+            const result = await withTimeout(
+              executeQuery(ref),
+              requestTimeoutMs,
+              "Retrying the current user request timed out",
+            );
             if (result.data?.user) {
               setUserData(result.data.user as UserData);
               authErrorRef.current = false; // Reset on success
@@ -116,7 +135,7 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean)
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, requestTimeoutMs]);
 
   useEffect(() => {
     if (!firebaseUser) {

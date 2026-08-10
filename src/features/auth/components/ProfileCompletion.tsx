@@ -12,7 +12,7 @@ import {
   Divider,
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
-import { executeMutation, mutationRef } from "firebase/data-connect";
+import { mutationRef } from "firebase/data-connect";
 import { MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
 import {
@@ -26,6 +26,7 @@ import { syncPendingUserClaims, updateDisplayName } from "../../../shared/utils/
 import RankSelect from "../../../shared/components/RankSelect";
 import { normalizeMobileNumber } from "../../../shared/utils/mobileNumber";
 import { reportError, toProfileUserFacingError } from "../../../shared/errors";
+import { executeDataConnectMutation } from "../../../shared/query/dataConnectExecution";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -97,7 +98,7 @@ export default function ProfileCompletion({
         rank: rank || null,
       });
 
-      const result = await executeMutation(mutation);
+      const result = await executeDataConnectMutation(mutation);
 
       if (!result.data) {
         throw new Error("Failed to save profile");

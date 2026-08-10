@@ -19,7 +19,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { executeMutation } from "firebase/data-connect";
+import { executeDataConnectMutation } from "../../../shared/query/dataConnectExecution";
 import {
   resolvePaymentReconciliationExceptionRef,
   PaymentReconciliationExceptionType,
@@ -68,7 +68,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
     setResolvingId(id);
     setError(null);
     try {
-      await executeMutation(resolvePaymentReconciliationExceptionRef(dataConnect, { id, note: "Reviewed in dashboard" }));
+      await executeDataConnectMutation(resolvePaymentReconciliationExceptionRef(dataConnect, { id, note: "Reviewed in dashboard" }));
       await refetch();
       showSuccess("Exception marked reviewed");
     } catch (err) {
