@@ -33,6 +33,7 @@ import {
   type NotifyReplyToResolutionSource,
 } from "./notifyReplyToConfiguration";
 import { getGovNotifyEmailReplyToId } from "./govNotifyReplyToId";
+import { resolveNotifyTemplateId } from "./notifyTemplateBindingConfiguration";
 import { enforceRateLimit } from "./rateLimiter";
 
 const AUDIT_LIMIT = 50;
@@ -196,7 +197,8 @@ export const sendNotifyReplyToVerificationTest = onCall(
     if (delivery.effectiveMode === "SIMULATION") {
       throw new HttpsError("failed-precondition", "Raise the site email mode to Team test before sending a verification email");
     }
-    const templateId = process.env.GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION?.trim();
+    const templateId = await resolveNotifyTemplateId("emailVerification")
+      ?? process.env.GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION?.trim();
     if (!templateId) throw new HttpsError("failed-precondition", "The email verification Notify template is not configured");
     const response = await new NotifyClient(govNotifyApiKeyForMode(delivery.effectiveMode)).sendEmail(
       templateId,
