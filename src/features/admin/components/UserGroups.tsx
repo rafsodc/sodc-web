@@ -3,8 +3,12 @@ import {
   Box,
   Alert,
 } from "@mui/material";
-import { executeQuery, executeMutation, QueryFetchPolicy } from "firebase/data-connect";
+import { QueryFetchPolicy } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
+import {
+  executeDataConnectMutation,
+  executeDataConnectQuery,
+} from "../../../shared/query/dataConnectExecution";
 import {
   listUserGroupsRef,
   listUsersRef,
@@ -89,7 +93,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     setError(null);
     try {
       const ref = listUserGroupsRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       
       const existingGroups: UserGroupWithDetails[] = result.data?.userGroups?.map((group) => ({
         id: group.id,
@@ -120,7 +124,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
       const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
-      const result = await executeQuery(
+      const result = await executeDataConnectQuery(
         ref,
         force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
       );
@@ -161,7 +165,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     (async () => {
       try {
         const ref = listUsersRef(dataConnect);
-        const result = await executeQuery(ref);
+        const result = await executeDataConnectQuery(ref);
         if (!cancelled && result.data?.users) {
           setAllUsers(
             result.data.users.map((u) => ({
@@ -236,7 +240,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
           result.data.users.map(async (user) => {
             try {
               const userRef = getUserWithAccessGroupsRef(dataConnect, { id: user.uid });
-              const userResult = await executeQuery(userRef);
+              const userResult = await executeDataConnectQuery(userRef);
               if (userResult.data?.user) {
                 return {
                   id: userResult.data.user.id,
@@ -302,7 +306,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         userId,
         userGroupId: addingToGroupId,
       });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
 
       // Refresh group details
       const nextGroupDetails = { ...groupDetails };
@@ -334,7 +338,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         userId,
         userGroupId: groupId,
       });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
 
       // Refresh group details
       const nextGroupDetails = { ...groupDetails };
@@ -372,7 +376,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
     try {
       const ref = deleteUserGroupRef(dataConnect, { id: group.id });
-      await executeMutation(ref);
+      await executeDataConnectMutation(ref);
       await fetchUserGroupsList();
       if (expandedGroupId === group.id) {
         setExpandedGroupId(null);
@@ -405,7 +409,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
           description: groupDescription.trim() || null,
           membershipStatuses: selectedStatuses.length > 0 ? selectedStatuses : null,
         });
-        await executeMutation(ref);
+        await executeDataConnectMutation(ref);
       } else {
         // Create new group
         const ref = createUserGroupRef(dataConnect, {
@@ -413,7 +417,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
           description: groupDescription.trim() || null,
           membershipStatuses: selectedStatuses.length > 0 ? selectedStatuses : null,
         });
-        await executeMutation(ref);
+        await executeDataConnectMutation(ref);
       }
       setDialogOpen(false);
       await fetchUserGroupsList();

@@ -117,6 +117,32 @@ describe("useUserData", () => {
     expect(result.current.error?.message).toBe("Query failed");
   });
 
+  it("refreshes once and retries after an authentication error", async () => {
+    vi.mocked(dataConnect.executeQuery)
+      .mockRejectedValueOnce(new Error("unauthorized"))
+      .mockResolvedValueOnce({ data: { user: mockUserData } } as any);
+    const user = enabledUser("retry-user");
+
+    const { result } = renderHook(() => useUserData(user, true));
+
+    await waitFor(() => expect(result.current.userData).toEqual(mockUserData));
+    expect(user.getIdToken).toHaveBeenCalledTimes(1);
+    expect(user.getIdToken).toHaveBeenCalledWith(true);
+    expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("exits loading with an error when a Data Connect request never settles", async () => {
+    vi.mocked(dataConnect.executeQuery).mockReturnValue(
+      new Promise<never>(() => undefined),
+    );
+
+    const { result } = renderHook(() => useUserData(enabledUser("timeout-user"), true, 5));
+
+    await waitFor(() => expect(result.current.error?.message).toBe("Loading the current user timed out"));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.userData).toBeNull();
+  });
+
   it("silences 'not found' errors — userData is null but no error state", async () => {
     vi.mocked(dataConnect.executeQuery).mockRejectedValue(new Error("User not found in database"));
 

@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { type User } from "firebase/auth";
 import { useTokenRefresh } from "./useTokenRefresh";
+import { withTimeout } from "../../../shared/utils/withTimeout";
+
+const CLAIM_CHECK_TIMEOUT_MS = 15_000;
 
 export interface EnabledClaimState {
   isEnabled: boolean;
@@ -19,7 +22,11 @@ export function useEnabledClaim(user: User | null): EnabledClaimState {
     }
 
     try {
-      const tokenResult = await user.getIdTokenResult();
+      const tokenResult = await withTimeout(
+        user.getIdTokenResult(),
+        CLAIM_CHECK_TIMEOUT_MS,
+        "Checking the enabled account claim timed out",
+      );
       setIsEnabled(tokenResult.claims.enabled === true);
     } catch (error) {
       console.error("Error checking enabled claim:", error);

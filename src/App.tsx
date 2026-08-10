@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { dataConnect } from "./config/firebase";
+import { signOut } from "firebase/auth";
+import { auth, dataConnect } from "./config/firebase";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
@@ -20,6 +21,7 @@ import {
 } from "./shared/appShell/appRoutingHelpers";
 import { getSectionReturnTo, sectionDetailLocationState } from "./shared/navigation/sectionNavigationState";
 import { useAppAuthSession } from "./shared/appShell/useAppAuthSession";
+import { useSessionRecovery } from "./shared/appShell/useSessionRecovery";
 import { useCheckoutQueryState } from "./shared/appShell/useCheckoutQueryState";
 import { useOnlineStatus } from "./shared/appShell/useOnlineStatus";
 import { useUnenabledProfileCheck } from "./shared/appShell/useUnenabledProfileCheck";
@@ -104,6 +106,7 @@ function AppContent() {
     setLogoutSuccess,
     triggerEmailCheck,
   } = useAppAuthSession(handleLoggedOut);
+  const sessionRecovery = useSessionRecovery(user);
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavAnchorEl, setMobileNavAnchorEl] = useState<HTMLElement | null>(null);
@@ -161,6 +164,15 @@ function AppContent() {
     [isAdmin, isEnabled, userSectionsData]
   );
 
+  const handleSignInAgain = useCallback(async () => {
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    try {
+      await signOut(auth);
+    } finally {
+      navigate(accountSignInPath(returnTo), { replace: true });
+    }
+  }, [location.hash, location.pathname, location.search, navigate]);
+
   const header = (
     <>
       <Header
@@ -197,6 +209,45 @@ function AppContent() {
             <Typography variant="body2" color="text.secondary">
               The app needs network access to load account and section data.
             </Typography>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (sessionRecovery.status !== "idle") {
+    const isRecovering = sessionRecovery.status === "recovering";
+    const timedOut = sessionRecovery.failure === "request-timeout";
+
+    return (
+      <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+        {header}
+        <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
+          <Box sx={{ maxWidth: { sm: "640px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
+            {isRecovering ? (
+              <Box sx={{ textAlign: "center" }}>
+                <CircularProgress aria-label="Refreshing your session" />
+                <Typography sx={{ mt: 2 }}>Refreshing your session…</Typography>
+              </Box>
+            ) : (
+              <Alert
+                severity="warning"
+                action={
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button color="inherit" size="small" onClick={() => void sessionRecovery.retry()}>
+                      Try again
+                    </Button>
+                    <Button color="inherit" size="small" onClick={() => void handleSignInAgain()}>
+                      Sign in again
+                    </Button>
+                  </Box>
+                }
+              >
+                {timedOut
+                  ? "The request took too long after the app resumed. Try reconnecting your session."
+                  : "Your session could not be refreshed. Try again or sign in again."}
+              </Alert>
+            )}
           </Box>
         </Box>
       </Box>

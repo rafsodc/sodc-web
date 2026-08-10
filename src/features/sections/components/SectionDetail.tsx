@@ -8,7 +8,7 @@ import {
 import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/generated/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { dataConnect } from "../../../config/firebase";
-import { executeMutation } from "firebase/data-connect";
+import { executeDataConnectMutation } from "../../../shared/query/dataConnectExecution";
 import PageHeader from "../../../shared/components/PageHeader";
 import AnnouncementOptOutToggle from "./AnnouncementOptOutToggle";
 import FailureState from "../../../shared/components/FailureState";
@@ -375,7 +375,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setSubscribing(true);
     try {
       const { unsubscribeFromUserGroupRef } = await import("@dataconnect/generated");
-      await executeMutation(unsubscribeFromUserGroupRef(dataConnect, {
+      await executeDataConnectMutation(unsubscribeFromUserGroupRef(dataConnect, {
         userGroupId: userMemberGroup.id as UUIDString,
       }));
 

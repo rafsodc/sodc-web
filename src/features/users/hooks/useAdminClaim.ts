@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { type User } from "firebase/auth";
 import { useTokenRefresh } from "./useTokenRefresh";
+import { withTimeout } from "../../../shared/utils/withTimeout";
+
+const CLAIM_CHECK_TIMEOUT_MS = 15_000;
 
 export function useAdminClaim(user: User | null): boolean {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -12,7 +15,11 @@ export function useAdminClaim(user: User | null): boolean {
     }
 
     try {
-      const tokenResult = await user.getIdTokenResult();
+      const tokenResult = await withTimeout(
+        user.getIdTokenResult(),
+        CLAIM_CHECK_TIMEOUT_MS,
+        "Checking the administrator claim timed out",
+      );
       setIsAdmin(tokenResult.claims.admin === true);
     } catch (error) {
       console.error("Error checking admin claim:", error);
@@ -29,4 +36,3 @@ export function useAdminClaim(user: User | null): boolean {
 
   return isAdmin;
 }
-

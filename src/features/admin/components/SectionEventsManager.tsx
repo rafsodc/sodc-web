@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
-import { executeQuery, executeMutation } from "firebase/data-connect";
 import { dataConnect } from "../../../config/firebase";
+import {
+  executeDataConnectMutation,
+  executeDataConnectQuery,
+} from "../../../shared/query/dataConnectExecution";
 import { reviewGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
 import {
   useGetEventsForSection,
@@ -196,7 +199,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setLoadingUserGroups(true);
     try {
       const ref = listUserGroupsRef(dataConnect);
-      const result = await executeQuery(ref);
+      const result = await executeDataConnectQuery(ref);
       setAllUserGroups((result.data?.userGroups ?? []).map((ug) => ({ id: ug.id, name: ug.name })));
     } catch (caught) {
       reportError("admin.events.user-groups", caught, { sectionId });
@@ -255,7 +258,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
     try {
       if (editingEvent) {
-        await executeMutation(
+        await executeDataConnectMutation(
           updateEventRef(dataConnect, {
             id: editingEvent.id,
             title: title.trim(),
@@ -269,7 +272,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           })
         );
       } else {
-        await executeMutation(
+        await executeDataConnectMutation(
           createEventRef(dataConnect, {
             sectionId: sectionId as UUIDString,
             title: title.trim(),
@@ -303,23 +306,23 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setDeletingEventId(event.id);
     setError(null);
     try {
-      const bookingsResult = await executeQuery(listEventBookingsForAdminRef(dataConnect, { eventId: event.id as UUIDString }));
+      const bookingsResult = await executeDataConnectQuery(listEventBookingsForAdminRef(dataConnect, { eventId: event.id as UUIDString }));
       const bookingsList = bookingsResult.data?.event?.bookings ?? [];
       for (const b of bookingsList) {
         for (const gtr of b.guestTicketRequests) {
-          await executeMutation(adminDeleteGuestTicketRequestRef(dataConnect, { id: gtr.id }));
+          await executeDataConnectMutation(adminDeleteGuestTicketRequestRef(dataConnect, { id: gtr.id }));
         }
         for (const line of b.lines) {
-          await executeMutation(adminDeleteBookingLineRef(dataConnect, { id: line.id }));
+          await executeDataConnectMutation(adminDeleteBookingLineRef(dataConnect, { id: line.id }));
         }
-        await executeMutation(adminDeleteBookingRef(dataConnect, { id: b.id }));
+        await executeDataConnectMutation(adminDeleteBookingRef(dataConnect, { id: b.id }));
       }
-      const detailResult = await executeQuery(getEventByIdRef(dataConnect, { id: event.id as UUIDString }));
+      const detailResult = await executeDataConnectQuery(getEventByIdRef(dataConnect, { id: event.id as UUIDString }));
       const ticketTypes = detailResult.data?.event?.ticketTypes ?? [];
       for (const tt of ticketTypes) {
-        await executeMutation(deleteTicketTypeRef(dataConnect, { id: tt.id }));
+        await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id: tt.id }));
       }
-      await executeMutation(deleteEventRef(dataConnect, { id: event.id }));
+      await executeDataConnectMutation(deleteEventRef(dataConnect, { id: event.id }));
       refetchEvents();
       if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
       showSuccess(`Event "${event.title}" deleted`);
@@ -368,7 +371,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setError(null);
     try {
       if (editingTicketType) {
-        await executeMutation(
+        await executeDataConnectMutation(
           updateTicketTypeRef(dataConnect, {
             id: editingTicketType.id,
             userGroupId: ttAccessGroup.id as UUIDString,
@@ -380,7 +383,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           })
         );
       } else {
-        await executeMutation(
+        await executeDataConnectMutation(
           createTicketTypeRef(dataConnect, {
             eventId: ticketTypesEventId as UUIDString,
             userGroupId: ttAccessGroup.id as UUIDString,
@@ -409,7 +412,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setDeletingTicketTypeId(id);
     setError(null);
     try {
-      await executeMutation(deleteTicketTypeRef(dataConnect, { id }));
+      await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id }));
       refetchEventDetail();
       refetchEvents();
       showSuccess("Ticket type deleted");
