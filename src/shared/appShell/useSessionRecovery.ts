@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
 import { refreshToken } from "../../features/users/hooks/useTokenRefresh";
 import { isAuthenticationFailure } from "../auth/isAuthenticationFailure";
+import { OperationTimeoutError } from "../utils/withTimeout";
 
 export const SESSION_IDLE_THRESHOLD_MS = 5 * 60_000;
 export const PROTECTED_QUERY_TIMEOUT_MS = 30_000;
@@ -14,6 +15,7 @@ interface UseSessionRecoveryOptions {
   idleThresholdMs?: number;
   queryTimeoutMs?: number;
   now?: () => number;
+  onRecovered?: () => void | Promise<void>;
 }
 
 interface SessionRecoveryState {
@@ -31,14 +33,22 @@ export function useSessionRecovery(
   const idleThresholdMs = options.idleThresholdMs ?? SESSION_IDLE_THRESHOLD_MS;
   const queryTimeoutMs = options.queryTimeoutMs ?? PROTECTED_QUERY_TIMEOUT_MS;
   const now = options.now ?? Date.now;
+  const onRecoveredRef = useRef(options.onRecovered);
   const [state, setState] = useState<SessionRecoveryState>(INITIAL_STATE);
   const inactiveAtRef = useRef<number | null>(null);
-  const recoveryRef = useRef<Promise<void> | null>(null);
+  const recoveryRef = useRef<{ id: symbol; promise: Promise<void> } | null>(null);
+  const recoveryGenerationRef = useRef(0);
+
+  useEffect(() => {
+    onRecoveredRef.current = options.onRecovered;
+  }, [options.onRecovered]);
 
   const recover = useCallback(async () => {
     if (!user) return;
-    if (recoveryRef.current) return recoveryRef.current;
+    if (recoveryRef.current) return recoveryRef.current.promise;
 
+    const generation = recoveryGenerationRef.current;
+    const recoveryId = Symbol("session-recovery");
     const operation = (async () => {
       setState({ status: "recovering", failure: null });
 
@@ -48,24 +58,40 @@ export function useSessionRecovery(
         // still ensures a late result from the stale promise is ignored.
         await queryClient.cancelQueries({ type: "active" });
         await refreshToken(user);
+        if (generation !== recoveryGenerationRef.current) return;
+        await onRecoveredRef.current?.();
+        if (generation !== recoveryGenerationRef.current) return;
 
         // Do not await refetches here: the query watchdog below owns their bounded
         // loading time and can offer recovery if the replacement transport also stalls.
         void queryClient.invalidateQueries({ type: "active" });
         setState(INITIAL_STATE);
       } catch (error) {
-        console.error("[session-recovery] token refresh failed", error);
-        setState({ status: "failed", failure: "refresh-failed" });
+        if (generation !== recoveryGenerationRef.current) return;
+        const timedOut = error instanceof OperationTimeoutError;
+        console.error(
+          timedOut
+            ? "[session-recovery] token refresh timed out"
+            : "[session-recovery] token refresh failed",
+          error,
+        );
+        setState({
+          status: "failed",
+          failure: timedOut ? "request-timeout" : "refresh-failed",
+        });
       } finally {
-        recoveryRef.current = null;
+        if (recoveryRef.current?.id === recoveryId) {
+          recoveryRef.current = null;
+        }
       }
     })();
 
-    recoveryRef.current = operation;
+    recoveryRef.current = { id: recoveryId, promise: operation };
     return operation;
   }, [queryClient, user]);
 
   useEffect(() => {
+    recoveryGenerationRef.current += 1;
     inactiveAtRef.current = null;
     recoveryRef.current = null;
     setState(INITIAL_STATE);

@@ -119,7 +119,7 @@ describe("useUserData", () => {
 
   it("refreshes once and retries after an authentication error", async () => {
     vi.mocked(dataConnect.executeQuery)
-      .mockRejectedValueOnce(new Error("unauthorized"))
+      .mockRejectedValueOnce({ code: "dataconnect/unauthorized" })
       .mockResolvedValueOnce({ data: { user: mockUserData } } as any);
     const user = enabledUser("retry-user");
 

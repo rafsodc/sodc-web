@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockUser } from "../../../test-utils/mocks/firebase";
+import { OperationTimeoutError } from "../../utils/withTimeout";
 
 const refreshTokenMock = vi.hoisted(() => vi.fn());
 
@@ -88,6 +89,44 @@ describe("useSessionRecovery", () => {
     await waitFor(() => expect(result.current.status).toBe("idle"));
   });
 
+  it("does not let an old user's recovery clear a newer recovery", async () => {
+    const resolvers = new Map<string, () => void>();
+    refreshTokenMock.mockImplementation(
+      (user: { uid: string }) =>
+        new Promise<void>((resolve) => {
+          resolvers.set(user.uid, resolve);
+        }),
+    );
+    const queryClient = new QueryClient();
+    const firstUser = createMockUser({ uid: "first-user" });
+    const secondUser = createMockUser({ uid: "second-user" });
+    const { result, rerender } = renderHook(
+      ({ user }) => useSessionRecovery(user),
+      {
+        initialProps: { user: firstUser },
+        wrapper: createWrapper(queryClient),
+      },
+    );
+
+    void result.current.retry();
+    await waitFor(() => expect(result.current.status).toBe("recovering"));
+
+    rerender({ user: secondUser });
+    await waitFor(() => expect(result.current.status).toBe("idle"));
+    void result.current.retry();
+    await waitFor(() => expect(refreshTokenMock).toHaveBeenCalledTimes(2));
+
+    resolvers.get(firstUser.uid)?.();
+    await act(async () => Promise.resolve());
+    expect(result.current.status).toBe("recovering");
+
+    void result.current.retry();
+    expect(refreshTokenMock).toHaveBeenCalledTimes(2);
+
+    resolvers.get(secondUser.uid)?.();
+    await waitFor(() => expect(result.current.status).toBe("idle"));
+  });
+
   it("exits recovery with an actionable failure when token refresh fails", async () => {
     refreshTokenMock.mockRejectedValue(new Error("refresh rejected"));
     const queryClient = new QueryClient();
@@ -101,6 +140,40 @@ describe("useSessionRecovery", () => {
     expect(result.current.status).toBe("failed");
     expect(result.current.failure).toBe("refresh-failed");
     expect(refreshTokenMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("classifies a token refresh timeout separately from other refresh failures", async () => {
+    refreshTokenMock.mockRejectedValue(
+      new OperationTimeoutError("Refreshing the authenticated session timed out", 100),
+    );
+    const queryClient = new QueryClient();
+    const user = createMockUser({ uid: "refresh-timeout-user" });
+    const { result } = renderHook(() => useSessionRecovery(user), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => result.current.retry());
+
+    expect(result.current.status).toBe("failed");
+    expect(result.current.failure).toBe("request-timeout");
+  });
+
+  it("refreshes profile data after the token has recovered", async () => {
+    const queryClient = new QueryClient();
+    const user = createMockUser({ uid: "profile-refresh-user" });
+    const onRecovered = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(
+      () => useSessionRecovery(user, { onRecovered }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await act(async () => result.current.retry());
+
+    expect(refreshTokenMock).toHaveBeenCalledTimes(1);
+    expect(onRecovered).toHaveBeenCalledTimes(1);
+    expect(refreshTokenMock.mock.invocationCallOrder[0]).toBeLessThan(
+      onRecovered.mock.invocationCallOrder[0],
+    );
   });
 
   it("refreshes once and retries an active query after an authentication error", async () => {

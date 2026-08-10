@@ -1,18 +1,23 @@
+import { extractErrorCode } from "../errors/errorHandling";
+
 export function isAuthenticationFailure(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
 
-  const candidate = error as { code?: unknown; status?: unknown; message?: unknown };
-  const code = String(candidate.code ?? candidate.status ?? "").toLowerCase();
-  const message = String(candidate.message ?? "").toLowerCase();
+  const candidate = error as { code?: unknown; status?: unknown };
+  const structuredCode = extractErrorCode(error);
+  const numericStatus =
+    typeof candidate.status === "number"
+      ? candidate.status
+      : typeof candidate.code === "number"
+        ? candidate.code
+        : null;
+  const code = structuredCode ?? "";
 
   return (
-    code === "401" ||
-    code === "403" ||
+    numericStatus === 401 ||
+    numericStatus === 403 ||
     code.includes("unauthenticated") ||
     code.includes("unauthorized") ||
-    code.includes("permission-denied") ||
-    message.includes("unauthenticated") ||
-    message.includes("unauthorized") ||
-    message.includes("permission denied")
+    code.includes("permission-denied")
   );
 }

@@ -106,7 +106,6 @@ function AppContent() {
     setLogoutSuccess,
     triggerEmailCheck,
   } = useAppAuthSession(handleLoggedOut);
-  const sessionRecovery = useSessionRecovery(user);
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavAnchorEl, setMobileNavAnchorEl] = useState<HTMLElement | null>(null);
@@ -120,6 +119,7 @@ function AppContent() {
   const isPublicAuthAction = location.pathname === ROUTES.AUTH_ACTION;
   const isAdmin = useAdminClaim(user);
   const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
+  const sessionRecovery = useSessionRecovery(user, { onRecovered: refetch });
   const {
     membershipStatusForUnenabled,
     needsProfileCompletion,

@@ -22,6 +22,7 @@ let headerShouldThrow = false;
 let memberWelcomeShouldThrow = false;
 let sessionRecoveryStatus: "idle" | "recovering" | "failed" = "idle";
 let sessionRecoveryFailure: "refresh-failed" | "request-timeout" | null = null;
+let sessionRecoveryOnRecovered: (() => void | Promise<void>) | undefined;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
   return {
@@ -119,11 +120,17 @@ vi.mock("../features/users/hooks/useAdminClaim", () => ({
 }));
 
 vi.mock("../shared/appShell/useSessionRecovery", () => ({
-  useSessionRecovery: () => ({
-    status: sessionRecoveryStatus,
-    failure: sessionRecoveryFailure,
-    retry: mockRetrySession,
-  }),
+  useSessionRecovery: (
+    _user: User | null,
+    options?: { onRecovered?: () => void | Promise<void> },
+  ) => {
+    sessionRecoveryOnRecovered = options?.onRecovered;
+    return {
+      status: sessionRecoveryStatus,
+      failure: sessionRecoveryFailure,
+      retry: mockRetrySession,
+    };
+  },
 }));
 
 vi.mock("@dataconnect/generated/react", () => ({
@@ -338,6 +345,7 @@ describe("App routing", () => {
     memberWelcomeShouldThrow = false;
     sessionRecoveryStatus = "idle";
     sessionRecoveryFailure = null;
+    sessionRecoveryOnRecovered = undefined;
     mockRefetchUserData.mockResolvedValue(undefined);
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
@@ -375,6 +383,26 @@ describe("App routing", () => {
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(mockRetrySession).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.SECTIONS);
+  });
+
+  it("refreshes the member profile after session recovery", async () => {
+    signInEnabledUser();
+    renderApp([ROUTES.SECTIONS]);
+
+    await sessionRecoveryOnRecovered?.();
+
+    expect(mockRefetchUserData).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves an admin destination while refreshing an idle session", () => {
+    signInEnabledUser({ admin: true });
+    sessionRecoveryStatus = "recovering";
+
+    renderApp([ROUTES.MANAGE_USERS]);
+
+    expect(screen.getByLabelText("Refreshing your session")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_USERS);
+    expect(screen.queryByRole("heading", { name: "Manage Users Page" })).not.toBeInTheDocument();
   });
 
   it("keeps the footer at the viewport edge on short pages without fixing it over content", async () => {
