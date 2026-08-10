@@ -940,7 +940,7 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
   });
 
-  it("starts additional guest requests with blank guest details when guests are already approved", async () => {
+  it("starts additional guest requests blank and invalidates My Bookings after submission", async () => {
     const user = userEvent.setup();
 
     vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
@@ -1070,6 +1070,21 @@ describe("EventBookingWizard", () => {
     expect(screen.getByLabelText("Dietary requirements (optional)")).toHaveValue("");
     expect(screen.queryByDisplayValue("Alex Approved")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("Jamie Included")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Guest name"), "New Guest");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Submit request" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
+        bookingId: "booking-1",
+        guestTicketTypeId: "ticket-guest",
+        idempotencyKey: expect.any(String),
+        guests: [{ guestDisplayName: "New Guest", dietaryNote: null }],
+      });
+    });
+    expect(invalidateMyBookings).toHaveBeenCalledOnce();
+    expect(await screen.findByText("Your booking")).toBeInTheDocument();
   });
 
   it("omits declined extra guests when editing a booking", async () => {

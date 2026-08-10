@@ -58,6 +58,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [groupDetails, setGroupDetails] = useState<Record<string, UserGroupDetails>>({});
+  const groupDetailsRef = useRef<Record<string, UserGroupDetails>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
   
   // Create/Edit dialog state
@@ -112,7 +113,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   }, []);
 
   const fetchGroupDetails = useCallback(async (groupId: string, force = false) => {
-    if (!force && groupDetails[groupId]) {
+    if (!force && groupDetailsRef.current[groupId]) {
       return;
     }
 
@@ -125,10 +126,11 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       );
       
       if (result.data?.userGroup) {
-        setGroupDetails((prev) => ({
-          ...prev,
-          [groupId]: result.data.userGroup!,
-        }));
+        setGroupDetails((prev) => {
+          const next = { ...prev, [groupId]: result.data.userGroup! };
+          groupDetailsRef.current = next;
+          return next;
+        });
       }
     } catch (caught) {
       reportError("admin.user-groups.details", caught, { groupId });
@@ -136,7 +138,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     } finally {
       setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
     }
-  }, [groupDetails]);
+  }, []);
 
   useEffect(() => {
     fetchUserGroupsList();
@@ -303,8 +305,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       await executeMutation(ref);
 
       // Refresh group details
-      delete groupDetails[addingToGroupId];
-      setGroupDetails({ ...groupDetails });
+      const nextGroupDetails = { ...groupDetails };
+      delete nextGroupDetails[addingToGroupId];
+      groupDetailsRef.current = nextGroupDetails;
+      setGroupDetails(nextGroupDetails);
       await fetchGroupDetails(addingToGroupId);
 
       setAddUserDialogOpen(false);
@@ -333,8 +337,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       await executeMutation(ref);
 
       // Refresh group details
-      delete groupDetails[groupId];
-      setGroupDetails({ ...groupDetails });
+      const nextGroupDetails = { ...groupDetails };
+      delete nextGroupDetails[groupId];
+      groupDetailsRef.current = nextGroupDetails;
+      setGroupDetails(nextGroupDetails);
       await fetchGroupDetails(groupId);
       showSuccess("User removed from group");
     } catch (caught) {
@@ -371,8 +377,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       if (expandedGroupId === group.id) {
         setExpandedGroupId(null);
       }
-      delete groupDetails[group.id];
-      setGroupDetails({ ...groupDetails });
+      const nextGroupDetails = { ...groupDetails };
+      delete nextGroupDetails[group.id];
+      groupDetailsRef.current = nextGroupDetails;
+      setGroupDetails(nextGroupDetails);
       showSuccess(`User group "${group.name}" deleted`);
     } catch (caught) {
       reportError("admin.user-groups.delete", caught, { groupId: group.id });

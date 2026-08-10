@@ -394,10 +394,8 @@ describe("SectionEventsManager", () => {
     expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
   });
 
-  it("refetches selected event detail as well as the list after editing", async () => {
+  it("renders refreshed selected-event details after editing", async () => {
     const user = userEvent.setup();
-    const refetchEvents = vi.fn().mockResolvedValue({});
-    const refetchEventDetail = vi.fn().mockResolvedValue({});
     const event = {
       id: "ev-1",
       title: "Annual Dinner",
@@ -409,6 +407,25 @@ describe("SectionEventsManager", () => {
       guestOfHonour: "Jane Doe",
       maxGuestsWithoutModeratorApproval: 2,
     };
+    const updatedEvent = { ...event, title: "Updated Dinner" };
+    const refetchEvents = vi.fn().mockImplementation(async () => {
+      mockGetEventsForSection({
+        data: { section: { id: sectionId, events: [updatedEvent] } },
+        isLoading: false,
+        isError: false,
+        refetch: refetchEvents,
+      });
+      return {};
+    });
+    const refetchEventDetail = vi.fn().mockImplementation(async () => {
+      mockGetEventById({
+        data: { event: { ...updatedEvent, ticketTypes: [] } },
+        isLoading: false,
+        isError: false,
+        refetch: refetchEventDetail,
+      });
+      return {};
+    });
     mockGetEventsForSection({
       data: { section: { id: sectionId, events: [event] } },
       isLoading: false,
@@ -434,6 +451,7 @@ describe("SectionEventsManager", () => {
       expect(refetchEvents).toHaveBeenCalledOnce();
       expect(refetchEventDetail).toHaveBeenCalledOnce();
     });
+    expect(await screen.findByText("Updated Dinner")).toBeInTheDocument();
   });
 
   it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {

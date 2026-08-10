@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import {
   invalidateAnnouncementPreferences,
   invalidateMyBookings,
@@ -40,6 +40,29 @@ describe("cross-view query invalidation", () => {
     await invalidateSectionsForUser(queryClient);
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionsForUser"] });
+  });
+
+  it("refetches an active generated-query key and exposes the updated navigation data", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const queryKey = ["GetSectionsForUser", { uid: "user-1" }] as const;
+    let serverSections = ["Existing Section"];
+    const queryFn = vi.fn(async () => [...serverSections]);
+
+    await queryClient.fetchQuery({ queryKey, queryFn, staleTime: Number.POSITIVE_INFINITY });
+    const observer = new QueryObserver(queryClient, {
+      queryKey,
+      queryFn,
+      staleTime: Number.POSITIVE_INFINITY,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+
+    serverSections = ["Existing Section", "New Section"];
+    await invalidateSectionsForUser(queryClient);
+
+    expect(observer.getCurrentResult().data).toEqual(["Existing Section", "New Section"]);
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    queryClient.clear();
   });
 
   it("invalidates the global My Bookings list", async () => {
