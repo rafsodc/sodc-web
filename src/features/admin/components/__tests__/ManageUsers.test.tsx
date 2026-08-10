@@ -3,6 +3,7 @@ import { describe, beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen, waitFor } from "../../../../test-utils";
 import ManageUsers from "../ManageUsers";
+import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
 const mocks = vi.hoisted(() => ({
   refetchSearch: vi.fn(),
@@ -49,12 +50,24 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   revokeAdminClaim: vi.fn(),
 }));
 vi.mock("../../../users/components/UsersTable", () => ({
-  default: ({ users, onEdit }: { users: typeof searchUsers; onEdit: (user: (typeof searchUsers)[number]) => void }) => (
+  default: ({
+    users,
+    onEdit,
+    onGrantAdmin,
+    onRevokeAdmin,
+  }: {
+    users: typeof searchUsers;
+    onEdit: (user: (typeof searchUsers)[number]) => void;
+    onGrantAdmin: (uid: string) => void;
+    onRevokeAdmin: (uid: string) => void;
+  }) => (
     <div>
       {users.map((user) => (
-        <button key={user.uid} onClick={() => onEdit(user)}>
-          Edit {user.email}
-        </button>
+        <div key={user.uid}>
+          <button onClick={() => onEdit(user)}>Edit {user.email}</button>
+          <button onClick={() => onGrantAdmin(user.uid)}>Grant {user.email}</button>
+          <button onClick={() => onRevokeAdmin(user.uid)}>Revoke {user.email}</button>
+        </div>
       ))}
     </div>
   ),
@@ -80,6 +93,8 @@ describe("ManageUsers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listAdminUsers.mockResolvedValue({ success: true, users: [] });
+    vi.mocked(firebaseFunctions.grantAdminClaim).mockResolvedValue({ success: true, message: "Admin granted" });
+    vi.mocked(firebaseFunctions.revokeAdminClaim).mockResolvedValue({ success: true, message: "Admin revoked" });
   });
 
   it("refreshes rendered app-level user state after an admin edits their own profile", async () => {
@@ -104,5 +119,40 @@ describe("ManageUsers", () => {
 
     await waitFor(() => expect(mocks.listAdminUsers).toHaveBeenCalledTimes(2));
     expect(screen.getByText("Current-user refreshes: 0")).toBeInTheDocument();
+  });
+
+  it("renders successful grant and revoke outcomes after refreshing administrator state", async () => {
+    const user = userEvent.setup();
+    mocks.listAdminUsers.mockResolvedValue({
+      success: true,
+      users: [
+        {
+          uid: "current-user",
+          email: "current@example.com",
+          displayName: "Current, User",
+          emailVerified: true,
+          disabled: false,
+          metadata: { creationTime: "2026-01-01", lastSignInTime: "2026-08-10" },
+        },
+        {
+          uid: "second-admin",
+          email: "admin@example.com",
+          displayName: "Second, Admin",
+          emailVerified: true,
+          disabled: false,
+          metadata: { creationTime: "2026-01-01", lastSignInTime: "2026-08-10" },
+        },
+      ],
+    });
+    render(<Harness />);
+
+    await waitFor(() => expect(mocks.listAdminUsers).toHaveBeenCalledOnce());
+    await user.click(screen.getByRole("button", { name: "Grant other@example.com" }));
+    expect(await screen.findByText("Admin granted")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Revoke current@example.com" }));
+    expect(await screen.findByText("Admin revoked")).toBeInTheDocument();
+    expect(firebaseFunctions.grantAdminClaim).toHaveBeenCalledWith("other-user");
+    expect(firebaseFunctions.revokeAdminClaim).toHaveBeenCalledWith("current-user");
   });
 });
