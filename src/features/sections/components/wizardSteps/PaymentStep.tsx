@@ -69,7 +69,7 @@ export default function PaymentStep({
           variant="contained"
           disabled={payingAllTickets}
           onClick={onPayAllTickets}
-          sx={{ mt: 1, backgroundColor: "secondary.main" }}
+          sx={{ mt: 1, backgroundColor: "secondary.main", color: "secondary.contrastText" }}
         >
           {payingAllTickets ? "Starting checkout…" : "Pay for all tickets"}
         </Button>

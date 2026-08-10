@@ -257,13 +257,7 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
           setTabValue(newValue);
           setSelectedUserId(null);
         }}
-        sx={{
-          mb: 3,
-          "& .MuiTab-root": {
-            "&:focus": { outline: "none" },
-            "&:focus-visible": { outline: "none" },
-          },
-        }}
+        sx={{ mb: 3 }}
       >
         <Tab label="Search users" />
         <Tab label="Administrators" />
@@ -320,7 +314,8 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
                   sx={{
                     mt: 4,
                     p: 2,
-                    border: "1px solid rgba(0, 0, 0, 0.12)",
+                    border: "1px solid",
+                    borderColor: "divider",
                     borderRadius: 1,
                   }}
                 >

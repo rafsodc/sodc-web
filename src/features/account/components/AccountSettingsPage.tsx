@@ -609,6 +609,7 @@ export default function AccountSettingsPage({
                       }
                       sx={{
                         backgroundColor: "secondary.main",
+                        color: "secondary.contrastText",
                         "&:hover": {
                           backgroundColor: "secondary.main",
                           opacity: 0.9,

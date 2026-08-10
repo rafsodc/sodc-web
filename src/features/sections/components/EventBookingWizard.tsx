@@ -257,7 +257,7 @@ export default function EventBookingWizard({
                   variant="contained"
                   onClick={w.handleNext}
                   disabled={w.submitting || w.payingAllTickets}
-                  sx={{ backgroundColor: "secondary.main" }}
+                  sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
                 >
                   Next
                 </Button>
@@ -268,7 +268,7 @@ export default function EventBookingWizard({
                   variant="contained"
                   onClick={() => void w.handleConfirm()}
                   disabled={w.submitting}
-                  sx={{ backgroundColor: "secondary.main" }}
+                  sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
                 >
                   {w.submitting
                     ? "Submitting…"
@@ -280,7 +280,11 @@ export default function EventBookingWizard({
                 </Button>
               ) : null}
               {w.wizardMode === "full" && w.activeStep === 4 ? (
-                <Button variant="contained" onClick={w.closeWizard} sx={{ backgroundColor: "secondary.main" }}>
+                <Button
+                  variant="contained"
+                  onClick={w.closeWizard}
+                  sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
+                >
                   Done
                 </Button>
               ) : null}

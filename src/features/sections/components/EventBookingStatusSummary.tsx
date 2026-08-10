@@ -195,7 +195,7 @@ export default function EventBookingStatusSummary({
             variant="contained"
             disabled={payingTicketTypeId === paymentSummary.unpaidTicketTypeId}
             onClick={() => onPayNow?.(paymentSummary.unpaidTicketTypeId as string)}
-            sx={{ backgroundColor: "secondary.main" }}
+            sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
           >
             {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay for all tickets"}
           </Button>

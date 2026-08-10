@@ -308,6 +308,7 @@ export default function ProfileCompletion({
               }
               sx={{
                 backgroundColor: "secondary.main",
+                color: "secondary.contrastText",
                 "&:hover": {
                   backgroundColor: "secondary.main",
                   opacity: 0.9,

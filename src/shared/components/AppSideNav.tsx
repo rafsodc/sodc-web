@@ -92,7 +92,8 @@ export default function AppSideNav({ sections, adminLinks, pathname }: AppSideNa
         "& .MuiDrawer-paper": {
           width: drawerWidth,
           boxSizing: "border-box",
-          borderRight: "1px solid rgba(0,0,0,0.08)",
+          borderRight: "1px solid",
+          borderRightColor: "divider",
           top: `${headerHeight}px`,
           height: `calc(100% - ${headerHeight}px)`,
         },

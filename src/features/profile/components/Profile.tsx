@@ -373,6 +373,7 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
               }
               sx={{
                 backgroundColor: "secondary.main",
+                color: "secondary.contrastText",
                 "&:hover": {
                   backgroundColor: "secondary.main",
                   opacity: 0.9,

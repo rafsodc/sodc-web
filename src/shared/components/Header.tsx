@@ -5,6 +5,7 @@ import { signOut, type User } from "firebase/auth";
 import { auth } from "../../config/firebase";
 import type { UserData } from "../../types";
 import { useEnabledClaim } from "../../features/users/hooks/useEnabledClaim";
+import { BRAND_PRIMARY, BRAND_SECONDARY } from "../../config/theme";
 
 interface HeaderProps {
   user: User | null;
@@ -98,10 +99,15 @@ export default function Header({
     <AppBar
       position="fixed"
       sx={{
-        backgroundColor: "primary.main",
+        backgroundColor: BRAND_PRIMARY,
         top: 0,
         left: 0,
         right: 0,
+        "& .MuiButtonBase-root.Mui-focusVisible": {
+          outline: "3px solid",
+          outlineColor: "common.white",
+          outlineOffset: 2,
+        },
       }}
     >
       <Toolbar>
@@ -175,7 +181,7 @@ export default function Header({
               <Avatar
                 sx={{
                   flexShrink: 0,
-                  backgroundColor: "secondary.main",
+                  backgroundColor: BRAND_SECONDARY,
                   color: "white",
                   width: 40,
                   height: 40,
@@ -229,99 +235,44 @@ export default function Header({
               }}
             >
               {isEnabled && (
-                <MenuItem
-                  onClick={handleProfile}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
+                <MenuItem onClick={handleProfile}>
                   Profile
                 </MenuItem>
               )}
               {isEnabled && (
-                <MenuItem
-                  onClick={handleAccountSettings}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
+                <MenuItem onClick={handleAccountSettings}>
                   Account
                 </MenuItem>
               )}
               {isEnabled && (
-                <MenuItem
-                  onClick={handleMyBookings}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
+                <MenuItem onClick={handleMyBookings}>
                   My Bookings
                 </MenuItem>
               )}
               {isEnabled && (
-                <MenuItem
-                  onClick={handleMyPayments}
-                  sx={{
-                    "&:focus": {
-                      outline: "none",
-                    },
-                    "&:focus-visible": {
-                      outline: "none",
-                    },
-                  }}
-                >
+                <MenuItem onClick={handleMyPayments}>
                   My Payments
                 </MenuItem>
               )}
-              <MenuItem
-                onClick={handleLogOut}
-                sx={{
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:focus-visible": {
-                    outline: "none",
-                  },
-                }}
-              >
+              <MenuItem onClick={handleLogOut}>
                 Sign out
               </MenuItem>
             </Menu>
           </>
         ) : (
-          <Box sx={{ display: "flex", gap: 1 }}>
+          <Box sx={{ display: "flex", gap: { xs: 0.5, sm: 1 } }}>
             <Button
               onClick={onAccountClick}
               sx={{
                 textTransform: "none",
                 backgroundColor: "white",
-                color: "primary.main",
+                color: BRAND_PRIMARY,
                 borderRadius: "9999px",
-                px: 3,
+                px: { xs: 2, sm: 3 },
+                whiteSpace: "nowrap",
                 "&:hover": {
                   backgroundColor: "white",
                   opacity: 0.9,
-                },
-                "&:focus": {
-                  outline: "none",
-                },
-                "&:focus-visible": {
-                  outline: "none",
                 },
               }}
             >
@@ -331,20 +282,16 @@ export default function Header({
               onClick={onJoinClick || onAccountClick}
               sx={{
                 textTransform: "none",
-                backgroundColor: "secondary.main",
+                backgroundColor: BRAND_SECONDARY,
                 color: "white",
                 borderRadius: "9999px",
-                px: 3,
+                px: { xs: 2, sm: 3 },
+                whiteSpace: "nowrap",
                 "&:hover": {
-                  backgroundColor: "secondary.main",
+                  backgroundColor: BRAND_SECONDARY,
                   opacity: 0.9,
                 },
-                "&:focus": {
-                  outline: "none",
-                },
-                "&:focus-visible": {
-                  outline: "none",
-                },
+                border: "1px solid rgba(255, 255, 255, 0.72)",
               }}
             >
               Join

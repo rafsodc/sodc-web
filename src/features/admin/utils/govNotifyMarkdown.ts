@@ -24,6 +24,40 @@ export const STANDARD_FOOTER =
   "[Unsubscribe](((unsubscribeUrl)))\n\n" +
   "SODC";
 
+export interface GovNotifyPreviewColors {
+  optionalBackground: string;
+  optionalText: string;
+  optionalBorder: string;
+  variableBackground: string;
+  variableText: string;
+  divider: string;
+  insetText: string;
+}
+
+export function getGovNotifyPreviewColors(
+  mode: "light" | "dark"
+): GovNotifyPreviewColors {
+  return mode === "dark"
+    ? {
+        optionalBackground: "#1B5E20",
+        optionalText: "#E8F5E9",
+        optionalBorder: "#81C784",
+        variableBackground: "#665A00",
+        variableText: "#FFF8C5",
+        divider: "rgba(255, 255, 255, 0.23)",
+        insetText: "rgba(255, 255, 255, 0.7)",
+      }
+    : {
+        optionalBackground: "#E8F5E9",
+        optionalText: "#1B5E20",
+        optionalBorder: "#66BB6A",
+        variableBackground: "#FFDD00",
+        variableText: "#0B0C0C",
+        divider: "#B1B4B6",
+        insetText: "#505A5F",
+      };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -51,7 +85,7 @@ function renderInline(line: string): string {
     if (match[1] !== undefined) {
       // ((var??optional text))
       parts.push(
-        `<span style="background:#e8f5e9;padding:0 2px;border:1px dashed #66bb6a">${escapeHtml(match[2])}</span>`
+        `<span style="background:var(--notify-optional-bg,#E8F5E9);color:var(--notify-optional-text,#1B5E20);padding:0 2px;border:1px dashed var(--notify-optional-border,#66BB6A)">${escapeHtml(match[2])}</span>`
       );
     } else if (match[3] !== undefined) {
       // [text](((var))) — personalisation variable as URL
@@ -62,7 +96,7 @@ function renderInline(line: string): string {
     } else if (match[7] !== undefined) {
       // ((variable))
       parts.push(
-        `<mark style="background:#ffdd00;padding:0 2px">${escapeHtml(match[7])}</mark>`
+        `<mark style="background:var(--notify-variable-bg,#FFDD00);color:var(--notify-variable-text,#0B0C0C);padding:0 2px">${escapeHtml(match[7])}</mark>`
       );
     }
 
@@ -104,7 +138,7 @@ export function renderGovNotifyMarkdown(body: string): string {
     if (/^---+$/.test(line)) {
       closeList();
       parts.push(
-        `<hr style="border:none;border-top:1px solid #b1b4b6;margin:1.5em 0" />`
+        `<hr style="border:none;border-top:1px solid var(--notify-divider,#B1B4B6);margin:1.5em 0" />`
       );
       continue;
     }
@@ -113,7 +147,7 @@ export function renderGovNotifyMarkdown(body: string): string {
     if (line.startsWith("^")) {
       closeList();
       parts.push(
-        `<div style="border-left:5px solid #b1b4b6;padding-left:1em;margin:1em 0;color:#505a5f">${renderInline(line.slice(1).trim())}</div>`
+        `<div style="border-left:5px solid var(--notify-divider,#B1B4B6);padding-left:1em;margin:1em 0;color:var(--notify-inset-text,#505A5F)">${renderInline(line.slice(1).trim())}</div>`
       );
       continue;
     }

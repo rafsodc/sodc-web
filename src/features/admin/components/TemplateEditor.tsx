@@ -25,6 +25,7 @@ import {
 import {
   STANDARD_FOOTER,
   UNSUPPORTED_PATTERNS,
+  getGovNotifyPreviewColors,
   renderGovNotifyMarkdown,
 } from "../utils/govNotifyMarkdown";
 
@@ -470,17 +471,27 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
                 </Typography>
               )}
               <Box
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  p: 2,
-                  bgcolor: "background.paper",
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                  fontFamily: "Arial, sans-serif",
-                  "& a": { color: "primary.light" },
-                  "& h1,h2": { fontFamily: "inherit" },
+                sx={(theme) => {
+                  const colors = getGovNotifyPreviewColors(theme.palette.mode);
+                  return {
+                    "--notify-optional-bg": colors.optionalBackground,
+                    "--notify-optional-text": colors.optionalText,
+                    "--notify-optional-border": colors.optionalBorder,
+                    "--notify-variable-bg": colors.variableBackground,
+                    "--notify-variable-text": colors.variableText,
+                    "--notify-divider": colors.divider,
+                    "--notify-inset-text": colors.insetText,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    p: 2,
+                    bgcolor: "background.paper",
+                    fontSize: "0.875rem",
+                    lineHeight: 1.6,
+                    fontFamily: "Arial, sans-serif",
+                    "& a": { color: "primary.light" },
+                    "& h1,h2": { fontFamily: "inherit" },
+                  };
                 }}
                 dangerouslySetInnerHTML={{ __html: previewHtml }}
               />
