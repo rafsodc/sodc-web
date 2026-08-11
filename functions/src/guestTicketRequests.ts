@@ -7,9 +7,7 @@ import {
   getBookingForGuestTicketCallable,
   getGuestTicketRequestByIdForCallable,
   GuestTicketRequestStatus,
-  connectorConfig,
 } from "@dataconnect/admin-generated";
-import { getDataConnect } from "firebase-admin/data-connect";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireAdmin, requireEnabled, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
@@ -30,6 +28,7 @@ import {
   guestTicketRequestId,
   runIdempotentAtomicBatch,
 } from "./guestTicketRequestIdempotency";
+import { persistLegacyGuestTicketRequests } from "./bookingSubmissionPersistence";
 
 const MAX_GUEST_REQUEST_BATCH = 20;
 
@@ -280,8 +279,7 @@ export const submitAdditionalGuestTicketRequests = onCall(
             return rows;
           },
           insertMany: async (rows) => {
-            // insertMany is one atomic bulk operation: either every missing row is committed or none is.
-            await getDataConnect(connectorConfig).insertMany("guestTicketRequest", [...rows]);
+            await persistLegacyGuestTicketRequests(rows);
           },
         });
         for (const [index, requestRow] of existing.entries()) {

@@ -1,0 +1,86 @@
+# Dynamic batch `_Data` variables are currently unsupported by the generated
+# JavaScript SDK, so these operations live in a server-only connector without
+# SDK generation. Cloud Functions invokes the named, schema-validated operation
+# with an explicit TypeScript contract. This preserves one database transaction
+# without using the Admin SDK's generic enum-bearing insertMany path.
+
+mutation CreateCompleteBookingFromCallable(
+  $booking: Booking_Data! @allow(fields: "id eventId bookerId clientSubmissionKey revisionGroupId revisionNumber supersedesBookingId status approvalStatus sitNextToUserIds accommodationRequested accommodationNote createdBy updatedBy")
+  $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+) @auth(level: NO_ACCESS) @transaction {
+  booking_insert(data: $booking)
+  bookingPlace_insertMany(data: $bookingPlaces)
+  bookingLine_insertMany(data: $bookingLines)
+}
+
+mutation CreateActiveBookingRevisionFromCallable(
+  $booking: Booking_Data! @allow(fields: "id eventId bookerId clientSubmissionKey revisionGroupId revisionNumber supersedesBookingId status approvalStatus sitNextToUserIds accommodationRequested accommodationNote createdBy updatedBy")
+  $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $revisionGroupId: UUID!
+  $bookingId: UUID!
+  $supersededBookingId: UUID!
+  $deltaAmountMinor: Int!
+  $adjustmentStatus: BookingPaymentAdjustmentStatus!
+  $orchestrationKey: String!
+) @auth(level: NO_ACCESS) @transaction {
+  booking_insert(data: $booking)
+  bookingPlace_insertMany(data: $bookingPlaces)
+  bookingLine_insertMany(data: $bookingLines)
+  retired: booking_updateMany(
+    where: {
+      revisionGroupId: { eq: $revisionGroupId }
+      id: { ne: $bookingId }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  ) @check(expr: "this >= 1", message: "BOOKING_REVISION_CONFLICT")
+  bookingPaymentAdjustment_upsert(
+    data: {
+      revisionBookingId: $bookingId
+      supersededBookingId: $supersededBookingId
+      deltaAmountMinor: $deltaAmountMinor
+      status: $adjustmentStatus
+      orchestrationKey: $orchestrationKey
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation CreatePendingBookingRevisionFromCallable(
+  $booking: Booking_Data! @allow(fields: "id eventId bookerId clientSubmissionKey revisionGroupId revisionNumber supersedesBookingId status approvalStatus sitNextToUserIds accommodationRequested accommodationNote createdBy updatedBy")
+  $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $supersedesBookingId: UUID!
+) @auth(level: NO_ACCESS) @transaction {
+  booking_insert(data: $booking)
+  bookingPlace_insertMany(data: $bookingPlaces)
+  bookingLine_insertMany(data: $bookingLines)
+  booking_updateMany(
+    where: {
+      id: { eq: $supersedesBookingId }
+      approvalStatus: { in: [PENDING, REJECTED] }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# Temporary compatibility operation for the legacy additional-guest callable.
+# It removes the production-defective generic Admin insertMany enum path while
+# #548 completes removal of the split guest-request model.
+mutation CreateLegacyGuestTicketRequestsFromCallable(
+  $requests: [GuestTicketRequest_Data!]! @allow(fields: "id bookingId status requestedGuestCount guestTicketTypeId guestDisplayName dietaryNote reviewedById reviewedAt moderatorNote createdBy updatedBy", maxCount: 20)
+) @auth(level: NO_ACCESS) @transaction {
+  guestTicketRequest_insertMany(data: $requests)
+}

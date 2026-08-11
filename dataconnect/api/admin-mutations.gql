@@ -1344,6 +1344,13 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
         id
         bookingPlace {
           id
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            ticketOrder {
+              id
+              status
+            }
+          }
         }
         sortOrder
         guestDisplayName

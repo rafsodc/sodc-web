@@ -468,7 +468,10 @@ type TicketType @table {
 }
 
 # Booking - one booker per event per purchase flow. Idempotent submits use clientSubmissionKey (unique per event+booker+key).
-type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) {
+type Booking
+  @table
+  @unique(fields: ["event", "booker", "clientSubmissionKey"])
+  @unique(fields: ["revisionGroupId", "revisionNumber"]) {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!

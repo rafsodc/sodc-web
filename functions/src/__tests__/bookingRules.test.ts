@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { BookingApprovalStatus, TicketAudience } from "@dataconnect/admin-generated";
 import {
   BOOKING_RULE_ERROR_CODES,
+  bookingApprovalAllowsPayment,
   evaluateBookingGatekeeping,
   evaluateBookingLines,
   evaluateGuestApprovalGate,
@@ -123,6 +124,20 @@ describe("bookingRules", () => {
     ];
     const r = evaluateBookingLines(lines, map, "REGULAR", explicit);
     expect(r.ok).toBe(true);
+  });
+
+  it("requires exactly one member ticket line", () => {
+    const result = evaluateBookingLines(
+      [
+        { ticketTypeId: "tt-m", sortOrder: 0 },
+        { ticketTypeId: "tt-m", sortOrder: 1 },
+      ],
+      map,
+      "REGULAR",
+      explicit,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.SELF_TICKET_REQUIRED);
   });
 
   it("rejects guest before member (ordering)", () => {
@@ -264,5 +279,12 @@ describe("bookingRules", () => {
         maxGuestsWithoutModeratorApproval: 1,
       })
     ).toBe(BookingApprovalStatus.APPROVED);
+  });
+
+  it("allows payment only for approval-eligible booking states", () => {
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.NOT_REQUIRED)).toBe(true);
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.APPROVED)).toBe(true);
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.PENDING)).toBe(false);
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.REJECTED)).toBe(false);
   });
 });

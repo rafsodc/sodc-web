@@ -12,8 +12,18 @@ function readSchemaFile(): string {
   return fs.readFileSync(p, "utf8");
 }
 
+function readBookingServiceFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "..", "dataconnect", "booking-service", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
 function readMigrationFile(fileName: string): string {
   const p = path.resolve(process.cwd(), "..", "dataconnect", "migrations", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
+function readFunctionFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "src", fileName);
   return fs.readFileSync(p, "utf8");
 }
 
@@ -228,7 +238,7 @@ describe("GQL schema integrity", () => {
       /enum BookingApprovalStatus\s*{\s*NOT_REQUIRED\s+PENDING\s+APPROVED\s+REJECTED\s*}/,
     );
 
-    const bookingStart = schema.indexOf("type Booking @table");
+    const bookingStart = schema.indexOf("type Booking\n");
     const bookingEnd = schema.indexOf("\n}", bookingStart);
     const bookingBlock = schema.slice(bookingStart, bookingEnd + 2);
     expect(bookingBlock).toContain(
@@ -309,5 +319,48 @@ describe("GQL schema integrity", () => {
     const preferencesStart = mutations.indexOf("mutation UpdateBookingPreferencesFromCallable");
     const preferencesEnd = mutations.indexOf("\n}", preferencesStart);
     expect(mutations.slice(preferencesStart, preferencesEnd + 2)).not.toContain("bookerDietaryNote");
+  });
+
+  it("persists complete booking submissions through typed atomic batch operations", () => {
+    const operations = readBookingServiceFile("booking-submission.gql");
+    for (const name of [
+      "CreateCompleteBookingFromCallable",
+      "CreateActiveBookingRevisionFromCallable",
+      "CreatePendingBookingRevisionFromCallable",
+    ]) {
+      const start = operations.indexOf(`mutation ${name}`);
+      const next = operations.indexOf("\nmutation ", start + 1);
+      const block = operations.slice(start, next < 0 ? operations.length : next);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(block).toContain("@auth(level: NO_ACCESS) @transaction");
+      expect(block).toContain("booking_insert(data: $booking)");
+      expect(block).toContain("bookingPlace_insertMany(data: $bookingPlaces)");
+      expect(block).toContain("bookingLine_insertMany(data: $bookingLines)");
+      expect(block).toContain("@allow(");
+    }
+    expect(operations).not.toContain("GuestTicketRequestStatus");
+    const legacyBatch = operations.slice(
+      operations.indexOf("mutation CreateLegacyGuestTicketRequestsFromCallable"),
+    );
+    expect(legacyBatch).toContain("guestTicketRequest_insertMany(data: $requests)");
+    expect(legacyBatch).toContain("@auth(level: NO_ACCESS) @transaction");
+  });
+
+  it("prevents concurrent duplicate revision numbers within a booking group", () => {
+    const schema = readSchemaFile();
+    const bookingStart = schema.indexOf("type Booking\n");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    expect(schema.slice(bookingStart, bookingEnd + 2)).toContain(
+      "@unique(fields: [\"revisionGroupId\", \"revisionNumber\"])",
+    );
+  });
+
+  it("does not use the production-defective generic enum batch API", () => {
+    const guestRequests = readFunctionFile("guestTicketRequests.ts");
+    const persistence = readFunctionFile("bookingSubmissionPersistence.ts");
+    expect(guestRequests).not.toContain(".insertMany(\"guestTicketRequest\"");
+    expect(guestRequests).toContain("persistLegacyGuestTicketRequests(rows)");
+    expect(persistence).toContain("\"CreateLegacyGuestTicketRequestsFromCallable\"");
+    expect(persistence).not.toContain(".insertMany(\"guestTicketRequest\"");
   });
 });
