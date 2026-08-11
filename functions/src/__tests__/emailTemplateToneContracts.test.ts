@@ -4,6 +4,9 @@ import { EMAIL_TEMPLATE_MANIFEST } from "../generatedEmailTemplateManifest";
 const NAMED_MEMBER_TEMPLATES = [
   "bookingConfirmation",
   "bookingRevision",
+  "bookingPendingApproval",
+  "bookingApproved",
+  "bookingChangesRequested",
   "guestTicketRequestApproved",
   "guestTicketRequestRejected",
   "membershipActivated",
@@ -22,6 +25,9 @@ const ACCOUNT_ACTION_TEMPLATES = [
 const EVENT_TEMPLATES = [
   "bookingConfirmation",
   "bookingRevision",
+  "bookingPendingApproval",
+  "bookingApproved",
+  "bookingChangesRequested",
   "guestTicketRequestApproved",
   "guestTicketRequestRejected",
   "ticketOrderPaid",
@@ -36,6 +42,7 @@ const MEMBER_TEMPLATES = [
 
 const INTERNAL_TEMPLATES = [
   "guestTicketRequestSubmittedModerator",
+  "bookingPendingApprovalModerator",
   "newUserPendingApprovalAlert",
   "paymentReconciliationExceptionAlert",
   "paymentDisputeOpsAlert",

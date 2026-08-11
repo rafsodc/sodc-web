@@ -480,6 +480,12 @@ export function getBookingsForBookerAndEvent(dcOrVarsOrOptions, varsOrOptions, o
   return dcInstance.executeQuery('GetBookingsForBookerAndEvent', inputVars, inputOpts);
 }
 
+export function getBookingRevisionForApprovalFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetBookingRevisionForApprovalFromCallable', inputVars, inputOpts);
+}
+
 export function getTicketOrdersForBookerAndEvent(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

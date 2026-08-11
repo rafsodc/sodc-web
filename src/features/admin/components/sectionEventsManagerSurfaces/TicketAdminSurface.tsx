@@ -14,24 +14,31 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Typography,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
+  Download as DownloadIcon,
   Edit as EditIcon,
 } from "@mui/icons-material";
-import { GuestTicketRequestStatus } from "@dataconnect/generated";
+import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
 import type {
   EventBookingAdminRow,
   EventRow,
-  GuestRequestStatusFilter,
-  GuestTicketRequestWithBooking,
+  BookingApprovalStatusFilter,
   BookingPaymentAdjustmentAdminRow,
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "../sectionEventsManagerTypes";
+import type { EventAttendeeTicketRow } from "../../utils/bookingApprovalsAdmin";
+import {
+  attendeePaymentState,
+  eventTicketRowsCsv,
+  previousActiveBooking,
+} from "../../utils/bookingApprovalsAdmin";
 import { AdminAccordion, AdminTable } from "./adminSurfacePrimitives";
 
 interface TicketAdminSurfaceProps {
@@ -47,16 +54,17 @@ interface TicketAdminSurfaceProps {
   deletingTicketTypeId: string | null;
   onEditTicketType: (ticketType: TicketTypeRow) => void;
   onDeleteTicketType: (id: string) => void;
-  requestStatusFilter: GuestRequestStatusFilter;
-  onRequestStatusFilterChange: (value: GuestRequestStatusFilter) => void;
-  loadingGuestRequests: boolean;
-  guestRequests: GuestTicketRequestWithBooking[];
+  approvalStatusFilter: BookingApprovalStatusFilter;
+  onApprovalStatusFilterChange: (value: BookingApprovalStatusFilter) => void;
+  approvalBookings: EventBookingAdminRow[];
+  allEventBookings: EventBookingAdminRow[];
+  attendeeTickets: EventAttendeeTicketRow[];
   moderatorNoteDraft: Record<string, string>;
-  onModeratorNoteChange: (requestId: string, value: string) => void;
-  reviewingRequestId: string | null;
-  onReviewRequest: (
-    request: GuestTicketRequestWithBooking,
-    status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED
+  onModeratorNoteChange: (bookingId: string, value: string) => void;
+  reviewingBookingId: string | null;
+  onReviewBooking: (
+    booking: EventBookingAdminRow,
+    decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED
   ) => void;
   loadingEventBookings: boolean;
   eventBookings: EventBookingAdminRow[];
@@ -78,14 +86,15 @@ export function TicketAdminSurface({
   deletingTicketTypeId,
   onEditTicketType,
   onDeleteTicketType,
-  requestStatusFilter,
-  onRequestStatusFilterChange,
-  loadingGuestRequests,
-  guestRequests,
+  approvalStatusFilter,
+  onApprovalStatusFilterChange,
+  approvalBookings,
+  allEventBookings,
+  attendeeTickets,
   moderatorNoteDraft,
   onModeratorNoteChange,
-  reviewingRequestId,
-  onReviewRequest,
+  reviewingBookingId,
+  onReviewBooking,
   loadingEventBookings,
   eventBookings,
   loadingTicketOrders,
@@ -116,17 +125,21 @@ export function TicketAdminSurface({
           onDelete={onDeleteTicketType}
         />
       </AdminAccordion>
-      <AdminAccordion title="Guest ticket requests">
-        <GuestTicketRequestsSection
-          filter={requestStatusFilter}
-          onFilterChange={onRequestStatusFilterChange}
-          loading={loadingGuestRequests}
-          requests={guestRequests}
+      <AdminAccordion title="Booking approvals">
+        <BookingApprovalsSection
+          filter={approvalStatusFilter}
+          onFilterChange={onApprovalStatusFilterChange}
+          loading={loadingEventBookings}
+          bookings={approvalBookings}
+          allBookings={allEventBookings}
           moderatorNoteDraft={moderatorNoteDraft}
           onModeratorNoteChange={onModeratorNoteChange}
-          reviewingRequestId={reviewingRequestId}
-          onReview={onReviewRequest}
+          reviewingBookingId={reviewingBookingId}
+          onReview={onReviewBooking}
         />
+      </AdminAccordion>
+      <AdminAccordion title="Current attendee tickets">
+        <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} />
       </AdminAccordion>
       <AdminAccordion title="Booking audit activity">
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
@@ -271,46 +284,50 @@ function TicketTypesTable({
   );
 }
 
-const guestRequestActionsCellSx = {
+const bookingApprovalActionsCellSx = {
   whiteSpace: "nowrap",
   verticalAlign: "top",
   minWidth: 168,
   width: 168,
 } as const;
 
-function GuestTicketRequestsSection({
+function BookingApprovalsSection({
   filter,
   onFilterChange,
   loading,
-  requests,
+  bookings,
+  allBookings,
   moderatorNoteDraft,
   onModeratorNoteChange,
-  reviewingRequestId,
+  reviewingBookingId,
   onReview,
 }: {
-  filter: GuestRequestStatusFilter;
-  onFilterChange: (value: GuestRequestStatusFilter) => void;
+  filter: BookingApprovalStatusFilter;
+  onFilterChange: (value: BookingApprovalStatusFilter) => void;
   loading: boolean;
-  requests: GuestTicketRequestWithBooking[];
+  bookings: EventBookingAdminRow[];
+  allBookings: EventBookingAdminRow[];
   moderatorNoteDraft: Record<string, string>;
-  onModeratorNoteChange: (requestId: string, value: string) => void;
-  reviewingRequestId: string | null;
+  onModeratorNoteChange: (bookingId: string, value: string) => void;
+  reviewingBookingId: string | null;
   onReview: (
-    request: GuestTicketRequestWithBooking,
-    status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED
+    booking: EventBookingAdminRow,
+    decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED
   ) => void;
 }) {
   return (
-    <Box sx={{ mt: 3 }}>
+    <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-        <Box sx={{ fontWeight: 600 }}>Additional guest ticket requests</Box>
+        <Typography variant="body2" color="text.secondary">
+          Review one complete booking revision. Decisions are checked against the exact revision shown here.
+        </Typography>
         <FormControl size="small" sx={{ minWidth: 170 }}>
-          <InputLabel id="guest-request-filter-label">Status filter</InputLabel>
+          <InputLabel id="booking-approval-filter-label">Status filter</InputLabel>
           <Select
-            labelId="guest-request-filter-label"
+            labelId="booking-approval-filter-label"
             label="Status filter"
             value={filter}
-            onChange={(event) => onFilterChange(event.target.value as GuestRequestStatusFilter)}
+            onChange={(event) => onFilterChange(event.target.value as BookingApprovalStatusFilter)}
           >
             <MenuItem value="PENDING">Pending</MenuItem>
             <MenuItem value="APPROVED">Approved</MenuItem>
@@ -321,36 +338,37 @@ function GuestTicketRequestsSection({
       </Box>
       {loading ? (
         <CircularProgress size={22} />
-      ) : requests.length === 0 ? (
-        <Alert severity="info">No guest ticket requests for this filter.</Alert>
+      ) : bookings.length === 0 ? (
+        <Alert severity="info">No booking revisions for this filter.</Alert>
       ) : (
-        <AdminTable minWidth={1040}>
+        <AdminTable minWidth={1180}>
             <TableHead>
               <TableRow>
-                <TableCell sx={guestRequestActionsCellSx}>Actions</TableCell>
+                <TableCell sx={bookingApprovalActionsCellSx}>Actions</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Booker</TableCell>
-                <TableCell>Guest</TableCell>
-                <TableCell>Ticket</TableCell>
-                <TableCell align="right">Qty</TableCell>
-                <TableCell sx={{ minWidth: 120, maxWidth: 180 }}>Dietary</TableCell>
+                <TableCell>Revision</TableCell>
+                <TableCell sx={{ minWidth: 300 }}>Complete booking</TableCell>
+                <TableCell>Previous active</TableCell>
                 <TableCell sx={{ minWidth: 180, maxWidth: 220 }}>Moderator note</TableCell>
-                <TableCell sx={{ whiteSpace: "nowrap" }}>Created</TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>Submitted</TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>Reviewed</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {requests.map((request) => (
-                <TableRow key={request.id} sx={{ verticalAlign: "top" }}>
-                  <TableCell sx={guestRequestActionsCellSx}>
-                    {request.status === "PENDING" ? (
+              {bookings.map((booking) => {
+                const previous = previousActiveBooking(booking, allBookings);
+                return (
+                <TableRow key={booking.id} sx={{ verticalAlign: "top" }}>
+                  <TableCell sx={bookingApprovalActionsCellSx}>
+                    {booking.approvalStatus === BookingApprovalStatus.PENDING ? (
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "stretch" }}>
                         <Button
                           size="small"
                           variant="outlined"
                           color="success"
-                          disabled={reviewingRequestId === request.id}
-                          onClick={() => onReview(request, GuestTicketRequestStatus.APPROVED)}
+                          disabled={reviewingBookingId === booking.id}
+                          onClick={() => onReview(booking, BookingApprovalStatus.APPROVED)}
                         >
                           Approve
                         </Button>
@@ -358,10 +376,10 @@ function GuestTicketRequestsSection({
                           size="small"
                           variant="outlined"
                           color="error"
-                          disabled={reviewingRequestId === request.id}
-                          onClick={() => onReview(request, GuestTicketRequestStatus.REJECTED)}
+                          disabled={reviewingBookingId === booking.id}
+                          onClick={() => onReview(booking, BookingApprovalStatus.REJECTED)}
                         >
-                          Reject
+                          Request changes
                         </Button>
                       </Box>
                     ) : (
@@ -369,37 +387,122 @@ function GuestTicketRequestsSection({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" label={request.status} color={requestStatusColor(request.status)} />
+                    <Chip size="small" label={booking.approvalStatus.replaceAll("_", " ")} color={approvalStatusColor(booking.approvalStatus)} />
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    {request.booker ? `${request.booker.firstName} ${request.booker.lastName}` : "—"}
+                    <Box>{`${booking.booker.firstName} ${booking.booker.lastName}`}</Box>
+                    <Typography variant="caption" color="text.secondary">{booking.booker.email}</Typography>
                   </TableCell>
-                  <TableCell>{request.guestDisplayName ?? "—"}</TableCell>
-                  <TableCell>{request.guestTicketType?.title ?? "—"}</TableCell>
-                  <TableCell align="right">{request.requestedGuestCount}</TableCell>
-                  <TableCell sx={{ minWidth: 120, maxWidth: 180 }}>{request.dietaryNote ?? "—"}</TableCell>
+                  <TableCell>Rev {booking.revisionNumber}</TableCell>
+                  <TableCell>
+                    <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                      {[...booking.lines].sort((a, b) => a.sortOrder - b.sortOrder).map((line) => (
+                        <Box component="li" key={line.id} sx={{ mb: 0.5 }}>
+                          <strong>{line.guestDisplayName || (line.ticketType.audience === "MEMBER" ? "Member" : "Guest")}</strong>
+                          {` — ${line.ticketType.title}`}
+                          {line.dietaryNote ? ` · Dietary: ${line.dietaryNote}` : ""}
+                          {` · Payment: ${attendeePaymentState(line).replaceAll("_", " ").toLowerCase()}`}
+                        </Box>
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    {previous ? (
+                      <Box>
+                        <Box>Rev {previous.revisionNumber}</Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {previous.status} · {previous.lines.length} ticket{previous.lines.length === 1 ? "" : "s"}
+                        </Typography>
+                      </Box>
+                    ) : "None"}
+                  </TableCell>
                   <TableCell sx={{ minWidth: 180, maxWidth: 220, overflow: "hidden" }}>
-                    {request.status === "PENDING" ? (
+                    {booking.approvalStatus === BookingApprovalStatus.PENDING ? (
                       <TextField
                         size="small"
                         fullWidth
                         placeholder="Optional note"
-                        value={moderatorNoteDraft[request.id] ?? ""}
-                        onChange={(event) => onModeratorNoteChange(request.id, event.target.value)}
+                        value={moderatorNoteDraft[booking.id] ?? ""}
+                        onChange={(event) => onModeratorNoteChange(booking.id, event.target.value)}
                       />
                     ) : (
-                      request.moderatorNote ?? "—"
+                      booking.approvalNote ?? "—"
                     )}
                   </TableCell>
-                  <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(request.createdAt).toLocaleString()}</TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(booking.createdAt).toLocaleString()}</TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : "—"}
+                    {booking.approvalReviewedAt ? (
+                      <Box>
+                        <Box>{new Date(booking.approvalReviewedAt).toLocaleString()}</Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {booking.approvalReviewedBy
+                            ? `${booking.approvalReviewedBy.firstName} ${booking.approvalReviewedBy.lastName}`
+                            : "Reviewer unavailable"}
+                        </Typography>
+                      </Box>
+                    ) : "—"}
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
         </AdminTable>
       )}
+    </Box>
+  );
+}
+
+function EventAttendeeTicketsSection({
+  eventTitle,
+  loading,
+  rows,
+}: {
+  eventTitle: string;
+  loading: boolean;
+  rows: EventAttendeeTicketRow[];
+}) {
+  const exportCsv = () => {
+    const blob = new Blob([eventTicketRowsCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "event"}-tickets.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) return <CircularProgress size={22} />;
+  if (rows.length === 0) return <Alert severity="info">No active attendee tickets for this event.</Alert>;
+  return (
+    <Box>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
+      </Box>
+      <AdminTable minWidth={880}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Attendee</TableCell>
+            <TableCell>Audience</TableCell>
+            <TableCell>Ticket</TableCell>
+            <TableCell>Dietary requirements</TableCell>
+            <TableCell>Approval</TableCell>
+            <TableCell>Payment</TableCell>
+            <TableCell>Revision</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.key}>
+              <TableCell>{row.attendeeName}</TableCell>
+              <TableCell>{getTicketCategoryLabel(row.audience)}</TableCell>
+              <TableCell>{row.ticketType}</TableCell>
+              <TableCell>{row.dietaryNote ?? "—"}</TableCell>
+              <TableCell><Chip size="small" label={row.approvalStatus.replaceAll("_", " ")} color={approvalStatusColor(row.approvalStatus)} /></TableCell>
+              <TableCell><Chip size="small" variant="outlined" label={row.paymentState.replaceAll("_", " ")} /></TableCell>
+              <TableCell>Rev {row.revisionNumber}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </AdminTable>
     </Box>
   );
 }
@@ -418,6 +521,7 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
                 <TableCell>Booking</TableCell>
                 <TableCell>Revision</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Approval</TableCell>
                 <TableCell>Booker</TableCell>
                 <TableCell align="right">Lines</TableCell>
                 <TableCell>Created</TableCell>
@@ -442,6 +546,23 @@ function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings
                   </TableCell>
                   <TableCell>
                     <Chip size="small" label={booking.status} />
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Chip
+                        size="small"
+                        label={(booking.approvalStatus ?? BookingApprovalStatus.NOT_REQUIRED).replaceAll("_", " ")}
+                        color={approvalStatusColor(booking.approvalStatus ?? BookingApprovalStatus.NOT_REQUIRED)}
+                      />
+                      {booking.approvalReviewedAt ? (
+                        <Typography variant="caption" color="text.secondary">
+                          {booking.approvalReviewedBy
+                            ? `${booking.approvalReviewedBy.firstName} ${booking.approvalReviewedBy.lastName}`
+                            : "Reviewed"}
+                          {` · ${new Date(booking.approvalReviewedAt).toLocaleString()}`}
+                        </Typography>
+                      ) : null}
+                    </Box>
                   </TableCell>
                   <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
                   <TableCell align="right">{booking.lines.length}</TableCell>
@@ -571,7 +692,7 @@ function PaymentActivitySection({
   );
 }
 
-function requestStatusColor(status: string): "warning" | "success" | "error" | "default" {
+function approvalStatusColor(status: string): "warning" | "success" | "error" | "default" {
   if (status === "PENDING") return "warning";
   if (status === "APPROVED") return "success";
   if (status === "REJECTED") return "error";

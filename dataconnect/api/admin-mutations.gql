@@ -1384,6 +1384,57 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
   }
 }
 
+# Whole-booking moderation targets one exact booking revision. The callable
+# validates the expected revision and current active revision before writing.
+query GetBookingRevisionForApprovalFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  booking(id: $id) {
+    id
+    status
+    approvalStatus
+    approvalReviewedAt
+    approvalNote
+    revisionGroupId
+    revisionNumber
+    supersededAt
+    clientSubmissionKey
+    booker {
+      id
+      firstName
+      lastName
+      email
+    }
+    event {
+      id
+      title
+      section {
+        id
+        name
+      }
+    }
+    supersedesBooking {
+      id
+      revisionNumber
+    }
+    lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+      id
+      sortOrder
+      guestDisplayName
+      dietaryNote
+      ticketType {
+        id
+        title
+        audience
+        price
+      }
+      guestUser {
+        id
+        firstName
+        lastName
+      }
+    }
+  }
+}
+
 query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
   user(id: $userId) {
     id
@@ -1537,21 +1588,28 @@ mutation SettleBookingPaymentAdjustmentsFromCallable($revisionBookingId: UUID!) 
 # authorisation and supplies the reviewer identity after checking admin access.
 mutation UpdateBookingApprovalFromCallable(
   $id: UUID!
+  $expectedRevisionNumber: Int!
   $status: BookingApprovalStatus!
   $reviewedById: String
   $approvalNote: String
-) @auth(level: NO_ACCESS) {
-  booking_update(
-    id: $id
+) @auth(level: NO_ACCESS) @transaction {
+  changed: booking_updateMany(
+    where: {
+      id: { eq: $id }
+      revisionNumber: { eq: $expectedRevisionNumber }
+      status: { in: [SUBMITTED, CONFIRMED] }
+      approvalStatus: { eq: PENDING }
+      supersededAt: { isNull: true }
+    }
     data: {
       approvalStatus: $status
       approvalReviewedById: $reviewedById
       approvalReviewedAt_expr: "request.time"
       approvalNote: $approvalNote
       updatedAt_expr: "request.time"
-      updatedBy: "system"
+      updatedBy: $reviewedById
     }
-  )
+  ) @check(expr: "this == 1", message: "BOOKING_APPROVAL_CONFLICT")
 }
 
 mutation CreateTicketOrderForCheckout(
@@ -2200,6 +2258,8 @@ query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
   booking(id: $bookingId) {
     id
     revisionNumber
+    approvalStatus
+    approvalNote
     bookerDietaryNote
     sitNextToUserIds
     accommodationRequested

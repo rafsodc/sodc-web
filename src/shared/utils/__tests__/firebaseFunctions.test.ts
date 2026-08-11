@@ -36,6 +36,7 @@ import {
   submitGuestTicketRequest,
   submitAdditionalGuestTicketRequests,
   reviewGuestTicketRequest,
+  reviewBookingRevision,
 } from "../firebaseFunctions";
 
 function makeCallable(returnValue: unknown) {
@@ -619,5 +620,33 @@ describe("reviewGuestTicketRequest", () => {
     await expect(
       reviewGuestTicketRequest({ id: BOOKING_UUID, status: "APPROVED" })
     ).rejects.toThrow("Not authorized");
+  });
+});
+
+describe("reviewBookingRevision", () => {
+  it("sends an exact revision decision with a normalized id and note", async () => {
+    const response = {
+      success: true,
+      bookingId: BOOKING_UUID,
+      revisionNumber: 2,
+      approvalStatus: "APPROVED" as const,
+      paymentDelta: 1000,
+    };
+    const callable = makeCallable({ data: response });
+
+    await expect(reviewBookingRevision({
+      bookingId: BOOKING_UUID,
+      expectedRevisionNumber: 2,
+      decision: "APPROVED",
+      moderatorNote: "  Approved for payment  ",
+    })).resolves.toEqual(response);
+
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "reviewBookingRevision");
+    expect(callable).toHaveBeenCalledWith({
+      bookingId: BOOKING_UUID,
+      expectedRevisionNumber: 2,
+      decision: "APPROVED",
+      moderatorNote: "Approved for payment",
+    });
   });
 });

@@ -14,6 +14,26 @@
     "beta": "",
     "production": ""
   },
+  "bookingPendingApproval": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
+  "bookingPendingApprovalModerator": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
+  "bookingApproved": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
+  "bookingChangesRequested": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
   "membershipActivated": {
     "dev": "640e51e0-d4cf-413c-a829-07f0f7cdca7d",
     "beta": "",

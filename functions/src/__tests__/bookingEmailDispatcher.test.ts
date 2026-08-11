@@ -3,7 +3,11 @@ import { BookingPaymentAdjustmentStatus } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
 import {
   accommodationRequestedCondition,
+  bookingApprovedDeliveryKey,
+  bookingChangesRequestedDeliveryKey,
   bookingConfirmationDeliveryKey,
+  bookingPendingMemberDeliveryKey,
+  bookingPendingModeratorDeliveryKey,
   bookingRevisionDeliveryKey,
   bookingTotalMinorFromLines,
   buildTicketLinesSummary,
@@ -53,6 +57,12 @@ describe("bookingEmailDispatcher helpers", () => {
   it("builds stable delivery keys", () => {
     expect(bookingConfirmationDeliveryKey("b1", "key1")).toBe("booking-confirm:b1:key1");
     expect(bookingRevisionDeliveryKey("b1", "key1")).toBe("booking-revision:b1:key1");
+    expect(bookingPendingMemberDeliveryKey("b1", "key1")).toBe("booking-pending-member:b1:key1");
+    expect(bookingPendingModeratorDeliveryKey("b1", "Mod@Example.com")).toBe(
+      "booking-pending-mod:b1:mod@example.com"
+    );
+    expect(bookingChangesRequestedDeliveryKey("b1")).toBe("booking-changes-requested:b1");
+    expect(bookingApprovedDeliveryKey("b1")).toBe("booking-approved:b1");
   });
 
   it("labels payment adjustment status", () => {

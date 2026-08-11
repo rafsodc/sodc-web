@@ -32,6 +32,18 @@ Source: [`bookingConfirmation.md`](../../functions/email-templates/bookingConfir
 
 Source: [`bookingRevision.md`](../../functions/email-templates/bookingRevision.md)
 
+### `bookingPendingApproval`
+
+Source: [`bookingPendingApproval.md`](../../functions/email-templates/bookingPendingApproval.md)
+
+### `bookingApproved`
+
+Source: [`bookingApproved.md`](../../functions/email-templates/bookingApproved.md)
+
+### `bookingChangesRequested`
+
+Source: [`bookingChangesRequested.md`](../../functions/email-templates/bookingChangesRequested.md)
+
 ### `emailChangeVerification`
 
 Source: [`email-change-verification.md`](../../functions/email-templates/email-change-verification.md)
@@ -73,6 +85,10 @@ Source: [`ticketOrderPaid.md`](../../functions/email-templates/ticketOrderPaid.m
 Source: [`ticketOrderRefunded.md`](../../functions/email-templates/ticketOrderRefunded.md)
 
 ## Moderator and operations templates
+
+### `bookingPendingApprovalModerator`
+
+Source: [`bookingPendingApprovalModerator.md`](../../functions/email-templates/bookingPendingApprovalModerator.md)
 
 ### `guestTicketRequestSubmittedModerator`
 

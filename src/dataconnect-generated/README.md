@@ -32,6 +32,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
+  - [*GetBookingRevisionForApprovalFromCallable*](#getbookingrevisionforapprovalfromcallable)
   - [*GetTicketOrdersForBookerAndEvent*](#getticketordersforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
@@ -3001,6 +3002,160 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetBookingRevisionForApprovalFromCallable
+You can execute the `GetBookingRevisionForApprovalFromCallable` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getBookingRevisionForApprovalFromCallable(vars: GetBookingRevisionForApprovalFromCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+
+interface GetBookingRevisionForApprovalFromCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingRevisionForApprovalFromCallableVariables): QueryRef<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+}
+export const getBookingRevisionForApprovalFromCallableRef: GetBookingRevisionForApprovalFromCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getBookingRevisionForApprovalFromCallable(dc: DataConnect, vars: GetBookingRevisionForApprovalFromCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+
+interface GetBookingRevisionForApprovalFromCallableRef {
+  ...
+  (dc: DataConnect, vars: GetBookingRevisionForApprovalFromCallableVariables): QueryRef<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+}
+export const getBookingRevisionForApprovalFromCallableRef: GetBookingRevisionForApprovalFromCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getBookingRevisionForApprovalFromCallableRef:
+```typescript
+const name = getBookingRevisionForApprovalFromCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetBookingRevisionForApprovalFromCallable` query requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetBookingRevisionForApprovalFromCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetBookingRevisionForApprovalFromCallable` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetBookingRevisionForApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetBookingRevisionForApprovalFromCallableData {
+  booking?: {
+    id: UUIDString;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    approvalReviewedAt?: TimestampString | null;
+    approvalNote?: string | null;
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    supersededAt?: TimestampString | null;
+    clientSubmissionKey?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      section: {
+        id: UUIDString;
+        name: string;
+      } & Section_Key;
+    } & Event_Key;
+    supersedesBooking?: {
+      id: UUIDString;
+      revisionNumber: number;
+    } & Booking_Key;
+    lines: ({
+      id: UUIDString;
+      sortOrder: number;
+      guestDisplayName?: string | null;
+      dietaryNote?: string | null;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+        audience: TicketAudience;
+        price: number;
+      } & TicketType_Key;
+      guestUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+    } & BookingLine_Key)[];
+  } & Booking_Key;
+}
+```
+### Using `GetBookingRevisionForApprovalFromCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getBookingRevisionForApprovalFromCallable, GetBookingRevisionForApprovalFromCallableVariables } from '@dataconnect/generated';
+
+// The `GetBookingRevisionForApprovalFromCallable` query requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`:
+const getBookingRevisionForApprovalFromCallableVars: GetBookingRevisionForApprovalFromCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getBookingRevisionForApprovalFromCallable()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getBookingRevisionForApprovalFromCallable(getBookingRevisionForApprovalFromCallableVars);
+// Variables can be defined inline as well.
+const { data } = await getBookingRevisionForApprovalFromCallable({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getBookingRevisionForApprovalFromCallable(dataConnect, getBookingRevisionForApprovalFromCallableVars);
+
+console.log(data.booking);
+
+// Or, you can use the `Promise` API.
+getBookingRevisionForApprovalFromCallable(getBookingRevisionForApprovalFromCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.booking);
+});
+```
+
+### Using `GetBookingRevisionForApprovalFromCallable`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getBookingRevisionForApprovalFromCallableRef, GetBookingRevisionForApprovalFromCallableVariables } from '@dataconnect/generated';
+
+// The `GetBookingRevisionForApprovalFromCallable` query requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`:
+const getBookingRevisionForApprovalFromCallableVars: GetBookingRevisionForApprovalFromCallableVariables = {
+  id: ..., 
+};
+
+// Call the `getBookingRevisionForApprovalFromCallableRef()` function to get a reference to the query.
+const ref = getBookingRevisionForApprovalFromCallableRef(getBookingRevisionForApprovalFromCallableVars);
+// Variables can be defined inline as well.
+const ref = getBookingRevisionForApprovalFromCallableRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getBookingRevisionForApprovalFromCallableRef(dataConnect, getBookingRevisionForApprovalFromCallableVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.booking);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.booking);
+});
+```
+
 ## GetTicketOrdersForBookerAndEvent
 You can execute the `GetTicketOrdersForBookerAndEvent` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -4330,6 +4485,8 @@ export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
     revisionNumber: number;
+    approvalStatus: BookingApprovalStatus;
+    approvalNote?: string | null;
     bookerDietaryNote?: string | null;
     sitNextToUserIds?: string[] | null;
     accommodationRequested: boolean;
@@ -9044,7 +9201,17 @@ export interface ListEventBookingsForAdminData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
       revisionNumber: number;
+      supersededAt?: TimestampString | null;
       supersedesBooking?: {
         id: UUIDString;
         revisionNumber: number;
@@ -9085,6 +9252,18 @@ export interface ListEventBookingsForAdminData {
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
+        bookingPlace?: {
+          id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
         guestUser?: {
           id: string;
           firstName: string;
@@ -9094,6 +9273,7 @@ export interface ListEventBookingsForAdminData {
           id: UUIDString;
           title: string;
           audience: TicketAudience;
+          price: number;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -14888,6 +15068,7 @@ The `UpdateBookingApprovalFromCallable` mutation requires an argument of type `U
 ```typescript
 export interface UpdateBookingApprovalFromCallableVariables {
   id: UUIDString;
+  expectedRevisionNumber: number;
   status: BookingApprovalStatus;
   reviewedById?: string | null;
   approvalNote?: string | null;
@@ -14899,7 +15080,7 @@ Recall that executing the `UpdateBookingApprovalFromCallable` mutation returns a
 The `data` property is an object of type `UpdateBookingApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface UpdateBookingApprovalFromCallableData {
-  booking_update?: Booking_Key | null;
+  changed: number;
 }
 ```
 ### Using `UpdateBookingApprovalFromCallable`'s action shortcut function
@@ -14911,6 +15092,7 @@ import { connectorConfig, updateBookingApprovalFromCallable, UpdateBookingApprov
 // The `UpdateBookingApprovalFromCallable` mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`:
 const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVariables = {
   id: ..., 
+  expectedRevisionNumber: ..., 
   status: ..., 
   reviewedById: ..., // optional
   approvalNote: ..., // optional
@@ -14920,18 +15102,18 @@ const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVa
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateBookingApprovalFromCallable(updateBookingApprovalFromCallableVars);
 // Variables can be defined inline as well.
-const { data } = await updateBookingApprovalFromCallable({ id: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+const { data } = await updateBookingApprovalFromCallable({ id: ..., expectedRevisionNumber: ..., status: ..., reviewedById: ..., approvalNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateBookingApprovalFromCallable(dataConnect, updateBookingApprovalFromCallableVars);
 
-console.log(data.booking_update);
+console.log(data.changed);
 
 // Or, you can use the `Promise` API.
 updateBookingApprovalFromCallable(updateBookingApprovalFromCallableVars).then((response) => {
   const data = response.data;
-  console.log(data.booking_update);
+  console.log(data.changed);
 });
 ```
 
@@ -14944,6 +15126,7 @@ import { connectorConfig, updateBookingApprovalFromCallableRef, UpdateBookingApp
 // The `UpdateBookingApprovalFromCallable` mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`:
 const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVariables = {
   id: ..., 
+  expectedRevisionNumber: ..., 
   status: ..., 
   reviewedById: ..., // optional
   approvalNote: ..., // optional
@@ -14952,7 +15135,7 @@ const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVa
 // Call the `updateBookingApprovalFromCallableRef()` function to get a reference to the mutation.
 const ref = updateBookingApprovalFromCallableRef(updateBookingApprovalFromCallableVars);
 // Variables can be defined inline as well.
-const ref = updateBookingApprovalFromCallableRef({ id: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+const ref = updateBookingApprovalFromCallableRef({ id: ..., expectedRevisionNumber: ..., status: ..., reviewedById: ..., approvalNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -14962,12 +15145,12 @@ const ref = updateBookingApprovalFromCallableRef(dataConnect, updateBookingAppro
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.booking_update);
+console.log(data.changed);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.booking_update);
+  console.log(data.changed);
 });
 ```
 

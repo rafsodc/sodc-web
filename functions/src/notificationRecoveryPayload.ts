@@ -41,6 +41,24 @@ export type NotificationRecoveryPayload =
       };
     })
   | (VersionedRecoveryPayload & {
+      kind: "BOOKING_PENDING_MEMBER";
+      bookingId: UUIDString;
+      idempotencyKey: string;
+    })
+  | (VersionedRecoveryPayload & {
+      kind: "BOOKING_PENDING_MODERATOR";
+      bookingId: UUIDString;
+      recipientEmail: string;
+    })
+  | (VersionedRecoveryPayload & {
+      kind: "BOOKING_CHANGES_REQUESTED";
+      bookingId: UUIDString;
+    })
+  | (VersionedRecoveryPayload & {
+      kind: "BOOKING_APPROVED";
+      bookingId: UUIDString;
+    })
+  | (VersionedRecoveryPayload & {
       kind: "MEMBERSHIP_STATUS";
       userId: string;
       previousStatus: MembershipStatus | null;
@@ -224,6 +242,32 @@ export function parseNotificationRecoveryPayload(
         },
       };
     }
+    case "BOOKING_PENDING_MEMBER":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+        idempotencyKey: string(payload.idempotencyKey, "idempotencyKey"),
+      };
+    case "BOOKING_PENDING_MODERATOR":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+        recipientEmail: string(payload.recipientEmail, "recipientEmail"),
+      };
+    case "BOOKING_CHANGES_REQUESTED":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+      };
+    case "BOOKING_APPROVED":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+      };
     case "MEMBERSHIP_STATUS":
       return {
         ...base,

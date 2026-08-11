@@ -9,9 +9,16 @@ import {
   NotificationDeliveryStatus,
 } from "@dataconnect/admin-generated";
 import {
+  bookingChangesRequestedDeliveryKey,
+  bookingApprovedDeliveryKey,
   bookingConfirmationDeliveryKey,
+  bookingPendingMemberDeliveryKey,
+  bookingPendingModeratorDeliveryKey,
   bookingRevisionDeliveryKey,
+  notifyBookingChangesRequestedEmail,
+  notifyBookingApprovedEmail,
   notifyBookingConfirmationEmail,
+  notifyBookingPendingApprovalEmails,
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
 import {
@@ -81,6 +88,26 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
           payload.bookingId,
           payload.idempotencyKey
         ),
+      };
+    case "BOOKING_PENDING_MEMBER":
+      return {
+        notificationType: "BOOKING_PENDING_APPROVAL_MEMBER",
+        deliveryKey: bookingPendingMemberDeliveryKey(payload.bookingId, payload.idempotencyKey),
+      };
+    case "BOOKING_PENDING_MODERATOR":
+      return {
+        notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
+        deliveryKey: bookingPendingModeratorDeliveryKey(payload.bookingId, payload.recipientEmail),
+      };
+    case "BOOKING_CHANGES_REQUESTED":
+      return {
+        notificationType: "BOOKING_CHANGES_REQUESTED",
+        deliveryKey: bookingChangesRequestedDeliveryKey(payload.bookingId),
+      };
+    case "BOOKING_APPROVED":
+      return {
+        notificationType: "BOOKING_APPROVED",
+        deliveryKey: bookingApprovedDeliveryKey(payload.bookingId),
       };
     case "MEMBERSHIP_STATUS": {
       const transition = classifyMembershipStatusEmailTransition(
@@ -174,6 +201,9 @@ type PaymentLifecycleRecoveryPayload = Extract<
 export interface NotificationRecoveryDispatcherDependencies {
   notifyBookingConfirmation?: typeof notifyBookingConfirmationEmail;
   notifyBookingRevision?: typeof notifyBookingRevisionEmail;
+  notifyBookingPending?: typeof notifyBookingPendingApprovalEmails;
+  notifyBookingChangesRequested?: typeof notifyBookingChangesRequestedEmail;
+  notifyBookingApproved?: typeof notifyBookingApprovedEmail;
   notifyMembershipStatus?: typeof notifyMembershipStatusEmailIfNeeded;
   notifyGuestRequestModerators?: typeof notifyModeratorsGuestTicketRequestSubmitted;
   notifyGuestRequestBooker?: typeof notifyBookerGuestTicketRequestReviewed;
@@ -247,6 +277,39 @@ export function createNotificationRecoveryDispatcher(
           bookingId: payload.bookingId,
           idempotencyKey: payload.idempotencyKey,
           paymentDelta: payload.paymentDelta,
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_PENDING_MEMBER":
+        await (dependencies.notifyBookingPending ?? notifyBookingPendingApprovalEmails)({
+          bookingId: payload.bookingId,
+          idempotencyKey: payload.idempotencyKey,
+          recipientEmails: [],
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_PENDING_MODERATOR":
+        await (dependencies.notifyBookingPending ?? notifyBookingPendingApprovalEmails)({
+          bookingId: payload.bookingId,
+          idempotencyKey: `recovery:${payload.bookingId}`,
+          recipientEmails: [payload.recipientEmail],
+          notifyMember: false,
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_CHANGES_REQUESTED":
+        await (dependencies.notifyBookingChangesRequested ?? notifyBookingChangesRequestedEmail)({
+          bookingId: payload.bookingId,
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_APPROVED":
+        await (dependencies.notifyBookingApproved ?? notifyBookingApprovedEmail)({
+          bookingId: payload.bookingId,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });

@@ -30,6 +30,7 @@ export type BookingPaymentAdjustmentAdminRow = NonNullable<
   NonNullable<ListBookingPaymentAdjustmentsForAdminData["event"]>["bookings"][number]
 >;
 export type GuestRequestStatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
+export type BookingApprovalStatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
 export type GuestTicketRequestWithBooking = GuestTicketRequestAdminRow & {
   bookingId: string;

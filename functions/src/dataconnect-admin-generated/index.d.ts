@@ -1098,6 +1098,8 @@ export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
     revisionNumber: number;
+    approvalStatus: BookingApprovalStatus;
+    approvalNote?: string | null;
     bookerDietaryNote?: string | null;
     sitNextToUserIds?: string[] | null;
     accommodationRequested: boolean;
@@ -1142,6 +1144,59 @@ export interface GetBookingForNotificationData {
 
 export interface GetBookingForNotificationVariables {
   bookingId: UUIDString;
+}
+
+export interface GetBookingRevisionForApprovalFromCallableData {
+  booking?: {
+    id: UUIDString;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    approvalReviewedAt?: TimestampString | null;
+    approvalNote?: string | null;
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    supersededAt?: TimestampString | null;
+    clientSubmissionKey?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      section: {
+        id: UUIDString;
+        name: string;
+      } & Section_Key;
+    } & Event_Key;
+    supersedesBooking?: {
+      id: UUIDString;
+      revisionNumber: number;
+    } & Booking_Key;
+    lines: ({
+      id: UUIDString;
+      sortOrder: number;
+      guestDisplayName?: string | null;
+      dietaryNote?: string | null;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+        audience: TicketAudience;
+        price: number;
+      } & TicketType_Key;
+      guestUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+    } & BookingLine_Key)[];
+  } & Booking_Key;
+}
+
+export interface GetBookingRevisionForApprovalFromCallableVariables {
+  id: UUIDString;
 }
 
 export interface GetBookingsForBookerAndEventData {
@@ -2432,7 +2487,17 @@ export interface ListEventBookingsForAdminData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
       revisionNumber: number;
+      supersededAt?: TimestampString | null;
       supersedesBooking?: {
         id: UUIDString;
         revisionNumber: number;
@@ -2473,6 +2538,18 @@ export interface ListEventBookingsForAdminData {
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
+        bookingPlace?: {
+          id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
         guestUser?: {
           id: string;
           firstName: string;
@@ -2482,6 +2559,7 @@ export interface ListEventBookingsForAdminData {
           id: UUIDString;
           title: string;
           audience: TicketAudience;
+          price: number;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -3379,11 +3457,12 @@ export interface UpdateAvailableSectionFileMetadataVariables {
 }
 
 export interface UpdateBookingApprovalFromCallableData {
-  booking_update?: Booking_Key | null;
+  changed: number;
 }
 
 export interface UpdateBookingApprovalFromCallableVariables {
   id: UUIDString;
+  expectedRevisionNumber: number;
   status: BookingApprovalStatus;
   reviewedById?: string | null;
   approvalNote?: string | null;
@@ -3924,6 +4003,11 @@ export function getSectionByIdForCallable(vars: GetSectionByIdForCallableVariabl
 export function getBookingsForBookerAndEvent(dc: DataConnect, vars: GetBookingsForBookerAndEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingsForBookerAndEventData>>;
 /** Generated Node Admin SDK operation action function for the 'GetBookingsForBookerAndEvent' Query. Allow users to pass in custom DataConnect instances. */
 export function getBookingsForBookerAndEvent(vars: GetBookingsForBookerAndEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingsForBookerAndEventData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetBookingRevisionForApprovalFromCallable' Query. Allow users to execute without passing in DataConnect. */
+export function getBookingRevisionForApprovalFromCallable(dc: DataConnect, vars: GetBookingRevisionForApprovalFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingRevisionForApprovalFromCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'GetBookingRevisionForApprovalFromCallable' Query. Allow users to pass in custom DataConnect instances. */
+export function getBookingRevisionForApprovalFromCallable(vars: GetBookingRevisionForApprovalFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingRevisionForApprovalFromCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrdersForBookerAndEvent' Query. Allow users to execute without passing in DataConnect. */
 export function getTicketOrdersForBookerAndEvent(dc: DataConnect, vars: GetTicketOrdersForBookerAndEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrdersForBookerAndEventData>>;

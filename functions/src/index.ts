@@ -6,6 +6,7 @@ export * from "./users";
 export * from "./membershipStatus";
 export * from "./sections";
 export * from "./bookings";
+export * from "./bookingApprovals";
 export * from "./guestTicketRequests";
 export * from "./payments";
 export * from "./stagedExpiry";

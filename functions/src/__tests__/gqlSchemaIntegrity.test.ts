@@ -282,7 +282,24 @@ describe("GQL schema integrity", () => {
     const operation = adminSdk.slice(start, end + 2);
     expect(operation).toContain("$status: BookingApprovalStatus!");
     expect(operation).toContain("@auth(level: NO_ACCESS)");
+    expect(operation).toContain("@transaction");
+    expect(operation).toContain("approvalStatus: { eq: PENDING }");
+    expect(operation).toContain("@check(expr: \"this == 1\"");
     expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
+  });
+
+  it("activates an approved amended revision atomically", () => {
+    const operations = readBookingServiceFile("booking-submission.gql");
+    const start = operations.indexOf("mutation ActivateApprovedBookingRevisionFromCallable");
+    const next = operations.indexOf("\nmutation ", start + 1);
+    const operation = operations.slice(start, next < 0 ? operations.length : next);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(operation).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(operation).toContain("approvalStatus: { eq: PENDING }");
+    expect(operation).toContain("approvalStatus: APPROVED");
+    expect(operation).toContain("supersededAt_expr: \"request.time\"");
+    expect(operation).toContain("bookingPaymentAdjustment_upsert");
+    expect(operation.match(/BOOKING_APPROVAL_CONFLICT/g)).toHaveLength(2);
   });
 
   it("attributes payment to a stable entity rather than a revision line or duplicated key", () => {

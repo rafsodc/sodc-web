@@ -74,6 +74,28 @@ describe("notification recovery dispatch routing", () => {
     });
   });
 
+  it("recovers a booking moderation alert for only its original organiser", async () => {
+    const notifyBookingPending = vi.fn(async () => undefined);
+    const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyBookingPending });
+    const payload: NotificationRecoveryPayload = {
+      version: 1,
+      kind: "BOOKING_PENDING_MODERATOR",
+      bookingId: "77777777-7777-4777-8777-777777777777",
+      recipientEmail: "moderator@example.com",
+    };
+
+    await dispatch(candidate(payload), payload);
+
+    expect(notifyBookingPending).toHaveBeenCalledWith({
+      bookingId: payload.bookingId,
+      idempotencyKey: `recovery:${payload.bookingId}`,
+      recipientEmails: [payload.recipientEmail],
+      notifyMember: false,
+      appBaseUrl: APP_BASE_URL,
+      deliveryMode: undefined,
+    });
+  });
+
   it("routes payment lifecycle context without changing its event identity", async () => {
     const notifyPaymentLifecycle = vi.fn(async () => undefined);
     const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, {
