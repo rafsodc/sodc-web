@@ -170,7 +170,6 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
   const baseRevisionNumber =
     baseRevisionNumberRaw == null ? undefined : Number.isInteger(Number(baseRevisionNumberRaw)) ? Number(baseRevisionNumberRaw) : undefined;
   const lines = parseBookingLines(request.data?.lines);
-  const bookerDietaryNote = parseOptionalString(request.data?.bookerDietaryNote, 500);
   const sitNextToUserIds = parseSitNextTo(request.data?.sitNextToUserIds, uid);
   const accommodationRequested = request.data?.accommodationRequested === true;
   const accommodationNote = parseOptionalString(request.data?.accommodationNote, 500);
@@ -377,7 +376,6 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
 
     await updateBookingPreferencesFromCallable({
       id: bookingId as UUIDString,
-      bookerDietaryNote,
       sitNextToUserIds,
       accommodationRequested,
       accommodationNote: accommodationRequested ? accommodationNote : null,

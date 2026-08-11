@@ -21,7 +21,7 @@ const sampleLines = [
   {
     sortOrder: 0,
     guestDisplayName: null,
-    dietaryNote: null,
+    dietaryNote: "No nuts",
     ticketType: { title: "Member ticket", audience: "MEMBER", price: 25 },
   },
   {
@@ -129,6 +129,7 @@ describe("notifyBookingConfirmationEmail", () => {
         personalisation: expect.objectContaining({
           firstName: "Sam",
           eventTitle: "Annual dinner",
+          bookerDietaryNote: "No nuts",
           sectionBookingsUrl: "https://app.example/sections/sec-1",
           myPaymentsUrl: "https://app.example/payments",
         }),

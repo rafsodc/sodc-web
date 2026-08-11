@@ -9046,6 +9046,14 @@ export interface ListEventBookingsForAdminData {
       } & GuestTicketRequest_Key)[];
       lines: ({
         id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+          firstName: string;
+          lastName: string;
+        } & User_Key;
         ticketType: {
           id: UUIDString;
           title: string;
@@ -16371,7 +16379,6 @@ The `UpdateBookingPreferencesFromCallable` mutation requires an argument of type
 ```typescript
 export interface UpdateBookingPreferencesFromCallableVariables {
   id: UUIDString;
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[] | null;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
@@ -16395,7 +16402,6 @@ import { connectorConfig, updateBookingPreferencesFromCallable, UpdateBookingPre
 // The `UpdateBookingPreferencesFromCallable` mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
 const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
   id: ..., 
-  bookerDietaryNote: ..., // optional
   sitNextToUserIds: ..., // optional
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
@@ -16405,7 +16411,7 @@ const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCall
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateBookingPreferencesFromCallable(updateBookingPreferencesFromCallableVars);
 // Variables can be defined inline as well.
-const { data } = await updateBookingPreferencesFromCallable({ id: ..., bookerDietaryNote: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
+const { data } = await updateBookingPreferencesFromCallable({ id: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -16429,7 +16435,6 @@ import { connectorConfig, updateBookingPreferencesFromCallableRef, UpdateBooking
 // The `UpdateBookingPreferencesFromCallable` mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
 const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
   id: ..., 
-  bookerDietaryNote: ..., // optional
   sitNextToUserIds: ..., // optional
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
@@ -16438,7 +16443,7 @@ const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCall
 // Call the `updateBookingPreferencesFromCallableRef()` function to get a reference to the mutation.
 const ref = updateBookingPreferencesFromCallableRef(updateBookingPreferencesFromCallableVars);
 // Variables can be defined inline as well.
-const ref = updateBookingPreferencesFromCallableRef({ id: ..., bookerDietaryNote: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
+const ref = updateBookingPreferencesFromCallableRef({ id: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

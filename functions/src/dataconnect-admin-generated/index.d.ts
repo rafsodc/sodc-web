@@ -2436,6 +2436,14 @@ export interface ListEventBookingsForAdminData {
       } & GuestTicketRequest_Key)[];
       lines: ({
         id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+          firstName: string;
+          lastName: string;
+        } & User_Key;
         ticketType: {
           id: UUIDString;
           title: string;
@@ -3333,7 +3341,6 @@ export interface UpdateBookingPreferencesFromCallableData {
 
 export interface UpdateBookingPreferencesFromCallableVariables {
   id: UUIDString;
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[] | null;
   accommodationRequested: boolean;
   accommodationNote?: string | null;

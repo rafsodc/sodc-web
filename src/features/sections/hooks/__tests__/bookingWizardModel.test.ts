@@ -56,6 +56,7 @@ describe("bookingWizardModel", () => {
     expect(
       buildBookingSubmissionLines({
         memberTicketTypeId: "member-ticket",
+        memberDietaryNote: "  No nuts  ",
         includeGuest: true,
         guestTicketTypeId: "guest-ticket",
         guestDisplayName: "  Guest Name  ",
@@ -67,7 +68,7 @@ describe("bookingWizardModel", () => {
         sortOrder: 0,
         guestUserId: null,
         guestDisplayName: null,
-        dietaryNote: null,
+        dietaryNote: "No nuts",
       },
       {
         ticketTypeId: "guest-ticket",

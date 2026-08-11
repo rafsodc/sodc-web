@@ -143,13 +143,18 @@ function buildBasePersonalisation(args: {
   const base = normaliseAppBaseUrl(appBaseUrl);
   const fn = booking.booker.firstName?.trim();
   const totalMinor = bookingTotalMinorFromLines(booking.lines);
+  const memberDietaryNote = booking.lines.find(
+    (line) => line.ticketType.audience === "MEMBER"
+  )?.dietaryNote;
   return {
     firstName: fn && fn.length > 0 ? fn : "Member",
     eventTitle: booking.event.title ?? "—",
     eventDateTime: formatBookingEventDateTime(booking.event.startDateTime, booking.event.endDateTime),
     eventLocation: booking.event.location?.trim() || "To be confirmed",
     ticketLinesSummary: buildTicketLinesSummary(booking.lines),
-    bookerDietaryNote: booking.bookerDietaryNote?.trim() || "None provided",
+    // Keep the Notify variable name stable while legacy templates are in use;
+    // the source of truth is the member ticket line.
+    bookerDietaryNote: memberDietaryNote?.trim() || booking.bookerDietaryNote?.trim() || "None provided",
     accommodationRequested: accommodationRequestedCondition(booking.accommodationRequested),
     bookingTotalFormatted: formatMinorCurrency(totalMinor, "GBP"),
     sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
