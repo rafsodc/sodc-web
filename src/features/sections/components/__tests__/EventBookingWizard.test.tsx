@@ -1,16 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
-import EventBookingWizard from "../EventBookingWizard";
-import { BookingStatus, GuestTicketRequestStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
+import { render, screen, waitFor } from "../../../../test-utils";
+import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
-import { invalidateMyBookings } from "../../../../shared/query/invalidation";
-
-vi.mock("../../../../shared/query/invalidation", () => ({
-  invalidateMyBookings: vi.fn().mockResolvedValue(undefined),
-}));
+import EventBookingWizard from "../EventBookingWizard";
 
 vi.mock("@dataconnect/generated/react", () => ({
   useGetCurrentUser: vi.fn(),
@@ -19,21 +14,104 @@ vi.mock("@dataconnect/generated/react", () => ({
   useGetMyBookingPaymentAdjustments: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
 }));
-
-vi.mock("../../../../config/firebase", () => ({
-  dataConnect: {},
+vi.mock("../../../../config/firebase", () => ({ dataConnect: {} }));
+vi.mock("../../../../shared/query/invalidation", () => ({
+  invalidateMyBookings: vi.fn().mockResolvedValue(undefined),
 }));
-
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
   submitEventBooking: vi.fn().mockResolvedValue({
     bookingId: "booking-new",
     status: "SUBMITTED",
+    approvalStatus: "PENDING",
+    outcome: "PENDING_APPROVAL",
+    paymentReady: false,
   }),
-  createTicketCheckoutSession: vi.fn(),
   createEventBookingCheckoutSession: vi.fn(),
-  submitAdditionalGuestTicketRequests: vi.fn().mockResolvedValue([{ success: true, requestId: "req-1" }]),
 }));
+
+const section = {
+  id: "section-1",
+  name: "Events",
+  type: "EVENTS",
+  purposeLinks: [
+    { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+  ],
+} as never;
+
+const event = {
+  id: "event-1",
+  title: "Annual Dinner",
+  bookingStartDateTime: "2025-01-01T00:00:00Z",
+  bookingEndDateTime: "2030-01-01T00:00:00Z",
+  maxGuestsWithoutModeratorApproval: 1,
+  ticketTypes: [
+    {
+      id: "ticket-member",
+      title: "Member standard",
+      audience: TicketAudience.MEMBER,
+      price: 50,
+      userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+    },
+    {
+      id: "ticket-guest",
+      title: "Guest standard",
+      audience: TicketAudience.GUEST,
+      price: 25,
+      userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+    },
+  ],
+} as never;
+
+function bookingWithGuest(paid: boolean) {
+  return {
+    id: "booking-1",
+    status: BookingStatus.SUBMITTED,
+    approvalStatus: "NOT_REQUIRED",
+    approvalNote: null,
+    revisionNumber: 1,
+    supersededAt: null,
+    updatedAt: "2026-08-11T10:00:00Z",
+    sitNextToUserIds: [],
+    accommodationRequested: false,
+    lines: [
+      {
+        id: "member-line",
+        sortOrder: 0,
+        dietaryNote: "Vegetarian",
+        bookingPlace: { id: "member-place", paymentAllocations: [] },
+        ticketType: { id: "ticket-member", title: "Member standard", audience: TicketAudience.MEMBER, price: 50 },
+      },
+      {
+        id: "guest-line",
+        sortOrder: 1,
+        guestDisplayName: "Alex Guest",
+        dietaryNote: "Vegan",
+        bookingPlace: {
+          id: "guest-place",
+          paymentAllocations: paid
+            ? [{ id: "allocation-1", ticketOrder: { id: "order-1", status: TicketOrderStatus.PAID } }]
+            : [],
+        },
+        ticketType: { id: "ticket-guest", title: "Guest standard", audience: TicketAudience.GUEST, price: 25 },
+      },
+    ],
+    guestTicketRequests: [],
+  };
+}
+
+function renderWizard(props: { bookings?: unknown[]; wizardOpen?: boolean } = {}) {
+  vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
+    data: { user: { bookings: props.bookings ?? [] } },
+    isLoading: false,
+    refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: props.bookings ?? [] } } }),
+  } as never);
+  return render(
+    <MemoryRouter>
+      <EventBookingWizard section={section} event={event} wizardOpen={props.wizardOpen ?? true} />
+    </MemoryRouter>
+  );
+}
 
 describe("EventBookingWizard", () => {
   beforeEach(() => {
@@ -45,42 +123,6 @@ describe("EventBookingWizard", () => {
     vi.mocked(reactGenerated.useGetUserAccessGroups).mockReturnValue({
       data: { user: { userGroups: [{ userGroup: { id: "group-1" } }] } },
     } as never);
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: {
-        user: {
-          bookings: [
-            {
-              id: "booking-1",
-              status: BookingStatus.SUBMITTED,
-              revisionNumber: 2,
-              supersededAt: null,
-              clientSubmissionKey: null,
-              bookerDietaryNote: "No nuts",
-              sitNextToUserIds: [],
-              accommodationRequested: false,
-              accommodationNote: null,
-              lines: [
-                {
-                  id: "line-1",
-                  sortOrder: 0,
-                  guestDisplayName: null,
-                  dietaryNote: null,
-                  ticketType: {
-                    id: "ticket-member",
-                    title: "Member standard",
-                    audience: TicketAudience.MEMBER,
-                    price: 50,
-                  },
-                },
-              ],
-              guestTicketRequests: [],
-            },
-          ],
-        },
-      },
-      isLoading: false,
-      refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } }),
-    } as never);
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
       data: { user: { ticketOrders: [] } },
       isLoading: false,
@@ -91,1149 +133,91 @@ describe("EventBookingWizard", () => {
     } as never);
   });
 
-  it("shows booking summary by default for paid submitted bookings", () => {
-    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
-      data: {
-        user: {
-          ticketOrders: [
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-member" },
-            },
-          ],
-        },
-      },
-      isLoading: false,
-    } as never);
-
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-        section={{
-          id: "section-1",
-          name: "Events",
-          type: "EVENTS",
-          description: null,
-          purposeLinks: [
-            { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-          ],
-        } as never}
-        event={{
-          id: "event-1",
-          title: "Annual Dinner",
-          bookingStartDateTime: "2025-01-01T00:00:00Z",
-          bookingEndDateTime: "2030-01-01T00:00:00Z",
-          maxGuestsWithoutModeratorApproval: 1,
-          ticketTypes: [
-            {
-              id: "ticket-member",
-              title: "Member standard",
-              audience: TicketAudience.MEMBER,
-              price: 50,
-              userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-            },
-          ],
-        } as never}
-      />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText("Your booking")).toBeInTheDocument();
-    expect(screen.queryByText("Edit your booking")).not.toBeInTheDocument();
+  it("shows the simplified three-stage journey", () => {
+    renderWizard();
+    expect(screen.getByText("Your details")).toBeInTheDocument();
+    expect(screen.getByText("Guests")).toBeInTheDocument();
+    expect(screen.getByText("Review and submit")).toBeInTheDocument();
+    expect(screen.queryByText("Pay")).not.toBeInTheDocument();
   });
 
-  it("shows the booking summary with pay actions when payment is still due", async () => {
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Your booking")).toBeInTheDocument();
-      expect(screen.getByText("Payment not started")).toBeInTheDocument();
-    });
-    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
-    expect(screen.queryByText("Complete your booking")).not.toBeInTheDocument();
-  });
-
-  it("does not allow confirmation until payment is complete", async () => {
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Your booking")).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Your booking is confirmed/i)).not.toBeInTheDocument();
-  });
-
-  it("retries booking edits with the same idempotency key and safe error copy", async () => {
-    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
-      data: {
-        user: {
-          ticketOrders: [
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-member" },
-            },
-          ],
-        },
-      },
-      isLoading: false,
-    } as never);
-    vi.mocked(firebaseFunctions.submitEventBooking)
-      .mockRejectedValueOnce(new Error("SQL booking revision implementation detail"))
-      .mockResolvedValueOnce({
-        bookingId: "booking-new",
-        status: "SUBMITTED",
-        approvalStatus: "NOT_REQUIRED",
-        outcome: "READY_FOR_PAYMENT",
-        paymentReady: true,
-      });
-
+  it("submits member and all guest dietary details atomically and explains over-limit approval", async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-        section={{
-          id: "section-1",
-          name: "Events",
-          type: "EVENTS",
-          description: null,
-          purposeLinks: [
-            { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-          ],
-        } as never}
-        event={{
-          id: "event-1",
-          title: "Annual Dinner",
-          bookingStartDateTime: "2025-01-01T00:00:00Z",
-          bookingEndDateTime: "2030-01-01T00:00:00Z",
-          maxGuestsWithoutModeratorApproval: 1,
-          ticketTypes: [
-            {
-              id: "ticket-member",
-              title: "Member standard",
-              audience: TicketAudience.MEMBER,
-              price: 50,
-              userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-            },
-            {
-              id: "ticket-guest",
-              title: "Guest standard",
-              audience: TicketAudience.GUEST,
-              price: 25,
-              userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-            },
-          ],
-        } as never}
-      />
-      </MemoryRouter>
-    );
+    renderWizard();
 
+    await user.type(screen.getByLabelText("Dietary requirements"), "Vegetarian");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    const count = screen.getByLabelText("Number of guests");
+    await user.clear(count);
+    await user.type(count, "2");
+
+    const names = screen.getAllByLabelText("Guest name");
+    await user.type(names[0]!, "Alex Guest");
+    await user.type(names[1]!, "Sam Guest");
+    const diets = screen.getAllByLabelText("Dietary requirements (optional)");
+    await user.type(diets[0]!, "Vegan");
+    await user.type(diets[1]!, "Gluten free");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByText(/complete booking will be sent for organiser approval/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Submit booking" }));
+
+    await waitFor(() => expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[0]?.[0].lines).toEqual([
+      expect.objectContaining({ ticketTypeId: "ticket-member", dietaryNote: "Vegetarian" }),
+      expect.objectContaining({ guestDisplayName: "Alex Guest", dietaryNote: "Vegan" }),
+      expect.objectContaining({ guestDisplayName: "Sam Guest", dietaryNote: "Gluten free" }),
+    ]);
+  });
+
+  it("allows an unpaid guest to be removed while editing", async () => {
+    const user = userEvent.setup();
+    renderWizard({ bookings: [bookingWithGuest(false)] });
     await user.click(screen.getByRole("button", { name: "Edit booking" }));
-    expect(screen.getByText("Edit your booking")).toBeInTheDocument();
-    expect(screen.getByText(/editing your submitted booking/i)).toBeInTheDocument();
-    expect(screen.queryByText("Number of guests")).not.toBeInTheDocument();
-    expect(screen.getByText("Guest")).toBeInTheDocument();
-    expect(screen.getByText("Pay")).toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Save booking changes" }));
+    await user.click(screen.getByRole("button", { name: "Remove guest" }));
 
-    expect(
-      await screen.findByText("We couldn’t submit your booking. Please try again."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/SQL booking revision/)).not.toBeInTheDocument();
-
-    const firstSubmission = vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[0]?.[0];
-    await user.click(screen.getByRole("button", { name: "Save booking changes" }));
-
-    await waitFor(() => {
-      expect(firebaseFunctions.submitEventBooking).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({
-          eventId: "event-1",
-          baseBookingId: "booking-1",
-          baseRevisionNumber: 2,
-        })
-      );
-    });
-    const retrySubmission = vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[1]?.[0];
-    expect(retrySubmission?.idempotencyKey).toBe(firstSubmission?.idempotencyKey);
+    expect(screen.getByLabelText("Number of guests")).toHaveValue(0);
+    expect(screen.queryByLabelText("Guest name")).not.toBeInTheDocument();
   });
 
-  it("shows moderation notice when guest count exceeds policy on review step", async () => {
+  it("blocks removal or transfer of a paid guest and explains the future refund route", async () => {
     const user = userEvent.setup();
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: { user: { bookings: [] } },
-      isLoading: false,
-      refetch: vi.fn(),
-    } as never);
-
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          wizardOpen
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-              {
-                id: "ticket-guest",
-                title: "Guest standard",
-                audience: TicketAudience.GUEST,
-                price: 25,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByLabelText(/member standard/i));
+    renderWizard({ bookings: [bookingWithGuest(true)] });
+    await user.click(screen.getByRole("button", { name: "Edit booking" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
 
-    const guestCountInput = screen.getByLabelText(/how many guest tickets in total/i);
-    await user.clear(guestCountInput);
-    await user.type(guestCountInput, "2");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    await user.type(screen.getAllByLabelText("Guest name")[0], "Alex Guest");
-    const extraGuestName = screen.getAllByLabelText("Guest name")[1];
-    if (extraGuestName) {
-      await user.type(extraGuestName, "Sam Extra");
-    }
-    await user.type(screen.getAllByLabelText("Dietary requirements (optional)")[0], "Vegetarian");
-    const extraGuestDietary = screen.getAllByLabelText("Dietary requirements (optional)")[1];
-    if (extraGuestDietary) {
-      await user.type(extraGuestDietary, "Gluten free");
-    }
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    expect(screen.getByText(/may require organiser review/i)).toBeInTheDocument();
-    expect(screen.getByText(/Alex Guest · Dietary: Vegetarian/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sam Extra · Dietary: Gluten free/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm booking" })).toBeInTheDocument();
+    expect(screen.getByText("Paid ticket")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove guest" })).toBeDisabled();
+    expect(screen.getByText(/refund requests will be added later/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Guest name")).toBeDisabled();
   });
 
-  it("shows Confirm booking on review when four guests are requested", async () => {
-    const user = userEvent.setup();
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: { user: { bookings: [] } },
-      isLoading: false,
-      refetch: vi.fn(),
-    } as never);
-
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          wizardOpen
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-              {
-                id: "ticket-guest",
-                title: "Guest standard",
-                audience: TicketAudience.GUEST,
-                price: 25,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByLabelText(/member standard/i));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    const guestCountInput = screen.getByLabelText(/how many guest tickets in total/i);
-    await user.clear(guestCountInput);
-    await user.type(guestCountInput, "4");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    const guestNames = screen.getAllByLabelText("Guest name");
-    await user.type(guestNames[0], "Guest One");
-    await user.type(guestNames[1], "Guest Two");
-    await user.type(guestNames[2], "Guest Three");
-    await user.type(guestNames[3], "Guest Four");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    expect(screen.getByText(/4 total \(3 via organiser review\)/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm booking" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
-  });
-
-  it("shows Next on review after returning from payment when booking is already submitted", async () => {
-    const user = userEvent.setup();
-    let bookings: Array<Record<string, unknown>> = [];
-    const submittedBooking = {
-      id: "booking-new",
-      status: BookingStatus.SUBMITTED,
-      revisionNumber: 1,
-      clientSubmissionKey: null,
-      bookerDietaryNote: "",
-      sitNextToUserIds: [],
-      accommodationRequested: false,
-      accommodationNote: null,
-      lines: [
-        {
-          id: "line-1",
-          sortOrder: 0,
-          guestDisplayName: null,
-          dietaryNote: null,
-          ticketType: {
-            id: "ticket-member",
-            title: "Member standard",
-            audience: TicketAudience.MEMBER,
-            price: 50,
-          },
-        },
-        {
-          id: "line-2",
-          sortOrder: 1,
-          guestDisplayName: "Guest One",
-          dietaryNote: null,
-          ticketType: {
-            id: "ticket-guest",
-            title: "Guest standard",
-            audience: TicketAudience.GUEST,
-            price: 25,
-          },
-        },
-      ],
-      guestTicketRequests: [
-        { id: "gtr-1", status: "PENDING", requestedGuestCount: 1 },
-        { id: "gtr-2", status: "PENDING", requestedGuestCount: 1 },
-        { id: "gtr-3", status: "PENDING", requestedGuestCount: 1 },
-      ],
+  it("keeps an approved revision payable while its newer amendment awaits approval", async () => {
+    const activeRevision = bookingWithGuest(false);
+    const pendingRevision = {
+      ...bookingWithGuest(false),
+      id: "booking-pending",
+      revisionNumber: 2,
+      approvalStatus: "PENDING",
+      updatedAt: "2026-08-11T11:00:00Z",
+      lines: bookingWithGuest(false).lines.map((line) =>
+        line.id === "guest-line"
+          ? { ...line, id: "pending-guest-line", guestDisplayName: "Pending Guest" }
+          : { ...line, id: "pending-member-line" }
+      ),
     };
-
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockImplementation(
-      () =>
-        ({
-          data: { user: { bookings } },
-          isLoading: false,
-          refetch: vi.fn().mockImplementation(async () => {
-            bookings = [submittedBooking];
-            return { data: { user: { bookings } } };
-          }),
-        }) as never
-    );
-
-    const wizardProps = {
-      wizardOpen: true,
-      section: {
-        id: "section-1",
-        name: "Events",
-        type: "EVENTS",
-        description: null,
-        purposeLinks: [
-          { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-        ],
-      },
-      event: {
-        id: "event-1",
-        title: "Annual Dinner",
-        bookingStartDateTime: "2025-01-01T00:00:00Z",
-        bookingEndDateTime: "2030-01-01T00:00:00Z",
-        maxGuestsWithoutModeratorApproval: 1,
-        ticketTypes: [
-          {
-            id: "ticket-member",
-            title: "Member standard",
-            audience: TicketAudience.MEMBER,
-            price: 50,
-            userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-          },
-          {
-            id: "ticket-guest",
-            title: "Guest standard",
-            audience: TicketAudience.GUEST,
-            price: 25,
-            userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-          },
-        ],
-      },
-    } as any;
-
-    const { rerender } = render(
-      <MemoryRouter>
-        <EventBookingWizard {...wizardProps} />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByLabelText(/member standard/i));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    const guestCountInput = screen.getByLabelText(/how many guest tickets in total/i);
-    await user.clear(guestCountInput);
-    await user.type(guestCountInput, "4");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    const guestNames = screen.getAllByLabelText("Guest name");
-    await user.type(guestNames[0], "Guest One");
-    await user.type(guestNames[1], "Guest Two");
-    await user.type(guestNames[2], "Guest Three");
-    await user.type(guestNames[3], "Guest Four");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Confirm booking" }));
-
-    await waitFor(() => {
-      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalled();
-    });
-    expect(invalidateMyBookings).toHaveBeenCalledOnce();
-
-    rerender(
-      <MemoryRouter>
-        <EventBookingWizard {...wizardProps} />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText(/Pay now to secure your place/i)).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Back" }));
-
-    expect(screen.getByText(/4 total \(3 via organiser review\)/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirm booking" })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    expect(screen.getByText(/Pay now to secure your place/i)).toBeInTheDocument();
-  });
-
-  it("submits separate dietary notes for each guest", async () => {
-    const user = userEvent.setup();
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: { user: { bookings: [] } },
-      isLoading: false,
-      refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } }),
-    } as never);
-
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          wizardOpen
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-              {
-                id: "ticket-guest",
-                title: "Guest standard",
-                audience: TicketAudience.GUEST,
-                price: 25,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByLabelText(/member standard/i));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    const guestCountInput = screen.getByLabelText(/how many guest tickets in total/i);
-    await user.clear(guestCountInput);
-    await user.type(guestCountInput, "2");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    await user.type(screen.getAllByLabelText("Guest name")[0], "Alex Guest");
-    await user.type(screen.getAllByLabelText("Dietary requirements (optional)")[0], "Vegetarian");
-    await user.type(screen.getAllByLabelText("Guest name")[1], "Sam Extra");
-    await user.type(screen.getAllByLabelText("Dietary requirements (optional)")[1], "Gluten free");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Confirm booking" }));
-
-    await waitFor(() => {
-      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledWith(
-        expect.objectContaining({
-          lines: expect.arrayContaining([
-            expect.objectContaining({
-              ticketTypeId: "ticket-guest",
-              guestDisplayName: "Alex Guest",
-              dietaryNote: "Vegetarian",
-            }),
-            expect.objectContaining({
-              ticketTypeId: "ticket-guest",
-              guestDisplayName: "Sam Extra",
-              dietaryNote: "Gluten free",
-            }),
-          ]),
-        })
-      );
-    });
-
-    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).not.toHaveBeenCalled();
-  });
-
-  it("advances to the payment step after confirming a new booking", async () => {
-    const user = userEvent.setup();
-    let bookings: Array<Record<string, unknown>> = [];
-    const submittedBooking = {
-      id: "booking-new",
-      status: BookingStatus.SUBMITTED,
-      revisionNumber: 1,
-      clientSubmissionKey: null,
-      bookerDietaryNote: "",
-      sitNextToUserIds: [],
-      accommodationRequested: false,
-      accommodationNote: null,
-      lines: [
-        {
-          id: "line-1",
-          sortOrder: 0,
-          guestDisplayName: null,
-          dietaryNote: null,
-          ticketType: {
-            id: "ticket-member",
-            title: "Member standard",
-            audience: TicketAudience.MEMBER,
-            price: 50,
-          },
-        },
-      ],
-      guestTicketRequests: [],
-    };
-
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockImplementation(
-      () =>
-        ({
-          data: { user: { bookings } },
-          isLoading: false,
-          refetch: vi.fn().mockImplementation(async () => {
-            bookings = [submittedBooking];
-            return { data: { user: { bookings } } };
-          }),
-        }) as never
-    );
-
-    const { rerender } = render(
-      <MemoryRouter>
-        <EventBookingWizard
-          wizardOpen
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByLabelText(/member standard/i));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Confirm booking" }));
-
-    await waitFor(() => {
-      expect(firebaseFunctions.submitEventBooking).toHaveBeenCalled();
-    });
-
-    rerender(
-      <MemoryRouter>
-        <EventBookingWizard
-          wizardOpen
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
-      expect(screen.getByText(/Pay now to secure your place/i)).toBeInTheDocument();
-    });
-    expect(screen.queryByLabelText(/how many guest tickets in total/i)).not.toBeInTheDocument();
-  });
-
-  it("shows per-ticket payment status on the payment step and notes pending guest approval", async () => {
     const user = userEvent.setup();
 
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: {
-        user: {
-          bookings: [
-            {
-              id: "booking-1",
-              status: BookingStatus.SUBMITTED,
-              revisionNumber: 2,
-              supersededAt: null,
-              clientSubmissionKey: null,
-              bookerDietaryNote: "",
-              sitNextToUserIds: [],
-              accommodationRequested: false,
-              accommodationNote: null,
-              lines: [
-                {
-                  id: "line-1",
-                  sortOrder: 0,
-                  guestDisplayName: null,
-                  dietaryNote: null,
-                  ticketType: {
-                    id: "ticket-member",
-                    title: "Member standard",
-                    audience: TicketAudience.MEMBER,
-                    price: 50,
-                  },
-                },
-              ],
-              guestTicketRequests: [
-                {
-                  id: "req-pending",
-                  status: GuestTicketRequestStatus.PENDING,
-                  requestedGuestCount: 1,
-                  guestDisplayName: "Sam Extra",
-                  dietaryNote: null,
-                  guestTicketType: {
-                    id: "ticket-guest",
-                    title: "Guest standard",
-                    price: 25,
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      },
-      isLoading: false,
-      refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } }),
-    } as never);
-    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
-      data: {
-        user: {
-          ticketOrders: [
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-member" },
-            },
-          ],
-        },
-      },
-      isLoading: false,
-    } as never);
+    renderWizard({ bookings: [activeRevision, pendingRevision] });
 
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-              {
-                id: "ticket-guest",
-                title: "Guest standard",
-                audience: TicketAudience.GUEST,
-                price: 25,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Your booking")).toBeInTheDocument();
-    });
+    expect(screen.getByRole("heading", { name: "Awaiting approval" })).toBeInTheDocument();
+    expect(screen.getByText("Current active booking")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    expect(screen.getByText(/current approved booking remains active/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit booking" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.type(screen.getByLabelText("Guest name"), "Sam Extra");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Save booking changes" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Complete your booking")).toBeInTheDocument();
-    });
-
-    expect(screen.getAllByText("Paid").length).toBeGreaterThan(0);
-    expect(screen.getByText("Pending confirmation")).toBeInTheDocument();
-    expect(screen.getByText("Sam Extra")).toBeInTheDocument();
-    expect(
-      screen.getByText(/When your additional guest request is approved, return here to pay for their ticket/i)
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Payment complete/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
-  });
-
-  it("starts additional guest requests blank and invalidates My Bookings after submission", async () => {
-    const user = userEvent.setup();
-
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: {
-        user: {
-          bookings: [
-            {
-              id: "booking-1",
-              status: BookingStatus.SUBMITTED,
-              revisionNumber: 1,
-              supersededAt: null,
-              clientSubmissionKey: null,
-              bookerDietaryNote: "",
-              sitNextToUserIds: [],
-              accommodationRequested: false,
-              accommodationNote: null,
-              lines: [
-                {
-                  id: "line-1",
-                  sortOrder: 0,
-                  guestDisplayName: null,
-                  dietaryNote: null,
-                  ticketType: {
-                    id: "ticket-member",
-                    title: "Member standard",
-                    audience: TicketAudience.MEMBER,
-                    price: 50,
-                  },
-                },
-                {
-                  id: "line-2",
-                  sortOrder: 1,
-                  guestDisplayName: "Jamie Included",
-                  dietaryNote: "Vegetarian",
-                  ticketType: {
-                    id: "ticket-guest",
-                    title: "Guest standard",
-                    audience: TicketAudience.GUEST,
-                    price: 25,
-                  },
-                },
-              ],
-              guestTicketRequests: [
-                {
-                  id: "gtr-1",
-                  status: "APPROVED",
-                  requestedGuestCount: 1,
-                  guestDisplayName: "Alex Approved",
-                  dietaryNote: "Gluten free",
-                  guestTicketType: {
-                    id: "ticket-guest",
-                    title: "Guest standard",
-                    price: 25,
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      },
-      isLoading: false,
-      refetch: vi.fn(),
-    } as never);
-    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
-      data: {
-        user: {
-          ticketOrders: [
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-member" },
-            },
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-guest" },
-            },
-          ],
-        },
-      },
-      isLoading: false,
-    } as never);
-
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-              {
-                id: "ticket-guest",
-                title: "Guest standard",
-                audience: TicketAudience.GUEST,
-                price: 25,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByRole("button", { name: /request additional guests/i }));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    expect(screen.getByLabelText("Guest name")).toHaveValue("");
-    expect(screen.getByLabelText("Dietary requirements (optional)")).toHaveValue("");
-    expect(screen.queryByDisplayValue("Alex Approved")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Jamie Included")).not.toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("Guest name"), "New Guest");
-    await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: "Submit request" }));
-
-    await waitFor(() => {
-      expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
-        bookingId: "booking-1",
-        guestTicketTypeId: "ticket-guest",
-        idempotencyKey: expect.any(String),
-        guests: [{ guestDisplayName: "New Guest", dietaryNote: null }],
-      });
-    });
-    expect(invalidateMyBookings).toHaveBeenCalledOnce();
-    expect(await screen.findByText("Your booking")).toBeInTheDocument();
-  });
-
-  it("omits declined extra guests when editing a booking", async () => {
-    const user = userEvent.setup();
-
-    vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-      data: {
-        user: {
-          bookings: [
-            {
-              id: "booking-1",
-              status: BookingStatus.SUBMITTED,
-              revisionNumber: 2,
-              supersededAt: null,
-              clientSubmissionKey: null,
-              bookerDietaryNote: "",
-              sitNextToUserIds: [],
-              accommodationRequested: false,
-              accommodationNote: null,
-              lines: [
-                {
-                  id: "line-1",
-                  sortOrder: 0,
-                  guestDisplayName: null,
-                  dietaryNote: null,
-                  ticketType: {
-                    id: "ticket-member",
-                    title: "Member standard",
-                    audience: TicketAudience.MEMBER,
-                    price: 50,
-                  },
-                },
-                {
-                  id: "line-2",
-                  sortOrder: 1,
-                  guestDisplayName: "Jamie Included",
-                  dietaryNote: "",
-                  ticketType: {
-                    id: "ticket-guest",
-                    title: "Guest standard",
-                    audience: TicketAudience.GUEST,
-                    price: 25,
-                  },
-                },
-              ],
-              guestTicketRequests: [
-                {
-                  id: "gtr-approved",
-                  status: "APPROVED",
-                  requestedGuestCount: 1,
-                  guestDisplayName: "Alex Approved",
-                  dietaryNote: "",
-                  guestTicketType: {
-                    id: "ticket-guest",
-                    title: "Guest standard",
-                    price: 25,
-                  },
-                },
-                {
-                  id: "gtr-rejected",
-                  status: "REJECTED",
-                  requestedGuestCount: 1,
-                  guestDisplayName: "Sam Declined",
-                  dietaryNote: "",
-                  guestTicketType: {
-                    id: "ticket-guest",
-                    title: "Guest standard",
-                    price: 25,
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      },
-      isLoading: false,
-      refetch: vi.fn(),
-    } as never);
-    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
-      data: {
-        user: {
-          ticketOrders: [
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-member" },
-            },
-            {
-              status: TicketOrderStatus.PAID,
-              event: { id: "event-1" },
-              ticketType: { id: "ticket-guest" },
-            },
-          ],
-        },
-      },
-      isLoading: false,
-    } as never);
-
-    render(
-      <MemoryRouter>
-        <EventBookingWizard
-          section={{
-            id: "section-1",
-            name: "Events",
-            type: "EVENTS",
-            description: null,
-            purposeLinks: [
-              { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
-            ],
-          } as never}
-          event={{
-            id: "event-1",
-            title: "Annual Dinner",
-            bookingStartDateTime: "2025-01-01T00:00:00Z",
-            bookingEndDateTime: "2030-01-01T00:00:00Z",
-            maxGuestsWithoutModeratorApproval: 1,
-            ticketTypes: [
-              {
-                id: "ticket-member",
-                title: "Member standard",
-                audience: TicketAudience.MEMBER,
-                price: 50,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-              {
-                id: "ticket-guest",
-                title: "Guest standard",
-                audience: TicketAudience.GUEST,
-                price: 25,
-                userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
-              },
-            ],
-          } as never}
-        />
-      </MemoryRouter>
-    );
-
-    await user.click(screen.getByRole("button", { name: "Edit booking" }));
-    await user.click(screen.getByRole("button", { name: "Next" }));
-
-    expect(screen.queryByLabelText("How many guest tickets in total?")).not.toBeInTheDocument();
-    expect(screen.getByDisplayValue("Jamie Included")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Alex Approved")).toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Sam Declined")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Guest name")).toHaveValue("Pending Guest");
   });
 });

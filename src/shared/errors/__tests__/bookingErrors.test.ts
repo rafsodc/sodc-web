@@ -12,7 +12,7 @@ describe("booking and payment error mapping", () => {
     ["INELIGIBLE_TICKET_TYPE", "not eligible for one of the selected"],
     ["SELF_TICKET_REQUIRED", "ticket for yourself"],
     ["GUEST_BEFORE_SELF", "member ticket before"],
-    ["TOO_MANY_GUEST_LINES", "additional guest request"],
+    ["TOO_MANY_GUEST_LINES", "Reduce the number of guests"],
     ["INVALID_GUEST_FIELDS", "Review the guest names"],
     ["GUEST_APPROVAL_REQUIRED", "need moderator approval"],
     ["BOOKING_ALREADY_SUBMITTED", "already have a submitted booking"],
@@ -36,7 +36,7 @@ describe("booking and payment error mapping", () => {
   it.each([
     ["booking-submit", "We couldn’t submit your booking."],
     ["checkout-start", "We couldn’t start checkout."],
-    ["guest-request", "We couldn’t submit the guest request."],
+    ["guest-request", "We couldn’t update the booking."],
     ["payment-history", "We couldn’t load your payment history."],
   ] as const)("uses a safe %s fallback", (context, expected) => {
     const mapped = toBookingUserFacingError(

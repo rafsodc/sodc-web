@@ -1,101 +1,82 @@
 import { Alert, Box, Typography } from "@mui/material";
 import { formatGbpMajorAmount } from "../../../../shared/utils/currencyDisplay";
+import type { GuestDetailRow } from "../../hooks/bookingWizardModel";
 import { guestCountNeedsModerationNotice } from "../../utils/eventGuestPolicy";
-import type { ExtraGuestDetailRow, WizardMode } from "../../hooks/useBookingWizardState";
 
 interface ReviewStepProps {
-  wizardMode: WizardMode;
-  totalGuestCount: number;
-  extraGuestRequestCount: number;
-  includeGuest: boolean;
   selectedMember?: { title: string; price: number } | null;
-  selectedGuest?: { title: string } | null;
-  guestDisplayName: string;
-  guestDietaryNote: string;
-  extraGuestDetails: ExtraGuestDetailRow[];
+  memberDietaryNote: string;
+  guests: GuestDetailRow[];
+  guestTicketTypes: Array<{ id: string; title: string; price: number }>;
+  sitNextToLabels: string[];
+  accommodationRequested: boolean;
   maxGuestsWithoutModeratorApproval?: number | null;
+  editingExistingBooking: boolean;
 }
 
 export default function ReviewStep({
-  wizardMode,
-  totalGuestCount,
-  extraGuestRequestCount,
-  includeGuest,
   selectedMember,
-  selectedGuest,
-  guestDisplayName,
-  guestDietaryNote,
-  extraGuestDetails,
+  memberDietaryNote,
+  guests,
+  guestTicketTypes,
+  sitNextToLabels,
+  accommodationRequested,
   maxGuestsWithoutModeratorApproval,
+  editingExistingBooking,
 }: ReviewStepProps) {
-  const guestCountForNotice = wizardMode === "additionalGuests" ? extraGuestRequestCount : totalGuestCount;
+  const needsApproval = guestCountNeedsModerationNotice(
+    guests.length,
+    maxGuestsWithoutModeratorApproval
+  );
 
   return (
     <Box>
-      {guestCountNeedsModerationNotice(guestCountForNotice, maxGuestsWithoutModeratorApproval) ? (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Your guest count may require organiser review before all guest tickets are confirmed.
-        </Alert>
-      ) : null}
+      <Alert severity={needsApproval ? "warning" : "info"} sx={{ mb: 2 }}>
+        {needsApproval
+          ? `This complete booking will be sent for organiser approval because it has ${guests.length} guest${guests.length === 1 ? "" : "s"}. Payment will become available after approval.`
+          : "After you submit, you can proceed to payment for the complete booking."}
+        {editingExistingBooking && needsApproval
+          ? " Saving these changes will return the booking to awaiting approval."
+          : ""}
+      </Alert>
 
-      {wizardMode === "full" ? (
-        <Box component="dl" sx={{ m: 0, "& dt": { fontWeight: 600, mt: 1.5 }, "& dd": { m: 0 } }}>
-          <Typography component="dt" variant="body2">Your ticket</Typography>
-          <Typography component="dd" variant="body2" color="text.secondary">
-            {selectedMember?.title ?? "—"}
-            {selectedMember?.price != null ? ` · ${formatGbpMajorAmount(selectedMember.price)}` : ""}
-          </Typography>
+      <Box component="dl" sx={{ m: 0, "& dt": { fontWeight: 600, mt: 1.5 }, "& dd": { m: 0 } }}>
+        <Typography component="dt" variant="body2">Your ticket</Typography>
+        <Typography component="dd" variant="body2" color="text.secondary">
+          {selectedMember?.title ?? "—"}
+          {selectedMember?.price != null ? ` · ${formatGbpMajorAmount(selectedMember.price)}` : ""}
+          {memberDietaryNote.trim() ? ` · Dietary: ${memberDietaryNote.trim()}` : ""}
+        </Typography>
 
-          <Typography component="dt" variant="body2">Guest tickets</Typography>
-          <Typography component="dd" variant="body2" color="text.secondary">
-            {totalGuestCount === 0
-              ? "None"
-              : `${totalGuestCount} total${extraGuestRequestCount > 0 ? ` (${extraGuestRequestCount} via organiser review)` : ""}`}
-          </Typography>
+        <Typography component="dt" variant="body2">Seating preference</Typography>
+        <Typography component="dd" variant="body2" color="text.secondary">
+          {sitNextToLabels.length ? sitNextToLabels.join(", ") : "None"}
+        </Typography>
 
-          {includeGuest ? (
-            <>
-              <Typography component="dt" variant="body2">Guest on booking</Typography>
+        <Typography component="dt" variant="body2">Accommodation</Typography>
+        <Typography component="dd" variant="body2" color="text.secondary">
+          {accommodationRequested ? "Requested" : "Not requested"}
+        </Typography>
+
+        <Typography component="dt" variant="body2">Guests</Typography>
+        <Typography component="dd" variant="body2" color="text.secondary">
+          {guests.length === 0 ? "None" : guests.length}
+        </Typography>
+
+        {guests.map((guest, index) => {
+          const ticket = guestTicketTypes.find((candidate) => candidate.id === guest.ticketTypeId);
+          return (
+            <Box key={guest.bookingPlaceId ?? guest.bookingLineId ?? index}>
+              <Typography component="dt" variant="body2">Guest {index + 1}</Typography>
               <Typography component="dd" variant="body2" color="text.secondary">
-                {selectedGuest?.title ?? "—"} — {guestDisplayName.trim()}
-                {guestDietaryNote.trim() ? ` · Dietary: ${guestDietaryNote.trim()}` : ""}
-              </Typography>
-            </>
-          ) : null}
-
-          {extraGuestRequestCount > 0
-            ? extraGuestDetails.slice(0, extraGuestRequestCount).map((guest, index) => (
-                <Box key={index}>
-                  <Typography component="dt" variant="body2">
-                    {extraGuestRequestCount === 1 ? "Additional guest" : `Additional guest ${index + 1}`}
-                  </Typography>
-                  <Typography component="dd" variant="body2" color="text.secondary">
-                    {guest.guestDisplayName.trim() || "—"}
-                    {guest.dietaryNote.trim() ? ` · Dietary: ${guest.dietaryNote.trim()}` : ""}
-                  </Typography>
-                </Box>
-              ))
-            : null}
-        </Box>
-      ) : (
-        <Box component="dl" sx={{ m: 0, "& dt": { fontWeight: 600, mt: 1.5 }, "& dd": { m: 0 } }}>
-          <Typography component="dt" variant="body2">Guest tickets requested</Typography>
-          <Typography component="dd" variant="body2" color="text.secondary">
-            {extraGuestRequestCount}
-          </Typography>
-          {extraGuestDetails.slice(0, extraGuestRequestCount).map((guest, index) => (
-            <Box key={index}>
-              <Typography component="dt" variant="body2">
-                {extraGuestRequestCount === 1 ? "Guest" : `Guest ${index + 1}`}
-              </Typography>
-              <Typography component="dd" variant="body2" color="text.secondary">
-                {guest.guestDisplayName.trim() || "—"}
+                {guest.guestDisplayName.trim()} · {ticket?.title ?? "Guest ticket"}
+                {ticket ? ` · ${formatGbpMajorAmount(ticket.price)}` : ""}
                 {guest.dietaryNote.trim() ? ` · Dietary: ${guest.dietaryNote.trim()}` : ""}
               </Typography>
             </Box>
-          ))}
-        </Box>
-      )}
+          );
+        })}
+      </Box>
     </Box>
   );
 }

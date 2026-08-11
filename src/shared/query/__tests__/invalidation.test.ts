@@ -65,11 +65,14 @@ describe("cross-view query invalidation", () => {
     queryClient.clear();
   });
 
-  it("invalidates the global My Bookings list", async () => {
+  it("invalidates every member booking and payment view", async () => {
     const { queryClient, invalidateQueries } = queryClientWithInvalidateSpy();
 
     await invalidateMyBookings(queryClient);
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookings"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingsForEvent"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyTicketOrders"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingPaymentAdjustments"] });
   });
 });

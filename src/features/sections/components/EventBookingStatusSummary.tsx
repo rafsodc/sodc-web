@@ -4,7 +4,6 @@ import {
   Button,
   Chip,
   Paper,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -15,16 +14,12 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
 import { ROUTES } from "../../../constants/routes";
-import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import {
-  getEventBookingNextSteps,
-  getEventBookingStatusHeading,
   buildBookingTicketRowsWithPaymentStatus,
   bookingTicketPaymentChipColor,
   isBookingPaymentComplete,
   summarizeEventBookingPayment,
-  summarizeGuestTicketRequests,
   type EventBookingPaymentAdjustmentInput,
   type EventBookingPaymentOrderInput,
   type EventBookingPaymentSummary,
@@ -34,6 +29,7 @@ type TerminalBooking = NonNullable<GetMyBookingsForEventData["user"]>["bookings"
 
 export interface EventBookingStatusSummaryProps {
   booking: TerminalBooking;
+  paymentBooking?: TerminalBooking | null;
   eventId: string;
   eventTitle: string;
   ticketOrders: EventBookingPaymentOrderInput[];
@@ -43,41 +39,60 @@ export interface EventBookingStatusSummaryProps {
   payingTicketTypeId?: string | null;
 }
 
-function paymentChipColor(
-  summary: EventBookingPaymentSummary
-): "success" | "warning" | "error" | "info" | "default" {
-  switch (summary.severity) {
-    case "success":
-      return "success";
-    case "warning":
-      return "warning";
-    case "error":
-      return "error";
-    case "info":
-      return "info";
-    default:
-      return "default";
+function bookingStatusCard(
+  booking: TerminalBooking,
+  paymentSummary: EventBookingPaymentSummary,
+  hasSeparatePaymentBooking: boolean
+) {
+  if (booking.approvalStatus === "PENDING") {
+    return {
+      heading: "Awaiting approval",
+      severity: "warning" as const,
+      message: hasSeparatePaymentBooking
+        ? "Your changes are with the organiser for approval. Your current approved booking remains active and can still be paid while you wait."
+        : "Your complete booking is with the organiser for approval. Payment will become available when it is approved.",
+    };
   }
-}
-
-function guestStatusLabel(summary: ReturnType<typeof summarizeGuestTicketRequests>): string {
-  if (summary.pendingCount > 0) {
-    return `${summary.pendingCount} pending review`;
+  if (booking.approvalStatus === "REJECTED") {
+    return {
+      heading: "Changes requested",
+      severity: "error" as const,
+      message: booking.approvalNote?.trim() || "The organiser has asked you to update your booking.",
+    };
   }
-  if (summary.approvedCount > 0 && summary.rejectedCount > 0) {
-    return `${summary.approvedCount} approved, ${summary.rejectedCount} declined`;
+  if (paymentSummary.kind === "pending" || paymentSummary.kind === "adjustment_charge" || paymentSummary.kind === "adjustment_refund") {
+    return {
+      heading: "Payment processing",
+      severity: "info" as const,
+      message: paymentSummary.kind === "adjustment_refund"
+        ? "Your booking change is saved and the refund is being processed."
+        : "Your payment is being processed. This page will update when it completes.",
+    };
   }
-  if (summary.approvedCount > 0) {
-    return `${summary.approvedCount} approved`;
+  if (isBookingPaymentComplete(paymentSummary) || booking.status === "CONFIRMED") {
+    return {
+      heading: "Confirmed",
+      severity: "success" as const,
+      message: "Your booking is confirmed. You can edit unpaid guest details while the booking window remains open.",
+    };
   }
-  if (summary.rejectedCount > 0) {
-    return `${summary.rejectedCount} declined`;
+  if (paymentSummary.kind === "failed") {
+    return {
+      heading: "Payment required",
+      severity: "error" as const,
+      message: "The last payment attempt did not complete. Try payment again to confirm the booking.",
+    };
   }
-  return "None";
+  return {
+    heading: "Payment required",
+    severity: "warning" as const,
+    message: "Your booking is approved. Pay for all tickets to confirm it.",
+  };
 }
 
 export default function EventBookingStatusSummary({
   booking,
+  paymentBooking,
   eventId,
   eventTitle,
   ticketOrders,
@@ -86,58 +101,54 @@ export default function EventBookingStatusSummary({
   onPayNow,
   payingTicketTypeId,
 }: EventBookingStatusSummaryProps) {
+  const effectivePaymentBooking = paymentBooking ?? (
+    booking.approvalStatus === "NOT_REQUIRED" || booking.approvalStatus === "APPROVED"
+      ? booking
+      : null
+  );
+  const paymentDisplayBooking = effectivePaymentBooking ?? booking;
+  const hasSeparatePaymentBooking =
+    effectivePaymentBooking != null && effectivePaymentBooking.id !== booking.id;
   const paymentSummary = summarizeEventBookingPayment({
-    booking,
+    booking: paymentDisplayBooking,
     eventId,
     ticketOrders,
     adjustments: paymentAdjustments,
   });
-  const guestSummary = summarizeGuestTicketRequests(booking.guestTicketRequests);
   const ticketRows = buildBookingTicketRowsWithPaymentStatus({
-    booking,
+    booking: paymentDisplayBooking,
     eventId,
     ticketOrders,
   });
-  const nextSteps = getEventBookingNextSteps({
-    bookingStatus: booking.status,
-    paymentSummary,
-    guestSummary,
-  });
+  const statusCard = bookingStatusCard(booking, paymentSummary, hasSeparatePaymentBooking);
   const showPayNow =
     Boolean(onPayNow) &&
+    effectivePaymentBooking != null &&
     paymentSummary.unpaidTicketTypeId != null &&
     !isBookingPaymentComplete(paymentSummary) &&
     paymentSummary.kind !== "adjustment_refund";
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mt: 3 }}>
-      <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600 }}>
-        Your booking
+      <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
+        {statusCard.heading}
       </Typography>
-
-      <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-        <Chip
-          size="small"
-          label={getBookingStatusLabel(booking.status)}
-          color={booking.status === "CONFIRMED" ? "success" : "default"}
-        />
-        <Chip size="small" label={paymentSummary.label} color={paymentChipColor(paymentSummary)} />
-        {(guestSummary.approvedCount > 0 || guestSummary.pendingCount > 0 || guestSummary.rejectedCount > 0) ? (
-          <Chip
-            size="small"
-            label={`Guests: ${guestStatusLabel(guestSummary)}`}
-            color={guestSummary.hasPending ? "warning" : "default"}
-            variant={guestSummary.hasPending ? "filled" : "outlined"}
-          />
-        ) : null}
-      </Stack>
-
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {getEventBookingStatusHeading(booking)} for <strong>{eventTitle}</strong>.
+        Your booking for <strong>{eventTitle}</strong>
       </Typography>
+
+      <Alert severity={statusCard.severity} sx={{ mb: 2 }}>
+        {statusCard.message}
+      </Alert>
 
       {ticketRows.length > 0 ? (
-        <Table size="small" sx={{ mb: 2 }}>
+        <>
+          {hasSeparatePaymentBooking ? (
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Current active booking
+            </Typography>
+          ) : null}
+          <Table size="small" sx={{ mb: 2 }}>
           <TableHead>
             <TableRow>
               <TableCell>Ticket</TableCell>
@@ -151,11 +162,6 @@ export default function EventBookingStatusSummary({
               <TableRow key={row.id}>
                 <TableCell>
                   {row.ticketTitle}
-                  {row.source === "approved_guest_request" ? (
-                    <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
-                      (approved extra guest)
-                    </Typography>
-                  ) : null}
                 </TableCell>
                 <TableCell>{row.guestName ?? "—"}</TableCell>
                 <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
@@ -170,24 +176,9 @@ export default function EventBookingStatusSummary({
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </>
       ) : null}
-
-      <Alert
-        severity={
-          paymentSummary.kind === "failed"
-            ? "error"
-            : guestSummary.hasPending ||
-                paymentSummary.kind === "pending" ||
-                paymentSummary.kind === "not_started" ||
-                paymentSummary.kind === "partial"
-              ? "warning"
-              : "info"
-        }
-        sx={{ mb: 2 }}
-      >
-        {nextSteps}
-      </Alert>
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
         {showPayNow ? (
@@ -200,12 +191,14 @@ export default function EventBookingStatusSummary({
             {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay for all tickets"}
           </Button>
         ) : null}
-        <Button variant="outlined" onClick={onEditBooking}>
+        <Button variant={booking.approvalStatus === "REJECTED" ? "contained" : "outlined"} onClick={onEditBooking}>
           Edit booking
         </Button>
-        <Button component={RouterLink} to={ROUTES.MY_BOOKINGS} variant="text">
-          View in My Bookings
-        </Button>
+        {booking.approvalStatus !== "REJECTED" ? (
+          <Button component={RouterLink} to={ROUTES.MY_BOOKINGS} variant="text">
+            View in My Bookings
+          </Button>
+        ) : null}
       </Box>
     </Paper>
   );

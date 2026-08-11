@@ -67,7 +67,7 @@ describe("MyBookings", () => {
     expect(screen.getByText("Spring Ball")).toBeInTheDocument();
     expect(screen.getByText("Events Section")).toBeInTheDocument();
     expect(screen.getByText("Submitted")).toBeInTheDocument();
-    expect(screen.getByText(/1 guest request pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 guest awaiting approval/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View booking" })).toHaveAttribute("href", "/sections/section-1");
   });
 
@@ -116,7 +116,7 @@ describe("MyBookings", () => {
     );
 
     expect(screen.getByText(/Member ticket · Guest ticket \(Alex Guest\)/)).toBeInTheDocument();
-    expect(screen.getByText(/1 guest request approved/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 guest approved/i)).toBeInTheDocument();
   });
 
   it("shows pending guest names awaiting approval in the ticket summary line", () => {
@@ -164,7 +164,7 @@ describe("MyBookings", () => {
     );
 
     expect(screen.getByText(/Guest ticket \(Sam Extra\) — pending confirmation/)).toBeInTheDocument();
-    expect(screen.getByText(/1 guest request pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 guest awaiting approval/i)).toBeInTheDocument();
   });
 
   it("shows continue booking for drafts", () => {
