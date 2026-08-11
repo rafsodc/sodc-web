@@ -1,11 +1,11 @@
 import { TicketOrderStatus } from "@dataconnect/admin-generated";
 import type {
-  GetBookingsForBookerAndEventData,
   GetTicketOrdersForBookerAndEventData,
 } from "@dataconnect/admin-generated";
 import { bookingApprovalAllowsPayment } from "./bookingRules";
+import type { HydratedBookingRow } from "./bookingQueryHydration";
 
-type BookingRow = NonNullable<GetBookingsForBookerAndEventData["user"]>["bookings"][number];
+type BookingRow = HydratedBookingRow;
 type TicketOrderRow = NonNullable<GetTicketOrdersForBookerAndEventData["user"]>["ticketOrders"][number];
 
 export interface BookingCheckoutPlaceItem {

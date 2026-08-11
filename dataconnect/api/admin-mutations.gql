@@ -1321,6 +1321,14 @@ query GetSectionByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
 query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
   user(id: $bookerId) {
     id
+    # Keep order status as a sibling selection. Nesting TicketOrder below
+    # Booking -> BookingLine -> BookingPlace -> BookingPlacePaymentAllocation
+    # produces PostgreSQL aliases that collide after its 63-character limit.
+    ticketOrders: ticketOrders_on_user(where: { eventId: { eq: $eventId } }) {
+      id
+      status
+      stripePaymentIntentId
+    }
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
@@ -1345,15 +1353,11 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
           id
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
+            ticketOrderId
             allocatedAmountMinor
             refundedAmountMinor
             stripeRefundId
             createdAt
-            ticketOrder {
-              id
-              status
-              stripePaymentIntentId
-            }
           }
         }
         sortOrder

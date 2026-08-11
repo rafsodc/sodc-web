@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { getDataConnect } from "firebase-admin/data-connect";
 import {
   BookingApprovalStatus,
   BookingPaymentAdjustmentStatus,
@@ -8,12 +7,7 @@ import {
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
-
-const connectorConfig = {
-  connector: "booking-service",
-  serviceId: "sodc-web-service",
-  location: "europe-west2",
-};
+import { getBookingServiceDataConnect } from "./bookingServiceDataConnect";
 
 export const MAX_ATOMIC_BOOKING_LINES = 100;
 
@@ -102,8 +96,8 @@ export function planBookingPlaces(args: {
   };
 }
 
-interface BookingData {
-  id: UUIDString;
+interface CompleteBookingVariables {
+  bookingId: UUIDString;
   eventId: UUIDString;
   bookerId: string;
   clientSubmissionKey: string;
@@ -117,33 +111,25 @@ interface BookingData {
   accommodationNote?: string | null;
   createdBy: string;
   updatedBy: string;
-}
-
-interface BookingPlaceData {
-  id: UUIDString;
-  eventId: UUIDString;
-  bookerId: string;
-  createdBy: string;
-  updatedBy: string;
-}
-
-interface BookingLineData {
-  id: UUIDString;
-  bookingPlaceId: UUIDString;
-  bookingId: UUIDString;
-  ticketTypeId: UUIDString;
-  guestUserId?: string | null;
-  guestDisplayName?: string | null;
-  dietaryNote?: string | null;
-  sortOrder: number;
-  createdBy: string;
-  updatedBy: string;
-}
-
-interface CompleteBookingVariables {
-  booking: BookingData;
-  bookingPlaces: BookingPlaceData[];
-  bookingLines: BookingLineData[];
+  bookingPlaces: Array<{
+    id: UUIDString;
+    eventId: UUIDString;
+    bookerId: string;
+    createdBy: string;
+    updatedBy: string;
+  }>;
+  bookingLines: Array<{
+    id: UUIDString;
+    bookingPlaceId: UUIDString;
+    bookingId: UUIDString;
+    ticketTypeId: UUIDString;
+    guestUserId?: string | null;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    sortOrder: number;
+    createdBy: string;
+    updatedBy: string;
+  }>;
 }
 
 export interface CompleteBookingPersistenceInput {
@@ -163,22 +149,20 @@ export interface CompleteBookingPersistenceInput {
 
 function completeVariables(input: CompleteBookingPersistenceInput): CompleteBookingVariables {
   return {
-    booking: {
-      id: input.bookingId,
-      eventId: input.eventId,
-      bookerId: input.bookerId,
-      clientSubmissionKey: input.idempotencyKey,
-      revisionGroupId: input.revisionGroupId,
-      revisionNumber: input.revisionNumber,
-      supersedesBookingId: input.supersedesBookingId ?? null,
-      status: BookingStatus.SUBMITTED,
-      approvalStatus: input.approvalStatus,
-      sitNextToUserIds: input.sitNextToUserIds,
-      accommodationRequested: input.accommodationRequested,
-      accommodationNote: input.accommodationRequested ? input.accommodationNote ?? null : null,
-      createdBy: "system",
-      updatedBy: "system",
-    },
+    bookingId: input.bookingId,
+    eventId: input.eventId,
+    bookerId: input.bookerId,
+    clientSubmissionKey: input.idempotencyKey,
+    revisionGroupId: input.revisionGroupId,
+    revisionNumber: input.revisionNumber,
+    supersedesBookingId: input.supersedesBookingId ?? null,
+    status: BookingStatus.SUBMITTED,
+    approvalStatus: input.approvalStatus,
+    sitNextToUserIds: input.sitNextToUserIds,
+    accommodationRequested: input.accommodationRequested,
+    accommodationNote: input.accommodationRequested ? input.accommodationNote ?? null : null,
+    createdBy: "system",
+    updatedBy: "system",
     bookingPlaces: input.placePlan.newBookingPlaceIds.map((id) => ({
       id,
       eventId: input.eventId,
@@ -202,7 +186,7 @@ function completeVariables(input: CompleteBookingPersistenceInput): CompleteBook
 }
 
 export async function persistInitialBooking(input: CompleteBookingPersistenceInput): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, CompleteBookingVariables>(
+  await getBookingServiceDataConnect().executeMutation<unknown, CompleteBookingVariables>(
     "CreateCompleteBookingFromCallable",
     completeVariables(input)
   );
@@ -210,7 +194,7 @@ export async function persistInitialBooking(input: CompleteBookingPersistenceInp
 
 export async function persistPendingBookingRevision(input: CompleteBookingPersistenceInput): Promise<void> {
   if (!input.supersedesBookingId) throw new Error("Pending revision requires supersedesBookingId");
-  await getDataConnect(connectorConfig).executeMutation<unknown, CompleteBookingVariables & { supersedesBookingId: UUIDString }>(
+  await getBookingServiceDataConnect().executeMutation<unknown, CompleteBookingVariables & { supersedesBookingId: UUIDString }>(
     "CreatePendingBookingRevisionFromCallable",
     { ...completeVariables(input), supersedesBookingId: input.supersedesBookingId }
   );
@@ -222,7 +206,7 @@ export async function persistActiveBookingRevision(args: {
   deltaAmountMinor: number;
   adjustmentStatus: BookingPaymentAdjustmentStatus;
 }): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, CompleteBookingVariables & {
+  await getBookingServiceDataConnect().executeMutation<unknown, CompleteBookingVariables & {
     revisionGroupId: UUIDString;
     bookingId: UUIDString;
     supersededBookingId: UUIDString;
@@ -249,7 +233,7 @@ export async function activateApprovedBookingRevision(args: {
   deltaAmountMinor: number;
   adjustmentStatus: BookingPaymentAdjustmentStatus;
 }): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, {
+  await getBookingServiceDataConnect().executeMutation<unknown, {
     bookingId: UUIDString;
     revisionGroupId: UUIDString;
     activeBookingId: UUIDString;
