@@ -5,6 +5,7 @@ Persistence for member ticket booking. The current redesign is tracked by epic [
 ## Decisions (from issue discussion)
 
 - **Guest cap before moderator approval**: stored **per event** as required `maxGuestsWithoutModeratorApproval: Int!`. It counts guest places only, excluding the member. `0` means every booking containing a guest requires approval; null is not a valid event policy.
+- **Legacy null policy**: the #543 migration backfills any existing null limit to `0` before applying `NOT NULL`, which fails closed by requiring approval for every guest booking until an organiser chooses another value.
 - **Ticket types**: each `TicketType` has **`audience: TicketAudience`** (**`MEMBER`** | **`GUEST`**). Validation in the booking rules layer must prevent booking a `GUEST` type against the member line and vice versa; pricing can differ per type.
 - **Uniform guest representation**: every guest is a `BookingLine` whose ticket type has `GUEST` audience. There is no separate representation for the first guest in the redesigned contract.
 - **Whole-booking approval**: `Booking.approvalStatus` applies to one exact booking revision and is separate from booking lifecycle and payment state.

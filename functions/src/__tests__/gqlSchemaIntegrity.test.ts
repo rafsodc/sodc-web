@@ -12,6 +12,11 @@ function readSchemaFile(): string {
   return fs.readFileSync(p, "utf8");
 }
 
+function readMigrationFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "..", "dataconnect", "migrations", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
 function extractAllOperationHeaders(source: string): Array<{ name: string; header: string }> {
   const opHeader = /(query|mutation)\s+([A-Za-z0-9_]+)/g;
   const results: Array<{ name: string; header: string }> = [];
@@ -242,6 +247,20 @@ describe("GQL schema integrity", () => {
 
     const eventMutations = readApiFile("user-group-mutations.gql");
     expect(eventMutations.match(/\$maxGuestsWithoutModeratorApproval: Int!/g)).toHaveLength(2);
+  });
+
+  it("backfills legacy null guest limits before applying the non-null constraint", () => {
+    const migration = readMigrationFile(
+      "2026-08-11-issue-543-required-guest-approval-limit.sql",
+    );
+    const backfill = migration.indexOf(
+      "SET max_guests_without_moderator_approval = 0",
+    );
+    const constraint = migration.indexOf(
+      "ALTER COLUMN max_guests_without_moderator_approval SET NOT NULL",
+    );
+    expect(backfill).toBeGreaterThanOrEqual(0);
+    expect(constraint).toBeGreaterThan(backfill);
   });
 
   it("keeps booking approval writes behind the server-only callable boundary", () => {

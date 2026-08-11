@@ -244,6 +244,9 @@ export function approvalRelevantGuestDetailsChanged(
   revisedGuests: ApprovalRelevantGuest[]
 ): boolean {
   if (previousGuests.length !== revisedGuests.length) return true;
+  // Compare as a multiset because ordering is not approval-relevant. Two
+  // unlinked guests with the same normalized name and ticket type are
+  // intentionally indistinguishable: swapping them changes no policy data.
   const previous = previousGuests.map(approvalIdentityKey).sort();
   const revised = revisedGuests.map(approvalIdentityKey).sort();
   return previous.some((key, index) => key !== revised[index]);
