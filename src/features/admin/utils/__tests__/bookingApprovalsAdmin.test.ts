@@ -10,6 +10,7 @@ import {
   activeEventTicketRows,
   currentActiveBookings,
   eventTicketRowsCsv,
+  type EventAttendeeTicketRow,
   pendingBookingRevisions,
   previousActiveBooking,
 } from "../bookingApprovalsAdmin";
@@ -98,5 +99,38 @@ describe("booking approval admin model", () => {
       booking({ id: "pending", approvalStatus: BookingApprovalStatus.PENDING }),
       booking({ id: "rejected", approvalStatus: BookingApprovalStatus.REJECTED }),
     ])).toEqual([]);
+  });
+
+  it("neutralizes spreadsheet formulas in exported attendee-controlled cells", () => {
+    const rows: EventAttendeeTicketRow[] = [
+      {
+        key: "booking-1:line-1",
+        bookingId: "booking-1",
+        revisionNumber: 1,
+        attendeeName: "=2+2",
+        audience: TicketAudience.GUEST,
+        ticketType: "+Guest ticket",
+        dietaryNote: '-HYPERLINK("https://example.com","click")',
+        approvalStatus: BookingApprovalStatus.APPROVED,
+        paymentState: "UNPAID",
+      },
+      {
+        key: "booking-1:line-2",
+        bookingId: "booking-1",
+        revisionNumber: 1,
+        attendeeName: "@SUM(1,1)",
+        audience: TicketAudience.GUEST,
+        ticketType: "Guest ticket",
+        dietaryNote: "No nuts, please",
+        approvalStatus: BookingApprovalStatus.APPROVED,
+        paymentState: "PAID",
+      },
+    ];
+
+    expect(eventTicketRowsCsv(rows)).toBe([
+      "Attendee,Audience,Ticket,Dietary requirements,Approval,Payment,Revision",
+      "'=2+2,GUEST,'+Guest ticket,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID,1",
+      "\"'@SUM(1,1)\",GUEST,Guest ticket,\"No nuts, please\",APPROVED,PAID,1",
+    ].join("\n"));
   });
 });

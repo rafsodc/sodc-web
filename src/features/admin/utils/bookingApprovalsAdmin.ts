@@ -114,7 +114,8 @@ export function activeEventTicketRows(
 }
 
 function csvCell(value: string | number): string {
-  const text = String(value);
+  const rawText = String(value);
+  const text = /^[=+\-@]/.test(rawText) ? `'${rawText}` : rawText;
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
