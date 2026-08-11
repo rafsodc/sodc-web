@@ -484,8 +484,10 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   approvalReviewedBy: User
   approvalReviewedAt: Timestamp
   approvalNote: String
-  # Booker-level preferences captured during booking flow (#49).
+  # Legacy read fallback only. New submissions store every attendee's dietary
+  # requirements on their BookingLine; removed with legacy rows in #548.
   bookerDietaryNote: String
+  # Booker-level preferences captured during booking flow (#49).
   sitNextToUserIds: [String!]
   accommodationRequested: Boolean! @default(value: false)
   accommodationNote: String

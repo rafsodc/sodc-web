@@ -8,6 +8,7 @@ Persistence for member ticket booking. The current redesign is tracked by epic [
 - **Legacy null policy**: the #543 migration backfills any existing null limit to `0` before applying `NOT NULL`, which fails closed by requiring approval for every guest booking until an organiser chooses another value.
 - **Ticket types**: each `TicketType` has **`audience: TicketAudience`** (**`MEMBER`** | **`GUEST`**). Validation in the booking rules layer must prevent booking a `GUEST` type against the member line and vice versa; pricing can differ per type.
 - **Uniform guest representation**: every guest is a `BookingLine` whose ticket type has `GUEST` audience. There is no separate representation for the first guest in the redesigned contract.
+- **Dietary requirements**: every attendee's dietary note belongs to their `BookingLine`, including the member ticket. `Booking.bookerDietaryNote` is a temporary legacy read fallback only and is removed by #548.
 - **Whole-booking approval**: `Booking.approvalStatus` applies to one exact booking revision and is separate from booking lifecycle and payment state.
 - **Reapproval**: adding/removing a guest, changing guest identity/name, or changing guest ticket type is approval-relevant. Dietary-only edits and guest ordering are not.
 - **Guest removal and payment**: a member may remove a guest only when that guest place has no paid allocation. Paid guest removal is blocked until the later refund workflow is implemented.
@@ -77,7 +78,7 @@ erDiagram
     string approval_reviewed_by_user_id "nullable"
     timestamp approval_reviewed_at "nullable"
     string approval_note "nullable"
-    string booker_dietary_note "nullable"
+    string booker_dietary_note "legacy nullable fallback; removed by #548"
     string[] sit_next_to_user_ids "nullable list of user ids"
     boolean accommodation_requested "default false"
     string accommodation_note "nullable"
@@ -133,7 +134,7 @@ erDiagram
 | **Event → guest policy** | Required per-event limit on guest places that can proceed without moderator approval. |
 | **Booking** | One **booker** (`User`) for one **event/revision**; owns lifecycle and whole-revision approval state plus booker preferences. |
 | **BookingPlace** | Durable identity for one member/guest ticket within an event. It survives revisions and is the target for payment allocation and future refunds. |
-| **BookingLine** | Revision snapshot of one priced place. New lines reference `BookingPlace`; the relation is temporarily nullable only for legacy rows/write paths removed by #548. |
+| **BookingLine** | Revision snapshot of one priced place, including that attendee's dietary note. New lines reference `BookingPlace`; the relation is temporarily nullable only for legacy rows/write paths removed by #548. |
 | **BookingPlacePaymentAllocation** | Attributes an order amount directly to `BookingPlace`, so revisions never rewrite payment history and deletion/refunds are evaluated per ticket rather than by ticket-type totals. |
 | **GuestTicketRequest** | Legacy split representation only. New submission and moderation contracts use `BookingLine` and `Booking.approvalStatus`; removal is tracked by #548. |
 

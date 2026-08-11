@@ -84,7 +84,7 @@ export function hydrateFormFromExistingBooking(booking: BookingRow): WizardFormS
     extraGuestDetails: Array.from({ length: extraCount }, (_, index) =>
       flattenedExtraGuests[index] ?? { guestDisplayName: "", dietaryNote: "" }
     ),
-    bookerDietaryNote: booking.bookerDietaryNote ?? "",
+    bookerDietaryNote: memberLine?.dietaryNote ?? booking.bookerDietaryNote ?? "",
     sitNextToUserIds: booking.sitNextToUserIds ?? [],
     accommodationRequested: booking.accommodationRequested === true,
   };

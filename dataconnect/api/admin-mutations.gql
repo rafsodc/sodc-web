@@ -1992,7 +1992,6 @@ mutation UpsertPaymentReconciliationException(
 
 mutation UpdateBookingPreferencesFromCallable(
   $id: UUID!
-  $bookerDietaryNote: String
   $sitNextToUserIds: [String!]
   $accommodationRequested: Boolean!
   $accommodationNote: String
@@ -2000,7 +1999,6 @@ mutation UpdateBookingPreferencesFromCallable(
   booking_update(
     id: $id
     data: {
-      bookerDietaryNote: $bookerDietaryNote
       sitNextToUserIds: $sitNextToUserIds
       accommodationRequested: $accommodationRequested
       accommodationNote: $accommodationNote

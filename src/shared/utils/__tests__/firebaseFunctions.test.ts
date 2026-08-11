@@ -358,8 +358,7 @@ describe("submitEventBooking", () => {
     const result = await submitEventBooking({
       idempotencyKey: BOOKING_UUID,
       eventId: EVENT_UUID,
-      lines: [{ ticketTypeId: TICKET_UUID, sortOrder: 1 }],
-      bookerDietaryNote: "  vegan  ",
+      lines: [{ ticketTypeId: TICKET_UUID, sortOrder: 1, dietaryNote: "  vegan  " }],
       sitNextToUserIds: ["  uid-1  ", "", "uid-2"],
       accommodationRequested: true,
       accommodationNote: "  ground floor  ",
@@ -367,7 +366,8 @@ describe("submitEventBooking", () => {
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "submitEventBooking");
     const sent = callable.mock.calls[0][0];
-    expect(sent.bookerDietaryNote).toBe("vegan");
+    expect(sent.lines[0].dietaryNote).toBe("vegan");
+    expect(sent).not.toHaveProperty("bookerDietaryNote");
     expect(sent.accommodationNote).toBe("ground floor");
     expect(sent.sitNextToUserIds).toEqual(["uid-1", "uid-2"]); // trimmed, blank filtered
     expect(result).toEqual({ bookingId: "b1", status: "CONFIRMED" });
@@ -385,7 +385,7 @@ describe("submitEventBooking", () => {
     const callable = vi.mocked(httpsCallable).mock.results[0].value;
     const sent = callable.mock.calls[0][0];
     expect(sent.accommodationRequested).toBe(false);
-    expect(sent.bookerDietaryNote).toBeNull();
+    expect(sent).not.toHaveProperty("bookerDietaryNote");
     expect(sent.accommodationNote).toBeNull();
     expect(sent.sitNextToUserIds).toEqual([]);
   });

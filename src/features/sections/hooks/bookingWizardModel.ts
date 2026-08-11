@@ -93,6 +93,7 @@ export function guestDetailsValidationError(args: {
 
 export function buildBookingSubmissionLines(args: {
   memberTicketTypeId: string;
+  memberDietaryNote: string;
   includeGuest: boolean;
   guestTicketTypeId: string | null;
   guestDisplayName: string;
@@ -104,7 +105,7 @@ export function buildBookingSubmissionLines(args: {
       sortOrder: 0,
       guestUserId: null,
       guestDisplayName: null,
-      dietaryNote: null,
+      dietaryNote: args.memberDietaryNote.trim() || null,
     },
   ];
   if (args.includeGuest && args.guestTicketTypeId) {
