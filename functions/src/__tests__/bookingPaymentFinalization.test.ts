@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { BookingApprovalStatus, BookingStatus, TicketOrderStatus } from "@dataconnect/admin-generated";
+import {
+  BookingApprovalStatus,
+  BookingPaymentAdjustmentStatus,
+  BookingStatus,
+  TicketOrderStatus,
+} from "@dataconnect/admin-generated";
 import { confirmBookingIfFullyPaid } from "../bookingPaymentFinalization";
 
 function booking(status: TicketOrderStatus, approvalStatus = BookingApprovalStatus.APPROVED) {
@@ -16,7 +21,6 @@ function booking(status: TicketOrderStatus, approvalStatus = BookingApprovalStat
       sortOrder: 0,
       ticketType: { id: "ticket-1", title: "Ticket", price: 50, audience: "MEMBER" },
     }],
-    guestTicketRequests: [],
   };
 }
 
@@ -34,7 +38,10 @@ describe("booking payment finalization", () => {
     );
     expect(result.confirmed).toBe(true);
     expect(updateBookingStatus).toHaveBeenCalledWith(expect.objectContaining({ status: BookingStatus.CONFIRMED }));
-    expect(settleAdjustments).toHaveBeenCalledWith({ revisionBookingId: "10000000-0000-4000-8000-000000000001" });
+    expect(settleAdjustments).toHaveBeenCalledWith({
+      revisionBookingId: "10000000-0000-4000-8000-000000000001",
+      status: BookingPaymentAdjustmentStatus.SETTLED,
+    });
   });
 
   it.each([

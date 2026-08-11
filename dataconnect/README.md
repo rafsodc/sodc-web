@@ -125,6 +125,25 @@ After making changes, generate and compile against the SDKs **before** changing 
 
 The Firebase CLI applies required SQL migration steps before updating the Data Connect schema and connectors. Granular targets such as `dataconnect:sodc-web-service:schema` or `dataconnect:sodc-web-service:api` are reserved for an explicitly planned expand/contract rollout; they are not the default application release path.
 
+### Issue #548 non-live booking reset
+
+The booking redesign removes the legacy guest-request table and makes every
+booking line's place required. Because the site has not launched, dev and beta
+use a deliberate one-time reset instead of preserving synthetic booking and
+payment rows. Before deploying this schema to either environment, back up the
+database and run:
+
+```bash
+npx firebase dataconnect:sql:shell --project <dev|beta> \
+  < dataconnect/migrations/2026-08-11-issue-548-reset-legacy-booking-data.sql
+```
+
+The script deletes booking, payment, and notification test data and cannot be
+undone without restoring the backup. It must not be used after the site is live
+or against production. After it commits, deploy Data Connect normally and
+complete the member booking, approval, payment, and admin attendee-list smoke
+tests before deploying Functions or Hosting.
+
 ## Related Documentation
 
 - [Firebase DataConnect Documentation](https://firebase.google.com/docs/data-connect)

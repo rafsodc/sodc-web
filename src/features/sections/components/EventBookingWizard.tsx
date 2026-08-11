@@ -124,8 +124,8 @@ export default function EventBookingWizard({
                 memberTicketTypes={wizard.memberTicketTypes}
                 memberTicketTypeId={wizard.memberTicketTypeId}
                 onMemberTicketTypeChange={wizard.setMemberTicketTypeId}
-                bookerDietaryNote={wizard.bookerDietaryNote}
-                onBookerDietaryNoteChange={wizard.setBookerDietaryNote}
+                memberDietaryNote={wizard.memberDietaryNote}
+                onMemberDietaryNoteChange={wizard.setMemberDietaryNote}
                 seatingOptions={wizard.seatingOptions}
                 seatingSearchInputValue={wizard.seatingSearchInputValue}
                 onSeatingSearchInputValueChange={wizard.setSeatingSearchInputValue}
@@ -154,7 +154,7 @@ export default function EventBookingWizard({
             {wizard.activeStep === 2 ? (
               <ReviewStep
                 selectedMember={wizard.selectedMember}
-                memberDietaryNote={wizard.bookerDietaryNote}
+                memberDietaryNote={wizard.memberDietaryNote}
                 guests={wizard.guests}
                 guestTicketTypes={wizard.guestTicketTypes}
                 sitNextToLabels={wizard.seatingOptions

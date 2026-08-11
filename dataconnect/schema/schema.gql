@@ -41,12 +41,6 @@ enum BookingApprovalStatus {
   REJECTED
 }
 
-enum GuestTicketRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 enum TicketOrderStatus {
   PENDING
   PAID
@@ -488,9 +482,6 @@ type Booking
   approvalReviewedBy: User
   approvalReviewedAt: Timestamp
   approvalNote: String
-  # Legacy read fallback only. New submissions store every attendee's dietary
-  # requirements on their BookingLine; removed with legacy rows in #548.
-  bookerDietaryNote: String
   # Booker-level preferences captured during booking flow (#49).
   sitNextToUserIds: [String!]
   accommodationRequested: Boolean! @default(value: false)
@@ -518,37 +509,13 @@ type BookingPlace @table {
 # One line per ticket; ticket type audience must match use (member vs guest). Guest identity optional.
 type BookingLine @table {
   id: UUID! @default(expr: "uuidV4()")
-  # Required by the redesigned submission service. Nullable only while legacy
-  # booking rows/write paths are removed across #544 and #548.
-  bookingPlace: BookingPlace
+  bookingPlace: BookingPlace!
   booking: Booking!
   ticketType: TicketType!
   guestUser: User
   guestDisplayName: String
   dietaryNote: String
   sortOrder: Int! @default(value: 0)
-  # HasAudit fields
-  createdAt: Timestamp! @default(expr: "request.time")
-  updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
-}
-
-# Legacy split guest-request representation. New booking submissions store every
-# guest as a BookingLine and use Booking.approvalStatus. Removed by #548 once all
-# consumers have moved to the redesigned contract.
-type GuestTicketRequest @table {
-  id: UUID! @default(expr: "uuidV4()")
-  booking: Booking!
-  status: GuestTicketRequestStatus! @default(value: PENDING)
-  requestedGuestCount: Int!
-  # Mirrors BookingLine guest fields so moderators see who/what is being requested (nullable on legacy rows).
-  guestTicketType: TicketType
-  guestDisplayName: String
-  dietaryNote: String
-  reviewedBy: User
-  reviewedAt: Timestamp
-  moderatorNote: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

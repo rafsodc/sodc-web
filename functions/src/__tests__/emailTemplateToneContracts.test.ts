@@ -7,8 +7,6 @@ const NAMED_MEMBER_TEMPLATES = [
   "bookingPendingApproval",
   "bookingApproved",
   "bookingChangesRequested",
-  "guestTicketRequestApproved",
-  "guestTicketRequestRejected",
   "membershipActivated",
   "membershipAccessRestricted",
   "ticketOrderPaid",
@@ -28,8 +26,6 @@ const EVENT_TEMPLATES = [
   "bookingPendingApproval",
   "bookingApproved",
   "bookingChangesRequested",
-  "guestTicketRequestApproved",
-  "guestTicketRequestRejected",
   "ticketOrderPaid",
   "ticketOrderFailed",
   "ticketOrderRefunded",
@@ -41,7 +37,6 @@ const MEMBER_TEMPLATES = [
 ] as const;
 
 const INTERNAL_TEMPLATES = [
-  "guestTicketRequestSubmittedModerator",
   "bookingPendingApprovalModerator",
   "newUserPendingApprovalAlert",
   "paymentReconciliationExceptionAlert",
@@ -105,7 +100,7 @@ describe("internal email tone contract (#477)", () => {
   });
 
   it.each([
-    ["guestTicketRequestSubmittedModerator", "moderationUrl"],
+    ["bookingPendingApprovalModerator", "moderationUrl"],
     ["newUserPendingApprovalAlert", "approveUsersUrl"],
     ["paymentReconciliationExceptionAlert", "reconciliationDashboardUrl"],
     ["paymentDisputeOpsAlert", "reconciliationDashboardUrl"],

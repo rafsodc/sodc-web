@@ -53,27 +53,6 @@ describe("notification recovery dispatch routing", () => {
     });
   });
 
-  it("targets only the original recipient for fan-out recovery", async () => {
-    const notifyGuestRequestModerators = vi.fn(async () => undefined);
-    const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, {
-      notifyGuestRequestModerators,
-    });
-    const payload: NotificationRecoveryPayload = {
-      version: 1,
-      kind: "GUEST_REQUEST_MODERATORS",
-      requestId: "33333333-3333-4333-8333-333333333333",
-      recipientEmail: "moderator@example.com",
-    };
-
-    await dispatch(candidate(payload), payload);
-
-    expect(notifyGuestRequestModerators).toHaveBeenCalledWith({
-      requestId: payload.requestId,
-      recipientEmails: [payload.recipientEmail],
-      appBaseUrl: APP_BASE_URL,
-    });
-  });
-
   it("recovers a booking moderation alert for only its original organiser", async () => {
     const notifyBookingPending = vi.fn(async () => undefined);
     const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyBookingPending });

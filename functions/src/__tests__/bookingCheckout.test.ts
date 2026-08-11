@@ -49,7 +49,6 @@ function booking(args: {
         audience: "MEMBER",
       },
     })),
-    guestTicketRequests: [],
   } as any;
 }
 

@@ -402,7 +402,6 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
       revisionNumber
       supersededAt
       clientSubmissionKey
-      bookerDietaryNote
       sitNextToUserIds
       accommodationRequested
       accommodationNote
@@ -435,21 +434,6 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
           firstName
           lastName
         }
-      }
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        guestDisplayName
-        dietaryNote
-        guestTicketType {
-          id
-          title
-          audience
-          price
-        }
-        reviewedAt
-        moderatorNote
       }
     }
   }
@@ -489,17 +473,6 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
           id
           title
           audience
-          price
-        }
-      }
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        guestDisplayName
-        guestTicketType {
-          id
-          title
           price
         }
       }
@@ -610,7 +583,6 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         revisionNumber
       }
       clientSubmissionKey
-      bookerDietaryNote
       sitNextToUserIds
       accommodationRequested
       accommodationNote
@@ -623,22 +595,6 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         firstName
         lastName
         email
-      }
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        reviewedAt
-        moderatorNote
-        createdAt
-        updatedAt
-        createdBy
-        updatedBy
-        reviewedBy {
-          id
-          firstName
-          lastName
-        }
       }
       lines: bookingLines_on_booking {
         id
@@ -663,56 +619,6 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           lastName
         }
         ticketType {
-          id
-          title
-          audience
-          price
-        }
-      }
-    }
-  }
-}
-
-# Admin: list guest ticket requests for moderation queue on an event.
-query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  event(id: $eventId) {
-    id
-    title
-    bookings: bookings_on_event(where: { supersededAt: { isNull: true } }) {
-      id
-      status
-      revisionNumber
-      revisionGroupId
-      supersededAt
-      supersedesBooking {
-        id
-        revisionNumber
-      }
-      booker {
-        id
-        firstName
-        lastName
-        email
-      }
-      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
-        id
-        status
-        requestedGuestCount
-        guestDisplayName
-        dietaryNote
-        moderatorNote
-        createdAt
-        reviewedAt
-        createdBy
-        updatedAt
-        updatedBy
-        reviewedBy {
-          id
-          firstName
-          lastName
-          email
-        }
-        guestTicketType {
           id
           title
           audience

@@ -103,7 +103,6 @@ function booking(approvalStatus: BookingApprovalStatus, prices = [50]): any {
       sortOrder: index,
       ticketType: { id: TICKET_TYPE_ID, title: "Member ticket", price, audience: TicketAudience.MEMBER },
     })),
-    guestTicketRequests: [],
   };
 }
 

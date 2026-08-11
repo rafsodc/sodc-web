@@ -4,7 +4,6 @@ import {
   BookingApprovalStatus,
   BookingPaymentAdjustmentStatus,
   BookingStatus,
-  GuestTicketRequestStatus,
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
@@ -264,29 +263,4 @@ export async function activateApprovedBookingRevision(args: {
     approvalNote: args.approvalNote?.trim() || null,
     orchestrationKey: `booking-approval:${args.bookingId}`,
   });
-}
-
-export interface LegacyGuestTicketRequestData {
-  id: UUIDString;
-  bookingId: UUIDString;
-  status: GuestTicketRequestStatus;
-  requestedGuestCount: number;
-  guestTicketTypeId: UUIDString;
-  guestDisplayName: string;
-  dietaryNote?: string | null;
-  reviewedById?: string | null;
-  reviewedAt?: string | null;
-  moderatorNote?: string | null;
-  createdBy: string;
-  updatedBy: string;
-}
-
-/** Compatibility only; remove with the legacy guest-request flow in #548. */
-export async function persistLegacyGuestTicketRequests(
-  requests: readonly LegacyGuestTicketRequestData[]
-): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, { requests: readonly LegacyGuestTicketRequestData[] }>(
-    "CreateLegacyGuestTicketRequestsFromCallable",
-    { requests }
-  );
 }

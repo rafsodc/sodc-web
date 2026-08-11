@@ -44,11 +44,6 @@ describe("GQL schema integrity", () => {
     // Operations listed here have been deliberately moved to server-only callable
     // paths and must NOT appear as client-callable in future.
     const serverOnlyOps = new Set([
-      // booking-mutations.gql: all now routed through submitEventBooking callable
-      "CreateBookingDraft",
-      "AddBookingLine",
-      "UpdateBookingStatus",
-      "CreateGuestTicketRequest",
       // user-mutations.gql: routed through subscribeToUserGroup / registerForSectionCallable
       "RegisterForSection",
       "SubscribeToUserGroup",
@@ -133,22 +128,6 @@ describe("GQL schema integrity", () => {
     }
   });
 
-  it("CreateBookingDraft binds bookerId to auth.uid server-side", () => {
-    // If bookerId were client-supplied a user could create bookings attributed
-    // to another user's account.
-    const bookingMutations = readApiFile("booking-mutations.gql");
-
-    const idx = bookingMutations.indexOf("mutation CreateBookingDraft");
-    expect(idx).toBeGreaterThanOrEqual(0);
-    const end = bookingMutations.indexOf("\n}", idx);
-    const block = bookingMutations.slice(idx, end + 2);
-
-    expect(
-      block,
-      "CreateBookingDraft must use bookerId_expr: \"auth.uid\" — not a client-supplied bookerId",
-    ).toContain("bookerId_expr: \"auth.uid\"");
-  });
-
   it("admin-only operations in user-group-mutations.gql require both admin and enabled claims", () => {
     // Requiring only admin without enabled would let a disabled admin retain write access.
     const groupMutations = readApiFile("user-group-mutations.gql");
@@ -206,7 +185,6 @@ describe("GQL schema integrity", () => {
       "type BookingLine",
       "type BookingPlacePaymentAllocation",
       "type TicketOrder",
-      "type GuestTicketRequest",
       "type PaymentWebhookEvent",
       "type NotificationDelivery",
     ];
@@ -333,10 +311,10 @@ describe("GQL schema integrity", () => {
     const lineEnd = schema.indexOf("\n}", lineStart);
     expect(schema.slice(lineStart, lineEnd + 2)).toContain("dietaryNote: String");
 
-    const mutations = readApiFile("admin-mutations.gql");
-    const preferencesStart = mutations.indexOf("mutation UpdateBookingPreferencesFromCallable");
-    const preferencesEnd = mutations.indexOf("\n}", preferencesStart);
-    expect(mutations.slice(preferencesStart, preferencesEnd + 2)).not.toContain("bookerDietaryNote");
+    const bookingStart = schema.indexOf("type Booking\n");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    expect(schema.slice(bookingStart, bookingEnd + 2)).not.toContain("bookerDietaryNote");
+    expect(schema.slice(lineStart, lineEnd + 2)).toContain("bookingPlace: BookingPlace!");
   });
 
   it("persists complete booking submissions through typed atomic batch operations", () => {
@@ -357,11 +335,8 @@ describe("GQL schema integrity", () => {
       expect(block).toContain("@allow(");
     }
     expect(operations).not.toContain("GuestTicketRequestStatus");
-    const legacyBatch = operations.slice(
-      operations.indexOf("mutation CreateLegacyGuestTicketRequestsFromCallable"),
-    );
-    expect(legacyBatch).toContain("guestTicketRequest_insertMany(data: $requests)");
-    expect(legacyBatch).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(operations).not.toContain("GuestTicketRequest");
+    expect(operations).not.toContain("guestTicketRequest");
 
     const checkoutStart = operations.indexOf("mutation CreateAllocatedTicketOrderFromCallable");
     const checkoutBlock = operations.slice(checkoutStart);
@@ -380,12 +355,31 @@ describe("GQL schema integrity", () => {
     );
   });
 
-  it("does not use the production-defective generic enum batch API", () => {
-    const guestRequests = readFunctionFile("guestTicketRequests.ts");
-    const persistence = readFunctionFile("bookingSubmissionPersistence.ts");
-    expect(guestRequests).not.toContain(".insertMany(\"guestTicketRequest\"");
-    expect(guestRequests).toContain("persistLegacyGuestTicketRequests(rows)");
-    expect(persistence).toContain("\"CreateLegacyGuestTicketRequestsFromCallable\"");
-    expect(persistence).not.toContain(".insertMany(\"guestTicketRequest\"");
+  it("removes the legacy split guest-request schema and callable contract", () => {
+    const schema = readSchemaFile();
+    const operations = [
+      readApiFile("queries.gql"),
+      readApiFile("booking-mutations.gql"),
+      readApiFile("admin-mutations.gql"),
+      readBookingServiceFile("booking-submission.gql"),
+    ].join("\n");
+    const functionIndex = readFunctionFile("index.ts");
+
+    for (const source of [schema, operations, functionIndex]) {
+      expect(source).not.toMatch(/GuestTicketRequest|guestTicketRequest/);
+    }
+  });
+
+  it("provides an explicit non-live reset before contracting the booking schema", () => {
+    const migration = readMigrationFile("2026-08-11-issue-548-reset-legacy-booking-data.sql");
+    expect(migration).toContain("Do not run it in a live system");
+    expect(migration).toContain("DELETE FROM public.booking_line;");
+    expect(migration).toContain("DELETE FROM public.booking_place;");
+    expect(migration).toContain("DELETE FROM public.booking;");
+    expect(migration).toContain("DROP TABLE IF EXISTS public.guest_ticket_request;");
+    expect(migration).toContain("DROP COLUMN IF EXISTS booker_dietary_note;");
+    expect(migration.indexOf("DELETE FROM public.booking_line;")).toBeLessThan(
+      migration.indexOf("DELETE FROM public.booking;"),
+    );
   });
 });

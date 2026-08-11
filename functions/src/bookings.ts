@@ -341,10 +341,8 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       guestUserId: line.guestUser?.id ?? null,
       guestDisplayName: line.guestDisplayName ?? null,
       dietaryNote: line.dietaryNote ?? null,
-      bookingPlaceId: line.bookingPlace?.id
-        ? (validateUUID(line.bookingPlace.id, "bookingPlaceId") as UUIDString)
-        : null,
-      paymentAllocationStatuses: (line.bookingPlace?.paymentAllocations ?? []).map(
+      bookingPlaceId: validateUUID(line.bookingPlace.id, "bookingPlaceId") as UUIDString,
+      paymentAllocationStatuses: (line.bookingPlace.paymentAllocations ?? []).map(
         (allocation) => allocation.ticketOrder.status
       ),
     }));

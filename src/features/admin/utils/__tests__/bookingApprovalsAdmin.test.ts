@@ -24,7 +24,6 @@ function booking(overrides: Partial<EventBookingAdminRow> = {}): EventBookingAdm
     revisionNumber: 1,
     supersededAt: null,
     clientSubmissionKey: null,
-    bookerDietaryNote: null,
     sitNextToUserIds: [],
     accommodationRequested: false,
     accommodationNote: null,
@@ -33,7 +32,6 @@ function booking(overrides: Partial<EventBookingAdminRow> = {}): EventBookingAdm
     createdBy: "u1",
     updatedBy: "u1",
     booker: { id: "u1", firstName: "Alex", lastName: "Member", email: "alex@example.com" },
-    guestTicketRequests: [],
     lines: [],
     ...overrides,
   } as EventBookingAdminRow;

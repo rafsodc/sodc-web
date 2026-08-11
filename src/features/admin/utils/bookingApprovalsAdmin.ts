@@ -72,7 +72,7 @@ export function attendeePaymentState(
   line: EventBookingAdminRow["lines"][number]
 ): AttendeePaymentState {
   if (line.ticketType.price <= 0) return "FREE";
-  const allocations = line.bookingPlace?.paymentAllocations ?? [];
+  const allocations = line.bookingPlace.paymentAllocations ?? [];
   if (allocations.some((allocation) => allocation.ticketOrder.status === TicketOrderStatus.PAID)) {
     const allocated = allocations.reduce((total, allocation) => total + allocation.allocatedAmountMinor, 0);
     const refunded = allocations.reduce((total, allocation) => total + allocation.refundedAmountMinor, 0);

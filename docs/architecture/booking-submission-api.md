@@ -111,4 +111,4 @@ See [`docs/operations/transactional-email-workflows.md`](../operations/transacti
 - Atomic Data Connect operations: `dataconnect/booking-service/booking-submission.gql`
 - Email: `functions/src/bookingEmailDispatcher.ts`
 
-The server-only `booking-service` connector exists because Firebase Data Connect supports `_Data` batch variables in deployed operations but its JavaScript SDK generator does not currently generate wrappers for them. Functions invokes the named, schema-validated operations using explicit TypeScript variable interfaces. It does not use Admin SDK generic `insertMany`, including for the temporary legacy guest-request compatibility path.
+The server-only `booking-service` connector exists because Firebase Data Connect supports `_Data` batch variables in deployed operations but its JavaScript SDK generator does not currently generate wrappers for them. Functions invokes the named, schema-validated operations using explicit TypeScript variable interfaces. It does not use the Admin SDK generic `insertMany` API.

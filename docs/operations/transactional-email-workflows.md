@@ -174,18 +174,6 @@ Operational recovery:
 | **Templates** | `membershipActivated`, `membershipAccessRestricted` |
 | **Deep dive** | [govuk-notify-membership-templates.md](./govuk-notify-membership-templates.md) |
 
-### Guest ticket requests (moderators + booker)
-
-| | |
-|---|---|
-| **Trigger** | `submitGuestTicketRequest` (moderators); `reviewGuestTicketRequest` approve/reject (booker) |
-| **Entrypoint** | [`guestTicketRequests.ts`](../../functions/src/guestTicketRequests.ts) → [`guestTicketRequestEmails.ts`](../../functions/src/guestTicketRequestEmails.ts) |
-| **Recipient** | Deduped moderator/admin emails on submit; booker on review |
-| **No send** | Failed DC insert/review; missing booker email |
-| **Delivery keys** | Per moderator: `guest-request-mod:{requestId}:{email}`; booker: `guest-request-booker:{requestId}:{decision}` |
-| **Templates** | `guestTicketRequestSubmittedModerator`, `guestTicketRequestApproved`, `guestTicketRequestRejected` |
-| **Deep dive** | [govuk-notify-guest-ticket-request-templates.md](./govuk-notify-guest-ticket-request-templates.md) |
-
 ### Bookings (booker)
 
 | | |

@@ -94,7 +94,6 @@ describe("notifyBookingConfirmationEmail", () => {
         booking: {
           id: "00000000-0000-4000-8000-000000000001",
           revisionNumber: 1,
-          bookerDietaryNote: "None",
           sitNextToUserIds: [],
           accommodationRequested: false,
           accommodationNote: null,
@@ -139,7 +138,7 @@ describe("notifyBookingConfirmationEmail", () => {
         personalisation: expect.objectContaining({
           firstName: "Sam",
           eventTitle: "Annual dinner",
-          bookerDietaryNote: "No nuts",
+          memberDietaryNote: "No nuts",
           sectionBookingsUrl: "https://app.example/sections/sec-1",
           myPaymentsUrl: "https://app.example/payments",
         }),

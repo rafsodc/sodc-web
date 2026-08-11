@@ -59,21 +59,6 @@
     "beta": "",
     "production": ""
   },
-  "guestTicketRequestSubmittedModerator": {
-    "dev": "cf9a8a7c-860f-43da-98b4-718c93fe92e6",
-    "beta": "",
-    "production": ""
-  },
-  "guestTicketRequestApproved": {
-    "dev": "651a5577-11c7-48c7-a1aa-42193cb223c7",
-    "beta": "",
-    "production": ""
-  },
-  "guestTicketRequestRejected": {
-    "dev": "132479c9-d8df-4a93-aff7-bf290ae7f543",
-    "beta": "",
-    "production": ""
-  },
   "paymentReconciliationExceptionAlert": {
     "dev": "b62197b8-1416-4918-b0e6-5129844f869d",
     "beta": "",

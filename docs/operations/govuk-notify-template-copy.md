@@ -52,14 +52,6 @@ Source: [`email-change-verification.md`](../../functions/email-templates/email-c
 
 Source: [`email-verification.md`](../../functions/email-templates/email-verification.md)
 
-### `guestTicketRequestApproved`
-
-Source: [`guestTicketRequestApproved.md`](../../functions/email-templates/guestTicketRequestApproved.md)
-
-### `guestTicketRequestRejected`
-
-Source: [`guestTicketRequestRejected.md`](../../functions/email-templates/guestTicketRequestRejected.md)
-
 ### `membershipAccessRestricted`
 
 Source: [`membershipAccessRestricted.md`](../../functions/email-templates/membershipAccessRestricted.md)
@@ -89,10 +81,6 @@ Source: [`ticketOrderRefunded.md`](../../functions/email-templates/ticketOrderRe
 ### `bookingPendingApprovalModerator`
 
 Source: [`bookingPendingApprovalModerator.md`](../../functions/email-templates/bookingPendingApprovalModerator.md)
-
-### `guestTicketRequestSubmittedModerator`
-
-Source: [`guestTicketRequestSubmittedModerator.md`](../../functions/email-templates/guestTicketRequestSubmittedModerator.md)
 
 ### `newUserPendingApprovalAlert`
 

@@ -96,7 +96,6 @@ function bookingWithGuest(paid: boolean) {
         ticketType: { id: "ticket-guest", title: "Guest standard", audience: TicketAudience.GUEST, price: 25 },
       },
     ],
-    guestTicketRequests: [],
   };
 }
 

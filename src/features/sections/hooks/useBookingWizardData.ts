@@ -13,7 +13,6 @@ import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/booki
 import {
   buildBookingTicketRowsWithPaymentStatus,
   hasExpiredDraftHold,
-  hasPendingGuestTicketsAwaitingApproval,
   isBookingPaymentComplete,
   summarizeEventBookingPayment,
 } from "../utils/eventBookingStatusSummary";
@@ -151,14 +150,6 @@ export function useBookingWizardData(args: {
     });
   }, [paymentEligibleBooking, event.id, ticketOrdersData]);
 
-  const pendingGuestTicketsAwaitingApproval = useMemo(
-    () =>
-      existingTerminalBooking
-        ? hasPendingGuestTicketsAwaitingApproval(existingTerminalBooking)
-        : false,
-    [existingTerminalBooking]
-  );
-
   const canProceedToConfirmation =
     paymentSummaryForBooking != null && isBookingPaymentComplete(paymentSummaryForBooking);
 
@@ -177,7 +168,6 @@ export function useBookingWizardData(args: {
     paymentSummaryForBooking,
     paymentTicketRows,
     paymentEligibleBooking,
-    pendingGuestTicketsAwaitingApproval,
     refetchMyBookings,
     showExpiredDraftHoldNotice,
     ticketOrdersData,

@@ -63,43 +63,13 @@
     "previousStatusLabel": "Regular",
     "appUrl": "https://app.example"
   },
-  "guestTicketRequestSubmittedModerator": {
-    "eventTitle": "Summer Dinner",
-    "sectionName": "Example Section",
-    "bookerDisplay": "Alex Example <alex@example.com>",
-    "guestDisplayName": "Guest Name",
-    "requestedGuestCount": 2,
-    "guestTicketTypeTitle": "Additional guest",
-    "dietaryNote": "Vegetarian",
-    "moderationUrl": "https://app.example/admin/sections"
-  },
-  "guestTicketRequestApproved": {
-    "firstName": "Alex",
-    "eventTitle": "Summer Dinner",
-    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
-    "eventLocation": "Main Hall",
-    "guestDisplayName": "Guest Name",
-    "requestedGuestCount": 2,
-    "moderatorNote": "Approved for this event.",
-    "myBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010"
-  },
-  "guestTicketRequestRejected": {
-    "firstName": "Alex",
-    "eventTitle": "Summer Dinner",
-    "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
-    "eventLocation": "Main Hall",
-    "guestDisplayName": "Guest Name",
-    "requestedGuestCount": 2,
-    "moderatorNote": "Capacity reached.",
-    "myBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010"
-  },
   "bookingConfirmation": {
     "firstName": "Alex",
     "eventTitle": "Summer Dinner",
     "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
     "eventLocation": "Main Hall",
     "ticketLinesSummary": "• Member ticket — Alex Example\n• Guest ticket — Guest Name",
-    "bookerDietaryNote": "None",
+    "memberDietaryNote": "None",
     "accommodationSummary": "Not requested",
     "bookingTotalFormatted": "£35.00",
     "sectionBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010",
@@ -111,7 +81,7 @@
     "eventDateTime": "Saturday 14 June 2025, 19:00 – 23:00",
     "eventLocation": "Main Hall",
     "ticketLinesSummary": "• Member ticket — Alex Example\n• Guest ticket — Guest Name",
-    "bookerDietaryNote": "Vegetarian",
+    "memberDietaryNote": "Vegetarian",
     "accommodationSummary": "Requested — Ground floor if possible",
     "bookingTotalFormatted": "£50.00",
     "sectionBookingsUrl": "https://app.example/sections/00000000-0000-0000-0000-000000000010",
