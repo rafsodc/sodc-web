@@ -1346,9 +1346,14 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
           id
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
+            allocatedAmountMinor
+            refundedAmountMinor
+            stripeRefundId
+            createdAt
             ticketOrder {
               id
               status
+              stripePaymentIntentId
             }
           }
         }
@@ -1386,12 +1391,21 @@ query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(
       id
       status
       quantity
+      unitAmountMinor
+      totalAmountMinor
       createdAt
       ticketType {
         id
       }
       event {
         id
+      }
+      paymentAllocations: bookingPlacePaymentAllocations_on_ticketOrder {
+        id
+        allocatedAmountMinor
+        bookingPlace {
+          id
+        }
       }
     }
   }
@@ -1505,6 +1519,20 @@ mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @a
   )
 }
 
+mutation SettleBookingPaymentAdjustmentsFromCallable($revisionBookingId: UUID!) @auth(level: NO_ACCESS) {
+  bookingPaymentAdjustment_updateMany(
+    where: {
+      revisionBookingId: { eq: $revisionBookingId }
+      status: { in: [PENDING_AUTO_CHARGE, PENDING_AUTO_REFUND] }
+    }
+    data: {
+      status: SETTLED
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 # Booking-level moderation targets one exact revision. The callable layer owns
 # authorisation and supplies the reviewer identity after checking admin access.
 mutation UpdateBookingApprovalFromCallable(
@@ -1546,6 +1574,22 @@ mutation CreateTicketOrderForCheckout(
       currency: $currency
       status: PENDING
       createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdateBookingPlaceAllocationRefundFromCallable(
+  $id: UUID!
+  $refundedAmountMinor: Int!
+  $stripeRefundId: String!
+) @auth(level: NO_ACCESS) {
+  bookingPlacePaymentAllocation_update(
+    id: $id
+    data: {
+      refundedAmountMinor: $refundedAmountMinor
+      stripeRefundId: $stripeRefundId
+      updatedAt_expr: "request.time"
       updatedBy: "system"
     }
   )

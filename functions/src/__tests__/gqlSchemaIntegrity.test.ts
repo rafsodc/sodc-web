@@ -307,6 +307,7 @@ describe("GQL schema integrity", () => {
     expect(allocationBlock).not.toContain("bookingLine:");
     expect(allocationBlock).not.toContain("bookingPlaceKey");
     expect(allocationBlock).toContain("allocatedAmountMinor: Int!");
+    expect(allocationBlock).toContain("refundedAmountMinor: Int! @default(value: 0)");
   });
 
   it("stores dietary requirements on each attendee ticket line", () => {
@@ -344,6 +345,13 @@ describe("GQL schema integrity", () => {
     );
     expect(legacyBatch).toContain("guestTicketRequest_insertMany(data: $requests)");
     expect(legacyBatch).toContain("@auth(level: NO_ACCESS) @transaction");
+
+    const checkoutStart = operations.indexOf("mutation CreateAllocatedTicketOrderFromCallable");
+    const checkoutBlock = operations.slice(checkoutStart);
+    expect(checkoutStart).toBeGreaterThanOrEqual(0);
+    expect(checkoutBlock).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(checkoutBlock).toContain("ticketOrder_insert(data: $ticketOrder)");
+    expect(checkoutBlock).toContain("bookingPlacePaymentAllocation_insertMany(data: $allocations)");
   });
 
   it("prevents concurrent duplicate revision numbers within a booking group", () => {

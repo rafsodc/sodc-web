@@ -420,7 +420,7 @@ describe("createTicketCheckoutSession", () => {
 
 describe("createEventBookingCheckoutSession", () => {
   it("calls with normalized eventId", async () => {
-    const callable = makeCallable({ data: { url: "https://stripe.com/checkout/3", orderIds: ["o3"] } });
+    const callable = makeCallable({ data: { url: "https://stripe.com/checkout/3", orderIds: ["o3"], confirmed: false } });
 
     const result = await createEventBookingCheckoutSession({ eventId: EVENT_UUID });
 
@@ -429,7 +429,7 @@ describe("createEventBookingCheckoutSession", () => {
       "createEventBookingCheckoutSession"
     );
     expect(callable).toHaveBeenCalledWith({ eventId: EVENT_UUID });
-    expect(result).toEqual({ url: "https://stripe.com/checkout/3", orderIds: ["o3"] });
+    expect(result).toEqual({ url: "https://stripe.com/checkout/3", orderIds: ["o3"], confirmed: false });
   });
 });
 

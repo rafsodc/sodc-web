@@ -62,6 +62,8 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation MarkTicketOrderPaidFromWebhook", mustInclude: NO_ACCESS },
       { op: "query GetBookingsForBookerAndEvent", mustInclude: NO_ACCESS },
       { op: "mutation UpdateBookingStatusFromCallable", mustInclude: NO_ACCESS },
+      { op: "mutation SettleBookingPaymentAdjustmentsFromCallable", mustInclude: NO_ACCESS },
+      { op: "mutation UpdateBookingPlaceAllocationRefundFromCallable", mustInclude: NO_ACCESS },
       { op: "mutation UpdateBookingPreferencesFromCallable", mustInclude: NO_ACCESS },
       { op: "query ListStaleDraftBookingsForScheduler", mustInclude: NO_ACCESS },
       { op: "query ListStalePendingTicketOrdersForScheduler", mustInclude: NO_ACCESS },

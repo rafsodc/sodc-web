@@ -19,6 +19,7 @@ export enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED = "NOT_REQUIRED",
   PENDING_AUTO_REFUND = "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE = "PENDING_AUTO_CHARGE",
+  SETTLED = "SETTLED",
 };
 
 export enum BookingStatus {
@@ -1194,9 +1195,14 @@ export interface GetBookingsForBookerAndEventData {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            stripeRefundId?: string | null;
+            createdAt: TimestampString;
             ticketOrder: {
               id: UUIDString;
               status: TicketOrderStatus;
+              stripePaymentIntentId?: string | null;
             } & TicketOrder_Key;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -2109,6 +2115,8 @@ export interface GetTicketOrdersForBookerAndEventData {
       id: UUIDString;
       status: TicketOrderStatus;
       quantity: number;
+      unitAmountMinor: number;
+      totalAmountMinor: number;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -2116,6 +2124,13 @@ export interface GetTicketOrdersForBookerAndEventData {
       event: {
         id: UUIDString;
       } & Event_Key;
+      paymentAllocations: ({
+        id: UUIDString;
+        allocatedAmountMinor: number;
+        bookingPlace: {
+          id: UUIDString;
+        } & BookingPlace_Key;
+      } & BookingPlacePaymentAllocation_Key)[];
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -3232,6 +3247,14 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   newValue: string;
 }
 
+export interface SettleBookingPaymentAdjustmentsFromCallableData {
+  bookingPaymentAdjustment_updateMany: number;
+}
+
+export interface SettleBookingPaymentAdjustmentsFromCallableVariables {
+  revisionBookingId: UUIDString;
+}
+
 export interface SubscribeToUserGroupData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -3363,6 +3386,16 @@ export interface UpdateBookingApprovalFromCallableVariables {
   status: BookingApprovalStatus;
   reviewedById?: string | null;
   approvalNote?: string | null;
+}
+
+export interface UpdateBookingPlaceAllocationRefundFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+
+export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  stripeRefundId: string;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -4360,6 +4393,18 @@ export const updateBookingStatusFromCallableRef: UpdateBookingStatusFromCallable
 export function updateBookingStatusFromCallable(vars: UpdateBookingStatusFromCallableVariables): MutationPromise<UpdateBookingStatusFromCallableData, UpdateBookingStatusFromCallableVariables>;
 export function updateBookingStatusFromCallable(dc: DataConnect, vars: UpdateBookingStatusFromCallableVariables): MutationPromise<UpdateBookingStatusFromCallableData, UpdateBookingStatusFromCallableVariables>;
 
+interface SettleBookingPaymentAdjustmentsFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationRef<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationRef<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+  operationName: string;
+}
+export const settleBookingPaymentAdjustmentsFromCallableRef: SettleBookingPaymentAdjustmentsFromCallableRef;
+
+export function settleBookingPaymentAdjustmentsFromCallable(vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationPromise<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+export function settleBookingPaymentAdjustmentsFromCallable(dc: DataConnect, vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationPromise<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+
 interface UpdateBookingApprovalFromCallableRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: UpdateBookingApprovalFromCallableVariables): MutationRef<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
@@ -4383,6 +4428,18 @@ export const createTicketOrderForCheckoutRef: CreateTicketOrderForCheckoutRef;
 
 export function createTicketOrderForCheckout(vars: CreateTicketOrderForCheckoutVariables): MutationPromise<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
 export function createTicketOrderForCheckout(dc: DataConnect, vars: CreateTicketOrderForCheckoutVariables): MutationPromise<CreateTicketOrderForCheckoutData, CreateTicketOrderForCheckoutVariables>;
+
+interface UpdateBookingPlaceAllocationRefundFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+  operationName: string;
+}
+export const updateBookingPlaceAllocationRefundFromCallableRef: UpdateBookingPlaceAllocationRefundFromCallableRef;
+
+export function updateBookingPlaceAllocationRefundFromCallable(vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+export function updateBookingPlaceAllocationRefundFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
 
 interface GetTicketOrderForWebhookRef {
   /* Allow users to create refs without passing in DataConnect */

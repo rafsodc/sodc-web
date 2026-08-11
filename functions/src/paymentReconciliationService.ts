@@ -31,6 +31,7 @@ import { GOV_NOTIFY_PROVIDER } from "./mailer";
 import { sendNotificationOnce } from "./notificationDelivery";
 import { notifyPaymentOpsReconciliationExceptionOpened } from "./paymentOpsInternalAlerts";
 import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
+import { confirmBookingIfFullyPaid } from "./bookingPaymentFinalization";
 
 const govNotifyTicketOrderDispatcher = createGovNotifyTicketOrderLifecycleDispatcher({
   getMailer: defaultWebhookGovNotifyTicketOrderMailer,
@@ -192,6 +193,7 @@ export interface PaymentTransitionOrchestrationDependencies {
   runTransition: typeof runTicketOrderTransition;
   emitNotification: typeof emitPaymentLifecycleNotification;
   upsertSnapshot: typeof upsertReconciliationSnapshot;
+  confirmBooking: typeof confirmBookingIfFullyPaid;
   now: () => string;
 }
 
@@ -215,6 +217,7 @@ const defaultPaymentTransitionDependencies: PaymentTransitionOrchestrationDepend
   runTransition: runTicketOrderTransition,
   emitNotification: emitPaymentLifecycleNotification,
   upsertSnapshot: upsertReconciliationSnapshot,
+  confirmBooking: confirmBookingIfFullyPaid,
   now: () => new Date().toISOString(),
 };
 
@@ -282,6 +285,12 @@ export async function applyPaymentTransitionToOrders(
         appliedCount += 1;
       }
       reconciledOrderIds.push(orderId);
+      if (args.intent === "MARK_PAID") {
+        await dependencies.confirmBooking({
+          bookerId: currentOrder.user.id,
+          eventId: currentOrder.event.id,
+        });
+      }
       const notificationType =
         args.intent === "MARK_PAID"
           ? "PAYMENT_PAID"

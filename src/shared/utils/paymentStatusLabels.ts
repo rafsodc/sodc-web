@@ -15,6 +15,7 @@ const BOOKING_PAYMENT_ADJUSTMENT_STATUS_LABELS: Record<BookingPaymentAdjustmentS
   [BookingPaymentAdjustmentStatus.NOT_REQUIRED]: "No payment change",
   [BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND]: "Refund pending",
   [BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE]: "Additional payment pending",
+  [BookingPaymentAdjustmentStatus.SETTLED]: "Payment change completed",
 };
 
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {

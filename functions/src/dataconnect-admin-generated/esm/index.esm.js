@@ -11,6 +11,7 @@ export const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
+  SETTLED: "SETTLED",
 }
 
 export const BookingStatus = {
@@ -521,6 +522,12 @@ export function updateBookingStatusFromCallable(dcOrVarsOrOptions, varsOrOptions
   return dcInstance.executeMutation('UpdateBookingStatusFromCallable', inputVars, inputOpts);
 }
 
+export function settleBookingPaymentAdjustmentsFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('SettleBookingPaymentAdjustmentsFromCallable', inputVars, inputOpts);
+}
+
 export function updateBookingApprovalFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -531,6 +538,12 @@ export function createTicketOrderForCheckout(dcOrVarsOrOptions, varsOrOptions, o
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CreateTicketOrderForCheckout', inputVars, inputOpts);
+}
+
+export function updateBookingPlaceAllocationRefundFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateBookingPlaceAllocationRefundFromCallable', inputVars, inputOpts);
 }
 
 export function getTicketOrderForWebhook(dcOrVarsOrOptions, varsOrOptions, options) {

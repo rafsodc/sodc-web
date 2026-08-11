@@ -72,15 +72,19 @@ function transitionDependencies(overrides: Partial<PaymentTransitionOrchestratio
   const upsertSnapshot = vi.fn<
     PaymentTransitionOrchestrationDependencies["upsertSnapshot"]
   >(async () => undefined);
+  const confirmBooking = vi.fn<
+    PaymentTransitionOrchestrationDependencies["confirmBooking"]
+  >(async () => ({ bookingId: null, confirmed: false }));
   const dependencies = {
     getOrder,
     runTransition,
     emitNotification,
     upsertSnapshot,
+    confirmBooking,
     now: () => NOW,
     ...overrides,
   } as unknown as PaymentTransitionOrchestrationDependencies;
-  return { dependencies, getOrder, runTransition, emitNotification, upsertSnapshot };
+  return { dependencies, getOrder, runTransition, emitNotification, upsertSnapshot, confirmBooking };
 }
 
 describe("applyPaymentTransitionToOrders", () => {
