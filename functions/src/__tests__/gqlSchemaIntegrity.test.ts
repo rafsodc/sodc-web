@@ -188,6 +188,7 @@ describe("GQL schema integrity", () => {
       "type TicketType",
       "type Booking",
       "type BookingLine",
+      "type BookingLinePaymentAllocation",
       "type TicketOrder",
       "type GuestTicketRequest",
       "type PaymentWebhookEvent",
@@ -252,5 +253,22 @@ describe("GQL schema integrity", () => {
     expect(operation).toContain("$status: BookingApprovalStatus!");
     expect(operation).toContain("@auth(level: NO_ACCESS)");
     expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
+  });
+
+  it("can attribute payment to a stable booking place across revisions", () => {
+    const schema = readSchemaFile();
+    const lineStart = schema.indexOf("type BookingLine @table");
+    const lineEnd = schema.indexOf("\n}", lineStart);
+    expect(schema.slice(lineStart, lineEnd + 2)).toContain(
+      "bookingPlaceKey: UUID! @default(expr: \"uuidV4()\")",
+    );
+
+    const allocationStart = schema.indexOf("type BookingLinePaymentAllocation @table");
+    const allocationEnd = schema.indexOf("\n}", allocationStart);
+    const allocationBlock = schema.slice(allocationStart, allocationEnd + 2);
+    expect(allocationBlock).toContain("ticketOrder: TicketOrder!");
+    expect(allocationBlock).toContain("bookingLine: BookingLine!");
+    expect(allocationBlock).toContain("bookingPlaceKey: UUID!");
+    expect(allocationBlock).toContain("allocatedAmountMinor: Int!");
   });
 });

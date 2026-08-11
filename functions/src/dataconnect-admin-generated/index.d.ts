@@ -289,6 +289,11 @@ export interface BeginSectionFileReplacementVariables {
   updatedBy: string;
 }
 
+export interface BookingLinePaymentAllocation_Key {
+  id: UUIDString;
+  __typename?: 'BookingLinePaymentAllocation_Key';
+}
+
 export interface BookingLine_Key {
   id: UUIDString;
   __typename?: 'BookingLine_Key';
@@ -1157,6 +1162,7 @@ export interface GetBookingsForBookerAndEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        bookingPlaceKey: UUIDString;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -1507,6 +1513,7 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
+        bookingPlaceKey: UUIDString;
         ticketType: {
           id: UUIDString;
           title: string;
@@ -1549,6 +1556,7 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        bookingPlaceKey: UUIDString;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;

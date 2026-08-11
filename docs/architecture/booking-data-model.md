@@ -9,6 +9,8 @@ Persistence for member ticket booking. The current redesign is tracked by epic [
 - **Uniform guest representation**: every guest is a `BookingLine` whose ticket type has `GUEST` audience. There is no separate representation for the first guest in the redesigned contract.
 - **Whole-booking approval**: `Booking.approvalStatus` applies to one exact booking revision and is separate from booking lifecycle and payment state.
 - **Reapproval**: adding/removing a guest, changing guest identity/name, or changing guest ticket type is approval-relevant. Dietary-only edits and guest ordering are not.
+- **Guest removal and payment**: a member may remove a guest only when that guest place has no paid allocation. Paid guest removal is blocked until the later refund workflow is implemented.
+- **Stable paid entitlement**: `BookingLine.bookingPlaceKey` is preserved for the same place across revisions. `BookingLinePaymentAllocation` maps orders to that key, avoiding ambiguous ticket-type quantity matching when guests share a ticket type.
 - **Authorization** (section `ACCESS` / `MODERATOR`, `BOOKER`, booking window, `TicketType.userGroup`) remains as documented elsewhere — not all shown on this ERD.
 
 ## Entity relationship diagram
@@ -20,6 +22,8 @@ erDiagram
   Event ||--o{ Booking : has
   User ||--o{ Booking : books_as_booker
   Booking ||--o{ BookingLine : has
+  BookingLine ||--o{ BookingLinePaymentAllocation : paid_as
+  TicketOrder ||--o{ BookingLinePaymentAllocation : allocates
   TicketType ||--o{ BookingLine : priced_as
   UserGroup ||--o{ TicketType : eligibility
   Booking ||--o{ GuestTicketRequest : may_raise
@@ -79,6 +83,7 @@ erDiagram
 
   BookingLine {
     uuid id PK
+    uuid booking_place_key "stable across revisions"
     uuid booking_id FK
     uuid ticket_type_id FK
     string guest_user_id FK "nullable: named member guest"
@@ -99,6 +104,14 @@ erDiagram
     timestamp reviewed_at
     string moderator_note "nullable"
   }
+
+  BookingLinePaymentAllocation {
+    uuid id PK
+    uuid ticket_order_id FK
+    uuid booking_line_id FK
+    uuid booking_place_key "stable entitlement identity"
+    int allocated_amount_minor
+  }
 ```
 
 `GuestTicketRequest` is shown only because legacy code still reads it during the staged redesign. New submissions must not create it; issue #548 removes the table and remaining consumers after the unified flow is integrated.
@@ -111,6 +124,7 @@ erDiagram
 | **Event → guest policy** | Required per-event limit on guest places that can proceed without moderator approval. |
 | **Booking** | One **booker** (`User`) for one **event/revision**; owns lifecycle and whole-revision approval state plus booker preferences. |
 | **BookingLine** | One priced place. Member-audience lines represent the member; every guest is a guest-audience line with its identity and dietary note. |
+| **BookingLinePaymentAllocation** | Attributes an order amount to a stable booking place so deletion and future refunds are evaluated per named guest rather than by ticket-type totals. |
 | **GuestTicketRequest** | Legacy split representation only. New submission and moderation contracts use `BookingLine` and `Booking.approvalStatus`; removal is tracked by #548. |
 
 ## State model
@@ -145,6 +159,7 @@ Free bookings skip Stripe and move to `CONFIRMED` once approval is `NOT_REQUIRED
 - An over-limit dietary-only or ordering change carries forward the prior approval state.
 - Moving a revision to at or below the limit produces `NOT_REQUIRED`.
 - Review audit fields belong to the exact revision reviewed. A later approval-relevant edit cannot reuse that decision.
+- Removing an unpaid guest is allowed and follows the normal approval-reset rules. Removing a guest with a paid allocation is rejected until the refund workflow exists.
 
 ## Related issues
 
