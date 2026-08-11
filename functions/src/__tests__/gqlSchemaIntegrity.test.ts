@@ -12,6 +12,11 @@ function readSchemaFile(): string {
   return fs.readFileSync(p, "utf8");
 }
 
+function readMigrationFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "..", "dataconnect", "migrations", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
 function extractAllOperationHeaders(source: string): Array<{ name: string; header: string }> {
   const opHeader = /(query|mutation)\s+([A-Za-z0-9_]+)/g;
   const results: Array<{ name: string; header: string }> = [];
@@ -187,7 +192,9 @@ describe("GQL schema integrity", () => {
       "type Event",
       "type TicketType",
       "type Booking",
+      "type BookingPlace",
       "type BookingLine",
+      "type BookingPlacePaymentAllocation",
       "type TicketOrder",
       "type GuestTicketRequest",
       "type PaymentWebhookEvent",
@@ -213,5 +220,82 @@ describe("GQL schema integrity", () => {
     expect(userBlock, "User must have email field for notifications").toContain("email:");
     expect(userBlock, "User must have firstName for identification").toContain("firstName");
     expect(userBlock, "User must have lastName for identification").toContain("lastName");
+  });
+
+  it("defines booking-level approval independently from lifecycle and payment", () => {
+    const schema = readSchemaFile();
+    expect(schema).toMatch(
+      /enum BookingApprovalStatus\s*{\s*NOT_REQUIRED\s+PENDING\s+APPROVED\s+REJECTED\s*}/,
+    );
+
+    const bookingStart = schema.indexOf("type Booking @table");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    const bookingBlock = schema.slice(bookingStart, bookingEnd + 2);
+    expect(bookingBlock).toContain(
+      "approvalStatus: BookingApprovalStatus! @default(value: NOT_REQUIRED)",
+    );
+    expect(bookingBlock).toContain("approvalReviewedBy: User");
+    expect(bookingBlock).toContain("approvalReviewedAt: Timestamp");
+    expect(bookingBlock).toContain("approvalNote: String");
+  });
+
+  it("requires an explicit non-null guest approval limit on events", () => {
+    const schema = readSchemaFile();
+    const eventStart = schema.indexOf("type Event @table");
+    const eventEnd = schema.indexOf("\n}", eventStart);
+    const eventBlock = schema.slice(eventStart, eventEnd + 2);
+    expect(eventBlock).toContain("maxGuestsWithoutModeratorApproval: Int!");
+
+    const eventMutations = readApiFile("user-group-mutations.gql");
+    expect(eventMutations.match(/\$maxGuestsWithoutModeratorApproval: Int!/g)).toHaveLength(2);
+  });
+
+  it("backfills legacy null guest limits before applying the non-null constraint", () => {
+    const migration = readMigrationFile(
+      "2026-08-11-issue-543-required-guest-approval-limit.sql",
+    );
+    const backfill = migration.indexOf(
+      "SET max_guests_without_moderator_approval = 0",
+    );
+    const constraint = migration.indexOf(
+      "ALTER COLUMN max_guests_without_moderator_approval SET NOT NULL",
+    );
+    expect(backfill).toBeGreaterThanOrEqual(0);
+    expect(constraint).toBeGreaterThan(backfill);
+  });
+
+  it("keeps booking approval writes behind the server-only callable boundary", () => {
+    const adminSdk = readApiFile("admin-mutations.gql");
+    const start = adminSdk.indexOf("mutation UpdateBookingApprovalFromCallable");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = adminSdk.indexOf("\n}", start);
+    const operation = adminSdk.slice(start, end + 2);
+    expect(operation).toContain("$status: BookingApprovalStatus!");
+    expect(operation).toContain("@auth(level: NO_ACCESS)");
+    expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
+  });
+
+  it("attributes payment to a stable entity rather than a revision line or duplicated key", () => {
+    const schema = readSchemaFile();
+    const placeStart = schema.indexOf("type BookingPlace @table");
+    const placeEnd = schema.indexOf("\n}", placeStart);
+    const placeBlock = schema.slice(placeStart, placeEnd + 2);
+    expect(placeBlock).toContain("event: Event!");
+    expect(placeBlock).toContain("booker: User!");
+
+    const lineStart = schema.indexOf("type BookingLine @table");
+    const lineEnd = schema.indexOf("\n}", lineStart);
+    const lineBlock = schema.slice(lineStart, lineEnd + 2);
+    expect(lineBlock).toContain("bookingPlace: BookingPlace");
+    expect(lineBlock).not.toContain("bookingPlaceKey");
+
+    const allocationStart = schema.indexOf("type BookingPlacePaymentAllocation @table");
+    const allocationEnd = schema.indexOf("\n}", allocationStart);
+    const allocationBlock = schema.slice(allocationStart, allocationEnd + 2);
+    expect(allocationBlock).toContain("ticketOrder: TicketOrder!");
+    expect(allocationBlock).toContain("bookingPlace: BookingPlace!");
+    expect(allocationBlock).not.toContain("bookingLine:");
+    expect(allocationBlock).not.toContain("bookingPlaceKey");
+    expect(allocationBlock).toContain("allocatedAmountMinor: Int!");
   });
 });

@@ -1,4 +1,4 @@
-import { TicketAudience } from "@dataconnect/admin-generated";
+import { BookingApprovalStatus, TicketAudience } from "@dataconnect/admin-generated";
 
 /** Stable codes for clients (issue #46 / member UI #47). */
 export const BOOKING_RULE_ERROR_CODES = {
@@ -14,6 +14,7 @@ export const BOOKING_RULE_ERROR_CODES = {
   TOO_MANY_GUEST_LINES: "TOO_MANY_GUEST_LINES",
   INVALID_GUEST_FIELDS: "INVALID_GUEST_FIELDS",
   GUEST_APPROVAL_REQUIRED: "GUEST_APPROVAL_REQUIRED",
+  EVENT_GUEST_POLICY_NOT_CONFIGURED: "EVENT_GUEST_POLICY_NOT_CONFIGURED",
   BOOKING_ALREADY_SUBMITTED: "BOOKING_ALREADY_SUBMITTED",
   IDEMPOTENCY_DRAFT_CONFLICT: "IDEMPOTENCY_DRAFT_CONFLICT",
 } as const;
@@ -98,7 +99,9 @@ export interface LineInputForRules {
 }
 
 /**
- * Validates line items: eligibility per ticket type, self-before-guest ordering, at most one guest line.
+ * Validates the complete booking line collection. Every guest is represented by
+ * a guest-audience BookingLine; moderation is decided separately for the whole
+ * booking revision.
  */
 export function evaluateBookingLines(
   lines: LineInputForRules[],
@@ -155,8 +158,8 @@ export function evaluateBookingLines(
     return fail(BOOKING_RULE_ERROR_CODES.SELF_TICKET_REQUIRED, "At least one member ticket line is required for the booker");
   }
 
-  const maxGuestLines = options?.maxGuestLines ?? 1;
-  if (guestLineCount > maxGuestLines) {
+  const maxGuestLines = options?.maxGuestLines;
+  if (maxGuestLines != null && guestLineCount > maxGuestLines) {
     return fail(
       BOOKING_RULE_ERROR_CODES.TOO_MANY_GUEST_LINES,
       maxGuestLines === 1
@@ -180,7 +183,13 @@ export function evaluateGuestApprovalGate(args: {
   approvedGuestCapacity: number;
 }): BookingRulesResult {
   const threshold = args.maxGuestsWithoutModeratorApproval;
-  if (threshold == null || args.guestTicketCount <= threshold) {
+  if (threshold == null) {
+    return fail(
+      BOOKING_RULE_ERROR_CODES.EVENT_GUEST_POLICY_NOT_CONFIGURED,
+      "This event does not have a guest approval limit configured"
+    );
+  }
+  if (args.guestTicketCount <= threshold) {
     return { ok: true };
   }
   const requiredApprovedGuestCount = args.guestTicketCount - threshold;
@@ -191,6 +200,73 @@ export function evaluateGuestApprovalGate(args: {
     BOOKING_RULE_ERROR_CODES.GUEST_APPROVAL_REQUIRED,
     "Guest ticket count exceeds approved moderation threshold for this booking revision"
   );
+}
+
+export interface ApprovalRelevantGuest {
+  ticketTypeId: string;
+  guestUserId?: string | null;
+  guestDisplayName?: string | null;
+  dietaryNote?: string | null;
+}
+
+function assertGuestApprovalPolicy(maxGuestsWithoutModeratorApproval: number): void {
+  if (!Number.isInteger(maxGuestsWithoutModeratorApproval) || maxGuestsWithoutModeratorApproval < 0) {
+    throw new RangeError("maxGuestsWithoutModeratorApproval must be a non-negative integer");
+  }
+}
+
+/** Derives initial moderation state from guest places only; the member is excluded. */
+export function deriveBookingApprovalStatus(args: {
+  guestTicketCount: number;
+  maxGuestsWithoutModeratorApproval: number;
+}): BookingApprovalStatus {
+  assertGuestApprovalPolicy(args.maxGuestsWithoutModeratorApproval);
+  if (!Number.isInteger(args.guestTicketCount) || args.guestTicketCount < 0) {
+    throw new RangeError("guestTicketCount must be a non-negative integer");
+  }
+  return args.guestTicketCount > args.maxGuestsWithoutModeratorApproval
+    ? BookingApprovalStatus.PENDING
+    : BookingApprovalStatus.NOT_REQUIRED;
+}
+
+function approvalIdentityKey(guest: ApprovalRelevantGuest): string {
+  const linkedUser = guest.guestUserId?.trim();
+  const displayName = guest.guestDisplayName?.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-GB") ?? "";
+  return `user:${linkedUser ?? ""}|name:${displayName}|ticket:${guest.ticketTypeId}`;
+}
+
+/**
+ * Guest count, identity, and ticket type require reapproval. Ordering and
+ * dietary-only edits deliberately do not.
+ */
+export function approvalRelevantGuestDetailsChanged(
+  previousGuests: ApprovalRelevantGuest[],
+  revisedGuests: ApprovalRelevantGuest[]
+): boolean {
+  if (previousGuests.length !== revisedGuests.length) return true;
+  // Compare as a multiset because ordering is not approval-relevant. Two
+  // unlinked guests with the same normalized name and ticket type are
+  // intentionally indistinguishable: swapping them changes no policy data.
+  const previous = previousGuests.map(approvalIdentityKey).sort();
+  const revised = revisedGuests.map(approvalIdentityKey).sort();
+  return previous.some((key, index) => key !== revised[index]);
+}
+
+/** Carries approval across dietary-only edits and resets relevant over-limit edits. */
+export function deriveRevisedBookingApprovalStatus(args: {
+  previousStatus: BookingApprovalStatus;
+  previousGuests: ApprovalRelevantGuest[];
+  revisedGuests: ApprovalRelevantGuest[];
+  maxGuestsWithoutModeratorApproval: number;
+}): BookingApprovalStatus {
+  const policyStatus = deriveBookingApprovalStatus({
+    guestTicketCount: args.revisedGuests.length,
+    maxGuestsWithoutModeratorApproval: args.maxGuestsWithoutModeratorApproval,
+  });
+  if (policyStatus === BookingApprovalStatus.NOT_REQUIRED) return policyStatus;
+  return approvalRelevantGuestDetailsChanged(args.previousGuests, args.revisedGuests)
+    ? BookingApprovalStatus.PENDING
+    : args.previousStatus;
 }
 
 export function evaluateBookingGatekeeping(args: {

@@ -232,7 +232,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setEndDateTime(toDatetimeLocal(now.toISOString()));
       setBookingStartDateTime(toDatetimeLocal(now.toISOString()));
       setBookingEndDateTime(toDatetimeLocal(now.toISOString()));
-      setMaxGuestsStr("");
+      setMaxGuestsStr("0");
     }
     setError(null);
     setEventDialogOpen(true);
@@ -245,17 +245,14 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
     setSubmitting(true);
     setError(null);
-    let maxGuestsWithoutModeratorApproval: number | null = null;
     const mg = maxGuestsStr.trim();
-    if (mg !== "") {
-      const n = parseInt(mg, 10);
-      if (Number.isNaN(n) || n < 0) {
-        setError("Max guests without moderator approval must be a non-negative integer, or leave blank");
-        setSubmitting(false);
-        return;
-      }
-      maxGuestsWithoutModeratorApproval = n;
+    const n = Number(mg);
+    if (mg === "" || !Number.isInteger(n) || n < 0) {
+      setError("Max guests without moderator approval is required and must be a non-negative integer");
+      setSubmitting(false);
+      return;
     }
+    const maxGuestsWithoutModeratorApproval = n;
     try {
       if (editingEvent) {
         await executeDataConnectMutation(

@@ -1,11 +1,17 @@
 # Booking data model
 
-Persistence for member ticket booking. It aligns with [GitHub issue #45](https://github.com/rafsodc/sodc-web/issues/45) and epic [#52](https://github.com/rafsodc/sodc-web/issues/52). The canonical schema is in [`dataconnect/schema/schema.gql`](../../dataconnect/schema/schema.gql); update this doc when behavior or naming changes.
+Persistence for member ticket booking. The current redesign is tracked by epic [#538](https://github.com/rafsodc/sodc-web/issues/538) and schema issue [#543](https://github.com/rafsodc/sodc-web/issues/543). The canonical schema is in [`dataconnect/schema/schema.gql`](../../dataconnect/schema/schema.gql); update this doc when behavior or naming changes.
 
 ## Decisions (from issue discussion)
 
-- **Guest cap before moderator approval**: stored **per event** on `Event` as **`maxGuestsWithoutModeratorApproval`** (`Int`, nullable — unset means rules layer / app default).
+- **Guest cap before moderator approval**: stored **per event** as required `maxGuestsWithoutModeratorApproval: Int!`. It counts guest places only, excluding the member. `0` means every booking containing a guest requires approval; null is not a valid event policy.
+- **Legacy null policy**: the #543 migration backfills any existing null limit to `0` before applying `NOT NULL`, which fails closed by requiring approval for every guest booking until an organiser chooses another value.
 - **Ticket types**: each `TicketType` has **`audience: TicketAudience`** (**`MEMBER`** | **`GUEST`**). Validation in the booking rules layer must prevent booking a `GUEST` type against the member line and vice versa; pricing can differ per type.
+- **Uniform guest representation**: every guest is a `BookingLine` whose ticket type has `GUEST` audience. There is no separate representation for the first guest in the redesigned contract.
+- **Whole-booking approval**: `Booking.approvalStatus` applies to one exact booking revision and is separate from booking lifecycle and payment state.
+- **Reapproval**: adding/removing a guest, changing guest identity/name, or changing guest ticket type is approval-relevant. Dietary-only edits and guest ordering are not.
+- **Guest removal and payment**: a member may remove a guest only when that guest place has no paid allocation. Paid guest removal is blocked until the later refund workflow is implemented.
+- **Stable paid entitlement**: `BookingPlace` is the durable identity of one member/guest ticket. Revision-specific `BookingLine` rows reuse that relation, and `BookingPlacePaymentAllocation` maps orders directly to the place without duplicating its key or pointing at one revision.
 - **Authorization** (section `ACCESS` / `MODERATOR`, `BOOKER`, booking window, `TicketType.userGroup`) remains as documented elsewhere — not all shown on this ERD.
 
 ## Entity relationship diagram
@@ -16,7 +22,12 @@ erDiagram
   Event ||--o{ TicketType : defines
   Event ||--o{ Booking : has
   User ||--o{ Booking : books_as_booker
+  User ||--o{ BookingPlace : owns
+  Event ||--o{ BookingPlace : scopes
   Booking ||--o{ BookingLine : has
+  BookingPlace ||--o{ BookingLine : represented_by
+  BookingPlace ||--o{ BookingPlacePaymentAllocation : paid_as
+  TicketOrder ||--o{ BookingPlacePaymentAllocation : allocates
   TicketType ||--o{ BookingLine : priced_as
   UserGroup ||--o{ TicketType : eligibility
   Booking ||--o{ GuestTicketRequest : may_raise
@@ -33,7 +44,7 @@ erDiagram
     string title
     timestamp booking_start
     timestamp booking_end
-    int maxGuestsWithoutModeratorApproval "nullable; cap on guest headcount before extra approval"
+    int maxGuestsWithoutModeratorApproval "required; guest places only; 0 requires approval for any guest"
   }
 
   TicketType {
@@ -62,6 +73,10 @@ erDiagram
     string booker_user_id FK
     string client_submission_key "nullable; unique with event+booker for idempotent submit"
     enum status "e.g. DRAFT | SUBMITTED | CONFIRMED | CANCELLED"
+    enum approval_status "NOT_REQUIRED | PENDING | APPROVED | REJECTED"
+    string approval_reviewed_by_user_id "nullable"
+    timestamp approval_reviewed_at "nullable"
+    string approval_note "nullable"
     string booker_dietary_note "nullable"
     string[] sit_next_to_user_ids "nullable list of user ids"
     boolean accommodation_requested "default false"
@@ -70,8 +85,15 @@ erDiagram
     timestamp updated_at
   }
 
+  BookingPlace {
+    uuid id PK
+    uuid event_id FK
+    string booker_user_id FK
+  }
+
   BookingLine {
     uuid id PK
+    uuid booking_place_id FK "stable across revisions; nullable on legacy rows"
     uuid booking_id FK
     uuid ticket_type_id FK
     string guest_user_id FK "nullable: named member guest"
@@ -92,17 +114,62 @@ erDiagram
     timestamp reviewed_at
     string moderator_note "nullable"
   }
+
+  BookingPlacePaymentAllocation {
+    uuid id PK
+    uuid ticket_order_id FK
+    uuid booking_place_id FK "stable entitlement identity"
+    int allocated_amount_minor
+  }
 ```
+
+`GuestTicketRequest` is shown only because legacy code still reads it during the staged redesign. New submissions must not create it; issue #548 removes the table and remaining consumers after the unified flow is integrated.
 
 ## Relationship notes
 
 | Relationship | Meaning |
 |--------------|--------|
 | **Event → TicketType** | Event offers priced **MEMBER** and **GUEST** types; eligibility for each type is still via `TicketType.userGroup`. |
-| **Event → new field** | Per-event limit on **total guest** headcount before additional moderator approval (semantics enforced in booking rules). |
-| **Booking** | One **booker** (`User`) for one **event**; includes booker-level dietary, seating preferences (`sitNextToUserIds`), and accommodation request fields. |
-| **BookingLine** | Each row is a ticket line referencing a **`TicketType`**; the type’s **`audience`** must match use (**MEMBER** for the booker, **GUEST** for guests). Optional guest identity fields. |
-| **GuestTicketRequest** | Rows for **extra** guests that need **moderator approval** beyond the standard flow; stores requested **ticket type**, **guest name**, and **dietary** (aligned with `BookingLine`) plus **requested guest count**; ties to [#48](https://github.com/rafsodc/sodc-web/issues/48). |
+| **Event → guest policy** | Required per-event limit on guest places that can proceed without moderator approval. |
+| **Booking** | One **booker** (`User`) for one **event/revision**; owns lifecycle and whole-revision approval state plus booker preferences. |
+| **BookingPlace** | Durable identity for one member/guest ticket within an event. It survives revisions and is the target for payment allocation and future refunds. |
+| **BookingLine** | Revision snapshot of one priced place. New lines reference `BookingPlace`; the relation is temporarily nullable only for legacy rows/write paths removed by #548. |
+| **BookingPlacePaymentAllocation** | Attributes an order amount directly to `BookingPlace`, so revisions never rewrite payment history and deletion/refunds are evaluated per ticket rather than by ticket-type totals. |
+| **GuestTicketRequest** | Legacy split representation only. New submission and moderation contracts use `BookingLine` and `Booking.approvalStatus`; removal is tracked by #548. |
+
+## State model
+
+Lifecycle, approval, and payment remain independent persisted concerns:
+
+| Concern | States / source |
+|---|---|
+| Booking lifecycle | `DRAFT`, `SUBMITTED`, `CONFIRMED`, `CANCELLED` |
+| Whole-revision approval | `NOT_REQUIRED`, `PENDING`, `APPROVED`, `REJECTED` |
+| Payment | Derived from `TicketOrder` and `BookingPaymentAdjustment` records |
+
+The member-facing state is derived in this priority order:
+
+| Condition | Member-facing state |
+|---|---|
+| lifecycle is `CANCELLED` | Cancelled |
+| lifecycle is `DRAFT` | Draft |
+| approval is `PENDING` | Pending approval |
+| approval is `REJECTED` | Changes required |
+| lifecycle is `CONFIRMED` | Confirmed |
+| an eligible payment/order is processing | Payment processing |
+| approval is `NOT_REQUIRED` or `APPROVED` and payment remains | Payment required |
+
+Free bookings skip Stripe and move to `CONFIRMED` once approval is `NOT_REQUIRED` or `APPROVED` (implemented by #545).
+
+## Revision approval rules
+
+- Initial submission derives approval from the number of guest-audience booking lines.
+- Guest count at or below the configured limit produces `NOT_REQUIRED`; above it produces `PENDING`.
+- For an over-limit revision, a changed guest count, identity/name, or ticket type produces `PENDING`.
+- An over-limit dietary-only or ordering change carries forward the prior approval state.
+- Moving a revision to at or below the limit produces `NOT_REQUIRED`.
+- Review audit fields belong to the exact revision reviewed. A later approval-relevant edit cannot reuse that decision.
+- Removing an unpaid guest is allowed and follows the normal approval-reset rules. Removing a guest with a paid allocation is rejected until the refund workflow exists.
 
 ## Related issues
 

@@ -1,5 +1,12 @@
 import { queryRef, executeQuery, validateArgsWithOptions, mutationRef, executeMutation, validateArgs } from 'firebase/data-connect';
 
+export const BookingApprovalStatus = {
+  NOT_REQUIRED: "NOT_REQUIRED",
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+}
+
 export const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
@@ -906,6 +913,18 @@ updateBookingStatusFromCallableRef.operationName = 'UpdateBookingStatusFromCalla
 export function updateBookingStatusFromCallable(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(updateBookingStatusFromCallableRef(dcInstance, inputVars));
+}
+
+export const updateBookingApprovalFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateBookingApprovalFromCallable', inputVars);
+}
+updateBookingApprovalFromCallableRef.operationName = 'UpdateBookingApprovalFromCallable';
+
+export function updateBookingApprovalFromCallable(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateBookingApprovalFromCallableRef(dcInstance, inputVars));
 }
 
 export const createTicketOrderForCheckoutRef = (dcOrVars, vars) => {
