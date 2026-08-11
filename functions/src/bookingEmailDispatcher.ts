@@ -74,7 +74,6 @@ export type BookingEmailPersonalisation = {
   eventDateTime: string;
   eventLocation: string;
   ticketLinesSummary: string;
-  memberDietaryNote: string;
   // GOV.UK Notify optional-content condition -- must be the literal string
   // "yes"/"no", not a boolean, and its ((var??text)) text cannot itself
   // contain a placeholder, so the accommodation note isn't shown here.
@@ -175,16 +174,12 @@ function buildBasePersonalisation(args: {
   const base = normaliseAppBaseUrl(appBaseUrl);
   const fn = booking.booker.firstName?.trim();
   const totalMinor = bookingTotalMinorFromLines(booking.lines);
-  const memberDietaryNote = booking.lines.find(
-    (line) => line.ticketType.audience === "MEMBER"
-  )?.dietaryNote;
   return {
     firstName: fn && fn.length > 0 ? fn : "Member",
     eventTitle: booking.event.title ?? "—",
     eventDateTime: formatBookingEventDateTime(booking.event.startDateTime, booking.event.endDateTime),
     eventLocation: booking.event.location?.trim() || "To be confirmed",
     ticketLinesSummary: buildTicketLinesSummary(booking.lines),
-    memberDietaryNote: memberDietaryNote?.trim() || "None provided",
     accommodationRequested: accommodationRequestedCondition(booking.accommodationRequested),
     bookingTotalFormatted: formatMinorCurrency(totalMinor, "GBP"),
     sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
