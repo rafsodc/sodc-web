@@ -37,15 +37,15 @@ interface MyBookingsProps {
 
 function guestRequestsLabel(summary: ReturnType<typeof summarizeGuestTicketRequests>): string {
   if (summary.pendingCount > 0) {
-    return `${summary.pendingCount} guest request${summary.pendingCount === 1 ? "" : "s"} pending`;
+    return `${summary.pendingCount} guest${summary.pendingCount === 1 ? "" : "s"} awaiting approval`;
   }
   if (summary.approvedCount > 0) {
-    return `${summary.approvedCount} guest request${summary.approvedCount === 1 ? "" : "s"} approved`;
+    return `${summary.approvedCount} guest${summary.approvedCount === 1 ? "" : "s"} approved`;
   }
   if (summary.rejectedCount > 0) {
-    return `${summary.rejectedCount} guest request${summary.rejectedCount === 1 ? "" : "s"} declined`;
+    return `${summary.rejectedCount} guest${summary.rejectedCount === 1 ? "" : "s"} requiring changes`;
   }
-  return "No extra guest requests";
+  return "No guests awaiting approval";
 }
 
 export default function MyBookings({ onBack }: MyBookingsProps) {
@@ -64,7 +64,7 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
     <Box className="page-container">
       <PageHeader title="My Bookings" onBack={onBack} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Your event bookings across all sections, with payment and guest-request status.
+        Your event bookings across all sections, with approval and payment status.
       </Typography>
 
       {isLoading ? (

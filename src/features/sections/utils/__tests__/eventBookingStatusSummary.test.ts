@@ -336,7 +336,7 @@ describe("getEventBookingNextSteps", () => {
     });
 
     expect(message).toMatch(/complete payment/i);
-    expect(message).toMatch(/moderator review/i);
+    expect(message).toMatch(/complete booking is awaiting organiser approval/i);
   });
 
   it("mentions expired payment holds for failed payment summaries", () => {

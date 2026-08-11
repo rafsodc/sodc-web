@@ -412,6 +412,14 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
         id
         bookingPlace {
           id
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            refundedAmountMinor
+            ticketOrder {
+              id
+              status
+            }
+          }
         }
         sortOrder
         guestDisplayName

@@ -6666,6 +6666,14 @@ export interface GetMyBookingsForEventData {
         id: UUIDString;
         bookingPlace?: {
           id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            refundedAmountMinor: number;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;

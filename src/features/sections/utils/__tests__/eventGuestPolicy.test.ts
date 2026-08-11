@@ -3,10 +3,10 @@ import { formatEventGuestPolicy, guestCountNeedsModerationNotice } from "../even
 
 describe("eventGuestPolicy", () => {
   it("formats guest policy copy without exposing raw field names", () => {
-    expect(formatEventGuestPolicy(null)).toMatch(/organiser review/i);
-    expect(formatEventGuestPolicy(0)).toMatch(/require organiser review/i);
-    expect(formatEventGuestPolicy(1)).toMatch(/up to 1 guest ticket/i);
-    expect(formatEventGuestPolicy(2)).toMatch(/up to 2 guest tickets/i);
+    expect(formatEventGuestPolicy(null)).toMatch(/organiser approval/i);
+    expect(formatEventGuestPolicy(0)).toMatch(/needs organiser approval/i);
+    expect(formatEventGuestPolicy(1)).toMatch(/up to 1 guest/i);
+    expect(formatEventGuestPolicy(2)).toMatch(/up to 2 guests/i);
   });
 
   it("flags when guest count exceeds auto-approval threshold", () => {

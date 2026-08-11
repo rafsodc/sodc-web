@@ -902,8 +902,8 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('tab', { name: 'Book' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Your booking')).toBeInTheDocument();
-      expect(screen.getByText('Payment not started')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Payment required' })).toBeInTheDocument();
+      expect(screen.getByText(/booking is approved/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /pay for all tickets/i })).toBeInTheDocument();
     });
 

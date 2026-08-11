@@ -503,7 +503,7 @@ export function getEventBookingNextSteps(params: {
   }
 
   if (guestSummary.hasPending) {
-    steps.push("Your extra guest ticket request is awaiting moderator review.");
+    steps.push("Your complete booking is awaiting organiser approval.");
   } else if (guestSummary.approvedCount > 0) {
     if (
       paymentSummary.kind === "partial" ||
@@ -511,12 +511,12 @@ export function getEventBookingNextSteps(params: {
       paymentSummary.kind === "pending" ||
       paymentSummary.kind === "failed"
     ) {
-      steps.push("Approved guest tickets are on your booking — pay for any unpaid tickets to confirm them.");
+      steps.push("Your booking is approved — pay for any unpaid tickets to confirm it.");
     } else {
-      steps.push("Approved guest tickets are included in your booking below.");
+      steps.push("Your approved guests are shown in the booking below.");
     }
   } else if (guestSummary.rejectedCount > 0 && guestSummary.approvedCount === 0) {
-    steps.push("A guest ticket request was declined. You can submit a revised request below.");
+    steps.push("The organiser requested changes. Edit and resubmit the complete booking.");
   }
 
   if (steps.length === 0) {

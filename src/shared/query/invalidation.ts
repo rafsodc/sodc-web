@@ -24,5 +24,10 @@ export async function invalidateSectionsForUser(queryClient: QueryClient) {
 }
 
 export async function invalidateMyBookings(queryClient: QueryClient) {
-  await queryClient.invalidateQueries({ queryKey: ["GetMyBookings"] });
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["GetMyBookings"] }),
+    queryClient.invalidateQueries({ queryKey: ["GetMyBookingsForEvent"] }),
+    queryClient.invalidateQueries({ queryKey: ["GetMyTicketOrders"] }),
+    queryClient.invalidateQueries({ queryKey: ["GetMyBookingPaymentAdjustments"] }),
+  ]);
 }
