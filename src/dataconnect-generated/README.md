@@ -128,6 +128,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateBookingPaymentAdjustmentFromCallable*](#createbookingpaymentadjustmentfromcallable)
   - [*AddBookingLineFromCallable*](#addbookinglinefromcallable)
   - [*UpdateBookingStatusFromCallable*](#updatebookingstatusfromcallable)
+  - [*UpdateBookingApprovalFromCallable*](#updatebookingapprovalfromcallable)
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
@@ -2617,7 +2618,7 @@ export interface GetEventByIdForCallableData {
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
     bookingEndDateTime: TimestampString;
-    maxGuestsWithoutModeratorApproval?: number | null;
+    maxGuestsWithoutModeratorApproval: number;
     ticketTypes: ({
       id: UUIDString;
       title: string;
@@ -2872,6 +2873,9 @@ export interface GetBookingsForBookerAndEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionGroupId: UUIDString;
       revisionNumber: number;
       supersededAt?: TimestampString | null;
@@ -7602,7 +7606,7 @@ export interface GetEventsForSectionData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
-      maxGuestsWithoutModeratorApproval?: number | null;
+      maxGuestsWithoutModeratorApproval: number;
     } & Event_Key)[];
   } & Section_Key;
 }
@@ -7725,7 +7729,7 @@ export interface GetEventByIdData {
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
     bookingEndDateTime: TimestampString;
-    maxGuestsWithoutModeratorApproval?: number | null;
+    maxGuestsWithoutModeratorApproval: number;
     ticketTypes: ({
       id: UUIDString;
       title: string;
@@ -8347,6 +8351,9 @@ export interface GetMyBookingsForEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionNumber: number;
       supersededAt?: TimestampString | null;
       clientSubmissionKey?: string | null;
@@ -8497,6 +8504,9 @@ export interface GetMyBookingsData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
       event: {
@@ -14667,6 +14677,124 @@ const ref = updateBookingStatusFromCallableRef({ id: ..., status: ..., });
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = updateBookingStatusFromCallableRef(dataConnect, updateBookingStatusFromCallableVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.booking_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.booking_update);
+});
+```
+
+## UpdateBookingApprovalFromCallable
+You can execute the `UpdateBookingApprovalFromCallable` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateBookingApprovalFromCallable(vars: UpdateBookingApprovalFromCallableVariables): MutationPromise<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
+
+interface UpdateBookingApprovalFromCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateBookingApprovalFromCallableVariables): MutationRef<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
+}
+export const updateBookingApprovalFromCallableRef: UpdateBookingApprovalFromCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateBookingApprovalFromCallable(dc: DataConnect, vars: UpdateBookingApprovalFromCallableVariables): MutationPromise<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
+
+interface UpdateBookingApprovalFromCallableRef {
+  ...
+  (dc: DataConnect, vars: UpdateBookingApprovalFromCallableVariables): MutationRef<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
+}
+export const updateBookingApprovalFromCallableRef: UpdateBookingApprovalFromCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateBookingApprovalFromCallableRef:
+```typescript
+const name = updateBookingApprovalFromCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateBookingApprovalFromCallable` mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateBookingApprovalFromCallableVariables {
+  id: UUIDString;
+  status: BookingApprovalStatus;
+  reviewedById?: string | null;
+  approvalNote?: string | null;
+}
+```
+### Return Type
+Recall that executing the `UpdateBookingApprovalFromCallable` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateBookingApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateBookingApprovalFromCallableData {
+  booking_update?: Booking_Key | null;
+}
+```
+### Using `UpdateBookingApprovalFromCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateBookingApprovalFromCallable, UpdateBookingApprovalFromCallableVariables } from '@dataconnect/generated';
+
+// The `UpdateBookingApprovalFromCallable` mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`:
+const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVariables = {
+  id: ..., 
+  status: ..., 
+  reviewedById: ..., // optional
+  approvalNote: ..., // optional
+};
+
+// Call the `updateBookingApprovalFromCallable()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateBookingApprovalFromCallable(updateBookingApprovalFromCallableVars);
+// Variables can be defined inline as well.
+const { data } = await updateBookingApprovalFromCallable({ id: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateBookingApprovalFromCallable(dataConnect, updateBookingApprovalFromCallableVars);
+
+console.log(data.booking_update);
+
+// Or, you can use the `Promise` API.
+updateBookingApprovalFromCallable(updateBookingApprovalFromCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.booking_update);
+});
+```
+
+### Using `UpdateBookingApprovalFromCallable`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateBookingApprovalFromCallableRef, UpdateBookingApprovalFromCallableVariables } from '@dataconnect/generated';
+
+// The `UpdateBookingApprovalFromCallable` mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`:
+const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVariables = {
+  id: ..., 
+  status: ..., 
+  reviewedById: ..., // optional
+  approvalNote: ..., // optional
+};
+
+// Call the `updateBookingApprovalFromCallableRef()` function to get a reference to the mutation.
+const ref = updateBookingApprovalFromCallableRef(updateBookingApprovalFromCallableVars);
+// Variables can be defined inline as well.
+const ref = updateBookingApprovalFromCallableRef({ id: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateBookingApprovalFromCallableRef(dataConnect, updateBookingApprovalFromCallableVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -21141,7 +21269,7 @@ export interface CreateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 ```
 ### Return Type
@@ -21169,7 +21297,7 @@ const createEventVars: CreateEventVariables = {
   endDateTime: ..., 
   bookingStartDateTime: ..., 
   bookingEndDateTime: ..., 
-  maxGuestsWithoutModeratorApproval: ..., // optional
+  maxGuestsWithoutModeratorApproval: ..., 
 };
 
 // Call the `createEvent()` function to execute the mutation.
@@ -21207,7 +21335,7 @@ const createEventVars: CreateEventVariables = {
   endDateTime: ..., 
   bookingStartDateTime: ..., 
   bookingEndDateTime: ..., 
-  maxGuestsWithoutModeratorApproval: ..., // optional
+  maxGuestsWithoutModeratorApproval: ..., 
 };
 
 // Call the `createEventRef()` function to get a reference to the mutation.
@@ -21274,7 +21402,7 @@ export interface UpdateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 ```
 ### Return Type
@@ -21302,7 +21430,7 @@ const updateEventVars: UpdateEventVariables = {
   endDateTime: ..., 
   bookingStartDateTime: ..., 
   bookingEndDateTime: ..., 
-  maxGuestsWithoutModeratorApproval: ..., // optional
+  maxGuestsWithoutModeratorApproval: ..., 
 };
 
 // Call the `updateEvent()` function to execute the mutation.
@@ -21340,7 +21468,7 @@ const updateEventVars: UpdateEventVariables = {
   endDateTime: ..., 
   bookingStartDateTime: ..., 
   bookingEndDateTime: ..., 
-  maxGuestsWithoutModeratorApproval: ..., // optional
+  maxGuestsWithoutModeratorApproval: ..., 
 };
 
 // Call the `updateEventRef()` function to get a reference to the mutation.

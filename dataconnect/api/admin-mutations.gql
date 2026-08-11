@@ -1324,6 +1324,9 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
       revisionGroupId
       revisionNumber
       supersededAt
@@ -1486,6 +1489,27 @@ mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @a
     id: $id
     data: {
       status: $status
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# Booking-level moderation targets one exact revision. The callable layer owns
+# authorisation and supplies the reviewer identity after checking admin access.
+mutation UpdateBookingApprovalFromCallable(
+  $id: UUID!
+  $status: BookingApprovalStatus!
+  $reviewedById: String
+  $approvalNote: String
+) @auth(level: NO_ACCESS) {
+  booking_update(
+    id: $id
+    data: {
+      approvalStatus: $status
+      approvalReviewedById: $reviewedById
+      approvalReviewedAt_expr: "request.time"
+      approvalNote: $approvalNote
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }

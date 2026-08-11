@@ -157,7 +157,7 @@ mutation CreateEvent(
   $endDateTime: Timestamp!
   $bookingStartDateTime: Timestamp!
   $bookingEndDateTime: Timestamp!
-  $maxGuestsWithoutModeratorApproval: Int
+  $maxGuestsWithoutModeratorApproval: Int!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event_insert(
     data: {
@@ -183,7 +183,7 @@ mutation UpdateEvent(
   $endDateTime: Timestamp!
   $bookingStartDateTime: Timestamp!
   $bookingEndDateTime: Timestamp!
-  $maxGuestsWithoutModeratorApproval: Int
+  $maxGuestsWithoutModeratorApproval: Int!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event_update(
     id: $id

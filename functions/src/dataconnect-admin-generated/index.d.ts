@@ -7,6 +7,12 @@ export type UUIDString = string;
 export type Int64String = string;
 export type DateString = string;
 
+export enum BookingApprovalStatus {
+  NOT_REQUIRED = "NOT_REQUIRED",
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 export enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED = "NOT_REQUIRED",
   PENDING_AUTO_REFUND = "PENDING_AUTO_REFUND",
@@ -560,7 +566,7 @@ export interface CreateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 
 export interface CreateGovNotifyDeliveryConfigurationData {
@@ -1133,6 +1139,9 @@ export interface GetBookingsForBookerAndEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionGroupId: UUIDString;
       revisionNumber: number;
       supersededAt?: TimestampString | null;
@@ -1230,7 +1239,7 @@ export interface GetEventByIdData {
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
     bookingEndDateTime: TimestampString;
-    maxGuestsWithoutModeratorApproval?: number | null;
+    maxGuestsWithoutModeratorApproval: number;
     ticketTypes: ({
       id: UUIDString;
       title: string;
@@ -1260,7 +1269,7 @@ export interface GetEventByIdForCallableData {
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
     bookingEndDateTime: TimestampString;
-    maxGuestsWithoutModeratorApproval?: number | null;
+    maxGuestsWithoutModeratorApproval: number;
     ticketTypes: ({
       id: UUIDString;
       title: string;
@@ -1297,7 +1306,7 @@ export interface GetEventsForSectionData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
-      maxGuestsWithoutModeratorApproval?: number | null;
+      maxGuestsWithoutModeratorApproval: number;
     } & Event_Key)[];
   } & Section_Key;
 }
@@ -1481,6 +1490,9 @@ export interface GetMyBookingsData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
       event: {
@@ -1523,6 +1535,9 @@ export interface GetMyBookingsForEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionNumber: number;
       supersededAt?: TimestampString | null;
       clientSubmissionKey?: string | null;
@@ -3282,6 +3297,17 @@ export interface UpdateAvailableSectionFileMetadataVariables {
   updatedBy: string;
 }
 
+export interface UpdateBookingApprovalFromCallableData {
+  booking_update?: Booking_Key | null;
+}
+
+export interface UpdateBookingApprovalFromCallableVariables {
+  id: UUIDString;
+  status: BookingApprovalStatus;
+  reviewedById?: string | null;
+  approvalNote?: string | null;
+}
+
 export interface UpdateBookingPreferencesFromCallableData {
   booking_update?: Booking_Key | null;
 }
@@ -3325,7 +3351,7 @@ export interface UpdateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 
 export interface UpdateNotifyReplyToAddressIdentityData {
@@ -3843,6 +3869,11 @@ export function addBookingLineFromCallable(vars: AddBookingLineFromCallableVaria
 export function updateBookingStatusFromCallable(dc: DataConnect, vars: UpdateBookingStatusFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingStatusFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateBookingStatusFromCallable(vars: UpdateBookingStatusFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusFromCallableData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingApprovalFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateBookingApprovalFromCallable(dc: DataConnect, vars: UpdateBookingApprovalFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingApprovalFromCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingApprovalFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateBookingApprovalFromCallable(vars: UpdateBookingApprovalFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingApprovalFromCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateTicketOrderForCheckout' Mutation. Allow users to execute without passing in DataConnect. */
 export function createTicketOrderForCheckout(dc: DataConnect, vars: CreateTicketOrderForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketOrderForCheckoutData>>;

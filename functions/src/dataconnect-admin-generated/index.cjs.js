@@ -1,5 +1,13 @@
 const { validateAdminArgs } = require('firebase-admin/data-connect');
 
+const BookingApprovalStatus = {
+  NOT_REQUIRED: "NOT_REQUIRED",
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+}
+exports.BookingApprovalStatus = BookingApprovalStatus;
+
 const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
@@ -596,6 +604,13 @@ function updateBookingStatusFromCallable(dcOrVarsOrOptions, varsOrOptions, optio
   return dcInstance.executeMutation('UpdateBookingStatusFromCallable', inputVars, inputOpts);
 }
 exports.updateBookingStatusFromCallable = updateBookingStatusFromCallable;
+
+function updateBookingApprovalFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateBookingApprovalFromCallable', inputVars, inputOpts);
+}
+exports.updateBookingApprovalFromCallable = updateBookingApprovalFromCallable;
 
 function createTicketOrderForCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

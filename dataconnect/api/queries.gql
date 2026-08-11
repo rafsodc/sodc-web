@@ -396,6 +396,9 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
       revisionNumber
       supersededAt
       clientSubmissionKey
@@ -451,6 +454,9 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
     ) {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
       revisionNumber
       updatedAt
       event {

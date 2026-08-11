@@ -32,6 +32,15 @@ enum BookingStatus {
   CANCELLED
 }
 
+# Moderation state for the complete booking revision. This is deliberately
+# separate from lifecycle and payment state (see #538 / #543).
+enum BookingApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum GuestTicketRequestStatus {
   PENDING
   APPROVED
@@ -431,8 +440,9 @@ type Event @table {
   endDateTime: Timestamp!
   bookingStartDateTime: Timestamp!
   bookingEndDateTime: Timestamp!
-  # Max guest headcount allowed without extra moderator approval (null = unset; semantics in booking rules).
-  maxGuestsWithoutModeratorApproval: Int
+  # Guest places only (the member is excluded). Required for every event;
+  # 0 means every booking containing a guest requires approval.
+  maxGuestsWithoutModeratorApproval: Int!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -469,6 +479,11 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
   clientSubmissionKey: String
   status: BookingStatus! @default(value: DRAFT)
+  # Approval belongs to this exact revision, not to individual guest rows.
+  approvalStatus: BookingApprovalStatus! @default(value: NOT_REQUIRED)
+  approvalReviewedBy: User
+  approvalReviewedAt: Timestamp
+  approvalNote: String
   # Booker-level preferences captured during booking flow (#49).
   bookerDietaryNote: String
   sitNextToUserIds: [String!]
@@ -497,7 +512,9 @@ type BookingLine @table {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# Extra guest headcount that needs moderator approval beyond the standard cap (see issue #48).
+# Legacy split guest-request representation. New booking submissions store every
+# guest as a BookingLine and use Booking.approvalStatus. Removed by #548 once all
+# consumers have moved to the redesigned contract.
 type GuestTicketRequest @table {
   id: UUID! @default(expr: "uuidV4()")
   booking: Booking!

@@ -15,7 +15,7 @@ export interface EventRow {
   endDateTime: string;
   bookingStartDateTime: string;
   bookingEndDateTime: string;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 
 export type TicketTypeRow = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];

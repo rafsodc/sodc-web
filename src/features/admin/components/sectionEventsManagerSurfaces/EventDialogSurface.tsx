@@ -111,8 +111,9 @@ export function EventDialogSurface({
           value={maxGuestsStr}
           onChange={(event) => onMaxGuestsChange(event.target.value)}
           margin="dense"
+          required
           inputProps={{ min: 0 }}
-          helperText="Leave blank if unset. Total guest headcount allowed before extra approval."
+          helperText="Guest places only (not the member). Use 0 when every guest booking needs approval."
         />
       </DialogContent>
       <DialogActions>

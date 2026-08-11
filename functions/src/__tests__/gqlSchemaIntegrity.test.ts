@@ -214,4 +214,43 @@ describe("GQL schema integrity", () => {
     expect(userBlock, "User must have firstName for identification").toContain("firstName");
     expect(userBlock, "User must have lastName for identification").toContain("lastName");
   });
+
+  it("defines booking-level approval independently from lifecycle and payment", () => {
+    const schema = readSchemaFile();
+    expect(schema).toMatch(
+      /enum BookingApprovalStatus\s*{\s*NOT_REQUIRED\s+PENDING\s+APPROVED\s+REJECTED\s*}/,
+    );
+
+    const bookingStart = schema.indexOf("type Booking @table");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    const bookingBlock = schema.slice(bookingStart, bookingEnd + 2);
+    expect(bookingBlock).toContain(
+      "approvalStatus: BookingApprovalStatus! @default(value: NOT_REQUIRED)",
+    );
+    expect(bookingBlock).toContain("approvalReviewedBy: User");
+    expect(bookingBlock).toContain("approvalReviewedAt: Timestamp");
+    expect(bookingBlock).toContain("approvalNote: String");
+  });
+
+  it("requires an explicit non-null guest approval limit on events", () => {
+    const schema = readSchemaFile();
+    const eventStart = schema.indexOf("type Event @table");
+    const eventEnd = schema.indexOf("\n}", eventStart);
+    const eventBlock = schema.slice(eventStart, eventEnd + 2);
+    expect(eventBlock).toContain("maxGuestsWithoutModeratorApproval: Int!");
+
+    const eventMutations = readApiFile("user-group-mutations.gql");
+    expect(eventMutations.match(/\$maxGuestsWithoutModeratorApproval: Int!/g)).toHaveLength(2);
+  });
+
+  it("keeps booking approval writes behind the server-only callable boundary", () => {
+    const adminSdk = readApiFile("admin-mutations.gql");
+    const start = adminSdk.indexOf("mutation UpdateBookingApprovalFromCallable");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = adminSdk.indexOf("\n}", start);
+    const operation = adminSdk.slice(start, end + 2);
+    expect(operation).toContain("$status: BookingApprovalStatus!");
+    expect(operation).toContain("@auth(level: NO_ACCESS)");
+    expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
+  });
 });
