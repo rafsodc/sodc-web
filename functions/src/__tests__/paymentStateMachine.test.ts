@@ -26,6 +26,7 @@ describe("paymentStateMachine", () => {
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("checkout.session.expired")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("checkout.session.async_payment_failed")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.refunded")).toBe(true);
+    expect(SUPPORTED_STRIPE_EVENT_TYPES.has("refund.created")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.dispute.created")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.dispute.updated")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.dispute.closed")).toBe(true);
@@ -84,9 +85,13 @@ describe("paymentStateMachine", () => {
     expect(expired.kind).toBe("payment_transition");
     expect(expired.intent).toBe("MARK_FAILED");
 
-    const refunded = normalizeStripeEvent(stripeEvent("charge.refunded", { orderId: "o-3" }));
+    const refunded = normalizeStripeEvent(stripeEvent("refund.created", { ticketOrderId: "o-3" }));
     expect(refunded.kind).toBe("payment_transition");
     expect(refunded.intent).toBe("MARK_REFUNDED");
+    expect(refunded.orderIds).toEqual(["o-3"]);
+
+    const cumulativeChargeEvent = normalizeStripeEvent(stripeEvent("charge.refunded", { orderIds: "o-3,o-4" }));
+    expect(cumulativeChargeEvent).toMatchObject({ kind: "ignore", reason: "handled_by_refund_created" });
   });
 
   it("normalizes dispute events as side-state hooks", () => {

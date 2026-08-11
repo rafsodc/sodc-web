@@ -60,6 +60,7 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation CreateTicketOrderForCheckout", mustInclude: NO_ACCESS },
       { op: "query GetTicketOrderForWebhook", mustInclude: NO_ACCESS },
       { op: "mutation MarkTicketOrderPaidFromWebhook", mustInclude: NO_ACCESS },
+      { op: "mutation RecordTicketOrderPartialRefundFromWebhook", mustInclude: NO_ACCESS },
       { op: "query GetBookingsForBookerAndEvent", mustInclude: NO_ACCESS },
       { op: "mutation UpdateBookingStatusFromCallable", mustInclude: NO_ACCESS },
       { op: "mutation SettleBookingPaymentAdjustmentsFromCallable", mustInclude: NO_ACCESS },

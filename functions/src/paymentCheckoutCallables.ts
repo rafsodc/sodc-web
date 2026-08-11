@@ -168,6 +168,8 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
             bookingId: booking.id,
             allocationId: refund.allocationId,
             ticketOrderId: refund.ticketOrderId,
+            refundAmountMinor: String(refund.amountMinor),
+            resultingRefundedAmountMinor: String(refund.resultingRefundedAmountMinor),
           },
         },
         {
@@ -284,6 +286,14 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
         eventId,
         orderId: primaryOrderId,
         orderIds: checkoutOrderIds.join(","),
+      },
+      payment_intent_data: {
+        metadata: {
+          firebaseUid: uid,
+          eventId,
+          orderId: primaryOrderId,
+          orderIds: checkoutOrderIds.join(","),
+        },
       },
     },
     { idempotencyKey: bookingCheckoutIdempotencyKey(booking.id, checkoutOrderIds) }

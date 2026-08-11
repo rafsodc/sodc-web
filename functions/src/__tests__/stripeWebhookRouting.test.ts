@@ -5,6 +5,7 @@ describe("stripeWebhookRouting", () => {
   it("routes payment lifecycle events to the payments domain", () => {
     expect(eventBelongsToPaymentsDomain("checkout.session.completed")).toBe(true);
     expect(eventBelongsToPaymentsDomain("charge.refunded")).toBe(true);
+    expect(eventBelongsToPaymentsDomain("refund.created")).toBe(true);
     expect(eventBelongsToPaymentsDomain("charge.dispute.created")).toBe(true);
   });
 

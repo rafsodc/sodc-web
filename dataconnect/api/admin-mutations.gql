@@ -1633,6 +1633,10 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
     disputeUpdatedAt
     disputeClosedAt
     webhookEventId
+    paymentAllocations: bookingPlacePaymentAllocations_on_ticketOrder {
+      id
+      refundedAmountMinor
+    }
   }
 }
 
@@ -1960,6 +1964,27 @@ mutation MarkTicketOrderRefundedFromWebhook(
     id: $id
     data: {
       status: REFUNDED
+      webhookEventId: $webhookEventId
+      stripeRefundId: $stripeRefundId
+      refundedAmountMinor: $refundedAmountMinor
+      refundedAt: $refundedAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation RecordTicketOrderPartialRefundFromWebhook(
+  $id: UUID!
+  $webhookEventId: String!
+  $stripeRefundId: String
+  $refundedAmountMinor: Int!
+  $refundedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: PAID
       webhookEventId: $webhookEventId
       stripeRefundId: $stripeRefundId
       refundedAmountMinor: $refundedAmountMinor

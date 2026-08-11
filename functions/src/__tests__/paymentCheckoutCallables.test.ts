@@ -167,6 +167,9 @@ describe("payment checkout callables", () => {
       expect.objectContaining({
         line_items: [expect.objectContaining({ quantity: 2 })],
         metadata: expect.objectContaining({ orderId: ORDER_ID, orderIds: ORDER_ID }),
+        payment_intent_data: {
+          metadata: expect.objectContaining({ orderId: ORDER_ID, orderIds: ORDER_ID }),
+        },
       }),
       { idempotencyKey: bookingCheckoutIdempotencyKey(BOOKING_ID, [ORDER_ID]) }
     );
@@ -226,7 +229,16 @@ describe("payment checkout callables", () => {
     const result = await eventHandler(enabledRequest({ eventId: EVENT_ID }));
 
     expect(stripe.refunds.create).toHaveBeenCalledWith(
-      expect.objectContaining({ payment_intent: "pi_test_1", amount: 1000 }),
+      expect.objectContaining({
+        payment_intent: "pi_test_1",
+        amount: 1000,
+        metadata: expect.objectContaining({
+          ticketOrderId: ORDER_ID,
+          allocationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          refundAmountMinor: "1000",
+          resultingRefundedAmountMinor: "1000",
+        }),
+      }),
       { idempotencyKey: `booking-refund:${BOOKING_ID}:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:1000` }
     );
     expect(updateAllocationRefund).toHaveBeenCalledWith({

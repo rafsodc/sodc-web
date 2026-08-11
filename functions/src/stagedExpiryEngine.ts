@@ -177,6 +177,7 @@ export async function expireStalePendingTicketOrder(args: {
         markPaid: async () => undefined,
         markFailed: async ({ id, webhookEventId }) => args.markFailed(id, webhookEventId),
         markRefunded: async () => undefined,
+        recordPartialRefund: async () => undefined,
       }
     );
     if (transition.action === "applied") {

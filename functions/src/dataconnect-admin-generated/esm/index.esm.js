@@ -636,6 +636,12 @@ export function markTicketOrderRefundedFromWebhook(dcOrVarsOrOptions, varsOrOpti
   return dcInstance.executeMutation('MarkTicketOrderRefundedFromWebhook', inputVars, inputOpts);
 }
 
+export function recordTicketOrderPartialRefundFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordTicketOrderPartialRefundFromWebhook', inputVars, inputOpts);
+}
+
 export function upsertTicketOrderDisputeFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

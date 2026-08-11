@@ -2086,6 +2086,10 @@ export interface GetTicketOrderForWebhookData {
     disputeUpdatedAt?: TimestampString | null;
     disputeClosedAt?: TimestampString | null;
     webhookEventId?: string | null;
+    paymentAllocations: ({
+      id: UUIDString;
+      refundedAmountMinor: number;
+    } & BookingPlacePaymentAllocation_Key)[];
   } & TicketOrder_Key;
 }
 
@@ -3125,6 +3129,18 @@ export interface RecordSectionFileAuditVariables {
   action: string;
   outcome: string;
   detail?: string | null;
+}
+
+export interface RecordTicketOrderPartialRefundFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+
+export interface RecordTicketOrderPartialRefundFromWebhookVariables {
+  id: UUIDString;
+  webhookEventId: string;
+  stripeRefundId?: string | null;
+  refundedAmountMinor: number;
+  refundedAt?: TimestampString | null;
 }
 
 export interface RegisterForSectionData {
@@ -4620,6 +4636,18 @@ export const markTicketOrderRefundedFromWebhookRef: MarkTicketOrderRefundedFromW
 
 export function markTicketOrderRefundedFromWebhook(vars: MarkTicketOrderRefundedFromWebhookVariables): MutationPromise<MarkTicketOrderRefundedFromWebhookData, MarkTicketOrderRefundedFromWebhookVariables>;
 export function markTicketOrderRefundedFromWebhook(dc: DataConnect, vars: MarkTicketOrderRefundedFromWebhookVariables): MutationPromise<MarkTicketOrderRefundedFromWebhookData, MarkTicketOrderRefundedFromWebhookVariables>;
+
+interface RecordTicketOrderPartialRefundFromWebhookRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationRef<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationRef<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+  operationName: string;
+}
+export const recordTicketOrderPartialRefundFromWebhookRef: RecordTicketOrderPartialRefundFromWebhookRef;
+
+export function recordTicketOrderPartialRefundFromWebhook(vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationPromise<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+export function recordTicketOrderPartialRefundFromWebhook(dc: DataConnect, vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationPromise<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
 
 interface UpsertTicketOrderDisputeFromWebhookRef {
   /* Allow users to create refs without passing in DataConnect */

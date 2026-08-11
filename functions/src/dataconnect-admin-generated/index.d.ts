@@ -2063,6 +2063,10 @@ export interface GetTicketOrderForWebhookData {
     disputeUpdatedAt?: TimestampString | null;
     disputeClosedAt?: TimestampString | null;
     webhookEventId?: string | null;
+    paymentAllocations: ({
+      id: UUIDString;
+      refundedAmountMinor: number;
+    } & BookingPlacePaymentAllocation_Key)[];
   } & TicketOrder_Key;
 }
 
@@ -3104,6 +3108,18 @@ export interface RecordSectionFileAuditVariables {
   detail?: string | null;
 }
 
+export interface RecordTicketOrderPartialRefundFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+
+export interface RecordTicketOrderPartialRefundFromWebhookVariables {
+  id: UUIDString;
+  webhookEventId: string;
+  stripeRefundId?: string | null;
+  refundedAmountMinor: number;
+  refundedAt?: TimestampString | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -4030,6 +4046,11 @@ export function markTicketOrderFailedFromWebhook(vars: MarkTicketOrderFailedFrom
 export function markTicketOrderRefundedFromWebhook(dc: DataConnect, vars: MarkTicketOrderRefundedFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkTicketOrderRefundedFromWebhookData>>;
 /** Generated Node Admin SDK operation action function for the 'MarkTicketOrderRefundedFromWebhook' Mutation. Allow users to pass in custom DataConnect instances. */
 export function markTicketOrderRefundedFromWebhook(vars: MarkTicketOrderRefundedFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkTicketOrderRefundedFromWebhookData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RecordTicketOrderPartialRefundFromWebhook' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordTicketOrderPartialRefundFromWebhook(dc: DataConnect, vars: RecordTicketOrderPartialRefundFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordTicketOrderPartialRefundFromWebhookData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordTicketOrderPartialRefundFromWebhook' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordTicketOrderPartialRefundFromWebhook(vars: RecordTicketOrderPartialRefundFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordTicketOrderPartialRefundFromWebhookData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpsertTicketOrderDisputeFromWebhook' Mutation. Allow users to execute without passing in DataConnect. */
 export function upsertTicketOrderDisputeFromWebhook(dc: DataConnect, vars: UpsertTicketOrderDisputeFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertTicketOrderDisputeFromWebhookData>>;

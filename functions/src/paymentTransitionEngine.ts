@@ -5,6 +5,8 @@ import { evaluateTransition, mapIntentToTargetStatus, type PaymentTransitionInte
 export interface TicketOrderTransitionRequest {
   orderId: UUIDString;
   currentStatus: TicketOrderStatus;
+  currentWebhookEventId?: string | null;
+  totalAmountMinor?: number;
   intent: PaymentTransitionIntent;
   webhookEventId: string;
   recoverFailedCheckoutPayment?: boolean;
@@ -46,6 +48,22 @@ export interface TicketOrderTransitionMutations {
     refundedAmountMinor?: number | null;
     refundedAt?: string | null;
   }): Promise<unknown>;
+  recordPartialRefund(args: {
+    id: UUIDString;
+    webhookEventId: string;
+    stripeRefundId?: string | null;
+    refundedAmountMinor: number;
+    refundedAt?: string | null;
+  }): Promise<unknown>;
+}
+
+export function refundTargetStatus(
+  totalAmountMinor?: number,
+  refundedAmountMinor?: number | null
+): TicketOrderStatus {
+  return totalAmountMinor != null && refundedAmountMinor != null && refundedAmountMinor < totalAmountMinor
+    ? TicketOrderStatus.PAID
+    : TicketOrderStatus.REFUNDED;
 }
 
 /** One Stripe Checkout session can settle multiple ticket orders; only the first may store the session id. */
@@ -69,7 +87,48 @@ export async function runTicketOrderTransition(
   request: TicketOrderTransitionRequest,
   mutations: TicketOrderTransitionMutations
 ): Promise<TicketOrderTransitionResult> {
-  const targetStatus = mapIntentToTargetStatus(request.intent);
+  const targetStatus =
+    request.intent === "MARK_REFUNDED"
+      ? refundTargetStatus(request.totalAmountMinor, request.refundContext?.refundedAmountMinor)
+      : mapIntentToTargetStatus(request.intent);
+
+  if (request.intent === "MARK_REFUNDED" && targetStatus === TicketOrderStatus.PAID) {
+    if (request.currentStatus !== TicketOrderStatus.PAID) {
+      return {
+        action: "noop_illegal",
+        reason: "partial_refund_requires_paid_order",
+        orderId: request.orderId,
+        fromStatus: request.currentStatus,
+        targetStatus,
+        intent: request.intent,
+      };
+    }
+    if (request.currentWebhookEventId === request.webhookEventId) {
+      return {
+        action: "noop_replay",
+        reason: "partial_refund_already_recorded",
+        orderId: request.orderId,
+        fromStatus: request.currentStatus,
+        targetStatus,
+        intent: request.intent,
+      };
+    }
+    await mutations.recordPartialRefund({
+      id: request.orderId,
+      webhookEventId: request.webhookEventId,
+      stripeRefundId: request.refundContext?.stripeRefundId ?? null,
+      refundedAmountMinor: request.refundContext?.refundedAmountMinor ?? 0,
+      refundedAt: request.refundContext?.refundedAt ?? null,
+    });
+    return {
+      action: "applied",
+      reason: "partial_refund_recorded",
+      orderId: request.orderId,
+      fromStatus: request.currentStatus,
+      targetStatus,
+      intent: request.intent,
+    };
+  }
   const decision = evaluateTransition(request.currentStatus, request.intent, {
     recoverFailedCheckoutPayment: request.recoverFailedCheckoutPayment,
   });

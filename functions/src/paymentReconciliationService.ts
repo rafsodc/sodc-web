@@ -6,6 +6,7 @@ import {
   markTicketOrderFailedFromWebhook,
   markTicketOrderPaidFromWebhook,
   markTicketOrderRefundedFromWebhook,
+  recordTicketOrderPartialRefundFromWebhook,
   upsertPaymentReconciliationException,
   PaymentReconciliationExceptionStatus,
   PaymentReconciliationExceptionType,
@@ -106,6 +107,7 @@ export async function upsertReconciliationSnapshot(
       status: TicketOrderStatus;
       totalAmountMinor: number;
       refundedAmountMinor?: number | null;
+      allocationRefundedAmountMinor?: number | null;
       stripePaymentIntentId?: string | null;
       disputeStatus?: string | null;
     };
@@ -254,10 +256,16 @@ export async function applyPaymentTransitionToOrders(
       if (!currentOrder) {
         continue;
       }
+      const allocationRefundedAmountMinor = (currentOrder.paymentAllocations ?? []).reduce(
+        (total, allocation) => total + allocation.refundedAmountMinor,
+        0
+      );
       const transitionResult = await dependencies.runTransition(
         {
           orderId,
           currentStatus: currentOrder.status,
+          currentWebhookEventId: currentOrder.webhookEventId ?? null,
+          totalAmountMinor: currentOrder.totalAmountMinor,
           intent: args.intent,
           webhookEventId: args.webhookEventId,
           recoverFailedCheckoutPayment: args.recoverFailedCheckoutPayment,
@@ -265,12 +273,19 @@ export async function applyPaymentTransitionToOrders(
             args.intent === "MARK_PAID" && args.paidContext
               ? paidContextForMultiOrderWebhook(orderIndex, args.paidContext)
               : undefined,
-          refundContext: args.refundContext,
+          refundContext:
+            args.intent === "MARK_REFUNDED"
+              ? {
+                  ...args.refundContext,
+                  refundedAmountMinor: allocationRefundedAmountMinor,
+                }
+              : args.refundContext,
         },
         {
           markPaid: markTicketOrderPaidFromWebhook,
           markFailed: markTicketOrderFailedFromWebhook,
           markRefunded: markTicketOrderRefundedFromWebhook,
+          recordPartialRefund: recordTicketOrderPartialRefundFromWebhook,
         }
       );
       const isApplied = transitionResult.action === "applied";
@@ -315,7 +330,11 @@ export async function applyPaymentTransitionToOrders(
         snapshot: {
           status: transitionResult.targetStatus,
           totalAmountMinor: currentOrder.totalAmountMinor,
-          refundedAmountMinor: args.refundAmountFromEvent ?? currentOrder.refundedAmountMinor ?? null,
+          refundedAmountMinor:
+            args.intent === "MARK_REFUNDED"
+              ? allocationRefundedAmountMinor
+              : args.refundAmountFromEvent ?? currentOrder.refundedAmountMinor ?? null,
+          allocationRefundedAmountMinor,
           stripePaymentIntentId: args.paymentIntentIdFromEvent ?? currentOrder.stripePaymentIntentId ?? null,
           disputeStatus: currentOrder.disputeStatus ?? null,
         },

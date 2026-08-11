@@ -7,6 +7,7 @@ function buildMutations(): TicketOrderTransitionMutations {
     markPaid: vi.fn(async () => undefined),
     markFailed: vi.fn(async () => undefined),
     markRefunded: vi.fn(async () => undefined),
+    recordPartialRefund: vi.fn(async () => undefined),
   };
 }
 
@@ -110,6 +111,7 @@ describe("paymentTransitionEngine", () => {
       {
         orderId: "00000000-0000-0000-0000-000000000004",
         currentStatus: TicketOrderStatus.PAID,
+        totalAmountMinor: 1599,
         intent: "MARK_REFUNDED",
         webhookEventId: "evt_refund",
         refundContext: {
@@ -130,6 +132,55 @@ describe("paymentTransitionEngine", () => {
       refundedAmountMinor: 1599,
       refundedAt: "2026-04-27T18:00:00.000Z",
     });
+  });
+
+  it("records a partial refund without changing the paid order status", async () => {
+    const mutations = buildMutations();
+    const result = await runTicketOrderTransition(
+      {
+        orderId: "00000000-0000-0000-0000-000000000006",
+        currentStatus: TicketOrderStatus.PAID,
+        currentWebhookEventId: "evt_previous_refund",
+        totalAmountMinor: 5000,
+        intent: "MARK_REFUNDED",
+        webhookEventId: "evt_partial_refund",
+        refundContext: {
+          stripeRefundId: "re_partial",
+          refundedAmountMinor: 1000,
+          refundedAt: "2026-04-27T18:00:00.000Z",
+        },
+      },
+      mutations
+    );
+
+    expect(result).toMatchObject({ action: "applied", targetStatus: TicketOrderStatus.PAID });
+    expect(mutations.recordPartialRefund).toHaveBeenCalledWith({
+      id: "00000000-0000-0000-0000-000000000006",
+      webhookEventId: "evt_partial_refund",
+      stripeRefundId: "re_partial",
+      refundedAmountMinor: 1000,
+      refundedAt: "2026-04-27T18:00:00.000Z",
+    });
+    expect(mutations.markRefunded).not.toHaveBeenCalled();
+  });
+
+  it("does not reapply an exact partial-refund event replay", async () => {
+    const mutations = buildMutations();
+    const result = await runTicketOrderTransition(
+      {
+        orderId: "00000000-0000-0000-0000-000000000006",
+        currentStatus: TicketOrderStatus.PAID,
+        currentWebhookEventId: "evt_partial_refund",
+        totalAmountMinor: 5000,
+        intent: "MARK_REFUNDED",
+        webhookEventId: "evt_partial_refund",
+        refundContext: { refundedAmountMinor: 1000 },
+      },
+      mutations
+    );
+
+    expect(result.action).toBe("noop_replay");
+    expect(mutations.recordPartialRefund).not.toHaveBeenCalled();
   });
 });
 
