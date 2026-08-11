@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { getDataConnect } from "firebase-admin/data-connect";
 import {
   BookingApprovalStatus,
   BookingPaymentAdjustmentStatus,
@@ -8,12 +7,7 @@ import {
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
-
-const connectorConfig = {
-  connector: "booking-service",
-  serviceId: "sodc-web-service",
-  location: "europe-west2",
-};
+import { getBookingServiceDataConnect } from "./bookingServiceDataConnect";
 
 export const MAX_ATOMIC_BOOKING_LINES = 100;
 
@@ -202,7 +196,7 @@ function completeVariables(input: CompleteBookingPersistenceInput): CompleteBook
 }
 
 export async function persistInitialBooking(input: CompleteBookingPersistenceInput): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, CompleteBookingVariables>(
+  await getBookingServiceDataConnect().executeMutation<unknown, CompleteBookingVariables>(
     "CreateCompleteBookingFromCallable",
     completeVariables(input)
   );
@@ -210,7 +204,7 @@ export async function persistInitialBooking(input: CompleteBookingPersistenceInp
 
 export async function persistPendingBookingRevision(input: CompleteBookingPersistenceInput): Promise<void> {
   if (!input.supersedesBookingId) throw new Error("Pending revision requires supersedesBookingId");
-  await getDataConnect(connectorConfig).executeMutation<unknown, CompleteBookingVariables & { supersedesBookingId: UUIDString }>(
+  await getBookingServiceDataConnect().executeMutation<unknown, CompleteBookingVariables & { supersedesBookingId: UUIDString }>(
     "CreatePendingBookingRevisionFromCallable",
     { ...completeVariables(input), supersedesBookingId: input.supersedesBookingId }
   );
@@ -222,7 +216,7 @@ export async function persistActiveBookingRevision(args: {
   deltaAmountMinor: number;
   adjustmentStatus: BookingPaymentAdjustmentStatus;
 }): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, CompleteBookingVariables & {
+  await getBookingServiceDataConnect().executeMutation<unknown, CompleteBookingVariables & {
     revisionGroupId: UUIDString;
     bookingId: UUIDString;
     supersededBookingId: UUIDString;
@@ -249,7 +243,7 @@ export async function activateApprovedBookingRevision(args: {
   deltaAmountMinor: number;
   adjustmentStatus: BookingPaymentAdjustmentStatus;
 }): Promise<void> {
-  await getDataConnect(connectorConfig).executeMutation<unknown, {
+  await getBookingServiceDataConnect().executeMutation<unknown, {
     bookingId: UUIDString;
     revisionGroupId: UUIDString;
     activeBookingId: UUIDString;

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TicketOrderStatus, type UUIDString } from "@dataconnect/admin-generated";
 
 const mocks = vi.hoisted(() => ({ executeMutation: vi.fn() }));
-vi.mock("firebase-admin/data-connect", () => ({
-  getDataConnect: vi.fn(() => ({ executeMutation: mocks.executeMutation })),
+vi.mock("../bookingServiceDataConnect", () => ({
+  getBookingServiceDataConnect: vi.fn(() => ({ executeMutation: mocks.executeMutation })),
 }));
 
 import { createAllocatedTicketOrder } from "../bookingPaymentPersistence";

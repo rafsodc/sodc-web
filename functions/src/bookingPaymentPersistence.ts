@@ -1,13 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { getDataConnect } from "firebase-admin/data-connect";
 import { TicketOrderStatus } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
-
-const connectorConfig = {
-  connector: "booking-service",
-  serviceId: "sodc-web-service",
-  location: "europe-west2",
-};
+import { getBookingServiceDataConnect } from "./bookingServiceDataConnect";
 
 interface AllocatedTicketOrderVariables {
   ticketOrder: {
@@ -79,7 +73,7 @@ export async function createAllocatedTicketOrder(
     })),
   };
 
-  await getDataConnect(connectorConfig).executeMutation<unknown, AllocatedTicketOrderVariables>(
+  await getBookingServiceDataConnect().executeMutation<unknown, AllocatedTicketOrderVariables>(
     "CreateAllocatedTicketOrderFromCallable",
     variables
   );
