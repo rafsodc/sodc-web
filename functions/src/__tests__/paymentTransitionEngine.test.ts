@@ -182,6 +182,28 @@ describe("paymentTransitionEngine", () => {
     expect(result.action).toBe("noop_replay");
     expect(mutations.recordPartialRefund).not.toHaveBeenCalled();
   });
+
+  it("rejects a partial refund unless the order is currently paid", async () => {
+    const mutations = buildMutations();
+    const result = await runTicketOrderTransition(
+      {
+        orderId: "00000000-0000-0000-0000-000000000007",
+        currentStatus: TicketOrderStatus.REFUNDED,
+        totalAmountMinor: 5000,
+        intent: "MARK_REFUNDED",
+        webhookEventId: "evt_invalid_partial_refund",
+        refundContext: { refundedAmountMinor: 1000 },
+      },
+      mutations
+    );
+
+    expect(result).toMatchObject({
+      action: "noop_illegal",
+      reason: "partial_refund_requires_paid_order",
+      targetStatus: TicketOrderStatus.PAID,
+    });
+    expect(mutations.recordPartialRefund).not.toHaveBeenCalled();
+  });
 });
 
 describe("paidContextForMultiOrderWebhook", () => {

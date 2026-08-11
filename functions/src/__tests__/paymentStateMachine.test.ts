@@ -99,6 +99,10 @@ describe("paymentStateMachine", () => {
     expect(disputeOpened.kind).toBe("dispute_side_state");
     expect(disputeOpened.disputeState).toBe("DISPUTE_OPEN");
 
+    const disputeUpdated = normalizeStripeEvent(stripeEvent("charge.dispute.updated", { orderId: "o-4" }));
+    expect(disputeUpdated.kind).toBe("dispute_side_state");
+    expect(disputeUpdated.disputeState).toBe("DISPUTE_UPDATED");
+
     const disputeClosed = normalizeStripeEvent(stripeEvent("charge.dispute.closed", { orderId: "o-5" }));
     expect(disputeClosed.kind).toBe("dispute_side_state");
     expect(disputeClosed.disputeState).toBe("DISPUTE_CLOSED");
@@ -108,5 +112,18 @@ describe("paymentStateMachine", () => {
     const ignored = normalizeStripeEvent(stripeEvent("payment_intent.succeeded", { orderId: "o-6" }));
     expect(ignored.kind).toBe("ignore");
     expect(ignored.reason).toBe("unsupported_event_type");
+  });
+
+  it("defensively ignores an allowlisted event without a normalization mapping", () => {
+    const unmappedType = "test.unmapped_supported_event";
+    SUPPORTED_STRIPE_EVENT_TYPES.add(unmappedType);
+    try {
+      expect(normalizeStripeEvent(stripeEvent(unmappedType))).toEqual({
+        kind: "ignore",
+        reason: "unmapped_supported_event_type",
+      });
+    } finally {
+      SUPPORTED_STRIPE_EVENT_TYPES.delete(unmappedType);
+    }
   });
 });

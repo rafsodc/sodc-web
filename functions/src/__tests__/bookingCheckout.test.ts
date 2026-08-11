@@ -67,6 +67,15 @@ describe("bookingCheckout", () => {
     expect(selected?.id).toBe("approved");
   });
 
+  it("keeps the latest eligible revision when an older eligible revision follows it", () => {
+    const selected = selectLatestPaymentEligibleBooking([
+      booking({ id: "latest", revisionNumber: 2 }),
+      booking({ id: "older", revisionNumber: 1 }),
+    ]);
+
+    expect(selected?.id).toBe("latest");
+  });
+
   it.each([BookingApprovalStatus.PENDING, BookingApprovalStatus.REJECTED])(
     "rejects a sole %s revision from checkout eligibility",
     (approvalStatus) => {
@@ -106,6 +115,27 @@ describe("bookingCheckout", () => {
     expect(planBookingAllocationRefunds(revised)).toEqual([{
       allocationId: allocation.id,
       ticketOrderId: allocation.ticketOrder.id,
+      stripePaymentIntentId: "pi_test",
+      amountMinor: 1000,
+      resultingRefundedAmountMinor: 1000,
+    }]);
+  });
+
+  it("refunds the newest allocation first", () => {
+    const revised = booking({
+      places: [{
+        id: "place-a",
+        price: 40,
+        statuses: [TicketOrderStatus.PAID, TicketOrderStatus.PAID],
+      }],
+    });
+    const [older, newer] = revised.lines[0]!.bookingPlace!.paymentAllocations;
+    older!.allocatedAmountMinor = 2500;
+    newer!.allocatedAmountMinor = 2500;
+
+    expect(planBookingAllocationRefunds(revised)).toEqual([{
+      allocationId: newer!.id,
+      ticketOrderId: newer!.ticketOrder.id,
       stripePaymentIntentId: "pi_test",
       amountMinor: 1000,
       resultingRefundedAmountMinor: 1000,

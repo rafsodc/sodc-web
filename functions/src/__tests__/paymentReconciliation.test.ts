@@ -26,6 +26,18 @@ describe("paymentReconciliation", () => {
     expect(signals.some((s) => s.type === PaymentReconciliationExceptionType.REFUND_AMOUNT_MISMATCH)).toBe(true);
   });
 
+  it("flags refunded orders that have no recorded refund amount", () => {
+    const signals = evaluateReconciliationSignals({
+      status: TicketOrderStatus.REFUNDED,
+      totalAmountMinor: 5000,
+    });
+
+    expect(signals).toContainEqual(expect.objectContaining({
+      type: PaymentReconciliationExceptionType.REFUND_AMOUNT_MISMATCH,
+      note: "Refunded order is missing refundedAmountMinor",
+    }));
+  });
+
   it("accepts a partial allocation refund while the order remains paid", () => {
     const signals = evaluateReconciliationSignals({
       status: TicketOrderStatus.PAID,
