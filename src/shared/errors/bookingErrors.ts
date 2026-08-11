@@ -103,6 +103,12 @@ const BOOKING_DOMAIN_ERRORS: Record<string, UserFacingErrorInput> = {
     message: "Your booking changed while you were editing it. Refresh and review the latest version.",
     retryable: true,
   },
+  PAID_BOOKING_PLACE_REMOVAL_REQUIRES_REFUND: {
+    category: "precondition",
+    title: "Paid ticket cannot be changed",
+    message: "This ticket has already been paid for. Guest refunds and ticket transfers are not available yet.",
+    retryable: false,
+  },
 };
 
 const FALLBACKS: Record<BookingErrorContext, UserFacingErrorInput> = {

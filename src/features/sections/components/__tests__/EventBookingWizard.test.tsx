@@ -244,7 +244,13 @@ describe("EventBookingWizard", () => {
     } as never);
     vi.mocked(firebaseFunctions.submitEventBooking)
       .mockRejectedValueOnce(new Error("SQL booking revision implementation detail"))
-      .mockResolvedValueOnce({ bookingId: "booking-new", status: "SUBMITTED" });
+      .mockResolvedValueOnce({
+        bookingId: "booking-new",
+        status: "SUBMITTED",
+        approvalStatus: "NOT_REQUIRED",
+        outcome: "READY_FOR_PAYMENT",
+        paymentReady: true,
+      });
 
     const user = userEvent.setup();
     render(
@@ -674,17 +680,17 @@ describe("EventBookingWizard", () => {
               guestDisplayName: "Alex Guest",
               dietaryNote: "Vegetarian",
             }),
+            expect.objectContaining({
+              ticketTypeId: "ticket-guest",
+              guestDisplayName: "Sam Extra",
+              dietaryNote: "Gluten free",
+            }),
           ]),
         })
       );
     });
 
-    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).toHaveBeenCalledWith({
-      bookingId: "booking-new",
-      guestTicketTypeId: "ticket-guest",
-      idempotencyKey: expect.any(String),
-      guests: [{ guestDisplayName: "Sam Extra", dietaryNote: "Gluten free" }],
-    });
+    expect(firebaseFunctions.submitAdditionalGuestTicketRequests).not.toHaveBeenCalled();
   });
 
   it("advances to the payment step after confirming a new booking", async () => {

@@ -61,6 +61,12 @@ describe("bookingWizardModel", () => {
         guestTicketTypeId: "guest-ticket",
         guestDisplayName: "  Guest Name  ",
         guestDietaryNote: "  Vegan  ",
+        extraGuestTicketTypeId: "extra-guest-ticket",
+        extraGuestCount: 2,
+        extraGuestDetails: [
+          { guestDisplayName: "  Guest Two  ", dietaryNote: "  Gluten free  " },
+          { guestDisplayName: "Guest Three", dietaryNote: "" },
+        ],
       })
     ).toEqual([
       {
@@ -76,6 +82,20 @@ describe("bookingWizardModel", () => {
         guestUserId: null,
         guestDisplayName: "Guest Name",
         dietaryNote: "Vegan",
+      },
+      {
+        ticketTypeId: "extra-guest-ticket",
+        sortOrder: 2,
+        guestUserId: null,
+        guestDisplayName: "Guest Two",
+        dietaryNote: "Gluten free",
+      },
+      {
+        ticketTypeId: "extra-guest-ticket",
+        sortOrder: 3,
+        guestUserId: null,
+        guestDisplayName: "Guest Three",
+        dietaryNote: null,
       },
     ]);
   });

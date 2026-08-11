@@ -98,6 +98,9 @@ export function buildBookingSubmissionLines(args: {
   guestTicketTypeId: string | null;
   guestDisplayName: string;
   guestDietaryNote: string;
+  extraGuestTicketTypeId: string | null;
+  extraGuestDetails: ExtraGuestDetailRow[];
+  extraGuestCount: number;
 }): BookingSubmissionLine[] {
   const lines: BookingSubmissionLine[] = [
     {
@@ -116,6 +119,17 @@ export function buildBookingSubmissionLines(args: {
       guestDisplayName: args.guestDisplayName.trim(),
       dietaryNote: args.guestDietaryNote.trim() || null,
     });
+  }
+  if (args.extraGuestTicketTypeId) {
+    for (const guest of args.extraGuestDetails.slice(0, args.extraGuestCount)) {
+      lines.push({
+        ticketTypeId: args.extraGuestTicketTypeId,
+        sortOrder: lines.length,
+        guestUserId: null,
+        guestDisplayName: guest.guestDisplayName.trim(),
+        dietaryNote: guest.dietaryNote.trim() || null,
+      });
+    }
   }
   return lines;
 }

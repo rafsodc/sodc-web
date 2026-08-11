@@ -1,26 +1,23 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import { randomUUID } from "node:crypto";
 import {
-  addBookingLineFromCallable,
-  createBookingPaymentAdjustmentFromCallable,
+  BookingApprovalStatus,
   BookingStatus,
-  markBookingSupersededFromCallable,
-  createBookingDraftForUser,
-  createBookingDraftRevisionForUser,
-  deleteBookingLineFromCallable,
+  TicketAudience,
   getBookingsForBookerAndEvent,
   getEventByIdForCallable,
   getSectionByIdForCallable,
   getUserMembershipStatus,
   getUserUserGroupsForAdmin,
-  updateBookingPreferencesFromCallable,
-  updateBookingStatusFromCallable,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import {
   BOOKING_RULE_ERROR_CODES,
+  bookingApprovalAllowsPayment,
+  deriveBookingApprovalStatus,
+  deriveRevisedBookingApprovalStatus,
   evaluateBookingGatekeeping,
-  evaluateGuestApprovalGate,
   evaluateBookingLines,
   type BookingRulesFailure,
   type LineInputForRules,
@@ -31,11 +28,21 @@ import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan } from "./bookingRevisionEngine";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
+import { bookingIdsEqual } from "./bookingCheckout";
 import { govNotifySecrets } from "./mailer";
 import {
   notifyBookingConfirmationEmail,
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
+import {
+  MAX_ATOMIC_BOOKING_LINES,
+  persistActiveBookingRevision,
+  persistInitialBooking,
+  persistPendingBookingRevision,
+  planBookingPlaces,
+  type ExistingSubmissionLine,
+  type SubmissionLine,
+} from "./bookingSubmissionPersistence";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -80,6 +87,9 @@ function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
 function parseBookingLines(raw: unknown): LineInputForRules[] {
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new HttpsError("invalid-argument", "lines must be a non-empty array");
+  }
+  if (raw.length > MAX_ATOMIC_BOOKING_LINES) {
+    throw new HttpsError("invalid-argument", `lines must contain no more than ${MAX_ATOMIC_BOOKING_LINES} tickets`);
   }
   const out: LineInputForRules[] = [];
   for (let i = 0; i < raw.length; i++) {
@@ -149,6 +159,15 @@ async function fetchBookingsForBookerAndEvent(bookerId: string, eventId: UUIDStr
 function isDuplicateKeyError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /unique|duplicate|violates/i.test(msg);
+}
+
+function bookingSubmissionOutcome(approvalStatus: BookingApprovalStatus) {
+  const paymentReady = bookingApprovalAllowsPayment(approvalStatus);
+  return {
+    approvalStatus,
+    outcome: paymentReady ? "READY_FOR_PAYMENT" : "PENDING_APPROVAL",
+    paymentReady,
+  } as const;
 }
 
 /**
@@ -236,8 +255,10 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
 
     const ticketTypes = event.ticketTypes ?? [];
     const ticketTypesById = new Map<string, TicketTypeForRules>();
+    const ticketPriceById = new Map<string, number>();
     for (const tt of ticketTypes) {
       const id = validateUUID(tt.id, "ticketTypeId");
+      ticketPriceById.set(id, tt.price);
       ticketTypesById.set(id, {
         id,
         audience: tt.audience,
@@ -263,14 +284,15 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       throw bookingRulesToHttps(lineRules);
     }
 
-    let bookings = initialBookings;
-
-    const terminalBookings = bookings.filter((b) => b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED);
+    const terminalBookings = initialBookings.filter(
+      (booking) => booking.status === BookingStatus.SUBMITTED || booking.status === BookingStatus.CONFIRMED
+    );
     const replayCompleted = terminalBookings.find((b) => b.clientSubmissionKey === idempotencyKey);
     if (replayCompleted) {
       return {
         bookingId: replayCompleted.id,
         status: replayCompleted.status,
+        ...bookingSubmissionOutcome(replayCompleted.approvalStatus),
         idempotentReplay: true,
       };
     }
@@ -285,144 +307,156 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       { idempotencyKey, baseBookingId, baseRevisionNumber }
     );
 
-    if (revisionPlan.supersedesBookingId) {
-      const superseded = terminalBookings.find((b) => b.id === revisionPlan.supersedesBookingId);
-      const approvedGuestCapacity = Math.max(
-        0,
-        ...(superseded?.guestTicketRequests ?? [])
-          .filter((request) => request.status === "APPROVED")
-          .map((request) => request.requestedGuestCount)
-      );
-      const revisedGuestTicketCount = lines.reduce((count, line) => {
-        const tt = ticketTypesById.get(line.ticketTypeId);
-        return count + (tt?.audience === "GUEST" ? 1 : 0);
-      }, 0);
-      const guestApprovalGate = evaluateGuestApprovalGate({
-        guestTicketCount: revisedGuestTicketCount,
-        maxGuestsWithoutModeratorApproval: event.maxGuestsWithoutModeratorApproval ?? null,
-        approvedGuestCapacity,
-      });
-      if (!guestApprovalGate.ok) {
-        throw bookingRulesToHttps(guestApprovalGate);
-      }
-    }
-
-    const drafts = bookings.filter((b) => b.status === BookingStatus.DRAFT);
-    const matchingDraft = drafts.find((b) => b.clientSubmissionKey === idempotencyKey);
-    const otherDrafts = drafts.filter((b) => b.clientSubmissionKey !== idempotencyKey);
-    if (otherDrafts.length > 0) {
+    const legacyDrafts = initialBookings.filter((booking) => booking.status === BookingStatus.DRAFT);
+    if (legacyDrafts.length > 0) {
       throw new HttpsError(
         "failed-precondition",
-        "Another in-progress booking exists for this event. Retry with the same idempotency key as that draft, or cancel the other draft first.",
+        "A legacy in-progress booking must be cleared before the atomic booking flow can continue.",
         { code: BOOKING_RULE_ERROR_CODES.IDEMPOTENCY_DRAFT_CONFLICT }
       );
     }
 
-    let bookingId: string;
-
-    if (matchingDraft) {
-      bookingId = matchingDraft.id;
-      for (const ln of matchingDraft.lines ?? []) {
-        await deleteBookingLineFromCallable({ id: ln.id });
-      }
-    } else {
-      try {
-        const insert = revisionPlan.supersedesBookingId
-          ? await createBookingDraftRevisionForUser({
-              eventId,
-              bookerId: uid,
-              clientSubmissionKey: idempotencyKey,
-              revisionGroupId: revisionPlan.revisionGroupId,
-              revisionNumber: revisionPlan.revisionNumber,
-              supersedesBookingId: revisionPlan.supersedesBookingId,
-            })
-          : await createBookingDraftForUser({
-              eventId,
-              bookerId: uid,
-              clientSubmissionKey: idempotencyKey,
-            });
-        const key = insert.data?.booking_insert;
-        if (!key?.id) {
-          throw new HttpsError("internal", "Failed to create booking");
-        }
-        bookingId = key.id;
-      } catch (e: unknown) {
-        if (!isDuplicateKeyError(e)) {
-          throw e;
-        }
-        bookings = await fetchBookingsForBookerAndEvent(uid, eventId);
-        const replay = bookings.find(
-          (b) =>
-            b.clientSubmissionKey === idempotencyKey &&
-            (b.status === BookingStatus.SUBMITTED || b.status === BookingStatus.CONFIRMED)
-        );
-        if (replay) {
-          return { bookingId: replay.id, status: replay.status, idempotentReplay: true };
-        }
-        const racedDraft = bookings.find(
-          (b) => b.clientSubmissionKey === idempotencyKey && b.status === BookingStatus.DRAFT
-        );
-        if (racedDraft) {
-          bookingId = racedDraft.id;
-          for (const ln of racedDraft.lines ?? []) {
-            await deleteBookingLineFromCallable({ id: ln.id });
-          }
-        } else {
-          logger.error("submitEventBooking: duplicate key but no matching booking after refetch", e);
-          throw new HttpsError("aborted", "Could not complete booking after conflict; retry the request");
-        }
-      }
+    const baseBooking = revisionPlan.supersedesBookingId
+      ? terminalBookings.find((booking) => bookingIdsEqual(booking.id, revisionPlan.supersedesBookingId!))
+      : undefined;
+    if (revisionPlan.supersedesBookingId && !baseBooking) {
+      throw new HttpsError("aborted", "Booking revision conflict: base revision changed", {
+        code: "BOOKING_REVISION_CONFLICT",
+      });
     }
 
-    await updateBookingPreferencesFromCallable({
-      id: bookingId as UUIDString,
+    const submissionLines: SubmissionLine[] = lines.map((line) => ({
+      ticketTypeId: line.ticketTypeId as UUIDString,
+      audience: ticketTypesById.get(line.ticketTypeId)!.audience,
+      sortOrder: line.sortOrder,
+      guestUserId: line.guestUserId,
+      guestDisplayName: line.guestDisplayName,
+      dietaryNote: line.dietaryNote,
+    }));
+    const previousLines: ExistingSubmissionLine[] = (baseBooking?.lines ?? []).map((line) => ({
+      ticketTypeId: validateUUID(line.ticketType.id, "ticketTypeId") as UUIDString,
+      audience: line.ticketType.audience,
+      sortOrder: line.sortOrder,
+      guestUserId: line.guestUser?.id ?? null,
+      guestDisplayName: line.guestDisplayName ?? null,
+      dietaryNote: line.dietaryNote ?? null,
+      bookingPlaceId: line.bookingPlace?.id
+        ? (validateUUID(line.bookingPlace.id, "bookingPlaceId") as UUIDString)
+        : null,
+      paymentAllocationStatuses: (line.bookingPlace?.paymentAllocations ?? []).map(
+        (allocation) => allocation.ticketOrder.status
+      ),
+    }));
+    const placePlan = planBookingPlaces({ lines: submissionLines, previousLines });
+    if (placePlan.paidRemovedBookingPlaceIds.length > 0) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Paid tickets cannot be removed or transferred yet. A refund workflow is required.",
+        { code: BOOKING_RULE_ERROR_CODES.PAID_BOOKING_PLACE_REMOVAL_REQUIRES_REFUND }
+      );
+    }
+
+    const revisedGuests = submissionLines.filter((line) => line.audience === TicketAudience.GUEST);
+    const previousGuests = previousLines.filter((line) => line.audience === TicketAudience.GUEST);
+    const approvalStatus = baseBooking
+      ? deriveRevisedBookingApprovalStatus({
+          previousStatus: baseBooking.approvalStatus,
+          previousGuests,
+          revisedGuests,
+          maxGuestsWithoutModeratorApproval: event.maxGuestsWithoutModeratorApproval,
+        })
+      : deriveBookingApprovalStatus({
+          guestTicketCount: revisedGuests.length,
+          maxGuestsWithoutModeratorApproval: event.maxGuestsWithoutModeratorApproval,
+        });
+
+    const bookingId = randomUUID() as UUIDString;
+    const persistenceInput = {
+      bookingId,
+      eventId,
+      bookerId: uid,
+      idempotencyKey: idempotencyKey as UUIDString,
+      revisionGroupId: revisionPlan.revisionGroupId,
+      revisionNumber: revisionPlan.revisionNumber,
+      supersedesBookingId: revisionPlan.supersedesBookingId,
+      approvalStatus,
       sitNextToUserIds,
       accommodationRequested,
-      accommodationNote: accommodationRequested ? accommodationNote : null,
-    });
+      accommodationNote,
+      placePlan,
+    };
 
-    const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder);
-    for (const line of sorted) {
-      await addBookingLineFromCallable({
-        bookingId: bookingId as UUIDString,
-        ticketTypeId: line.ticketTypeId as UUIDString,
-        guestUserId: line.guestUserId?.trim() || null,
-        guestDisplayName: line.guestDisplayName?.trim() || null,
-        dietaryNote: line.dietaryNote?.trim() || null,
-        sortOrder: line.sortOrder,
-      });
-    }
-
-    await updateBookingStatusFromCallable({
-      id: bookingId as UUIDString,
-      status: BookingStatus.SUBMITTED,
-    });
     let paymentDelta: BookingPaymentDelta | undefined;
-    if (revisionPlan.supersedesBookingId) {
-      await markBookingSupersededFromCallable({ id: revisionPlan.supersedesBookingId });
+    try {
+      if (!revisionPlan.supersedesBookingId) {
+        await persistInitialBooking(persistenceInput);
+      } else if (!bookingApprovalAllowsPayment(approvalStatus)) {
+        await persistPendingBookingRevision(persistenceInput);
+      } else {
+        const activeBooking = terminalBookings
+          .filter(
+            (booking) =>
+              bookingIdsEqual(booking.revisionGroupId, revisionPlan.revisionGroupId) &&
+              booking.supersededAt == null &&
+              (booking.approvalStatus === BookingApprovalStatus.NOT_REQUIRED ||
+                booking.approvalStatus === BookingApprovalStatus.APPROVED)
+          )
+          .sort((left, right) => right.revisionNumber - left.revisionNumber)[0];
+        if (!activeBooking) {
+          throw new HttpsError("aborted", "Booking revision conflict: active revision not found", {
+            code: "BOOKING_REVISION_CONFLICT",
+          });
+        }
+        paymentDelta = computeBookingPaymentDelta(activeBooking, {
+          lines: submissionLines.map((line) => ({
+            ticketType: { price: ticketPriceById.get(line.ticketTypeId) ?? 0 },
+          })),
+        });
+        await persistActiveBookingRevision({
+          input: persistenceInput,
+          activeBookingId: activeBooking.id as UUIDString,
+          deltaAmountMinor: paymentDelta.deltaAmountMinor,
+          adjustmentStatus: paymentDelta.status,
+        });
+      }
+    } catch (error: unknown) {
+      if (!isDuplicateKeyError(error) && !/BOOKING_REVISION_CONFLICT/i.test(String(error))) throw error;
       const refreshed = await fetchBookingsForBookerAndEvent(uid, eventId);
-      const previousBooking = refreshed.find((booking) => booking.id === revisionPlan.supersedesBookingId);
-      const revisedBooking = refreshed.find((booking) => booking.id === bookingId);
-      paymentDelta = computeBookingPaymentDelta(previousBooking, revisedBooking);
-      await createBookingPaymentAdjustmentFromCallable({
-        revisionBookingId: bookingId as UUIDString,
-        supersededBookingId: revisionPlan.supersedesBookingId,
-        deltaAmountMinor: paymentDelta.deltaAmountMinor,
-        status: paymentDelta.status,
-        orchestrationKey: `${bookingId}:${idempotencyKey}`,
+      const replay = refreshed.find(
+        (booking) =>
+          booking.clientSubmissionKey === idempotencyKey &&
+          (booking.status === BookingStatus.SUBMITTED || booking.status === BookingStatus.CONFIRMED)
+      );
+      if (replay) {
+        return {
+          bookingId: replay.id,
+          status: replay.status,
+          ...bookingSubmissionOutcome(replay.approvalStatus),
+          idempotentReplay: true,
+        };
+      }
+      throw new HttpsError("aborted", "Booking revision conflict: retry from the latest booking", {
+        code: "BOOKING_REVISION_CONFLICT",
       });
     }
 
-    await sendBookingSubmitNotificationEmails({
-      bookingId: bookingId as UUIDString,
-      idempotencyKey,
-      appBaseUrl: APP_BASE_URL,
-      supersededBookingId: revisionPlan.supersedesBookingId,
-      paymentDelta,
-    });
+    if (bookingSubmissionOutcome(approvalStatus).paymentReady) {
+      await sendBookingSubmitNotificationEmails({
+        bookingId,
+        idempotencyKey,
+        appBaseUrl: APP_BASE_URL,
+        supersededBookingId: revisionPlan.supersedesBookingId,
+        paymentDelta,
+      });
+    }
 
     logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
-    return { bookingId, status: BookingStatus.SUBMITTED, idempotentReplay: false };
+    return {
+      bookingId,
+      status: BookingStatus.SUBMITTED,
+      ...bookingSubmissionOutcome(approvalStatus),
+      idempotentReplay: false,
+    };
   } catch (e: unknown) {
     if (e instanceof HttpsError) throw e;
     handleFunctionError(e as Error, "submitEventBooking");

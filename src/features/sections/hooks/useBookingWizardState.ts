@@ -353,6 +353,9 @@ export function useBookingWizardState({
         guestTicketTypeId,
         guestDisplayName,
         guestDietaryNote,
+        extraGuestTicketTypeId,
+        extraGuestDetails,
+        extraGuestCount: extraGuestRequestCount,
       });
 
       const result = await submitEventBooking({
@@ -365,10 +368,6 @@ export function useBookingWizardState({
         accommodationRequested,
         accommodationNote: null,
       });
-
-      if (extraGuestRequestCount > 0) {
-        await submitAdditionalGuestRequest(result.bookingId);
-      }
 
       hydratedBookingIdRef.current = result.bookingId;
       await Promise.all([

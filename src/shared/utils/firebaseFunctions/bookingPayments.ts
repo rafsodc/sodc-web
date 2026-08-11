@@ -24,6 +24,9 @@ export interface SubmitEventBookingRequest {
 export interface SubmitEventBookingResponse {
   bookingId: string;
   status: string;
+  approvalStatus: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
+  outcome: "PENDING_APPROVAL" | "READY_FOR_PAYMENT";
+  paymentReady: boolean;
   idempotentReplay?: boolean;
 }
 

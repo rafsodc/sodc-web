@@ -17,6 +17,7 @@ export const BOOKING_RULE_ERROR_CODES = {
   EVENT_GUEST_POLICY_NOT_CONFIGURED: "EVENT_GUEST_POLICY_NOT_CONFIGURED",
   BOOKING_ALREADY_SUBMITTED: "BOOKING_ALREADY_SUBMITTED",
   IDEMPOTENCY_DRAFT_CONFLICT: "IDEMPOTENCY_DRAFT_CONFLICT",
+  PAID_BOOKING_PLACE_REMOVAL_REQUIRES_REFUND: "PAID_BOOKING_PLACE_REMOVAL_REQUIRES_REFUND",
 } as const;
 
 export type BookingRuleErrorCode = (typeof BOOKING_RULE_ERROR_CODES)[keyof typeof BOOKING_RULE_ERROR_CODES];
@@ -154,8 +155,11 @@ export function evaluateBookingLines(
     }
   }
 
-  if (memberLineCount < 1) {
-    return fail(BOOKING_RULE_ERROR_CODES.SELF_TICKET_REQUIRED, "At least one member ticket line is required for the booker");
+  if (memberLineCount !== 1) {
+    return fail(
+      BOOKING_RULE_ERROR_CODES.SELF_TICKET_REQUIRED,
+      "Exactly one member ticket line is required for the booker"
+    );
   }
 
   const maxGuestLines = options?.maxGuestLines;
@@ -227,6 +231,10 @@ export function deriveBookingApprovalStatus(args: {
   return args.guestTicketCount > args.maxGuestsWithoutModeratorApproval
     ? BookingApprovalStatus.PENDING
     : BookingApprovalStatus.NOT_REQUIRED;
+}
+
+export function bookingApprovalAllowsPayment(status: BookingApprovalStatus): boolean {
+  return status === BookingApprovalStatus.NOT_REQUIRED || status === BookingApprovalStatus.APPROVED;
 }
 
 function approvalIdentityKey(guest: ApprovalRelevantGuest): string {

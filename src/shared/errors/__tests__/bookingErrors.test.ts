@@ -19,6 +19,7 @@ describe("booking and payment error mapping", () => {
     ["BOOKING_REVISION_BASE_REQUIRED", "Refresh your booking"],
     ["BOOKING_REVISION_BASE_NOT_FOUND", "no longer current"],
     ["BOOKING_REVISION_CONFLICT", "changed while you were editing"],
+    ["PAID_BOOKING_PLACE_REMOVAL_REQUIRES_REFUND", "already been paid"],
   ])("maps %s without exposing callable text", (code, expected) => {
     const mapped = toBookingUserFacingError(
       {
