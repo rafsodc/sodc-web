@@ -32,6 +32,7 @@ import { bookingIdsEqual } from "./bookingCheckout";
 import { govNotifySecrets } from "./mailer";
 import {
   notifyBookingConfirmationEmail,
+  notifyBookingPendingApprovalEmails,
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
 import {
@@ -447,6 +448,12 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
         appBaseUrl: APP_BASE_URL,
         supersededBookingId: revisionPlan.supersedesBookingId,
         paymentDelta,
+      });
+    } else {
+      await notifyBookingPendingApprovalEmails({
+        bookingId,
+        idempotencyKey,
+        appBaseUrl: APP_BASE_URL,
       });
     }
 

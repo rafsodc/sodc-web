@@ -9,6 +9,7 @@ export type AdminErrorContext =
   | "events"
   | "tickets"
   | "guest-moderation"
+  | "booking-approval"
   | "files"
   | "announcements"
   | "email-configuration"
@@ -24,6 +25,7 @@ const CONTEXT_MESSAGES: Record<AdminErrorContext, string> = {
   events: "We could not complete the event operation. Please refresh and try again.",
   tickets: "We could not complete the ticket operation. Please refresh and try again.",
   "guest-moderation": "We could not review the guest request. Please refresh and try again.",
+  "booking-approval": "We could not review this booking revision. Refresh to load the latest revision and try again.",
   files: "We could not complete the file operation. Please refresh and try again.",
   announcements: "We could not complete the announcement operation. Please try again.",
   "email-configuration": "We could not complete the email configuration operation. Please try again.",

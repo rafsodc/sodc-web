@@ -192,9 +192,9 @@ Operational recovery:
 |---|---|
 | **Trigger** | Successful `submitEventBooking` after status set to `SUBMITTED` |
 | **Entrypoint** | [`bookings.ts`](../../functions/src/bookings.ts) → [`bookingEmailDispatcher.ts`](../../functions/src/bookingEmailDispatcher.ts) |
-| **Recipient** | Booker email |
+| **Recipient** | Booker email; organisers/admins for the pending-review alert |
 | **No send** | Response has **`idempotentReplay: true`** (terminal booking already exists for key) |
-| **Templates** | `bookingConfirmation` (new booking); `bookingRevision` (supersedes prior booking) |
+| **Templates** | `bookingConfirmation`, `bookingRevision`, `bookingPendingApproval`, `bookingPendingApprovalModerator`, `bookingApproved`, `bookingChangesRequested` |
 | **Deep dive** | [govuk-notify-booking-templates.md](./govuk-notify-booking-templates.md) |
 
 ### Approval queue (internal)

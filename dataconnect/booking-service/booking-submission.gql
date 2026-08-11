@@ -76,6 +76,62 @@ mutation CreatePendingBookingRevisionFromCallable(
   )
 }
 
+# Approving an amended revision activates it, retires the previous active
+# revision, and records its payment delta in one transaction. Replays cannot
+# make a second decision because the reviewed row must still be PENDING.
+mutation ActivateApprovedBookingRevisionFromCallable(
+  $bookingId: UUID!
+  $revisionGroupId: UUID!
+  $activeBookingId: UUID!
+  $reviewedById: String!
+  $approvalNote: String
+  $deltaAmountMinor: Int!
+  $adjustmentStatus: BookingPaymentAdjustmentStatus!
+  $orchestrationKey: String!
+) @auth(level: NO_ACCESS) @transaction {
+  reviewed: booking_updateMany(
+    where: {
+      id: { eq: $bookingId }
+      revisionGroupId: { eq: $revisionGroupId }
+      status: { in: [SUBMITTED, CONFIRMED] }
+      approvalStatus: { eq: PENDING }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      approvalStatus: APPROVED
+      approvalReviewedById: $reviewedById
+      approvalReviewedAt_expr: "request.time"
+      approvalNote: $approvalNote
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  ) @check(expr: "this == 1", message: "BOOKING_APPROVAL_CONFLICT")
+  retired: booking_updateMany(
+    where: {
+      id: { eq: $activeBookingId }
+      revisionGroupId: { eq: $revisionGroupId }
+      supersededAt: { isNull: true }
+      approvalStatus: { in: [NOT_REQUIRED, APPROVED] }
+    }
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  ) @check(expr: "this == 1", message: "BOOKING_APPROVAL_CONFLICT")
+  bookingPaymentAdjustment_upsert(
+    data: {
+      revisionBookingId: $bookingId
+      supersededBookingId: $activeBookingId
+      deltaAmountMinor: $deltaAmountMinor
+      status: $adjustmentStatus
+      orchestrationKey: $orchestrationKey
+      createdBy: $reviewedById
+      updatedBy: $reviewedById
+    }
+  )
+}
+
 # Temporary compatibility operation for the legacy additional-guest callable.
 # It removes the production-defective generic Admin insertMany enum path while
 # #548 completes removal of the split guest-request model.

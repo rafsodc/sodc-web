@@ -59,7 +59,7 @@ Lower priority or bulk-style messages. **Do not implement** without explicit pro
 | Payment ops | `paymentReconciliationExceptionAlert`, `paymentDisputeOpsAlert` |
 | Membership | `membershipActivated`, `membershipAccessRestricted` |
 | Guest tickets | `guestTicketRequestSubmittedModerator`, `guestTicketRequestApproved`, `guestTicketRequestRejected` |
-| Bookings | `bookingConfirmation`, `bookingRevision` |
+| Bookings | `bookingConfirmation`, `bookingRevision`, `bookingPendingApproval`, `bookingPendingApprovalModerator`, `bookingApproved`, `bookingChangesRequested` |
 | Approval queue (internal) | `newUserPendingApprovalAlert` |
 
 Configuration: [environment-and-secrets.md](./environment-and-secrets.md). Registration: [govuk-notify-template-registration.md](./govuk-notify-template-registration.md).

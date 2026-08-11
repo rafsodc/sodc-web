@@ -831,6 +831,19 @@ export function getBookingsForBookerAndEvent(dcOrVars, varsOrOptions, options) {
   return executeQuery(getBookingsForBookerAndEventRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
+export const getBookingRevisionForApprovalFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingRevisionForApprovalFromCallable', inputVars);
+}
+getBookingRevisionForApprovalFromCallableRef.operationName = 'GetBookingRevisionForApprovalFromCallable';
+
+export function getBookingRevisionForApprovalFromCallable(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getBookingRevisionForApprovalFromCallableRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
 export const getTicketOrdersForBookerAndEventRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

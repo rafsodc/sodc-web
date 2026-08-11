@@ -175,6 +175,8 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation AddBookingLineFromCallable", mustInclude: NO_ACCESS },
       { op: "mutation DeleteBookingLineFromCallable", mustInclude: NO_ACCESS },
       { op: "query GetTicketOrdersForBookerAndEvent", mustInclude: NO_ACCESS },
+      { op: "query GetBookingRevisionForApprovalFromCallable", mustInclude: NO_ACCESS },
+      { op: "mutation UpdateBookingApprovalFromCallable", mustInclude: NO_ACCESS },
     ]);
 
     // Guest ticket request callables

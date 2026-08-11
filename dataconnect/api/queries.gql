@@ -594,7 +594,17 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
     bookings: bookings_on_event {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
+      approvalReviewedBy {
+        id
+        firstName
+        lastName
+      }
+      revisionGroupId
       revisionNumber
+      supersededAt
       supersedesBooking {
         id
         revisionNumber
@@ -635,6 +645,18 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         sortOrder
         guestDisplayName
         dietaryNote
+        bookingPlace {
+          id
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            allocatedAmountMinor
+            refundedAmountMinor
+            ticketOrder {
+              id
+              status
+            }
+          }
+        }
         guestUser {
           id
           firstName
@@ -644,6 +666,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           id
           title
           audience
+          price
         }
       }
     }

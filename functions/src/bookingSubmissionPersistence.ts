@@ -241,6 +241,31 @@ export async function persistActiveBookingRevision(args: {
   });
 }
 
+export async function activateApprovedBookingRevision(args: {
+  bookingId: UUIDString;
+  revisionGroupId: UUIDString;
+  activeBookingId: UUIDString;
+  reviewedById: string;
+  approvalNote?: string | null;
+  deltaAmountMinor: number;
+  adjustmentStatus: BookingPaymentAdjustmentStatus;
+}): Promise<void> {
+  await getDataConnect(connectorConfig).executeMutation<unknown, {
+    bookingId: UUIDString;
+    revisionGroupId: UUIDString;
+    activeBookingId: UUIDString;
+    reviewedById: string;
+    approvalNote?: string | null;
+    deltaAmountMinor: number;
+    adjustmentStatus: BookingPaymentAdjustmentStatus;
+    orchestrationKey: string;
+  }>("ActivateApprovedBookingRevisionFromCallable", {
+    ...args,
+    approvalNote: args.approvalNote?.trim() || null,
+    orchestrationKey: `booking-approval:${args.bookingId}`,
+  });
+}
+
 export interface LegacyGuestTicketRequestData {
   id: UUIDString;
   bookingId: UUIDString;

@@ -9,6 +9,33 @@ export interface EmailTemplateDefinition {
 }
 
 export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = {
+  bookingApproved: {
+    subject: "Your booking for ((eventTitle)) has been approved",
+    variables: [
+    "firstName",
+    "eventTitle",
+    "eventDateTime",
+    "eventLocation",
+    "ticketLinesSummary",
+    "bookingTotalFormatted",
+    "sectionBookingsUrl",
+    "myPaymentsUrl"
+    ],
+    body: "Hello ((firstName)),\n\nThe organiser has approved your booking for ((eventTitle)). You can now continue to payment.\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\nYour approved booking:\n\n((ticketLinesSummary))\n\nTotal: ((bookingTotalFormatted))\n\nView your booking:\n\n((sectionBookingsUrl))\n\nContinue to payment:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
+  },
+  bookingChangesRequested: {
+    subject: "Changes requested for your booking — ((eventTitle))",
+    variables: [
+    "firstName",
+    "eventTitle",
+    "eventDateTime",
+    "eventLocation",
+    "ticketLinesSummary",
+    "moderatorNote",
+    "sectionBookingsUrl"
+    ],
+    body: "Hello ((firstName)),\n\nThe organiser has reviewed your booking for ((eventTitle)) and has requested changes.\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\nBooking reviewed:\n\n((ticketLinesSummary))\n\nOrganiser note: ((moderatorNote))\n\nYour previous approved booking remains active. View and amend the newer revision here:\n\n((sectionBookingsUrl))\n\nKind regards,\n\nSODC Admin",
+  },
   bookingConfirmation: {
     subject: "Your booking for ((eventTitle)) is confirmed",
     variables: [
@@ -24,6 +51,30 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "myPaymentsUrl"
     ],
     body: "Hello ((firstName)),\n\nThank you for booking your place at ((eventTitle)). Your booking is confirmed.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nIf you still need to make a payment, visit My Payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
+  },
+  bookingPendingApproval: {
+    subject: "Your booking for ((eventTitle)) is awaiting approval",
+    variables: [
+    "firstName",
+    "eventTitle",
+    "eventDateTime",
+    "eventLocation",
+    "ticketLinesSummary",
+    "sectionBookingsUrl"
+    ],
+    body: "Hello ((firstName)),\n\nWe have received your complete booking for ((eventTitle)). It is now with the organiser for approval.\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\nYour booking:\n\n((ticketLinesSummary))\n\nYou cannot pay for this revision until it is approved. We will email you when the organiser has reviewed it.\n\nView your booking:\n\n((sectionBookingsUrl))\n\nKind regards,\n\nSODC Admin",
+  },
+  bookingPendingApprovalModerator: {
+    subject: "[SODC] Booking awaiting approval — ((eventTitle))",
+    variables: [
+    "eventTitle",
+    "sectionName",
+    "bookerDisplay",
+    "guestCount",
+    "ticketLinesSummary",
+    "moderationUrl"
+    ],
+    body: "A complete booking is ready for review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nMember: ((bookerDisplay))\n\nGuests: ((guestCount))\n\nBooking:\n\n((ticketLinesSummary))\n\nReview the exact booking revision in SODC:\n\n((moderationUrl))\n\nKind regards,\n\nSODC Admin",
   },
   bookingRevision: {
     subject: "Your booking for ((eventTitle)) has been updated",

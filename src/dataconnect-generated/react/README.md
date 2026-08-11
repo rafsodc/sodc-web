@@ -39,6 +39,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
+  - [*GetBookingRevisionForApprovalFromCallable*](#getbookingrevisionforapprovalfromcallable)
   - [*GetTicketOrdersForBookerAndEvent*](#getticketordersforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
@@ -2447,6 +2448,133 @@ export default function GetBookingsForBookerAndEventComponent() {
 }
 ```
 
+## GetBookingRevisionForApprovalFromCallable
+You can execute the `GetBookingRevisionForApprovalFromCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetBookingRevisionForApprovalFromCallable(dc: DataConnect, vars: GetBookingRevisionForApprovalFromCallableVariables, options?: useDataConnectQueryOptions<GetBookingRevisionForApprovalFromCallableData>): UseDataConnectQueryResult<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetBookingRevisionForApprovalFromCallable(vars: GetBookingRevisionForApprovalFromCallableVariables, options?: useDataConnectQueryOptions<GetBookingRevisionForApprovalFromCallableData>): UseDataConnectQueryResult<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+```
+
+### Variables
+The `GetBookingRevisionForApprovalFromCallable` Query requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetBookingRevisionForApprovalFromCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetBookingRevisionForApprovalFromCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetBookingRevisionForApprovalFromCallable` Query is of type `GetBookingRevisionForApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetBookingRevisionForApprovalFromCallableData {
+  booking?: {
+    id: UUIDString;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    approvalReviewedAt?: TimestampString | null;
+    approvalNote?: string | null;
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    supersededAt?: TimestampString | null;
+    clientSubmissionKey?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      section: {
+        id: UUIDString;
+        name: string;
+      } & Section_Key;
+    } & Event_Key;
+    supersedesBooking?: {
+      id: UUIDString;
+      revisionNumber: number;
+    } & Booking_Key;
+    lines: ({
+      id: UUIDString;
+      sortOrder: number;
+      guestDisplayName?: string | null;
+      dietaryNote?: string | null;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+        audience: TicketAudience;
+        price: number;
+      } & TicketType_Key;
+      guestUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+    } & BookingLine_Key)[];
+  } & Booking_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetBookingRevisionForApprovalFromCallable`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetBookingRevisionForApprovalFromCallableVariables } from '@dataconnect/generated';
+import { useGetBookingRevisionForApprovalFromCallable } from '@dataconnect/generated/react'
+
+export default function GetBookingRevisionForApprovalFromCallableComponent() {
+  // The `useGetBookingRevisionForApprovalFromCallable` Query hook requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`:
+  const getBookingRevisionForApprovalFromCallableVars: GetBookingRevisionForApprovalFromCallableVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetBookingRevisionForApprovalFromCallable(getBookingRevisionForApprovalFromCallableVars);
+  // Variables can be defined inline as well.
+  const query = useGetBookingRevisionForApprovalFromCallable({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetBookingRevisionForApprovalFromCallable(dataConnect, getBookingRevisionForApprovalFromCallableVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingRevisionForApprovalFromCallable(getBookingRevisionForApprovalFromCallableVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingRevisionForApprovalFromCallable(dataConnect, getBookingRevisionForApprovalFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.booking);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetTicketOrdersForBookerAndEvent
 You can execute the `GetTicketOrdersForBookerAndEvent` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -3483,6 +3611,8 @@ export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
     revisionNumber: number;
+    approvalStatus: BookingApprovalStatus;
+    approvalNote?: string | null;
     bookerDietaryNote?: string | null;
     sitNextToUserIds?: string[] | null;
     accommodationRequested: boolean;
@@ -7192,7 +7322,17 @@ export interface ListEventBookingsForAdminData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
       revisionNumber: number;
+      supersededAt?: TimestampString | null;
       supersedesBooking?: {
         id: UUIDString;
         revisionNumber: number;
@@ -7233,6 +7373,18 @@ export interface ListEventBookingsForAdminData {
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
+        bookingPlace?: {
+          id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
         guestUser?: {
           id: string;
           firstName: string;
@@ -7242,6 +7394,7 @@ export interface ListEventBookingsForAdminData {
           id: UUIDString;
           title: string;
           audience: TicketAudience;
+          price: number;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -12070,6 +12223,7 @@ The `UpdateBookingApprovalFromCallable` Mutation requires an argument of type `U
 ```javascript
 export interface UpdateBookingApprovalFromCallableVariables {
   id: UUIDString;
+  expectedRevisionNumber: number;
   status: BookingApprovalStatus;
   reviewedById?: string | null;
   approvalNote?: string | null;
@@ -12085,7 +12239,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingApprovalFromCallable` Mutation is of type `UpdateBookingApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface UpdateBookingApprovalFromCallableData {
-  booking_update?: Booking_Key | null;
+  changed: number;
 }
 ```
 
@@ -12123,13 +12277,14 @@ export default function UpdateBookingApprovalFromCallableComponent() {
   // The `useUpdateBookingApprovalFromCallable` Mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`:
   const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVariables = {
     id: ..., 
+    expectedRevisionNumber: ..., 
     status: ..., 
     reviewedById: ..., // optional
     approvalNote: ..., // optional
   };
   mutation.mutate(updateBookingApprovalFromCallableVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+  mutation.mutate({ id: ..., expectedRevisionNumber: ..., status: ..., reviewedById: ..., approvalNote: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -12148,7 +12303,7 @@ export default function UpdateBookingApprovalFromCallableComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.booking_update);
+    console.log(mutation.data.changed);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
