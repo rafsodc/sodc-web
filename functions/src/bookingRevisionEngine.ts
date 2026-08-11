@@ -25,6 +25,16 @@ export interface RevisionPlan {
 
 const TERMINAL_STATUSES = new Set<BookingStatus>([BookingStatus.SUBMITTED, BookingStatus.CONFIRMED]);
 
+/** Recognises both callable domain errors and Data Connect @check failures. */
+export function isBookingRevisionConflictError(error: unknown): boolean {
+  if (error instanceof HttpsError) {
+    const details = error.details as { code?: unknown } | undefined;
+    if (details?.code === "BOOKING_REVISION_CONFLICT") return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /BOOKING_REVISION_CONFLICT/i.test(message);
+}
+
 export function computeRevisionPlan(bookings: BookingSnapshot[], request: RevisionRequest): RevisionPlan {
   const terminalBookings = bookings.filter((booking) => TERMINAL_STATUSES.has(booking.status));
   const replay = terminalBookings.find((booking) => booking.clientSubmissionKey === request.idempotencyKey);

@@ -26,7 +26,7 @@ import {
 import { requireEnabled, requireString, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
-import { computeRevisionPlan } from "./bookingRevisionEngine";
+import { computeRevisionPlan, isBookingRevisionConflictError } from "./bookingRevisionEngine";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
 import { bookingIdsEqual } from "./bookingCheckout";
 import { govNotifySecrets } from "./mailer";
@@ -420,7 +420,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
         });
       }
     } catch (error: unknown) {
-      if (!isDuplicateKeyError(error) && !/BOOKING_REVISION_CONFLICT/i.test(String(error))) throw error;
+      if (!isDuplicateKeyError(error) && !isBookingRevisionConflictError(error)) throw error;
       const refreshed = await fetchBookingsForBookerAndEvent(uid, eventId);
       const replay = refreshed.find(
         (booking) =>
