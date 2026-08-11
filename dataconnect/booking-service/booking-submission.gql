@@ -1,0 +1,144 @@
+# Dynamic batch `_Data` variables are currently unsupported by the generated
+# JavaScript SDK, so these operations live in a server-only connector without
+# SDK generation. Cloud Functions invokes the named, schema-validated operation
+# with an explicit TypeScript contract. This preserves one database transaction
+# without using the Admin SDK's generic enum-bearing insertMany path.
+
+mutation CreateCompleteBookingFromCallable(
+  $booking: Booking_Data! @allow(fields: "id eventId bookerId clientSubmissionKey revisionGroupId revisionNumber supersedesBookingId status approvalStatus sitNextToUserIds accommodationRequested accommodationNote createdBy updatedBy")
+  $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+) @auth(level: NO_ACCESS) @transaction {
+  booking_insert(data: $booking)
+  bookingPlace_insertMany(data: $bookingPlaces)
+  bookingLine_insertMany(data: $bookingLines)
+}
+
+mutation CreateActiveBookingRevisionFromCallable(
+  $booking: Booking_Data! @allow(fields: "id eventId bookerId clientSubmissionKey revisionGroupId revisionNumber supersedesBookingId status approvalStatus sitNextToUserIds accommodationRequested accommodationNote createdBy updatedBy")
+  $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $revisionGroupId: UUID!
+  $bookingId: UUID!
+  $supersededBookingId: UUID!
+  $deltaAmountMinor: Int!
+  $adjustmentStatus: BookingPaymentAdjustmentStatus!
+  $orchestrationKey: String!
+) @auth(level: NO_ACCESS) @transaction {
+  booking_insert(data: $booking)
+  bookingPlace_insertMany(data: $bookingPlaces)
+  bookingLine_insertMany(data: $bookingLines)
+  retired: booking_updateMany(
+    where: {
+      revisionGroupId: { eq: $revisionGroupId }
+      id: { ne: $bookingId }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  ) @check(expr: "this >= 1", message: "BOOKING_REVISION_CONFLICT")
+  bookingPaymentAdjustment_upsert(
+    data: {
+      revisionBookingId: $bookingId
+      supersededBookingId: $supersededBookingId
+      deltaAmountMinor: $deltaAmountMinor
+      status: $adjustmentStatus
+      orchestrationKey: $orchestrationKey
+      createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation CreatePendingBookingRevisionFromCallable(
+  $booking: Booking_Data! @allow(fields: "id eventId bookerId clientSubmissionKey revisionGroupId revisionNumber supersedesBookingId status approvalStatus sitNextToUserIds accommodationRequested accommodationNote createdBy updatedBy")
+  $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $supersedesBookingId: UUID!
+) @auth(level: NO_ACCESS) @transaction {
+  booking_insert(data: $booking)
+  bookingPlace_insertMany(data: $bookingPlaces)
+  bookingLine_insertMany(data: $bookingLines)
+  booking_updateMany(
+    where: {
+      id: { eq: $supersedesBookingId }
+      approvalStatus: { in: [PENDING, REJECTED] }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# Approving an amended revision activates it, retires the previous active
+# revision, and records its payment delta in one transaction. Replays cannot
+# make a second decision because the reviewed row must still be PENDING.
+mutation ActivateApprovedBookingRevisionFromCallable(
+  $bookingId: UUID!
+  $revisionGroupId: UUID!
+  $activeBookingId: UUID!
+  $reviewedById: String!
+  $approvalNote: String
+  $deltaAmountMinor: Int!
+  $adjustmentStatus: BookingPaymentAdjustmentStatus!
+  $orchestrationKey: String!
+) @auth(level: NO_ACCESS) @transaction {
+  reviewed: booking_updateMany(
+    where: {
+      id: { eq: $bookingId }
+      revisionGroupId: { eq: $revisionGroupId }
+      status: { in: [SUBMITTED, CONFIRMED] }
+      approvalStatus: { eq: PENDING }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      approvalStatus: APPROVED
+      approvalReviewedById: $reviewedById
+      approvalReviewedAt_expr: "request.time"
+      approvalNote: $approvalNote
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  ) @check(expr: "this == 1", message: "BOOKING_APPROVAL_CONFLICT")
+  retired: booking_updateMany(
+    where: {
+      id: { eq: $activeBookingId }
+      revisionGroupId: { eq: $revisionGroupId }
+      supersededAt: { isNull: true }
+      approvalStatus: { in: [NOT_REQUIRED, APPROVED] }
+    }
+    data: {
+      supersededAt_expr: "request.time"
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  ) @check(expr: "this == 1", message: "BOOKING_APPROVAL_CONFLICT")
+  bookingPaymentAdjustment_upsert(
+    data: {
+      revisionBookingId: $bookingId
+      supersededBookingId: $activeBookingId
+      deltaAmountMinor: $deltaAmountMinor
+      status: $adjustmentStatus
+      orchestrationKey: $orchestrationKey
+      createdBy: $reviewedById
+      updatedBy: $reviewedById
+    }
+  )
+}
+
+# Checkout orders and their exact place allocations are one unit. Creating
+# these rows in separate operations could leave an unallocated order (or an
+# allocation without the order) when a retry races a partial failure.
+mutation CreateAllocatedTicketOrderFromCallable(
+  $ticketOrder: TicketOrder_Data! @allow(fields: "id userId eventId ticketTypeId quantity unitAmountMinor totalAmountMinor currency status webhookEventId createdBy updatedBy")
+  $allocations: [BookingPlacePaymentAllocation_Data!]! @allow(fields: "id ticketOrderId bookingPlaceId allocatedAmountMinor createdBy updatedBy", maxCount: 100)
+) @auth(level: NO_ACCESS) @transaction {
+  ticketOrder_insert(data: $ticketOrder)
+  bookingPlacePaymentAllocation_insertMany(data: $allocations)
+}

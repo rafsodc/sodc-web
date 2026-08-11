@@ -2,7 +2,6 @@ import type {
   GetEventByIdData,
   ListBookingPaymentAdjustmentsForAdminData,
   ListEventBookingsForAdminData,
-  ListGuestTicketRequestsForAdminData,
   ListTicketOrdersForAdminData,
 } from "@dataconnect/generated";
 
@@ -15,30 +14,13 @@ export interface EventRow {
   endDateTime: string;
   bookingStartDateTime: string;
   bookingEndDateTime: string;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 
 export type TicketTypeRow = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];
-export type GuestTicketRequestAdminRow = NonNullable<
-  NonNullable<
-    NonNullable<ListGuestTicketRequestsForAdminData["event"]>["bookings"][number]["guestTicketRequests"][number]
-  >
->;
 export type EventBookingAdminRow = NonNullable<NonNullable<ListEventBookingsForAdminData["event"]>["bookings"][number]>;
 export type TicketOrderAdminRow = NonNullable<NonNullable<ListTicketOrdersForAdminData["event"]>["ticketOrders"][number]>;
 export type BookingPaymentAdjustmentAdminRow = NonNullable<
   NonNullable<ListBookingPaymentAdjustmentsForAdminData["event"]>["bookings"][number]
 >;
-export type GuestRequestStatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
-
-export type GuestTicketRequestWithBooking = GuestTicketRequestAdminRow & {
-  bookingId: string;
-  bookingStatus: string;
-  bookingRevisionNumber: number;
-  supersedesBookingId?: string | null;
-  supersedesRevisionNumber?: number | null;
-  booker?: {
-    firstName: string;
-    lastName: string;
-  } | null;
-};
+export type BookingApprovalStatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";

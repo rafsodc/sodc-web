@@ -64,7 +64,7 @@ const BOOKING_DOMAIN_ERRORS: Record<string, UserFacingErrorInput> = {
   TOO_MANY_GUEST_LINES: {
     category: "validation",
     title: "Too many guests",
-    message: "Use the additional guest request option for extra guest places.",
+    message: "Reduce the number of guests and submit the complete booking again.",
     retryable: false,
   },
   INVALID_GUEST_FIELDS: {
@@ -103,6 +103,12 @@ const BOOKING_DOMAIN_ERRORS: Record<string, UserFacingErrorInput> = {
     message: "Your booking changed while you were editing it. Refresh and review the latest version.",
     retryable: true,
   },
+  PAID_BOOKING_PLACE_REMOVAL_REQUIRES_REFUND: {
+    category: "precondition",
+    title: "Paid ticket cannot be changed",
+    message: "This ticket has already been paid for. Guest refunds and ticket transfers are not available yet.",
+    retryable: false,
+  },
 };
 
 const FALLBACKS: Record<BookingErrorContext, UserFacingErrorInput> = {
@@ -118,7 +124,7 @@ const FALLBACKS: Record<BookingErrorContext, UserFacingErrorInput> = {
   },
   "guest-request": {
     title: "Request not submitted",
-    message: "We couldn’t submit the guest request. Please try again.",
+    message: "We couldn’t update the booking. Please try again.",
     retryable: true,
   },
   "payment-history": {

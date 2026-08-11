@@ -9,7 +9,7 @@ The SODC members' site — section membership, event booking, guest ticket manag
 ## For members
 
 - [Getting started](docs/user-guide/member-getting-started.md) — registering, completing your profile, and getting approved
-- [Booking an event](docs/user-guide/booking-an-event.md) — finding events, booking tickets, and guest ticket requests
+- [Booking an event](docs/user-guide/booking-an-event.md) — finding events, booking tickets, and payments
 
 ## For administrators
 

@@ -33,9 +33,7 @@ import {
   createEventBookingCheckoutSession,
   getMyTicketOrderStripeArtifactsBatch,
   reconcileMyCheckoutSessionOrders,
-  submitGuestTicketRequest,
-  submitAdditionalGuestTicketRequests,
-  reviewGuestTicketRequest,
+  reviewBookingRevision,
 } from "../firebaseFunctions";
 
 function makeCallable(returnValue: unknown) {
@@ -358,8 +356,7 @@ describe("submitEventBooking", () => {
     const result = await submitEventBooking({
       idempotencyKey: BOOKING_UUID,
       eventId: EVENT_UUID,
-      lines: [{ ticketTypeId: TICKET_UUID, sortOrder: 1 }],
-      bookerDietaryNote: "  vegan  ",
+      lines: [{ ticketTypeId: TICKET_UUID, sortOrder: 1, dietaryNote: "  vegan  " }],
       sitNextToUserIds: ["  uid-1  ", "", "uid-2"],
       accommodationRequested: true,
       accommodationNote: "  ground floor  ",
@@ -367,7 +364,8 @@ describe("submitEventBooking", () => {
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "submitEventBooking");
     const sent = callable.mock.calls[0][0];
-    expect(sent.bookerDietaryNote).toBe("vegan");
+    expect(sent.lines[0].dietaryNote).toBe("vegan");
+    expect(sent).not.toHaveProperty("bookerDietaryNote");
     expect(sent.accommodationNote).toBe("ground floor");
     expect(sent.sitNextToUserIds).toEqual(["uid-1", "uid-2"]); // trimmed, blank filtered
     expect(result).toEqual({ bookingId: "b1", status: "CONFIRMED" });
@@ -385,7 +383,7 @@ describe("submitEventBooking", () => {
     const callable = vi.mocked(httpsCallable).mock.results[0].value;
     const sent = callable.mock.calls[0][0];
     expect(sent.accommodationRequested).toBe(false);
-    expect(sent.bookerDietaryNote).toBeNull();
+    expect(sent).not.toHaveProperty("bookerDietaryNote");
     expect(sent.accommodationNote).toBeNull();
     expect(sent.sitNextToUserIds).toEqual([]);
   });
@@ -420,7 +418,7 @@ describe("createTicketCheckoutSession", () => {
 
 describe("createEventBookingCheckoutSession", () => {
   it("calls with normalized eventId", async () => {
-    const callable = makeCallable({ data: { url: "https://stripe.com/checkout/3", orderIds: ["o3"] } });
+    const callable = makeCallable({ data: { url: "https://stripe.com/checkout/3", orderIds: ["o3"], confirmed: false } });
 
     const result = await createEventBookingCheckoutSession({ eventId: EVENT_UUID });
 
@@ -429,7 +427,7 @@ describe("createEventBookingCheckoutSession", () => {
       "createEventBookingCheckoutSession"
     );
     expect(callable).toHaveBeenCalledWith({ eventId: EVENT_UUID });
-    expect(result).toEqual({ url: "https://stripe.com/checkout/3", orderIds: ["o3"] });
+    expect(result).toEqual({ url: "https://stripe.com/checkout/3", orderIds: ["o3"], confirmed: false });
   });
 });
 
@@ -483,141 +481,30 @@ describe("reconcileMyCheckoutSessionOrders", () => {
   });
 });
 
-// ============================================================================
-// Guest ticket requests
-// ============================================================================
-
-describe("submitGuestTicketRequest", () => {
-  it("calls with normalized UUIDs and trimmed strings", async () => {
-    const callable = makeCallable({ data: { success: true, requestId: "r1" } });
-
-    const result = await submitGuestTicketRequest({
+describe("reviewBookingRevision", () => {
+  it("sends an exact revision decision with a normalized id and note", async () => {
+    const response = {
+      success: true,
       bookingId: BOOKING_UUID,
-      requestedGuestCount: 2,
-      guestTicketTypeId: TICKET_UUID,
-      guestDisplayName: "  Jane Smith  ",
-      dietaryNote: "  gluten free  ",
-    });
+      revisionNumber: 2,
+      approvalStatus: "APPROVED" as const,
+      paymentDelta: 1000,
+    };
+    const callable = makeCallable({ data: response });
 
-    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "submitGuestTicketRequest");
-    const sent = callable.mock.calls[0][0];
-    expect(sent.guestDisplayName).toBe("Jane Smith");
-    expect(sent.dietaryNote).toBe("gluten free");
-    expect(result).toEqual({ success: true, requestId: "r1" });
-  });
-
-  it("sends null for blank dietaryNote", async () => {
-    const callable = makeCallable({ data: { success: true, requestId: "r2" } });
-
-    await submitGuestTicketRequest({
+    await expect(reviewBookingRevision({
       bookingId: BOOKING_UUID,
-      requestedGuestCount: 1,
-      guestTicketTypeId: TICKET_UUID,
-      guestDisplayName: "Jane",
-      dietaryNote: "   ",
-    });
+      expectedRevisionNumber: 2,
+      decision: "APPROVED",
+      moderatorNote: "  Approved for payment  ",
+    })).resolves.toEqual(response);
 
-    expect(callable.mock.calls[0][0].dietaryNote).toBeNull();
-  });
-
-  it("propagates errors", async () => {
-    makeFailingCallable("Booking not found");
-    await expect(
-      submitGuestTicketRequest({
-        bookingId: BOOKING_UUID,
-        requestedGuestCount: 1,
-        guestTicketTypeId: TICKET_UUID,
-        guestDisplayName: "Jane",
-      })
-    ).rejects.toThrow("Booking not found");
-  });
-});
-
-describe("submitAdditionalGuestTicketRequests", () => {
-  it("submits the complete guest batch through one idempotent callable", async () => {
-    const callable = makeCallable({
-      data: {
-        success: true,
-        requests: [
-          { success: true, requestId: "r1" },
-          { success: true, requestId: "r2" },
-        ],
-      },
-    });
-
-    const results = await submitAdditionalGuestTicketRequests({
+    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "reviewBookingRevision");
+    expect(callable).toHaveBeenCalledWith({
       bookingId: BOOKING_UUID,
-      guestTicketTypeId: TICKET_UUID,
-      idempotencyKey: BOOKING_UUID,
-      guests: [
-        { guestDisplayName: "Jane Smith", dietaryNote: "gluten free" },
-        { guestDisplayName: "Sam Extra", dietaryNote: null },
-      ],
+      expectedRevisionNumber: 2,
+      decision: "APPROVED",
+      moderatorNote: "Approved for payment",
     });
-
-    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "submitAdditionalGuestTicketRequests");
-    expect(callable).toHaveBeenCalledTimes(1);
-    expect(callable.mock.calls[0][0]).toEqual({
-      bookingId: BOOKING_UUID,
-      guestTicketTypeId: TICKET_UUID,
-      idempotencyKey: BOOKING_UUID,
-      guests: [
-        { guestDisplayName: "Jane Smith", dietaryNote: "gluten free" },
-        { guestDisplayName: "Sam Extra", dietaryNote: null },
-      ],
-    });
-    expect(results).toEqual([
-      { success: true, requestId: "r1" },
-      { success: true, requestId: "r2" },
-    ]);
-  });
-
-  it("stops after the first failure and propagates the error", async () => {
-    makeFailingCallable("Booking not found");
-    await expect(
-      submitAdditionalGuestTicketRequests({
-        bookingId: BOOKING_UUID,
-        guestTicketTypeId: TICKET_UUID,
-        idempotencyKey: BOOKING_UUID,
-        guests: [{ guestDisplayName: "Jane" }],
-      })
-    ).rejects.toThrow("Booking not found");
-  });
-});
-
-describe("reviewGuestTicketRequest", () => {
-  it("calls with normalized id, status, and trimmed moderatorNote", async () => {
-    const callable = makeCallable({ data: { success: true } });
-
-    const result = await reviewGuestTicketRequest({
-      id: BOOKING_UUID,
-      status: "APPROVED",
-      moderatorNote: "  Looks good  ",
-    });
-
-    expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "reviewGuestTicketRequest");
-    const sent = callable.mock.calls[0][0];
-    expect(sent.status).toBe("APPROVED");
-    expect(sent.moderatorNote).toBe("Looks good");
-    expect(result).toEqual({ success: true });
-  });
-
-  it("sends null for blank moderatorNote", async () => {
-    const callable = makeCallable({ data: { success: true } });
-
-    await reviewGuestTicketRequest({
-      id: BOOKING_UUID,
-      status: "REJECTED",
-      moderatorNote: "  ",
-    });
-
-    expect(callable.mock.calls[0][0].moderatorNote).toBeNull();
-  });
-
-  it("propagates errors", async () => {
-    makeFailingCallable("Not authorized");
-    await expect(
-      reviewGuestTicketRequest({ id: BOOKING_UUID, status: "APPROVED" })
-    ).rejects.toThrow("Not authorized");
   });
 });

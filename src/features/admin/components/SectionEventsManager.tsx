@@ -5,13 +5,12 @@ import {
   executeDataConnectMutation,
   executeDataConnectQuery,
 } from "../../../shared/query/dataConnectExecution";
-import { reviewGuestTicketRequest } from "../../../shared/utils/firebaseFunctions";
+import { reviewBookingRevision } from "../../../shared/utils/firebaseFunctions";
 import {
   useGetEventsForSection,
   useGetEventById,
   useListBookingPaymentAdjustmentsForAdmin,
   useListEventBookingsForAdmin,
-  useListGuestTicketRequestsForAdmin,
   useListTicketOrdersForAdmin,
 } from "@dataconnect/generated/react";
 import {
@@ -24,23 +23,24 @@ import {
   listUserGroupsRef,
   getEventByIdRef,
   listEventBookingsForAdminRef,
-  adminDeleteGuestTicketRequestRef,
   adminDeleteBookingLineRef,
   adminDeleteBookingRef,
   TicketAudience,
-  GuestTicketRequestStatus,
+  BookingApprovalStatus,
 } from "@dataconnect/generated";
 import type { UUIDString } from "@dataconnect/generated";
 import type {
   EventBookingAdminRow,
   EventRow,
-  GuestTicketRequestWithBooking,
   BookingPaymentAdjustmentAdminRow,
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "./sectionEventsManagerTypes";
 import { fromDatetimeLocal, toDatetimeLocal } from "../utils/eventDatetime";
-import { flattenGuestTicketRequestsFromLatestBookings } from "../utils/guestTicketRequestsAdmin";
+import {
+  activeEventTicketRows,
+  pendingBookingRevisions,
+} from "../utils/bookingApprovalsAdmin";
 import {
   EventDialogSurface,
   EventListSurface,
@@ -111,26 +111,16 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [submittingTicketType, setSubmittingTicketType] = useState(false);
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState<string | null>(null);
-  const [requestStatusFilter, setRequestStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
-  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
+  const [reviewingBookingId, setReviewingBookingId] = useState<string | null>(null);
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [moderatorNoteDraft, setModeratorNoteDraft] = useState<Record<string, string>>({});
-  const {
-    data: guestRequestsData,
-    isLoading: loadingGuestRequests,
-    isError: guestRequestsFailed,
-    error: guestRequestsError,
-    refetch: refetchGuestRequests,
-  } = useListGuestTicketRequestsForAdmin(
-    dataConnect,
-    { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
-    { enabled: !!ticketTypesEventId }
-  );
   const {
     data: eventBookingsData,
     isLoading: loadingEventBookings,
     isError: eventBookingsFailed,
     error: eventBookingsError,
+    refetch: refetchEventBookings,
   } = useListEventBookingsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -141,6 +131,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingTicketOrders,
     isError: ticketOrdersFailed,
     error: ticketOrdersError,
+    refetch: refetchTicketOrders,
   } = useListTicketOrdersForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -151,6 +142,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingPaymentAdjustments,
     isError: paymentAdjustmentsFailed,
     error: paymentAdjustmentsError,
+    refetch: refetchPaymentAdjustments,
   } = useListBookingPaymentAdjustmentsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -165,7 +157,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   useEffect(() => {
     const failures = [
       { failed: eventDetailFailed, error: eventDetailError, operation: "detail", context: "events" as const },
-      { failed: guestRequestsFailed, error: guestRequestsError, operation: "guest-requests", context: "guest-moderation" as const },
       { failed: eventBookingsFailed, error: eventBookingsError, operation: "bookings", context: "tickets" as const },
       { failed: ticketOrdersFailed, error: ticketOrdersError, operation: "orders", context: "tickets" as const },
       { failed: paymentAdjustmentsFailed, error: paymentAdjustmentsError, operation: "adjustments", context: "payment-reconciliation" as const },
@@ -185,8 +176,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     eventBookingsFailed,
     eventDetailError,
     eventDetailFailed,
-    guestRequestsError,
-    guestRequestsFailed,
     paymentAdjustmentsError,
     paymentAdjustmentsFailed,
     sectionId,
@@ -232,7 +221,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setEndDateTime(toDatetimeLocal(now.toISOString()));
       setBookingStartDateTime(toDatetimeLocal(now.toISOString()));
       setBookingEndDateTime(toDatetimeLocal(now.toISOString()));
-      setMaxGuestsStr("");
+      setMaxGuestsStr("0");
     }
     setError(null);
     setEventDialogOpen(true);
@@ -245,17 +234,14 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
     setSubmitting(true);
     setError(null);
-    let maxGuestsWithoutModeratorApproval: number | null = null;
     const mg = maxGuestsStr.trim();
-    if (mg !== "") {
-      const n = parseInt(mg, 10);
-      if (Number.isNaN(n) || n < 0) {
-        setError("Max guests without moderator approval must be a non-negative integer, or leave blank");
-        setSubmitting(false);
-        return;
-      }
-      maxGuestsWithoutModeratorApproval = n;
+    const n = Number(mg);
+    if (mg === "" || !Number.isInteger(n) || n < 0) {
+      setError("Max guests without moderator approval is required and must be a non-negative integer");
+      setSubmitting(false);
+      return;
     }
+    const maxGuestsWithoutModeratorApproval = n;
     try {
       if (editingEvent) {
         await executeDataConnectMutation(
@@ -309,9 +295,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       const bookingsResult = await executeDataConnectQuery(listEventBookingsForAdminRef(dataConnect, { eventId: event.id as UUIDString }));
       const bookingsList = bookingsResult.data?.event?.bookings ?? [];
       for (const b of bookingsList) {
-        for (const gtr of b.guestTicketRequests) {
-          await executeDataConnectMutation(adminDeleteGuestTicketRequestRef(dataConnect, { id: gtr.id }));
-        }
         for (const line of b.lines) {
           await executeDataConnectMutation(adminDeleteBookingLineRef(dataConnect, { id: line.id }));
         }
@@ -425,39 +408,49 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const events: EventRow[] = eventsData?.section?.events ?? [];
-  const guestRequests = useMemo<GuestTicketRequestWithBooking[]>(() => {
-    const bookings = guestRequestsData?.event?.bookings ?? [];
-    return flattenGuestTicketRequestsFromLatestBookings(bookings);
-  }, [guestRequestsData]);
-
-  const filteredGuestRequests = useMemo(() => {
-    if (requestStatusFilter === "ALL") return guestRequests;
-    return guestRequests.filter((r) => r.status === requestStatusFilter);
-  }, [guestRequests, requestStatusFilter]);
-  const eventBookings: EventBookingAdminRow[] = eventBookingsData?.event?.bookings ?? [];
+  const eventBookings = useMemo<EventBookingAdminRow[]>(
+    () => eventBookingsData?.event?.bookings ?? [],
+    [eventBookingsData]
+  );
+  const approvalBookings = useMemo(() => {
+    if (approvalStatusFilter === "PENDING") return pendingBookingRevisions(eventBookings);
+    return eventBookings
+      .filter(
+        (booking) =>
+          approvalStatusFilter === "ALL" || booking.approvalStatus === approvalStatusFilter
+      )
+      .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+  }, [approvalStatusFilter, eventBookings]);
+  const attendeeTickets = useMemo(() => activeEventTicketRows(eventBookings), [eventBookings]);
   const ticketOrders: TicketOrderAdminRow[] = ticketOrdersData?.event?.ticketOrders ?? [];
   const bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[] = paymentAdjustmentsData?.event?.bookings ?? [];
 
-  const handleReviewRequest = async (
-    request: GuestTicketRequestWithBooking,
-    status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED
+  const handleReviewBooking = async (
+    booking: EventBookingAdminRow,
+    decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED
   ) => {
-    setReviewingRequestId(request.id);
+    setReviewingBookingId(booking.id);
     setError(null);
     try {
-      await reviewGuestTicketRequest({
-        id: request.id,
-        status,
-        moderatorNote: moderatorNoteDraft[request.id]?.trim() || null,
+      await reviewBookingRevision({
+        bookingId: booking.id,
+        expectedRevisionNumber: booking.revisionNumber,
+        decision,
+        moderatorNote: moderatorNoteDraft[booking.id]?.trim() || null,
       });
-      setModeratorNoteDraft((prev) => ({ ...prev, [request.id]: "" }));
-      refetchGuestRequests();
-      showSuccess(`Guest ticket request ${status === GuestTicketRequestStatus.APPROVED ? "approved" : "rejected"}`);
+      setModeratorNoteDraft((prev) => ({ ...prev, [booking.id]: "" }));
+      await Promise.all([
+        refetchEventBookings(),
+        refetchEventDetail(),
+        refetchTicketOrders(),
+        refetchPaymentAdjustments(),
+      ]);
+      showSuccess(`Booking revision ${decision === BookingApprovalStatus.APPROVED ? "approved" : "returned for changes"}`);
     } catch (err: unknown) {
-      reportError("admin.guest-moderation.review", err, { requestId: request.id, status });
-      setError(toAdminUserFacingError(err, "guest-moderation").message);
+      reportError("admin.booking-approval.review", err, { bookingId: booking.id, decision });
+      setError(toAdminUserFacingError(err, "booking-approval").message);
     } finally {
-      setReviewingRequestId(null);
+      setReviewingBookingId(null);
     }
   };
 
@@ -502,16 +495,17 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           deletingTicketTypeId={deletingTicketTypeId}
           onEditTicketType={openTicketTypeDialog}
           onDeleteTicketType={(id) => void handleDeleteTicketType(id)}
-          requestStatusFilter={requestStatusFilter}
-          onRequestStatusFilterChange={setRequestStatusFilter}
-          loadingGuestRequests={loadingGuestRequests}
-          guestRequests={filteredGuestRequests}
+          approvalStatusFilter={approvalStatusFilter}
+          onApprovalStatusFilterChange={setApprovalStatusFilter}
+          approvalBookings={approvalBookings}
+          allEventBookings={eventBookings}
+          attendeeTickets={attendeeTickets}
           moderatorNoteDraft={moderatorNoteDraft}
-          onModeratorNoteChange={(requestId, value) =>
-            setModeratorNoteDraft((prev) => ({ ...prev, [requestId]: value }))
+          onModeratorNoteChange={(bookingId, value) =>
+            setModeratorNoteDraft((prev) => ({ ...prev, [bookingId]: value }))
           }
-          reviewingRequestId={reviewingRequestId}
-          onReviewRequest={(request, status) => void handleReviewRequest(request, status)}
+          reviewingBookingId={reviewingBookingId}
+          onReviewBooking={(booking, decision) => void handleReviewBooking(booking, decision)}
           loadingEventBookings={loadingEventBookings}
           eventBookings={eventBookings}
           loadingTicketOrders={loadingTicketOrders}

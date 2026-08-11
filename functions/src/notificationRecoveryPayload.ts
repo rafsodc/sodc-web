@@ -1,6 +1,5 @@
 import {
   BookingPaymentAdjustmentStatus,
-  GuestTicketRequestStatus,
   PaymentReconciliationExceptionType,
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
@@ -41,20 +40,28 @@ export type NotificationRecoveryPayload =
       };
     })
   | (VersionedRecoveryPayload & {
+      kind: "BOOKING_PENDING_MEMBER";
+      bookingId: UUIDString;
+      idempotencyKey: string;
+    })
+  | (VersionedRecoveryPayload & {
+      kind: "BOOKING_PENDING_MODERATOR";
+      bookingId: UUIDString;
+      recipientEmail: string;
+    })
+  | (VersionedRecoveryPayload & {
+      kind: "BOOKING_CHANGES_REQUESTED";
+      bookingId: UUIDString;
+    })
+  | (VersionedRecoveryPayload & {
+      kind: "BOOKING_APPROVED";
+      bookingId: UUIDString;
+    })
+  | (VersionedRecoveryPayload & {
       kind: "MEMBERSHIP_STATUS";
       userId: string;
       previousStatus: MembershipStatus | null;
       newStatus: MembershipStatus;
-    })
-  | (VersionedRecoveryPayload & {
-      kind: "GUEST_REQUEST_MODERATORS";
-      requestId: UUIDString;
-      recipientEmail: string;
-    })
-  | (VersionedRecoveryPayload & {
-      kind: "GUEST_REQUEST_BOOKER";
-      requestId: UUIDString;
-      status: GuestTicketRequestStatus.APPROVED | GuestTicketRequestStatus.REJECTED;
     })
   | (VersionedRecoveryPayload & {
       kind: "USER_PENDING_APPROVAL";
@@ -224,6 +231,32 @@ export function parseNotificationRecoveryPayload(
         },
       };
     }
+    case "BOOKING_PENDING_MEMBER":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+        idempotencyKey: string(payload.idempotencyKey, "idempotencyKey"),
+      };
+    case "BOOKING_PENDING_MODERATOR":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+        recipientEmail: string(payload.recipientEmail, "recipientEmail"),
+      };
+    case "BOOKING_CHANGES_REQUESTED":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+      };
+    case "BOOKING_APPROVED":
+      return {
+        ...base,
+        kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+      };
     case "MEMBERSHIP_STATUS":
       return {
         ...base,
@@ -234,24 +267,6 @@ export function parseNotificationRecoveryPayload(
             ? null
             : enumValue(payload.previousStatus, MEMBERSHIP_STATUSES, "previousStatus"),
         newStatus: enumValue(payload.newStatus, MEMBERSHIP_STATUSES, "newStatus"),
-      };
-    case "GUEST_REQUEST_MODERATORS":
-      return {
-        ...base,
-        kind,
-        requestId: string(payload.requestId, "requestId") as UUIDString,
-        recipientEmail: string(payload.recipientEmail, "recipientEmail"),
-      };
-    case "GUEST_REQUEST_BOOKER":
-      return {
-        ...base,
-        kind,
-        requestId: string(payload.requestId, "requestId") as UUIDString,
-        status: enumValue(
-          payload.status,
-          [GuestTicketRequestStatus.APPROVED, GuestTicketRequestStatus.REJECTED],
-          "status"
-        ),
       };
     case "USER_PENDING_APPROVAL":
       return {

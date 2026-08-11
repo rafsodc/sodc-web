@@ -39,6 +39,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
+  - [*GetBookingRevisionForApprovalFromCallable*](#getbookingrevisionforapprovalfromcallable)
   - [*GetTicketOrdersForBookerAndEvent*](#getticketordersforbookerandevent)
   - [*GetTicketOrderForWebhook*](#getticketorderforwebhook)
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
@@ -47,12 +48,9 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
   - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
-  - [*GetGuestTicketRequestByIdForCallable*](#getguestticketrequestbyidforcallable)
-  - [*GetBookingForGuestTicketCallable*](#getbookingforguestticketcallable)
   - [*GetBookingForNotification*](#getbookingfornotification)
   - [*ListStaleDraftBookingsForScheduler*](#liststaledraftbookingsforscheduler)
   - [*ListStalePendingTicketOrdersForScheduler*](#liststalependingticketordersforscheduler)
-  - [*GetGuestTicketRequestForNotification*](#getguestticketrequestfornotification)
   - [*GetSectionAnnouncementOptOuts*](#getsectionannouncementoptouts)
   - [*GetAnnouncementRecipientProgress*](#getannouncementrecipientprogress)
   - [*GetAnnouncementRecipientsForResume*](#getannouncementrecipientsforresume)
@@ -89,7 +87,6 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetMyTicketOrders*](#getmyticketorders)
   - [*GetMyBookingPaymentAdjustments*](#getmybookingpaymentadjustments)
   - [*ListEventBookingsForAdmin*](#listeventbookingsforadmin)
-  - [*ListGuestTicketRequestsForAdmin*](#listguestticketrequestsforadmin)
   - [*ListTicketOrdersForAdmin*](#listticketordersforadmin)
   - [*ListBookingPaymentAdjustmentsForAdmin*](#listbookingpaymentadjustmentsforadmin)
   - [*ListOpenPaymentReconciliationExceptions*](#listopenpaymentreconciliationexceptions)
@@ -129,13 +126,11 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*AddUserToUserGroupAdmin*](#addusertousergroupadmin)
   - [*RemoveUserFromUserGroupAdmin*](#removeuserfromusergroupadmin)
   - [*UpdateUserStripeCustomerId*](#updateuserstripecustomerid)
-  - [*CreateBookingDraftForUser*](#createbookingdraftforuser)
-  - [*CreateBookingDraftRevisionForUser*](#createbookingdraftrevisionforuser)
-  - [*MarkBookingSupersededFromCallable*](#markbookingsupersededfromcallable)
-  - [*CreateBookingPaymentAdjustmentFromCallable*](#createbookingpaymentadjustmentfromcallable)
-  - [*AddBookingLineFromCallable*](#addbookinglinefromcallable)
   - [*UpdateBookingStatusFromCallable*](#updatebookingstatusfromcallable)
+  - [*SettleBookingPaymentAdjustmentsFromCallable*](#settlebookingpaymentadjustmentsfromcallable)
+  - [*UpdateBookingApprovalFromCallable*](#updatebookingapprovalfromcallable)
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
+  - [*UpdateBookingPlaceAllocationRefundFromCallable*](#updatebookingplaceallocationrefundfromcallable)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
@@ -145,12 +140,9 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
   - [*MarkTicketOrderFailedFromWebhook*](#markticketorderfailedfromwebhook)
   - [*MarkTicketOrderRefundedFromWebhook*](#markticketorderrefundedfromwebhook)
+  - [*RecordTicketOrderPartialRefundFromWebhook*](#recordticketorderpartialrefundfromwebhook)
   - [*UpsertTicketOrderDisputeFromWebhook*](#upsertticketorderdisputefromwebhook)
   - [*UpsertPaymentReconciliationException*](#upsertpaymentreconciliationexception)
-  - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
-  - [*DeleteBookingLineFromCallable*](#deletebookinglinefromcallable)
-  - [*CreateGuestTicketRequestFromCallable*](#createguestticketrequestfromcallable)
-  - [*AdminReviewGuestTicketRequestFromCallable*](#adminreviewguestticketrequestfromcallable)
   - [*CreateAnnouncementSend*](#createannouncementsend)
   - [*CreateAnnouncementSendWithDeliveryMode*](#createannouncementsendwithdeliverymode)
   - [*CreateAnnouncementRecipient*](#createannouncementrecipient)
@@ -169,12 +161,6 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UpsertCallableInvocation*](#upsertcallableinvocation)
   - [*EnsureCallableRateLimitBucket*](#ensurecallableratelimitbucket)
   - [*ConsumeCallableRateLimit*](#consumecallableratelimit)
-  - [*CreateBookingDraft*](#createbookingdraft)
-  - [*AddBookingLine*](#addbookingline)
-  - [*UpdateBookingStatus*](#updatebookingstatus)
-  - [*CreateGuestTicketRequest*](#createguestticketrequest)
-  - [*AdminDeleteGuestTicketRequest*](#admindeleteguestticketrequest)
-  - [*AdminReviewGuestTicketRequest*](#adminreviewguestticketrequest)
   - [*AdminDeleteBookingLine*](#admindeletebookingline)
   - [*AdminDeleteBooking*](#admindeletebooking)
   - [*ResolvePaymentReconciliationException*](#resolvepaymentreconciliationexception)
@@ -2129,7 +2115,7 @@ export interface GetEventByIdForCallableData {
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
     bookingEndDateTime: TimestampString;
-    maxGuestsWithoutModeratorApproval?: number | null;
+    maxGuestsWithoutModeratorApproval: number;
     ticketTypes: ({
       id: UUIDString;
       title: string;
@@ -2330,6 +2316,9 @@ export interface GetBookingsForBookerAndEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionGroupId: UUIDString;
       revisionNumber: number;
       supersededAt?: TimestampString | null;
@@ -2337,7 +2326,6 @@ export interface GetBookingsForBookerAndEventData {
         id: UUIDString;
       } & Booking_Key;
       clientSubmissionKey?: string | null;
-      bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
@@ -2345,6 +2333,21 @@ export interface GetBookingsForBookerAndEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        bookingPlace: {
+          id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            stripeRefundId?: string | null;
+            createdAt: TimestampString;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+              stripePaymentIntentId?: string | null;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -2358,16 +2361,6 @@ export interface GetBookingsForBookerAndEventData {
           title: string;
         } & TicketType_Key;
       } & BookingLine_Key)[];
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          price: number;
-        } & TicketType_Key;
-      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -2425,6 +2418,133 @@ export default function GetBookingsForBookerAndEventComponent() {
 }
 ```
 
+## GetBookingRevisionForApprovalFromCallable
+You can execute the `GetBookingRevisionForApprovalFromCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetBookingRevisionForApprovalFromCallable(dc: DataConnect, vars: GetBookingRevisionForApprovalFromCallableVariables, options?: useDataConnectQueryOptions<GetBookingRevisionForApprovalFromCallableData>): UseDataConnectQueryResult<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetBookingRevisionForApprovalFromCallable(vars: GetBookingRevisionForApprovalFromCallableVariables, options?: useDataConnectQueryOptions<GetBookingRevisionForApprovalFromCallableData>): UseDataConnectQueryResult<GetBookingRevisionForApprovalFromCallableData, GetBookingRevisionForApprovalFromCallableVariables>;
+```
+
+### Variables
+The `GetBookingRevisionForApprovalFromCallable` Query requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetBookingRevisionForApprovalFromCallableVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetBookingRevisionForApprovalFromCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetBookingRevisionForApprovalFromCallable` Query is of type `GetBookingRevisionForApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetBookingRevisionForApprovalFromCallableData {
+  booking?: {
+    id: UUIDString;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    approvalReviewedAt?: TimestampString | null;
+    approvalNote?: string | null;
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    supersededAt?: TimestampString | null;
+    clientSubmissionKey?: string | null;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } & User_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      section: {
+        id: UUIDString;
+        name: string;
+      } & Section_Key;
+    } & Event_Key;
+    supersedesBooking?: {
+      id: UUIDString;
+      revisionNumber: number;
+    } & Booking_Key;
+    lines: ({
+      id: UUIDString;
+      sortOrder: number;
+      guestDisplayName?: string | null;
+      dietaryNote?: string | null;
+      ticketType: {
+        id: UUIDString;
+        title: string;
+        audience: TicketAudience;
+        price: number;
+      } & TicketType_Key;
+      guestUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+    } & BookingLine_Key)[];
+  } & Booking_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetBookingRevisionForApprovalFromCallable`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetBookingRevisionForApprovalFromCallableVariables } from '@dataconnect/generated';
+import { useGetBookingRevisionForApprovalFromCallable } from '@dataconnect/generated/react'
+
+export default function GetBookingRevisionForApprovalFromCallableComponent() {
+  // The `useGetBookingRevisionForApprovalFromCallable` Query hook requires an argument of type `GetBookingRevisionForApprovalFromCallableVariables`:
+  const getBookingRevisionForApprovalFromCallableVars: GetBookingRevisionForApprovalFromCallableVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetBookingRevisionForApprovalFromCallable(getBookingRevisionForApprovalFromCallableVars);
+  // Variables can be defined inline as well.
+  const query = useGetBookingRevisionForApprovalFromCallable({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetBookingRevisionForApprovalFromCallable(dataConnect, getBookingRevisionForApprovalFromCallableVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingRevisionForApprovalFromCallable(getBookingRevisionForApprovalFromCallableVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingRevisionForApprovalFromCallable(dataConnect, getBookingRevisionForApprovalFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.booking);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetTicketOrdersForBookerAndEvent
 You can execute the `GetTicketOrdersForBookerAndEvent` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -2459,6 +2579,8 @@ export interface GetTicketOrdersForBookerAndEventData {
       id: UUIDString;
       status: TicketOrderStatus;
       quantity: number;
+      unitAmountMinor: number;
+      totalAmountMinor: number;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -2466,6 +2588,13 @@ export interface GetTicketOrdersForBookerAndEventData {
       event: {
         id: UUIDString;
       } & Event_Key;
+      paymentAllocations: ({
+        id: UUIDString;
+        allocatedAmountMinor: number;
+        bookingPlace: {
+          id: UUIDString;
+        } & BookingPlace_Key;
+      } & BookingPlacePaymentAllocation_Key)[];
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -2587,6 +2716,10 @@ export interface GetTicketOrderForWebhookData {
     disputeUpdatedAt?: TimestampString | null;
     disputeClosedAt?: TimestampString | null;
     webhookEventId?: string | null;
+    paymentAllocations: ({
+      id: UUIDString;
+      refundedAmountMinor: number;
+    } & BookingPlacePaymentAllocation_Key)[];
   } & TicketOrder_Key;
 }
 ```
@@ -3203,221 +3336,6 @@ export default function GetPaymentReconciliationExceptionByOrderAndTypeComponent
 }
 ```
 
-## GetGuestTicketRequestByIdForCallable
-You can execute the `GetGuestTicketRequestByIdForCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
-
-```javascript
-useGetGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestByIdForCallableData>): UseDataConnectQueryResult<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Query hook function.
-```javascript
-useGetGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestByIdForCallableData>): UseDataConnectQueryResult<GetGuestTicketRequestByIdForCallableData, GetGuestTicketRequestByIdForCallableVariables>;
-```
-
-### Variables
-The `GetGuestTicketRequestByIdForCallable` Query requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface GetGuestTicketRequestByIdForCallableVariables {
-  id: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `GetGuestTicketRequestByIdForCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
-
-To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
-
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetGuestTicketRequestByIdForCallable` Query is of type `GetGuestTicketRequestByIdForCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface GetGuestTicketRequestByIdForCallableData {
-  guestTicketRequest?: {
-    id: UUIDString;
-    status: GuestTicketRequestStatus;
-    requestedGuestCount: number;
-    guestDisplayName?: string | null;
-    dietaryNote?: string | null;
-    booking: {
-      id: UUIDString;
-    } & Booking_Key;
-    guestTicketType?: {
-      id: UUIDString;
-    } & TicketType_Key;
-  } & GuestTicketRequest_Key;
-}
-```
-
-To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
-
-### Using `GetGuestTicketRequestByIdForCallable`'s Query hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, GetGuestTicketRequestByIdForCallableVariables } from '@dataconnect/generated';
-import { useGetGuestTicketRequestByIdForCallable } from '@dataconnect/generated/react'
-
-export default function GetGuestTicketRequestByIdForCallableComponent() {
-  // The `useGetGuestTicketRequestByIdForCallable` Query hook requires an argument of type `GetGuestTicketRequestByIdForCallableVariables`:
-  const getGuestTicketRequestByIdForCallableVars: GetGuestTicketRequestByIdForCallableVariables = {
-    id: ..., 
-  };
-
-  // You don't have to do anything to "execute" the Query.
-  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useGetGuestTicketRequestByIdForCallable(getGuestTicketRequestByIdForCallableVars);
-  // Variables can be defined inline as well.
-  const query = useGetGuestTicketRequestByIdForCallable({ id: ..., });
-
-  // You can also pass in a `DataConnect` instance to the Query hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const query = useGetGuestTicketRequestByIdForCallable(dataConnect, getGuestTicketRequestByIdForCallableVars);
-
-  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetGuestTicketRequestByIdForCallable(getGuestTicketRequestByIdForCallableVars, options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetGuestTicketRequestByIdForCallable(dataConnect, getGuestTicketRequestByIdForCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Query.
-  if (query.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (query.isError) {
-    return <div>Error: {query.error.message}</div>;
-  }
-
-  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
-  if (query.isSuccess) {
-    console.log(query.data.guestTicketRequest);
-  }
-  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## GetBookingForGuestTicketCallable
-You can execute the `GetBookingForGuestTicketCallable` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
-
-```javascript
-useGetBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables, options?: useDataConnectQueryOptions<GetBookingForGuestTicketCallableData>): UseDataConnectQueryResult<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Query hook function.
-```javascript
-useGetBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables, options?: useDataConnectQueryOptions<GetBookingForGuestTicketCallableData>): UseDataConnectQueryResult<GetBookingForGuestTicketCallableData, GetBookingForGuestTicketCallableVariables>;
-```
-
-### Variables
-The `GetBookingForGuestTicketCallable` Query requires an argument of type `GetBookingForGuestTicketCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface GetBookingForGuestTicketCallableVariables {
-  bookingId: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `GetBookingForGuestTicketCallable` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
-
-To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
-
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetBookingForGuestTicketCallable` Query is of type `GetBookingForGuestTicketCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface GetBookingForGuestTicketCallableData {
-  booking?: {
-    id: UUIDString;
-    booker: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-    } & User_Key;
-    event: {
-      id: UUIDString;
-      title: string;
-      section: {
-        id: UUIDString;
-        name: string;
-      } & Section_Key;
-    } & Event_Key;
-    supersedesBooking?: {
-      guestTicketRequests: ({
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        guestTicketType?: {
-          id: UUIDString;
-        } & TicketType_Key;
-        reviewedBy?: {
-          id: string;
-        } & User_Key;
-        reviewedAt?: TimestampString | null;
-        moderatorNote?: string | null;
-      })[];
-    };
-    guestTicketRequests: ({
-      status: GuestTicketRequestStatus;
-      requestedGuestCount: number;
-      guestDisplayName?: string | null;
-      guestTicketType?: {
-        id: UUIDString;
-      } & TicketType_Key;
-    })[];
-  } & Booking_Key;
-}
-```
-
-To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
-
-### Using `GetBookingForGuestTicketCallable`'s Query hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, GetBookingForGuestTicketCallableVariables } from '@dataconnect/generated';
-import { useGetBookingForGuestTicketCallable } from '@dataconnect/generated/react'
-
-export default function GetBookingForGuestTicketCallableComponent() {
-  // The `useGetBookingForGuestTicketCallable` Query hook requires an argument of type `GetBookingForGuestTicketCallableVariables`:
-  const getBookingForGuestTicketCallableVars: GetBookingForGuestTicketCallableVariables = {
-    bookingId: ..., 
-  };
-
-  // You don't have to do anything to "execute" the Query.
-  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useGetBookingForGuestTicketCallable(getBookingForGuestTicketCallableVars);
-  // Variables can be defined inline as well.
-  const query = useGetBookingForGuestTicketCallable({ bookingId: ..., });
-
-  // You can also pass in a `DataConnect` instance to the Query hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const query = useGetBookingForGuestTicketCallable(dataConnect, getBookingForGuestTicketCallableVars);
-
-  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetBookingForGuestTicketCallable(getBookingForGuestTicketCallableVars, options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetBookingForGuestTicketCallable(dataConnect, getBookingForGuestTicketCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Query.
-  if (query.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (query.isError) {
-    return <div>Error: {query.error.message}</div>;
-  }
-
-  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
-  if (query.isSuccess) {
-    console.log(query.data.booking);
-  }
-  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
 ## GetBookingForNotification
 You can execute the `GetBookingForNotification` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -3448,7 +3366,8 @@ export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
     revisionNumber: number;
-    bookerDietaryNote?: string | null;
+    approvalStatus: BookingApprovalStatus;
+    approvalNote?: string | null;
     sitNextToUserIds?: string[] | null;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
@@ -3713,127 +3632,6 @@ export default function ListStalePendingTicketOrdersForSchedulerComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.ticketOrders);
-  }
-  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## GetGuestTicketRequestForNotification
-You can execute the `GetGuestTicketRequestForNotification` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
-
-```javascript
-useGetGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestForNotificationData>): UseDataConnectQueryResult<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
-```
-You can also pass in a `DataConnect` instance to the Query hook function.
-```javascript
-useGetGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables, options?: useDataConnectQueryOptions<GetGuestTicketRequestForNotificationData>): UseDataConnectQueryResult<GetGuestTicketRequestForNotificationData, GetGuestTicketRequestForNotificationVariables>;
-```
-
-### Variables
-The `GetGuestTicketRequestForNotification` Query requires an argument of type `GetGuestTicketRequestForNotificationVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface GetGuestTicketRequestForNotificationVariables {
-  id: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `GetGuestTicketRequestForNotification` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
-
-To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
-
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetGuestTicketRequestForNotification` Query is of type `GetGuestTicketRequestForNotificationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface GetGuestTicketRequestForNotificationData {
-  guestTicketRequest?: {
-    id: UUIDString;
-    status: GuestTicketRequestStatus;
-    requestedGuestCount: number;
-    dietaryNote?: string | null;
-    moderatorNote?: string | null;
-    guestTicketType?: {
-      id: UUIDString;
-      title: string;
-      price: number;
-    } & TicketType_Key;
-    booking: {
-      id: UUIDString;
-      booker: {
-        id: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-      } & User_Key;
-      event: {
-        id: UUIDString;
-        title: string;
-        location?: string | null;
-        startDateTime: TimestampString;
-        endDateTime: TimestampString;
-        section: {
-          id: UUIDString;
-          name: string;
-        } & Section_Key;
-      } & Event_Key;
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestTicketType?: {
-          price: number;
-        };
-      } & GuestTicketRequest_Key)[];
-    } & Booking_Key;
-  } & GuestTicketRequest_Key;
-}
-```
-
-To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
-
-### Using `GetGuestTicketRequestForNotification`'s Query hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, GetGuestTicketRequestForNotificationVariables } from '@dataconnect/generated';
-import { useGetGuestTicketRequestForNotification } from '@dataconnect/generated/react'
-
-export default function GetGuestTicketRequestForNotificationComponent() {
-  // The `useGetGuestTicketRequestForNotification` Query hook requires an argument of type `GetGuestTicketRequestForNotificationVariables`:
-  const getGuestTicketRequestForNotificationVars: GetGuestTicketRequestForNotificationVariables = {
-    id: ..., 
-  };
-
-  // You don't have to do anything to "execute" the Query.
-  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useGetGuestTicketRequestForNotification(getGuestTicketRequestForNotificationVars);
-  // Variables can be defined inline as well.
-  const query = useGetGuestTicketRequestForNotification({ id: ..., });
-
-  // You can also pass in a `DataConnect` instance to the Query hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const query = useGetGuestTicketRequestForNotification(dataConnect, getGuestTicketRequestForNotificationVars);
-
-  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetGuestTicketRequestForNotification(getGuestTicketRequestForNotificationVars, options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = { staleTime: 5 * 1000 };
-  const query = useGetGuestTicketRequestForNotification(dataConnect, getGuestTicketRequestForNotificationVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Query.
-  if (query.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (query.isError) {
-    return <div>Error: {query.error.message}</div>;
-  }
-
-  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
-  if (query.isSuccess) {
-    console.log(query.data.guestTicketRequest);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -6027,7 +5825,7 @@ export interface GetEventsForSectionData {
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
       bookingEndDateTime: TimestampString;
-      maxGuestsWithoutModeratorApproval?: number | null;
+      maxGuestsWithoutModeratorApproval: number;
     } & Event_Key)[];
   } & Section_Key;
 }
@@ -6123,7 +5921,7 @@ export interface GetEventByIdData {
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
     bookingEndDateTime: TimestampString;
-    maxGuestsWithoutModeratorApproval?: number | null;
+    maxGuestsWithoutModeratorApproval: number;
     ticketTypes: ({
       id: UUIDString;
       title: string;
@@ -6615,10 +6413,12 @@ export interface GetMyBookingsForEventData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionNumber: number;
       supersededAt?: TimestampString | null;
       clientSubmissionKey?: string | null;
-      bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
@@ -6626,6 +6426,17 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        bookingPlace: {
+          id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            refundedAmountMinor: number;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -6641,21 +6452,6 @@ export interface GetMyBookingsForEventData {
           lastName: string;
         } & User_Key;
       } & BookingLine_Key)[];
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        dietaryNote?: string | null;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          audience: TicketAudience;
-          price: number;
-        } & TicketType_Key;
-        reviewedAt?: TimestampString | null;
-        moderatorNote?: string | null;
-      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -6738,6 +6534,9 @@ export interface GetMyBookingsData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
       event: {
@@ -6752,6 +6551,9 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
+        bookingPlace: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
           title: string;
@@ -6759,17 +6561,6 @@ export interface GetMyBookingsData {
           price: number;
         } & TicketType_Key;
       } & BookingLine_Key)[];
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          price: number;
-        } & TicketType_Key;
-      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -7137,13 +6928,22 @@ export interface ListEventBookingsForAdminData {
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
       revisionNumber: number;
+      supersededAt?: TimestampString | null;
       supersedesBooking?: {
         id: UUIDString;
         revisionNumber: number;
       } & Booking_Key;
       clientSubmissionKey?: string | null;
-      bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
@@ -7157,28 +6957,33 @@ export interface ListEventBookingsForAdminData {
         lastName: string;
         email: string;
       } & User_Key;
-      guestTicketRequests: ({
+      lines: ({
         id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        reviewedAt?: TimestampString | null;
-        moderatorNote?: string | null;
-        createdAt: TimestampString;
-        updatedAt: TimestampString;
-        createdBy?: string | null;
-        updatedBy?: string | null;
-        reviewedBy?: {
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        bookingPlace: {
+          id: UUIDString;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrder: {
+              id: UUIDString;
+              status: TicketOrderStatus;
+            } & TicketOrder_Key;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
+        guestUser?: {
           id: string;
           firstName: string;
           lastName: string;
         } & User_Key;
-      } & GuestTicketRequest_Key)[];
-      lines: ({
-        id: UUIDString;
         ticketType: {
           id: UUIDString;
           title: string;
           audience: TicketAudience;
+          price: number;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -7219,133 +7024,6 @@ export default function ListEventBookingsForAdminComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useListEventBookingsForAdmin(dataConnect, listEventBookingsForAdminVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Query.
-  if (query.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (query.isError) {
-    return <div>Error: {query.error.message}</div>;
-  }
-
-  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
-  if (query.isSuccess) {
-    console.log(query.data.event);
-  }
-  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## ListGuestTicketRequestsForAdmin
-You can execute the `ListGuestTicketRequestsForAdmin` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
-
-```javascript
-useListGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: useDataConnectQueryOptions<ListGuestTicketRequestsForAdminData>): UseDataConnectQueryResult<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
-```
-You can also pass in a `DataConnect` instance to the Query hook function.
-```javascript
-useListGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: useDataConnectQueryOptions<ListGuestTicketRequestsForAdminData>): UseDataConnectQueryResult<ListGuestTicketRequestsForAdminData, ListGuestTicketRequestsForAdminVariables>;
-```
-
-### Variables
-The `ListGuestTicketRequestsForAdmin` Query requires an argument of type `ListGuestTicketRequestsForAdminVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface ListGuestTicketRequestsForAdminVariables {
-  eventId: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `ListGuestTicketRequestsForAdmin` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
-
-To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
-
-To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListGuestTicketRequestsForAdmin` Query is of type `ListGuestTicketRequestsForAdminData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface ListGuestTicketRequestsForAdminData {
-  event?: {
-    id: UUIDString;
-    title: string;
-    bookings: ({
-      id: UUIDString;
-      status: BookingStatus;
-      revisionNumber: number;
-      revisionGroupId: UUIDString;
-      supersededAt?: TimestampString | null;
-      supersedesBooking?: {
-        id: UUIDString;
-        revisionNumber: number;
-      } & Booking_Key;
-      booker: {
-        id: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-      } & User_Key;
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        dietaryNote?: string | null;
-        moderatorNote?: string | null;
-        createdAt: TimestampString;
-        reviewedAt?: TimestampString | null;
-        createdBy?: string | null;
-        updatedAt: TimestampString;
-        updatedBy?: string | null;
-        reviewedBy?: {
-          id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
-        } & User_Key;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          audience: TicketAudience;
-          price: number;
-        } & TicketType_Key;
-      } & GuestTicketRequest_Key)[];
-    } & Booking_Key)[];
-  } & Event_Key;
-}
-```
-
-To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
-
-### Using `ListGuestTicketRequestsForAdmin`'s Query hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, ListGuestTicketRequestsForAdminVariables } from '@dataconnect/generated';
-import { useListGuestTicketRequestsForAdmin } from '@dataconnect/generated/react'
-
-export default function ListGuestTicketRequestsForAdminComponent() {
-  // The `useListGuestTicketRequestsForAdmin` Query hook requires an argument of type `ListGuestTicketRequestsForAdminVariables`:
-  const listGuestTicketRequestsForAdminVars: ListGuestTicketRequestsForAdminVariables = {
-    eventId: ..., 
-  };
-
-  // You don't have to do anything to "execute" the Query.
-  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
-  const query = useListGuestTicketRequestsForAdmin(listGuestTicketRequestsForAdminVars);
-  // Variables can be defined inline as well.
-  const query = useListGuestTicketRequestsForAdmin({ eventId: ..., });
-
-  // You can also pass in a `DataConnect` instance to the Query hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const query = useListGuestTicketRequestsForAdmin(dataConnect, listGuestTicketRequestsForAdminVars);
-
-  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
-  const options = { staleTime: 5 * 1000 };
-  const query = useListGuestTicketRequestsForAdmin(listGuestTicketRequestsForAdminVars, options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = { staleTime: 5 * 1000 };
-  const query = useListGuestTicketRequestsForAdmin(dataConnect, listGuestTicketRequestsForAdminVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -11299,508 +10977,6 @@ export default function UpdateUserStripeCustomerIdComponent() {
 }
 ```
 
-## CreateBookingDraftForUser
-You can execute the `CreateBookingDraftForUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateBookingDraftForUser(options?: useDataConnectMutationOptions<CreateBookingDraftForUserData, FirebaseError, CreateBookingDraftForUserVariables>): UseDataConnectMutationResult<CreateBookingDraftForUserData, CreateBookingDraftForUserVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateBookingDraftForUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateBookingDraftForUserData, FirebaseError, CreateBookingDraftForUserVariables>): UseDataConnectMutationResult<CreateBookingDraftForUserData, CreateBookingDraftForUserVariables>;
-```
-
-### Variables
-The `CreateBookingDraftForUser` Mutation requires an argument of type `CreateBookingDraftForUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateBookingDraftForUserVariables {
-  eventId: UUIDString;
-  bookerId: string;
-  clientSubmissionKey: string;
-}
-```
-### Return Type
-Recall that calling the `CreateBookingDraftForUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateBookingDraftForUser` Mutation is of type `CreateBookingDraftForUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateBookingDraftForUserData {
-  booking_insert: Booking_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateBookingDraftForUser`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateBookingDraftForUserVariables } from '@dataconnect/generated';
-import { useCreateBookingDraftForUser } from '@dataconnect/generated/react'
-
-export default function CreateBookingDraftForUserComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateBookingDraftForUser();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateBookingDraftForUser(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingDraftForUser(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingDraftForUser(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateBookingDraftForUser` Mutation requires an argument of type `CreateBookingDraftForUserVariables`:
-  const createBookingDraftForUserVars: CreateBookingDraftForUserVariables = {
-    eventId: ..., 
-    bookerId: ..., 
-    clientSubmissionKey: ..., 
-  };
-  mutation.mutate(createBookingDraftForUserVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ eventId: ..., bookerId: ..., clientSubmissionKey: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createBookingDraftForUserVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.booking_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## CreateBookingDraftRevisionForUser
-You can execute the `CreateBookingDraftRevisionForUser` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateBookingDraftRevisionForUser(options?: useDataConnectMutationOptions<CreateBookingDraftRevisionForUserData, FirebaseError, CreateBookingDraftRevisionForUserVariables>): UseDataConnectMutationResult<CreateBookingDraftRevisionForUserData, CreateBookingDraftRevisionForUserVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateBookingDraftRevisionForUser(dc: DataConnect, options?: useDataConnectMutationOptions<CreateBookingDraftRevisionForUserData, FirebaseError, CreateBookingDraftRevisionForUserVariables>): UseDataConnectMutationResult<CreateBookingDraftRevisionForUserData, CreateBookingDraftRevisionForUserVariables>;
-```
-
-### Variables
-The `CreateBookingDraftRevisionForUser` Mutation requires an argument of type `CreateBookingDraftRevisionForUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateBookingDraftRevisionForUserVariables {
-  eventId: UUIDString;
-  bookerId: string;
-  clientSubmissionKey: string;
-  revisionGroupId: UUIDString;
-  revisionNumber: number;
-  supersedesBookingId: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `CreateBookingDraftRevisionForUser` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateBookingDraftRevisionForUser` Mutation is of type `CreateBookingDraftRevisionForUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateBookingDraftRevisionForUserData {
-  booking_insert: Booking_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateBookingDraftRevisionForUser`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateBookingDraftRevisionForUserVariables } from '@dataconnect/generated';
-import { useCreateBookingDraftRevisionForUser } from '@dataconnect/generated/react'
-
-export default function CreateBookingDraftRevisionForUserComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateBookingDraftRevisionForUser();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateBookingDraftRevisionForUser(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingDraftRevisionForUser(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingDraftRevisionForUser(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateBookingDraftRevisionForUser` Mutation requires an argument of type `CreateBookingDraftRevisionForUserVariables`:
-  const createBookingDraftRevisionForUserVars: CreateBookingDraftRevisionForUserVariables = {
-    eventId: ..., 
-    bookerId: ..., 
-    clientSubmissionKey: ..., 
-    revisionGroupId: ..., 
-    revisionNumber: ..., 
-    supersedesBookingId: ..., 
-  };
-  mutation.mutate(createBookingDraftRevisionForUserVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ eventId: ..., bookerId: ..., clientSubmissionKey: ..., revisionGroupId: ..., revisionNumber: ..., supersedesBookingId: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createBookingDraftRevisionForUserVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.booking_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## MarkBookingSupersededFromCallable
-You can execute the `MarkBookingSupersededFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useMarkBookingSupersededFromCallable(options?: useDataConnectMutationOptions<MarkBookingSupersededFromCallableData, FirebaseError, MarkBookingSupersededFromCallableVariables>): UseDataConnectMutationResult<MarkBookingSupersededFromCallableData, MarkBookingSupersededFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useMarkBookingSupersededFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<MarkBookingSupersededFromCallableData, FirebaseError, MarkBookingSupersededFromCallableVariables>): UseDataConnectMutationResult<MarkBookingSupersededFromCallableData, MarkBookingSupersededFromCallableVariables>;
-```
-
-### Variables
-The `MarkBookingSupersededFromCallable` Mutation requires an argument of type `MarkBookingSupersededFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface MarkBookingSupersededFromCallableVariables {
-  id: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `MarkBookingSupersededFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkBookingSupersededFromCallable` Mutation is of type `MarkBookingSupersededFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface MarkBookingSupersededFromCallableData {
-  booking_update?: Booking_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `MarkBookingSupersededFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, MarkBookingSupersededFromCallableVariables } from '@dataconnect/generated';
-import { useMarkBookingSupersededFromCallable } from '@dataconnect/generated/react'
-
-export default function MarkBookingSupersededFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useMarkBookingSupersededFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useMarkBookingSupersededFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useMarkBookingSupersededFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useMarkBookingSupersededFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useMarkBookingSupersededFromCallable` Mutation requires an argument of type `MarkBookingSupersededFromCallableVariables`:
-  const markBookingSupersededFromCallableVars: MarkBookingSupersededFromCallableVariables = {
-    id: ..., 
-  };
-  mutation.mutate(markBookingSupersededFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(markBookingSupersededFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.booking_update);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## CreateBookingPaymentAdjustmentFromCallable
-You can execute the `CreateBookingPaymentAdjustmentFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateBookingPaymentAdjustmentFromCallable(options?: useDataConnectMutationOptions<CreateBookingPaymentAdjustmentFromCallableData, FirebaseError, CreateBookingPaymentAdjustmentFromCallableVariables>): UseDataConnectMutationResult<CreateBookingPaymentAdjustmentFromCallableData, CreateBookingPaymentAdjustmentFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateBookingPaymentAdjustmentFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<CreateBookingPaymentAdjustmentFromCallableData, FirebaseError, CreateBookingPaymentAdjustmentFromCallableVariables>): UseDataConnectMutationResult<CreateBookingPaymentAdjustmentFromCallableData, CreateBookingPaymentAdjustmentFromCallableVariables>;
-```
-
-### Variables
-The `CreateBookingPaymentAdjustmentFromCallable` Mutation requires an argument of type `CreateBookingPaymentAdjustmentFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateBookingPaymentAdjustmentFromCallableVariables {
-  revisionBookingId: UUIDString;
-  supersededBookingId: UUIDString;
-  deltaAmountMinor: number;
-  status: BookingPaymentAdjustmentStatus;
-  orchestrationKey: string;
-}
-```
-### Return Type
-Recall that calling the `CreateBookingPaymentAdjustmentFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateBookingPaymentAdjustmentFromCallable` Mutation is of type `CreateBookingPaymentAdjustmentFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateBookingPaymentAdjustmentFromCallableData {
-  bookingPaymentAdjustment_upsert: BookingPaymentAdjustment_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateBookingPaymentAdjustmentFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateBookingPaymentAdjustmentFromCallableVariables } from '@dataconnect/generated';
-import { useCreateBookingPaymentAdjustmentFromCallable } from '@dataconnect/generated/react'
-
-export default function CreateBookingPaymentAdjustmentFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateBookingPaymentAdjustmentFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateBookingPaymentAdjustmentFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingPaymentAdjustmentFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingPaymentAdjustmentFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateBookingPaymentAdjustmentFromCallable` Mutation requires an argument of type `CreateBookingPaymentAdjustmentFromCallableVariables`:
-  const createBookingPaymentAdjustmentFromCallableVars: CreateBookingPaymentAdjustmentFromCallableVariables = {
-    revisionBookingId: ..., 
-    supersededBookingId: ..., 
-    deltaAmountMinor: ..., 
-    status: ..., 
-    orchestrationKey: ..., 
-  };
-  mutation.mutate(createBookingPaymentAdjustmentFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ revisionBookingId: ..., supersededBookingId: ..., deltaAmountMinor: ..., status: ..., orchestrationKey: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createBookingPaymentAdjustmentFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.bookingPaymentAdjustment_upsert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## AddBookingLineFromCallable
-You can execute the `AddBookingLineFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useAddBookingLineFromCallable(options?: useDataConnectMutationOptions<AddBookingLineFromCallableData, FirebaseError, AddBookingLineFromCallableVariables>): UseDataConnectMutationResult<AddBookingLineFromCallableData, AddBookingLineFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useAddBookingLineFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<AddBookingLineFromCallableData, FirebaseError, AddBookingLineFromCallableVariables>): UseDataConnectMutationResult<AddBookingLineFromCallableData, AddBookingLineFromCallableVariables>;
-```
-
-### Variables
-The `AddBookingLineFromCallable` Mutation requires an argument of type `AddBookingLineFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface AddBookingLineFromCallableVariables {
-  bookingId: UUIDString;
-  ticketTypeId: UUIDString;
-  guestUserId?: string | null;
-  guestDisplayName?: string | null;
-  dietaryNote?: string | null;
-  sortOrder: number;
-}
-```
-### Return Type
-Recall that calling the `AddBookingLineFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AddBookingLineFromCallable` Mutation is of type `AddBookingLineFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface AddBookingLineFromCallableData {
-  bookingLine_insert: BookingLine_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `AddBookingLineFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, AddBookingLineFromCallableVariables } from '@dataconnect/generated';
-import { useAddBookingLineFromCallable } from '@dataconnect/generated/react'
-
-export default function AddBookingLineFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useAddBookingLineFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useAddBookingLineFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAddBookingLineFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAddBookingLineFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useAddBookingLineFromCallable` Mutation requires an argument of type `AddBookingLineFromCallableVariables`:
-  const addBookingLineFromCallableVars: AddBookingLineFromCallableVariables = {
-    bookingId: ..., 
-    ticketTypeId: ..., 
-    guestUserId: ..., // optional
-    guestDisplayName: ..., // optional
-    dietaryNote: ..., // optional
-    sortOrder: ..., 
-  };
-  mutation.mutate(addBookingLineFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., ticketTypeId: ..., guestUserId: ..., guestDisplayName: ..., dietaryNote: ..., sortOrder: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(addBookingLineFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.bookingLine_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
 ## UpdateBookingStatusFromCallable
 You can execute the `UpdateBookingStatusFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -11892,6 +11068,204 @@ export default function UpdateBookingStatusFromCallableComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.booking_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## SettleBookingPaymentAdjustmentsFromCallable
+You can execute the `SettleBookingPaymentAdjustmentsFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useSettleBookingPaymentAdjustmentsFromCallable(options?: useDataConnectMutationOptions<SettleBookingPaymentAdjustmentsFromCallableData, FirebaseError, SettleBookingPaymentAdjustmentsFromCallableVariables>): UseDataConnectMutationResult<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useSettleBookingPaymentAdjustmentsFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<SettleBookingPaymentAdjustmentsFromCallableData, FirebaseError, SettleBookingPaymentAdjustmentsFromCallableVariables>): UseDataConnectMutationResult<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+```
+
+### Variables
+The `SettleBookingPaymentAdjustmentsFromCallable` Mutation requires an argument of type `SettleBookingPaymentAdjustmentsFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface SettleBookingPaymentAdjustmentsFromCallableVariables {
+  revisionBookingId: UUIDString;
+  status: BookingPaymentAdjustmentStatus;
+}
+```
+### Return Type
+Recall that calling the `SettleBookingPaymentAdjustmentsFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `SettleBookingPaymentAdjustmentsFromCallable` Mutation is of type `SettleBookingPaymentAdjustmentsFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface SettleBookingPaymentAdjustmentsFromCallableData {
+  bookingPaymentAdjustment_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `SettleBookingPaymentAdjustmentsFromCallable`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, SettleBookingPaymentAdjustmentsFromCallableVariables } from '@dataconnect/generated';
+import { useSettleBookingPaymentAdjustmentsFromCallable } from '@dataconnect/generated/react'
+
+export default function SettleBookingPaymentAdjustmentsFromCallableComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useSettleBookingPaymentAdjustmentsFromCallable();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useSettleBookingPaymentAdjustmentsFromCallable(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useSettleBookingPaymentAdjustmentsFromCallable(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useSettleBookingPaymentAdjustmentsFromCallable(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useSettleBookingPaymentAdjustmentsFromCallable` Mutation requires an argument of type `SettleBookingPaymentAdjustmentsFromCallableVariables`:
+  const settleBookingPaymentAdjustmentsFromCallableVars: SettleBookingPaymentAdjustmentsFromCallableVariables = {
+    revisionBookingId: ..., 
+    status: ..., 
+  };
+  mutation.mutate(settleBookingPaymentAdjustmentsFromCallableVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ revisionBookingId: ..., status: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(settleBookingPaymentAdjustmentsFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.bookingPaymentAdjustment_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateBookingApprovalFromCallable
+You can execute the `UpdateBookingApprovalFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateBookingApprovalFromCallable(options?: useDataConnectMutationOptions<UpdateBookingApprovalFromCallableData, FirebaseError, UpdateBookingApprovalFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateBookingApprovalFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateBookingApprovalFromCallableData, FirebaseError, UpdateBookingApprovalFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingApprovalFromCallableData, UpdateBookingApprovalFromCallableVariables>;
+```
+
+### Variables
+The `UpdateBookingApprovalFromCallable` Mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateBookingApprovalFromCallableVariables {
+  id: UUIDString;
+  expectedRevisionNumber: number;
+  status: BookingApprovalStatus;
+  reviewedById?: string | null;
+  approvalNote?: string | null;
+}
+```
+### Return Type
+Recall that calling the `UpdateBookingApprovalFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingApprovalFromCallable` Mutation is of type `UpdateBookingApprovalFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateBookingApprovalFromCallableData {
+  changed: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateBookingApprovalFromCallable`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateBookingApprovalFromCallableVariables } from '@dataconnect/generated';
+import { useUpdateBookingApprovalFromCallable } from '@dataconnect/generated/react'
+
+export default function UpdateBookingApprovalFromCallableComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateBookingApprovalFromCallable();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateBookingApprovalFromCallable(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateBookingApprovalFromCallable(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateBookingApprovalFromCallable(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateBookingApprovalFromCallable` Mutation requires an argument of type `UpdateBookingApprovalFromCallableVariables`:
+  const updateBookingApprovalFromCallableVars: UpdateBookingApprovalFromCallableVariables = {
+    id: ..., 
+    expectedRevisionNumber: ..., 
+    status: ..., 
+    reviewedById: ..., // optional
+    approvalNote: ..., // optional
+  };
+  mutation.mutate(updateBookingApprovalFromCallableVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedRevisionNumber: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateBookingApprovalFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.changed);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -11998,6 +11372,104 @@ export default function CreateTicketOrderForCheckoutComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.ticketOrder_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateBookingPlaceAllocationRefundFromCallable
+You can execute the `UpdateBookingPlaceAllocationRefundFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateBookingPlaceAllocationRefundFromCallable(options?: useDataConnectMutationOptions<UpdateBookingPlaceAllocationRefundFromCallableData, FirebaseError, UpdateBookingPlaceAllocationRefundFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateBookingPlaceAllocationRefundFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateBookingPlaceAllocationRefundFromCallableData, FirebaseError, UpdateBookingPlaceAllocationRefundFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+```
+
+### Variables
+The `UpdateBookingPlaceAllocationRefundFromCallable` Mutation requires an argument of type `UpdateBookingPlaceAllocationRefundFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  stripeRefundId: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateBookingPlaceAllocationRefundFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingPlaceAllocationRefundFromCallable` Mutation is of type `UpdateBookingPlaceAllocationRefundFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateBookingPlaceAllocationRefundFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateBookingPlaceAllocationRefundFromCallable`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateBookingPlaceAllocationRefundFromCallableVariables } from '@dataconnect/generated';
+import { useUpdateBookingPlaceAllocationRefundFromCallable } from '@dataconnect/generated/react'
+
+export default function UpdateBookingPlaceAllocationRefundFromCallableComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateBookingPlaceAllocationRefundFromCallable();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateBookingPlaceAllocationRefundFromCallable(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateBookingPlaceAllocationRefundFromCallable(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateBookingPlaceAllocationRefundFromCallable(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateBookingPlaceAllocationRefundFromCallable` Mutation requires an argument of type `UpdateBookingPlaceAllocationRefundFromCallableVariables`:
+  const updateBookingPlaceAllocationRefundFromCallableVars: UpdateBookingPlaceAllocationRefundFromCallableVariables = {
+    id: ..., 
+    refundedAmountMinor: ..., 
+    stripeRefundId: ..., 
+  };
+  mutation.mutate(updateBookingPlaceAllocationRefundFromCallableVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., refundedAmountMinor: ..., stripeRefundId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateBookingPlaceAllocationRefundFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.bookingPlacePaymentAllocation_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -12947,6 +12419,108 @@ export default function MarkTicketOrderRefundedFromWebhookComponent() {
 }
 ```
 
+## RecordTicketOrderPartialRefundFromWebhook
+You can execute the `RecordTicketOrderPartialRefundFromWebhook` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useRecordTicketOrderPartialRefundFromWebhook(options?: useDataConnectMutationOptions<RecordTicketOrderPartialRefundFromWebhookData, FirebaseError, RecordTicketOrderPartialRefundFromWebhookVariables>): UseDataConnectMutationResult<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useRecordTicketOrderPartialRefundFromWebhook(dc: DataConnect, options?: useDataConnectMutationOptions<RecordTicketOrderPartialRefundFromWebhookData, FirebaseError, RecordTicketOrderPartialRefundFromWebhookVariables>): UseDataConnectMutationResult<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+```
+
+### Variables
+The `RecordTicketOrderPartialRefundFromWebhook` Mutation requires an argument of type `RecordTicketOrderPartialRefundFromWebhookVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface RecordTicketOrderPartialRefundFromWebhookVariables {
+  id: UUIDString;
+  webhookEventId: string;
+  stripeRefundId?: string | null;
+  refundedAmountMinor: number;
+  refundedAt?: TimestampString | null;
+}
+```
+### Return Type
+Recall that calling the `RecordTicketOrderPartialRefundFromWebhook` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RecordTicketOrderPartialRefundFromWebhook` Mutation is of type `RecordTicketOrderPartialRefundFromWebhookData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface RecordTicketOrderPartialRefundFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `RecordTicketOrderPartialRefundFromWebhook`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, RecordTicketOrderPartialRefundFromWebhookVariables } from '@dataconnect/generated';
+import { useRecordTicketOrderPartialRefundFromWebhook } from '@dataconnect/generated/react'
+
+export default function RecordTicketOrderPartialRefundFromWebhookComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useRecordTicketOrderPartialRefundFromWebhook();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useRecordTicketOrderPartialRefundFromWebhook(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordTicketOrderPartialRefundFromWebhook(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordTicketOrderPartialRefundFromWebhook(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useRecordTicketOrderPartialRefundFromWebhook` Mutation requires an argument of type `RecordTicketOrderPartialRefundFromWebhookVariables`:
+  const recordTicketOrderPartialRefundFromWebhookVars: RecordTicketOrderPartialRefundFromWebhookVariables = {
+    id: ..., 
+    webhookEventId: ..., 
+    stripeRefundId: ..., // optional
+    refundedAmountMinor: ..., 
+    refundedAt: ..., // optional
+  };
+  mutation.mutate(recordTicketOrderPartialRefundFromWebhookVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., webhookEventId: ..., stripeRefundId: ..., refundedAmountMinor: ..., refundedAt: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(recordTicketOrderPartialRefundFromWebhookVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.ticketOrder_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## UpsertTicketOrderDisputeFromWebhook
 You can execute the `UpsertTicketOrderDisputeFromWebhook` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -13160,414 +12734,6 @@ export default function UpsertPaymentReconciliationExceptionComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.paymentReconciliationException_upsert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## UpdateBookingPreferencesFromCallable
-You can execute the `UpdateBookingPreferencesFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useUpdateBookingPreferencesFromCallable(options?: useDataConnectMutationOptions<UpdateBookingPreferencesFromCallableData, FirebaseError, UpdateBookingPreferencesFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingPreferencesFromCallableData, UpdateBookingPreferencesFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useUpdateBookingPreferencesFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateBookingPreferencesFromCallableData, FirebaseError, UpdateBookingPreferencesFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingPreferencesFromCallableData, UpdateBookingPreferencesFromCallableVariables>;
-```
-
-### Variables
-The `UpdateBookingPreferencesFromCallable` Mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface UpdateBookingPreferencesFromCallableVariables {
-  id: UUIDString;
-  bookerDietaryNote?: string | null;
-  sitNextToUserIds?: string[] | null;
-  accommodationRequested: boolean;
-  accommodationNote?: string | null;
-}
-```
-### Return Type
-Recall that calling the `UpdateBookingPreferencesFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingPreferencesFromCallable` Mutation is of type `UpdateBookingPreferencesFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface UpdateBookingPreferencesFromCallableData {
-  booking_update?: Booking_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `UpdateBookingPreferencesFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateBookingPreferencesFromCallableVariables } from '@dataconnect/generated';
-import { useUpdateBookingPreferencesFromCallable } from '@dataconnect/generated/react'
-
-export default function UpdateBookingPreferencesFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateBookingPreferencesFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateBookingPreferencesFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateBookingPreferencesFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateBookingPreferencesFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateBookingPreferencesFromCallable` Mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
-  const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
-    id: ..., 
-    bookerDietaryNote: ..., // optional
-    sitNextToUserIds: ..., // optional
-    accommodationRequested: ..., 
-    accommodationNote: ..., // optional
-  };
-  mutation.mutate(updateBookingPreferencesFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., bookerDietaryNote: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(updateBookingPreferencesFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.booking_update);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## DeleteBookingLineFromCallable
-You can execute the `DeleteBookingLineFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useDeleteBookingLineFromCallable(options?: useDataConnectMutationOptions<DeleteBookingLineFromCallableData, FirebaseError, DeleteBookingLineFromCallableVariables>): UseDataConnectMutationResult<DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useDeleteBookingLineFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteBookingLineFromCallableData, FirebaseError, DeleteBookingLineFromCallableVariables>): UseDataConnectMutationResult<DeleteBookingLineFromCallableData, DeleteBookingLineFromCallableVariables>;
-```
-
-### Variables
-The `DeleteBookingLineFromCallable` Mutation requires an argument of type `DeleteBookingLineFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface DeleteBookingLineFromCallableVariables {
-  id: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `DeleteBookingLineFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `DeleteBookingLineFromCallable` Mutation is of type `DeleteBookingLineFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface DeleteBookingLineFromCallableData {
-  bookingLine_delete?: BookingLine_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `DeleteBookingLineFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, DeleteBookingLineFromCallableVariables } from '@dataconnect/generated';
-import { useDeleteBookingLineFromCallable } from '@dataconnect/generated/react'
-
-export default function DeleteBookingLineFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useDeleteBookingLineFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useDeleteBookingLineFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useDeleteBookingLineFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useDeleteBookingLineFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useDeleteBookingLineFromCallable` Mutation requires an argument of type `DeleteBookingLineFromCallableVariables`:
-  const deleteBookingLineFromCallableVars: DeleteBookingLineFromCallableVariables = {
-    id: ..., 
-  };
-  mutation.mutate(deleteBookingLineFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(deleteBookingLineFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.bookingLine_delete);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## CreateGuestTicketRequestFromCallable
-You can execute the `CreateGuestTicketRequestFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateGuestTicketRequestFromCallable(options?: useDataConnectMutationOptions<CreateGuestTicketRequestFromCallableData, FirebaseError, CreateGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateGuestTicketRequestFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<CreateGuestTicketRequestFromCallableData, FirebaseError, CreateGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestFromCallableData, CreateGuestTicketRequestFromCallableVariables>;
-```
-
-### Variables
-The `CreateGuestTicketRequestFromCallable` Mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateGuestTicketRequestFromCallableVariables {
-  id: UUIDString;
-  bookingId: UUIDString;
-  requestedGuestCount: number;
-  guestTicketTypeId: UUIDString;
-  guestDisplayName: string;
-  dietaryNote?: string | null;
-  status: GuestTicketRequestStatus;
-  reviewedById?: string | null;
-  reviewedAt?: TimestampString | null;
-  moderatorNote?: string | null;
-}
-```
-### Return Type
-Recall that calling the `CreateGuestTicketRequestFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateGuestTicketRequestFromCallable` Mutation is of type `CreateGuestTicketRequestFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateGuestTicketRequestFromCallableData {
-  guestTicketRequest_insert: GuestTicketRequest_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateGuestTicketRequestFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateGuestTicketRequestFromCallableVariables } from '@dataconnect/generated';
-import { useCreateGuestTicketRequestFromCallable } from '@dataconnect/generated/react'
-
-export default function CreateGuestTicketRequestFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateGuestTicketRequestFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateGuestTicketRequestFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateGuestTicketRequestFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateGuestTicketRequestFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateGuestTicketRequestFromCallable` Mutation requires an argument of type `CreateGuestTicketRequestFromCallableVariables`:
-  const createGuestTicketRequestFromCallableVars: CreateGuestTicketRequestFromCallableVariables = {
-    id: ..., 
-    bookingId: ..., 
-    requestedGuestCount: ..., 
-    guestTicketTypeId: ..., 
-    guestDisplayName: ..., 
-    dietaryNote: ..., // optional
-    status: ..., 
-    reviewedById: ..., // optional
-    reviewedAt: ..., // optional
-    moderatorNote: ..., // optional
-  };
-  mutation.mutate(createGuestTicketRequestFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., status: ..., reviewedById: ..., reviewedAt: ..., moderatorNote: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createGuestTicketRequestFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.guestTicketRequest_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## AdminReviewGuestTicketRequestFromCallable
-You can execute the `AdminReviewGuestTicketRequestFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useAdminReviewGuestTicketRequestFromCallable(options?: useDataConnectMutationOptions<AdminReviewGuestTicketRequestFromCallableData, FirebaseError, AdminReviewGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useAdminReviewGuestTicketRequestFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<AdminReviewGuestTicketRequestFromCallableData, FirebaseError, AdminReviewGuestTicketRequestFromCallableVariables>): UseDataConnectMutationResult<AdminReviewGuestTicketRequestFromCallableData, AdminReviewGuestTicketRequestFromCallableVariables>;
-```
-
-### Variables
-The `AdminReviewGuestTicketRequestFromCallable` Mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface AdminReviewGuestTicketRequestFromCallableVariables {
-  id: UUIDString;
-  status: GuestTicketRequestStatus;
-  moderatorNote?: string | null;
-  reviewedById: string;
-}
-```
-### Return Type
-Recall that calling the `AdminReviewGuestTicketRequestFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminReviewGuestTicketRequestFromCallable` Mutation is of type `AdminReviewGuestTicketRequestFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface AdminReviewGuestTicketRequestFromCallableData {
-  guestTicketRequest_update?: GuestTicketRequest_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `AdminReviewGuestTicketRequestFromCallable`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, AdminReviewGuestTicketRequestFromCallableVariables } from '@dataconnect/generated';
-import { useAdminReviewGuestTicketRequestFromCallable } from '@dataconnect/generated/react'
-
-export default function AdminReviewGuestTicketRequestFromCallableComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useAdminReviewGuestTicketRequestFromCallable();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useAdminReviewGuestTicketRequestFromCallable(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAdminReviewGuestTicketRequestFromCallable(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAdminReviewGuestTicketRequestFromCallable(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useAdminReviewGuestTicketRequestFromCallable` Mutation requires an argument of type `AdminReviewGuestTicketRequestFromCallableVariables`:
-  const adminReviewGuestTicketRequestFromCallableVars: AdminReviewGuestTicketRequestFromCallableVariables = {
-    id: ..., 
-    status: ..., 
-    moderatorNote: ..., // optional
-    reviewedById: ..., 
-  };
-  mutation.mutate(adminReviewGuestTicketRequestFromCallableVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., status: ..., moderatorNote: ..., reviewedById: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(adminReviewGuestTicketRequestFromCallableVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.guestTicketRequest_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -15461,594 +14627,6 @@ export default function ConsumeCallableRateLimitComponent() {
 }
 ```
 
-## CreateBookingDraft
-You can execute the `CreateBookingDraft` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateBookingDraft(options?: useDataConnectMutationOptions<CreateBookingDraftData, FirebaseError, CreateBookingDraftVariables>): UseDataConnectMutationResult<CreateBookingDraftData, CreateBookingDraftVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateBookingDraft(dc: DataConnect, options?: useDataConnectMutationOptions<CreateBookingDraftData, FirebaseError, CreateBookingDraftVariables>): UseDataConnectMutationResult<CreateBookingDraftData, CreateBookingDraftVariables>;
-```
-
-### Variables
-The `CreateBookingDraft` Mutation requires an argument of type `CreateBookingDraftVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateBookingDraftVariables {
-  eventId: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `CreateBookingDraft` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateBookingDraft` Mutation is of type `CreateBookingDraftData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateBookingDraftData {
-  booking_insert: Booking_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateBookingDraft`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateBookingDraftVariables } from '@dataconnect/generated';
-import { useCreateBookingDraft } from '@dataconnect/generated/react'
-
-export default function CreateBookingDraftComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateBookingDraft();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateBookingDraft(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingDraft(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateBookingDraft(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateBookingDraft` Mutation requires an argument of type `CreateBookingDraftVariables`:
-  const createBookingDraftVars: CreateBookingDraftVariables = {
-    eventId: ..., 
-  };
-  mutation.mutate(createBookingDraftVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ eventId: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createBookingDraftVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.booking_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## AddBookingLine
-You can execute the `AddBookingLine` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useAddBookingLine(options?: useDataConnectMutationOptions<AddBookingLineData, FirebaseError, AddBookingLineVariables>): UseDataConnectMutationResult<AddBookingLineData, AddBookingLineVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useAddBookingLine(dc: DataConnect, options?: useDataConnectMutationOptions<AddBookingLineData, FirebaseError, AddBookingLineVariables>): UseDataConnectMutationResult<AddBookingLineData, AddBookingLineVariables>;
-```
-
-### Variables
-The `AddBookingLine` Mutation requires an argument of type `AddBookingLineVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface AddBookingLineVariables {
-  bookingId: UUIDString;
-  ticketTypeId: UUIDString;
-  guestUserId?: string | null;
-  guestDisplayName?: string | null;
-  dietaryNote?: string | null;
-  sortOrder: number;
-}
-```
-### Return Type
-Recall that calling the `AddBookingLine` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AddBookingLine` Mutation is of type `AddBookingLineData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface AddBookingLineData {
-  bookingLine_insert: BookingLine_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `AddBookingLine`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, AddBookingLineVariables } from '@dataconnect/generated';
-import { useAddBookingLine } from '@dataconnect/generated/react'
-
-export default function AddBookingLineComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useAddBookingLine();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useAddBookingLine(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAddBookingLine(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAddBookingLine(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useAddBookingLine` Mutation requires an argument of type `AddBookingLineVariables`:
-  const addBookingLineVars: AddBookingLineVariables = {
-    bookingId: ..., 
-    ticketTypeId: ..., 
-    guestUserId: ..., // optional
-    guestDisplayName: ..., // optional
-    dietaryNote: ..., // optional
-    sortOrder: ..., 
-  };
-  mutation.mutate(addBookingLineVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., ticketTypeId: ..., guestUserId: ..., guestDisplayName: ..., dietaryNote: ..., sortOrder: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(addBookingLineVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.bookingLine_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## UpdateBookingStatus
-You can execute the `UpdateBookingStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useUpdateBookingStatus(options?: useDataConnectMutationOptions<UpdateBookingStatusData, FirebaseError, UpdateBookingStatusVariables>): UseDataConnectMutationResult<UpdateBookingStatusData, UpdateBookingStatusVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useUpdateBookingStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateBookingStatusData, FirebaseError, UpdateBookingStatusVariables>): UseDataConnectMutationResult<UpdateBookingStatusData, UpdateBookingStatusVariables>;
-```
-
-### Variables
-The `UpdateBookingStatus` Mutation requires an argument of type `UpdateBookingStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface UpdateBookingStatusVariables {
-  id: UUIDString;
-  status: BookingStatus;
-}
-```
-### Return Type
-Recall that calling the `UpdateBookingStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingStatus` Mutation is of type `UpdateBookingStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface UpdateBookingStatusData {
-  booking_update?: Booking_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `UpdateBookingStatus`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateBookingStatusVariables } from '@dataconnect/generated';
-import { useUpdateBookingStatus } from '@dataconnect/generated/react'
-
-export default function UpdateBookingStatusComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateBookingStatus();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateBookingStatus(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateBookingStatus(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateBookingStatus(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateBookingStatus` Mutation requires an argument of type `UpdateBookingStatusVariables`:
-  const updateBookingStatusVars: UpdateBookingStatusVariables = {
-    id: ..., 
-    status: ..., 
-  };
-  mutation.mutate(updateBookingStatusVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., status: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(updateBookingStatusVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.booking_update);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## CreateGuestTicketRequest
-You can execute the `CreateGuestTicketRequest` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateGuestTicketRequest(options?: useDataConnectMutationOptions<CreateGuestTicketRequestData, FirebaseError, CreateGuestTicketRequestVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateGuestTicketRequest(dc: DataConnect, options?: useDataConnectMutationOptions<CreateGuestTicketRequestData, FirebaseError, CreateGuestTicketRequestVariables>): UseDataConnectMutationResult<CreateGuestTicketRequestData, CreateGuestTicketRequestVariables>;
-```
-
-### Variables
-The `CreateGuestTicketRequest` Mutation requires an argument of type `CreateGuestTicketRequestVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateGuestTicketRequestVariables {
-  bookingId: UUIDString;
-  requestedGuestCount: number;
-  guestTicketTypeId: UUIDString;
-  guestDisplayName: string;
-  dietaryNote?: string | null;
-}
-```
-### Return Type
-Recall that calling the `CreateGuestTicketRequest` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateGuestTicketRequest` Mutation is of type `CreateGuestTicketRequestData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateGuestTicketRequestData {
-  guestTicketRequest_insert: GuestTicketRequest_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateGuestTicketRequest`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateGuestTicketRequestVariables } from '@dataconnect/generated';
-import { useCreateGuestTicketRequest } from '@dataconnect/generated/react'
-
-export default function CreateGuestTicketRequestComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateGuestTicketRequest();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateGuestTicketRequest(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateGuestTicketRequest(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateGuestTicketRequest(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateGuestTicketRequest` Mutation requires an argument of type `CreateGuestTicketRequestVariables`:
-  const createGuestTicketRequestVars: CreateGuestTicketRequestVariables = {
-    bookingId: ..., 
-    requestedGuestCount: ..., 
-    guestTicketTypeId: ..., 
-    guestDisplayName: ..., 
-    dietaryNote: ..., // optional
-  };
-  mutation.mutate(createGuestTicketRequestVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., requestedGuestCount: ..., guestTicketTypeId: ..., guestDisplayName: ..., dietaryNote: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createGuestTicketRequestVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.guestTicketRequest_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## AdminDeleteGuestTicketRequest
-You can execute the `AdminDeleteGuestTicketRequest` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useAdminDeleteGuestTicketRequest(options?: useDataConnectMutationOptions<AdminDeleteGuestTicketRequestData, FirebaseError, AdminDeleteGuestTicketRequestVariables>): UseDataConnectMutationResult<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useAdminDeleteGuestTicketRequest(dc: DataConnect, options?: useDataConnectMutationOptions<AdminDeleteGuestTicketRequestData, FirebaseError, AdminDeleteGuestTicketRequestVariables>): UseDataConnectMutationResult<AdminDeleteGuestTicketRequestData, AdminDeleteGuestTicketRequestVariables>;
-```
-
-### Variables
-The `AdminDeleteGuestTicketRequest` Mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface AdminDeleteGuestTicketRequestVariables {
-  id: UUIDString;
-}
-```
-### Return Type
-Recall that calling the `AdminDeleteGuestTicketRequest` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminDeleteGuestTicketRequest` Mutation is of type `AdminDeleteGuestTicketRequestData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface AdminDeleteGuestTicketRequestData {
-  guestTicketRequest_delete?: GuestTicketRequest_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `AdminDeleteGuestTicketRequest`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, AdminDeleteGuestTicketRequestVariables } from '@dataconnect/generated';
-import { useAdminDeleteGuestTicketRequest } from '@dataconnect/generated/react'
-
-export default function AdminDeleteGuestTicketRequestComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useAdminDeleteGuestTicketRequest();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useAdminDeleteGuestTicketRequest(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAdminDeleteGuestTicketRequest(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAdminDeleteGuestTicketRequest(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useAdminDeleteGuestTicketRequest` Mutation requires an argument of type `AdminDeleteGuestTicketRequestVariables`:
-  const adminDeleteGuestTicketRequestVars: AdminDeleteGuestTicketRequestVariables = {
-    id: ..., 
-  };
-  mutation.mutate(adminDeleteGuestTicketRequestVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(adminDeleteGuestTicketRequestVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.guestTicketRequest_delete);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## AdminReviewGuestTicketRequest
-You can execute the `AdminReviewGuestTicketRequest` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useAdminReviewGuestTicketRequest(options?: useDataConnectMutationOptions<AdminReviewGuestTicketRequestData, FirebaseError, AdminReviewGuestTicketRequestVariables>): UseDataConnectMutationResult<AdminReviewGuestTicketRequestData, AdminReviewGuestTicketRequestVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useAdminReviewGuestTicketRequest(dc: DataConnect, options?: useDataConnectMutationOptions<AdminReviewGuestTicketRequestData, FirebaseError, AdminReviewGuestTicketRequestVariables>): UseDataConnectMutationResult<AdminReviewGuestTicketRequestData, AdminReviewGuestTicketRequestVariables>;
-```
-
-### Variables
-The `AdminReviewGuestTicketRequest` Mutation requires an argument of type `AdminReviewGuestTicketRequestVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface AdminReviewGuestTicketRequestVariables {
-  id: UUIDString;
-  status: GuestTicketRequestStatus;
-  moderatorNote?: string | null;
-}
-```
-### Return Type
-Recall that calling the `AdminReviewGuestTicketRequest` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AdminReviewGuestTicketRequest` Mutation is of type `AdminReviewGuestTicketRequestData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface AdminReviewGuestTicketRequestData {
-  guestTicketRequest_update?: GuestTicketRequest_Key | null;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `AdminReviewGuestTicketRequest`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, AdminReviewGuestTicketRequestVariables } from '@dataconnect/generated';
-import { useAdminReviewGuestTicketRequest } from '@dataconnect/generated/react'
-
-export default function AdminReviewGuestTicketRequestComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useAdminReviewGuestTicketRequest();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useAdminReviewGuestTicketRequest(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAdminReviewGuestTicketRequest(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useAdminReviewGuestTicketRequest(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useAdminReviewGuestTicketRequest` Mutation requires an argument of type `AdminReviewGuestTicketRequestVariables`:
-  const adminReviewGuestTicketRequestVars: AdminReviewGuestTicketRequestVariables = {
-    id: ..., 
-    status: ..., 
-    moderatorNote: ..., // optional
-  };
-  mutation.mutate(adminReviewGuestTicketRequestVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., status: ..., moderatorNote: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(adminReviewGuestTicketRequestVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.guestTicketRequest_update);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
 ## AdminDeleteBookingLine
 You can execute the `AdminDeleteBookingLine` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -17328,7 +15906,7 @@ export interface CreateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 ```
 ### Return Type
@@ -17386,7 +15964,7 @@ export default function CreateEventComponent() {
     endDateTime: ..., 
     bookingStartDateTime: ..., 
     bookingEndDateTime: ..., 
-    maxGuestsWithoutModeratorApproval: ..., // optional
+    maxGuestsWithoutModeratorApproval: ..., 
   };
   mutation.mutate(createEventVars);
   // Variables can be defined inline as well.
@@ -17438,7 +16016,7 @@ export interface UpdateEventVariables {
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
   bookingEndDateTime: TimestampString;
-  maxGuestsWithoutModeratorApproval?: number | null;
+  maxGuestsWithoutModeratorApproval: number;
 }
 ```
 ### Return Type
@@ -17496,7 +16074,7 @@ export default function UpdateEventComponent() {
     endDateTime: ..., 
     bookingStartDateTime: ..., 
     bookingEndDateTime: ..., 
-    maxGuestsWithoutModeratorApproval: ..., // optional
+    maxGuestsWithoutModeratorApproval: ..., 
   };
   mutation.mutate(updateEventVars);
   // Variables can be defined inline as well.

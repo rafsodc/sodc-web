@@ -14,6 +14,26 @@
     "beta": "",
     "production": ""
   },
+  "bookingPendingApproval": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
+  "bookingPendingApprovalModerator": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
+  "bookingApproved": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
+  "bookingChangesRequested": {
+    "dev": "",
+    "beta": "",
+    "production": ""
+  },
   "membershipActivated": {
     "dev": "640e51e0-d4cf-413c-a829-07f0f7cdca7d",
     "beta": "",
@@ -36,21 +56,6 @@
   },
   "ticketOrderRefunded": {
     "dev": "b431d092-934a-42cb-9c04-562f3b088d9b",
-    "beta": "",
-    "production": ""
-  },
-  "guestTicketRequestSubmittedModerator": {
-    "dev": "cf9a8a7c-860f-43da-98b4-718c93fe92e6",
-    "beta": "",
-    "production": ""
-  },
-  "guestTicketRequestApproved": {
-    "dev": "651a5577-11c7-48c7-a1aa-42193cb223c7",
-    "beta": "",
-    "production": ""
-  },
-  "guestTicketRequestRejected": {
-    "dev": "132479c9-d8df-4a93-aff7-bf290ae7f543",
     "beta": "",
     "production": ""
   },

@@ -20,6 +20,7 @@ Disputes are intentionally modeled as **side-state metadata** for now (issue #12
 | `PENDING` | `PAID` | yes | `MARK_PAID` |
 | `PENDING` | `FAILED` | yes | `MARK_FAILED` |
 | `PAID` | `REFUNDED` | yes | `MARK_REFUNDED` |
+| `PAID` | `PAID` | yes | partial `MARK_REFUNDED` records cumulative refund metadata |
 | all other combinations | - | no | illegal |
 
 ### Replay semantics
@@ -34,7 +35,8 @@ Disputes are intentionally modeled as **side-state metadata** for now (issue #12
 | `checkout.session.completed` | payment transition | `MARK_PAID` | requires `metadata.orderId` |
 | `checkout.session.expired` | payment transition | `MARK_FAILED` | requires `metadata.orderId` |
 | `checkout.session.async_payment_failed` | payment transition | `MARK_FAILED` | requires `metadata.orderId` |
-| `charge.refunded` | payment transition | `MARK_REFUNDED` | requires `metadata.orderId` |
+| `refund.created` | payment transition | `MARK_REFUNDED` | requires exact `metadata.ticketOrderId`, `allocationId`, and refund amounts |
+| `charge.refunded` | ignore | n/a | cumulative Charge event; exact handling comes from `refund.created` |
 | `charge.dispute.created` | dispute side-state | `DISPUTE_OPEN` | no `TicketOrderStatus` change |
 | `charge.dispute.updated` | dispute side-state | `DISPUTE_UPDATED` | no `TicketOrderStatus` change |
 | `charge.dispute.closed` | dispute side-state | `DISPUTE_CLOSED` | no `TicketOrderStatus` change |
@@ -50,7 +52,7 @@ Functions maintain an explicit Stripe event allowlist in code (`SUPPORTED_STRIPE
 
 ## Webhook Outcome Contract
 
-- Missing `orderId` metadata: acknowledge webhook (2xx), no mutation.
+- Missing order/allocation metadata: acknowledge webhook (2xx), no mutation.
 - Unknown order: acknowledge webhook (2xx), no mutation.
 - Replay of the same Stripe event: do not mutate the order; reconcile any missing post-transition notification and exception state before acknowledging.
 - Same-target transition from a different event: acknowledge webhook (2xx), no mutation or customer notification.
@@ -70,15 +72,15 @@ See `docs/operations/stripe-webhook-endpoints.md` for endpoint URLs, Stripe dash
 
 `TicketOrder` now stores lifecycle side-state metadata required for reconciliation and support workflows:
 
-- refund fields: `stripeRefundId`, `refundedAmountMinor`, `refundedAt`
+- refund fields: `stripeRefundId`, cumulative `refundedAmountMinor`, `refundedAt`
 - dispute fields: `stripeDisputeId`, `disputeStatus`, `disputeReason`, `disputeAmountMinor`, `disputeOpenedAt`, `disputeUpdatedAt`, `disputeClosedAt`
 
-Webhook handling continues to treat disputes as side-state metadata (no `TicketOrderStatus` change), while still persisting the latest dispute state and timestamps for auditability.
+Partial refunds preserve `PAID`; only a cumulative allocation refund equal to the order total changes the order to `REFUNDED`. Webhook handling continues to treat disputes as side-state metadata (no `TicketOrderStatus` change), while still persisting the latest dispute state and timestamps for auditability.
 
 ## Migration and Compatibility Notes
 
 - These are additive nullable fields on `TicketOrder`; existing rows remain valid without backfill.
-- Existing `TicketOrderStatus` semantics are unchanged.
+- `PAID` now includes partially refunded orders; `REFUNDED` means the complete order amount has been refunded.
 - The webhook event ledger remains the source of event-level replay detection.
 - Exact-event recovery also requires `TicketOrder.webhookEventId` to match the replayed Stripe event, preventing a different same-target event from creating another customer notification.
 
@@ -90,7 +92,7 @@ The payment domain exposes deterministic exception signals for operator triage:
 - `REFUND_AMOUNT_MISMATCH`
 - `ACTIVE_DISPUTE`
 
-Signals are evaluated from persisted order metadata and upserted to reconciliation exception records with remediation metadata (`status`, `ownerUserId`, `lastAttemptedAt`, `resolvedAt`). New records use a deterministic primary UUID derived from `(ticketOrder, exceptionType)`; existing records retain their current ID. Concurrent snapshot retries therefore converge on the same record without requiring a data migration.
+Signals are evaluated from persisted order metadata, including the sum of exact allocation refunds, and upserted to reconciliation exception records with remediation metadata (`status`, `ownerUserId`, `lastAttemptedAt`, `resolvedAt`). New records use a deterministic primary UUID derived from `(ticketOrder, exceptionType)`; existing records retain their current ID. Concurrent snapshot retries therefore converge on the same record without requiring a data migration.
 
 ## Post-transition side-effect recovery
 

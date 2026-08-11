@@ -8,6 +8,7 @@ export interface TicketOrderReconciliationSnapshot {
   status: TicketOrderStatus;
   totalAmountMinor: number;
   refundedAmountMinor?: number | null;
+  allocationRefundedAmountMinor?: number | null;
   stripePaymentIntentId?: string | null;
   disputeStatus?: string | null;
 }
@@ -29,7 +30,14 @@ export function evaluateReconciliationSignals(order: TicketOrderReconciliationSn
     });
   }
 
-  if (order.status === TicketOrderStatus.REFUNDED) {
+  if (order.refundedAmountMinor != null && order.allocationRefundedAmountMinor != null &&
+      order.refundedAmountMinor !== order.allocationRefundedAmountMinor) {
+    signals.push({
+      type: PaymentReconciliationExceptionType.REFUND_AMOUNT_MISMATCH,
+      status: PaymentReconciliationExceptionStatus.OPEN,
+      note: `Stripe refund amount ${order.refundedAmountMinor} does not match allocated refunds ${order.allocationRefundedAmountMinor}`,
+    });
+  } else if (order.status === TicketOrderStatus.REFUNDED) {
     if (order.refundedAmountMinor == null) {
       signals.push({
         type: PaymentReconciliationExceptionType.REFUND_AMOUNT_MISMATCH,

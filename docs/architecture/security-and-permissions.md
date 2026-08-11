@@ -37,10 +37,7 @@ This document summarizes how access is enforced across Data Connect and Firebase
 | Surface | Operation / Function | Expected access |
 |---|---|---|
 | Data Connect query | `GetMyBookingsForEvent` | enabled user |
-| Data Connect query | `ListGuestTicketRequestsForAdmin` | enabled admin |
 | Data Connect query | `ListTicketOrdersForAdmin` | enabled admin |
-| Data Connect mutation | `CreateGuestTicketRequest` | enabled user |
-| Data Connect mutation | `AdminReviewGuestTicketRequest` | enabled admin |
 | Callable | `submitEventBooking` | enabled user |
 | Callable | `createTicketCheckoutSession` | enabled user |
 | Callable | `grantAdmin` / `revokeAdmin` / `listAdminUsers` | enabled admin |

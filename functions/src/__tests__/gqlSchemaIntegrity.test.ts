@@ -12,6 +12,21 @@ function readSchemaFile(): string {
   return fs.readFileSync(p, "utf8");
 }
 
+function readBookingServiceFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "..", "dataconnect", "booking-service", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
+function readMigrationFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "..", "dataconnect", "migrations", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
+function readFunctionFile(fileName: string): string {
+  const p = path.resolve(process.cwd(), "src", fileName);
+  return fs.readFileSync(p, "utf8");
+}
+
 function extractAllOperationHeaders(source: string): Array<{ name: string; header: string }> {
   const opHeader = /(query|mutation)\s+([A-Za-z0-9_]+)/g;
   const results: Array<{ name: string; header: string }> = [];
@@ -29,11 +44,6 @@ describe("GQL schema integrity", () => {
     // Operations listed here have been deliberately moved to server-only callable
     // paths and must NOT appear as client-callable in future.
     const serverOnlyOps = new Set([
-      // booking-mutations.gql: all now routed through submitEventBooking callable
-      "CreateBookingDraft",
-      "AddBookingLine",
-      "UpdateBookingStatus",
-      "CreateGuestTicketRequest",
       // user-mutations.gql: routed through subscribeToUserGroup / registerForSectionCallable
       "RegisterForSection",
       "SubscribeToUserGroup",
@@ -118,22 +128,6 @@ describe("GQL schema integrity", () => {
     }
   });
 
-  it("CreateBookingDraft binds bookerId to auth.uid server-side", () => {
-    // If bookerId were client-supplied a user could create bookings attributed
-    // to another user's account.
-    const bookingMutations = readApiFile("booking-mutations.gql");
-
-    const idx = bookingMutations.indexOf("mutation CreateBookingDraft");
-    expect(idx).toBeGreaterThanOrEqual(0);
-    const end = bookingMutations.indexOf("\n}", idx);
-    const block = bookingMutations.slice(idx, end + 2);
-
-    expect(
-      block,
-      "CreateBookingDraft must use bookerId_expr: \"auth.uid\" — not a client-supplied bookerId",
-    ).toContain("bookerId_expr: \"auth.uid\"");
-  });
-
   it("admin-only operations in user-group-mutations.gql require both admin and enabled claims", () => {
     // Requiring only admin without enabled would let a disabled admin retain write access.
     const groupMutations = readApiFile("user-group-mutations.gql");
@@ -187,9 +181,10 @@ describe("GQL schema integrity", () => {
       "type Event",
       "type TicketType",
       "type Booking",
+      "type BookingPlace",
       "type BookingLine",
+      "type BookingPlacePaymentAllocation",
       "type TicketOrder",
-      "type GuestTicketRequest",
       "type PaymentWebhookEvent",
       "type NotificationDelivery",
     ];
@@ -213,5 +208,178 @@ describe("GQL schema integrity", () => {
     expect(userBlock, "User must have email field for notifications").toContain("email:");
     expect(userBlock, "User must have firstName for identification").toContain("firstName");
     expect(userBlock, "User must have lastName for identification").toContain("lastName");
+  });
+
+  it("defines booking-level approval independently from lifecycle and payment", () => {
+    const schema = readSchemaFile();
+    expect(schema).toMatch(
+      /enum BookingApprovalStatus\s*{\s*NOT_REQUIRED\s+PENDING\s+APPROVED\s+REJECTED\s*}/,
+    );
+
+    const bookingStart = schema.indexOf("type Booking\n");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    const bookingBlock = schema.slice(bookingStart, bookingEnd + 2);
+    expect(bookingBlock).toContain(
+      "approvalStatus: BookingApprovalStatus! @default(value: NOT_REQUIRED)",
+    );
+    expect(bookingBlock).toContain("approvalReviewedBy: User");
+    expect(bookingBlock).toContain("approvalReviewedAt: Timestamp");
+    expect(bookingBlock).toContain("approvalNote: String");
+  });
+
+  it("requires an explicit non-null guest approval limit on events", () => {
+    const schema = readSchemaFile();
+    const eventStart = schema.indexOf("type Event @table");
+    const eventEnd = schema.indexOf("\n}", eventStart);
+    const eventBlock = schema.slice(eventStart, eventEnd + 2);
+    expect(eventBlock).toContain("maxGuestsWithoutModeratorApproval: Int!");
+
+    const eventMutations = readApiFile("user-group-mutations.gql");
+    expect(eventMutations.match(/\$maxGuestsWithoutModeratorApproval: Int!/g)).toHaveLength(2);
+  });
+
+  it("backfills legacy null guest limits before applying the non-null constraint", () => {
+    const migration = readMigrationFile(
+      "2026-08-11-issue-543-required-guest-approval-limit.sql",
+    );
+    const backfill = migration.indexOf(
+      "SET max_guests_without_moderator_approval = 0",
+    );
+    const constraint = migration.indexOf(
+      "ALTER COLUMN max_guests_without_moderator_approval SET NOT NULL",
+    );
+    expect(backfill).toBeGreaterThanOrEqual(0);
+    expect(constraint).toBeGreaterThan(backfill);
+  });
+
+  it("keeps booking approval writes behind the server-only callable boundary", () => {
+    const adminSdk = readApiFile("admin-mutations.gql");
+    const start = adminSdk.indexOf("mutation UpdateBookingApprovalFromCallable");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = adminSdk.indexOf("\n}", start);
+    const operation = adminSdk.slice(start, end + 2);
+    expect(operation).toContain("$status: BookingApprovalStatus!");
+    expect(operation).toContain("@auth(level: NO_ACCESS)");
+    expect(operation).toContain("@transaction");
+    expect(operation).toContain("approvalStatus: { eq: PENDING }");
+    expect(operation).toContain("@check(expr: \"this == 1\"");
+    expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
+  });
+
+  it("activates an approved amended revision atomically", () => {
+    const operations = readBookingServiceFile("booking-submission.gql");
+    const start = operations.indexOf("mutation ActivateApprovedBookingRevisionFromCallable");
+    const next = operations.indexOf("\nmutation ", start + 1);
+    const operation = operations.slice(start, next < 0 ? operations.length : next);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(operation).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(operation).toContain("approvalStatus: { eq: PENDING }");
+    expect(operation).toContain("approvalStatus: APPROVED");
+    expect(operation).toContain("supersededAt_expr: \"request.time\"");
+    expect(operation).toContain("bookingPaymentAdjustment_upsert");
+    expect(operation.match(/BOOKING_APPROVAL_CONFLICT/g)).toHaveLength(2);
+  });
+
+  it("attributes payment to a stable entity rather than a revision line or duplicated key", () => {
+    const schema = readSchemaFile();
+    const placeStart = schema.indexOf("type BookingPlace @table");
+    const placeEnd = schema.indexOf("\n}", placeStart);
+    const placeBlock = schema.slice(placeStart, placeEnd + 2);
+    expect(placeBlock).toContain("event: Event!");
+    expect(placeBlock).toContain("booker: User!");
+
+    const lineStart = schema.indexOf("type BookingLine @table");
+    const lineEnd = schema.indexOf("\n}", lineStart);
+    const lineBlock = schema.slice(lineStart, lineEnd + 2);
+    expect(lineBlock).toContain("bookingPlace: BookingPlace");
+    expect(lineBlock).not.toContain("bookingPlaceKey");
+
+    const allocationStart = schema.indexOf("type BookingPlacePaymentAllocation @table");
+    const allocationEnd = schema.indexOf("\n}", allocationStart);
+    const allocationBlock = schema.slice(allocationStart, allocationEnd + 2);
+    expect(allocationBlock).toContain("ticketOrder: TicketOrder!");
+    expect(allocationBlock).toContain("bookingPlace: BookingPlace!");
+    expect(allocationBlock).not.toContain("bookingLine:");
+    expect(allocationBlock).not.toContain("bookingPlaceKey");
+    expect(allocationBlock).toContain("allocatedAmountMinor: Int!");
+    expect(allocationBlock).toContain("refundedAmountMinor: Int! @default(value: 0)");
+  });
+
+  it("stores dietary requirements on each attendee ticket line", () => {
+    const schema = readSchemaFile();
+    const lineStart = schema.indexOf("type BookingLine @table");
+    const lineEnd = schema.indexOf("\n}", lineStart);
+    expect(schema.slice(lineStart, lineEnd + 2)).toContain("dietaryNote: String");
+
+    const bookingStart = schema.indexOf("type Booking\n");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    expect(schema.slice(bookingStart, bookingEnd + 2)).not.toContain("bookerDietaryNote");
+    expect(schema.slice(lineStart, lineEnd + 2)).toContain("bookingPlace: BookingPlace!");
+  });
+
+  it("persists complete booking submissions through typed atomic batch operations", () => {
+    const operations = readBookingServiceFile("booking-submission.gql");
+    for (const name of [
+      "CreateCompleteBookingFromCallable",
+      "CreateActiveBookingRevisionFromCallable",
+      "CreatePendingBookingRevisionFromCallable",
+    ]) {
+      const start = operations.indexOf(`mutation ${name}`);
+      const next = operations.indexOf("\nmutation ", start + 1);
+      const block = operations.slice(start, next < 0 ? operations.length : next);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(block).toContain("@auth(level: NO_ACCESS) @transaction");
+      expect(block).toContain("booking_insert(data: $booking)");
+      expect(block).toContain("bookingPlace_insertMany(data: $bookingPlaces)");
+      expect(block).toContain("bookingLine_insertMany(data: $bookingLines)");
+      expect(block).toContain("@allow(");
+    }
+    expect(operations).not.toContain("GuestTicketRequestStatus");
+    expect(operations).not.toContain("GuestTicketRequest");
+    expect(operations).not.toContain("guestTicketRequest");
+
+    const checkoutStart = operations.indexOf("mutation CreateAllocatedTicketOrderFromCallable");
+    const checkoutBlock = operations.slice(checkoutStart);
+    expect(checkoutStart).toBeGreaterThanOrEqual(0);
+    expect(checkoutBlock).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(checkoutBlock).toContain("ticketOrder_insert(data: $ticketOrder)");
+    expect(checkoutBlock).toContain("bookingPlacePaymentAllocation_insertMany(data: $allocations)");
+  });
+
+  it("prevents concurrent duplicate revision numbers within a booking group", () => {
+    const schema = readSchemaFile();
+    const bookingStart = schema.indexOf("type Booking\n");
+    const bookingEnd = schema.indexOf("\n}", bookingStart);
+    expect(schema.slice(bookingStart, bookingEnd + 2)).toContain(
+      "@unique(fields: [\"revisionGroupId\", \"revisionNumber\"])",
+    );
+  });
+
+  it("removes the legacy split guest-request schema and callable contract", () => {
+    const schema = readSchemaFile();
+    const operations = [
+      readApiFile("queries.gql"),
+      readApiFile("booking-mutations.gql"),
+      readApiFile("admin-mutations.gql"),
+      readBookingServiceFile("booking-submission.gql"),
+    ].join("\n");
+    const functionIndex = readFunctionFile("index.ts");
+
+    for (const source of [schema, operations, functionIndex]) {
+      expect(source).not.toMatch(/GuestTicketRequest|guestTicketRequest/);
+    }
+  });
+
+  it("provides an explicit non-live reset before contracting the booking schema", () => {
+    const migration = readMigrationFile("2026-08-11-issue-548-reset-legacy-booking-data.sql");
+    expect(migration).toContain("Do not run it in a live system");
+    expect(migration).toContain("DELETE FROM public.booking_line;");
+    expect(migration).toContain("DELETE FROM public.booking_place;");
+    expect(migration).toContain("DELETE FROM public.booking;");
+    expect(migration).toContain("DROP TABLE IF EXISTS public.guest_ticket_request;");
+    expect(migration).toContain("DROP COLUMN IF EXISTS booker_dietary_note;");
+    expect(migration.indexOf("DELETE FROM public.booking_line;")).toBeLessThan(
+      migration.indexOf("DELETE FROM public.booking;"),
+    );
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BookingStatus } from "@dataconnect/admin-generated";
 import { HttpsError } from "firebase-functions/v2/https";
-import { computeRevisionPlan } from "../bookingRevisionEngine";
+import { computeRevisionPlan, isBookingRevisionConflictError } from "../bookingRevisionEngine";
 
 describe("bookingRevisionEngine", () => {
   it("creates revision 1 for first booking submission", () => {
@@ -83,5 +83,19 @@ describe("bookingRevisionEngine", () => {
         }
       )
     ).toThrow(HttpsError);
+  });
+
+  it("recognises locally-thrown revision conflicts by stable details code", () => {
+    const error = new HttpsError(
+      "aborted",
+      "Booking revision conflict: active revision not found",
+      { code: "BOOKING_REVISION_CONFLICT" },
+    );
+    expect(isBookingRevisionConflictError(error)).toBe(true);
+  });
+
+  it("recognises Data Connect transaction check conflicts by message", () => {
+    expect(isBookingRevisionConflictError(new Error("transaction failed: BOOKING_REVISION_CONFLICT"))).toBe(true);
+    expect(isBookingRevisionConflictError(new Error("unrelated database failure"))).toBe(false);
   });
 });

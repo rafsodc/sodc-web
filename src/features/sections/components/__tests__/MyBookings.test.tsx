@@ -38,6 +38,7 @@ describe("MyBookings", () => {
               {
                 id: "booking-1",
                 status: BookingStatus.SUBMITTED,
+                approvalStatus: "PENDING",
                 revisionNumber: 2,
                 updatedAt: "2026-04-01T12:00:00Z",
                 event: {
@@ -48,7 +49,6 @@ describe("MyBookings", () => {
                   section: { id: "section-1", name: "Events Section" },
                 },
                 lines: [{ id: "line-1", ticketType: { id: "tt-1", title: "Member ticket", audience: "MEMBER", price: 25 } }],
-                guestTicketRequests: [{ id: "gtr-1", status: "PENDING", requestedGuestCount: 1 }],
               },
             ],
           },
@@ -67,7 +67,7 @@ describe("MyBookings", () => {
     expect(screen.getByText("Spring Ball")).toBeInTheDocument();
     expect(screen.getByText("Events Section")).toBeInTheDocument();
     expect(screen.getByText("Submitted")).toBeInTheDocument();
-    expect(screen.getByText(/1 guest request pending/i)).toBeInTheDocument();
+    expect(screen.getByText("Awaiting approval")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View booking" })).toHaveAttribute("href", "/sections/section-1");
   });
 
@@ -81,6 +81,7 @@ describe("MyBookings", () => {
               {
                 id: "booking-1",
                 status: BookingStatus.SUBMITTED,
+                approvalStatus: "APPROVED",
                 revisionNumber: 2,
                 updatedAt: "2026-04-01T12:00:00Z",
                 event: {
@@ -90,14 +91,12 @@ describe("MyBookings", () => {
                   endDateTime: "2026-05-01T22:00:00Z",
                   section: { id: "section-1", name: "Events Section" },
                 },
-                lines: [{ id: "line-1", ticketType: { id: "tt-1", title: "Member ticket", audience: "MEMBER", price: 25 } }],
-                guestTicketRequests: [
+                lines: [
+                  { id: "line-1", ticketType: { id: "tt-1", title: "Member ticket", audience: "MEMBER", price: 25 } },
                   {
-                    id: "gtr-1",
-                    status: "APPROVED",
-                    requestedGuestCount: 1,
+                    id: "line-2",
                     guestDisplayName: "Alex Guest",
-                    guestTicketType: { id: "tt-guest", title: "Guest ticket", price: 15 },
+                    ticketType: { id: "tt-guest", title: "Guest ticket", audience: "GUEST", price: 15 },
                   },
                 ],
               },
@@ -116,10 +115,10 @@ describe("MyBookings", () => {
     );
 
     expect(screen.getByText(/Member ticket · Guest ticket \(Alex Guest\)/)).toBeInTheDocument();
-    expect(screen.getByText(/1 guest request approved/i)).toBeInTheDocument();
+    expect(screen.getByText("Approved")).toBeInTheDocument();
   });
 
-  it("shows pending guest names awaiting approval in the ticket summary line", () => {
+  it("shows every guest line while the complete booking awaits approval", () => {
     vi.mocked(reactGenerated.useGetMyBookings).mockReturnValue(
       dataConnectQueryResult<typeof reactGenerated.useGetMyBookings>({
         data: {
@@ -129,6 +128,7 @@ describe("MyBookings", () => {
               {
                 id: "booking-1",
                 status: BookingStatus.SUBMITTED,
+                approvalStatus: "PENDING",
                 revisionNumber: 2,
                 updatedAt: "2026-04-01T12:00:00Z",
                 event: {
@@ -138,14 +138,12 @@ describe("MyBookings", () => {
                   endDateTime: "2026-05-01T22:00:00Z",
                   section: { id: "section-1", name: "Events Section" },
                 },
-                lines: [{ id: "line-1", ticketType: { id: "tt-1", title: "Member ticket", audience: "MEMBER", price: 25 } }],
-                guestTicketRequests: [
+                lines: [
+                  { id: "line-1", ticketType: { id: "tt-1", title: "Member ticket", audience: "MEMBER", price: 25 } },
                   {
-                    id: "gtr-1",
-                    status: "PENDING",
-                    requestedGuestCount: 1,
+                    id: "line-2",
                     guestDisplayName: "Sam Extra",
-                    guestTicketType: { id: "tt-guest", title: "Guest ticket", price: 15 },
+                    ticketType: { id: "tt-guest", title: "Guest ticket", audience: "GUEST", price: 15 },
                   },
                 ],
               },
@@ -163,8 +161,8 @@ describe("MyBookings", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Guest ticket \(Sam Extra\) — pending confirmation/)).toBeInTheDocument();
-    expect(screen.getByText(/1 guest request pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/Member ticket · Guest ticket \(Sam Extra\)/)).toBeInTheDocument();
+    expect(screen.getByText("Awaiting approval")).toBeInTheDocument();
   });
 
   it("shows continue booking for drafts", () => {
@@ -177,6 +175,7 @@ describe("MyBookings", () => {
               {
                 id: "booking-draft",
                 status: BookingStatus.DRAFT,
+                approvalStatus: "NOT_REQUIRED",
                 revisionNumber: 1,
                 updatedAt: "2026-04-01T12:00:00Z",
                 event: {
@@ -187,7 +186,6 @@ describe("MyBookings", () => {
                   section: { id: "section-1", name: "Events Section" },
                 },
                 lines: [],
-                guestTicketRequests: [],
               },
             ],
           },

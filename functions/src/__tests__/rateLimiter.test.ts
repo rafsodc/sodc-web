@@ -32,7 +32,7 @@ describe("enforceRateLimit", () => {
   });
 
   it("charges batch fan-out against the same row budget", async () => {
-    await enforceRateLimit("submitAdditionalGuestTicketRequests", uid, 20);
+    await enforceRateLimit("submitEventBooking", uid, 20);
 
     expect(mockConsumeCallableRateLimit).toHaveBeenCalledWith(expect.objectContaining({
       cost: 20,

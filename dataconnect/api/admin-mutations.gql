@@ -1324,6 +1324,9 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
       revisionGroupId
       revisionNumber
       supersededAt
@@ -1331,7 +1334,6 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
         id
       }
       clientSubmissionKey
-      bookerDietaryNote
       sitNextToUserIds
       accommodationRequested
       accommodationNote
@@ -1339,6 +1341,21 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
+        bookingPlace {
+          id
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            allocatedAmountMinor
+            refundedAmountMinor
+            stripeRefundId
+            createdAt
+            ticketOrder {
+              id
+              status
+              stripePaymentIntentId
+            }
+          }
+        }
         sortOrder
         guestDisplayName
         dietaryNote
@@ -1352,15 +1369,56 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
           title
         }
       }
-      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
+    }
+  }
+}
+
+# Whole-booking moderation targets one exact booking revision. The callable
+# validates the expected revision and current active revision before writing.
+query GetBookingRevisionForApprovalFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
+  booking(id: $id) {
+    id
+    status
+    approvalStatus
+    approvalReviewedAt
+    approvalNote
+    revisionGroupId
+    revisionNumber
+    supersededAt
+    clientSubmissionKey
+    booker {
+      id
+      firstName
+      lastName
+      email
+    }
+    event {
+      id
+      title
+      section {
         id
-        status
-        requestedGuestCount
-        guestTicketType {
-          id
-          title
-          price
-        }
+        name
+      }
+    }
+    supersedesBooking {
+      id
+      revisionNumber
+    }
+    lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+      id
+      sortOrder
+      guestDisplayName
+      dietaryNote
+      ticketType {
+        id
+        title
+        audience
+        price
+      }
+      guestUser {
+        id
+        firstName
+        lastName
       }
     }
   }
@@ -1373,6 +1431,8 @@ query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(
       id
       status
       quantity
+      unitAmountMinor
+      totalAmountMinor
       createdAt
       ticketType {
         id
@@ -1380,105 +1440,15 @@ query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(
       event {
         id
       }
+      paymentAllocations: bookingPlacePaymentAllocations_on_ticketOrder {
+        id
+        allocatedAmountMinor
+        bookingPlace {
+          id
+        }
+      }
     }
   }
-}
-
-# Firebase Functions: create draft with explicit booker and idempotency key (NO_ACCESS; not client-callable).
-# Backward-compatible form: revision fields omitted so schema defaults apply.
-mutation CreateBookingDraftForUser(
-  $eventId: UUID!
-  $bookerId: String!
-  $clientSubmissionKey: String!
-) @auth(level: NO_ACCESS) {
-  booking_insert(
-    data: {
-      eventId: $eventId
-      bookerId: $bookerId
-      clientSubmissionKey: $clientSubmissionKey
-      status: DRAFT
-      createdBy: "system"
-      updatedBy: "system"
-    }
-  )
-}
-
-# Firebase Functions: explicit revision insert for mutable booking updates.
-mutation CreateBookingDraftRevisionForUser(
-  $eventId: UUID!
-  $bookerId: String!
-  $clientSubmissionKey: String!
-  $revisionGroupId: UUID!
-  $revisionNumber: Int!
-  $supersedesBookingId: UUID!
-) @auth(level: NO_ACCESS) {
-  booking_insert(
-    data: {
-      eventId: $eventId
-      bookerId: $bookerId
-      clientSubmissionKey: $clientSubmissionKey
-      revisionGroupId: $revisionGroupId
-      revisionNumber: $revisionNumber
-      supersedesBookingId: $supersedesBookingId
-      status: DRAFT
-      createdBy: "system"
-      updatedBy: "system"
-    }
-  )
-}
-
-mutation MarkBookingSupersededFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
-  booking_update(
-    id: $id
-    data: {
-      supersededAt_expr: "request.time"
-      updatedAt_expr: "request.time"
-      updatedBy: "system"
-    }
-  )
-}
-
-mutation CreateBookingPaymentAdjustmentFromCallable(
-  $revisionBookingId: UUID!
-  $supersededBookingId: UUID!
-  $deltaAmountMinor: Int!
-  $status: BookingPaymentAdjustmentStatus!
-  $orchestrationKey: String!
-) @auth(level: NO_ACCESS) {
-  bookingPaymentAdjustment_upsert(
-    data: {
-      revisionBookingId: $revisionBookingId
-      supersededBookingId: $supersededBookingId
-      deltaAmountMinor: $deltaAmountMinor
-      status: $status
-      orchestrationKey: $orchestrationKey
-      createdBy: "system"
-      updatedBy: "system"
-    }
-  )
-}
-
-# submitEventBooking callable — admin SDK has no auth.uid; avoid @default(expr: "auth.uid") on BookingLine.
-mutation AddBookingLineFromCallable(
-  $bookingId: UUID!
-  $ticketTypeId: UUID!
-  $guestUserId: String
-  $guestDisplayName: String
-  $dietaryNote: String
-  $sortOrder: Int!
-) @auth(level: NO_ACCESS) {
-  bookingLine_insert(
-    data: {
-      bookingId: $bookingId
-      ticketTypeId: $ticketTypeId
-      guestUserId: $guestUserId
-      guestDisplayName: $guestDisplayName
-      dietaryNote: $dietaryNote
-      sortOrder: $sortOrder
-      createdBy: "system"
-      updatedBy: "system"
-    }
-  )
 }
 
 mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @auth(level: NO_ACCESS) {
@@ -1490,6 +1460,51 @@ mutation UpdateBookingStatusFromCallable($id: UUID!, $status: BookingStatus!) @a
       updatedBy: "system"
     }
   )
+}
+
+mutation SettleBookingPaymentAdjustmentsFromCallable(
+  $revisionBookingId: UUID!
+  $status: BookingPaymentAdjustmentStatus!
+) @auth(level: NO_ACCESS) {
+  bookingPaymentAdjustment_updateMany(
+    where: {
+      revisionBookingId: { eq: $revisionBookingId }
+      status: { in: [PENDING_AUTO_CHARGE, PENDING_AUTO_REFUND] }
+    }
+    data: {
+      status: $status
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# Booking-level moderation targets one exact revision. The callable layer owns
+# authorisation and supplies the reviewer identity after checking admin access.
+mutation UpdateBookingApprovalFromCallable(
+  $id: UUID!
+  $expectedRevisionNumber: Int!
+  $status: BookingApprovalStatus!
+  $reviewedById: String
+  $approvalNote: String
+) @auth(level: NO_ACCESS) @transaction {
+  changed: booking_updateMany(
+    where: {
+      id: { eq: $id }
+      revisionNumber: { eq: $expectedRevisionNumber }
+      status: { in: [SUBMITTED, CONFIRMED] }
+      approvalStatus: { eq: PENDING }
+      supersededAt: { isNull: true }
+    }
+    data: {
+      approvalStatus: $status
+      approvalReviewedById: $reviewedById
+      approvalReviewedAt_expr: "request.time"
+      approvalNote: $approvalNote
+      updatedAt_expr: "request.time"
+      updatedBy: $reviewedById
+    }
+  ) @check(expr: "this == 1", message: "BOOKING_APPROVAL_CONFLICT")
 }
 
 mutation CreateTicketOrderForCheckout(
@@ -1512,6 +1527,22 @@ mutation CreateTicketOrderForCheckout(
       currency: $currency
       status: PENDING
       createdBy: "system"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdateBookingPlaceAllocationRefundFromCallable(
+  $id: UUID!
+  $refundedAmountMinor: Int!
+  $stripeRefundId: String!
+) @auth(level: NO_ACCESS) {
+  bookingPlacePaymentAllocation_update(
+    id: $id
+    data: {
+      refundedAmountMinor: $refundedAmountMinor
+      stripeRefundId: $stripeRefundId
+      updatedAt_expr: "request.time"
       updatedBy: "system"
     }
   )
@@ -1555,6 +1586,10 @@ query GetTicketOrderForWebhook($id: UUID!) @auth(level: NO_ACCESS) {
     disputeUpdatedAt
     disputeClosedAt
     webhookEventId
+    paymentAllocations: bookingPlacePaymentAllocations_on_ticketOrder {
+      id
+      refundedAmountMinor
+    }
   }
 }
 
@@ -1892,6 +1927,27 @@ mutation MarkTicketOrderRefundedFromWebhook(
   )
 }
 
+mutation RecordTicketOrderPartialRefundFromWebhook(
+  $id: UUID!
+  $webhookEventId: String!
+  $stripeRefundId: String
+  $refundedAmountMinor: Int!
+  $refundedAt: Timestamp
+) @auth(level: NO_ACCESS) {
+  ticketOrder_update(
+    id: $id
+    data: {
+      status: PAID
+      webhookEventId: $webhookEventId
+      stripeRefundId: $stripeRefundId
+      refundedAmountMinor: $refundedAmountMinor
+      refundedAt: $refundedAt
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
 mutation UpsertTicketOrderDisputeFromWebhook(
   $id: UUID!
   $webhookEventId: String
@@ -1963,143 +2019,13 @@ mutation UpsertPaymentReconciliationException(
   )
 }
 
-mutation UpdateBookingPreferencesFromCallable(
-  $id: UUID!
-  $bookerDietaryNote: String
-  $sitNextToUserIds: [String!]
-  $accommodationRequested: Boolean!
-  $accommodationNote: String
-) @auth(level: NO_ACCESS) {
-  booking_update(
-    id: $id
-    data: {
-      bookerDietaryNote: $bookerDietaryNote
-      sitNextToUserIds: $sitNextToUserIds
-      accommodationRequested: $accommodationRequested
-      accommodationNote: $accommodationNote
-      updatedAt_expr: "request.time"
-      updatedBy: "system"
-    }
-  )
-}
-
-mutation DeleteBookingLineFromCallable($id: UUID!) @auth(level: NO_ACCESS) {
-  bookingLine_delete(id: $id)
-}
-
-# submitGuestTicketRequest callable — admin SDK has no auth.uid; override HasAudit defaults.
-mutation CreateGuestTicketRequestFromCallable(
-  $id: UUID!
-  $bookingId: UUID!
-  $requestedGuestCount: Int!
-  $guestTicketTypeId: UUID!
-  $guestDisplayName: String!
-  $dietaryNote: String
-  $status: GuestTicketRequestStatus!
-  $reviewedById: String
-  $reviewedAt: Timestamp
-  $moderatorNote: String
-) @auth(level: NO_ACCESS) {
-  guestTicketRequest_insert(
-    data: {
-      id: $id
-      bookingId: $bookingId
-      requestedGuestCount: $requestedGuestCount
-      guestTicketTypeId: $guestTicketTypeId
-      guestDisplayName: $guestDisplayName
-      dietaryNote: $dietaryNote
-      status: $status
-      reviewedById: $reviewedById
-      reviewedAt: $reviewedAt
-      moderatorNote: $moderatorNote
-      createdBy: "system"
-      updatedBy: "system"
-    }
-  )
-}
-
-query GetGuestTicketRequestByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
-  guestTicketRequest(id: $id) {
-    id
-    status
-    requestedGuestCount
-    guestDisplayName
-    dietaryNote
-    booking { id }
-    guestTicketType { id }
-  }
-}
-
-# reviewGuestTicketRequest callable — admin SDK has no auth.uid for reviewedBy / HasAudit.
-mutation AdminReviewGuestTicketRequestFromCallable(
-  $id: UUID!
-  $status: GuestTicketRequestStatus!
-  $moderatorNote: String
-  $reviewedById: String!
-) @auth(level: NO_ACCESS) {
-  guestTicketRequest_update(
-    id: $id
-    data: {
-      status: $status
-      moderatorNote: $moderatorNote
-      reviewedAt_expr: "request.time"
-      reviewedById: $reviewedById
-      updatedAt_expr: "request.time"
-      updatedBy: $reviewedById
-    }
-  )
-}
-
-# Guest ticket request callables — load booking context for submit validation.
-query GetBookingForGuestTicketCallable($bookingId: UUID!) @auth(level: NO_ACCESS) {
-  booking(id: $bookingId) {
-    id
-    booker {
-      id
-      firstName
-      lastName
-      email
-    }
-    event {
-      id
-      title
-      section {
-        id
-        name
-      }
-    }
-    supersedesBooking {
-      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: ASC }) {
-        status
-        requestedGuestCount
-        guestDisplayName
-        guestTicketType {
-          id
-        }
-        reviewedBy {
-          id
-        }
-        reviewedAt
-        moderatorNote
-      }
-    }
-    guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: ASC }) {
-      status
-      requestedGuestCount
-      guestDisplayName
-      guestTicketType {
-        id
-      }
-    }
-  }
-}
-
 # Booking confirmation / revision emails — full booking context for Notify.
 query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
   booking(id: $bookingId) {
     id
     revisionNumber
-    bookerDietaryNote
+    approvalStatus
+    approvalNote
     sitNextToUserIds
     accommodationRequested
     accommodationNote
@@ -2141,7 +2067,6 @@ query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
-# Guest ticket request emails — request + booker/event context after create or review.
 # Scheduled cleanup: stale DRAFT bookings past TTL (issue #235).
 query ListStaleDraftBookingsForScheduler(
   $updatedBefore: Timestamp!
@@ -2179,55 +2104,6 @@ query ListStalePendingTicketOrdersForScheduler(
     createdAt
   }
 }
-
-query GetGuestTicketRequestForNotification($id: UUID!) @auth(level: NO_ACCESS) {
-  guestTicketRequest(id: $id) {
-    id
-    status
-    requestedGuestCount
-    dietaryNote
-    moderatorNote
-    guestTicketType {
-      id
-      title
-      price
-    }
-    booking {
-      id
-      booker {
-        id
-        firstName
-        lastName
-        email
-      }
-      event {
-        id
-        title
-        location
-        startDateTime
-        endDateTime
-        section {
-          id
-          name
-        }
-      }
-      # Every current GuestTicketRequest row represents exactly one guest
-      # (requestedGuestCount is always 1), so this is used to aggregate the
-      # booking's current total guest-ticket count/cost across all sibling
-      # requests, rather than naming one guest per notification.
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        guestTicketType {
-          price
-        }
-      }
-    }
-  }
-}
-
-
 
 # Get all users who have opted out of announcements for a section (used by sendSectionAnnouncement)
 query GetSectionAnnouncementOptOuts($sectionId: UUID!) @auth(level: NO_ACCESS) {

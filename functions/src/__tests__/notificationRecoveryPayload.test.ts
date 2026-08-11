@@ -27,6 +27,18 @@ describe("notification recovery payloads", () => {
     );
   });
 
+  it("round-trips whole-booking approval notification context", () => {
+    const payloads: NotificationRecoveryPayload[] = [
+      { version: 1, kind: "BOOKING_PENDING_MEMBER", bookingId: "22222222-2222-4222-8222-222222222222", idempotencyKey: "submit-1" },
+      { version: 1, kind: "BOOKING_PENDING_MODERATOR", bookingId: "22222222-2222-4222-8222-222222222222", recipientEmail: "mod@example.com" },
+      { version: 1, kind: "BOOKING_CHANGES_REQUESTED", bookingId: "22222222-2222-4222-8222-222222222222" },
+      { version: 1, kind: "BOOKING_APPROVED", bookingId: "22222222-2222-4222-8222-222222222222" },
+    ];
+    for (const payload of payloads) {
+      expect(parseNotificationRecoveryPayload(serializeNotificationRecoveryPayload(payload))).toEqual(payload);
+    }
+  });
+
   it("rejects malformed and unsupported payloads", () => {
     expect(() => parseNotificationRecoveryPayload("not-json")).toThrow(
       NotificationRecoveryPayloadError

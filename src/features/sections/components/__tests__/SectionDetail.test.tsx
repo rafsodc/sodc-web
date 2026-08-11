@@ -845,10 +845,10 @@ describe('SectionDetail', () => {
             {
               id: 'booking-1',
               status: 'SUBMITTED',
+              approvalStatus: 'APPROVED',
               revisionNumber: 2,
               supersededAt: null,
               clientSubmissionKey: null,
-              bookerDietaryNote: null,
               sitNextToUserIds: [],
               accommodationRequested: false,
               accommodationNote: null,
@@ -864,9 +864,12 @@ describe('SectionDetail', () => {
                     audience: 'MEMBER',
                     price: 25,
                   },
+                  bookingPlace: {
+                    id: 'place-1',
+                    paymentAllocations: [],
+                  },
                 },
               ],
-              guestTicketRequests: [{ id: 'gtr-1', status: 'PENDING', requestedGuestCount: 1 }],
             },
           ],
         },
@@ -902,8 +905,8 @@ describe('SectionDetail', () => {
     await user.click(screen.getByRole('tab', { name: 'Book' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Your booking')).toBeInTheDocument();
-      expect(screen.getByText('Payment not started')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Payment required' })).toBeInTheDocument();
+      expect(screen.getByText(/booking is approved/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /pay for all tickets/i })).toBeInTheDocument();
     });
 

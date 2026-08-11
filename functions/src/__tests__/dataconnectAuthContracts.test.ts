@@ -35,7 +35,6 @@ const NO_ACCESS = "@auth(level: NO_ACCESS)";
 describe("Data Connect auth contracts", () => {
   it("Phase A: critical booking/payment/admin operations keep strict auth", () => {
     const queries = readApiFile("queries.gql");
-    const bookingMutations = readApiFile("booking-mutations.gql");
     const adminSdk = readApiFile("admin-mutations.gql");
     const userMutations = readApiFile("user-mutations.gql");
     const groupMutations = readApiFile("user-group-mutations.gql");
@@ -43,15 +42,9 @@ describe("Data Connect auth contracts", () => {
     assertAuth(queries, [
       { op: "query CheckUserProfileExists", mustInclude: EMAIL_VERIFIED_EXPR },
       { op: "query ListEventBookingsForAdmin", mustInclude: ADMIN_EXPR },
-      { op: "query ListGuestTicketRequestsForAdmin", mustInclude: ADMIN_EXPR },
       { op: "query ListTicketOrdersForAdmin", mustInclude: ADMIN_EXPR },
       { op: "query GetMyTicketOrderById", mustInclude: USER_EXPR },
       { op: "query GetMyBookings", mustInclude: USER_EXPR },
-    ]);
-
-    assertAuth(bookingMutations, [
-      { op: "mutation CreateGuestTicketRequest", mustInclude: NO_ACCESS },
-      { op: "mutation AdminReviewGuestTicketRequest", mustInclude: ADMIN_EXPR },
     ]);
 
     assertAuth(adminSdk, [
@@ -60,9 +53,11 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation CreateTicketOrderForCheckout", mustInclude: NO_ACCESS },
       { op: "query GetTicketOrderForWebhook", mustInclude: NO_ACCESS },
       { op: "mutation MarkTicketOrderPaidFromWebhook", mustInclude: NO_ACCESS },
+      { op: "mutation RecordTicketOrderPartialRefundFromWebhook", mustInclude: NO_ACCESS },
       { op: "query GetBookingsForBookerAndEvent", mustInclude: NO_ACCESS },
       { op: "mutation UpdateBookingStatusFromCallable", mustInclude: NO_ACCESS },
-      { op: "mutation UpdateBookingPreferencesFromCallable", mustInclude: NO_ACCESS },
+      { op: "mutation SettleBookingPaymentAdjustmentsFromCallable", mustInclude: NO_ACCESS },
+      { op: "mutation UpdateBookingPlaceAllocationRefundFromCallable", mustInclude: NO_ACCESS },
       { op: "query ListStaleDraftBookingsForScheduler", mustInclude: NO_ACCESS },
       { op: "query ListStalePendingTicketOrdersForScheduler", mustInclude: NO_ACCESS },
     ]);
@@ -165,26 +160,14 @@ describe("Data Connect auth contracts", () => {
 
     // Booking callables
     assertAuth(adminSdk, [
-      { op: "mutation CreateBookingDraftForUser", mustInclude: NO_ACCESS },
-      { op: "mutation CreateBookingDraftRevisionForUser", mustInclude: NO_ACCESS },
-      { op: "mutation MarkBookingSupersededFromCallable", mustInclude: NO_ACCESS },
-      { op: "mutation CreateBookingPaymentAdjustmentFromCallable", mustInclude: NO_ACCESS },
-      { op: "mutation AddBookingLineFromCallable", mustInclude: NO_ACCESS },
-      { op: "mutation DeleteBookingLineFromCallable", mustInclude: NO_ACCESS },
       { op: "query GetTicketOrdersForBookerAndEvent", mustInclude: NO_ACCESS },
-    ]);
-
-    // Guest ticket request callables
-    assertAuth(adminSdk, [
-      { op: "mutation CreateGuestTicketRequestFromCallable", mustInclude: NO_ACCESS },
-      { op: "mutation AdminReviewGuestTicketRequestFromCallable", mustInclude: NO_ACCESS },
-      { op: "query GetBookingForGuestTicketCallable", mustInclude: NO_ACCESS },
+      { op: "query GetBookingRevisionForApprovalFromCallable", mustInclude: NO_ACCESS },
+      { op: "mutation UpdateBookingApprovalFromCallable", mustInclude: NO_ACCESS },
     ]);
 
     // Notification callables
     assertAuth(adminSdk, [
       { op: "query GetBookingForNotification", mustInclude: NO_ACCESS },
-      { op: "query GetGuestTicketRequestForNotification", mustInclude: NO_ACCESS },
       { op: "query GetNotificationDeliveryByChannelAndKey", mustInclude: NO_ACCESS },
       { op: "query ListFailedNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
       { op: "query ListStalePendingNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
@@ -289,17 +272,8 @@ describe("Data Connect auth contracts", () => {
   it("Phase F: all booking-mutations.gql operations have correct auth level", () => {
     const bookingMutations = readApiFile("booking-mutations.gql");
 
-    // Legacy booking operations now server-only — all client paths go through
-    // submitEventBooking callable which enforces ownership and rules.
-    assertAuth(bookingMutations, [
-      { op: "mutation CreateBookingDraft", mustInclude: NO_ACCESS },
-      { op: "mutation AddBookingLine", mustInclude: NO_ACCESS },
-      { op: "mutation UpdateBookingStatus", mustInclude: NO_ACCESS },
-    ]);
-
     // Admin-only booking operations
     assertAuth(bookingMutations, [
-      { op: "mutation AdminDeleteGuestTicketRequest", mustInclude: ADMIN_EXPR },
       { op: "mutation AdminDeleteBookingLine", mustInclude: ADMIN_EXPR },
       { op: "mutation AdminDeleteBooking", mustInclude: ADMIN_EXPR },
       { op: "mutation ResolvePaymentReconciliationException", mustInclude: ADMIN_EXPR },

@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { useGetMyBookings, useGetMyTicketOrders } from "@dataconnect/generated/react";
+import { BookingApprovalStatus } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
@@ -20,7 +21,6 @@ import {
   buildBookingTicketDisplayRows,
   formatBookingTicketDisplayLabel,
   summarizeEventBookingPayment,
-  summarizeGuestTicketRequests,
 } from "../utils/eventBookingStatusSummary";
 import {
   bookingStatusChipColor,
@@ -35,17 +35,11 @@ interface MyBookingsProps {
   onBack: () => void;
 }
 
-function guestRequestsLabel(summary: ReturnType<typeof summarizeGuestTicketRequests>): string {
-  if (summary.pendingCount > 0) {
-    return `${summary.pendingCount} guest request${summary.pendingCount === 1 ? "" : "s"} pending`;
-  }
-  if (summary.approvedCount > 0) {
-    return `${summary.approvedCount} guest request${summary.approvedCount === 1 ? "" : "s"} approved`;
-  }
-  if (summary.rejectedCount > 0) {
-    return `${summary.rejectedCount} guest request${summary.rejectedCount === 1 ? "" : "s"} declined`;
-  }
-  return "No extra guest requests";
+function approvalLabel(status: BookingApprovalStatus): string {
+  if (status === BookingApprovalStatus.PENDING) return "Awaiting approval";
+  if (status === BookingApprovalStatus.APPROVED) return "Approved";
+  if (status === BookingApprovalStatus.REJECTED) return "Changes requested";
+  return "Approval not required";
 }
 
 export default function MyBookings({ onBack }: MyBookingsProps) {
@@ -64,7 +58,7 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
     <Box className="page-container">
       <PageHeader title="My Bookings" onBack={onBack} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Your event bookings across all sections, with payment and guest-request status.
+        Your event bookings across all sections, with approval and payment status.
       </Typography>
 
       {isLoading ? (
@@ -90,7 +84,6 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
               ticketOrders,
               adjustments: [],
             });
-            const guestSummary = summarizeGuestTicketRequests(booking.guestTicketRequests);
             const ticketRows = buildBookingTicketDisplayRows(booking);
             const sectionId = booking.event.section.id;
             const eventId = booking.event.id;
@@ -119,6 +112,19 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
                               : "default"
                       }
                     />
+                    <Chip
+                      size="small"
+                      label={approvalLabel(booking.approvalStatus)}
+                      color={
+                        booking.approvalStatus === BookingApprovalStatus.APPROVED
+                          ? "success"
+                          : booking.approvalStatus === BookingApprovalStatus.REJECTED
+                            ? "error"
+                            : booking.approvalStatus === BookingApprovalStatus.PENDING
+                              ? "warning"
+                              : "default"
+                      }
+                    />
                   </Stack>
 
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>
@@ -138,10 +144,6 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
                       {ticketRows.map((row) => formatBookingTicketDisplayLabel(row)).join(" · ")}
                     </Typography>
                   ) : null}
-
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                    {guestRequestsLabel(guestSummary)}
-                  </Typography>
 
                   <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
                     <Button

@@ -49,6 +49,7 @@ const getWebhookEvent = vi.spyOn(admin, "getPaymentWebhookEventByStripeEventId")
 const createWebhookEvent = vi.spyOn(admin, "createPaymentWebhookEvent");
 const getOrder = vi.spyOn(admin, "getTicketOrderForWebhook");
 const upsertDispute = vi.spyOn(admin, "upsertTicketOrderDisputeFromWebhook");
+const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundFromCallable");
 
 type Handler = (
   req: { headers: Record<string, unknown>; rawBody: Buffer },
@@ -117,6 +118,7 @@ describe("stripe payment webhook orchestration", () => {
       },
     } as never);
     upsertDispute.mockResolvedValue({ data: {} } as never);
+    updateAllocationRefund.mockResolvedValue({ data: {} } as never);
     serviceMocks.applyTransitions.mockResolvedValue({
       appliedCount: 1,
       reconciledOrderIds: [ORDER_ID],
@@ -283,12 +285,16 @@ describe("stripe payment webhook orchestration", () => {
       signedRequest(
         stripeEvent({
           id: "evt_refund_duplicate",
-          type: "charge.refunded",
+          type: "refund.created",
           object: {
-            id: "ch_1",
-            amount_refunded: 5000,
-            refunds: { data: [{ id: "re_1" }] },
-            metadata: { orderIds: ORDER_ID },
+            id: "re_1",
+            amount: 5000,
+            metadata: {
+              ticketOrderId: ORDER_ID,
+              allocationId: "22222222-2222-4222-8222-222222222222",
+              refundAmountMinor: "5000",
+              resultingRefundedAmountMinor: "5000",
+            },
           },
         })
       ),
@@ -318,6 +324,71 @@ describe("stripe payment webhook orchestration", () => {
     expect(createWebhookEvent).not.toHaveBeenCalled();
     expect(failedResponse.send).toHaveBeenCalledWith(200, "Duplicate event");
     expect(refundResponse.send).toHaveBeenCalledWith(200, "Duplicate event");
+  });
+
+  it("routes refund.created to one exact allocation and order before reconciliation", async () => {
+    const response = responseHarness();
+    const allocationId = "22222222-2222-4222-8222-222222222222";
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_partial_refund",
+          type: "refund.created",
+          object: {
+            id: "re_partial",
+            amount: 1000,
+            metadata: {
+              ticketOrderId: ORDER_ID,
+              allocationId,
+              refundAmountMinor: "1000",
+              resultingRefundedAmountMinor: "1000",
+            },
+          },
+        })
+      ),
+      response.res
+    );
+
+    expect(updateAllocationRefund).toHaveBeenCalledWith({
+      id: allocationId,
+      refundedAmountMinor: 1000,
+      stripeRefundId: "re_partial",
+    });
+    expect(updateAllocationRefund.mock.invocationCallOrder[0]).toBeLessThan(
+      serviceMocks.applyTransitions.mock.invocationCallOrder[0]
+    );
+    expect(serviceMocks.applyTransitions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderIds: [ORDER_ID],
+        intent: "MARK_REFUNDED",
+        refundContext: expect.objectContaining({
+          stripeRefundId: "re_partial",
+          refundedAmountMinor: 1000,
+        }),
+      })
+    );
+    expect(response.send).toHaveBeenCalledWith(200, "ok");
+  });
+
+  it("ignores cumulative charge.refunded events in favour of exact refund.created routing", async () => {
+    const response = responseHarness();
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_charge_refunded",
+          type: "charge.refunded",
+          object: { id: "ch_1", metadata: { orderIds: `${ORDER_ID},another-order` } },
+        })
+      ),
+      response.res
+    );
+
+    expect(serviceMocks.applyTransitions).not.toHaveBeenCalled();
+    expect(createWebhookEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "handled_by_refund_created", outcome: PaymentWebhookEventOutcome.IGNORED })
+    );
+    expect(response.send).toHaveBeenCalledWith(200, "Ignored event");
   });
 
   it("applies a payment transition before recording the processed event", async () => {

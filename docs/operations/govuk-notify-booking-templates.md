@@ -1,4 +1,4 @@
-# GOV.UK Notify: booking confirmation and revision templates
+# GOV.UK Notify: booking lifecycle templates
 
 User-facing email after a successful **`submitEventBooking`** callable. Implementation: [`functions/src/bookingEmailDispatcher.ts`](../../functions/src/bookingEmailDispatcher.ts), wired from [`functions/src/bookings.ts`](../../functions/src/bookings.ts).
 
@@ -12,6 +12,10 @@ User-facing email after a successful **`submitEventBooking`** callable. Implemen
 |---------------------|-----------------------------------------------|
 | `bookingConfirmation` | `GOV_NOTIFY_TEMPLATE_BOOKING_CONFIRMATION` |
 | `bookingRevision` | `GOV_NOTIFY_TEMPLATE_BOOKING_REVISION` |
+| `bookingPendingApproval` | `GOV_NOTIFY_TEMPLATE_BOOKING_PENDING_APPROVAL` |
+| `bookingPendingApprovalModerator` | `GOV_NOTIFY_TEMPLATE_BOOKING_PENDING_APPROVAL_MODERATOR` |
+| `bookingApproved` | `GOV_NOTIFY_TEMPLATE_BOOKING_APPROVED` |
+| `bookingChangesRequested` | `GOV_NOTIFY_TEMPLATE_BOOKING_CHANGES_REQUESTED` |
 
 Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_REPLY_TO_ID`, and **`APP_BASE_URL`**.
 
@@ -21,6 +25,10 @@ Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_RE
 |----------|------|
 | `bookingConfirmation` | First successful submit (no superseded booking) |
 | `bookingRevision` | Submit supersedes a previous booking and creates a payment adjustment row |
+| `bookingPendingApproval` | A member submits a booking revision requiring approval |
+| `bookingPendingApprovalModerator` | The same pending transition, once per organiser/admin recipient |
+| `bookingApproved` | An initial pending booking is approved and payment becomes available |
+| `bookingChangesRequested` | A pending booking revision is rejected with an optional organiser note |
 
 ## Template 1: booking confirmation — `bookingConfirmation`
 
@@ -31,7 +39,7 @@ Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_RE
 | `eventDateTime` | Formatted start/end (en-GB) |
 | `eventLocation` | Location or `To be confirmed` |
 | `ticketLinesSummary` | Multiline bullet list of lines |
-| `bookerDietaryNote` | Booker dietary note or `None provided` |
+| `memberDietaryNote` | Member ticket line dietary note or `None provided` |
 | `accommodationSummary` | `Not requested` or `Requested — {note}` |
 | `bookingTotalFormatted` | Sum of line prices, e.g. `£35.00` |
 | `sectionBookingsUrl` | `APP_BASE_URL/sections/{sectionId}` |
@@ -47,6 +55,17 @@ All keys from **bookingConfirmation**, plus:
 | `previousTotalFormatted` | Prior revision total |
 | `revisedTotalFormatted` | New revision total |
 | `deltaAmountFormatted` | Signed delta, e.g. `+£15.00` |
+
+## Approval transition templates
+
+The source-of-truth copy and placeholder lists are in:
+
+- `functions/email-templates/bookingPendingApproval.md`
+- `functions/email-templates/bookingPendingApprovalModerator.md`
+- `functions/email-templates/bookingApproved.md`
+- `functions/email-templates/bookingChangesRequested.md`
+
+Delivery keys are booking/revision scoped. Organiser alerts additionally include the normalized recipient email, so retries do not produce one email per guest or duplicate fan-out sends.
 
 ## Related docs
 

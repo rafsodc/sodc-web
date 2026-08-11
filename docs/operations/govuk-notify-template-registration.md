@@ -47,11 +47,12 @@ exist in Notify and be bound from the admin page to actually be used.
 | `paymentDisputeOpsAlert` |
 | `membershipActivated` |
 | `membershipAccessRestricted` |
-| `guestTicketRequestSubmittedModerator` |
-| `guestTicketRequestApproved` |
-| `guestTicketRequestRejected` |
 | `bookingConfirmation` |
 | `bookingRevision` |
+| `bookingPendingApproval` |
+| `bookingPendingApprovalModerator` |
+| `bookingApproved` |
+| `bookingChangesRequested` |
 | `newUserPendingApprovalAlert` |
 | `passwordReset` |
 | `emailVerification` |
@@ -59,7 +60,7 @@ exist in Notify and be bound from the admin page to actually be used.
 
 ## Suggested order
 
-1. Dev — all 16 templates, bind each from the admin page, then E2E smoke tests
+1. Dev — all 20 templates, bind each from the admin page, then E2E smoke tests
 2. Beta — clone copy, new templates, repeat binding and smoke tests
 3. Prod — final copy review, bind, enable sends
 

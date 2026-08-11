@@ -14,7 +14,6 @@ vi.mock("@dataconnect/generated/react", () => ({
   useGetEventById: vi.fn(),
   useListBookingPaymentAdjustmentsForAdmin: vi.fn(),
   useListEventBookingsForAdmin: vi.fn(),
-  useListGuestTicketRequestsForAdmin: vi.fn(),
   useListTicketOrdersForAdmin: vi.fn(),
 }));
 
@@ -32,7 +31,7 @@ vi.mock("../../../../config/firebase", () => ({
 }));
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
-  reviewGuestTicketRequest: vi.fn().mockResolvedValue({ success: true }),
+  reviewBookingRevision: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
@@ -44,12 +43,6 @@ function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
 function mockGetEventById(overrides: DataConnectQueryResultOverrides) {
   vi.mocked(reactGenerated.useGetEventById).mockReturnValue(
     dataConnectQueryResult<typeof reactGenerated.useGetEventById>(overrides)
-  );
-}
-
-function mockGuestTicketRequests(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useListGuestTicketRequestsForAdmin).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useListGuestTicketRequestsForAdmin>(overrides)
   );
 }
 
@@ -86,7 +79,13 @@ describe("SectionEventsManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(firebaseFunctions.reviewGuestTicketRequest).mockResolvedValue({ success: true });
+    vi.mocked(firebaseFunctions.reviewBookingRevision).mockResolvedValue({
+      success: true,
+      bookingId: "b-1",
+      revisionNumber: 2,
+      approvalStatus: "APPROVED",
+      paymentDelta: null,
+    });
     mockGetEventsForSection({
       data: { section: { id: sectionId, events: [] } },
       isLoading: false,
@@ -94,11 +93,6 @@ describe("SectionEventsManager", () => {
     });
     mockGetEventById({
       data: undefined,
-      isLoading: false,
-      isError: false,
-    });
-    mockGuestTicketRequests({
-      data: { event: { id: "ev-1", bookings: [] } },
       isLoading: false,
       isError: false,
     });
@@ -176,75 +170,15 @@ describe("SectionEventsManager", () => {
     });
   });
 
-  it("renders moderation queue and approves a pending request", async () => {
+  it("renders a complete pending booking and approves its exact revision", async () => {
     const user = userEvent.setup();
     mockGetEventsForSection({
-      data: {
-        section: {
-          id: sectionId,
-          events: [
-            {
-              id: "ev-1",
-              title: "Annual Dinner",
-              startDateTime: "2025-03-01T18:00:00Z",
-              endDateTime: "2025-03-01T22:00:00Z",
-              bookingStartDateTime: "2025-02-01T00:00:00Z",
-              bookingEndDateTime: "2025-02-28T23:59:59Z",
-              location: "Main Hall",
-              guestOfHonour: "Jane Doe",
-            },
-          ],
-        },
-      },
+      data: { section: { id: sectionId, events: [{ id: "ev-1", title: "Annual Dinner", startDateTime: "2025-03-01T18:00:00Z", endDateTime: "2025-03-01T22:00:00Z", bookingStartDateTime: "2025-02-01T00:00:00Z", bookingEndDateTime: "2025-02-28T23:59:59Z", location: "Main Hall", guestOfHonour: "Jane Doe", maxGuestsWithoutModeratorApproval: 1 }] } },
       isLoading: false,
       isError: false,
     });
     mockGetEventById({
-      data: {
-        event: {
-          id: "ev-1",
-          title: "Annual Dinner",
-          startDateTime: "2025-03-01T18:00:00Z",
-          endDateTime: "2025-03-01T22:00:00Z",
-          bookingStartDateTime: "2025-02-01T00:00:00Z",
-          bookingEndDateTime: "2025-02-28T23:59:59Z",
-          location: "Main Hall",
-          guestOfHonour: "Jane Doe",
-          maxGuestsWithoutModeratorApproval: 1,
-          ticketTypes: [],
-        },
-      },
-      isLoading: false,
-      isError: false,
-    });
-    mockGuestTicketRequests({
-      data: {
-        event: {
-          id: "ev-1",
-          bookings: [
-            {
-              id: "b-1",
-              status: "SUBMITTED",
-              revisionNumber: 2,
-              supersedesBooking: { id: "b-0", revisionNumber: 1 },
-              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
-              guestTicketRequests: [
-                {
-                  id: "r-1",
-                  status: "PENDING",
-                  requestedGuestCount: 2,
-                  guestDisplayName: "Jamie Guest",
-                  dietaryNote: "None",
-                  moderatorNote: null,
-                  createdAt: "2026-02-01T00:00:00Z",
-                  reviewedAt: null,
-                  guestTicketType: { id: "tt-1", title: "Guest standard", audience: "GUEST", price: 10 },
-                },
-              ],
-            },
-          ],
-        },
-      },
+      data: { event: { id: "ev-1", title: "Annual Dinner", startDateTime: "2025-03-01T18:00:00Z", endDateTime: "2025-03-01T22:00:00Z", bookingStartDateTime: "2025-02-01T00:00:00Z", bookingEndDateTime: "2025-02-28T23:59:59Z", location: "Main Hall", guestOfHonour: "Jane Doe", maxGuestsWithoutModeratorApproval: 1, ticketTypes: [] } },
       isLoading: false,
       isError: false,
     });
@@ -254,39 +188,18 @@ describe("SectionEventsManager", () => {
           id: "ev-1",
           bookings: [
             {
-              id: "b-1",
-              status: "SUBMITTED",
-              revisionNumber: 2,
-              supersedesBooking: { id: "b-0", revisionNumber: 1 },
-              lines: [{ id: "line-1" }],
-              createdAt: "2026-02-01T00:00:00Z",
-              updatedAt: "2026-02-01T01:00:00Z",
-              createdBy: "u-1",
-              updatedBy: "u-1",
+              id: "b-0", status: "SUBMITTED", approvalStatus: "APPROVED", revisionGroupId: "10000000-0000-4000-8000-000000000001", revisionNumber: 1, supersededAt: null,
+              lines: [], createdAt: "2026-01-31T00:00:00Z", updatedAt: "2026-01-31T01:00:00Z", createdBy: "u-1", updatedBy: "u-1",
               booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
             },
-          ],
-        },
-      },
-      isLoading: false,
-      isError: false,
-    });
-    mockTicketOrders({
-      data: {
-        event: {
-          id: "ev-1",
-          ticketOrders: [
             {
-              id: "o-1",
-              status: "PAID",
-              quantity: 2,
-              totalAmountMinor: 5000,
-              currency: "gbp",
-              webhookEventId: "evt_123",
-              updatedAt: "2026-02-01T02:00:00Z",
-              updatedBy: "system",
-              user: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
-              ticketType: { id: "tt-1", title: "Member ticket" },
+              id: "b-1", status: "SUBMITTED", approvalStatus: "PENDING", revisionGroupId: "10000000-0000-4000-8000-000000000001", revisionNumber: 2, supersededAt: null,
+              supersedesBooking: { id: "b-0", revisionNumber: 1 }, createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T01:00:00Z", createdBy: "u-1", updatedBy: "u-1",
+              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+              lines: [
+                { id: "line-member", sortOrder: 0, guestDisplayName: null, dietaryNote: "Vegetarian", bookingPlace: { id: "place-member", paymentAllocations: [] }, ticketType: { id: "tt-member", title: "Member ticket", audience: "MEMBER", price: 25 } },
+                { id: "line-guest", sortOrder: 1, guestDisplayName: "Jamie Guest", dietaryNote: "No nuts", bookingPlace: { id: "place-guest", paymentAllocations: [] }, ticketType: { id: "tt-1", title: "Guest standard", audience: "GUEST", price: 10 } },
+              ],
             },
           ],
         },
@@ -297,47 +210,19 @@ describe("SectionEventsManager", () => {
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^booking approvals$/i }));
 
-    expect(screen.getByText(/event admin: annual dinner/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^event details$/i })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: /^ticket types$/i })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: /^guest ticket requests$/i })).toHaveAttribute(
-      "aria-expanded",
-      "false"
-    );
-    expect(screen.getByRole("button", { name: /^booking audit activity$/i })).toHaveAttribute(
-      "aria-expanded",
-      "false"
-    );
-    expect(screen.getByRole("button", { name: /^payment status activity$/i })).toHaveAttribute(
-      "aria-expanded",
-      "false"
-    );
-
-    await user.click(screen.getByRole("button", { name: /^event details$/i }));
-    expect(screen.getByRole("button", { name: /edit event details/i })).toBeInTheDocument();
-    expect(screen.getByText(/max guests without moderator approval/i)).toBeInTheDocument();
-    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
-
-    await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
-    expect(screen.getByText(/additional guest ticket requests/i)).toBeInTheDocument();
     expect(screen.getByText("Jamie Guest")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^approve$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^reject$/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
-    expect(screen.getByText(/booking audit activity/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
-    expect(screen.getByText(/payment status activity/i)).toBeInTheDocument();
-    expect(screen.getByText(/evt_123/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /approve/i }));
-    await waitFor(() => expect(firebaseFunctions.reviewGuestTicketRequest).toHaveBeenCalled());
-    expect(firebaseFunctions.reviewGuestTicketRequest).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "r-1",
-        status: "APPROVED",
-      })
-    );
-    expect(await screen.findByText("Guest ticket request approved")).toBeInTheDocument();
+    expect(screen.getByText(/dietary: no nuts/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/rev 1/i).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: /^approve$/i }));
+    await waitFor(() => expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalled());
+    expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledWith(expect.objectContaining({
+      bookingId: "b-1",
+      expectedRevisionNumber: 2,
+      decision: "APPROVED",
+    }));
+    expect(await screen.findByText("Booking revision approved")).toBeInTheDocument();
   }, 10_000);
 
   it("opens event edit dialog from the event admin details section", async () => {
@@ -498,16 +383,16 @@ describe("SectionEventsManager", () => {
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /event admin/i }));
-    await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
+    await user.click(screen.getByRole("button", { name: /^booking approvals$/i }));
     await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
     await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
 
-    expect(screen.getByText(/no guest ticket requests for this filter/i)).toBeInTheDocument();
+    expect(screen.getByText(/no booking revisions for this filter/i)).toBeInTheDocument();
     expect(screen.getByText(/no bookings found for this event/i)).toBeInTheDocument();
     expect(screen.getByText(/no payment orders found for this event/i)).toBeInTheDocument();
   });
 
-  it("shows guest ticket requests only from the latest booking revision", async () => {
+  it("shows only the current pending booking revision", async () => {
     const user = userEvent.setup();
     mockGetEventsForSection({
       data: {
@@ -548,67 +433,19 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
     });
-    mockGuestTicketRequests({
-      data: {
-        event: {
-          id: "ev-1",
-          bookings: [
-            {
-              id: "b-0",
-              status: "SUBMITTED",
-              revisionNumber: 1,
-              revisionGroupId: "rev-group-1",
-              supersededAt: "2026-02-01T01:00:00Z",
-              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
-              guestTicketRequests: [
-                {
-                  id: "r-old",
-                  status: "PENDING",
-                  requestedGuestCount: 1,
-                  guestDisplayName: "Superseded Guest",
-                  dietaryNote: null,
-                  moderatorNote: null,
-                  createdAt: "2026-02-01T00:00:00Z",
-                  reviewedAt: null,
-                  guestTicketType: { id: "tt-1", title: "Guest standard", audience: "GUEST", price: 10 },
-                },
-              ],
-            },
-            {
-              id: "b-1",
-              status: "SUBMITTED",
-              revisionNumber: 2,
-              revisionGroupId: "rev-group-1",
-              supersededAt: null,
-              supersedesBooking: { id: "b-0", revisionNumber: 1 },
-              booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
-              guestTicketRequests: [
-                {
-                  id: "r-new",
-                  status: "PENDING",
-                  requestedGuestCount: 1,
-                  guestDisplayName: "Current Guest",
-                  dietaryNote: null,
-                  moderatorNote: null,
-                  createdAt: "2026-02-01T02:00:00Z",
-                  reviewedAt: null,
-                  guestTicketType: { id: "tt-1", title: "Guest standard", audience: "GUEST", price: 10 },
-                },
-              ],
-            },
-          ],
-        },
-      },
-      isLoading: false,
-      isError: false,
+    const shared = { status: "SUBMITTED", approvalStatus: "PENDING", revisionGroupId: "10000000-0000-4000-8000-000000000001", createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T00:00:00Z", createdBy: "u-1", updatedBy: "u-1", booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" } };
+    mockEventBookings({
+      data: { event: { id: "ev-1", bookings: [
+        { ...shared, id: "b-0", revisionNumber: 1, supersededAt: "2026-02-01T01:00:00Z", lines: [{ id: "old", sortOrder: 1, guestDisplayName: "Superseded Guest", dietaryNote: null, ticketType: { id: "tt-1", title: "Guest", audience: "GUEST", price: 10 }, bookingPlace: { id: "place-old", paymentAllocations: [] } }] },
+        { ...shared, id: "b-1", revisionNumber: 2, supersededAt: null, supersedesBooking: { id: "b-0", revisionNumber: 1 }, lines: [{ id: "new", sortOrder: 1, guestDisplayName: "Current Guest", dietaryNote: null, ticketType: { id: "tt-1", title: "Guest", audience: "GUEST", price: 10 }, bookingPlace: { id: "place-new", paymentAllocations: [] } }] },
+      ] } }, isLoading: false, isError: false,
     });
-    mockEventBookings({ data: { event: { id: "ev-1", bookings: [] } }, isLoading: false, isError: false });
     mockTicketOrders({ data: { event: { id: "ev-1", ticketOrders: [] } }, isLoading: false, isError: false });
     mockBookingPaymentAdjustments({ data: { event: { id: "ev-1", bookings: [] } }, isLoading: false, isError: false });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /event admin/i }));
-    await user.click(screen.getByRole("button", { name: /^guest ticket requests$/i }));
+    await user.click(screen.getByRole("button", { name: /^booking approvals$/i }));
 
     expect(screen.getByText("Current Guest")).toBeInTheDocument();
     expect(screen.queryByText("Superseded Guest")).not.toBeInTheDocument();

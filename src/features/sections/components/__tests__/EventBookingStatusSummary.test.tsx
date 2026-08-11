@@ -1,242 +1,77 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ReactElement } from "react";
-import { render, screen } from "../../../../test-utils";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "../../../../test-utils";
+import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import EventBookingStatusSummary from "../EventBookingStatusSummary";
-import { BookingStatus, TicketOrderStatus } from "@dataconnect/generated";
+
+function booking(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "booking-1",
+    status: BookingStatus.SUBMITTED,
+    approvalStatus: "NOT_REQUIRED",
+    approvalNote: null,
+    revisionNumber: 1,
+    supersededAt: null,
+    updatedAt: "2026-08-11T10:00:00Z",
+    lines: [{
+      id: "line-1",
+      sortOrder: 0,
+      guestDisplayName: null,
+      dietaryNote: null,
+      bookingPlace: { id: "place-1", paymentAllocations: [] },
+      ticketType: { id: "ticket-member", title: "Member standard", audience: TicketAudience.MEMBER, price: 50 },
+    }],
+    ...overrides,
+  } as never;
+}
+
+function renderSummary(args: { booking?: ReturnType<typeof booking>; orders?: unknown[] } = {}) {
+  render(
+    <MemoryRouter>
+      <EventBookingStatusSummary
+        booking={args.booking ?? booking()}
+        eventId="event-1"
+        eventTitle="Annual Dinner"
+        ticketOrders={(args.orders ?? []) as never}
+        paymentAdjustments={[]}
+        onEditBooking={vi.fn()}
+        onPayNow={vi.fn()}
+      />
+    </MemoryRouter>
+  );
+}
 
 describe("EventBookingStatusSummary", () => {
-  const onEditBooking = vi.fn();
-  const onPayNow = vi.fn();
-
-  const renderSummary = (ui: ReactElement) =>
-    render(<MemoryRouter>{ui}</MemoryRouter>);
-
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it("shows awaiting approval without offering payment", () => {
+    renderSummary({ booking: booking({ approvalStatus: "PENDING" }) });
+    expect(screen.getByRole("heading", { name: "Awaiting approval" })).toBeInTheDocument();
+    expect(screen.getByText(/complete booking is with the organiser/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pay/i })).not.toBeInTheDocument();
   });
 
-  it("shows pending payment and guest review actions", () => {
-    renderSummary(
-      <EventBookingStatusSummary
-        booking={{
-          id: "booking-1",
-          status: BookingStatus.SUBMITTED,
-          revisionNumber: 2,
-          lines: [
-            {
-              id: "line-1",
-              guestDisplayName: null,
-              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-            },
-          ],
-          guestTicketRequests: [{ id: "gtr-1", status: "PENDING", requestedGuestCount: 1 }],
-        } as never}
-        eventId="event-1"
-        eventTitle="Annual Dinner"
-        ticketOrders={[]}
-        paymentAdjustments={[]}
-        onEditBooking={onEditBooking}
-        onPayNow={onPayNow}
-      />
-    );
-
-    expect(screen.getByText("Your booking")).toBeInTheDocument();
-    expect(screen.getByText("Payment not started")).toBeInTheDocument();
-    expect(screen.getByText(/1 pending review/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+  it("shows the organiser note and one edit action when changes are requested", () => {
+    renderSummary({ booking: booking({ approvalStatus: "REJECTED", approvalNote: "Please confirm both guest names." }) });
+    expect(screen.getByRole("heading", { name: "Changes requested" })).toBeInTheDocument();
+    expect(screen.getByText("Please confirm both guest names.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Edit booking" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View in My Bookings" })).toBeInTheDocument();
   });
 
-  it("shows approved extra guests in the ticket table", () => {
-    renderSummary(
-      <EventBookingStatusSummary
-        booking={{
-          id: "booking-1",
-          status: BookingStatus.SUBMITTED,
-          revisionNumber: 2,
-          lines: [
-            {
-              id: "line-1",
-              guestDisplayName: null,
-              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-            },
-          ],
-          guestTicketRequests: [
-            {
-              id: "gtr-1",
-              status: "APPROVED",
-              requestedGuestCount: 1,
-              guestDisplayName: "Alex Guest",
-              guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-            },
-          ],
-        } as never}
-        eventId="event-1"
-        eventTitle="Annual Dinner"
-        ticketOrders={[]}
-        paymentAdjustments={[]}
-        onEditBooking={onEditBooking}
-      />
-    );
-
-    expect(screen.getByText("Guest standard")).toBeInTheDocument();
-    expect(screen.getByText("Alex Guest")).toBeInTheDocument();
-    expect(screen.getByText(/approved extra guest/i)).toBeInTheDocument();
-  });
-
-  it("shows pending extra guests awaiting approval in the ticket table", () => {
-    renderSummary(
-      <EventBookingStatusSummary
-        booking={{
-          id: "booking-1",
-          status: BookingStatus.SUBMITTED,
-          revisionNumber: 2,
-          lines: [
-            {
-              id: "line-1",
-              guestDisplayName: null,
-              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-            },
-          ],
-          guestTicketRequests: [
-            {
-              id: "gtr-1",
-              status: "PENDING",
-              requestedGuestCount: 1,
-              guestDisplayName: "Sam Extra",
-              guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-            },
-          ],
-        } as never}
-        eventId="event-1"
-        eventTitle="Annual Dinner"
-        ticketOrders={[]}
-        paymentAdjustments={[]}
-        onEditBooking={onEditBooking}
-      />
-    );
-
-    expect(screen.getByText("Guest standard")).toBeInTheDocument();
-    expect(screen.getByText("Sam Extra")).toBeInTheDocument();
-    expect(screen.getByText(/pending confirmation/i)).toBeInTheDocument();
-  });
-
-  it("shows partial payment when an approved extra guest still needs paying", () => {
-    renderSummary(
-      <EventBookingStatusSummary
-        booking={{
-          id: "booking-1",
-          status: BookingStatus.SUBMITTED,
-          revisionNumber: 2,
-          lines: [
-            {
-              id: "line-1",
-              guestDisplayName: null,
-              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-            },
-            {
-              id: "line-2",
-              guestDisplayName: "Jamie Guest",
-              ticketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-            },
-          ],
-          guestTicketRequests: [
-            {
-              id: "gtr-1",
-              status: "APPROVED",
-              requestedGuestCount: 1,
-              guestDisplayName: "Alex Extra",
-              guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-            },
-          ],
-        } as never}
-        eventId="event-1"
-        eventTitle="Annual Dinner"
-        ticketOrders={[
-          {
-            status: TicketOrderStatus.PAID,
-            quantity: 1,
-            event: { id: "event-1" },
-            ticketType: { id: "ticket-member" },
-          },
-          {
-            status: TicketOrderStatus.PAID,
-            quantity: 1,
-            event: { id: "event-1" },
-            ticketType: { id: "ticket-guest" },
-          },
-        ]}
-        paymentAdjustments={[]}
-        onEditBooking={onEditBooking}
-        onPayNow={onPayNow}
-      />
-    );
-
-    expect(screen.getByText("Partially paid")).toBeInTheDocument();
+  it("directs an approved booking to payment", () => {
+    renderSummary();
+    expect(screen.getByRole("heading", { name: "Payment required" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
-    expect(screen.getByText(/pay for any unpaid tickets/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Paid")).toHaveLength(2);
-    expect(screen.getByText("Unpaid")).toBeInTheDocument();
   });
 
-  it("hides Pay now when payment is complete", () => {
-    renderSummary(
-      <EventBookingStatusSummary
-        booking={{
-          id: "booking-1",
-          status: BookingStatus.CONFIRMED,
-          revisionNumber: 1,
-          lines: [
-            {
-              id: "line-1",
-              guestDisplayName: null,
-              ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-            },
-          ],
-          guestTicketRequests: [],
-        } as never}
-        eventId="event-1"
-        eventTitle="Annual Dinner"
-        ticketOrders={[
-          {
-            status: TicketOrderStatus.PAID,
-            event: { id: "event-1" },
-            ticketType: { id: "ticket-member" },
-          },
-        ]}
-        paymentAdjustments={[]}
-        onEditBooking={onEditBooking}
-        onPayNow={onPayNow}
-      />
-    );
-
-    expect(screen.getAllByText("Paid").length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
-  });
-
-  it("calls edit handler from action button", async () => {
-    const user = userEvent.setup();
-    renderSummary(
-      <EventBookingStatusSummary
-        booking={{
-          id: "booking-1",
-          status: BookingStatus.SUBMITTED,
-          revisionNumber: 1,
-          lines: [],
-          guestTicketRequests: [],
-        } as never}
-        eventId="event-1"
-        eventTitle="Annual Dinner"
-        ticketOrders={[]}
-        paymentAdjustments={[]}
-        onEditBooking={onEditBooking}
-      />
-    );
-
-    await user.click(screen.getByRole("button", { name: "Edit booking" }));
-    expect(onEditBooking).toHaveBeenCalledTimes(1);
+  it("shows confirmed when every ticket is paid", () => {
+    renderSummary({
+      orders: [{
+        status: TicketOrderStatus.PAID,
+        quantity: 1,
+        event: { id: "event-1" },
+        ticketType: { id: "ticket-member" },
+      }],
+    });
+    expect(screen.getByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
   });
 });

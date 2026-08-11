@@ -32,7 +32,10 @@ enum BookingStatus {
   CANCELLED
 }
 
-enum GuestTicketRequestStatus {
+# Moderation state for the complete booking revision. This is deliberately
+# separate from lifecycle and payment state (see #538 / #543).
+enum BookingApprovalStatus {
+  NOT_REQUIRED
   PENDING
   APPROVED
   REJECTED
@@ -67,6 +70,7 @@ enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED
   PENDING_AUTO_REFUND
   PENDING_AUTO_CHARGE
+  SETTLED
 }
 
 enum NotificationChannel {
@@ -431,8 +435,9 @@ type Event @table {
   endDateTime: Timestamp!
   bookingStartDateTime: Timestamp!
   bookingEndDateTime: Timestamp!
-  # Max guest headcount allowed without extra moderator approval (null = unset; semantics in booking rules).
-  maxGuestsWithoutModeratorApproval: Int
+  # Guest places only (the member is excluded). Required for every event;
+  # 0 means every booking containing a guest requires approval.
+  maxGuestsWithoutModeratorApproval: Int!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -458,7 +463,10 @@ type TicketType @table {
 }
 
 # Booking - one booker per event per purchase flow. Idempotent submits use clientSubmissionKey (unique per event+booker+key).
-type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) {
+type Booking
+  @table
+  @unique(fields: ["event", "booker", "clientSubmissionKey"])
+  @unique(fields: ["revisionGroupId", "revisionNumber"]) {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!
@@ -469,8 +477,12 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   # Client-generated UUID per submit attempt (callable submitEventBooking); DB enforces uniqueness with event+booker.
   clientSubmissionKey: String
   status: BookingStatus! @default(value: DRAFT)
+  # Approval belongs to this exact revision, not to individual guest rows.
+  approvalStatus: BookingApprovalStatus! @default(value: NOT_REQUIRED)
+  approvalReviewedBy: User
+  approvalReviewedAt: Timestamp
+  approvalNote: String
   # Booker-level preferences captured during booking flow (#49).
-  bookerDietaryNote: String
   sitNextToUserIds: [String!]
   accommodationRequested: Boolean! @default(value: false)
   accommodationNote: String
@@ -481,15 +493,12 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# One line per ticket; ticket type audience must match use (member vs guest). Guest identity optional.
-type BookingLine @table {
+# Stable identity for one member/guest ticket place across booking revisions.
+# New booking submissions create one place per ticket and reuse it on revisions.
+type BookingPlace @table {
   id: UUID! @default(expr: "uuidV4()")
-  booking: Booking!
-  ticketType: TicketType!
-  guestUser: User
-  guestDisplayName: String
-  dietaryNote: String
-  sortOrder: Int! @default(value: 0)
+  event: Event!
+  booker: User!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -497,19 +506,16 @@ type BookingLine @table {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# Extra guest headcount that needs moderator approval beyond the standard cap (see issue #48).
-type GuestTicketRequest @table {
+# One line per ticket; ticket type audience must match use (member vs guest). Guest identity optional.
+type BookingLine @table {
   id: UUID! @default(expr: "uuidV4()")
+  bookingPlace: BookingPlace!
   booking: Booking!
-  status: GuestTicketRequestStatus! @default(value: PENDING)
-  requestedGuestCount: Int!
-  # Mirrors BookingLine guest fields so moderators see who/what is being requested (nullable on legacy rows).
-  guestTicketType: TicketType
+  ticketType: TicketType!
+  guestUser: User
   guestDisplayName: String
   dietaryNote: String
-  reviewedBy: User
-  reviewedAt: Timestamp
-  moderatorNote: String
+  sortOrder: Int! @default(value: 0)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -541,6 +547,25 @@ type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
   disputeUpdatedAt: Timestamp
   disputeClosedAt: Timestamp
   webhookEventId: String
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
+# Allocates a paid/order quantity to an exact stable booking place. It never
+# points at a revision-specific BookingLine, so revisions reuse the place
+# without rewriting historical payment allocation records.
+type BookingPlacePaymentAllocation @table @unique(fields: ["ticketOrder", "bookingPlace"]) {
+  id: UUID! @default(expr: "uuidV4()")
+  ticketOrder: TicketOrder!
+  bookingPlace: BookingPlace!
+  allocatedAmountMinor: Int!
+  # Refunds are tracked per exact place so partial refunds on a multi-ticket
+  # Stripe charge never erase the paid entitlement of sibling tickets.
+  refundedAmountMinor: Int! @default(value: 0)
+  stripeRefundId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

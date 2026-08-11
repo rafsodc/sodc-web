@@ -32,6 +32,18 @@ Source: [`bookingConfirmation.md`](../../functions/email-templates/bookingConfir
 
 Source: [`bookingRevision.md`](../../functions/email-templates/bookingRevision.md)
 
+### `bookingPendingApproval`
+
+Source: [`bookingPendingApproval.md`](../../functions/email-templates/bookingPendingApproval.md)
+
+### `bookingApproved`
+
+Source: [`bookingApproved.md`](../../functions/email-templates/bookingApproved.md)
+
+### `bookingChangesRequested`
+
+Source: [`bookingChangesRequested.md`](../../functions/email-templates/bookingChangesRequested.md)
+
 ### `emailChangeVerification`
 
 Source: [`email-change-verification.md`](../../functions/email-templates/email-change-verification.md)
@@ -39,14 +51,6 @@ Source: [`email-change-verification.md`](../../functions/email-templates/email-c
 ### `emailVerification`
 
 Source: [`email-verification.md`](../../functions/email-templates/email-verification.md)
-
-### `guestTicketRequestApproved`
-
-Source: [`guestTicketRequestApproved.md`](../../functions/email-templates/guestTicketRequestApproved.md)
-
-### `guestTicketRequestRejected`
-
-Source: [`guestTicketRequestRejected.md`](../../functions/email-templates/guestTicketRequestRejected.md)
 
 ### `membershipAccessRestricted`
 
@@ -74,9 +78,9 @@ Source: [`ticketOrderRefunded.md`](../../functions/email-templates/ticketOrderRe
 
 ## Moderator and operations templates
 
-### `guestTicketRequestSubmittedModerator`
+### `bookingPendingApprovalModerator`
 
-Source: [`guestTicketRequestSubmittedModerator.md`](../../functions/email-templates/guestTicketRequestSubmittedModerator.md)
+Source: [`bookingPendingApprovalModerator.md`](../../functions/email-templates/bookingPendingApprovalModerator.md)
 
 ### `newUserPendingApprovalAlert`
 

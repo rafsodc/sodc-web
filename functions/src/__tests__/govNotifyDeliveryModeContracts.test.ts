@@ -23,7 +23,6 @@ describe("GOV.UK Notify delivery mode contracts", () => {
       "announcements.ts",
       "bookings.ts",
       "emailTemplateSync.ts",
-      "guestTicketRequests.ts",
       "membershipStatus.ts",
       "notificationRecovery.ts",
       "paymentWebhook.ts",

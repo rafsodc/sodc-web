@@ -9,17 +9,18 @@ import {
   NotificationDeliveryStatus,
 } from "@dataconnect/admin-generated";
 import {
+  bookingChangesRequestedDeliveryKey,
+  bookingApprovedDeliveryKey,
   bookingConfirmationDeliveryKey,
+  bookingPendingMemberDeliveryKey,
+  bookingPendingModeratorDeliveryKey,
   bookingRevisionDeliveryKey,
+  notifyBookingChangesRequestedEmail,
+  notifyBookingApprovedEmail,
   notifyBookingConfirmationEmail,
+  notifyBookingPendingApprovalEmails,
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
-import {
-  guestTicketBookerDeliveryKey,
-  guestTicketModeratorDeliveryKey,
-  notifyBookerGuestTicketRequestReviewed,
-  notifyModeratorsGuestTicketRequestSubmitted,
-} from "./guestTicketRequestEmails";
 import {
   classifyMembershipStatusEmailTransition,
   membershipStatusDeliveryKey,
@@ -82,6 +83,26 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
           payload.idempotencyKey
         ),
       };
+    case "BOOKING_PENDING_MEMBER":
+      return {
+        notificationType: "BOOKING_PENDING_APPROVAL_MEMBER",
+        deliveryKey: bookingPendingMemberDeliveryKey(payload.bookingId, payload.idempotencyKey),
+      };
+    case "BOOKING_PENDING_MODERATOR":
+      return {
+        notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
+        deliveryKey: bookingPendingModeratorDeliveryKey(payload.bookingId, payload.recipientEmail),
+      };
+    case "BOOKING_CHANGES_REQUESTED":
+      return {
+        notificationType: "BOOKING_CHANGES_REQUESTED",
+        deliveryKey: bookingChangesRequestedDeliveryKey(payload.bookingId),
+      };
+    case "BOOKING_APPROVED":
+      return {
+        notificationType: "BOOKING_APPROVED",
+        deliveryKey: bookingApprovedDeliveryKey(payload.bookingId),
+      };
     case "MEMBERSHIP_STATUS": {
       const transition = classifyMembershipStatusEmailTransition(
         payload.previousStatus,
@@ -103,25 +124,6 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
         }),
       };
     }
-    case "GUEST_REQUEST_MODERATORS":
-      return {
-        notificationType: "GUEST_REQUEST_SUBMITTED_MODERATOR",
-        deliveryKey: guestTicketModeratorDeliveryKey(
-          payload.requestId,
-          payload.recipientEmail
-        ),
-      };
-    case "GUEST_REQUEST_BOOKER":
-      return {
-        notificationType:
-          payload.status === "APPROVED"
-            ? "GUEST_REQUEST_APPROVED"
-            : "GUEST_REQUEST_REJECTED",
-        deliveryKey: guestTicketBookerDeliveryKey(
-          payload.requestId,
-          payload.status
-        ),
-      };
     case "USER_PENDING_APPROVAL":
       return {
         notificationType: "USER_PENDING_APPROVAL",
@@ -174,9 +176,10 @@ type PaymentLifecycleRecoveryPayload = Extract<
 export interface NotificationRecoveryDispatcherDependencies {
   notifyBookingConfirmation?: typeof notifyBookingConfirmationEmail;
   notifyBookingRevision?: typeof notifyBookingRevisionEmail;
+  notifyBookingPending?: typeof notifyBookingPendingApprovalEmails;
+  notifyBookingChangesRequested?: typeof notifyBookingChangesRequestedEmail;
+  notifyBookingApproved?: typeof notifyBookingApprovedEmail;
   notifyMembershipStatus?: typeof notifyMembershipStatusEmailIfNeeded;
-  notifyGuestRequestModerators?: typeof notifyModeratorsGuestTicketRequestSubmitted;
-  notifyGuestRequestBooker?: typeof notifyBookerGuestTicketRequestReviewed;
   notifyPendingApproval?: typeof notifyAdminsUserPendingApproval;
   notifyPaymentReconciliationOps?: typeof notifyPaymentOpsReconciliationExceptionOpened;
   notifyPaymentDisputeOps?: typeof notifyPaymentOpsDisputeSideState;
@@ -251,27 +254,44 @@ export function createNotificationRecoveryDispatcher(
           deliveryMode: payload.deliveryMode,
         });
         return;
+      case "BOOKING_PENDING_MEMBER":
+        await (dependencies.notifyBookingPending ?? notifyBookingPendingApprovalEmails)({
+          bookingId: payload.bookingId,
+          idempotencyKey: payload.idempotencyKey,
+          recipientEmails: [],
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_PENDING_MODERATOR":
+        await (dependencies.notifyBookingPending ?? notifyBookingPendingApprovalEmails)({
+          bookingId: payload.bookingId,
+          idempotencyKey: `recovery:${payload.bookingId}`,
+          recipientEmails: [payload.recipientEmail],
+          notifyMember: false,
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_CHANGES_REQUESTED":
+        await (dependencies.notifyBookingChangesRequested ?? notifyBookingChangesRequestedEmail)({
+          bookingId: payload.bookingId,
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
+      case "BOOKING_APPROVED":
+        await (dependencies.notifyBookingApproved ?? notifyBookingApprovedEmail)({
+          bookingId: payload.bookingId,
+          appBaseUrl,
+          deliveryMode: payload.deliveryMode,
+        });
+        return;
       case "MEMBERSHIP_STATUS":
         await (dependencies.notifyMembershipStatus ?? notifyMembershipStatusEmailIfNeeded)({
           userId: payload.userId,
           previousStatus: payload.previousStatus,
           newStatus: payload.newStatus,
-          appBaseUrl,
-          deliveryMode: payload.deliveryMode,
-        });
-        return;
-      case "GUEST_REQUEST_MODERATORS":
-        await (dependencies.notifyGuestRequestModerators ?? notifyModeratorsGuestTicketRequestSubmitted)({
-          requestId: payload.requestId,
-          recipientEmails: [payload.recipientEmail],
-          appBaseUrl,
-          deliveryMode: payload.deliveryMode,
-        });
-        return;
-      case "GUEST_REQUEST_BOOKER":
-        await (dependencies.notifyGuestRequestBooker ?? notifyBookerGuestTicketRequestReviewed)({
-          requestId: payload.requestId,
-          status: payload.status,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });

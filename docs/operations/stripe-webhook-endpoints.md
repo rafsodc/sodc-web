@@ -29,6 +29,7 @@ Use your Firebase project id in place of `<project-id>`.
    - `checkout.session.completed`
    - `checkout.session.expired`
    - `checkout.session.async_payment_failed`
+   - `refund.created`
    - `charge.refunded`
    - `charge.dispute.created`
    - `charge.dispute.updated`
@@ -64,6 +65,7 @@ Trigger representative events:
 ```bash
 stripe trigger checkout.session.completed
 stripe trigger checkout.session.expired
+stripe trigger refund.created
 ```
 
 Replay a known event id:
@@ -79,7 +81,8 @@ stripe events resend <event-id> --webhook-endpoint=<endpoint-id>
   - confirm secret is stored in the correct environment
 - Event ignored:
   - check event type is in payments allowlist
-  - verify event includes `metadata.orderId`
+  - verify checkout/dispute objects include order metadata
+  - verify Refund objects include `ticketOrderId`, `allocationId`, `refundAmountMinor`, and `resultingRefundedAmountMinor`
 - Duplicate delivery:
   - confirm webhook idempotency ledger recorded prior processing
 - Missing order:

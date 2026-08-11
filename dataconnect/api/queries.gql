@@ -396,10 +396,12 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
       revisionNumber
       supersededAt
       clientSubmissionKey
-      bookerDietaryNote
       sitNextToUserIds
       accommodationRequested
       accommodationNote
@@ -407,6 +409,17 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
+        bookingPlace {
+          id
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            refundedAmountMinor
+            ticketOrder {
+              id
+              status
+            }
+          }
+        }
         sortOrder
         guestDisplayName
         dietaryNote
@@ -422,21 +435,6 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
           lastName
         }
       }
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        guestDisplayName
-        dietaryNote
-        guestTicketType {
-          id
-          title
-          audience
-          price
-        }
-        reviewedAt
-        moderatorNote
-      }
     }
   }
 }
@@ -451,6 +449,9 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
     ) {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
       revisionNumber
       updatedAt
       event {
@@ -465,21 +466,13 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
       }
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
+        bookingPlace {
+          id
+        }
         ticketType {
           id
           title
           audience
-          price
-        }
-      }
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        guestDisplayName
-        guestTicketType {
-          id
-          title
           price
         }
       }
@@ -574,13 +567,22 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
     bookings: bookings_on_event {
       id
       status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
+      approvalReviewedBy {
+        id
+        firstName
+        lastName
+      }
+      revisionGroupId
       revisionNumber
+      supersededAt
       supersedesBooking {
         id
         revisionNumber
       }
       clientSubmissionKey
-      bookerDietaryNote
       sitNextToUserIds
       accommodationRequested
       accommodationNote
@@ -594,74 +596,29 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         lastName
         email
       }
-      guestTicketRequests: guestTicketRequests_on_booking {
-        id
-        status
-        requestedGuestCount
-        reviewedAt
-        moderatorNote
-        createdAt
-        updatedAt
-        createdBy
-        updatedBy
-        reviewedBy {
-          id
-          firstName
-          lastName
-        }
-      }
       lines: bookingLines_on_booking {
         id
-        ticketType {
-          id
-          title
-          audience
-        }
-      }
-    }
-  }
-}
-
-# Admin: list guest ticket requests for moderation queue on an event.
-query ListGuestTicketRequestsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  event(id: $eventId) {
-    id
-    title
-    bookings: bookings_on_event(where: { supersededAt: { isNull: true } }) {
-      id
-      status
-      revisionNumber
-      revisionGroupId
-      supersededAt
-      supersedesBooking {
-        id
-        revisionNumber
-      }
-      booker {
-        id
-        firstName
-        lastName
-        email
-      }
-      guestTicketRequests: guestTicketRequests_on_booking(orderBy: { createdAt: DESC }) {
-        id
-        status
-        requestedGuestCount
+        sortOrder
         guestDisplayName
         dietaryNote
-        moderatorNote
-        createdAt
-        reviewedAt
-        createdBy
-        updatedAt
-        updatedBy
-        reviewedBy {
+        bookingPlace {
+          id
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            allocatedAmountMinor
+            refundedAmountMinor
+            ticketOrder {
+              id
+              status
+            }
+          }
+        }
+        guestUser {
           id
           firstName
           lastName
-          email
         }
-        guestTicketType {
+        ticketType {
           id
           title
           audience

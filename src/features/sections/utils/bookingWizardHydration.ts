@@ -1,90 +1,54 @@
-import { TicketAudience, GuestTicketRequestStatus } from "@dataconnect/generated";
-import { guestTicketRequestsForBookingEdit, guestTicketRequestCount } from "./eventBookingStatusSummary";
+import { TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
+import type { GuestDetailRow } from "../hooks/bookingWizardModel";
 
-// Shape that the wizard's form state is initialised from when an existing booking is loaded.
 export interface WizardFormSnapshot {
   memberTicketTypeId: string | null;
-  totalGuestCount: number;
-  totalGuestCountInput: string;
-  guestTicketTypeId: string | null;
-  guestDisplayName: string;
-  guestDietaryNote: string;
-  extraGuestTicketTypeId: string | null;
-  extraGuestDetails: Array<{
-    guestDisplayName: string;
-    dietaryNote: string;
-    guestRequestStatus?: GuestTicketRequestStatus | string | null;
-  }>;
-  bookerDietaryNote: string;
+  guests: GuestDetailRow[];
+  memberDietaryNote: string;
   sitNextToUserIds: string[];
   accommodationRequested: boolean;
 }
 
 type BookingRow = {
   lines?: Array<{
+    id?: string | null;
+    bookingPlace: {
+      id: string;
+      paymentAllocations?: Array<{ ticketOrder?: { status?: string | null } | null }> | null;
+    };
     ticketType?: { id?: string | null; audience?: string | null } | null;
     guestDisplayName?: string | null;
     dietaryNote?: string | null;
   }> | null;
-  guestTicketRequests?: Array<{
-    status: GuestTicketRequestStatus | string;
-    requestedGuestCount?: number | null;
-    guestDisplayName?: string | null;
-    dietaryNote?: string | null;
-    guestTicketType?: { id?: string | null } | null;
-  }> | null;
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[] | null;
   accommodationRequested?: boolean | null;
 };
+
+function lineIsPaid(line: NonNullable<BookingRow["lines"]>[number]): boolean {
+  return (line.bookingPlace.paymentAllocations ?? []).some(
+    (allocation) => allocation.ticketOrder?.status === TicketOrderStatus.PAID
+  );
+}
 
 export function hydrateFormFromExistingBooking(booking: BookingRow): WizardFormSnapshot {
   const memberLine = (booking.lines ?? []).find(
     (line) => line.ticketType?.audience === TicketAudience.MEMBER
   );
-  const guestLine = (booking.lines ?? []).find(
-    (line) => line.ticketType?.audience === TicketAudience.GUEST
-  );
-  const editableGuestRequests = guestTicketRequestsForBookingEdit(
-    (booking.guestTicketRequests ?? []).map((request) => ({
-      ...request,
-      requestedGuestCount: request.requestedGuestCount ?? undefined,
-      guestTicketType: request.guestTicketType?.id ? { id: request.guestTicketType.id } : null,
-    }))
-  );
-
-  const guestLines =
-    editableGuestRequests.reduce((sum, request) => sum + guestTicketRequestCount(request), 0) +
-    (guestLine ? 1 : 0);
-
-  const includedGuestCount = guestLine ? 1 : 0;
-  const extraCount = Math.max(0, guestLines - includedGuestCount);
-
-  const flattenedExtraGuests: WizardFormSnapshot["extraGuestDetails"] = [];
-  for (const request of editableGuestRequests) {
-    for (let i = 0; i < guestTicketRequestCount(request); i++) {
-      flattenedExtraGuests.push({
-        guestDisplayName: request.guestDisplayName ?? "",
-        dietaryNote: request.dietaryNote ?? "",
-        guestRequestStatus: request.status,
-      });
-    }
-  }
-
-  const firstGuestRequest = editableGuestRequests[0];
+  const guests: GuestDetailRow[] = (booking.lines ?? [])
+    .filter((line) => line.ticketType?.audience === TicketAudience.GUEST)
+    .map((line) => ({
+      bookingLineId: line.id ?? null,
+      bookingPlaceId: line.bookingPlace.id,
+      ticketTypeId: line.ticketType?.id ?? null,
+      guestDisplayName: line.guestDisplayName ?? "",
+      dietaryNote: line.dietaryNote ?? "",
+      paid: lineIsPaid(line),
+    }));
 
   return {
     memberTicketTypeId: memberLine?.ticketType?.id ?? null,
-    totalGuestCount: guestLines,
-    totalGuestCountInput: String(guestLines),
-    guestTicketTypeId: guestLine?.ticketType?.id ?? null,
-    guestDisplayName: guestLine?.guestDisplayName ?? "",
-    guestDietaryNote: guestLine?.dietaryNote ?? "",
-    extraGuestTicketTypeId: firstGuestRequest?.guestTicketType?.id ?? null,
-    extraGuestDetails: Array.from({ length: extraCount }, (_, index) =>
-      flattenedExtraGuests[index] ?? { guestDisplayName: "", dietaryNote: "" }
-    ),
-    bookerDietaryNote: booking.bookerDietaryNote ?? "",
+    guests,
+    memberDietaryNote: memberLine?.dietaryNote ?? "",
     sitNextToUserIds: booking.sitNextToUserIds ?? [],
     accommodationRequested: booking.accommodationRequested === true,
   };

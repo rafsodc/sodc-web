@@ -1,15 +1,13 @@
-/**
- * Member-facing copy for extra-guest rules (replaces raw maxGuestsWithoutModeratorApproval in UI).
- */
+/** Member-facing copy for the whole-booking approval threshold. */
 export function formatEventGuestPolicy(maxGuestsWithoutModeratorApproval?: number | null): string {
   if (maxGuestsWithoutModeratorApproval == null) {
-    return "Extra guest tickets may require organiser review before they are confirmed.";
+    return "A booking with guests may need organiser approval before payment is available.";
   }
   if (maxGuestsWithoutModeratorApproval === 0) {
-    return "Any guest tickets beyond your own place require organiser review.";
+    return "Any booking with guests needs organiser approval before payment is available.";
   }
   const n = maxGuestsWithoutModeratorApproval;
-  return `You can include up to ${n} guest ticket${n === 1 ? "" : "s"} without organiser review. Additional guests need approval.`;
+  return `A booking with up to ${n} guest${n === 1 ? "" : "s"} can proceed directly to payment. More than ${n} will send the complete booking for organiser approval.`;
 }
 
 export function guestCountNeedsModerationNotice(

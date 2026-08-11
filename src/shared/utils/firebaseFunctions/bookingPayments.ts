@@ -16,7 +16,6 @@ export interface SubmitEventBookingRequest {
   baseBookingId?: string;
   baseRevisionNumber?: number;
   lines: SubmitEventBookingLine[];
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[];
   accommodationRequested?: boolean;
   accommodationNote?: string | null;
@@ -25,6 +24,9 @@ export interface SubmitEventBookingRequest {
 export interface SubmitEventBookingResponse {
   bookingId: string;
   status: string;
+  approvalStatus: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
+  outcome: "PENDING_APPROVAL" | "READY_FOR_PAYMENT";
+  paymentReady: boolean;
   idempotentReplay?: boolean;
 }
 
@@ -43,8 +45,24 @@ export interface CreateEventBookingCheckoutSessionRequest {
 }
 
 export interface CreateEventBookingCheckoutSessionResponse {
-  url: string;
+  url: string | null;
   orderIds: string[];
+  confirmed: boolean;
+}
+
+export interface ReviewBookingRevisionRequest {
+  bookingId: string;
+  expectedRevisionNumber: number;
+  decision: "APPROVED" | "REJECTED";
+  moderatorNote?: string | null;
+}
+
+export interface ReviewBookingRevisionResponse {
+  success: boolean;
+  bookingId: string;
+  revisionNumber: number;
+  approvalStatus: "APPROVED" | "REJECTED";
+  paymentDelta: number | null;
 }
 
 export interface GetMyTicketOrderStripeArtifactsResponse {
@@ -77,8 +95,8 @@ export async function submitEventBooking(
     lines: payload.lines.map((line) => ({
       ...line,
       ticketTypeId: toCanonicalUuid(line.ticketTypeId),
+      dietaryNote: line.dietaryNote?.trim() || null,
     })),
-    bookerDietaryNote: payload.bookerDietaryNote?.trim() || null,
     sitNextToUserIds: (payload.sitNextToUserIds ?? []).map((id) => id.trim()).filter(Boolean),
     accommodationRequested: payload.accommodationRequested ?? false,
     accommodationNote: payload.accommodationNote?.trim() || null,
@@ -111,6 +129,22 @@ export async function createEventBookingCheckoutSession(
   >(functions, "createEventBookingCheckoutSession");
   const result = await callable({
     eventId: toCanonicalUuid(payload.eventId),
+  });
+  return result.data;
+}
+
+export async function reviewBookingRevision(
+  payload: ReviewBookingRevisionRequest
+): Promise<ReviewBookingRevisionResponse> {
+  const callable = httpsCallable<ReviewBookingRevisionRequest, ReviewBookingRevisionResponse>(
+    functions,
+    "reviewBookingRevision"
+  );
+  const result = await callable({
+    bookingId: toCanonicalUuid(payload.bookingId),
+    expectedRevisionNumber: payload.expectedRevisionNumber,
+    decision: payload.decision,
+    moderatorNote: payload.moderatorNote?.trim() || null,
   });
   return result.data;
 }

@@ -1,6 +1,25 @@
 import { httpsCallable } from "firebase/functions";
 import type { GetEventByIdData, GetEventsForSectionData, GetSectionByIdData } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
+import { toCanonicalUuid } from "../uuid";
+
+export async function subscribeToUserGroup(userGroupId: string): Promise<{ success: boolean }> {
+  const callable = httpsCallable<{ userGroupId: string }, { success: boolean }>(
+    functions,
+    "subscribeToUserGroup"
+  );
+  const result = await callable({ userGroupId: toCanonicalUuid(userGroupId) });
+  return result.data;
+}
+
+export async function registerForSectionCallable(userGroupId: string): Promise<{ success: boolean }> {
+  const callable = httpsCallable<{ userGroupId: string }, { success: boolean }>(
+    functions,
+    "registerForSectionCallable"
+  );
+  const result = await callable({ userGroupId: toCanonicalUuid(userGroupId) });
+  return result.data;
+}
 
 export interface GetSectionMembersMergedRequest {
   sectionId: string;

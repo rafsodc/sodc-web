@@ -29,6 +29,7 @@ export const SUPPORTED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.expired",
   "checkout.session.async_payment_failed",
   "charge.refunded",
+  "refund.created",
   "charge.dispute.created",
   "charge.dispute.updated",
   "charge.dispute.closed",
@@ -45,7 +46,8 @@ function extractMetadataOrderId(obj: unknown): string | null {
   if (!obj || typeof obj !== "object") return null;
   const metadata = (obj as { metadata?: unknown }).metadata;
   if (!metadata || typeof metadata !== "object") return null;
-  const orderId = (metadata as { orderId?: unknown }).orderId;
+  const orderId = (metadata as { orderId?: unknown; ticketOrderId?: unknown }).orderId ??
+    (metadata as { ticketOrderId?: unknown }).ticketOrderId;
   return typeof orderId === "string" && orderId.trim() ? orderId.trim() : null;
 }
 
@@ -96,14 +98,18 @@ export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormali
         orderIds,
         reason: "checkout_failed_or_expired",
       };
-    case "charge.refunded":
+    case "refund.created":
       return {
         kind: "payment_transition",
         intent: "MARK_REFUNDED",
         orderId,
         orderIds,
-        reason: "charge_refunded",
+        reason: "refund_created",
       };
+    case "charge.refunded":
+      // A Charge contains cumulative refunds for every order sharing its
+      // PaymentIntent. Exact allocation/order routing comes from refund.created metadata.
+      return { kind: "ignore", reason: "handled_by_refund_created" };
     case "charge.dispute.created":
       return { kind: "dispute_side_state", disputeState: "DISPUTE_OPEN", orderId, orderIds, reason: "dispute_created" };
     case "charge.dispute.updated":

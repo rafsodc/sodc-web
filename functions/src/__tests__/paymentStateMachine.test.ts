@@ -26,6 +26,7 @@ describe("paymentStateMachine", () => {
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("checkout.session.expired")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("checkout.session.async_payment_failed")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.refunded")).toBe(true);
+    expect(SUPPORTED_STRIPE_EVENT_TYPES.has("refund.created")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.dispute.created")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.dispute.updated")).toBe(true);
     expect(SUPPORTED_STRIPE_EVENT_TYPES.has("charge.dispute.closed")).toBe(true);
@@ -84,15 +85,23 @@ describe("paymentStateMachine", () => {
     expect(expired.kind).toBe("payment_transition");
     expect(expired.intent).toBe("MARK_FAILED");
 
-    const refunded = normalizeStripeEvent(stripeEvent("charge.refunded", { orderId: "o-3" }));
+    const refunded = normalizeStripeEvent(stripeEvent("refund.created", { ticketOrderId: "o-3" }));
     expect(refunded.kind).toBe("payment_transition");
     expect(refunded.intent).toBe("MARK_REFUNDED");
+    expect(refunded.orderIds).toEqual(["o-3"]);
+
+    const cumulativeChargeEvent = normalizeStripeEvent(stripeEvent("charge.refunded", { orderIds: "o-3,o-4" }));
+    expect(cumulativeChargeEvent).toMatchObject({ kind: "ignore", reason: "handled_by_refund_created" });
   });
 
   it("normalizes dispute events as side-state hooks", () => {
     const disputeOpened = normalizeStripeEvent(stripeEvent("charge.dispute.created", { orderId: "o-4" }));
     expect(disputeOpened.kind).toBe("dispute_side_state");
     expect(disputeOpened.disputeState).toBe("DISPUTE_OPEN");
+
+    const disputeUpdated = normalizeStripeEvent(stripeEvent("charge.dispute.updated", { orderId: "o-4" }));
+    expect(disputeUpdated.kind).toBe("dispute_side_state");
+    expect(disputeUpdated.disputeState).toBe("DISPUTE_UPDATED");
 
     const disputeClosed = normalizeStripeEvent(stripeEvent("charge.dispute.closed", { orderId: "o-5" }));
     expect(disputeClosed.kind).toBe("dispute_side_state");
@@ -103,5 +112,18 @@ describe("paymentStateMachine", () => {
     const ignored = normalizeStripeEvent(stripeEvent("payment_intent.succeeded", { orderId: "o-6" }));
     expect(ignored.kind).toBe("ignore");
     expect(ignored.reason).toBe("unsupported_event_type");
+  });
+
+  it("defensively ignores an allowlisted event without a normalization mapping", () => {
+    const unmappedType = "test.unmapped_supported_event";
+    SUPPORTED_STRIPE_EVENT_TYPES.add(unmappedType);
+    try {
+      expect(normalizeStripeEvent(stripeEvent(unmappedType))).toEqual({
+        kind: "ignore",
+        reason: "unmapped_supported_event_type",
+      });
+    } finally {
+      SUPPORTED_STRIPE_EVENT_TYPES.delete(unmappedType);
+    }
   });
 });

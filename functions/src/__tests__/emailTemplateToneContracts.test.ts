@@ -4,8 +4,9 @@ import { EMAIL_TEMPLATE_MANIFEST } from "../generatedEmailTemplateManifest";
 const NAMED_MEMBER_TEMPLATES = [
   "bookingConfirmation",
   "bookingRevision",
-  "guestTicketRequestApproved",
-  "guestTicketRequestRejected",
+  "bookingPendingApproval",
+  "bookingApproved",
+  "bookingChangesRequested",
   "membershipActivated",
   "membershipAccessRestricted",
   "ticketOrderPaid",
@@ -22,8 +23,9 @@ const ACCOUNT_ACTION_TEMPLATES = [
 const EVENT_TEMPLATES = [
   "bookingConfirmation",
   "bookingRevision",
-  "guestTicketRequestApproved",
-  "guestTicketRequestRejected",
+  "bookingPendingApproval",
+  "bookingApproved",
+  "bookingChangesRequested",
   "ticketOrderPaid",
   "ticketOrderFailed",
   "ticketOrderRefunded",
@@ -35,7 +37,7 @@ const MEMBER_TEMPLATES = [
 ] as const;
 
 const INTERNAL_TEMPLATES = [
-  "guestTicketRequestSubmittedModerator",
+  "bookingPendingApprovalModerator",
   "newUserPendingApprovalAlert",
   "paymentReconciliationExceptionAlert",
   "paymentDisputeOpsAlert",
@@ -98,7 +100,7 @@ describe("internal email tone contract (#477)", () => {
   });
 
   it.each([
-    ["guestTicketRequestSubmittedModerator", "moderationUrl"],
+    ["bookingPendingApprovalModerator", "moderationUrl"],
     ["newUserPendingApprovalAlert", "approveUsersUrl"],
     ["paymentReconciliationExceptionAlert", "reconciliationDashboardUrl"],
     ["paymentDisputeOpsAlert", "reconciliationDashboardUrl"],

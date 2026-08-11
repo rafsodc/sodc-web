@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { TicketAudience } from "@dataconnect/admin-generated";
+import { BookingApprovalStatus, TicketAudience } from "@dataconnect/admin-generated";
 import {
   BOOKING_RULE_ERROR_CODES,
+  bookingApprovalAllowsPayment,
   evaluateBookingGatekeeping,
   evaluateBookingLines,
   evaluateGuestApprovalGate,
+  approvalRelevantGuestDetailsChanged,
+  deriveBookingApprovalStatus,
+  deriveRevisedBookingApprovalStatus,
   userHasSectionAccess,
   userHasBookerPurpose,
   isWithinBookingWindow,
@@ -122,6 +126,20 @@ describe("bookingRules", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("requires exactly one member ticket line", () => {
+    const result = evaluateBookingLines(
+      [
+        { ticketTypeId: "tt-m", sortOrder: 0 },
+        { ticketTypeId: "tt-m", sortOrder: 1 },
+      ],
+      map,
+      "REGULAR",
+      explicit,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.SELF_TICKET_REQUIRED);
+  });
+
   it("rejects guest before member (ordering)", () => {
     const lines: LineInputForRules[] = [
       { ticketTypeId: "tt-g", sortOrder: 0, guestDisplayName: "G" },
@@ -132,7 +150,7 @@ describe("bookingRules", () => {
     if (!r.ok) expect(r.code).toBe(BOOKING_RULE_ERROR_CODES.GUEST_BEFORE_SELF);
   });
 
-  it("rejects more than one guest line", () => {
+  it("represents every guest as a booking line", () => {
     const ttGuest2: TicketTypeForRules = {
       id: "tt-g2",
       audience: TicketAudience.GUEST,
@@ -146,8 +164,7 @@ describe("bookingRules", () => {
       { ticketTypeId: "tt-g2", sortOrder: 2, guestDisplayName: "B" },
     ];
     const r = evaluateBookingLines(lines, m, "REGULAR", explicit);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.code).toBe(BOOKING_RULE_ERROR_CODES.TOO_MANY_GUEST_LINES);
+    expect(r.ok).toBe(true);
   });
 
   it("rejects member line with guest fields", () => {
@@ -178,5 +195,96 @@ describe("bookingRules", () => {
     if (!result.ok) {
       expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.GUEST_APPROVAL_REQUIRED);
     }
+  });
+
+  it("rejects an event with no configured guest approval limit", () => {
+    const result = evaluateGuestApprovalGate({
+      guestTicketCount: 0,
+      maxGuestsWithoutModeratorApproval: null,
+      approvedGuestCapacity: 0,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.EVENT_GUEST_POLICY_NOT_CONFIGURED);
+    }
+  });
+
+  it.each([
+    { guests: 0, limit: 0, expected: BookingApprovalStatus.NOT_REQUIRED },
+    { guests: 1, limit: 0, expected: BookingApprovalStatus.PENDING },
+    { guests: 2, limit: 2, expected: BookingApprovalStatus.NOT_REQUIRED },
+    { guests: 3, limit: 2, expected: BookingApprovalStatus.PENDING },
+  ])("derives approval at the guest-limit boundary", ({ guests, limit, expected }) => {
+    expect(
+      deriveBookingApprovalStatus({
+        guestTicketCount: guests,
+        maxGuestsWithoutModeratorApproval: limit,
+      })
+    ).toBe(expected);
+  });
+
+  it("treats identity and ticket changes, but not dietary edits or ordering, as approval relevant", () => {
+    const original = [
+      { ticketTypeId: "guest-dinner", guestDisplayName: "Alex Smith", dietaryNote: "none" },
+      { ticketTypeId: "guest-dinner", guestUserId: "user-2", dietaryNote: "vegan" },
+    ];
+    expect(
+      approvalRelevantGuestDetailsChanged(original, [
+        { ...original[1], dietaryNote: "vegetarian" },
+        { ...original[0], guestDisplayName: "  ALEX   SMITH ", dietaryNote: "gluten free" },
+      ])
+    ).toBe(false);
+    expect(
+      approvalRelevantGuestDetailsChanged(original, [
+        original[0],
+        { ...original[1], ticketTypeId: "guest-reception" },
+      ])
+    ).toBe(true);
+  });
+
+  it("treats an explicitly stored name change as relevant even when the linked user is unchanged", () => {
+    expect(
+      approvalRelevantGuestDetailsChanged(
+        [{ ticketTypeId: "guest-dinner", guestUserId: "user-2", guestDisplayName: "Alex Smith" }],
+        [{ ticketTypeId: "guest-dinner", guestUserId: "user-2", guestDisplayName: "Alex Jones" }],
+      ),
+    ).toBe(true);
+  });
+
+  it("returns an over-limit approved booking to pending after an approval-relevant edit", () => {
+    const previousGuests = [
+      { ticketTypeId: "guest-dinner", guestDisplayName: "Alex" },
+      { ticketTypeId: "guest-dinner", guestDisplayName: "Sam" },
+    ];
+    expect(
+      deriveRevisedBookingApprovalStatus({
+        previousStatus: BookingApprovalStatus.APPROVED,
+        previousGuests,
+        revisedGuests: [previousGuests[0], { ...previousGuests[1], guestDisplayName: "Taylor" }],
+        maxGuestsWithoutModeratorApproval: 1,
+      })
+    ).toBe(BookingApprovalStatus.PENDING);
+  });
+
+  it("preserves approval for an over-limit dietary-only edit", () => {
+    const previousGuests = [
+      { ticketTypeId: "guest-dinner", guestDisplayName: "Alex", dietaryNote: "none" },
+      { ticketTypeId: "guest-dinner", guestDisplayName: "Sam", dietaryNote: "none" },
+    ];
+    expect(
+      deriveRevisedBookingApprovalStatus({
+        previousStatus: BookingApprovalStatus.APPROVED,
+        previousGuests,
+        revisedGuests: previousGuests.map((guest) => ({ ...guest, dietaryNote: "vegetarian" })),
+        maxGuestsWithoutModeratorApproval: 1,
+      })
+    ).toBe(BookingApprovalStatus.APPROVED);
+  });
+
+  it("allows payment only for approval-eligible booking states", () => {
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.NOT_REQUIRED)).toBe(true);
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.APPROVED)).toBe(true);
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.PENDING)).toBe(false);
+    expect(bookingApprovalAllowsPayment(BookingApprovalStatus.REJECTED)).toBe(false);
   });
 });

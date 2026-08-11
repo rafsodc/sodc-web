@@ -1,7 +1,6 @@
 import {
   BookingPaymentAdjustmentStatus,
   BookingStatus,
-  GuestTicketRequestStatus,
   TicketOrderStatus,
 } from "@dataconnect/generated";
 import {
@@ -13,15 +12,9 @@ import { idsEqual } from "../../../shared/utils/uuid";
 
 export interface EventBookingSummaryInput {
   status: BookingStatus | string;
+  approvalStatus?: string;
   revisionNumber: number;
   lines?: Array<{ ticketType?: { id: string } | null }> | null;
-  guestTicketRequests?: Array<{
-    status: GuestTicketRequestStatus | string;
-    requestedGuestCount?: number;
-    guestDisplayName?: string | null;
-    dietaryNote?: string | null;
-    guestTicketType?: { id: string } | null;
-  }> | null;
 }
 
 export interface EventBookingPaymentOrderInput {
@@ -51,20 +44,13 @@ export interface EventBookingPaymentSummary {
   unpaidTicketTypeId: string | null;
 }
 
-export interface EventBookingGuestRequestSummary {
-  pendingCount: number;
-  approvedCount: number;
-  rejectedCount: number;
-  hasPending: boolean;
-}
-
 export interface BookingTicketDisplayRow {
   id: string;
   ticketTypeId: string | null;
   ticketTitle: string;
   guestName: string | null;
   price: number | null;
-  source: "line" | "approved_guest_request" | "pending_guest_request";
+  source: "line";
 }
 
 export type BookingTicketPaymentStatus =
@@ -106,12 +92,6 @@ function requiredTicketTypeCounts(
   for (const line of booking.lines ?? []) {
     add(line.ticketType?.id);
   }
-  for (const request of booking.guestTicketRequests ?? []) {
-    if (request.status !== GuestTicketRequestStatus.APPROVED) {
-      continue;
-    }
-    add(request.guestTicketType?.id, Math.max(1, request.requestedGuestCount ?? 1));
-  }
   return counts;
 }
 
@@ -146,27 +126,7 @@ function ticketTypeIdsFromBooking(booking: EventBookingSummaryInput): string[] {
   const fromLines = (booking.lines ?? [])
     .map((line) => line.ticketType?.id)
     .filter((id): id is string => Boolean(id));
-  const fromApprovedGuests = (booking.guestTicketRequests ?? []).flatMap((request) => {
-    if (request.status !== GuestTicketRequestStatus.APPROVED) {
-      return [];
-    }
-    const ticketTypeId = request.guestTicketType?.id;
-    if (!ticketTypeId) {
-      return [];
-    }
-    const count = Math.max(1, request.requestedGuestCount ?? 1);
-    return Array.from({ length: count }, () => ticketTypeId);
-  });
-  return [...fromLines, ...fromApprovedGuests];
-}
-
-function guestTicketCountByStatus(
-  requests: EventBookingSummaryInput["guestTicketRequests"],
-  status: GuestTicketRequestStatus
-): number {
-  return (requests ?? [])
-    .filter((request) => request.status === status)
-    .reduce((sum, request) => sum + Math.max(1, request.requestedGuestCount ?? 1), 0);
+  return fromLines;
 }
 
 export function buildBookingTicketDisplayRows(booking: {
@@ -174,13 +134,6 @@ export function buildBookingTicketDisplayRows(booking: {
     id: string;
     guestDisplayName?: string | null;
     ticketType?: { id?: string; title?: string; price?: number | null } | null;
-  }> | null;
-  guestTicketRequests?: Array<{
-    id: string;
-    status: GuestTicketRequestStatus | string;
-    requestedGuestCount?: number;
-    guestDisplayName?: string | null;
-    guestTicketType?: { id?: string; title?: string; price?: number | null } | null;
   }> | null;
 }): BookingTicketDisplayRow[] {
   const rows: BookingTicketDisplayRow[] = [];
@@ -196,42 +149,16 @@ export function buildBookingTicketDisplayRows(booking: {
     });
   }
 
-  for (const request of booking.guestTicketRequests ?? []) {
-    const source =
-      request.status === GuestTicketRequestStatus.APPROVED
-        ? "approved_guest_request"
-        : request.status === GuestTicketRequestStatus.PENDING
-          ? "pending_guest_request"
-          : null;
-    if (!source) {
-      continue;
-    }
-    const count = Math.max(1, request.requestedGuestCount ?? 1);
-    for (let index = 0; index < count; index++) {
-      rows.push({
-        id: `${request.id}-${index}`,
-        ticketTypeId: request.guestTicketType?.id ?? null,
-        ticketTitle: request.guestTicketType?.title ?? "Guest ticket",
-        guestName: request.guestDisplayName ?? null,
-        price: request.guestTicketType?.price ?? null,
-        source,
-      });
-    }
-  }
-
   return rows;
 }
 
 export function formatBookingTicketDisplayLabel(row: BookingTicketDisplayRow): string {
   const guestLabel = row.guestName ? `${row.ticketTitle} (${row.guestName})` : row.ticketTitle;
-  if (row.source === "pending_guest_request") {
-    return `${guestLabel} — pending confirmation`;
-  }
   return guestLabel;
 }
 
 export function getPayableBookingTicketRows(rows: BookingTicketDisplayRow[]): BookingTicketDisplayRow[] {
-  return rows.filter((row) => row.source !== "pending_guest_request");
+  return rows;
 }
 
 function takePaymentSlot(pool: Map<string, number>, ticketTypeId: string | null): boolean {
@@ -260,13 +187,6 @@ export function buildBookingTicketRowsWithPaymentStatus(params: {
   const failedPool = new Map(ticketTypeOrderCounts(params.ticketOrders, params.eventId, TicketOrderStatus.FAILED));
 
   return rows.map((row) => {
-    if (row.source === "pending_guest_request") {
-      return {
-        ...row,
-        paymentStatus: "awaiting_approval",
-        paymentStatusLabel: "Pending confirmation",
-      };
-    }
     if (takePaymentSlot(paidPool, row.ticketTypeId)) {
       return {
         ...row,
@@ -334,29 +254,6 @@ export function hasExpiredDraftHold(
       booking.status === BookingStatus.CONFIRMED
   );
   return hasCancelled && !hasActive;
-}
-
-export function summarizeGuestTicketRequests(
-  requests: EventBookingSummaryInput["guestTicketRequests"]
-): EventBookingGuestRequestSummary {
-  return {
-    pendingCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.PENDING),
-    approvedCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.APPROVED),
-    rejectedCount: guestTicketCountByStatus(requests, GuestTicketRequestStatus.REJECTED),
-    hasPending: (requests ?? []).some((request) => request.status === GuestTicketRequestStatus.PENDING),
-  };
-}
-
-export function guestTicketRequestsForBookingEdit(
-  requests: EventBookingSummaryInput["guestTicketRequests"]
-): NonNullable<EventBookingSummaryInput["guestTicketRequests"]> {
-  return (requests ?? []).filter((request) => request.status !== GuestTicketRequestStatus.REJECTED);
-}
-
-export function guestTicketRequestCount(request: {
-  requestedGuestCount?: number;
-}): number {
-  return Math.max(1, request.requestedGuestCount ?? 1);
 }
 
 export function summarizeEventBookingPayment(params: {
@@ -474,59 +371,6 @@ export function summarizeEventBookingPayment(params: {
     severity: "warning",
     unpaidTicketTypeId: firstUnpaidTicketTypeId,
   };
-}
-
-export function hasPendingGuestTicketsAwaitingApproval(
-  booking: EventBookingSummaryInput
-): boolean {
-  return (booking.guestTicketRequests ?? []).some(
-    (request) => request.status === GuestTicketRequestStatus.PENDING
-  );
-}
-
-export function getEventBookingNextSteps(params: {
-  bookingStatus: BookingStatus | string;
-  paymentSummary: EventBookingPaymentSummary;
-  guestSummary: EventBookingGuestRequestSummary;
-}): string {
-  const { bookingStatus, paymentSummary, guestSummary } = params;
-  const steps: string[] = [];
-
-  if (paymentSummary.kind === "pending" || paymentSummary.kind === "not_started" || paymentSummary.kind === "partial") {
-    steps.push("Complete payment to secure your place.");
-  } else if (paymentSummary.kind === "failed") {
-    steps.push("Your payment hold expired or the last attempt failed. Use Pay now to try again.");
-  } else if (paymentSummary.kind === "adjustment_charge") {
-    steps.push("An additional payment is being processed for your latest booking revision.");
-  } else if (paymentSummary.kind === "adjustment_refund") {
-    steps.push("A refund for your booking revision is being processed.");
-  }
-
-  if (guestSummary.hasPending) {
-    steps.push("Your extra guest ticket request is awaiting moderator review.");
-  } else if (guestSummary.approvedCount > 0) {
-    if (
-      paymentSummary.kind === "partial" ||
-      paymentSummary.kind === "not_started" ||
-      paymentSummary.kind === "pending" ||
-      paymentSummary.kind === "failed"
-    ) {
-      steps.push("Approved guest tickets are on your booking — pay for any unpaid tickets to confirm them.");
-    } else {
-      steps.push("Approved guest tickets are included in your booking below.");
-    }
-  } else if (guestSummary.rejectedCount > 0 && guestSummary.approvedCount === 0) {
-    steps.push("A guest ticket request was declined. You can submit a revised request below.");
-  }
-
-  if (steps.length === 0) {
-    if (bookingStatus === BookingStatus.CONFIRMED) {
-      return "Your booking is confirmed. You can edit it until the booking window closes.";
-    }
-    return "Your booking is submitted. We'll confirm your place once everything is in order.";
-  }
-
-  return steps.join(" ");
 }
 
 export function getEventBookingStatusHeading(booking: EventBookingSummaryInput): string {

@@ -208,7 +208,7 @@ Review migration and connector compatibility messages; do not add `--force` mere
 3. exercise a new or changed read-only operation when the release adds one; and
 4. confirm existing Hosting and Functions traffic still works against the expanded schema.
 
-Schema changes that remove or rename fields require an expand/migrate/contract rollout across separate releases. Do not approve destructive migration steps during an ordinary application deploy.
+Schema changes that remove or rename fields require an expand/migrate/contract rollout across separate releases. Do not approve destructive migration steps during an ordinary application deploy. The one-time, pre-launch booking reset for issue #548 is the documented exception: back up dev or beta, run `dataconnect/migrations/2026-08-11-issue-548-reset-legacy-booking-data.sql`, verify that it committed, and only then deploy the contracted schema. Never run that reset against a live or production database.
 
 ### 4. Deploy and validate Storage rules
 
