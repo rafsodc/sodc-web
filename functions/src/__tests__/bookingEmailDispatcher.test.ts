@@ -138,11 +138,13 @@ describe("notifyBookingConfirmationEmail", () => {
         personalisation: expect.objectContaining({
           firstName: "Sam",
           eventTitle: "Annual dinner",
-          memberDietaryNote: "No nuts",
           sectionBookingsUrl: "https://app.example/sections/sec-1",
           myPaymentsUrl: "https://app.example/payments",
         }),
       })
     );
+    const personalisation = sendEmail.mock.calls[0]?.[0]?.personalisation;
+    expect(personalisation).not.toHaveProperty("memberDietaryNote");
+    expect(personalisation.ticketLinesSummary).toContain("dietary: No nuts");
   });
 });

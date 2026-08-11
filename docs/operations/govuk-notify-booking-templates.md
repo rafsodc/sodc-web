@@ -38,8 +38,7 @@ Also required: `GOV_NOTIFY_LIVE_API_KEY` (secret), optional `GOV_NOTIFY_EMAIL_RE
 | `eventTitle` | Event title |
 | `eventDateTime` | Formatted start/end (en-GB) |
 | `eventLocation` | Location or `To be confirmed` |
-| `ticketLinesSummary` | Multiline bullet list of lines |
-| `memberDietaryNote` | Member ticket line dietary note or `None provided` |
+| `ticketLinesSummary` | Multiline bullet list of attendee ticket lines, including each line's dietary note when supplied |
 | `accommodationSummary` | `Not requested` or `Requested — {note}` |
 | `bookingTotalFormatted` | Sum of line prices, e.g. `£35.00` |
 | `sectionBookingsUrl` | `APP_BASE_URL/sections/{sectionId}` |

@@ -7,7 +7,6 @@ variables:
   - eventDateTime
   - eventLocation
   - ticketLinesSummary
-  - memberDietaryNote
   - accommodationRequested
   - bookingTotalFormatted
   - sectionBookingsUrl
@@ -30,8 +29,6 @@ Where: ((eventLocation))
 # Your booking
 
 ((ticketLinesSummary))
-
-Dietary requirements: ((memberDietaryNote))
 
 ((accommodationRequested??Accommodation requested — see your booking for details.))
 
