@@ -97,7 +97,10 @@ export default function TicketSelectionStep({
         filterOptions={(x) => x}
         options={seatingOptions}
         value={seatingOptions.filter((o) => sitNextToUserIds.includes(o.id))}
-        onChange={(_, next) => onSitNextToUserIdsChange(next.map((n) => n.id))}
+        onChange={(_, next) => {
+          onSitNextToUserIdsChange(next.map((n) => n.id));
+          onSeatingSearchInputValueChange("");
+        }}
         inputValue={seatingSearchInputValue}
         onInputChange={(_, next, reason) => {
           if (reason === "input") onSeatingSearchInputValueChange(next);
