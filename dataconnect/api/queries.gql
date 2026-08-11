@@ -410,7 +410,9 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
-        bookingPlaceKey
+        bookingPlace {
+          id
+        }
         sortOrder
         guestDisplayName
         dietaryNote
@@ -472,7 +474,9 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
       }
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
-        bookingPlaceKey
+        bookingPlace {
+          id
+        }
         ticketType {
           id
           title

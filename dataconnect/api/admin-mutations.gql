@@ -1342,7 +1342,9 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
-        bookingPlaceKey
+        bookingPlace {
+          id
+        }
         sortOrder
         guestDisplayName
         dietaryNote

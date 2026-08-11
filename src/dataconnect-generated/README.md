@@ -2891,7 +2891,9 @@ export interface GetBookingsForBookerAndEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
-        bookingPlaceKey: UUIDString;
+        bookingPlace?: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -8366,7 +8368,9 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
-        bookingPlaceKey: UUIDString;
+        bookingPlace?: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -8523,7 +8527,9 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
-        bookingPlaceKey: UUIDString;
+        bookingPlace?: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
           title: string;

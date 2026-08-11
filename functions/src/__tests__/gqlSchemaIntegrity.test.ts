@@ -192,8 +192,9 @@ describe("GQL schema integrity", () => {
       "type Event",
       "type TicketType",
       "type Booking",
+      "type BookingPlace",
       "type BookingLine",
-      "type BookingLinePaymentAllocation",
+      "type BookingPlacePaymentAllocation",
       "type TicketOrder",
       "type GuestTicketRequest",
       "type PaymentWebhookEvent",
@@ -274,20 +275,27 @@ describe("GQL schema integrity", () => {
     expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
   });
 
-  it("can attribute payment to a stable booking place across revisions", () => {
+  it("attributes payment to a stable entity rather than a revision line or duplicated key", () => {
     const schema = readSchemaFile();
+    const placeStart = schema.indexOf("type BookingPlace @table");
+    const placeEnd = schema.indexOf("\n}", placeStart);
+    const placeBlock = schema.slice(placeStart, placeEnd + 2);
+    expect(placeBlock).toContain("event: Event!");
+    expect(placeBlock).toContain("booker: User!");
+
     const lineStart = schema.indexOf("type BookingLine @table");
     const lineEnd = schema.indexOf("\n}", lineStart);
-    expect(schema.slice(lineStart, lineEnd + 2)).toContain(
-      "bookingPlaceKey: UUID! @default(expr: \"uuidV4()\")",
-    );
+    const lineBlock = schema.slice(lineStart, lineEnd + 2);
+    expect(lineBlock).toContain("bookingPlace: BookingPlace");
+    expect(lineBlock).not.toContain("bookingPlaceKey");
 
-    const allocationStart = schema.indexOf("type BookingLinePaymentAllocation @table");
+    const allocationStart = schema.indexOf("type BookingPlacePaymentAllocation @table");
     const allocationEnd = schema.indexOf("\n}", allocationStart);
     const allocationBlock = schema.slice(allocationStart, allocationEnd + 2);
     expect(allocationBlock).toContain("ticketOrder: TicketOrder!");
-    expect(allocationBlock).toContain("bookingLine: BookingLine!");
-    expect(allocationBlock).toContain("bookingPlaceKey: UUID!");
+    expect(allocationBlock).toContain("bookingPlace: BookingPlace!");
+    expect(allocationBlock).not.toContain("bookingLine:");
+    expect(allocationBlock).not.toContain("bookingPlaceKey");
     expect(allocationBlock).toContain("allocatedAmountMinor: Int!");
   });
 });

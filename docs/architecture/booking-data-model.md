@@ -11,7 +11,7 @@ Persistence for member ticket booking. The current redesign is tracked by epic [
 - **Whole-booking approval**: `Booking.approvalStatus` applies to one exact booking revision and is separate from booking lifecycle and payment state.
 - **Reapproval**: adding/removing a guest, changing guest identity/name, or changing guest ticket type is approval-relevant. Dietary-only edits and guest ordering are not.
 - **Guest removal and payment**: a member may remove a guest only when that guest place has no paid allocation. Paid guest removal is blocked until the later refund workflow is implemented.
-- **Stable paid entitlement**: `BookingLine.bookingPlaceKey` is preserved for the same place across revisions. `BookingLinePaymentAllocation` maps orders to that key, avoiding ambiguous ticket-type quantity matching when guests share a ticket type.
+- **Stable paid entitlement**: `BookingPlace` is the durable identity of one member/guest ticket. Revision-specific `BookingLine` rows reuse that relation, and `BookingPlacePaymentAllocation` maps orders directly to the place without duplicating its key or pointing at one revision.
 - **Authorization** (section `ACCESS` / `MODERATOR`, `BOOKER`, booking window, `TicketType.userGroup`) remains as documented elsewhere — not all shown on this ERD.
 
 ## Entity relationship diagram
@@ -22,9 +22,12 @@ erDiagram
   Event ||--o{ TicketType : defines
   Event ||--o{ Booking : has
   User ||--o{ Booking : books_as_booker
+  User ||--o{ BookingPlace : owns
+  Event ||--o{ BookingPlace : scopes
   Booking ||--o{ BookingLine : has
-  BookingLine ||--o{ BookingLinePaymentAllocation : paid_as
-  TicketOrder ||--o{ BookingLinePaymentAllocation : allocates
+  BookingPlace ||--o{ BookingLine : represented_by
+  BookingPlace ||--o{ BookingPlacePaymentAllocation : paid_as
+  TicketOrder ||--o{ BookingPlacePaymentAllocation : allocates
   TicketType ||--o{ BookingLine : priced_as
   UserGroup ||--o{ TicketType : eligibility
   Booking ||--o{ GuestTicketRequest : may_raise
@@ -82,9 +85,15 @@ erDiagram
     timestamp updated_at
   }
 
+  BookingPlace {
+    uuid id PK
+    uuid event_id FK
+    string booker_user_id FK
+  }
+
   BookingLine {
     uuid id PK
-    uuid booking_place_key "stable across revisions"
+    uuid booking_place_id FK "stable across revisions; nullable on legacy rows"
     uuid booking_id FK
     uuid ticket_type_id FK
     string guest_user_id FK "nullable: named member guest"
@@ -106,11 +115,10 @@ erDiagram
     string moderator_note "nullable"
   }
 
-  BookingLinePaymentAllocation {
+  BookingPlacePaymentAllocation {
     uuid id PK
     uuid ticket_order_id FK
-    uuid booking_line_id FK
-    uuid booking_place_key "stable entitlement identity"
+    uuid booking_place_id FK "stable entitlement identity"
     int allocated_amount_minor
   }
 ```
@@ -124,8 +132,9 @@ erDiagram
 | **Event → TicketType** | Event offers priced **MEMBER** and **GUEST** types; eligibility for each type is still via `TicketType.userGroup`. |
 | **Event → guest policy** | Required per-event limit on guest places that can proceed without moderator approval. |
 | **Booking** | One **booker** (`User`) for one **event/revision**; owns lifecycle and whole-revision approval state plus booker preferences. |
-| **BookingLine** | One priced place. Member-audience lines represent the member; every guest is a guest-audience line with its identity and dietary note. |
-| **BookingLinePaymentAllocation** | Attributes an order amount to a stable booking place so deletion and future refunds are evaluated per named guest rather than by ticket-type totals. |
+| **BookingPlace** | Durable identity for one member/guest ticket within an event. It survives revisions and is the target for payment allocation and future refunds. |
+| **BookingLine** | Revision snapshot of one priced place. New lines reference `BookingPlace`; the relation is temporarily nullable only for legacy rows/write paths removed by #548. |
+| **BookingPlacePaymentAllocation** | Attributes an order amount directly to `BookingPlace`, so revisions never rewrite payment history and deletion/refunds are evaluated per ticket rather than by ticket-type totals. |
 | **GuestTicketRequest** | Legacy split representation only. New submission and moderation contracts use `BookingLine` and `Booking.approvalStatus`; removal is tracked by #548. |
 
 ## State model

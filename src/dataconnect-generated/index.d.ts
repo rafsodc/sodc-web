@@ -312,11 +312,6 @@ export interface BeginSectionFileReplacementVariables {
   updatedBy: string;
 }
 
-export interface BookingLinePaymentAllocation_Key {
-  id: UUIDString;
-  __typename?: 'BookingLinePaymentAllocation_Key';
-}
-
 export interface BookingLine_Key {
   id: UUIDString;
   __typename?: 'BookingLine_Key';
@@ -326,6 +321,16 @@ export interface BookingPaymentAdjustment_Key {
   revisionBookingId: UUIDString;
   supersededBookingId: UUIDString;
   __typename?: 'BookingPaymentAdjustment_Key';
+}
+
+export interface BookingPlacePaymentAllocation_Key {
+  id: UUIDString;
+  __typename?: 'BookingPlacePaymentAllocation_Key';
+}
+
+export interface BookingPlace_Key {
+  id: UUIDString;
+  __typename?: 'BookingPlace_Key';
 }
 
 export interface Booking_Key {
@@ -1185,7 +1190,9 @@ export interface GetBookingsForBookerAndEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
-        bookingPlaceKey: UUIDString;
+        bookingPlace?: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -1536,7 +1543,9 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
-        bookingPlaceKey: UUIDString;
+        bookingPlace?: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
           title: string;
@@ -1579,7 +1588,9 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
-        bookingPlaceKey: UUIDString;
+        bookingPlace?: {
+          id: UUIDString;
+        } & BookingPlace_Key;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;

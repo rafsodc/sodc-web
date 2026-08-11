@@ -496,13 +496,25 @@ type Booking @table @unique(fields: ["event", "booker", "clientSubmissionKey"]) 
   updatedBy: String @default(expr: "auth.uid")
 }
 
+# Stable identity for one member/guest ticket place across booking revisions.
+# New booking submissions create one place per ticket and reuse it on revisions.
+type BookingPlace @table {
+  id: UUID! @default(expr: "uuidV4()")
+  event: Event!
+  booker: User!
+  # HasAudit fields
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String @default(expr: "auth.uid")
+  updatedBy: String @default(expr: "auth.uid")
+}
+
 # One line per ticket; ticket type audience must match use (member vs guest). Guest identity optional.
 type BookingLine @table {
   id: UUID! @default(expr: "uuidV4()")
-  # Stable identity for this member/guest place across booking revisions. Paid
-  # allocations use this key so an unpaid guest can be removed without
-  # accidentally transferring or deleting another guest's entitlement.
-  bookingPlaceKey: UUID! @default(expr: "uuidV4()")
+  # Required by the redesigned submission service. Nullable only while legacy
+  # booking rows/write paths are removed across #544 and #548.
+  bookingPlace: BookingPlace
   booking: Booking!
   ticketType: TicketType!
   guestUser: User
@@ -569,14 +581,13 @@ type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
   updatedBy: String @default(expr: "auth.uid")
 }
 
-# Allocates a paid/order quantity to an exact stable booking place. The order
-# remains the Stripe/payment ledger; this record answers which named place is
-# paid and provides the seam for a later per-guest refund workflow.
-type BookingLinePaymentAllocation @table @unique(fields: ["ticketOrder", "bookingPlaceKey"]) {
+# Allocates a paid/order quantity to an exact stable booking place. It never
+# points at a revision-specific BookingLine, so revisions reuse the place
+# without rewriting historical payment allocation records.
+type BookingPlacePaymentAllocation @table @unique(fields: ["ticketOrder", "bookingPlace"]) {
   id: UUID! @default(expr: "uuidV4()")
   ticketOrder: TicketOrder!
-  bookingLine: BookingLine!
-  bookingPlaceKey: UUID!
+  bookingPlace: BookingPlace!
   allocatedAmountMinor: Int!
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
