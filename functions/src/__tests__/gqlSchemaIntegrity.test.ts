@@ -298,4 +298,16 @@ describe("GQL schema integrity", () => {
     expect(allocationBlock).not.toContain("bookingPlaceKey");
     expect(allocationBlock).toContain("allocatedAmountMinor: Int!");
   });
+
+  it("stores dietary requirements on each attendee ticket line", () => {
+    const schema = readSchemaFile();
+    const lineStart = schema.indexOf("type BookingLine @table");
+    const lineEnd = schema.indexOf("\n}", lineStart);
+    expect(schema.slice(lineStart, lineEnd + 2)).toContain("dietaryNote: String");
+
+    const mutations = readApiFile("admin-mutations.gql");
+    const preferencesStart = mutations.indexOf("mutation UpdateBookingPreferencesFromCallable");
+    const preferencesEnd = mutations.indexOf("\n}", preferencesStart);
+    expect(mutations.slice(preferencesStart, preferencesEnd + 2)).not.toContain("bookerDietaryNote");
+  });
 });

@@ -348,6 +348,7 @@ export function useBookingWizardState({
 
       const lines = buildBookingSubmissionLines({
         memberTicketTypeId,
+        memberDietaryNote: bookerDietaryNote,
         includeGuest,
         guestTicketTypeId,
         guestDisplayName,
@@ -360,7 +361,6 @@ export function useBookingWizardState({
         baseBookingId: existingTerminalBooking?.id,
         baseRevisionNumber: existingTerminalBooking?.revisionNumber,
         lines,
-        bookerDietaryNote,
         sitNextToUserIds,
         accommodationRequested,
         accommodationNote: null,

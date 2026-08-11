@@ -624,6 +624,14 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
       }
       lines: bookingLines_on_booking {
         id
+        sortOrder
+        guestDisplayName
+        dietaryNote
+        guestUser {
+          id
+          firstName
+          lastName
+        }
         ticketType {
           id
           title

@@ -7194,6 +7194,14 @@ export interface ListEventBookingsForAdminData {
       } & GuestTicketRequest_Key)[];
       lines: ({
         id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+          firstName: string;
+          lastName: string;
+        } & User_Key;
         ticketType: {
           id: UUIDString;
           title: string;
@@ -13300,7 +13308,6 @@ The `UpdateBookingPreferencesFromCallable` Mutation requires an argument of type
 ```javascript
 export interface UpdateBookingPreferencesFromCallableVariables {
   id: UUIDString;
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[] | null;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
@@ -13354,14 +13361,13 @@ export default function UpdateBookingPreferencesFromCallableComponent() {
   // The `useUpdateBookingPreferencesFromCallable` Mutation requires an argument of type `UpdateBookingPreferencesFromCallableVariables`:
   const updateBookingPreferencesFromCallableVars: UpdateBookingPreferencesFromCallableVariables = {
     id: ..., 
-    bookerDietaryNote: ..., // optional
     sitNextToUserIds: ..., // optional
     accommodationRequested: ..., 
     accommodationNote: ..., // optional
   };
   mutation.mutate(updateBookingPreferencesFromCallableVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., bookerDietaryNote: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
+  mutation.mutate({ id: ..., sitNextToUserIds: ..., accommodationRequested: ..., accommodationNote: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

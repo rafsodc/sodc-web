@@ -16,7 +16,6 @@ export interface SubmitEventBookingRequest {
   baseBookingId?: string;
   baseRevisionNumber?: number;
   lines: SubmitEventBookingLine[];
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[];
   accommodationRequested?: boolean;
   accommodationNote?: string | null;
@@ -77,8 +76,8 @@ export async function submitEventBooking(
     lines: payload.lines.map((line) => ({
       ...line,
       ticketTypeId: toCanonicalUuid(line.ticketTypeId),
+      dietaryNote: line.dietaryNote?.trim() || null,
     })),
-    bookerDietaryNote: payload.bookerDietaryNote?.trim() || null,
     sitNextToUserIds: (payload.sitNextToUserIds ?? []).map((id) => id.trim()).filter(Boolean),
     accommodationRequested: payload.accommodationRequested ?? false,
     accommodationNote: payload.accommodationNote?.trim() || null,
