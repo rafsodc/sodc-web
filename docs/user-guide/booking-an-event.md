@@ -25,7 +25,7 @@ Confirm that you want a ticket for yourself. Your details are pre-filled from yo
 
 ### 2. Guest tickets (if applicable)
 
-If the event allows guests, you can request additional guest tickets here. Enter the guest's name and any relevant details. Guest ticket requests are subject to moderator approval — you will be notified of the outcome.
+If the event allows guests, add every guest and their ticket and dietary details before reviewing the complete booking. When the guest count exceeds the event limit, the whole booking is sent to the organiser for approval before payment becomes available.
 
 ### 3. Dietary requirements
 
@@ -48,7 +48,7 @@ Review your booking summary and click **Confirm** to submit.
 
 Once confirmed, your booking will appear in the event detail page. You will receive a confirmation email.
 
-If your booking includes guest ticket requests, those are reviewed separately by a moderator. You will receive an email when a decision is made.
+Bookings with more guests than the event's automatic approval limit are held for moderator review as a whole. You will receive an email when the booking is approved or changes are requested. Payment is available after approval.
 
 ---
 

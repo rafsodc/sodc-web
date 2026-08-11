@@ -189,12 +189,12 @@ describe("SectionEventsManager", () => {
           bookings: [
             {
               id: "b-0", status: "SUBMITTED", approvalStatus: "APPROVED", revisionGroupId: "10000000-0000-4000-8000-000000000001", revisionNumber: 1, supersededAt: null,
-              guestTicketRequests: [], lines: [], createdAt: "2026-01-31T00:00:00Z", updatedAt: "2026-01-31T01:00:00Z", createdBy: "u-1", updatedBy: "u-1",
+              lines: [], createdAt: "2026-01-31T00:00:00Z", updatedAt: "2026-01-31T01:00:00Z", createdBy: "u-1", updatedBy: "u-1",
               booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
             },
             {
               id: "b-1", status: "SUBMITTED", approvalStatus: "PENDING", revisionGroupId: "10000000-0000-4000-8000-000000000001", revisionNumber: 2, supersededAt: null,
-              supersedesBooking: { id: "b-0", revisionNumber: 1 }, guestTicketRequests: [], createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T01:00:00Z", createdBy: "u-1", updatedBy: "u-1",
+              supersedesBooking: { id: "b-0", revisionNumber: 1 }, createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T01:00:00Z", createdBy: "u-1", updatedBy: "u-1",
               booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
               lines: [
                 { id: "line-member", sortOrder: 0, guestDisplayName: null, dietaryNote: "Vegetarian", bookingPlace: { id: "place-member", paymentAllocations: [] }, ticketType: { id: "tt-member", title: "Member ticket", audience: "MEMBER", price: 25 } },
@@ -433,11 +433,11 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
     });
-    const shared = { status: "SUBMITTED", approvalStatus: "PENDING", revisionGroupId: "10000000-0000-4000-8000-000000000001", guestTicketRequests: [], createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T00:00:00Z", createdBy: "u-1", updatedBy: "u-1", booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" } };
+    const shared = { status: "SUBMITTED", approvalStatus: "PENDING", revisionGroupId: "10000000-0000-4000-8000-000000000001", createdAt: "2026-02-01T00:00:00Z", updatedAt: "2026-02-01T00:00:00Z", createdBy: "u-1", updatedBy: "u-1", booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" } };
     mockEventBookings({
       data: { event: { id: "ev-1", bookings: [
-        { ...shared, id: "b-0", revisionNumber: 1, supersededAt: "2026-02-01T01:00:00Z", lines: [{ id: "old", sortOrder: 1, guestDisplayName: "Superseded Guest", dietaryNote: null, ticketType: { id: "tt-1", title: "Guest", audience: "GUEST", price: 10 } }] },
-        { ...shared, id: "b-1", revisionNumber: 2, supersededAt: null, supersedesBooking: { id: "b-0", revisionNumber: 1 }, lines: [{ id: "new", sortOrder: 1, guestDisplayName: "Current Guest", dietaryNote: null, ticketType: { id: "tt-1", title: "Guest", audience: "GUEST", price: 10 } }] },
+        { ...shared, id: "b-0", revisionNumber: 1, supersededAt: "2026-02-01T01:00:00Z", lines: [{ id: "old", sortOrder: 1, guestDisplayName: "Superseded Guest", dietaryNote: null, ticketType: { id: "tt-1", title: "Guest", audience: "GUEST", price: 10 }, bookingPlace: { id: "place-old", paymentAllocations: [] } }] },
+        { ...shared, id: "b-1", revisionNumber: 2, supersededAt: null, supersedesBooking: { id: "b-0", revisionNumber: 1 }, lines: [{ id: "new", sortOrder: 1, guestDisplayName: "Current Guest", dietaryNote: null, ticketType: { id: "tt-1", title: "Guest", audience: "GUEST", price: 10 }, bookingPlace: { id: "place-new", paymentAllocations: [] } }] },
       ] } }, isLoading: false, isError: false,
     });
     mockTicketOrders({ data: { event: { id: "ev-1", ticketOrders: [] } }, isLoading: false, isError: false });

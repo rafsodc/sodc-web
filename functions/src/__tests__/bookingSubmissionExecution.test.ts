@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BookingApprovalStatus,
   BookingPaymentAdjustmentStatus,
-  GuestTicketRequestStatus,
   TicketAudience,
 } from "@dataconnect/admin-generated";
 
@@ -15,7 +14,6 @@ vi.mock("firebase-admin/data-connect", () => ({
 import {
   persistActiveBookingRevision,
   persistInitialBooking,
-  persistLegacyGuestTicketRequests,
   persistPendingBookingRevision,
   type CompleteBookingPersistenceInput,
 } from "../bookingSubmissionPersistence";
@@ -107,25 +105,6 @@ describe("atomic booking submission execution", () => {
         deltaAmountMinor: 2500,
         adjustmentStatus: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE,
       }),
-    );
-  });
-
-  it("routes the legacy enum batch through a declared operation, not generic insertMany", async () => {
-    await persistLegacyGuestTicketRequests([
-      {
-        id: "90000000-0000-4000-8000-000000000001",
-        bookingId: input.bookingId,
-        status: GuestTicketRequestStatus.PENDING,
-        requestedGuestCount: 1,
-        guestTicketTypeId: "70000000-0000-4000-8000-000000000002",
-        guestDisplayName: "Guest",
-        createdBy: "system",
-        updatedBy: "system",
-      },
-    ]);
-    expect(mocks.executeMutation).toHaveBeenCalledWith(
-      "CreateLegacyGuestTicketRequestsFromCallable",
-      expect.objectContaining({ requests: [expect.objectContaining({ status: "PENDING" })] }),
     );
   });
 });

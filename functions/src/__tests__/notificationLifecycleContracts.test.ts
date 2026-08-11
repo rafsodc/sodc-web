@@ -11,7 +11,6 @@ describe("notification lifecycle contracts", () => {
     const sourceByFile = new Map(
       [
         "bookings.ts",
-        "guestTicketRequests.ts",
         "membershipStatus.ts",
         "paymentReconciliationService.ts",
         "paymentWebhook.ts",
@@ -24,8 +23,6 @@ describe("notification lifecycle contracts", () => {
     }
 
     expect(sourceByFile.get("bookings.ts")).toContain("await sendBookingSubmitNotificationEmails(");
-    expect(sourceByFile.get("guestTicketRequests.ts")).toContain("await sendGuestTicketRequestSubmittedEmails(");
-    expect(sourceByFile.get("guestTicketRequests.ts")).toContain("await sendGuestTicketRequestReviewedEmails(");
     expect(sourceByFile.get("membershipStatus.ts")).toContain("await sendMembershipStatusEmailIfChanged(");
     expect(sourceByFile.get("paymentReconciliationService.ts")).toContain(
       "await dependencies.notifyExceptionOpened(alert)"
@@ -61,7 +58,6 @@ describe("notification lifecycle contracts", () => {
   it("persists recovery context for every transactional notification sender", () => {
     for (const fileName of [
       "bookingEmailDispatcher.ts",
-      "guestTicketRequestEmails.ts",
       "membershipStatusEmailDispatcher.ts",
       "paymentNotifications.ts",
       "paymentOpsInternalAlerts.ts",

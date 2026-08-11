@@ -44,13 +44,13 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "eventDateTime",
     "eventLocation",
     "ticketLinesSummary",
-    "bookerDietaryNote",
+    "memberDietaryNote",
     "accommodationRequested",
     "bookingTotalFormatted",
     "sectionBookingsUrl",
     "myPaymentsUrl"
     ],
-    body: "Hello ((firstName)),\n\nThank you for booking your place at ((eventTitle)). Your booking is confirmed.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nIf you still need to make a payment, visit My Payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
+    body: "Hello ((firstName)),\n\nThank you for booking your place at ((eventTitle)). Your booking is confirmed.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((memberDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nTotal: ((bookingTotalFormatted))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nIf you still need to make a payment, visit My Payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   bookingPendingApproval: {
     subject: "Your booking for ((eventTitle)) is awaiting approval",
@@ -84,7 +84,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "eventDateTime",
     "eventLocation",
     "ticketLinesSummary",
-    "bookerDietaryNote",
+    "memberDietaryNote",
     "accommodationRequested",
     "bookingTotalFormatted",
     "sectionBookingsUrl",
@@ -94,7 +94,7 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "revisedTotalFormatted",
     "deltaAmountFormatted"
     ],
-    body: "Hello ((firstName)),\n\nYour booking for ((eventTitle)) has been updated.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your updated booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((bookerDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nPayment difference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nView your payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
+    body: "Hello ((firstName)),\n\nYour booking for ((eventTitle)) has been updated.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your updated booking\n\n((ticketLinesSummary))\n\nDietary requirements: ((memberDietaryNote))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nPayment difference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nView your payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   emailChangeVerification: {
     subject: "Confirm your new SODC email address",
@@ -109,46 +109,6 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "verificationLink"
     ],
     body: "Hello,\n\nThank you for registering with SODC.\n\nUse this secure link to verify your email address:\n\n((verificationLink))\n\nIf you did not create an SODC account, you can ignore this email.\n\nKind regards,\n\nSODC Admin",
-  },
-  guestTicketRequestApproved: {
-    subject: "Guest ticket request approved — ((eventTitle))",
-    variables: [
-    "firstName",
-    "eventTitle",
-    "eventDateTime",
-    "eventLocation",
-    "guestTicketCount",
-    "totalAmountLine",
-    "moderatorNote",
-    "myBookingsUrl"
-    ],
-    body: "Hello ((firstName)),\n\nYour request for guest places at ((eventTitle)) has been approved.\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nGuest tickets: ((guestTicketCount))\n\n((totalAmountLine))\n\nNote from organiser: ((moderatorNote))\n\nYou can now arrange payment for the guest places. View your booking to continue:\n\n((myBookingsUrl))\n\nKind regards,\n\nSODC Admin",
-  },
-  guestTicketRequestRejected: {
-    subject: "Update on your guest request for ((eventTitle))",
-    variables: [
-    "firstName",
-    "eventTitle",
-    "eventDateTime",
-    "eventLocation",
-    "guestTicketCount",
-    "moderatorNote",
-    "myBookingsUrl"
-    ],
-    body: "Hello ((firstName)),\n\nUnfortunately, your request for guest places at ((eventTitle)) was not approved.\n\nDate and time: ((eventDateTime))\n\nLocation: ((eventLocation))\n\nGuest tickets requested: ((guestTicketCount))\n\nNote from organiser: ((moderatorNote))\n\nView your booking:\n\n((myBookingsUrl))\n\nKind regards,\n\nSODC Admin",
-  },
-  guestTicketRequestSubmittedModerator: {
-    subject: "[SODC] Guest ticket request — ((eventTitle))",
-    variables: [
-    "eventTitle",
-    "sectionName",
-    "bookerDisplay",
-    "requestedGuestCount",
-    "guestTicketTypeTitle",
-    "dietaryNote",
-    "moderationUrl"
-    ],
-    body: "A guest ticket request is ready for review.\n\nEvent: ((eventTitle))\n\nSection: ((sectionName))\n\nRequested by: ((bookerDisplay))\n\nPlaces requested: ((requestedGuestCount))\n\nTicket type: ((guestTicketTypeTitle))\n\nDietary requirements: ((dietaryNote))\n\n---\n\nReview the request in SODC:\n\n((moderationUrl))\n\nKind regards,\n\nSODC Admin",
   },
   membershipAccessRestricted: {
     subject: "Your SODC membership status has changed",

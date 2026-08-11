@@ -1,4 +1,5 @@
 import {
+  BookingPaymentAdjustmentStatus,
   BookingStatus,
   getBookingsForBookerAndEvent,
   settleBookingPaymentAdjustmentsFromCallable,
@@ -35,6 +36,9 @@ export async function confirmBookingIfFullyPaid(
   if (booking.status !== BookingStatus.CONFIRMED) {
     await dependencies.updateBookingStatus({ id: booking.id, status: BookingStatus.CONFIRMED });
   }
-  await dependencies.settleAdjustments({ revisionBookingId: booking.id });
+  await dependencies.settleAdjustments({
+    revisionBookingId: booking.id,
+    status: BookingPaymentAdjustmentStatus.SETTLED,
+  });
   return { bookingId: booking.id, confirmed: true };
 }

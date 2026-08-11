@@ -30,11 +30,6 @@ export enum GovNotifyDeliveryMode {
   TEAM_TEST = "TEAM_TEST",
   LIVE = "LIVE",
 }
-export enum GuestTicketRequestStatus {
-  PENDING = "PENDING",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
-}
 export enum MembershipStatus {
   PENDING = "PENDING",
   REGULAR = "REGULAR",
@@ -150,32 +145,6 @@ export interface AbortSectionFileReplacementVariables {
   updatedBy: string;
 }
 
-export interface AddBookingLineData {
-  bookingLine_insert: BookingLine_Key;
-}
-
-export interface AddBookingLineFromCallableData {
-  bookingLine_insert: BookingLine_Key;
-}
-
-export interface AddBookingLineFromCallableVariables {
-  bookingId: UUIDString;
-  ticketTypeId: UUIDString;
-  guestUserId?: string | null;
-  guestDisplayName?: string | null;
-  dietaryNote?: string | null;
-  sortOrder: number;
-}
-
-export interface AddBookingLineVariables {
-  bookingId: UUIDString;
-  ticketTypeId: UUIDString;
-  guestUserId?: string | null;
-  guestDisplayName?: string | null;
-  dietaryNote?: string | null;
-  sortOrder: number;
-}
-
 export interface AddUserToUserGroupAdminData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -211,14 +180,6 @@ export interface AdminDeleteBookingVariables {
   id: UUIDString;
 }
 
-export interface AdminDeleteGuestTicketRequestData {
-  guestTicketRequest_delete?: GuestTicketRequest_Key | null;
-}
-
-export interface AdminDeleteGuestTicketRequestVariables {
-  id: UUIDString;
-}
-
 export interface AdminOptInSectionAnnouncementData {
   sectionAnnouncementOptOut_delete?: SectionAnnouncementOptOut_Key | null;
 }
@@ -235,27 +196,6 @@ export interface AdminOptOutSectionAnnouncementData {
 export interface AdminOptOutSectionAnnouncementVariables {
   userId: string;
   sectionId: UUIDString;
-}
-
-export interface AdminReviewGuestTicketRequestData {
-  guestTicketRequest_update?: GuestTicketRequest_Key | null;
-}
-
-export interface AdminReviewGuestTicketRequestFromCallableData {
-  guestTicketRequest_update?: GuestTicketRequest_Key | null;
-}
-
-export interface AdminReviewGuestTicketRequestFromCallableVariables {
-  id: UUIDString;
-  status: GuestTicketRequestStatus;
-  moderatorNote?: string | null;
-  reviewedById: string;
-}
-
-export interface AdminReviewGuestTicketRequestVariables {
-  id: UUIDString;
-  status: GuestTicketRequestStatus;
-  moderatorNote?: string | null;
 }
 
 export interface AnnouncementRecipient_Key {
@@ -521,49 +461,6 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   replyToNotifyUuid?: string | null;
 }
 
-export interface CreateBookingDraftData {
-  booking_insert: Booking_Key;
-}
-
-export interface CreateBookingDraftForUserData {
-  booking_insert: Booking_Key;
-}
-
-export interface CreateBookingDraftForUserVariables {
-  eventId: UUIDString;
-  bookerId: string;
-  clientSubmissionKey: string;
-}
-
-export interface CreateBookingDraftRevisionForUserData {
-  booking_insert: Booking_Key;
-}
-
-export interface CreateBookingDraftRevisionForUserVariables {
-  eventId: UUIDString;
-  bookerId: string;
-  clientSubmissionKey: string;
-  revisionGroupId: UUIDString;
-  revisionNumber: number;
-  supersedesBookingId: UUIDString;
-}
-
-export interface CreateBookingDraftVariables {
-  eventId: UUIDString;
-}
-
-export interface CreateBookingPaymentAdjustmentFromCallableData {
-  bookingPaymentAdjustment_upsert: BookingPaymentAdjustment_Key;
-}
-
-export interface CreateBookingPaymentAdjustmentFromCallableVariables {
-  revisionBookingId: UUIDString;
-  supersededBookingId: UUIDString;
-  deltaAmountMinor: number;
-  status: BookingPaymentAdjustmentStatus;
-  orchestrationKey: string;
-}
-
 export interface CreateEventData {
   event_insert: Event_Key;
 }
@@ -582,35 +479,6 @@ export interface CreateEventVariables {
 
 export interface CreateGovNotifyDeliveryConfigurationData {
   govNotifyDeliveryConfiguration_insert: GovNotifyDeliveryConfiguration_Key;
-}
-
-export interface CreateGuestTicketRequestData {
-  guestTicketRequest_insert: GuestTicketRequest_Key;
-}
-
-export interface CreateGuestTicketRequestFromCallableData {
-  guestTicketRequest_insert: GuestTicketRequest_Key;
-}
-
-export interface CreateGuestTicketRequestFromCallableVariables {
-  id: UUIDString;
-  bookingId: UUIDString;
-  requestedGuestCount: number;
-  guestTicketTypeId: UUIDString;
-  guestDisplayName: string;
-  dietaryNote?: string | null;
-  status: GuestTicketRequestStatus;
-  reviewedById?: string | null;
-  reviewedAt?: TimestampString | null;
-  moderatorNote?: string | null;
-}
-
-export interface CreateGuestTicketRequestVariables {
-  bookingId: UUIDString;
-  requestedGuestCount: number;
-  guestTicketTypeId: UUIDString;
-  guestDisplayName: string;
-  dietaryNote?: string | null;
 }
 
 export interface CreateMigratedUserProfileAndIdentityData {
@@ -820,14 +688,6 @@ export interface CreateUserVariables {
   isCivilServant?: boolean | null;
   isIndustry?: boolean | null;
   now: TimestampString;
-}
-
-export interface DeleteBookingLineFromCallableData {
-  bookingLine_delete?: BookingLine_Key | null;
-}
-
-export interface DeleteBookingLineFromCallableVariables {
-  id: UUIDString;
 }
 
 export interface DeleteEventData {
@@ -1047,60 +907,12 @@ export interface GetAnnouncementSendRecipientsVariables {
   sendId: UUIDString;
 }
 
-export interface GetBookingForGuestTicketCallableData {
-  booking?: {
-    id: UUIDString;
-    booker: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-    } & User_Key;
-    event: {
-      id: UUIDString;
-      title: string;
-      section: {
-        id: UUIDString;
-        name: string;
-      } & Section_Key;
-    } & Event_Key;
-    supersedesBooking?: {
-      guestTicketRequests: ({
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        guestTicketType?: {
-          id: UUIDString;
-        } & TicketType_Key;
-        reviewedBy?: {
-          id: string;
-        } & User_Key;
-        reviewedAt?: TimestampString | null;
-        moderatorNote?: string | null;
-      })[];
-    };
-    guestTicketRequests: ({
-      status: GuestTicketRequestStatus;
-      requestedGuestCount: number;
-      guestDisplayName?: string | null;
-      guestTicketType?: {
-        id: UUIDString;
-      } & TicketType_Key;
-    })[];
-  } & Booking_Key;
-}
-
-export interface GetBookingForGuestTicketCallableVariables {
-  bookingId: UUIDString;
-}
-
 export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
     revisionNumber: number;
     approvalStatus: BookingApprovalStatus;
     approvalNote?: string | null;
-    bookerDietaryNote?: string | null;
     sitNextToUserIds?: string[] | null;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
@@ -1215,7 +1027,6 @@ export interface GetBookingsForBookerAndEventData {
         id: UUIDString;
       } & Booking_Key;
       clientSubmissionKey?: string | null;
-      bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
@@ -1223,7 +1034,7 @@ export interface GetBookingsForBookerAndEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
-        bookingPlace?: {
+        bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
@@ -1251,16 +1062,6 @@ export interface GetBookingsForBookerAndEventData {
           title: string;
         } & TicketType_Key;
       } & BookingLine_Key)[];
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          price: number;
-        } & TicketType_Key;
-      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -1405,73 +1206,6 @@ export interface GetGovNotifyDeliveryConfigurationData {
   };
 }
 
-export interface GetGuestTicketRequestByIdForCallableData {
-  guestTicketRequest?: {
-    id: UUIDString;
-    status: GuestTicketRequestStatus;
-    requestedGuestCount: number;
-    guestDisplayName?: string | null;
-    dietaryNote?: string | null;
-    booking: {
-      id: UUIDString;
-    } & Booking_Key;
-    guestTicketType?: {
-      id: UUIDString;
-    } & TicketType_Key;
-  } & GuestTicketRequest_Key;
-}
-
-export interface GetGuestTicketRequestByIdForCallableVariables {
-  id: UUIDString;
-}
-
-export interface GetGuestTicketRequestForNotificationData {
-  guestTicketRequest?: {
-    id: UUIDString;
-    status: GuestTicketRequestStatus;
-    requestedGuestCount: number;
-    dietaryNote?: string | null;
-    moderatorNote?: string | null;
-    guestTicketType?: {
-      id: UUIDString;
-      title: string;
-      price: number;
-    } & TicketType_Key;
-    booking: {
-      id: UUIDString;
-      booker: {
-        id: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-      } & User_Key;
-      event: {
-        id: UUIDString;
-        title: string;
-        location?: string | null;
-        startDateTime: TimestampString;
-        endDateTime: TimestampString;
-        section: {
-          id: UUIDString;
-          name: string;
-        } & Section_Key;
-      } & Event_Key;
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestTicketType?: {
-          price: number;
-        };
-      } & GuestTicketRequest_Key)[];
-    } & Booking_Key;
-  } & GuestTicketRequest_Key;
-}
-
-export interface GetGuestTicketRequestForNotificationVariables {
-  id: UUIDString;
-}
-
 export interface GetLatestNotifyDeliveryReceiptForReferenceData {
   notifyDeliveryReceipts: ({
     id: string;
@@ -1588,7 +1322,7 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
-        bookingPlace?: {
+        bookingPlace: {
           id: UUIDString;
         } & BookingPlace_Key;
         ticketType: {
@@ -1598,17 +1332,6 @@ export interface GetMyBookingsData {
           price: number;
         } & TicketType_Key;
       } & BookingLine_Key)[];
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          price: number;
-        } & TicketType_Key;
-      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -1625,7 +1348,6 @@ export interface GetMyBookingsForEventData {
       revisionNumber: number;
       supersededAt?: TimestampString | null;
       clientSubmissionKey?: string | null;
-      bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
@@ -1633,7 +1355,7 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
-        bookingPlace?: {
+        bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
@@ -1659,21 +1381,6 @@ export interface GetMyBookingsForEventData {
           lastName: string;
         } & User_Key;
       } & BookingLine_Key)[];
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        dietaryNote?: string | null;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          audience: TicketAudience;
-          price: number;
-        } & TicketType_Key;
-        reviewedAt?: TimestampString | null;
-        moderatorNote?: string | null;
-      } & GuestTicketRequest_Key)[];
     } & Booking_Key)[];
   } & User_Key;
 }
@@ -2423,11 +2130,6 @@ export interface GrantUserGroupToSectionForPurposeVariables {
   purposes?: SectionUserGroupPurpose[] | null;
 }
 
-export interface GuestTicketRequest_Key {
-  id: UUIDString;
-  __typename?: 'GuestTicketRequest_Key';
-}
-
 export interface LegacyUserIdentity_Key {
   sourceSystem: string;
   legacyUserId: UUIDString;
@@ -2503,7 +2205,6 @@ export interface ListEventBookingsForAdminData {
         revisionNumber: number;
       } & Booking_Key;
       clientSubmissionKey?: string | null;
-      bookerDietaryNote?: string | null;
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
@@ -2517,28 +2218,12 @@ export interface ListEventBookingsForAdminData {
         lastName: string;
         email: string;
       } & User_Key;
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        reviewedAt?: TimestampString | null;
-        moderatorNote?: string | null;
-        createdAt: TimestampString;
-        updatedAt: TimestampString;
-        createdBy?: string | null;
-        updatedBy?: string | null;
-        reviewedBy?: {
-          id: string;
-          firstName: string;
-          lastName: string;
-        } & User_Key;
-      } & GuestTicketRequest_Key)[];
       lines: ({
         id: UUIDString;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
-        bookingPlace?: {
+        bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
@@ -2604,59 +2289,6 @@ export interface ListGovNotifyDeliveryModeAuditsData {
 
 export interface ListGovNotifyDeliveryModeAuditsVariables {
   limit: number;
-}
-
-export interface ListGuestTicketRequestsForAdminData {
-  event?: {
-    id: UUIDString;
-    title: string;
-    bookings: ({
-      id: UUIDString;
-      status: BookingStatus;
-      revisionNumber: number;
-      revisionGroupId: UUIDString;
-      supersededAt?: TimestampString | null;
-      supersedesBooking?: {
-        id: UUIDString;
-        revisionNumber: number;
-      } & Booking_Key;
-      booker: {
-        id: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-      } & User_Key;
-      guestTicketRequests: ({
-        id: UUIDString;
-        status: GuestTicketRequestStatus;
-        requestedGuestCount: number;
-        guestDisplayName?: string | null;
-        dietaryNote?: string | null;
-        moderatorNote?: string | null;
-        createdAt: TimestampString;
-        reviewedAt?: TimestampString | null;
-        createdBy?: string | null;
-        updatedAt: TimestampString;
-        updatedBy?: string | null;
-        reviewedBy?: {
-          id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
-        } & User_Key;
-        guestTicketType?: {
-          id: UUIDString;
-          title: string;
-          audience: TicketAudience;
-          price: number;
-        } & TicketType_Key;
-      } & GuestTicketRequest_Key)[];
-    } & Booking_Key)[];
-  } & Event_Key;
-}
-
-export interface ListGuestTicketRequestsForAdminVariables {
-  eventId: UUIDString;
 }
 
 export interface ListLegacyUserIdentitiesByBatchData {
@@ -2985,14 +2617,6 @@ export interface ListUsersData {
     createdBy?: string | null;
     updatedBy?: string | null;
   } & User_Key)[];
-}
-
-export interface MarkBookingSupersededFromCallableData {
-  booking_update?: Booking_Key | null;
-}
-
-export interface MarkBookingSupersededFromCallableVariables {
-  id: UUIDString;
 }
 
 export interface MarkNotificationDeliveryFailedByIdData {
@@ -3332,6 +2956,7 @@ export interface SettleBookingPaymentAdjustmentsFromCallableData {
 
 export interface SettleBookingPaymentAdjustmentsFromCallableVariables {
   revisionBookingId: UUIDString;
+  status: BookingPaymentAdjustmentStatus;
 }
 
 export interface SubscribeToUserGroupData {
@@ -3478,31 +3103,11 @@ export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
   stripeRefundId: string;
 }
 
-export interface UpdateBookingPreferencesFromCallableData {
-  booking_update?: Booking_Key | null;
-}
-
-export interface UpdateBookingPreferencesFromCallableVariables {
-  id: UUIDString;
-  sitNextToUserIds?: string[] | null;
-  accommodationRequested: boolean;
-  accommodationNote?: string | null;
-}
-
-export interface UpdateBookingStatusData {
-  booking_update?: Booking_Key | null;
-}
-
 export interface UpdateBookingStatusFromCallableData {
   booking_update?: Booking_Key | null;
 }
 
 export interface UpdateBookingStatusFromCallableVariables {
-  id: UUIDString;
-  status: BookingStatus;
-}
-
-export interface UpdateBookingStatusVariables {
   id: UUIDString;
   status: BookingStatus;
 }
@@ -4014,31 +3619,6 @@ export function getTicketOrdersForBookerAndEvent(dc: DataConnect, vars: GetTicke
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrdersForBookerAndEvent' Query. Allow users to pass in custom DataConnect instances. */
 export function getTicketOrdersForBookerAndEvent(vars: GetTicketOrdersForBookerAndEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrdersForBookerAndEventData>>;
 
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraftForUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function createBookingDraftForUser(dc: DataConnect, vars: CreateBookingDraftForUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftForUserData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraftForUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createBookingDraftForUser(vars: CreateBookingDraftForUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftForUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraftRevisionForUser' Mutation. Allow users to execute without passing in DataConnect. */
-export function createBookingDraftRevisionForUser(dc: DataConnect, vars: CreateBookingDraftRevisionForUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftRevisionForUserData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraftRevisionForUser' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createBookingDraftRevisionForUser(vars: CreateBookingDraftRevisionForUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftRevisionForUserData>>;
-
-/** Generated Node Admin SDK operation action function for the 'MarkBookingSupersededFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function markBookingSupersededFromCallable(dc: DataConnect, vars: MarkBookingSupersededFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkBookingSupersededFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'MarkBookingSupersededFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function markBookingSupersededFromCallable(vars: MarkBookingSupersededFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkBookingSupersededFromCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateBookingPaymentAdjustmentFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function createBookingPaymentAdjustmentFromCallable(dc: DataConnect, vars: CreateBookingPaymentAdjustmentFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingPaymentAdjustmentFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateBookingPaymentAdjustmentFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createBookingPaymentAdjustmentFromCallable(vars: CreateBookingPaymentAdjustmentFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingPaymentAdjustmentFromCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AddBookingLineFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function addBookingLineFromCallable(dc: DataConnect, vars: AddBookingLineFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'AddBookingLineFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addBookingLineFromCallable(vars: AddBookingLineFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineFromCallableData>>;
-
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingStatusFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateBookingStatusFromCallable(dc: DataConnect, vars: UpdateBookingStatusFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingStatusFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -4159,36 +3739,6 @@ export function upsertPaymentReconciliationException(dc: DataConnect, vars: Upse
 /** Generated Node Admin SDK operation action function for the 'UpsertPaymentReconciliationException' Mutation. Allow users to pass in custom DataConnect instances. */
 export function upsertPaymentReconciliationException(vars: UpsertPaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertPaymentReconciliationExceptionData>>;
 
-/** Generated Node Admin SDK operation action function for the 'UpdateBookingPreferencesFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateBookingPreferencesFromCallable(dc: DataConnect, vars: UpdateBookingPreferencesFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPreferencesFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateBookingPreferencesFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateBookingPreferencesFromCallable(vars: UpdateBookingPreferencesFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPreferencesFromCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'DeleteBookingLineFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function deleteBookingLineFromCallable(dc: DataConnect, vars: DeleteBookingLineFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteBookingLineFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'DeleteBookingLineFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function deleteBookingLineFromCallable(vars: DeleteBookingLineFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteBookingLineFromCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequestFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function createGuestTicketRequestFromCallable(dc: DataConnect, vars: CreateGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequestFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createGuestTicketRequestFromCallable(vars: CreateGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestFromCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestByIdForCallable' Query. Allow users to execute without passing in DataConnect. */
-export function getGuestTicketRequestByIdForCallable(dc: DataConnect, vars: GetGuestTicketRequestByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestByIdForCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestByIdForCallable' Query. Allow users to pass in custom DataConnect instances. */
-export function getGuestTicketRequestByIdForCallable(vars: GetGuestTicketRequestByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestByIdForCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequestFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminReviewGuestTicketRequestFromCallable(dc: DataConnect, vars: AdminReviewGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestFromCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequestFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminReviewGuestTicketRequestFromCallable(vars: AdminReviewGuestTicketRequestFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestFromCallableData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetBookingForGuestTicketCallable' Query. Allow users to execute without passing in DataConnect. */
-export function getBookingForGuestTicketCallable(dc: DataConnect, vars: GetBookingForGuestTicketCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingForGuestTicketCallableData>>;
-/** Generated Node Admin SDK operation action function for the 'GetBookingForGuestTicketCallable' Query. Allow users to pass in custom DataConnect instances. */
-export function getBookingForGuestTicketCallable(vars: GetBookingForGuestTicketCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingForGuestTicketCallableData>>;
-
 /** Generated Node Admin SDK operation action function for the 'GetBookingForNotification' Query. Allow users to execute without passing in DataConnect. */
 export function getBookingForNotification(dc: DataConnect, vars: GetBookingForNotificationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingForNotificationData>>;
 /** Generated Node Admin SDK operation action function for the 'GetBookingForNotification' Query. Allow users to pass in custom DataConnect instances. */
@@ -4203,11 +3753,6 @@ export function listStaleDraftBookingsForScheduler(vars: ListStaleDraftBookingsF
 export function listStalePendingTicketOrdersForScheduler(dc: DataConnect, vars: ListStalePendingTicketOrdersForSchedulerVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStalePendingTicketOrdersForSchedulerData>>;
 /** Generated Node Admin SDK operation action function for the 'ListStalePendingTicketOrdersForScheduler' Query. Allow users to pass in custom DataConnect instances. */
 export function listStalePendingTicketOrdersForScheduler(vars: ListStalePendingTicketOrdersForSchedulerVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStalePendingTicketOrdersForSchedulerData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestForNotification' Query. Allow users to execute without passing in DataConnect. */
-export function getGuestTicketRequestForNotification(dc: DataConnect, vars: GetGuestTicketRequestForNotificationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestForNotificationData>>;
-/** Generated Node Admin SDK operation action function for the 'GetGuestTicketRequestForNotification' Query. Allow users to pass in custom DataConnect instances. */
-export function getGuestTicketRequestForNotification(vars: GetGuestTicketRequestForNotificationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetGuestTicketRequestForNotificationData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetSectionAnnouncementOptOuts' Query. Allow users to execute without passing in DataConnect. */
 export function getSectionAnnouncementOptOuts(dc: DataConnect, vars: GetSectionAnnouncementOptOutsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionAnnouncementOptOutsData>>;
@@ -4364,36 +3909,6 @@ export function consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableR
 /** Generated Node Admin SDK operation action function for the 'ConsumeCallableRateLimit' Mutation. Allow users to pass in custom DataConnect instances. */
 export function consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConsumeCallableRateLimitData>>;
 
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to execute without passing in DataConnect. */
-export function createBookingDraft(dc: DataConnect, vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateBookingDraft' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createBookingDraft(vars: CreateBookingDraftVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateBookingDraftData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AddBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
-export function addBookingLine(dc: DataConnect, vars: AddBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineData>>;
-/** Generated Node Admin SDK operation action function for the 'AddBookingLine' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addBookingLine(vars: AddBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddBookingLineData>>;
-
-/** Generated Node Admin SDK operation action function for the 'UpdateBookingStatus' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateBookingStatus(dc: DataConnect, vars: UpdateBookingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateBookingStatus' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateBookingStatus(vars: UpdateBookingStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusData>>;
-
-/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
-export function createGuestTicketRequest(dc: DataConnect, vars: CreateGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestData>>;
-/** Generated Node Admin SDK operation action function for the 'CreateGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
-export function createGuestTicketRequest(vars: CreateGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateGuestTicketRequestData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminDeleteGuestTicketRequest(dc: DataConnect, vars: AdminDeleteGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteGuestTicketRequestData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminDeleteGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminDeleteGuestTicketRequest(vars: AdminDeleteGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteGuestTicketRequestData>>;
-
-/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequest' Mutation. Allow users to execute without passing in DataConnect. */
-export function adminReviewGuestTicketRequest(dc: DataConnect, vars: AdminReviewGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestData>>;
-/** Generated Node Admin SDK operation action function for the 'AdminReviewGuestTicketRequest' Mutation. Allow users to pass in custom DataConnect instances. */
-export function adminReviewGuestTicketRequest(vars: AdminReviewGuestTicketRequestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminReviewGuestTicketRequestData>>;
-
 /** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
 export function adminDeleteBookingLine(dc: DataConnect, vars: AdminDeleteBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingLineData>>;
 /** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -4523,11 +4038,6 @@ export function getMyBookingPaymentAdjustments(options?: OperationOptions): Prom
 export function listEventBookingsForAdmin(dc: DataConnect, vars: ListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListEventBookingsForAdminData>>;
 /** Generated Node Admin SDK operation action function for the 'ListEventBookingsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
 export function listEventBookingsForAdmin(vars: ListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListEventBookingsForAdminData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ListGuestTicketRequestsForAdmin' Query. Allow users to execute without passing in DataConnect. */
-export function listGuestTicketRequestsForAdmin(dc: DataConnect, vars: ListGuestTicketRequestsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGuestTicketRequestsForAdminData>>;
-/** Generated Node Admin SDK operation action function for the 'ListGuestTicketRequestsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
-export function listGuestTicketRequestsForAdmin(vars: ListGuestTicketRequestsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListGuestTicketRequestsForAdminData>>;
 
 /** Generated Node Admin SDK operation action function for the 'ListTicketOrdersForAdmin' Query. Allow users to execute without passing in DataConnect. */
 export function listTicketOrdersForAdmin(dc: DataConnect, vars: ListTicketOrdersForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListTicketOrdersForAdminData>>;

@@ -53,7 +53,7 @@ export function useBookingWizardState({
   const [memberTicketTypeId, setMemberTicketTypeId] = useState<string | null>(null);
   const [guests, setGuests] = useState<GuestDetailRow[]>([]);
   const [guestCountInput, setGuestCountInput] = useState("0");
-  const [bookerDietaryNote, setBookerDietaryNote] = useState("");
+  const [memberDietaryNote, setMemberDietaryNote] = useState("");
   const [sitNextToUserIds, setSitNextToUserIds] = useState<string[]>([]);
   const [accommodationRequested, setAccommodationRequested] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export function useBookingWizardState({
     setMemberTicketTypeId(snapshot.memberTicketTypeId);
     setGuests(snapshot.guests);
     setGuestCountInput(String(snapshot.guests.length));
-    setBookerDietaryNote(snapshot.bookerDietaryNote);
+    setMemberDietaryNote(snapshot.memberDietaryNote);
     setSitNextToUserIds(snapshot.sitNextToUserIds);
     setAccommodationRequested(snapshot.accommodationRequested);
   }, []);
@@ -247,7 +247,7 @@ export function useBookingWizardState({
         baseRevisionNumber: existingTerminalBooking?.revisionNumber,
         lines: buildBookingSubmissionLines({
           memberTicketTypeId,
-          memberDietaryNote: bookerDietaryNote,
+          memberDietaryNote,
           guests,
         }),
         sitNextToUserIds,
@@ -342,8 +342,8 @@ export function useBookingWizardState({
     setGuestCount,
     updateGuest,
     removeGuest,
-    bookerDietaryNote,
-    setBookerDietaryNote,
+    memberDietaryNote,
+    setMemberDietaryNote,
     sitNextToUserIds,
     setSitNextToUserIds,
     accommodationRequested,

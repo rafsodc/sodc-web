@@ -23,7 +23,6 @@ import {
   listUserGroupsRef,
   getEventByIdRef,
   listEventBookingsForAdminRef,
-  adminDeleteGuestTicketRequestRef,
   adminDeleteBookingLineRef,
   adminDeleteBookingRef,
   TicketAudience,
@@ -296,9 +295,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       const bookingsResult = await executeDataConnectQuery(listEventBookingsForAdminRef(dataConnect, { eventId: event.id as UUIDString }));
       const bookingsList = bookingsResult.data?.event?.bookings ?? [];
       for (const b of bookingsList) {
-        for (const gtr of b.guestTicketRequests) {
-          await executeDataConnectMutation(adminDeleteGuestTicketRequestRef(dataConnect, { id: gtr.id }));
-        }
         for (const line of b.lines) {
           await executeDataConnectMutation(adminDeleteBookingLineRef(dataConnect, { id: line.id }));
         }

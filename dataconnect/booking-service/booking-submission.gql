@@ -132,15 +132,6 @@ mutation ActivateApprovedBookingRevisionFromCallable(
   )
 }
 
-# Temporary compatibility operation for the legacy additional-guest callable.
-# It removes the production-defective generic Admin insertMany enum path while
-# #548 completes removal of the split guest-request model.
-mutation CreateLegacyGuestTicketRequestsFromCallable(
-  $requests: [GuestTicketRequest_Data!]! @allow(fields: "id bookingId status requestedGuestCount guestTicketTypeId guestDisplayName dietaryNote reviewedById reviewedAt moderatorNote createdBy updatedBy", maxCount: 20)
-) @auth(level: NO_ACCESS) @transaction {
-  guestTicketRequest_insertMany(data: $requests)
-}
-
 # Checkout orders and their exact place allocations are one unit. Creating
 # these rows in separate operations could leave an unallocated order (or an
 # allocation without the order) when a retry races a partial failure.

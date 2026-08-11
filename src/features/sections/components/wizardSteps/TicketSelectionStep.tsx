@@ -27,8 +27,8 @@ interface TicketSelectionStepProps {
   memberTicketTypes: TicketType[];
   memberTicketTypeId: string | null;
   onMemberTicketTypeChange: (id: string | null) => void;
-  bookerDietaryNote: string;
-  onBookerDietaryNoteChange: (value: string) => void;
+  memberDietaryNote: string;
+  onMemberDietaryNoteChange: (value: string) => void;
   seatingOptions: SeatingOption[];
   seatingSearchInputValue: string;
   onSeatingSearchInputValueChange: (value: string) => void;
@@ -44,8 +44,8 @@ export default function TicketSelectionStep({
   memberTicketTypes,
   memberTicketTypeId,
   onMemberTicketTypeChange,
-  bookerDietaryNote,
-  onBookerDietaryNoteChange,
+  memberDietaryNote,
+  onMemberDietaryNoteChange,
   seatingOptions,
   seatingSearchInputValue,
   onSeatingSearchInputValueChange,
@@ -88,8 +88,8 @@ export default function TicketSelectionStep({
         placeholder="e.g. vegetarian, nut allergy, gluten free"
         fullWidth
         size="small"
-        value={bookerDietaryNote}
-        onChange={(e) => onBookerDietaryNoteChange(e.target.value)}
+        value={memberDietaryNote}
+        onChange={(e) => onMemberDietaryNoteChange(e.target.value)}
         sx={{ mt: 2 }}
       />
       <Autocomplete

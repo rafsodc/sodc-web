@@ -59,7 +59,7 @@ export function selectLatestPaymentEligibleBooking(bookings: BookingRow[]): Book
 }
 
 function paidAmountMinor(line: BookingRow["lines"][number]): number {
-  return (line.bookingPlace?.paymentAllocations ?? []).reduce(
+  return (line.bookingPlace.paymentAllocations ?? []).reduce(
     (total, allocation) =>
       allocation.ticketOrder.status === TicketOrderStatus.PAID ||
       allocation.ticketOrder.status === TicketOrderStatus.REFUNDED
@@ -70,7 +70,7 @@ function paidAmountMinor(line: BookingRow["lines"][number]): number {
 }
 
 function hasSettledAllocation(line: BookingRow["lines"][number]): boolean {
-  return (line.bookingPlace?.paymentAllocations ?? []).some(
+  return (line.bookingPlace.paymentAllocations ?? []).some(
     (allocation) =>
       allocation.ticketOrder.status === TicketOrderStatus.PAID ||
       allocation.ticketOrder.status === TicketOrderStatus.REFUNDED
@@ -85,7 +85,7 @@ export function planBookingAllocationRefunds(booking: BookingRow): BookingAlloca
     let excessAmountMinor = Math.max(0, paidAmountMinor(line) - requiredAmountMinor);
     if (excessAmountMinor === 0) continue;
 
-    const refundable = [...(line.bookingPlace?.paymentAllocations ?? [])]
+    const refundable = [...(line.bookingPlace.paymentAllocations ?? [])]
       .filter(
         (allocation) =>
           (allocation.ticketOrder.status === TicketOrderStatus.PAID ||
@@ -115,7 +115,6 @@ export function bookingIsFullyPaid(booking: BookingRow): boolean {
     booking.lines.length > 0 &&
     booking.lines.every(
       (line) =>
-        !!line.bookingPlace?.id &&
         hasSettledAllocation(line) &&
         paidAmountMinor(line) >= Math.round(line.ticketType.price * 100)
     )
@@ -126,8 +125,7 @@ export function bookingIsFullyPaid(booking: BookingRow): boolean {
 export function computeUnpaidBookingCheckoutItems(booking: BookingRow): BookingCheckoutPlaceItem[] {
   const items: BookingCheckoutPlaceItem[] = [];
   for (const line of booking.lines) {
-    const bookingPlaceId = line.bookingPlace?.id;
-    if (!bookingPlaceId) continue;
+    const bookingPlaceId = line.bookingPlace.id;
     const requiredAmountMinor = Math.round(line.ticketType.price * 100);
     const remainingAmountMinor = Math.max(0, requiredAmountMinor - paidAmountMinor(line));
     if (remainingAmountMinor === 0 && hasSettledAllocation(line)) continue;

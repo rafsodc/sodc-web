@@ -19,7 +19,7 @@ import {
 import { sendNotificationOnce } from "./notificationDelivery";
 import type { BookingPaymentDelta } from "./bookingPaymentAdjustments";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
-import { resolveGuestTicketModeratorEmails } from "./guestTicketRequestModerators";
+import { resolveBookingModeratorEmails } from "./bookingModerators";
 
 export const BOOKING_MAIL_TEMPLATE_KEYS = [
   "bookingConfirmation",
@@ -52,7 +52,6 @@ type BookingNotificationRow = {
   revisionNumber: number;
   approvalStatus: string;
   approvalNote?: string | null;
-  bookerDietaryNote?: string | null;
   sitNextToUserIds?: string[] | null;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
@@ -75,7 +74,7 @@ export type BookingEmailPersonalisation = {
   eventDateTime: string;
   eventLocation: string;
   ticketLinesSummary: string;
-  bookerDietaryNote: string;
+  memberDietaryNote: string;
   // GOV.UK Notify optional-content condition -- must be the literal string
   // "yes"/"no", not a boolean, and its ((var??text)) text cannot itself
   // contain a placeholder, so the accommodation note isn't shown here.
@@ -185,9 +184,7 @@ function buildBasePersonalisation(args: {
     eventDateTime: formatBookingEventDateTime(booking.event.startDateTime, booking.event.endDateTime),
     eventLocation: booking.event.location?.trim() || "To be confirmed",
     ticketLinesSummary: buildTicketLinesSummary(booking.lines),
-    // Keep the Notify variable name stable while legacy templates are in use;
-    // the source of truth is the member ticket line.
-    bookerDietaryNote: memberDietaryNote?.trim() || booking.bookerDietaryNote?.trim() || "None provided",
+    memberDietaryNote: memberDietaryNote?.trim() || "None provided",
     accommodationRequested: accommodationRequestedCondition(booking.accommodationRequested),
     bookingTotalFormatted: formatMinorCurrency(totalMinor, "GBP"),
     sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
@@ -419,7 +416,7 @@ export async function notifyBookingPendingApprovalEmails(args: {
 
     const recipients = args.recipientEmails
       ? Array.from(new Set(args.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)))
-      : await resolveGuestTicketModeratorEmails({
+      : await resolveBookingModeratorEmails({
           sectionId: booking.event.section.id,
           excludeUserId: booking.booker.id,
         });

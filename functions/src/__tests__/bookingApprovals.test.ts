@@ -28,7 +28,7 @@ function target(overrides: Partial<Target> = {}): Target {
     booker: { id: "u1", firstName: "Alex", lastName: "Member", email: "alex@example.com" },
     event: { id: "40000000-0000-4000-8000-000000000001", title: "Dinner", section: { id: "50000000-0000-4000-8000-000000000001", name: "Events" } },
     supersedesBooking: { id: "10000000-0000-4000-8000-000000000001", revisionNumber: 1 },
-    lines: [{ id: "line-new", sortOrder: 0, guestDisplayName: null, dietaryNote: null, ticketType: { id: "ticket", title: "Ticket", audience: "MEMBER", price: 30 }, guestUser: null }],
+    lines: [{ id: "line-new", sortOrder: 0, guestDisplayName: null, dietaryNote: null, ticketType: { id: "ticket", title: "Ticket", audience: "MEMBER", price: 30 }, bookingPlace: { id: "place-new", paymentAllocations: [] }, guestUser: null }],
     ...overrides,
   } as unknown as Target;
 }
@@ -41,7 +41,7 @@ function revision(overrides: Partial<Revision> = {}): Revision {
     revisionGroupId: "20000000-0000-4000-8000-000000000001",
     revisionNumber: 1,
     supersededAt: null,
-    lines: [{ id: "line-old", sortOrder: 0, guestDisplayName: null, dietaryNote: null, ticketType: { id: "ticket", title: "Ticket", audience: "MEMBER", price: 20 }, bookingPlace: null, guestUser: null }],
+    lines: [{ id: "line-old", sortOrder: 0, guestDisplayName: null, dietaryNote: null, ticketType: { id: "ticket", title: "Ticket", audience: "MEMBER", price: 20 }, bookingPlace: { id: "place-old", paymentAllocations: [] }, guestUser: null }],
     ...overrides,
   } as unknown as Revision;
 }

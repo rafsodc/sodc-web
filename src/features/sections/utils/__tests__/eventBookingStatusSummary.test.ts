@@ -2,383 +2,104 @@ import { describe, expect, it } from "vitest";
 import {
   BookingPaymentAdjustmentStatus,
   BookingStatus,
-  GuestTicketRequestStatus,
   TicketOrderStatus,
 } from "@dataconnect/generated";
 import {
-  getEventBookingNextSteps,
-  hasExpiredDraftHold,
   buildBookingTicketDisplayRows,
   buildBookingTicketRowsWithPaymentStatus,
   formatBookingTicketDisplayLabel,
   getPayableBookingTicketRows,
-  guestTicketRequestsForBookingEdit,
-  hasPendingGuestTicketsAwaitingApproval,
+  hasExpiredDraftHold,
   summarizeEventBookingPayment,
-  summarizeGuestTicketRequests,
-  type EventBookingSummaryInput,
 } from "../eventBookingStatusSummary";
 
+const eventId = "10000000-0000-4000-8000-000000000001";
+const memberTicketId = "20000000-0000-4000-8000-000000000001";
+const guestTicketId = "20000000-0000-4000-8000-000000000002";
+
 const booking = {
-  id: "booking-1",
   status: BookingStatus.SUBMITTED,
-  revisionNumber: 2,
+  approvalStatus: "APPROVED",
+  revisionNumber: 1,
   lines: [
-    {
-      id: "line-1",
-      ticketType: { id: "ticket-member", title: "Member", price: 50, audience: "MEMBER" },
-      guestDisplayName: null,
-    },
+    { id: "member-line", guestDisplayName: null, ticketType: { id: memberTicketId, title: "Member ticket", price: 20 } },
+    { id: "guest-line", guestDisplayName: "Jamie Guest", ticketType: { id: guestTicketId, title: "Guest ticket", price: 10 } },
   ],
-  guestTicketRequests: [],
 };
 
-describe("summarizeGuestTicketRequests", () => {
-  it("counts pending, approved, and rejected guest tickets", () => {
-    const summary = summarizeGuestTicketRequests([
-      { status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 2 },
-      { status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 },
-      { status: GuestTicketRequestStatus.REJECTED, requestedGuestCount: 1 },
-    ] as never);
-
-    expect(summary).toEqual({
-      pendingCount: 2,
-      approvedCount: 1,
-      rejectedCount: 1,
-      hasPending: true,
-    });
-  });
-});
-
-describe("guestTicketRequestsForBookingEdit", () => {
-  it("excludes declined guest ticket requests", () => {
-    expect(
-      guestTicketRequestsForBookingEdit([
-        { status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 },
-        { status: GuestTicketRequestStatus.REJECTED, requestedGuestCount: 1 },
-        { status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 1 },
-      ])
-    ).toHaveLength(2);
-  });
-});
-
 describe("buildBookingTicketDisplayRows", () => {
-  it("includes approved guest ticket requests alongside booking lines", () => {
-    const rows = buildBookingTicketDisplayRows({
-      lines: [
-        {
-          id: "line-1",
-          guestDisplayName: null,
-          ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-        },
-      ],
-      guestTicketRequests: [
-        {
-          id: "gtr-1",
-          status: GuestTicketRequestStatus.APPROVED,
-          requestedGuestCount: 1,
-          guestDisplayName: "Alex Guest",
-          guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-        },
-      ],
-    });
+  it("uses booking lines as the only attendee source", () => {
+    const rows = buildBookingTicketDisplayRows(booking);
 
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toMatchObject({
-      ticketTitle: "Guest standard",
-      guestName: "Alex Guest",
-      source: "approved_guest_request",
-    });
-  });
-
-  it("includes pending guest ticket requests awaiting approval", () => {
-    const rows = buildBookingTicketDisplayRows({
-      lines: [
-        {
-          id: "line-1",
-          guestDisplayName: null,
-          ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-        },
-      ],
-      guestTicketRequests: [
-        {
-          id: "gtr-1",
-          status: GuestTicketRequestStatus.PENDING,
-          requestedGuestCount: 1,
-          guestDisplayName: "Sam Extra",
-          guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-        },
-      ],
-    });
-
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toMatchObject({
-      ticketTitle: "Guest standard",
-      guestName: "Sam Extra",
-      source: "pending_guest_request",
-    });
-    expect(formatBookingTicketDisplayLabel(rows[1])).toBe("Guest standard (Sam Extra) — pending confirmation");
-    expect(getPayableBookingTicketRows(rows)).toHaveLength(1);
+    expect(rows).toEqual([
+      expect.objectContaining({ id: "member-line", ticketTitle: "Member ticket", source: "line" }),
+      expect.objectContaining({ id: "guest-line", guestName: "Jamie Guest", source: "line" }),
+    ]);
+    expect(getPayableBookingTicketRows(rows)).toEqual(rows);
+    expect(formatBookingTicketDisplayLabel(rows[1]!)).toBe("Guest ticket (Jamie Guest)");
   });
 });
 
 describe("buildBookingTicketRowsWithPaymentStatus", () => {
-  it("assigns paid and unpaid status per ticket row", () => {
+  it("assigns paid and unpaid status to complete-booking lines", () => {
     const rows = buildBookingTicketRowsWithPaymentStatus({
-      booking: {
-        lines: [
-          {
-            id: "line-1",
-            guestDisplayName: null,
-            ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-          },
-          {
-            id: "line-2",
-            guestDisplayName: "Jamie Guest",
-            ticketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-          },
-        ],
-        guestTicketRequests: [
-          {
-            id: "gtr-1",
-            status: GuestTicketRequestStatus.APPROVED,
-            requestedGuestCount: 1,
-            guestDisplayName: "Alex Extra",
-            guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-          },
-        ],
-      },
-      eventId: "event-1",
-      ticketOrders: [
-        {
-          status: TicketOrderStatus.PAID,
-          quantity: 1,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-member" },
-        },
-        {
-          status: TicketOrderStatus.PAID,
-          quantity: 1,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-guest" },
-        },
-      ],
+      booking,
+      eventId,
+      ticketOrders: [{
+        status: TicketOrderStatus.PAID,
+        quantity: 1,
+        event: { id: eventId },
+        ticketType: { id: memberTicketId },
+      }],
     });
 
-    expect(rows.map((row) => ({ guest: row.guestName, paymentStatus: row.paymentStatus }))).toEqual([
-      { guest: null, paymentStatus: "paid" },
-      { guest: "Jamie Guest", paymentStatus: "paid" },
-      { guest: "Alex Extra", paymentStatus: "unpaid" },
+    expect(rows).toEqual([
+      expect.objectContaining({ id: "member-line", paymentStatus: "paid" }),
+      expect.objectContaining({ id: "guest-line", paymentStatus: "unpaid" }),
     ]);
-  });
-
-  it("marks pending guest requests as awaiting approval", () => {
-    const rows = buildBookingTicketRowsWithPaymentStatus({
-      booking: {
-        lines: [
-          {
-            id: "line-1",
-            guestDisplayName: null,
-            ticketType: { id: "ticket-member", title: "Member standard", price: 50 },
-          },
-        ],
-        guestTicketRequests: [
-          {
-            id: "gtr-1",
-            status: GuestTicketRequestStatus.PENDING,
-            requestedGuestCount: 1,
-            guestDisplayName: "Sam Extra",
-            guestTicketType: { id: "ticket-guest", title: "Guest standard", price: 25 },
-          },
-        ],
-      },
-      eventId: "event-1",
-      ticketOrders: [],
-    });
-
-    expect(rows[1]?.paymentStatus).toBe("awaiting_approval");
-    expect(rows[1]?.paymentStatusLabel).toBe("Pending confirmation");
   });
 });
 
 describe("summarizeEventBookingPayment", () => {
-  it("returns not started when no orders exist for booked ticket types", () => {
+  it("reports not started, pending, and fully paid states from all booking lines", () => {
+    const none = summarizeEventBookingPayment({ booking, eventId, ticketOrders: [], adjustments: [] });
+    expect(none.kind).toBe("not_started");
+    expect(none.unpaidTicketTypeId).toBe(memberTicketId);
+
+    const pending = summarizeEventBookingPayment({
+      booking,
+      eventId,
+      ticketOrders: [{ status: TicketOrderStatus.PENDING, quantity: 1, event: { id: eventId }, ticketType: { id: memberTicketId } }],
+      adjustments: [],
+    });
+    expect(pending.kind).toBe("pending");
+
+    const paid = summarizeEventBookingPayment({
+      booking,
+      eventId,
+      ticketOrders: [
+        { status: TicketOrderStatus.PAID, quantity: 1, event: { id: eventId }, ticketType: { id: memberTicketId } },
+        { status: TicketOrderStatus.PAID, quantity: 1, event: { id: eventId }, ticketType: { id: guestTicketId } },
+      ],
+      adjustments: [],
+    });
+    expect(paid.kind).toBe("paid");
+  });
+
+  it("prioritizes an active payment adjustment", () => {
     const summary = summarizeEventBookingPayment({
       booking,
-      eventId: "event-1",
+      eventId,
       ticketOrders: [],
-      adjustments: [],
+      adjustments: [{ status: BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND }],
     });
-
-    expect(summary.kind).toBe("not_started");
-    expect(summary.unpaidTicketTypeId).toBe("ticket-member");
-  });
-
-  it("returns pending when a matching order is pending payment", () => {
-    const summary = summarizeEventBookingPayment({
-      booking,
-      eventId: "event-1",
-      ticketOrders: [
-        {
-          status: TicketOrderStatus.PENDING,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-member" },
-        },
-      ],
-      adjustments: [],
-    });
-
-    expect(summary.kind).toBe("pending");
-    expect(summary.label).toBe("Pending payment");
-  });
-
-  it("returns paid when a matching order is paid", () => {
-    const summary = summarizeEventBookingPayment({
-      booking,
-      eventId: "event-1",
-      ticketOrders: [
-        {
-          status: TicketOrderStatus.PAID,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-member" },
-        },
-      ],
-      adjustments: [],
-    });
-
-    expect(summary.kind).toBe("paid");
-  });
-
-  it("returns partially paid when an approved extra guest shares a ticket type that is already paid once", () => {
-    const bookingWithPaidGuestAndUnpaidExtra: EventBookingSummaryInput = {
-      status: BookingStatus.SUBMITTED,
-      revisionNumber: 2,
-      lines: [{ ticketType: { id: "ticket-member" } }, { ticketType: { id: "ticket-guest" } }],
-      guestTicketRequests: [
-        {
-          status: GuestTicketRequestStatus.APPROVED,
-          requestedGuestCount: 1,
-          guestTicketType: { id: "ticket-guest" },
-        },
-      ],
-    };
-    const summary = summarizeEventBookingPayment({
-      booking: bookingWithPaidGuestAndUnpaidExtra,
-      eventId: "event-1",
-      ticketOrders: [
-        {
-          status: TicketOrderStatus.PAID,
-          quantity: 1,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-member" },
-        },
-        {
-          status: TicketOrderStatus.PAID,
-          quantity: 1,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-guest" },
-        },
-      ],
-      adjustments: [],
-    });
-
-    expect(summary.kind).toBe("partial");
-    expect(summary.label).toBe("Partially paid");
-    expect(summary.unpaidTicketTypeId).toBe("ticket-guest");
-  });
-
-  it("prioritizes pending booking payment adjustments", () => {
-    const summary = summarizeEventBookingPayment({
-      booking,
-      eventId: "event-1",
-      ticketOrders: [
-        {
-          status: TicketOrderStatus.PAID,
-          event: { id: "event-1" },
-          ticketType: { id: "ticket-member" },
-        },
-      ],
-      adjustments: [{ status: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE }],
-    });
-
-    expect(summary.kind).toBe("adjustment_charge");
+    expect(summary.kind).toBe("adjustment_refund");
   });
 });
 
 describe("hasExpiredDraftHold", () => {
-  it("returns true when only cancelled bookings remain for the event", () => {
+  it("requires cancelled bookings without any active booking", () => {
     expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }])).toBe(true);
-  });
-
-  it("returns false when an active draft or submitted booking exists", () => {
-    expect(
-      hasExpiredDraftHold([
-        { status: BookingStatus.CANCELLED },
-        { status: BookingStatus.DRAFT },
-      ])
-    ).toBe(false);
-  });
-});
-
-describe("getEventBookingNextSteps", () => {
-  it("highlights unpaid and pending guest review states", () => {
-    const message = getEventBookingNextSteps({
-      bookingStatus: BookingStatus.SUBMITTED,
-      paymentSummary: summarizeEventBookingPayment({
-        booking,
-        eventId: "event-1",
-        ticketOrders: [],
-        adjustments: [],
-      }),
-      guestSummary: summarizeGuestTicketRequests([
-        { status: GuestTicketRequestStatus.PENDING },
-      ] as never),
-    });
-
-    expect(message).toMatch(/complete payment/i);
-    expect(message).toMatch(/complete booking is awaiting organiser approval/i);
-  });
-
-  it("mentions expired payment holds for failed payment summaries", () => {
-    const message = getEventBookingNextSteps({
-      bookingStatus: BookingStatus.SUBMITTED,
-      paymentSummary: summarizeEventBookingPayment({
-        booking,
-        eventId: "event-1",
-        ticketOrders: [
-          {
-            status: TicketOrderStatus.FAILED,
-            event: { id: "event-1" },
-            ticketType: { id: "ticket-member" },
-          },
-        ],
-        adjustments: [],
-      }),
-      guestSummary: summarizeGuestTicketRequests([]),
-    });
-
-    expect(message).toMatch(/payment hold expired/i);
-  });
-});
-
-describe("hasPendingGuestTicketsAwaitingApproval", () => {
-  it("returns true when a guest ticket request is pending", () => {
-    expect(
-      hasPendingGuestTicketsAwaitingApproval({
-        status: BookingStatus.SUBMITTED,
-        revisionNumber: 1,
-        guestTicketRequests: [{ status: GuestTicketRequestStatus.PENDING, requestedGuestCount: 1 }],
-      })
-    ).toBe(true);
-  });
-
-  it("returns false when no guest requests are pending", () => {
-    expect(
-      hasPendingGuestTicketsAwaitingApproval({
-        status: BookingStatus.SUBMITTED,
-        revisionNumber: 1,
-        guestTicketRequests: [{ status: GuestTicketRequestStatus.APPROVED, requestedGuestCount: 1 }],
-      })
-    ).toBe(false);
+    expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }, { status: BookingStatus.SUBMITTED }])).toBe(false);
   });
 });

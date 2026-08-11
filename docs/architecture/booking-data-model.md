@@ -8,7 +8,7 @@ Persistence for member ticket booking. The current redesign is tracked by epic [
 - **Legacy null policy**: the #543 migration backfills any existing null limit to `0` before applying `NOT NULL`, which fails closed by requiring approval for every guest booking until an organiser chooses another value.
 - **Ticket types**: each `TicketType` has **`audience: TicketAudience`** (**`MEMBER`** | **`GUEST`**). Validation in the booking rules layer must prevent booking a `GUEST` type against the member line and vice versa; pricing can differ per type.
 - **Uniform guest representation**: every guest is a `BookingLine` whose ticket type has `GUEST` audience. There is no separate representation for the first guest in the redesigned contract.
-- **Dietary requirements**: every attendee's dietary note belongs to their `BookingLine`, including the member ticket. `Booking.bookerDietaryNote` is a temporary legacy read fallback only and is removed by #548.
+- **Dietary requirements**: every attendee's dietary note belongs to their `BookingLine`, including the member ticket.
 - **Whole-booking approval**: `Booking.approvalStatus` applies to one exact booking revision and is separate from booking lifecycle and payment state.
 - **Reapproval**: adding/removing a guest, changing guest identity/name, or changing guest ticket type is approval-relevant. Dietary-only edits and guest ordering are not.
 - **Guest removal and payment**: a member may remove a guest only when that guest place has no paid allocation. Paid guest removal is blocked until the later refund workflow is implemented.
@@ -31,7 +31,6 @@ erDiagram
   TicketOrder ||--o{ BookingPlacePaymentAllocation : allocates
   TicketType ||--o{ BookingLine : priced_as
   UserGroup ||--o{ TicketType : eligibility
-  Booking ||--o{ GuestTicketRequest : may_raise
 
   Section {
     uuid id PK
@@ -82,7 +81,6 @@ erDiagram
     string approval_reviewed_by_user_id "nullable"
     timestamp approval_reviewed_at "nullable"
     string approval_note "nullable"
-    string booker_dietary_note "legacy nullable fallback; removed by #548"
     string[] sit_next_to_user_ids "nullable list of user ids"
     boolean accommodation_requested "default false"
     string accommodation_note "nullable"
@@ -98,26 +96,13 @@ erDiagram
 
   BookingLine {
     uuid id PK
-    uuid booking_place_id FK "stable across revisions; nullable on legacy rows"
+    uuid booking_place_id FK "required; stable across revisions"
     uuid booking_id FK
     uuid ticket_type_id FK
     string guest_user_id FK "nullable: named member guest"
     string guest_display_name "nullable: non-member guest label"
     string dietary_note "nullable; see seating or dietary issue"
     int sort_order
-  }
-
-  GuestTicketRequest {
-    uuid id PK
-    uuid booking_id FK
-    enum status "PENDING | APPROVED | REJECTED"
-    int requested_guest_count
-    uuid guest_ticket_type_id FK "nullable on legacy rows; requested guest ticket type"
-    string guest_display_name "nullable on legacy rows"
-    string dietary_note "nullable"
-    string reviewed_by_user_id "nullable"
-    timestamp reviewed_at
-    string moderator_note "nullable"
   }
 
   BookingPlacePaymentAllocation {
@@ -128,8 +113,6 @@ erDiagram
   }
 ```
 
-`GuestTicketRequest` is shown only because legacy code still reads it during the staged redesign. New submissions must not create it; issue #548 removes the table and remaining consumers after the unified flow is integrated.
-
 ## Relationship notes
 
 | Relationship | Meaning |
@@ -138,9 +121,8 @@ erDiagram
 | **Event → guest policy** | Required per-event limit on guest places that can proceed without moderator approval. |
 | **Booking** | One **booker** (`User`) for one **event/revision**; owns lifecycle and whole-revision approval state plus booker preferences. |
 | **BookingPlace** | Durable identity for one member/guest ticket within an event. It survives revisions and is the target for payment allocation and future refunds. |
-| **BookingLine** | Revision snapshot of one priced place, including that attendee's dietary note. New lines reference `BookingPlace`; the relation is temporarily nullable only for legacy rows/write paths removed by #548. |
+| **BookingLine** | Revision snapshot of one priced place, including that attendee's dietary note. Every line references its required stable `BookingPlace`. |
 | **BookingPlacePaymentAllocation** | Attributes an order amount directly to `BookingPlace`, so revisions never rewrite payment history and deletion/refunds are evaluated per ticket rather than by ticket-type totals. |
-| **GuestTicketRequest** | Legacy split representation only. New submission and moderation contracts use `BookingLine` and `Booking.approvalStatus`; removal is tracked by #548. |
 
 ## State model
 
@@ -182,7 +164,7 @@ Free bookings skip Stripe and move to `CONFIRMED` once approval is `NOT_REQUIRED
 
 Persistence uses a named Data Connect operation with `@transaction` to insert the `Booking`, any new stable `BookingPlace` rows, and every revision-specific `BookingLine` together. An activating revision also retires prior unsuperseded rows and records its `BookingPaymentAdjustment` in that transaction. A pending revision does not retire the last approved/payable revision.
 
-The operations live in the server-only `booking-service` connector. Firebase currently supports typed `_Data` batch variables in Data Connect operations but does not generate JavaScript SDK wrappers for them, so Functions invokes the deployed, schema-validated named mutation with an explicit TypeScript variable contract. This is deliberately distinct from the Admin SDK generic `insertMany` API: enum-bearing booking and legacy guest-request values are interpreted through declared GraphQL input types, avoiding the quoted-enum production failure tracked in #538/#544.
+The operations live in the server-only `booking-service` connector. Firebase currently supports typed `_Data` batch variables in Data Connect operations but does not generate JavaScript SDK wrappers for them, so Functions invokes the deployed, schema-validated named mutation with an explicit TypeScript variable contract. This is deliberately distinct from the Admin SDK generic `insertMany` API and avoids the quoted-enum production failure tracked in #538/#544.
 
 Each booking revision is unique on `(revisionGroupId, revisionNumber)`. Together with the idempotency uniqueness on `(event, booker, clientSubmissionKey)`, this makes concurrent stale submissions fail rather than create parallel revisions. A duplicate retry refetches and returns the already-committed outcome.
 

@@ -47,9 +47,6 @@ exist in Notify and be bound from the admin page to actually be used.
 | `paymentDisputeOpsAlert` |
 | `membershipActivated` |
 | `membershipAccessRestricted` |
-| `guestTicketRequestSubmittedModerator` |
-| `guestTicketRequestApproved` |
-| `guestTicketRequestRejected` |
 | `bookingConfirmation` |
 | `bookingRevision` |
 | `bookingPendingApproval` |

@@ -21,7 +21,6 @@ function booking(overrides: Record<string, unknown> = {}) {
       bookingPlace: { id: "place-1", paymentAllocations: [] },
       ticketType: { id: "ticket-member", title: "Member standard", audience: TicketAudience.MEMBER, price: 50 },
     }],
-    guestTicketRequests: [],
     ...overrides,
   } as never;
 }

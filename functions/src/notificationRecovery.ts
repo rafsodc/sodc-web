@@ -22,12 +22,6 @@ import {
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
 import {
-  guestTicketBookerDeliveryKey,
-  guestTicketModeratorDeliveryKey,
-  notifyBookerGuestTicketRequestReviewed,
-  notifyModeratorsGuestTicketRequestSubmitted,
-} from "./guestTicketRequestEmails";
-import {
   classifyMembershipStatusEmailTransition,
   membershipStatusDeliveryKey,
   notifyMembershipStatusEmailIfNeeded,
@@ -130,25 +124,6 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
         }),
       };
     }
-    case "GUEST_REQUEST_MODERATORS":
-      return {
-        notificationType: "GUEST_REQUEST_SUBMITTED_MODERATOR",
-        deliveryKey: guestTicketModeratorDeliveryKey(
-          payload.requestId,
-          payload.recipientEmail
-        ),
-      };
-    case "GUEST_REQUEST_BOOKER":
-      return {
-        notificationType:
-          payload.status === "APPROVED"
-            ? "GUEST_REQUEST_APPROVED"
-            : "GUEST_REQUEST_REJECTED",
-        deliveryKey: guestTicketBookerDeliveryKey(
-          payload.requestId,
-          payload.status
-        ),
-      };
     case "USER_PENDING_APPROVAL":
       return {
         notificationType: "USER_PENDING_APPROVAL",
@@ -205,8 +180,6 @@ export interface NotificationRecoveryDispatcherDependencies {
   notifyBookingChangesRequested?: typeof notifyBookingChangesRequestedEmail;
   notifyBookingApproved?: typeof notifyBookingApprovedEmail;
   notifyMembershipStatus?: typeof notifyMembershipStatusEmailIfNeeded;
-  notifyGuestRequestModerators?: typeof notifyModeratorsGuestTicketRequestSubmitted;
-  notifyGuestRequestBooker?: typeof notifyBookerGuestTicketRequestReviewed;
   notifyPendingApproval?: typeof notifyAdminsUserPendingApproval;
   notifyPaymentReconciliationOps?: typeof notifyPaymentOpsReconciliationExceptionOpened;
   notifyPaymentDisputeOps?: typeof notifyPaymentOpsDisputeSideState;
@@ -319,22 +292,6 @@ export function createNotificationRecoveryDispatcher(
           userId: payload.userId,
           previousStatus: payload.previousStatus,
           newStatus: payload.newStatus,
-          appBaseUrl,
-          deliveryMode: payload.deliveryMode,
-        });
-        return;
-      case "GUEST_REQUEST_MODERATORS":
-        await (dependencies.notifyGuestRequestModerators ?? notifyModeratorsGuestTicketRequestSubmitted)({
-          requestId: payload.requestId,
-          recipientEmails: [payload.recipientEmail],
-          appBaseUrl,
-          deliveryMode: payload.deliveryMode,
-        });
-        return;
-      case "GUEST_REQUEST_BOOKER":
-        await (dependencies.notifyGuestRequestBooker ?? notifyBookerGuestTicketRequestReviewed)({
-          requestId: payload.requestId,
-          status: payload.status,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });

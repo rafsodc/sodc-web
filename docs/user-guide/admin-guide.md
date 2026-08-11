@@ -73,11 +73,11 @@ Within an event, the **Bookings** tab shows all bookings for that event. You can
 
 ---
 
-## Guest ticket requests
+## Booking approvals
 
-When a member requests a guest ticket, it requires moderator approval.
+When a booking exceeds an event's automatic guest limit, the whole booking requires moderator approval.
 
-Guest ticket requests appear in the event's bookings view. Review the request and click **Approve** or **Reject**. The member will receive an email notification of your decision.
+Pending revisions appear in the event's bookings view. Review the complete attendee list and choose **Approve** or **Request changes**. The member will receive an email notification of the decision, and payment becomes available only after approval.
 
 ---
 
