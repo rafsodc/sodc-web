@@ -35,13 +35,18 @@ describe("allocated ticket order persistence", () => {
     expect(mocks.executeMutation).toHaveBeenCalledWith(
       "CreateAllocatedTicketOrderFromCallable",
       {
-        ticketOrder: expect.objectContaining({
-          id: ids[0],
-          quantity: 2,
-          unitAmountMinor: 2500,
-          totalAmountMinor: 5000,
-          status: TicketOrderStatus.PENDING,
-        }),
+        orderId: ids[0],
+        userId: "user-1",
+        eventId: "20000000-0000-4000-8000-000000000001",
+        ticketTypeId: "30000000-0000-4000-8000-000000000001",
+        quantity: 2,
+        unitAmountMinor: 2500,
+        totalAmountMinor: 5000,
+        currency: "gbp",
+        status: TicketOrderStatus.PENDING,
+        webhookEventId: null,
+        createdBy: "system",
+        updatedBy: "system",
         allocations: [
           expect.objectContaining({ id: ids[1], ticketOrderId: ids[0], bookingPlaceId: "40000000-0000-4000-8000-000000000001", allocatedAmountMinor: 2500 }),
           expect.objectContaining({ id: ids[2], ticketOrderId: ids[0], bookingPlaceId: "40000000-0000-4000-8000-000000000002", allocatedAmountMinor: 2500 }),

@@ -56,11 +56,9 @@ describe("atomic booking submission execution", () => {
     expect(mocks.executeMutation).toHaveBeenCalledWith(
       "CreateCompleteBookingFromCallable",
       expect.objectContaining({
-        booking: expect.objectContaining({
-          id: input.bookingId,
-          approvalStatus: BookingApprovalStatus.PENDING,
-          status: "SUBMITTED",
-        }),
+        bookingId: input.bookingId,
+        approvalStatus: BookingApprovalStatus.PENDING,
+        status: "SUBMITTED",
         bookingPlaces: [expect.objectContaining({ id: input.placePlan.newBookingPlaceIds[0] })],
         bookingLines: [
           expect.objectContaining({

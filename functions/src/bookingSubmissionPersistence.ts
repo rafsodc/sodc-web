@@ -96,8 +96,8 @@ export function planBookingPlaces(args: {
   };
 }
 
-interface BookingData {
-  id: UUIDString;
+interface CompleteBookingVariables {
+  bookingId: UUIDString;
   eventId: UUIDString;
   bookerId: string;
   clientSubmissionKey: string;
@@ -111,33 +111,25 @@ interface BookingData {
   accommodationNote?: string | null;
   createdBy: string;
   updatedBy: string;
-}
-
-interface BookingPlaceData {
-  id: UUIDString;
-  eventId: UUIDString;
-  bookerId: string;
-  createdBy: string;
-  updatedBy: string;
-}
-
-interface BookingLineData {
-  id: UUIDString;
-  bookingPlaceId: UUIDString;
-  bookingId: UUIDString;
-  ticketTypeId: UUIDString;
-  guestUserId?: string | null;
-  guestDisplayName?: string | null;
-  dietaryNote?: string | null;
-  sortOrder: number;
-  createdBy: string;
-  updatedBy: string;
-}
-
-interface CompleteBookingVariables {
-  booking: BookingData;
-  bookingPlaces: BookingPlaceData[];
-  bookingLines: BookingLineData[];
+  bookingPlaces: Array<{
+    id: UUIDString;
+    eventId: UUIDString;
+    bookerId: string;
+    createdBy: string;
+    updatedBy: string;
+  }>;
+  bookingLines: Array<{
+    id: UUIDString;
+    bookingPlaceId: UUIDString;
+    bookingId: UUIDString;
+    ticketTypeId: UUIDString;
+    guestUserId?: string | null;
+    guestDisplayName?: string | null;
+    dietaryNote?: string | null;
+    sortOrder: number;
+    createdBy: string;
+    updatedBy: string;
+  }>;
 }
 
 export interface CompleteBookingPersistenceInput {
@@ -157,22 +149,20 @@ export interface CompleteBookingPersistenceInput {
 
 function completeVariables(input: CompleteBookingPersistenceInput): CompleteBookingVariables {
   return {
-    booking: {
-      id: input.bookingId,
-      eventId: input.eventId,
-      bookerId: input.bookerId,
-      clientSubmissionKey: input.idempotencyKey,
-      revisionGroupId: input.revisionGroupId,
-      revisionNumber: input.revisionNumber,
-      supersedesBookingId: input.supersedesBookingId ?? null,
-      status: BookingStatus.SUBMITTED,
-      approvalStatus: input.approvalStatus,
-      sitNextToUserIds: input.sitNextToUserIds,
-      accommodationRequested: input.accommodationRequested,
-      accommodationNote: input.accommodationRequested ? input.accommodationNote ?? null : null,
-      createdBy: "system",
-      updatedBy: "system",
-    },
+    bookingId: input.bookingId,
+    eventId: input.eventId,
+    bookerId: input.bookerId,
+    clientSubmissionKey: input.idempotencyKey,
+    revisionGroupId: input.revisionGroupId,
+    revisionNumber: input.revisionNumber,
+    supersedesBookingId: input.supersedesBookingId ?? null,
+    status: BookingStatus.SUBMITTED,
+    approvalStatus: input.approvalStatus,
+    sitNextToUserIds: input.sitNextToUserIds,
+    accommodationRequested: input.accommodationRequested,
+    accommodationNote: input.accommodationRequested ? input.accommodationNote ?? null : null,
+    createdBy: "system",
+    updatedBy: "system",
     bookingPlaces: input.placePlan.newBookingPlaceIds.map((id) => ({
       id,
       eventId: input.eventId,

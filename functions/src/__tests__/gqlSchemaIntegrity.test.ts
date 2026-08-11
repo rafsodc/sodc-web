@@ -341,11 +341,15 @@ describe("GQL schema integrity", () => {
       const block = operations.slice(start, next < 0 ? operations.length : next);
       expect(start).toBeGreaterThanOrEqual(0);
       expect(block).toContain("@auth(level: NO_ACCESS) @transaction");
-      expect(block).toContain("booking_insert(data: $booking)");
+      expect(block).toContain("$bookingId: UUID!");
+      expect(block).toContain("$status: BookingStatus!");
+      expect(block).toContain("booking_insert(data: {");
+      expect(block).toContain("id: $bookingId");
       expect(block).toContain("bookingPlace_insertMany(data: $bookingPlaces)");
       expect(block).toContain("bookingLine_insertMany(data: $bookingLines)");
       expect(block).toContain("@allow(");
     }
+    expect(operations).not.toContain("$booking: Booking_Data");
     expect(operations).not.toContain("GuestTicketRequestStatus");
     expect(operations).not.toContain("GuestTicketRequest");
     expect(operations).not.toContain("guestTicketRequest");
@@ -354,8 +358,11 @@ describe("GQL schema integrity", () => {
     const checkoutBlock = operations.slice(checkoutStart);
     expect(checkoutStart).toBeGreaterThanOrEqual(0);
     expect(checkoutBlock).toContain("@auth(level: NO_ACCESS) @transaction");
-    expect(checkoutBlock).toContain("ticketOrder_insert(data: $ticketOrder)");
+    expect(checkoutBlock).toContain("$orderId: UUID!");
+    expect(checkoutBlock).toContain("ticketOrder_insert(data: {");
+    expect(checkoutBlock).toContain("id: $orderId");
     expect(checkoutBlock).toContain("bookingPlacePaymentAllocation_insertMany(data: $allocations)");
+    expect(checkoutBlock).not.toContain("$ticketOrder: TicketOrder_Data");
   });
 
   it("prevents concurrent duplicate revision numbers within a booking group", () => {

@@ -4,20 +4,18 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { getBookingServiceDataConnect } from "./bookingServiceDataConnect";
 
 interface AllocatedTicketOrderVariables {
-  ticketOrder: {
-    id: UUIDString;
-    userId: string;
-    eventId: UUIDString;
-    ticketTypeId: UUIDString;
-    quantity: number;
-    unitAmountMinor: number;
-    totalAmountMinor: number;
-    currency: string;
-    status: TicketOrderStatus;
-    webhookEventId?: string | null;
-    createdBy: string;
-    updatedBy: string;
-  };
+  orderId: UUIDString;
+  userId: string;
+  eventId: UUIDString;
+  ticketTypeId: UUIDString;
+  quantity: number;
+  unitAmountMinor: number;
+  totalAmountMinor: number;
+  currency: string;
+  status: TicketOrderStatus;
+  webhookEventId?: string | null;
+  createdBy: string;
+  updatedBy: string;
   allocations: Array<{
     id: UUIDString;
     ticketOrderId: UUIDString;
@@ -49,20 +47,18 @@ export async function createAllocatedTicketOrder(
   if (quantity < 1) throw new Error("An allocated ticket order requires at least one booking place");
 
   const variables: AllocatedTicketOrderVariables = {
-    ticketOrder: {
-      id: orderId,
-      userId: input.userId,
-      eventId: input.eventId,
-      ticketTypeId: input.ticketTypeId,
-      quantity,
-      unitAmountMinor: input.unitAmountMinor,
-      totalAmountMinor: input.unitAmountMinor * quantity,
-      currency: "gbp",
-      status: input.status ?? TicketOrderStatus.PENDING,
-      webhookEventId: input.webhookEventId ?? null,
-      createdBy: "system",
-      updatedBy: "system",
-    },
+    orderId,
+    userId: input.userId,
+    eventId: input.eventId,
+    ticketTypeId: input.ticketTypeId,
+    quantity,
+    unitAmountMinor: input.unitAmountMinor,
+    totalAmountMinor: input.unitAmountMinor * quantity,
+    currency: "gbp",
+    status: input.status ?? TicketOrderStatus.PENDING,
+    webhookEventId: input.webhookEventId ?? null,
+    createdBy: "system",
+    updatedBy: "system",
     allocations: input.bookingPlaceIds.map((bookingPlaceId) => ({
       id: createId(),
       ticketOrderId: orderId,
