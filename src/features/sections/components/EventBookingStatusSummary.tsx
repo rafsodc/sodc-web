@@ -29,6 +29,7 @@ type TerminalBooking = NonNullable<GetMyBookingsForEventData["user"]>["bookings"
 
 export interface EventBookingStatusSummaryProps {
   booking: TerminalBooking;
+  paymentBooking?: TerminalBooking | null;
   eventId: string;
   eventTitle: string;
   ticketOrders: EventBookingPaymentOrderInput[];
@@ -38,12 +39,18 @@ export interface EventBookingStatusSummaryProps {
   payingTicketTypeId?: string | null;
 }
 
-function bookingStatusCard(booking: TerminalBooking, paymentSummary: EventBookingPaymentSummary) {
+function bookingStatusCard(
+  booking: TerminalBooking,
+  paymentSummary: EventBookingPaymentSummary,
+  hasSeparatePaymentBooking: boolean
+) {
   if (booking.approvalStatus === "PENDING") {
     return {
       heading: "Awaiting approval",
       severity: "warning" as const,
-      message: "Your complete booking is with the organiser for approval. Payment will become available when it is approved.",
+      message: hasSeparatePaymentBooking
+        ? "Your changes are with the organiser for approval. Your current approved booking remains active and can still be paid while you wait."
+        : "Your complete booking is with the organiser for approval. Payment will become available when it is approved.",
     };
   }
   if (booking.approvalStatus === "REJECTED") {
@@ -85,6 +92,7 @@ function bookingStatusCard(booking: TerminalBooking, paymentSummary: EventBookin
 
 export default function EventBookingStatusSummary({
   booking,
+  paymentBooking,
   eventId,
   eventTitle,
   ticketOrders,
@@ -93,22 +101,29 @@ export default function EventBookingStatusSummary({
   onPayNow,
   payingTicketTypeId,
 }: EventBookingStatusSummaryProps) {
+  const effectivePaymentBooking = paymentBooking ?? (
+    booking.approvalStatus === "NOT_REQUIRED" || booking.approvalStatus === "APPROVED"
+      ? booking
+      : null
+  );
+  const paymentDisplayBooking = effectivePaymentBooking ?? booking;
+  const hasSeparatePaymentBooking =
+    effectivePaymentBooking != null && effectivePaymentBooking.id !== booking.id;
   const paymentSummary = summarizeEventBookingPayment({
-    booking,
+    booking: paymentDisplayBooking,
     eventId,
     ticketOrders,
     adjustments: paymentAdjustments,
   });
   const ticketRows = buildBookingTicketRowsWithPaymentStatus({
-    booking,
+    booking: paymentDisplayBooking,
     eventId,
     ticketOrders,
   });
-  const statusCard = bookingStatusCard(booking, paymentSummary);
-  const approvalAllowsPayment = booking.approvalStatus !== "PENDING" && booking.approvalStatus !== "REJECTED";
+  const statusCard = bookingStatusCard(booking, paymentSummary, hasSeparatePaymentBooking);
   const showPayNow =
     Boolean(onPayNow) &&
-    approvalAllowsPayment &&
+    effectivePaymentBooking != null &&
     paymentSummary.unpaidTicketTypeId != null &&
     !isBookingPaymentComplete(paymentSummary) &&
     paymentSummary.kind !== "adjustment_refund";
@@ -127,7 +142,13 @@ export default function EventBookingStatusSummary({
       </Alert>
 
       {ticketRows.length > 0 ? (
-        <Table size="small" sx={{ mb: 2 }}>
+        <>
+          {hasSeparatePaymentBooking ? (
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Current active booking
+            </Typography>
+          ) : null}
+          <Table size="small" sx={{ mb: 2 }}>
           <TableHead>
             <TableRow>
               <TableCell>Ticket</TableCell>
@@ -155,7 +176,8 @@ export default function EventBookingStatusSummary({
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </>
       ) : null}
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>

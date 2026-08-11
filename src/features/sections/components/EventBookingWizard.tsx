@@ -60,6 +60,7 @@ export default function EventBookingWizard({
         <>
           <EventBookingStatusSummary
             booking={wizard.existingTerminalBooking}
+            paymentBooking={wizard.paymentEligibleBooking}
             eventId={event.id}
             eventTitle={event.title}
             ticketOrders={wizard.ticketOrdersData?.user?.ticketOrders ?? []}

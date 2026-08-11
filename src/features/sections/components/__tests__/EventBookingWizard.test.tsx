@@ -192,4 +192,32 @@ describe("EventBookingWizard", () => {
     expect(screen.getByText(/refund requests will be added later/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Guest name")).toBeDisabled();
   });
+
+  it("keeps an approved revision payable while its newer amendment awaits approval", async () => {
+    const activeRevision = bookingWithGuest(false);
+    const pendingRevision = {
+      ...bookingWithGuest(false),
+      id: "booking-pending",
+      revisionNumber: 2,
+      approvalStatus: "PENDING",
+      updatedAt: "2026-08-11T11:00:00Z",
+      lines: bookingWithGuest(false).lines.map((line) =>
+        line.id === "guest-line"
+          ? { ...line, id: "pending-guest-line", guestDisplayName: "Pending Guest" }
+          : { ...line, id: "pending-member-line" }
+      ),
+    };
+    const user = userEvent.setup();
+
+    renderWizard({ bookings: [activeRevision, pendingRevision] });
+
+    expect(screen.getByRole("heading", { name: "Awaiting approval" })).toBeInTheDocument();
+    expect(screen.getByText("Current active booking")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    expect(screen.getByText(/current approved booking remains active/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit booking" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByLabelText("Guest name")).toHaveValue("Pending Guest");
+  });
 });

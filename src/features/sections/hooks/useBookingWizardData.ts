@@ -90,6 +90,23 @@ export function useBookingWizardData(args: {
       }, null);
   }, [myBookingsData]);
 
+  const paymentEligibleBooking = useMemo(() => {
+    const bookings = myBookingsData?.user?.bookings ?? [];
+    return bookings
+      .filter(
+        (booking) =>
+          (booking.status === BookingStatus.SUBMITTED ||
+            booking.status === BookingStatus.CONFIRMED) &&
+          booking.supersededAt == null &&
+          booking.approvalStatus !== "PENDING" &&
+          booking.approvalStatus !== "REJECTED"
+      )
+      .reduce<(typeof bookings)[number] | null>((latest, booking) => {
+        if (!latest) return booking;
+        return booking.revisionNumber > latest.revisionNumber ? booking : latest;
+      }, null);
+  }, [myBookingsData]);
+
   const existingDraft = useMemo(() => {
     const bookings = myBookingsData?.user?.bookings ?? [];
     return bookings.find((booking) => booking.status === BookingStatus.DRAFT) ?? null;
@@ -101,38 +118,38 @@ export function useBookingWizardData(args: {
   );
 
   const { data: ticketOrdersData } = useGetMyTicketOrders(dataConnect, {
-    enabled: Boolean(existingTerminalBooking) || postSubmitFlow,
+    enabled: Boolean(existingTerminalBooking) || Boolean(paymentEligibleBooking) || postSubmitFlow,
   });
   const { data: paymentAdjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, {
     enabled: Boolean(existingTerminalBooking) || postSubmitFlow,
   });
 
   const bookingPaymentAdjustments = useMemo(() => {
-    if (!existingTerminalBooking) return [];
+    if (!paymentEligibleBooking) return [];
     const booking = paymentAdjustmentsData?.user?.bookings?.find(
-      (row) => row.id === existingTerminalBooking.id
+      (row) => row.id === paymentEligibleBooking.id
     );
     return booking?.adjustments ?? [];
-  }, [existingTerminalBooking, paymentAdjustmentsData]);
+  }, [paymentEligibleBooking, paymentAdjustmentsData]);
 
   const paymentSummaryForBooking = useMemo(() => {
-    if (!existingTerminalBooking) return null;
+    if (!paymentEligibleBooking) return null;
     return summarizeEventBookingPayment({
-      booking: existingTerminalBooking,
+      booking: paymentEligibleBooking,
       eventId: event.id,
       ticketOrders: ticketOrdersData?.user?.ticketOrders ?? [],
       adjustments: bookingPaymentAdjustments,
     });
-  }, [existingTerminalBooking, event.id, ticketOrdersData, bookingPaymentAdjustments]);
+  }, [paymentEligibleBooking, event.id, ticketOrdersData, bookingPaymentAdjustments]);
 
   const paymentTicketRows = useMemo(() => {
-    if (!existingTerminalBooking) return [];
+    if (!paymentEligibleBooking) return [];
     return buildBookingTicketRowsWithPaymentStatus({
-      booking: existingTerminalBooking,
+      booking: paymentEligibleBooking,
       eventId: event.id,
       ticketOrders: ticketOrdersData?.user?.ticketOrders ?? [],
     });
-  }, [existingTerminalBooking, event.id, ticketOrdersData]);
+  }, [paymentEligibleBooking, event.id, ticketOrdersData]);
 
   const pendingGuestTicketsAwaitingApproval = useMemo(
     () =>
@@ -159,6 +176,7 @@ export function useBookingWizardData(args: {
     membershipStatus,
     paymentSummaryForBooking,
     paymentTicketRows,
+    paymentEligibleBooking,
     pendingGuestTicketsAwaitingApproval,
     refetchMyBookings,
     showExpiredDraftHoldNotice,
