@@ -12,6 +12,7 @@ const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
+  SETTLED: "SETTLED",
 }
 exports.BookingPaymentAdjustmentStatus = BookingPaymentAdjustmentStatus;
 
@@ -605,6 +606,13 @@ function updateBookingStatusFromCallable(dcOrVarsOrOptions, varsOrOptions, optio
 }
 exports.updateBookingStatusFromCallable = updateBookingStatusFromCallable;
 
+function settleBookingPaymentAdjustmentsFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('SettleBookingPaymentAdjustmentsFromCallable', inputVars, inputOpts);
+}
+exports.settleBookingPaymentAdjustmentsFromCallable = settleBookingPaymentAdjustmentsFromCallable;
+
 function updateBookingApprovalFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -618,6 +626,13 @@ function createTicketOrderForCheckout(dcOrVarsOrOptions, varsOrOptions, options)
   return dcInstance.executeMutation('CreateTicketOrderForCheckout', inputVars, inputOpts);
 }
 exports.createTicketOrderForCheckout = createTicketOrderForCheckout;
+
+function updateBookingPlaceAllocationRefundFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateBookingPlaceAllocationRefundFromCallable', inputVars, inputOpts);
+}
+exports.updateBookingPlaceAllocationRefundFromCallable = updateBookingPlaceAllocationRefundFromCallable;
 
 function getTicketOrderForWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -723,6 +738,13 @@ function markTicketOrderRefundedFromWebhook(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeMutation('MarkTicketOrderRefundedFromWebhook', inputVars, inputOpts);
 }
 exports.markTicketOrderRefundedFromWebhook = markTicketOrderRefundedFromWebhook;
+
+function recordTicketOrderPartialRefundFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordTicketOrderPartialRefundFromWebhook', inputVars, inputOpts);
+}
+exports.recordTicketOrderPartialRefundFromWebhook = recordTicketOrderPartialRefundFromWebhook;
 
 function upsertTicketOrderDisputeFromWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

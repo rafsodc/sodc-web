@@ -118,6 +118,8 @@ export function paymentAdjustmentStatusLabel(status: BookingPaymentAdjustmentSta
       return "Refund due";
     case BookingPaymentAdjustmentStatus.NOT_REQUIRED:
       return "No payment change required";
+    case BookingPaymentAdjustmentStatus.SETTLED:
+      return "Payment change completed";
     default:
       return String(status);
   }

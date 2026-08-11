@@ -45,8 +45,9 @@ export interface CreateEventBookingCheckoutSessionRequest {
 }
 
 export interface CreateEventBookingCheckoutSessionResponse {
-  url: string;
+  url: string | null;
   orderIds: string[];
+  confirmed: boolean;
 }
 
 export interface GetMyTicketOrderStripeArtifactsResponse {

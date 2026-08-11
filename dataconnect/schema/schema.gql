@@ -76,6 +76,7 @@ enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED
   PENDING_AUTO_REFUND
   PENDING_AUTO_CHARGE
+  SETTLED
 }
 
 enum NotificationChannel {
@@ -594,6 +595,10 @@ type BookingPlacePaymentAllocation @table @unique(fields: ["ticketOrder", "booki
   ticketOrder: TicketOrder!
   bookingPlace: BookingPlace!
   allocatedAmountMinor: Int!
+  # Refunds are tracked per exact place so partial refunds on a multi-ticket
+  # Stripe charge never erase the paid entitlement of sibling tickets.
+  refundedAmountMinor: Int! @default(value: 0)
+  stripeRefundId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

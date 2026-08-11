@@ -32,6 +32,7 @@ interface TestOrder {
   webhookEventId: string | null;
   user: { id: string };
   event: { id: string };
+  paymentAllocations: Array<{ refundedAmountMinor: number }>;
 }
 
 function order(
@@ -51,6 +52,7 @@ function order(
     webhookEventId,
     user: { id: userId },
     event: { id: EVENT_ID },
+    paymentAllocations: [],
   };
 }
 
@@ -72,15 +74,19 @@ function transitionDependencies(overrides: Partial<PaymentTransitionOrchestratio
   const upsertSnapshot = vi.fn<
     PaymentTransitionOrchestrationDependencies["upsertSnapshot"]
   >(async () => undefined);
+  const confirmBooking = vi.fn<
+    PaymentTransitionOrchestrationDependencies["confirmBooking"]
+  >(async () => ({ bookingId: null, confirmed: false }));
   const dependencies = {
     getOrder,
     runTransition,
     emitNotification,
     upsertSnapshot,
+    confirmBooking,
     now: () => NOW,
     ...overrides,
   } as unknown as PaymentTransitionOrchestrationDependencies;
-  return { dependencies, getOrder, runTransition, emitNotification, upsertSnapshot };
+  return { dependencies, getOrder, runTransition, emitNotification, upsertSnapshot, confirmBooking };
 }
 
 describe("applyPaymentTransitionToOrders", () => {
@@ -128,6 +134,49 @@ describe("applyPaymentTransitionToOrders", () => {
     );
     expect(harness.emitNotification.mock.invocationCallOrder[0]).toBeLessThan(
       harness.upsertSnapshot.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("reconciles a partial refund from the allocation total while preserving PAID", async () => {
+    const current = order(ORDER_1);
+    current.paymentAllocations = [{ refundedAmountMinor: 1000 }];
+    const harness = transitionDependencies();
+    harness.getOrder.mockResolvedValue({ data: { ticketOrder: current } });
+    harness.runTransition.mockResolvedValue({
+      action: "applied",
+      reason: "partial_refund_recorded",
+      orderId: ORDER_1,
+      fromStatus: TicketOrderStatus.PAID,
+      targetStatus: TicketOrderStatus.PAID,
+      intent: "MARK_REFUNDED",
+    });
+
+    await applyPaymentTransitionToOrders(
+      {
+        orderIds: [ORDER_1],
+        intent: "MARK_REFUNDED",
+        webhookEventId: "evt_partial",
+        refundContext: { stripeRefundId: "re_partial", refundedAmountMinor: 1000 },
+        refundAmountFromEvent: 1000,
+      },
+      harness.dependencies
+    );
+
+    expect(harness.runTransition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalAmountMinor: 5000,
+        refundContext: expect.objectContaining({ refundedAmountMinor: 1000 }),
+      }),
+      expect.objectContaining({ recordPartialRefund: expect.any(Function) })
+    );
+    expect(harness.upsertSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshot: expect.objectContaining({
+          status: TicketOrderStatus.PAID,
+          refundedAmountMinor: 1000,
+          allocationRefundedAmountMinor: 1000,
+        }),
+      })
     );
   });
 

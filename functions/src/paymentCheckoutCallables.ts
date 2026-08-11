@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import {
-  createTicketOrderForCheckout,
   getBookingsForBookerAndEvent,
   getSectionByIdForCallable,
   getTicketOrdersForBookerAndEvent,
@@ -8,25 +7,39 @@ import {
   getUserForCheckout,
   getUserUserGroupsForAdmin,
   markTicketOrderFailedFromWebhook,
+  updateBookingPlaceAllocationRefundFromCallable,
   updateUserStripeCustomerId,
   TicketAudience,
+  TicketOrderStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import Stripe from "stripe";
+import { createHash } from "node:crypto";
 import { requireEnabled, validateUUID } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
 import {
   bookingIdsEqual,
+  bookingIsFullyPaid,
   computeUnpaidBookingCheckoutItems,
   planCheckoutOrderLines,
-  selectLatestActiveBooking,
+  planBookingAllocationRefunds,
+  selectLatestPaymentEligibleBooking,
   stalePendingOrderIds,
 } from "./bookingCheckout";
 import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
+import { createAllocatedTicketOrder } from "./bookingPaymentPersistence";
+import { confirmBookingIfFullyPaid } from "./bookingPaymentFinalization";
 
 const CHECKOUT_CURRENCY = "gbp";
+
+export function bookingCheckoutIdempotencyKey(bookingId: string, orderIds: string[]): string {
+  const digest = createHash("sha256")
+    .update(`${bookingId}:${[...orderIds].sort().join(",")}`)
+    .digest("hex");
+  return `booking-checkout:${digest}`;
+}
 
 export const MEMBER_PAYMENTS_PATH = "/payments";
 
@@ -49,10 +62,6 @@ function ensureBookingWindow(start: string, end: string): void {
   if (!Number.isFinite(s) || !Number.isFinite(e) || now < s || now > e) {
     throw new HttpsError("failed-precondition", "Ticket sales are not open for this event");
   }
-}
-
-function toMinorUnits(price: number): number {
-  return Math.round(price * 100);
 }
 
 async function ensureTicketCheckoutEligibility(args: {
@@ -119,71 +128,10 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
   requireEnabled(request);
   const uid = request.auth!.uid;
   await enforceRateLimit("createTicketCheckoutSession", uid);
-  const quantity = Number(request.data?.quantity ?? 1);
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
-    throw new HttpsError("invalid-argument", "quantity must be an integer between 1 and 10");
-  }
-  const ticketTypeId = validateUUID(String(request.data?.ticketTypeId), "ticketTypeId") as UUIDString;
-
-  const dcUser = await getUserForCheckout({ userId: uid });
-  const user = dcUser.data?.user;
-  if (!user) throw new HttpsError("failed-precondition", "User profile is required");
-
-  const ttResult = await getTicketTypeForCheckout({ ticketTypeId });
-  const ticketType = ttResult.data?.ticketType;
-  if (!ticketType) throw new HttpsError("not-found", "Ticket type not found");
-  if (ticketType.audience !== TicketAudience.MEMBER && ticketType.audience !== TicketAudience.GUEST) {
-    throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
-  }
-  await ensureTicketCheckoutEligibility({ uid, ticketType });
-
-  const stripeClient = requireStripe(stripeSecret.value());
-  const customerId = await ensureStripeCustomerId({ uid, stripeClient });
-
-  const unitAmountMinor = toMinorUnits(ticketType.price);
-  const totalAmountMinor = unitAmountMinor * quantity;
-  const order = await createTicketOrderForCheckout({
-    userId: uid,
-    eventId: ticketType.event.id as UUIDString,
-    ticketTypeId: ticketType.id as UUIDString,
-    quantity,
-    unitAmountMinor,
-    totalAmountMinor,
-    currency: CHECKOUT_CURRENCY,
-  });
-  const orderId = order.data?.ticketOrder_insert?.id;
-  if (!orderId) throw new HttpsError("internal", "Failed to create ticket order");
-
-  const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls(APP_BASE_URL, orderId);
-  const session = await stripeClient.checkout.sessions.create({
-    mode: "payment",
-    customer: customerId,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    line_items: [
-      {
-        quantity,
-        price_data: {
-          currency: CHECKOUT_CURRENCY,
-          unit_amount: unitAmountMinor,
-          product_data: {
-            name: ticketType.title,
-            description: `Event: ${ticketType.event.title}`,
-          },
-        },
-      },
-    ],
-    metadata: {
-      firebaseUid: uid,
-      ticketTypeId: ticketType.id,
-      eventId: ticketType.event.id,
-      orderId,
-      orderIds: orderId,
-    },
-  });
-
-  if (!session.url) throw new HttpsError("internal", "Failed to create Stripe Checkout session");
-  return { url: session.url, orderId };
+  throw new HttpsError(
+    "failed-precondition",
+    "Direct ticket checkout is no longer supported; submit the event booking before payment"
+  );
 });
 
 export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
@@ -193,18 +141,62 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   const eventId = validateUUID(String(request.data?.eventId), "eventId") as UUIDString;
 
   const bookingsResult = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
-  const booking = selectLatestActiveBooking(bookingsResult.data?.user?.bookings ?? []);
+  let booking = selectLatestPaymentEligibleBooking(bookingsResult.data?.user?.bookings ?? []);
   if (!booking) {
-    throw new HttpsError("failed-precondition", "No active booking found for this event");
+    throw new HttpsError(
+      "failed-precondition",
+      "This booking must be approved before payment can begin"
+    );
+  }
+
+  let stripeClient: InstanceType<typeof Stripe> | null = null;
+  const plannedRefunds = planBookingAllocationRefunds(booking);
+  if (plannedRefunds.length > 0) {
+    stripeClient = requireStripe(stripeSecret.value());
+    for (const refund of plannedRefunds) {
+      if (!refund.stripePaymentIntentId) {
+        throw new HttpsError(
+          "failed-precondition",
+          "A paid ticket is missing its Stripe payment reference; automatic refund cannot continue"
+        );
+      }
+      const stripeRefund = await stripeClient.refunds.create(
+        {
+          payment_intent: refund.stripePaymentIntentId,
+          amount: refund.amountMinor,
+          metadata: {
+            bookingId: booking.id,
+            allocationId: refund.allocationId,
+            ticketOrderId: refund.ticketOrderId,
+            refundAmountMinor: String(refund.amountMinor),
+            resultingRefundedAmountMinor: String(refund.resultingRefundedAmountMinor),
+          },
+        },
+        {
+          idempotencyKey: `booking-refund:${booking.id}:${refund.allocationId}:${refund.resultingRefundedAmountMinor}`,
+        }
+      );
+      await updateBookingPlaceAllocationRefundFromCallable({
+        id: validateUUID(refund.allocationId) as UUIDString,
+        refundedAmountMinor: refund.resultingRefundedAmountMinor,
+        stripeRefundId: stripeRefund.id,
+      });
+    }
+    const refreshed = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
+    booking = selectLatestPaymentEligibleBooking(refreshed.data?.user?.bookings ?? []);
+    if (!booking) {
+      throw new HttpsError("failed-precondition", "The payable booking changed while applying its refund");
+    }
   }
 
   const ordersResult = await getTicketOrdersForBookerAndEvent({ userId: uid, eventId });
   const eventTicketOrders = ordersResult.data?.user?.ticketOrders ?? [];
-  const unpaidItems = computeUnpaidBookingCheckoutItems({
-    booking,
-    ticketOrders: eventTicketOrders,
-  });
+  const unpaidItems = computeUnpaidBookingCheckoutItems(booking);
   if (unpaidItems.length === 0) {
+    if (bookingIsFullyPaid(booking)) {
+      await confirmBookingIfFullyPaid({ bookerId: uid, eventId });
+      return { url: null, orderIds: [], confirmed: true };
+    }
     throw new HttpsError("failed-precondition", "All tickets for this booking are already paid");
   }
 
@@ -217,9 +209,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     });
   }
 
-  const stripeClient = requireStripe(stripeSecret.value());
-  const customerId = await ensureStripeCustomerId({ uid, stripeClient });
-  const createdOrderIds: UUIDString[] = [];
+  const checkoutOrderIds: UUIDString[] = [];
   const lineItems = [];
 
   for (const line of checkoutLines) {
@@ -237,24 +227,31 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     }
     await ensureTicketCheckoutEligibility({ uid, ticketType });
 
-    let orderId = line.existingOrderId as UUIDString | null;
-    if (!orderId) {
-      const order = await createTicketOrderForCheckout({
+    if (line.unitAmountMinor === 0) {
+      await createAllocatedTicketOrder({
         userId: uid,
         eventId,
         ticketTypeId,
-        quantity: line.quantity,
-        unitAmountMinor: line.unitAmountMinor,
-        totalAmountMinor: line.unitAmountMinor * line.quantity,
-        currency: CHECKOUT_CURRENCY,
+        unitAmountMinor: 0,
+        bookingPlaceIds: line.bookingPlaceIds.map((id) => validateUUID(id) as UUIDString),
+        status: TicketOrderStatus.PAID,
+        webhookEventId: `free-checkout:${booking.id}`,
       });
-      orderId = (order.data?.ticketOrder_insert?.id as UUIDString | undefined) ?? null;
-      if (!orderId) {
-        throw new HttpsError("internal", "Failed to create ticket order");
-      }
+      continue;
     }
 
-    createdOrderIds.push(orderId);
+    let orderId = line.existingOrderId as UUIDString | null;
+    if (!orderId) {
+      orderId = await createAllocatedTicketOrder({
+        userId: uid,
+        eventId,
+        ticketTypeId,
+        unitAmountMinor: line.unitAmountMinor,
+        bookingPlaceIds: line.bookingPlaceIds.map((id) => validateUUID(id) as UUIDString),
+      });
+    }
+
+    checkoutOrderIds.push(orderId);
     lineItems.push({
       quantity: line.quantity,
       price_data: {
@@ -268,22 +265,40 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     });
   }
 
-  const primaryOrderId = createdOrderIds[0]!;
+  if (checkoutOrderIds.length === 0) {
+    const confirmation = await confirmBookingIfFullyPaid({ bookerId: uid, eventId });
+    return { url: null, orderIds: [], confirmed: confirmation.confirmed };
+  }
+
+  stripeClient ??= requireStripe(stripeSecret.value());
+  const customerId = await ensureStripeCustomerId({ uid, stripeClient });
+  const primaryOrderId = checkoutOrderIds[0]!;
   const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls(APP_BASE_URL, primaryOrderId);
-  const session = await stripeClient.checkout.sessions.create({
-    mode: "payment",
-    customer: customerId,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    line_items: lineItems,
-    metadata: {
-      firebaseUid: uid,
-      eventId,
-      orderId: primaryOrderId,
-      orderIds: createdOrderIds.join(","),
+  const session = await stripeClient.checkout.sessions.create(
+    {
+      mode: "payment",
+      customer: customerId,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      line_items: lineItems,
+      metadata: {
+        firebaseUid: uid,
+        eventId,
+        orderId: primaryOrderId,
+        orderIds: checkoutOrderIds.join(","),
+      },
+      payment_intent_data: {
+        metadata: {
+          firebaseUid: uid,
+          eventId,
+          orderId: primaryOrderId,
+          orderIds: checkoutOrderIds.join(","),
+        },
+      },
     },
-  });
+    { idempotencyKey: bookingCheckoutIdempotencyKey(booking.id, checkoutOrderIds) }
+  );
 
   if (!session.url) throw new HttpsError("internal", "Failed to create Stripe Checkout session");
-  return { url: session.url, orderIds: createdOrderIds };
+  return { url: session.url, orderIds: checkoutOrderIds, confirmed: false };
 });

@@ -128,8 +128,10 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateBookingPaymentAdjustmentFromCallable*](#createbookingpaymentadjustmentfromcallable)
   - [*AddBookingLineFromCallable*](#addbookinglinefromcallable)
   - [*UpdateBookingStatusFromCallable*](#updatebookingstatusfromcallable)
+  - [*SettleBookingPaymentAdjustmentsFromCallable*](#settlebookingpaymentadjustmentsfromcallable)
   - [*UpdateBookingApprovalFromCallable*](#updatebookingapprovalfromcallable)
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
+  - [*UpdateBookingPlaceAllocationRefundFromCallable*](#updatebookingplaceallocationrefundfromcallable)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
@@ -139,6 +141,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*MarkTicketOrderPaidFromWebhook*](#markticketorderpaidfromwebhook)
   - [*MarkTicketOrderFailedFromWebhook*](#markticketorderfailedfromwebhook)
   - [*MarkTicketOrderRefundedFromWebhook*](#markticketorderrefundedfromwebhook)
+  - [*RecordTicketOrderPartialRefundFromWebhook*](#recordticketorderpartialrefundfromwebhook)
   - [*UpsertTicketOrderDisputeFromWebhook*](#upsertticketorderdisputefromwebhook)
   - [*UpsertPaymentReconciliationException*](#upsertpaymentreconciliationexception)
   - [*UpdateBookingPreferencesFromCallable*](#updatebookingpreferencesfromcallable)
@@ -2895,9 +2898,14 @@ export interface GetBookingsForBookerAndEventData {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            stripeRefundId?: string | null;
+            createdAt: TimestampString;
             ticketOrder: {
               id: UUIDString;
               status: TicketOrderStatus;
+              stripePaymentIntentId?: string | null;
             } & TicketOrder_Key;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -3043,6 +3051,8 @@ export interface GetTicketOrdersForBookerAndEventData {
       id: UUIDString;
       status: TicketOrderStatus;
       quantity: number;
+      unitAmountMinor: number;
+      totalAmountMinor: number;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -3050,6 +3060,13 @@ export interface GetTicketOrdersForBookerAndEventData {
       event: {
         id: UUIDString;
       } & Event_Key;
+      paymentAllocations: ({
+        id: UUIDString;
+        allocatedAmountMinor: number;
+        bookingPlace: {
+          id: UUIDString;
+        } & BookingPlace_Key;
+      } & BookingPlacePaymentAllocation_Key)[];
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -3199,6 +3216,10 @@ export interface GetTicketOrderForWebhookData {
     disputeUpdatedAt?: TimestampString | null;
     disputeClosedAt?: TimestampString | null;
     webhookEventId?: string | null;
+    paymentAllocations: ({
+      id: UUIDString;
+      refundedAmountMinor: number;
+    } & BookingPlacePaymentAllocation_Key)[];
   } & TicketOrder_Key;
 }
 ```
@@ -14715,6 +14736,115 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## SettleBookingPaymentAdjustmentsFromCallable
+You can execute the `SettleBookingPaymentAdjustmentsFromCallable` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+settleBookingPaymentAdjustmentsFromCallable(vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationPromise<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+
+interface SettleBookingPaymentAdjustmentsFromCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationRef<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+}
+export const settleBookingPaymentAdjustmentsFromCallableRef: SettleBookingPaymentAdjustmentsFromCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+settleBookingPaymentAdjustmentsFromCallable(dc: DataConnect, vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationPromise<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+
+interface SettleBookingPaymentAdjustmentsFromCallableRef {
+  ...
+  (dc: DataConnect, vars: SettleBookingPaymentAdjustmentsFromCallableVariables): MutationRef<SettleBookingPaymentAdjustmentsFromCallableData, SettleBookingPaymentAdjustmentsFromCallableVariables>;
+}
+export const settleBookingPaymentAdjustmentsFromCallableRef: SettleBookingPaymentAdjustmentsFromCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the settleBookingPaymentAdjustmentsFromCallableRef:
+```typescript
+const name = settleBookingPaymentAdjustmentsFromCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SettleBookingPaymentAdjustmentsFromCallable` mutation requires an argument of type `SettleBookingPaymentAdjustmentsFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SettleBookingPaymentAdjustmentsFromCallableVariables {
+  revisionBookingId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `SettleBookingPaymentAdjustmentsFromCallable` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SettleBookingPaymentAdjustmentsFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SettleBookingPaymentAdjustmentsFromCallableData {
+  bookingPaymentAdjustment_updateMany: number;
+}
+```
+### Using `SettleBookingPaymentAdjustmentsFromCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, settleBookingPaymentAdjustmentsFromCallable, SettleBookingPaymentAdjustmentsFromCallableVariables } from '@dataconnect/generated';
+
+// The `SettleBookingPaymentAdjustmentsFromCallable` mutation requires an argument of type `SettleBookingPaymentAdjustmentsFromCallableVariables`:
+const settleBookingPaymentAdjustmentsFromCallableVars: SettleBookingPaymentAdjustmentsFromCallableVariables = {
+  revisionBookingId: ..., 
+};
+
+// Call the `settleBookingPaymentAdjustmentsFromCallable()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await settleBookingPaymentAdjustmentsFromCallable(settleBookingPaymentAdjustmentsFromCallableVars);
+// Variables can be defined inline as well.
+const { data } = await settleBookingPaymentAdjustmentsFromCallable({ revisionBookingId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await settleBookingPaymentAdjustmentsFromCallable(dataConnect, settleBookingPaymentAdjustmentsFromCallableVars);
+
+console.log(data.bookingPaymentAdjustment_updateMany);
+
+// Or, you can use the `Promise` API.
+settleBookingPaymentAdjustmentsFromCallable(settleBookingPaymentAdjustmentsFromCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookingPaymentAdjustment_updateMany);
+});
+```
+
+### Using `SettleBookingPaymentAdjustmentsFromCallable`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, settleBookingPaymentAdjustmentsFromCallableRef, SettleBookingPaymentAdjustmentsFromCallableVariables } from '@dataconnect/generated';
+
+// The `SettleBookingPaymentAdjustmentsFromCallable` mutation requires an argument of type `SettleBookingPaymentAdjustmentsFromCallableVariables`:
+const settleBookingPaymentAdjustmentsFromCallableVars: SettleBookingPaymentAdjustmentsFromCallableVariables = {
+  revisionBookingId: ..., 
+};
+
+// Call the `settleBookingPaymentAdjustmentsFromCallableRef()` function to get a reference to the mutation.
+const ref = settleBookingPaymentAdjustmentsFromCallableRef(settleBookingPaymentAdjustmentsFromCallableVars);
+// Variables can be defined inline as well.
+const ref = settleBookingPaymentAdjustmentsFromCallableRef({ revisionBookingId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = settleBookingPaymentAdjustmentsFromCallableRef(dataConnect, settleBookingPaymentAdjustmentsFromCallableVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.bookingPaymentAdjustment_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookingPaymentAdjustment_updateMany);
+});
+```
+
 ## UpdateBookingApprovalFromCallable
 You can execute the `UpdateBookingApprovalFromCallable` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -14957,6 +15087,121 @@ console.log(data.ticketOrder_insert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.ticketOrder_insert);
+});
+```
+
+## UpdateBookingPlaceAllocationRefundFromCallable
+You can execute the `UpdateBookingPlaceAllocationRefundFromCallable` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateBookingPlaceAllocationRefundFromCallable(vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+
+interface UpdateBookingPlaceAllocationRefundFromCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+}
+export const updateBookingPlaceAllocationRefundFromCallableRef: UpdateBookingPlaceAllocationRefundFromCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateBookingPlaceAllocationRefundFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+
+interface UpdateBookingPlaceAllocationRefundFromCallableRef {
+  ...
+  (dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+}
+export const updateBookingPlaceAllocationRefundFromCallableRef: UpdateBookingPlaceAllocationRefundFromCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateBookingPlaceAllocationRefundFromCallableRef:
+```typescript
+const name = updateBookingPlaceAllocationRefundFromCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateBookingPlaceAllocationRefundFromCallable` mutation requires an argument of type `UpdateBookingPlaceAllocationRefundFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  stripeRefundId: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateBookingPlaceAllocationRefundFromCallable` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateBookingPlaceAllocationRefundFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateBookingPlaceAllocationRefundFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+```
+### Using `UpdateBookingPlaceAllocationRefundFromCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateBookingPlaceAllocationRefundFromCallable, UpdateBookingPlaceAllocationRefundFromCallableVariables } from '@dataconnect/generated';
+
+// The `UpdateBookingPlaceAllocationRefundFromCallable` mutation requires an argument of type `UpdateBookingPlaceAllocationRefundFromCallableVariables`:
+const updateBookingPlaceAllocationRefundFromCallableVars: UpdateBookingPlaceAllocationRefundFromCallableVariables = {
+  id: ..., 
+  refundedAmountMinor: ..., 
+  stripeRefundId: ..., 
+};
+
+// Call the `updateBookingPlaceAllocationRefundFromCallable()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateBookingPlaceAllocationRefundFromCallable(updateBookingPlaceAllocationRefundFromCallableVars);
+// Variables can be defined inline as well.
+const { data } = await updateBookingPlaceAllocationRefundFromCallable({ id: ..., refundedAmountMinor: ..., stripeRefundId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateBookingPlaceAllocationRefundFromCallable(dataConnect, updateBookingPlaceAllocationRefundFromCallableVars);
+
+console.log(data.bookingPlacePaymentAllocation_update);
+
+// Or, you can use the `Promise` API.
+updateBookingPlaceAllocationRefundFromCallable(updateBookingPlaceAllocationRefundFromCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookingPlacePaymentAllocation_update);
+});
+```
+
+### Using `UpdateBookingPlaceAllocationRefundFromCallable`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateBookingPlaceAllocationRefundFromCallableRef, UpdateBookingPlaceAllocationRefundFromCallableVariables } from '@dataconnect/generated';
+
+// The `UpdateBookingPlaceAllocationRefundFromCallable` mutation requires an argument of type `UpdateBookingPlaceAllocationRefundFromCallableVariables`:
+const updateBookingPlaceAllocationRefundFromCallableVars: UpdateBookingPlaceAllocationRefundFromCallableVariables = {
+  id: ..., 
+  refundedAmountMinor: ..., 
+  stripeRefundId: ..., 
+};
+
+// Call the `updateBookingPlaceAllocationRefundFromCallableRef()` function to get a reference to the mutation.
+const ref = updateBookingPlaceAllocationRefundFromCallableRef(updateBookingPlaceAllocationRefundFromCallableVars);
+// Variables can be defined inline as well.
+const ref = updateBookingPlaceAllocationRefundFromCallableRef({ id: ..., refundedAmountMinor: ..., stripeRefundId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateBookingPlaceAllocationRefundFromCallableRef(dataConnect, updateBookingPlaceAllocationRefundFromCallableVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.bookingPlacePaymentAllocation_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookingPlacePaymentAllocation_update);
 });
 ```
 
@@ -16074,6 +16319,127 @@ const ref = markTicketOrderRefundedFromWebhookRef({ id: ..., webhookEventId: ...
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = markTicketOrderRefundedFromWebhookRef(dataConnect, markTicketOrderRefundedFromWebhookVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.ticketOrder_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder_update);
+});
+```
+
+## RecordTicketOrderPartialRefundFromWebhook
+You can execute the `RecordTicketOrderPartialRefundFromWebhook` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+recordTicketOrderPartialRefundFromWebhook(vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationPromise<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+
+interface RecordTicketOrderPartialRefundFromWebhookRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationRef<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+}
+export const recordTicketOrderPartialRefundFromWebhookRef: RecordTicketOrderPartialRefundFromWebhookRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+recordTicketOrderPartialRefundFromWebhook(dc: DataConnect, vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationPromise<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+
+interface RecordTicketOrderPartialRefundFromWebhookRef {
+  ...
+  (dc: DataConnect, vars: RecordTicketOrderPartialRefundFromWebhookVariables): MutationRef<RecordTicketOrderPartialRefundFromWebhookData, RecordTicketOrderPartialRefundFromWebhookVariables>;
+}
+export const recordTicketOrderPartialRefundFromWebhookRef: RecordTicketOrderPartialRefundFromWebhookRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the recordTicketOrderPartialRefundFromWebhookRef:
+```typescript
+const name = recordTicketOrderPartialRefundFromWebhookRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RecordTicketOrderPartialRefundFromWebhook` mutation requires an argument of type `RecordTicketOrderPartialRefundFromWebhookVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RecordTicketOrderPartialRefundFromWebhookVariables {
+  id: UUIDString;
+  webhookEventId: string;
+  stripeRefundId?: string | null;
+  refundedAmountMinor: number;
+  refundedAt?: TimestampString | null;
+}
+```
+### Return Type
+Recall that executing the `RecordTicketOrderPartialRefundFromWebhook` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RecordTicketOrderPartialRefundFromWebhookData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RecordTicketOrderPartialRefundFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+```
+### Using `RecordTicketOrderPartialRefundFromWebhook`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, recordTicketOrderPartialRefundFromWebhook, RecordTicketOrderPartialRefundFromWebhookVariables } from '@dataconnect/generated';
+
+// The `RecordTicketOrderPartialRefundFromWebhook` mutation requires an argument of type `RecordTicketOrderPartialRefundFromWebhookVariables`:
+const recordTicketOrderPartialRefundFromWebhookVars: RecordTicketOrderPartialRefundFromWebhookVariables = {
+  id: ..., 
+  webhookEventId: ..., 
+  stripeRefundId: ..., // optional
+  refundedAmountMinor: ..., 
+  refundedAt: ..., // optional
+};
+
+// Call the `recordTicketOrderPartialRefundFromWebhook()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await recordTicketOrderPartialRefundFromWebhook(recordTicketOrderPartialRefundFromWebhookVars);
+// Variables can be defined inline as well.
+const { data } = await recordTicketOrderPartialRefundFromWebhook({ id: ..., webhookEventId: ..., stripeRefundId: ..., refundedAmountMinor: ..., refundedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await recordTicketOrderPartialRefundFromWebhook(dataConnect, recordTicketOrderPartialRefundFromWebhookVars);
+
+console.log(data.ticketOrder_update);
+
+// Or, you can use the `Promise` API.
+recordTicketOrderPartialRefundFromWebhook(recordTicketOrderPartialRefundFromWebhookVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrder_update);
+});
+```
+
+### Using `RecordTicketOrderPartialRefundFromWebhook`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, recordTicketOrderPartialRefundFromWebhookRef, RecordTicketOrderPartialRefundFromWebhookVariables } from '@dataconnect/generated';
+
+// The `RecordTicketOrderPartialRefundFromWebhook` mutation requires an argument of type `RecordTicketOrderPartialRefundFromWebhookVariables`:
+const recordTicketOrderPartialRefundFromWebhookVars: RecordTicketOrderPartialRefundFromWebhookVariables = {
+  id: ..., 
+  webhookEventId: ..., 
+  stripeRefundId: ..., // optional
+  refundedAmountMinor: ..., 
+  refundedAt: ..., // optional
+};
+
+// Call the `recordTicketOrderPartialRefundFromWebhookRef()` function to get a reference to the mutation.
+const ref = recordTicketOrderPartialRefundFromWebhookRef(recordTicketOrderPartialRefundFromWebhookVars);
+// Variables can be defined inline as well.
+const ref = recordTicketOrderPartialRefundFromWebhookRef({ id: ..., webhookEventId: ..., stripeRefundId: ..., refundedAmountMinor: ..., refundedAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = recordTicketOrderPartialRefundFromWebhookRef(dataConnect, recordTicketOrderPartialRefundFromWebhookVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.

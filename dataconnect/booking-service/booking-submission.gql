@@ -84,3 +84,14 @@ mutation CreateLegacyGuestTicketRequestsFromCallable(
 ) @auth(level: NO_ACCESS) @transaction {
   guestTicketRequest_insertMany(data: $requests)
 }
+
+# Checkout orders and their exact place allocations are one unit. Creating
+# these rows in separate operations could leave an unallocated order (or an
+# allocation without the order) when a retry races a partial failure.
+mutation CreateAllocatedTicketOrderFromCallable(
+  $ticketOrder: TicketOrder_Data! @allow(fields: "id userId eventId ticketTypeId quantity unitAmountMinor totalAmountMinor currency status webhookEventId createdBy updatedBy")
+  $allocations: [BookingPlacePaymentAllocation_Data!]! @allow(fields: "id ticketOrderId bookingPlaceId allocatedAmountMinor createdBy updatedBy", maxCount: 100)
+) @auth(level: NO_ACCESS) @transaction {
+  ticketOrder_insert(data: $ticketOrder)
+  bookingPlacePaymentAllocation_insertMany(data: $allocations)
+}

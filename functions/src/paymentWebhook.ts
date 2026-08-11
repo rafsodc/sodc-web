@@ -4,6 +4,7 @@ import {
   createPaymentWebhookEvent,
   getPaymentWebhookEventByStripeEventId,
   getTicketOrderForWebhook,
+  updateBookingPlaceAllocationRefundFromCallable,
   upsertTicketOrderDisputeFromWebhook,
   PaymentWebhookEventOutcome,
 } from "@dataconnect/admin-generated";
@@ -68,16 +69,15 @@ function paymentTransitionContextFromEvent(
   const refundContext =
     intent === "MARK_REFUNDED"
       ? (() => {
-          const charge = event.data.object as {
+          const refund = event.data.object as {
             id?: string;
-            amount_refunded?: number;
-            refunds?: { data?: Array<{ id?: string }> };
+            amount?: number;
           };
           return {
-            stripeRefundId: charge.refunds?.data?.[0]?.id ?? null,
+            stripeRefundId: refund.id ?? null,
             refundedAmountMinor:
-              typeof charge.amount_refunded === "number"
-                ? charge.amount_refunded
+              typeof refund.amount === "number"
+                ? refund.amount
                 : null,
             refundedAt: isoTimestampFromStripeEpochSeconds(event.created),
           };
@@ -271,6 +271,46 @@ async function handleStripeWebhookRequest(args: {
       });
       res.status(200).send("Order not found");
       return;
+    }
+
+    if (event.type === "refund.created") {
+      const refund = event.data.object as {
+        id?: string;
+        metadata?: {
+          allocationId?: string;
+          refundAmountMinor?: string;
+          resultingRefundedAmountMinor?: string;
+        };
+      };
+      const allocationId = refund.metadata?.allocationId;
+      const refundAmountMinor = Number(refund.metadata?.refundAmountMinor);
+      const resultingRefundedAmountMinor = Number(refund.metadata?.resultingRefundedAmountMinor);
+      if (
+        !allocationId ||
+        !Number.isInteger(refundAmountMinor) ||
+        refundAmountMinor <= 0 ||
+        (event.data.object as { amount?: number }).amount !== refundAmountMinor ||
+        !Number.isInteger(resultingRefundedAmountMinor) ||
+        resultingRefundedAmountMinor < 0 ||
+        !refund.id
+      ) {
+        await appendWebhookLedgerEvent({
+          stripeEventId: event.id,
+          eventType: event.type,
+          outcome: PaymentWebhookEventOutcome.IGNORED,
+          reason: "missing_allocation_refund_metadata",
+          ticketOrderId: canonicalOrderId,
+          stripeObjectId,
+          livemode: event.livemode,
+        });
+        res.status(200).send("Missing allocation refund metadata");
+        return;
+      }
+      await updateBookingPlaceAllocationRefundFromCallable({
+        id: validateUUID(allocationId, "allocationId") as UUIDString,
+        refundedAmountMinor: resultingRefundedAmountMinor,
+        stripeRefundId: refund.id,
+      });
     }
 
     if (normalized.kind === "dispute_side_state") {

@@ -29,4 +29,14 @@ describe("bookingPaymentAdjustments", () => {
     expect(result.deltaAmountMinor).toBe(0);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
+
+  it("treats a missing previous booking as having no payable lines", () => {
+    const result = computeBookingPaymentDelta(
+      undefined,
+      { lines: [{ ticketType: { price: 30 } }] }
+    );
+
+    expect(result.previousTotalMinor).toBe(0);
+    expect(result.deltaAmountMinor).toBe(3000);
+  });
 });

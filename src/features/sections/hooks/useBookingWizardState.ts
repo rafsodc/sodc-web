@@ -419,8 +419,17 @@ export function useBookingWizardState({
     setPayingAllTickets(true);
     setSubmitError(null);
     try {
-      const { url } = await createEventBookingCheckoutSession({ eventId: event.id });
-      window.location.assign(url);
+      const { url, confirmed } = await createEventBookingCheckoutSession({ eventId: event.id });
+      if (url) {
+        window.location.assign(url);
+      } else if (confirmed) {
+        await refetchMyBookings();
+        setPostSubmitFlow(false);
+        setPaymentResumeFlow(false);
+        onWizardOpenChange?.(false);
+      } else {
+        throw new Error("Checkout completed without a payment URL or booking confirmation");
+      }
     } catch (err: unknown) {
       reportError("booking.checkout-start", err);
       setSubmitError(toBookingUserFacingError(err, "checkout-start").message);

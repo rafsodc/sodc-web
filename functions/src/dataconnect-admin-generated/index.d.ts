@@ -17,6 +17,7 @@ export enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED = "NOT_REQUIRED",
   PENDING_AUTO_REFUND = "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE = "PENDING_AUTO_CHARGE",
+  SETTLED = "SETTLED",
 }
 export enum BookingStatus {
   DRAFT = "DRAFT",
@@ -1171,9 +1172,14 @@ export interface GetBookingsForBookerAndEventData {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            stripeRefundId?: string | null;
+            createdAt: TimestampString;
             ticketOrder: {
               id: UUIDString;
               status: TicketOrderStatus;
+              stripePaymentIntentId?: string | null;
             } & TicketOrder_Key;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -2057,6 +2063,10 @@ export interface GetTicketOrderForWebhookData {
     disputeUpdatedAt?: TimestampString | null;
     disputeClosedAt?: TimestampString | null;
     webhookEventId?: string | null;
+    paymentAllocations: ({
+      id: UUIDString;
+      refundedAmountMinor: number;
+    } & BookingPlacePaymentAllocation_Key)[];
   } & TicketOrder_Key;
 }
 
@@ -2086,6 +2096,8 @@ export interface GetTicketOrdersForBookerAndEventData {
       id: UUIDString;
       status: TicketOrderStatus;
       quantity: number;
+      unitAmountMinor: number;
+      totalAmountMinor: number;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -2093,6 +2105,13 @@ export interface GetTicketOrdersForBookerAndEventData {
       event: {
         id: UUIDString;
       } & Event_Key;
+      paymentAllocations: ({
+        id: UUIDString;
+        allocatedAmountMinor: number;
+        bookingPlace: {
+          id: UUIDString;
+        } & BookingPlace_Key;
+      } & BookingPlacePaymentAllocation_Key)[];
     } & TicketOrder_Key)[];
   } & User_Key;
 }
@@ -3089,6 +3108,18 @@ export interface RecordSectionFileAuditVariables {
   detail?: string | null;
 }
 
+export interface RecordTicketOrderPartialRefundFromWebhookData {
+  ticketOrder_update?: TicketOrder_Key | null;
+}
+
+export interface RecordTicketOrderPartialRefundFromWebhookVariables {
+  id: UUIDString;
+  webhookEventId: string;
+  stripeRefundId?: string | null;
+  refundedAmountMinor: number;
+  refundedAt?: TimestampString | null;
+}
+
 export interface RegisterForSectionData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -3207,6 +3238,14 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   reason?: string | null;
   previousValue?: string | null;
   newValue: string;
+}
+
+export interface SettleBookingPaymentAdjustmentsFromCallableData {
+  bookingPaymentAdjustment_updateMany: number;
+}
+
+export interface SettleBookingPaymentAdjustmentsFromCallableVariables {
+  revisionBookingId: UUIDString;
 }
 
 export interface SubscribeToUserGroupData {
@@ -3340,6 +3379,16 @@ export interface UpdateBookingApprovalFromCallableVariables {
   status: BookingApprovalStatus;
   reviewedById?: string | null;
   approvalNote?: string | null;
+}
+
+export interface UpdateBookingPlaceAllocationRefundFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+
+export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  stripeRefundId: string;
 }
 
 export interface UpdateBookingPreferencesFromCallableData {
@@ -3903,6 +3952,11 @@ export function updateBookingStatusFromCallable(dc: DataConnect, vars: UpdateBoo
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingStatusFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateBookingStatusFromCallable(vars: UpdateBookingStatusFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingStatusFromCallableData>>;
 
+/** Generated Node Admin SDK operation action function for the 'SettleBookingPaymentAdjustmentsFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
+export function settleBookingPaymentAdjustmentsFromCallable(dc: DataConnect, vars: SettleBookingPaymentAdjustmentsFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SettleBookingPaymentAdjustmentsFromCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'SettleBookingPaymentAdjustmentsFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
+export function settleBookingPaymentAdjustmentsFromCallable(vars: SettleBookingPaymentAdjustmentsFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SettleBookingPaymentAdjustmentsFromCallableData>>;
+
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingApprovalFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateBookingApprovalFromCallable(dc: DataConnect, vars: UpdateBookingApprovalFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingApprovalFromCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingApprovalFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -3912,6 +3966,11 @@ export function updateBookingApprovalFromCallable(vars: UpdateBookingApprovalFro
 export function createTicketOrderForCheckout(dc: DataConnect, vars: CreateTicketOrderForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketOrderForCheckoutData>>;
 /** Generated Node Admin SDK operation action function for the 'CreateTicketOrderForCheckout' Mutation. Allow users to pass in custom DataConnect instances. */
 export function createTicketOrderForCheckout(vars: CreateTicketOrderForCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateTicketOrderForCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingPlaceAllocationRefundFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateBookingPlaceAllocationRefundFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPlaceAllocationRefundFromCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingPlaceAllocationRefundFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateBookingPlaceAllocationRefundFromCallable(vars: UpdateBookingPlaceAllocationRefundFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPlaceAllocationRefundFromCallableData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to execute without passing in DataConnect. */
 export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
@@ -3987,6 +4046,11 @@ export function markTicketOrderFailedFromWebhook(vars: MarkTicketOrderFailedFrom
 export function markTicketOrderRefundedFromWebhook(dc: DataConnect, vars: MarkTicketOrderRefundedFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkTicketOrderRefundedFromWebhookData>>;
 /** Generated Node Admin SDK operation action function for the 'MarkTicketOrderRefundedFromWebhook' Mutation. Allow users to pass in custom DataConnect instances. */
 export function markTicketOrderRefundedFromWebhook(vars: MarkTicketOrderRefundedFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkTicketOrderRefundedFromWebhookData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RecordTicketOrderPartialRefundFromWebhook' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordTicketOrderPartialRefundFromWebhook(dc: DataConnect, vars: RecordTicketOrderPartialRefundFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordTicketOrderPartialRefundFromWebhookData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordTicketOrderPartialRefundFromWebhook' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordTicketOrderPartialRefundFromWebhook(vars: RecordTicketOrderPartialRefundFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordTicketOrderPartialRefundFromWebhookData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpsertTicketOrderDisputeFromWebhook' Mutation. Allow users to execute without passing in DataConnect. */
 export function upsertTicketOrderDisputeFromWebhook(dc: DataConnect, vars: UpsertTicketOrderDisputeFromWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertTicketOrderDisputeFromWebhookData>>;

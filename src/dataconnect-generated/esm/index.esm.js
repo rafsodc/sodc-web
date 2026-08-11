@@ -11,6 +11,7 @@ export const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
+  SETTLED: "SETTLED",
 }
 
 export const BookingStatus = {
@@ -915,6 +916,18 @@ export function updateBookingStatusFromCallable(dcOrVars, vars) {
   return executeMutation(updateBookingStatusFromCallableRef(dcInstance, inputVars));
 }
 
+export const settleBookingPaymentAdjustmentsFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'SettleBookingPaymentAdjustmentsFromCallable', inputVars);
+}
+settleBookingPaymentAdjustmentsFromCallableRef.operationName = 'SettleBookingPaymentAdjustmentsFromCallable';
+
+export function settleBookingPaymentAdjustmentsFromCallable(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(settleBookingPaymentAdjustmentsFromCallableRef(dcInstance, inputVars));
+}
+
 export const updateBookingApprovalFromCallableRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -937,6 +950,18 @@ createTicketOrderForCheckoutRef.operationName = 'CreateTicketOrderForCheckout';
 export function createTicketOrderForCheckout(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(createTicketOrderForCheckoutRef(dcInstance, inputVars));
+}
+
+export const updateBookingPlaceAllocationRefundFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateBookingPlaceAllocationRefundFromCallable', inputVars);
+}
+updateBookingPlaceAllocationRefundFromCallableRef.operationName = 'UpdateBookingPlaceAllocationRefundFromCallable';
+
+export function updateBookingPlaceAllocationRefundFromCallable(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateBookingPlaceAllocationRefundFromCallableRef(dcInstance, inputVars));
 }
 
 export const getTicketOrderForWebhookRef = (dcOrVars, vars) => {
@@ -1123,6 +1148,18 @@ markTicketOrderRefundedFromWebhookRef.operationName = 'MarkTicketOrderRefundedFr
 export function markTicketOrderRefundedFromWebhook(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(markTicketOrderRefundedFromWebhookRef(dcInstance, inputVars));
+}
+
+export const recordTicketOrderPartialRefundFromWebhookRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RecordTicketOrderPartialRefundFromWebhook', inputVars);
+}
+recordTicketOrderPartialRefundFromWebhookRef.operationName = 'RecordTicketOrderPartialRefundFromWebhook';
+
+export function recordTicketOrderPartialRefundFromWebhook(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(recordTicketOrderPartialRefundFromWebhookRef(dcInstance, inputVars));
 }
 
 export const upsertTicketOrderDisputeFromWebhookRef = (dcOrVars, vars) => {
