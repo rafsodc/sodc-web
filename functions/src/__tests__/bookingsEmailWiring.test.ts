@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingPaymentAdjustmentStatus } from "@dataconnect/admin-generated";
-import { sendBookingSubmitNotificationEmails } from "../bookings";
+import { parseSitNextToUserIds, sendBookingSubmitNotificationEmails } from "../bookings";
 import {
   notifyBookingConfirmationEmail,
   notifyBookingRevisionEmail,
@@ -10,6 +10,28 @@ vi.mock("../bookingEmailDispatcher", () => ({
   notifyBookingConfirmationEmail: vi.fn(),
   notifyBookingRevisionEmail: vi.fn(),
 }));
+
+describe("booking request seating preferences", () => {
+  it("accepts opaque Firebase Auth UIDs and preserves their values", () => {
+    expect(parseSitNextToUserIds([" user-2 ", "cGqrtuZyUBcXfz9pbSC9Jb8QE4u1"], "user-1")).toEqual([
+      "user-2",
+      "cGqrtuZyUBcXfz9pbSC9Jb8QE4u1",
+    ]);
+  });
+
+  it("removes duplicate and blank selections", () => {
+    expect(parseSitNextToUserIds(["user-2", " ", "user-2"], "user-1")).toEqual(["user-2"]);
+  });
+
+  it("rejects self-selection and oversized UIDs", () => {
+    expect(() => parseSitNextToUserIds(["user-1"], "user-1")).toThrow(
+      "You cannot select yourself"
+    );
+    expect(() => parseSitNextToUserIds(["x".repeat(129)], "user-1")).toThrow(
+      "must be no more than 128 characters"
+    );
+  });
+});
 
 describe("sendBookingSubmitNotificationEmails", () => {
   beforeEach(() => {

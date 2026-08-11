@@ -134,7 +134,10 @@ function parseOptionalString(value: unknown, maxLen: number): string | null {
   return trimmed.slice(0, maxLen);
 }
 
-function parseSitNextTo(raw: unknown, uid: string): string[] {
+const MAX_FIREBASE_UID_LENGTH = 128;
+
+/** Firebase Auth UIDs are opaque strings, not Data Connect UUID scalars. */
+export function parseSitNextToUserIds(raw: unknown, uid: string): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   for (const v of raw) {
@@ -143,13 +146,56 @@ function parseSitNextTo(raw: unknown, uid: string): string[] {
     }
     const trimmed = v.trim();
     if (!trimmed) continue;
-    const id = validateUUID(trimmed, "sitNextToUserIds");
-    if (id === uid) {
+    if (trimmed.length > MAX_FIREBASE_UID_LENGTH) {
+      throw new HttpsError(
+        "invalid-argument",
+        `sitNextToUserIds entries must be no more than ${MAX_FIREBASE_UID_LENGTH} characters`
+      );
+    }
+    if (trimmed === uid) {
       throw new HttpsError("invalid-argument", "You cannot select yourself in sit-next-to preferences");
     }
-    if (!out.includes(id)) out.push(id);
+    if (!out.includes(trimmed)) out.push(trimmed);
   }
   return out.slice(0, 10);
+}
+
+function logBookingRejection(error: HttpsError): void {
+  const details = error.details as { code?: unknown } | undefined;
+  logger.warn("submitEventBooking rejected", {
+    errorCode: error.code,
+    domainCode: typeof details?.code === "string" ? details.code : undefined,
+    validationMessage: error.code === "invalid-argument" ? error.message : undefined,
+  });
+}
+
+function parseSubmitEventBookingRequest(data: unknown, uid: string) {
+  const input = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const idempotencyKey = validateUUID(
+    requireString(input.idempotencyKey, "idempotencyKey"),
+    "idempotencyKey"
+  );
+  const eventId = validateUUID(input.eventId as string, "eventId") as UUIDString;
+  const baseBookingId = input.baseBookingId
+    ? (validateUUID(String(input.baseBookingId), "baseBookingId") as UUIDString)
+    : undefined;
+  const baseRevisionNumberRaw = input.baseRevisionNumber;
+  const baseRevisionNumber =
+    baseRevisionNumberRaw == null
+      ? undefined
+      : Number.isInteger(Number(baseRevisionNumberRaw))
+        ? Number(baseRevisionNumberRaw)
+        : undefined;
+  return {
+    idempotencyKey,
+    eventId,
+    baseBookingId,
+    baseRevisionNumber,
+    lines: parseBookingLines(input.lines),
+    sitNextToUserIds: parseSitNextToUserIds(input.sitNextToUserIds, uid),
+    accommodationRequested: input.accommodationRequested === true,
+    accommodationNote: parseOptionalString(input.accommodationNote, 500),
+  };
 }
 
 async function fetchBookingsForBookerAndEvent(bookerId: string, eventId: UUIDString) {
@@ -180,19 +226,24 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
   const uid = request.auth!.uid;
   await enforceRateLimit("submitEventBooking", uid);
 
-  const idempotencyKey = validateUUID(
-    requireString(request.data?.idempotencyKey, "idempotencyKey"),
-    "idempotencyKey"
-  );
-  const eventId = validateUUID(request.data?.eventId as string, "eventId") as UUIDString;
-  const baseBookingId = request.data?.baseBookingId ? (validateUUID(String(request.data.baseBookingId), "baseBookingId") as UUIDString) : undefined;
-  const baseRevisionNumberRaw = request.data?.baseRevisionNumber;
-  const baseRevisionNumber =
-    baseRevisionNumberRaw == null ? undefined : Number.isInteger(Number(baseRevisionNumberRaw)) ? Number(baseRevisionNumberRaw) : undefined;
-  const lines = parseBookingLines(request.data?.lines);
-  const sitNextToUserIds = parseSitNextTo(request.data?.sitNextToUserIds, uid);
-  const accommodationRequested = request.data?.accommodationRequested === true;
-  const accommodationNote = parseOptionalString(request.data?.accommodationNote, 500);
+  const parsedRequest = (() => {
+    try {
+      return parseSubmitEventBookingRequest(request.data, uid);
+    } catch (error: unknown) {
+      if (error instanceof HttpsError) logBookingRejection(error);
+      throw error;
+    }
+  })();
+  const {
+    idempotencyKey,
+    eventId,
+    baseBookingId,
+    baseRevisionNumber,
+    lines,
+    sitNextToUserIds,
+    accommodationRequested,
+    accommodationNote,
+  } = parsedRequest;
 
   try {
     const [eventResult, userStatusResult, userGroupsResult, initialBookings] = await Promise.all([
@@ -463,7 +514,10 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       idempotentReplay: false,
     };
   } catch (e: unknown) {
-    if (e instanceof HttpsError) throw e;
+    if (e instanceof HttpsError) {
+      logBookingRejection(e);
+      throw e;
+    }
     handleFunctionError(e as Error, "submitEventBooking");
   }
 });
