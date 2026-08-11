@@ -44,6 +44,7 @@ import {
   type ExistingSubmissionLine,
   type SubmissionLine,
 } from "./bookingSubmissionPersistence";
+import { hydrateBookingsWithTicketOrders } from "./bookingQueryHydration";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -200,7 +201,7 @@ function parseSubmitEventBookingRequest(data: unknown, uid: string) {
 
 async function fetchBookingsForBookerAndEvent(bookerId: string, eventId: UUIDString) {
   const res = await getBookingsForBookerAndEvent({ bookerId, eventId });
-  return res.data?.user?.bookings ?? [];
+  return hydrateBookingsWithTicketOrders(res.data);
 }
 
 function isDuplicateKeyError(err: unknown): boolean {

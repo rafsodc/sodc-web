@@ -1036,6 +1036,11 @@ export interface GetBookingRevisionForApprovalFromCallableVariables {
 export interface GetBookingsForBookerAndEventData {
   user?: {
     id: string;
+    ticketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+      stripePaymentIntentId?: string | null;
+    } & TicketOrder_Key)[];
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
@@ -1060,15 +1065,11 @@ export interface GetBookingsForBookerAndEventData {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
+            ticketOrderId: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
             stripeRefundId?: string | null;
             createdAt: TimestampString;
-            ticketOrder: {
-              id: UUIDString;
-              status: TicketOrderStatus;
-              stripePaymentIntentId?: string | null;
-            } & TicketOrder_Key;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;

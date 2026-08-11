@@ -266,6 +266,18 @@ describe("GQL schema integrity", () => {
     expect(operation).toContain("approvalReviewedAt_expr: \"request.time\"");
   });
 
+  it("keeps ticket-order status outside the deeply nested booking allocation path", () => {
+    const adminSdk = readApiFile("admin-mutations.gql");
+    const start = adminSdk.indexOf("query GetBookingsForBookerAndEvent");
+    const next = adminSdk.indexOf("\nquery ", start + 1);
+    const operation = adminSdk.slice(start, next < 0 ? adminSdk.length : next);
+
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(operation).toContain("ticketOrders: ticketOrders_on_user");
+    expect(operation).toContain("ticketOrderId");
+    expect(operation).not.toMatch(/bookingPlacePaymentAllocations_on_bookingPlace\s*\{[\s\S]*?ticketOrder\s*\{/);
+  });
+
   it("activates an approved amended revision atomically", () => {
     const operations = readBookingServiceFile("booking-submission.gql");
     const start = operations.indexOf("mutation ActivateApprovedBookingRevisionFromCallable");

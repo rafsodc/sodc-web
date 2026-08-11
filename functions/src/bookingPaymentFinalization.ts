@@ -10,6 +10,7 @@ import {
   bookingIsFullyPaid,
   selectLatestPaymentEligibleBooking,
 } from "./bookingCheckout";
+import { hydrateBookingsWithTicketOrders } from "./bookingQueryHydration";
 
 export interface BookingPaymentFinalizationDependencies {
   getBookings: typeof getBookingsForBookerAndEvent;
@@ -29,7 +30,7 @@ export async function confirmBookingIfFullyPaid(
   dependencies: BookingPaymentFinalizationDependencies = defaultDependencies
 ): Promise<{ bookingId: UUIDString | null; confirmed: boolean }> {
   const result = await dependencies.getBookings(args);
-  const booking = selectLatestPaymentEligibleBooking(result.data?.user?.bookings ?? []);
+  const booking = selectLatestPaymentEligibleBooking(hydrateBookingsWithTicketOrders(result.data));
   if (!booking || !bookingIsFullyPaid(booking)) {
     return { bookingId: booking?.id ?? null, confirmed: false };
   }

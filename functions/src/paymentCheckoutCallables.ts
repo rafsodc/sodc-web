@@ -28,6 +28,7 @@ import {
   selectLatestPaymentEligibleBooking,
   stalePendingOrderIds,
 } from "./bookingCheckout";
+import { hydrateBookingsWithTicketOrders } from "./bookingQueryHydration";
 import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
 import { createAllocatedTicketOrder } from "./bookingPaymentPersistence";
 import { confirmBookingIfFullyPaid } from "./bookingPaymentFinalization";
@@ -141,7 +142,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   const eventId = validateUUID(String(request.data?.eventId), "eventId") as UUIDString;
 
   const bookingsResult = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
-  let booking = selectLatestPaymentEligibleBooking(bookingsResult.data?.user?.bookings ?? []);
+  let booking = selectLatestPaymentEligibleBooking(hydrateBookingsWithTicketOrders(bookingsResult.data));
   if (!booking) {
     throw new HttpsError(
       "failed-precondition",
@@ -183,7 +184,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
       });
     }
     const refreshed = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
-    booking = selectLatestPaymentEligibleBooking(refreshed.data?.user?.bookings ?? []);
+    booking = selectLatestPaymentEligibleBooking(hydrateBookingsWithTicketOrders(refreshed.data));
     if (!booking) {
       throw new HttpsError("failed-precondition", "The payable booking changed while applying its refund");
     }
