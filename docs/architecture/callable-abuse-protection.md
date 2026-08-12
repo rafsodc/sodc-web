@@ -4,6 +4,8 @@ Firebase callable functions normally use authentication and authorization as the
 
 `CALLABLE_RATE_LIMITS` is the canonical limit configuration. Call sites must reference a named policy; do not add inline limit or window values.
 
+`enforceRateLimit` accepts an optional weighted `cost` (default 1) so a single call can consume more than one unit of its window allowance. `submitEventBooking` is the one caller that uses this: cost scales with the raw, unvalidated line count in the request (`Math.ceil(lineCount / 5)`, clamped to the policy's `limit`), so a booking at the `MAX_ATOMIC_BOOKING_LINES` (100, see `docs/architecture/booking-submission-api.md`) fan-out ceiling exhausts the caller's entire hourly allowance in one call instead of being repeatable up to 20 times an hour. Typical bookings (a handful of lines) still cost the historical flat 1 unit. See `functions/src/bookings.ts` (`submitEventBookingRateLimitCost`) and #541.
+
 ## Concurrency model
 
 `enforceRateLimit` makes two sequential Data Connect calls, not one:
@@ -34,7 +36,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `listUsersWithoutDataConnectProfile` | 30 | 5 minutes | Full Auth/Data Connect enumeration |
 | `listUsersPendingApproval` | 30 | 5 minutes | Full Auth/Data Connect enumeration |
 | `syncPendingUserClaims` | 10 | 1 hour | Firebase Auth read/write |
-| `submitEventBooking` | 20 | 1 hour | Mutation and transactional email |
+| `submitEventBooking` | 20 (weighted 1â€“20 by line count, see below) | 1 hour | Mutation and transactional email |
 | `reviewBookingRevision` | 30 | 1 hour | Exact-revision approval mutation and transactional email |
 | `updateMembershipStatus` | 20 | 1 hour | Auth/Data Connect writes and transactional email |
 | `resignMembership` | 3 | 1 hour | Auth/Data Connect writes and transactional email |
@@ -88,7 +90,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `getSectionForUser` | Low | Low | None | Low | Enabled + section access; bounded lookup |
 | `getSectionEventsForUser` | Low | Medium | None | Medium | Enabled + section access; bounded section query |
 | `getEventForUser` | Low | Low | None | Low | Enabled + section access; single-event query |
-| `submitEventBooking` | High | None | GOV.UK Notify | High | Enabled; validation/idempotency; 20/hour |
+| `submitEventBooking` | High | None | GOV.UK Notify | High | Enabled; validation/idempotency; 20/hour weighted by line count (#541) |
 | `reviewBookingRevision` | High | None | GOV.UK Notify | Medium | Admin + enabled; exact revision and transition checks; 30/hour |
 | `createTicketCheckoutSession` | High | None | Stripe | High | Enabled; ownership/eligibility; 10/15 minutes |
 | `createEventBookingCheckoutSession` | High | None | Stripe | High | Enabled; booking ownership; 10/15 minutes |
