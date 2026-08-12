@@ -18,6 +18,7 @@ describe("bookingPaymentAdjustments", () => {
       { lines: [{ ticketType: { price: 30 } }] }
     );
     expect(result.deltaAmountMinor).toBe(-2000);
+    expect(result.paymentRemainingMinor).toBe(0);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND);
   });
 
@@ -30,6 +31,7 @@ describe("bookingPaymentAdjustments", () => {
       { lines: [{ ticketType: { price: 30 } }, { ticketType: { price: 20 } }] }
     );
     expect(result.deltaAmountMinor).toBe(2000);
+    expect(result.paymentRemainingMinor).toBe(2000);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE);
   });
 
@@ -39,10 +41,11 @@ describe("bookingPaymentAdjustments", () => {
       { lines: [{ ticketType: { price: 30 } }] }
     );
     expect(result.deltaAmountMinor).toBe(0);
+    expect(result.paymentRemainingMinor).toBe(3000);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
 
-  it("keeps an amended unpaid booking wholly unpaid", () => {
+  it("keeps an amended unpaid booking wholly unpaid, with the full revised total still owed", () => {
     const result = computeBookingPaymentDelta(
       { lines: [{ ticketType: { price: 30 }, bookingPlace: { paymentAllocations: [] } }] },
       { lines: [{ ticketType: { price: 30 } }, { ticketType: { price: 20 } }] }
@@ -51,6 +54,7 @@ describe("bookingPaymentAdjustments", () => {
     expect(result.previousTotalMinor).toBe(3000);
     expect(result.revisedTotalMinor).toBe(5000);
     expect(result.deltaAmountMinor).toBe(0);
+    expect(result.paymentRemainingMinor).toBe(5000);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
 
@@ -68,10 +72,32 @@ describe("bookingPaymentAdjustments", () => {
     );
 
     expect(result.deltaAmountMinor).toBe(0);
+    expect(result.paymentRemainingMinor).toBe(5000);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
 
-  it("treats a missing previous booking as having no payable lines", () => {
+  it("keeps an earlier unpaid line owed when a further revision is submitted before it was ever settled", () => {
+    // Paid for ticket A (£10). Added ticket B (£10) — that revision's extra £10 was
+    // never paid. Now a third ticket C (£10) is added on top, before B was settled.
+    const result = computeBookingPaymentDelta(
+      { lines: [
+        { ticketType: { price: 10 }, bookingPlace: { paymentAllocations: [{
+          allocatedAmountMinor: 1000,
+          refundedAmountMinor: 0,
+          ticketOrder: { status: "PAID" },
+        }] } }, // ticket A: settled
+        { ticketType: { price: 10 }, bookingPlace: { paymentAllocations: [] } }, // ticket B: still unpaid
+      ] },
+      { lines: [{ ticketType: { price: 10 } }, { ticketType: { price: 10 } }, { ticketType: { price: 10 } }] }
+    );
+
+    expect(result.previousTotalMinor).toBe(2000);
+    expect(result.revisedTotalMinor).toBe(3000);
+    // Only A is settled, so B's unpaid £10 must not be dropped: £20 remains (B + C), not £10.
+    expect(result.paymentRemainingMinor).toBe(2000);
+  });
+
+  it("treats a missing previous booking as having no payable lines, so the revised total is fully owed", () => {
     const result = computeBookingPaymentDelta(
       undefined,
       { lines: [{ ticketType: { price: 30 } }] }
@@ -79,6 +105,7 @@ describe("bookingPaymentAdjustments", () => {
 
     expect(result.previousTotalMinor).toBe(0);
     expect(result.deltaAmountMinor).toBe(0);
+    expect(result.paymentRemainingMinor).toBe(3000);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
 });

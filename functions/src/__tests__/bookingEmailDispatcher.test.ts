@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BookingPaymentAdjustmentStatus } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
 import {
   accommodationRequestedCondition,
@@ -12,9 +11,7 @@ import {
   bookingTotalMinorFromLines,
   buildTicketLinesSummary,
   formatBookingEventDateTime,
-  formatSignedDeltaAmount,
   notifyBookingConfirmationEmail,
-  paymentAdjustmentStatusLabel,
 } from "../bookingEmailDispatcher";
 import * as notificationDelivery from "../notificationDelivery";
 
@@ -63,14 +60,6 @@ describe("bookingEmailDispatcher helpers", () => {
     );
     expect(bookingChangesRequestedDeliveryKey("b1")).toBe("booking-changes-requested:b1");
     expect(bookingApprovedDeliveryKey("b1")).toBe("booking-approved:b1");
-  });
-
-  it("labels payment adjustment status", () => {
-    expect(paymentAdjustmentStatusLabel(BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE)).toBe(
-      "Additional payment due"
-    );
-    expect(formatSignedDeltaAmount(1500)).toBe("+£15.00");
-    expect(formatSignedDeltaAmount(-500)).toBe("-£5.00");
   });
 
   it("accommodationRequestedCondition returns GOV.UK Notify's literal yes/no condition value", () => {

@@ -1,6 +1,5 @@
 import * as logger from "firebase-functions/logger";
 import {
-  BookingPaymentAdjustmentStatus,
   getBookingForNotification,
   NotificationChannel,
 } from "@dataconnect/admin-generated";
@@ -84,10 +83,9 @@ export type BookingEmailPersonalisation = {
 };
 
 export type BookingRevisionEmailPersonalisation = BookingEmailPersonalisation & {
-  paymentAdjustmentStatus: string;
   previousTotalFormatted: string;
   revisedTotalFormatted: string;
-  deltaAmountFormatted: string;
+  paymentRemainingFormatted: string;
 };
 
 export type BookingChangesRequestedEmailPersonalisation = BookingEmailPersonalisation & {
@@ -137,33 +135,6 @@ export function buildTicketLinesSummary(lines: BookingLineRow[]): string {
 /** GOV.UK Notify optional-content conditions must be the literal string "yes"/"no". */
 export function accommodationRequestedCondition(requested: boolean): "yes" | "no" {
   return requested ? "yes" : "no";
-}
-
-export function paymentAdjustmentStatusLabel(status: BookingPaymentAdjustmentStatus): string {
-  switch (status) {
-    case BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE:
-      return "Additional payment due";
-    case BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND:
-      return "Refund due";
-    case BookingPaymentAdjustmentStatus.NOT_REQUIRED:
-      return "No payment change required";
-    case BookingPaymentAdjustmentStatus.SETTLED:
-      return "Payment change completed";
-    default:
-      return String(status);
-  }
-}
-
-export function formatSignedDeltaAmount(deltaAmountMinor: number): string {
-  const abs = Math.abs(deltaAmountMinor);
-  const formatted = formatMinorCurrency(abs, "GBP");
-  if (deltaAmountMinor > 0) {
-    return `+${formatted}`;
-  }
-  if (deltaAmountMinor < 0) {
-    return `-${formatted}`;
-  }
-  return formatted;
 }
 
 function buildBasePersonalisation(args: {
@@ -308,10 +279,9 @@ export async function notifyBookingRevisionEmail(args: {
     const base = buildBasePersonalisation({ booking, appBaseUrl: args.appBaseUrl });
     const personalisation: BookingRevisionEmailPersonalisation = {
       ...base,
-      paymentAdjustmentStatus: paymentAdjustmentStatusLabel(args.paymentDelta.status),
       previousTotalFormatted: formatMinorCurrency(args.paymentDelta.previousTotalMinor, "GBP"),
       revisedTotalFormatted: formatMinorCurrency(args.paymentDelta.revisedTotalMinor, "GBP"),
-      deltaAmountFormatted: formatSignedDeltaAmount(args.paymentDelta.deltaAmountMinor),
+      paymentRemainingFormatted: formatMinorCurrency(args.paymentDelta.paymentRemainingMinor, "GBP"),
     };
     const reference = `BOOKING_REVISION:${args.bookingId}:${args.idempotencyKey}`;
     const deliveryKey = bookingRevisionDeliveryKey(args.bookingId, args.idempotencyKey);

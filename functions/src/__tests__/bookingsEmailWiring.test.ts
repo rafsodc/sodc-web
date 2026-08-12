@@ -64,6 +64,7 @@ describe("sendBookingSubmitNotificationEmails", () => {
         previousTotalMinor: 1000,
         revisedTotalMinor: 1500,
         deltaAmountMinor: 500,
+        paymentRemainingMinor: 500,
         status: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE,
       },
     });

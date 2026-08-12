@@ -11,10 +11,9 @@ variables:
   - bookingTotalFormatted
   - sectionBookingsUrl
   - myPaymentsUrl
-  - paymentAdjustmentStatus
   - previousTotalFormatted
   - revisedTotalFormatted
-  - deltaAmountFormatted
+  - paymentRemainingFormatted
 ---
 Hello ((firstName)),
 
@@ -40,9 +39,7 @@ Previous total: ((previousTotalFormatted))
 
 Revised total: ((revisedTotalFormatted))
 
-Payment difference: ((deltaAmountFormatted))
-
-Payment status: ((paymentAdjustmentStatus))
+Payment remaining: ((paymentRemainingFormatted))
 
 ---
 
