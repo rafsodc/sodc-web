@@ -144,8 +144,9 @@ export default function TicketSelectionStep({
         disabled={!canRequestAccommodation}
       />
       <Typography variant="caption" color="text.secondary">
-        Accommodation is only available for Serving Members.
-        {canRequestAccommodation ? " Overnight accommodation at the venue, where available." : ""}
+        If you are a Serving Member, please indicate whether you would require accommodation.
+        This does not guarantee accommodation, and you will be informed if accommodation is not
+        available so that you can make your own arrangements.
       </Typography>
     </FormControl>
   );
