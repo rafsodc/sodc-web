@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { GetEventByIdData, GetSectionByIdData, UUIDString } from "@dataconnect/generated";
-import { BookingStatus, TicketAudience } from "@dataconnect/generated";
+import { BookingPaymentAdjustmentStatus, BookingStatus, TicketAudience } from "@dataconnect/generated";
 import {
   useGetCurrentUser,
   useGetMyBookingPaymentAdjustments,
@@ -130,7 +130,9 @@ export function useBookingWizardData(args: {
     const booking = paymentAdjustmentsData?.user?.bookings?.find(
       (row) => row.id === paymentEligibleBooking.id
     );
-    return booking?.adjustments ?? [];
+    return (booking?.adjustments ?? []).filter(
+      (adjustment) => adjustment.status !== BookingPaymentAdjustmentStatus.NOT_REQUIRED
+    );
   }, [paymentEligibleBooking, paymentAdjustmentsData]);
 
   const paymentSummaryForBooking = useMemo(() => {

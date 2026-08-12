@@ -10,7 +10,6 @@ import {
 import type { UUIDString } from "@dataconnect/admin-generated";
 import type {
   GetBookingRevisionForApprovalFromCallableData,
-  GetBookingsForBookerAndEventData,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { enforceRateLimit } from "./rateLimiter";
@@ -22,6 +21,7 @@ import {
   validateUUID,
 } from "./helpers";
 import { bookingIdsEqual } from "./bookingCheckout";
+import { hydrateBookingsWithTicketOrders, type HydratedBookingRow } from "./bookingQueryHydration";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
 import { activateApprovedBookingRevision } from "./bookingSubmissionPersistence";
 import {
@@ -80,7 +80,7 @@ function isApprovalConflict(error: unknown): boolean {
 }
 
 type ApprovalTarget = NonNullable<GetBookingRevisionForApprovalFromCallableData["booking"]>;
-type BookerBooking = NonNullable<GetBookingsForBookerAndEventData["user"]>["bookings"][number];
+type BookerBooking = HydratedBookingRow;
 
 export function resolveBookingApprovalReview(args: {
   target: ApprovalTarget;
@@ -151,7 +151,7 @@ export const reviewBookingRevision = onCall(
       });
       const review = resolveBookingApprovalReview({
         target,
-        revisions: allResult.data?.user?.bookings ?? [],
+        revisions: hydrateBookingsWithTicketOrders(allResult.data),
         expectedRevisionNumber,
         decision,
       });

@@ -213,6 +213,45 @@ describe("MyPayments", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not present an unpaid booking amendment as a payment adjustment", () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+        data: { user: { id: "u-1", ticketOrders: [] } },
+        isLoading: false,
+        isError: false,
+      })
+    );
+    vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
+      dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>({
+        data: {
+          user: {
+            id: "u-1",
+            bookings: [{
+              id: "booking-2",
+              revisionNumber: 2,
+              event: { id: "event-1", title: "Spring Ball" },
+              adjustments: [{
+                id: "adj-1",
+                deltaAmountMinor: 0,
+                status: "NOT_REQUIRED",
+                orchestrationKey: "booking-2:adj-1",
+                createdAt: "2026-04-01T12:05:00Z",
+                updatedAt: "2026-04-01T12:06:00Z",
+                supersededBooking: { id: "booking-1", revisionNumber: 1 },
+              }],
+            }],
+          },
+        },
+        isLoading: false,
+        isError: false,
+      })
+    );
+
+    render(<MyPayments onBack={() => undefined} />);
+
+    expect(screen.queryByText(/Booking changes/)).not.toBeInTheDocument();
+  });
+
   it("auto-loads receipt links and renders View receipt", async () => {
     vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(
       dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({

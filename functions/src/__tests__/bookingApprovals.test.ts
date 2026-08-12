@@ -7,12 +7,12 @@ import {
 } from "@dataconnect/admin-generated";
 import type {
   GetBookingRevisionForApprovalFromCallableData,
-  GetBookingsForBookerAndEventData,
 } from "@dataconnect/admin-generated";
 import { resolveBookingApprovalReview } from "../bookingApprovals";
+import type { HydratedBookingRow } from "../bookingQueryHydration";
 
 type Target = NonNullable<GetBookingRevisionForApprovalFromCallableData["booking"]>;
-type Revision = NonNullable<GetBookingsForBookerAndEventData["user"]>["bookings"][number];
+type Revision = HydratedBookingRow;
 
 function target(overrides: Partial<Target> = {}): Target {
   return {
@@ -41,7 +41,7 @@ function revision(overrides: Partial<Revision> = {}): Revision {
     revisionGroupId: "20000000-0000-4000-8000-000000000001",
     revisionNumber: 1,
     supersededAt: null,
-    lines: [{ id: "line-old", sortOrder: 0, guestDisplayName: null, dietaryNote: null, ticketType: { id: "ticket", title: "Ticket", audience: "MEMBER", price: 20 }, bookingPlace: { id: "place-old", paymentAllocations: [] }, guestUser: null }],
+    lines: [{ id: "line-old", sortOrder: 0, guestDisplayName: null, dietaryNote: null, ticketType: { id: "ticket", title: "Ticket", audience: "MEMBER", price: 20 }, bookingPlace: { id: "place-old", paymentAllocations: [{ id: "allocation-old", allocatedAmountMinor: 2000, refundedAmountMinor: 0, ticketOrderId: "order-old", ticketOrder: { id: "order-old", status: "PAID", stripePaymentIntentId: "pi_old" } }] }, guestUser: null }],
     ...overrides,
   } as unknown as Revision;
 }
