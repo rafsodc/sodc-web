@@ -24,7 +24,7 @@ import {
   type TicketTypeForRules,
 } from "./bookingRules";
 import { requireEnabled, requireString, validateUUID, handleFunctionError, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from "./helpers";
-import { enforceRateLimit } from "./rateLimiter";
+import { CALLABLE_RATE_LIMITS, enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
 import { computeRevisionPlan, isBookingRevisionConflictError } from "./bookingRevisionEngine";
 import { computeBookingPaymentDelta, type BookingPaymentDelta } from "./bookingPaymentAdjustments";
@@ -86,7 +86,21 @@ function bookingRulesToHttps(e: BookingRulesFailure): HttpsError {
   return new HttpsError("failed-precondition", e.message, { code: e.code });
 }
 
-function parseBookingLines(raw: unknown): LineInputForRules[] {
+/** Booking lines per rate-limit unit charged to submitEventBooking (#541). Small,
+ *  typical bookings (member + a few guests) keep costing the historical flat 1 unit;
+ *  a payload at the MAX_ATOMIC_BOOKING_LINES ceiling exhausts the caller's whole
+ *  hourly allowance in one call instead of being repeatable up to `limit` times. */
+const BOOKING_LINES_PER_RATE_LIMIT_UNIT = 5;
+
+/** Cost is derived from the raw (unvalidated) line count so it applies even to
+ *  oversized or malformed payloads, not just ones that pass parseBookingLines. */
+export function submitEventBookingRateLimitCost(rawLines: unknown): number {
+  const count = Array.isArray(rawLines) ? rawLines.length : 0;
+  const { limit } = CALLABLE_RATE_LIMITS.submitEventBooking;
+  return Math.min(limit, Math.max(1, Math.ceil(count / BOOKING_LINES_PER_RATE_LIMIT_UNIT)));
+}
+
+export function parseBookingLines(raw: unknown): LineInputForRules[] {
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new HttpsError("invalid-argument", "lines must be a non-empty array");
   }
@@ -225,7 +239,7 @@ function bookingSubmissionOutcome(approvalStatus: BookingApprovalStatus) {
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
-  await enforceRateLimit("submitEventBooking", uid);
+  await enforceRateLimit("submitEventBooking", uid, submitEventBookingRateLimitCost(request.data?.lines));
 
   const parsedRequest = (() => {
     try {

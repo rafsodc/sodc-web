@@ -19,9 +19,13 @@ For payment lifecycle transitions and webhook semantics, see
 |--------|------|------------|-------------|
 | `idempotencyKey` | string (UUID) | yes | **Per submit attempt** — generate a new UUID (v4) when the user commits; **reuse the same value** on retries after network errors so the server returns the same booking instead of creating another |
 | `eventId` | string (UUID) | yes | Event being booked |
-| `lines` | array | yes | Complete list of 1–100 attendee line items (see below); exactly one member line and every guest line must be present |
+| `lines` | array | yes | Complete list of 1–`MAX_ATOMIC_BOOKING_LINES` (100) attendee line items (see below); exactly one member line and every guest line must be present |
 | `baseBookingId` | string (UUID) | no | Required for mutable-booking revision updates once a terminal revision exists |
 | `baseRevisionNumber` | integer | no | Required with `baseBookingId`; optimistic concurrency guard |
+
+### Line count bound
+
+`lines` is capped at `MAX_ATOMIC_BOOKING_LINES` (`functions/src/bookingSubmissionPersistence.ts`, currently 100) — the same constant the `booking-service` connector's `_Data` batch variables are `@allow(maxCount:)`-scoped to. `parseBookingLines` in `functions/src/bookings.ts` rejects an oversized array with `invalid-argument` before any Data Connect read or write. This bound exists because the whole-booking atomic model introduced by #538 commits every line of a submission (and, for amendments, of the superseded booking) in one `@transaction`; without a cap, an authenticated caller could turn one allowed callable invocation into a disproportionate amount of server-side work. `submitEventBooking`'s rate-limit cost also scales with the raw line count for the same reason — see `docs/architecture/callable-abuse-protection.md`. (#541)
 
 ### Idempotency semantics
 
