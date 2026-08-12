@@ -40,6 +40,18 @@ function extractAllOperationHeaders(source: string): Array<{ name: string; heade
 }
 
 describe("GQL schema integrity", () => {
+  it("keeps member ticket-order status outside the deeply nested booking allocation path", () => {
+    const queries = readApiFile("queries.gql");
+    const start = queries.indexOf("query GetMyBookingsForEvent");
+    const end = queries.indexOf("\nquery GetMyBookings", start + 1);
+    const query = queries.slice(start, end);
+
+    expect(start, "GetMyBookingsForEvent must exist").toBeGreaterThanOrEqual(0);
+    expect(query).toContain("bookingTicketOrders: ticketOrders_on_user");
+    expect(query).toContain("ticketOrderId");
+    expect(query).not.toMatch(/paymentAllocations:[\s\S]*?ticketOrder\s*\{/);
+  });
+
   it("user-facing mutation files only use NO_ACCESS for explicitly server-migrated operations", () => {
     // Operations listed here have been deliberately moved to server-only callable
     // paths and must NOT appear as client-callable in future.

@@ -31,6 +31,8 @@ export function useBookingWizardData(args: {
   const {
     data: myBookingsData,
     isLoading: loadingBookings,
+    isError: bookingsError,
+    error: bookingsQueryError,
     refetch: refetchMyBookings,
   } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString });
   const membershipStatus = currentUserData?.user?.membershipStatus;
@@ -154,6 +156,9 @@ export function useBookingWizardData(args: {
     paymentSummaryForBooking != null && isBookingPaymentComplete(paymentSummaryForBooking);
 
   return {
+    bookingTicketOrders: myBookingsData?.user?.bookingTicketOrders ?? [],
+    bookingsError,
+    bookingsQueryError,
     bookingPaymentAdjustments,
     canProceedToConfirmation,
     currentUserData,

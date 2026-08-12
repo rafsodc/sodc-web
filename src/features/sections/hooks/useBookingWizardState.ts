@@ -8,7 +8,7 @@ import {
   type SubmitEventBookingResponse,
 } from "../../../shared/utils/firebaseFunctions";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
-import { invalidateMyBookings } from "../../../shared/query/invalidation";
+import { refreshMyBookingsFromServer } from "../../../shared/query/invalidation";
 import {
   extractDomainErrorCode,
   reportError,
@@ -66,6 +66,9 @@ export function useBookingWizardState({
   const hydratedBookingVersionRef = useRef<string | null>(null);
 
   const {
+    bookingTicketOrders,
+    bookingsError,
+    bookingsQueryError,
     bookingPaymentAdjustments,
     currentUserData,
     existingDraft,
@@ -93,15 +96,19 @@ export function useBookingWizardState({
     loading: seatingOptionsLoading,
   } = useSectionMemberSeatingSearch(section.id, currentUserData?.user?.id, sitNextToUserIds);
 
+  useEffect(() => {
+    if (bookingsError) reportError("booking.load", bookingsQueryError);
+  }, [bookingsError, bookingsQueryError]);
+
   const applyBookingSnapshot = useCallback((booking: NonNullable<typeof existingTerminalBooking>) => {
-    const snapshot = hydrateFormFromExistingBooking(booking);
+    const snapshot = hydrateFormFromExistingBooking(booking, bookingTicketOrders);
     setMemberTicketTypeId(snapshot.memberTicketTypeId);
     setGuests(snapshot.guests);
     setGuestCountInput(String(snapshot.guests.length));
     setMemberDietaryNote(snapshot.memberDietaryNote);
     setSitNextToUserIds(snapshot.sitNextToUserIds);
     setAccommodationRequested(snapshot.accommodationRequested);
-  }, []);
+  }, [bookingTicketOrders]);
 
   useEffect(() => {
     onHasExistingBookingChange?.(Boolean(existingTerminalBooking));
@@ -123,11 +130,15 @@ export function useBookingWizardState({
       return;
     }
     if (isEditingBooking) return;
-    const version = `${existingTerminalBooking.id}:${existingTerminalBooking.updatedAt}`;
+    const orderVersion = bookingTicketOrders
+      .map((order) => `${order.id}:${order.status}`)
+      .sort()
+      .join(",");
+    const version = `${existingTerminalBooking.id}:${existingTerminalBooking.updatedAt}:${orderVersion}`;
     if (hydratedBookingVersionRef.current === version) return;
     hydratedBookingVersionRef.current = version;
     applyBookingSnapshot(existingTerminalBooking);
-  }, [applyBookingSnapshot, existingTerminalBooking, isEditingBooking]);
+  }, [applyBookingSnapshot, bookingTicketOrders, existingTerminalBooking, isEditingBooking]);
 
   useEffect(() => {
     if (!memberTicketTypes.length) {
@@ -260,19 +271,24 @@ export function useBookingWizardState({
       setLastSubmission(result);
       setIsEditingBooking(false);
       setActiveStep(0);
-      await Promise.all([refetchMyBookings(), invalidateMyBookings(queryClient)]);
+      try {
+        await refreshMyBookingsFromServer(queryClient, event.id);
+      } catch (refreshError) {
+        reportError("booking.refresh-after-submit", refreshError);
+        setSubmitError("Your booking was saved, but the latest details could not be loaded. Please try refreshing.");
+      }
       onBookingComplete?.();
     } catch (error: unknown) {
       reportError("booking.submit", error);
       const code = extractDomainErrorCode(error);
       if (code === "BOOKING_ALREADY_SUBMITTED") {
         setSubmitError("You already have a submitted booking for this event.");
-        await refetchMyBookings();
+        await refreshMyBookingsFromServer(queryClient, event.id);
       } else if (code === "OUTSIDE_BOOKING_WINDOW") {
         setSubmitError("The booking window is closed.");
       } else if (code === "IDEMPOTENCY_DRAFT_CONFLICT") {
-        const refreshed = await refetchMyBookings();
-        const draft = refreshed.data?.user?.bookings?.find((booking) => booking.status === BookingStatus.DRAFT);
+        const refreshed = await refreshMyBookingsFromServer(queryClient, event.id);
+        const draft = refreshed.user?.bookings?.find((booking) => booking.status === BookingStatus.DRAFT);
         const raw = draft?.clientSubmissionKey?.trim();
         if (raw) {
           try {
@@ -298,7 +314,14 @@ export function useBookingWizardState({
     try {
       const { url, confirmed } = await createEventBookingCheckoutSession({ eventId: event.id });
       if (url) window.location.assign(url);
-      else if (confirmed) await Promise.all([refetchMyBookings(), invalidateMyBookings(queryClient)]);
+      else if (confirmed) {
+        try {
+          await refreshMyBookingsFromServer(queryClient, event.id);
+        } catch (refreshError) {
+          reportError("booking.refresh-after-checkout", refreshError);
+          setSubmitError("Payment completed, but the latest booking details could not be loaded. Please try refreshing.");
+        }
+      }
       else throw new Error("Checkout completed without a payment URL or booking confirmation");
     } catch (error: unknown) {
       reportError("booking.checkout-start", error);
@@ -372,8 +395,11 @@ export function useBookingWizardState({
     lastSubmission,
     ticketOrdersData,
     bookingPaymentAdjustments,
+    bookingsError,
+    bookingsQueryError,
     loadingProfile,
     loadingBookings,
+    refetchMyBookings,
     membershipStatus,
     gate,
     handleNext,

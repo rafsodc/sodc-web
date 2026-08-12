@@ -5,6 +5,7 @@ import { render, screen, waitFor } from "../../../../test-utils";
 import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
+import * as bookingInvalidation from "../../../../shared/query/invalidation";
 import EventBookingWizard from "../EventBookingWizard";
 
 vi.mock("@dataconnect/generated/react", () => ({
@@ -16,7 +17,7 @@ vi.mock("@dataconnect/generated/react", () => ({
 }));
 vi.mock("../../../../config/firebase", () => ({ dataConnect: {} }));
 vi.mock("../../../../shared/query/invalidation", () => ({
-  invalidateMyBookings: vi.fn().mockResolvedValue(undefined),
+  refreshMyBookingsFromServer: vi.fn().mockResolvedValue({ user: { bookings: [] } }),
 }));
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
@@ -63,6 +64,8 @@ const event = {
   ],
 } as never;
 
+const refetchMyBookings = vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } });
+
 function bookingWithGuest(paid: boolean) {
   return {
     id: "booking-1",
@@ -90,7 +93,7 @@ function bookingWithGuest(paid: boolean) {
         bookingPlace: {
           id: "guest-place",
           paymentAllocations: paid
-            ? [{ id: "allocation-1", ticketOrder: { id: "order-1", status: TicketOrderStatus.PAID } }]
+            ? [{ id: "allocation-1", ticketOrderId: "order-1" }]
             : [],
         },
         ticketType: { id: "ticket-guest", title: "Guest standard", audience: TicketAudience.GUEST, price: 25 },
@@ -99,11 +102,30 @@ function bookingWithGuest(paid: boolean) {
   };
 }
 
-function renderWizard(props: { bookings?: unknown[]; wizardOpen?: boolean } = {}) {
+function renderWizard(props: {
+  bookings?: unknown[];
+  bookingTicketOrders?: unknown[];
+  bookingsError?: boolean;
+  wizardOpen?: boolean;
+} = {}) {
   vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
-    data: { user: { bookings: props.bookings ?? [] } },
+    data: {
+      user: {
+        bookings: props.bookings ?? [],
+        bookingTicketOrders: props.bookingTicketOrders ?? [],
+      },
+    },
     isLoading: false,
-    refetch: vi.fn().mockResolvedValue({ data: { user: { bookings: props.bookings ?? [] } } }),
+    isError: props.bookingsError ?? false,
+    error: props.bookingsError ? new Error("Query failed") : null,
+    refetch: refetchMyBookings.mockResolvedValue({
+      data: {
+        user: {
+          bookings: props.bookings ?? [],
+          bookingTicketOrders: props.bookingTicketOrders ?? [],
+        },
+      },
+    }),
   } as never);
   return render(
     <MemoryRouter>
@@ -162,11 +184,26 @@ describe("EventBookingWizard", () => {
     await user.click(screen.getByRole("button", { name: "Submit booking" }));
 
     await waitFor(() => expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledTimes(1));
+    expect(bookingInvalidation.refreshMyBookingsFromServer).toHaveBeenCalledWith(
+      expect.anything(),
+      "event-1",
+    );
     expect(vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[0]?.[0].lines).toEqual([
       expect.objectContaining({ ticketTypeId: "ticket-member", dietaryNote: "Vegetarian" }),
       expect.objectContaining({ guestDisplayName: "Alex Guest", dietaryNote: "Vegan" }),
       expect.objectContaining({ guestDisplayName: "Sam Guest", dietaryNote: "Gluten free" }),
     ]);
+  });
+
+  it("shows a retryable error instead of an empty booking page when loading fails", async () => {
+    const user = userEvent.setup();
+    renderWizard({ bookingsError: true });
+
+    expect(screen.getByRole("heading", { name: "Booking unavailable" })).toBeInTheDocument();
+    expect(screen.getByText("We could not load your booking. Please try again.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(refetchMyBookings).toHaveBeenCalledOnce();
   });
 
   it("allows an unpaid guest to be removed while editing", async () => {
@@ -182,7 +219,10 @@ describe("EventBookingWizard", () => {
 
   it("blocks removal or transfer of a paid guest and explains the future refund route", async () => {
     const user = userEvent.setup();
-    renderWizard({ bookings: [bookingWithGuest(true)] });
+    renderWizard({
+      bookings: [bookingWithGuest(true)],
+      bookingTicketOrders: [{ id: "order-1", status: TicketOrderStatus.PAID }],
+    });
     await user.click(screen.getByRole("button", { name: "Edit booking" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
 
