@@ -87,12 +87,11 @@ export const EMAIL_TEMPLATE_MANIFEST: Record<string, EmailTemplateDefinition> = 
     "bookingTotalFormatted",
     "sectionBookingsUrl",
     "myPaymentsUrl",
-    "paymentAdjustmentStatus",
     "previousTotalFormatted",
     "revisedTotalFormatted",
-    "deltaAmountFormatted"
+    "paymentRemainingFormatted"
     ],
-    body: "Hello ((firstName)),\n\nYour booking for ((eventTitle)) has been updated.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your updated booking\n\n((ticketLinesSummary))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nPayment difference: ((deltaAmountFormatted))\n\nPayment status: ((paymentAdjustmentStatus))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nView your payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
+    body: "Hello ((firstName)),\n\nYour booking for ((eventTitle)) has been updated.\n\n---\n\n# Event details\n\nDate and time: ((eventDateTime))\n\nWhere: ((eventLocation))\n\n---\n\n# Your updated booking\n\n((ticketLinesSummary))\n\n((accommodationRequested??Accommodation requested — see your booking for details.))\n\nPrevious total: ((previousTotalFormatted))\n\nRevised total: ((revisedTotalFormatted))\n\nPayment remaining: ((paymentRemainingFormatted))\n\n---\n\nView your booking:\n\n((sectionBookingsUrl))\n\nView your payments:\n\n((myPaymentsUrl))\n\nKind regards,\n\nSODC Admin",
   },
   emailChangeVerification: {
     subject: "Confirm your new SODC email address",

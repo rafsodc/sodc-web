@@ -14,7 +14,7 @@ type BookingRow = {
     id?: string | null;
     bookingPlace: {
       id: string;
-      paymentAllocations?: Array<{ ticketOrder?: { status?: string | null } | null }> | null;
+      paymentAllocations?: Array<{ ticketOrderId?: string | null }> | null;
     };
     ticketType?: { id?: string | null; audience?: string | null } | null;
     guestDisplayName?: string | null;
@@ -24,13 +24,29 @@ type BookingRow = {
   accommodationRequested?: boolean | null;
 };
 
-function lineIsPaid(line: NonNullable<BookingRow["lines"]>[number]): boolean {
+type BookingTicketOrder = {
+  id: string;
+  status?: string | null;
+};
+
+function lineIsPaid(
+  line: NonNullable<BookingRow["lines"]>[number],
+  paidTicketOrderIds: ReadonlySet<string>
+): boolean {
   return (line.bookingPlace.paymentAllocations ?? []).some(
-    (allocation) => allocation.ticketOrder?.status === TicketOrderStatus.PAID
+    (allocation) => allocation.ticketOrderId != null && paidTicketOrderIds.has(allocation.ticketOrderId)
   );
 }
 
-export function hydrateFormFromExistingBooking(booking: BookingRow): WizardFormSnapshot {
+export function hydrateFormFromExistingBooking(
+  booking: BookingRow,
+  ticketOrders: BookingTicketOrder[] = []
+): WizardFormSnapshot {
+  const paidTicketOrderIds = new Set(
+    ticketOrders
+      .filter((order) => order.status === TicketOrderStatus.PAID)
+      .map((order) => order.id)
+  );
   const memberLine = (booking.lines ?? []).find(
     (line) => line.ticketType?.audience === TicketAudience.MEMBER
   );
@@ -42,7 +58,7 @@ export function hydrateFormFromExistingBooking(booking: BookingRow): WizardFormS
       ticketTypeId: line.ticketType?.id ?? null,
       guestDisplayName: line.guestDisplayName ?? "",
       dietaryNote: line.dietaryNote ?? "",
-      paid: lineIsPaid(line),
+      paid: lineIsPaid(line, paidTicketOrderIds),
     }));
 
   return {

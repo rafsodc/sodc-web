@@ -36,6 +36,7 @@ export type NotificationRecoveryPayload =
         previousTotalMinor: number;
         revisedTotalMinor: number;
         deltaAmountMinor: number;
+        paymentRemainingMinor: number;
         status: BookingPaymentAdjustmentStatus;
       };
     })
@@ -223,6 +224,7 @@ export function parseNotificationRecoveryPayload(
           previousTotalMinor: finiteNumber(paymentDelta.previousTotalMinor, "previousTotalMinor"),
           revisedTotalMinor: finiteNumber(paymentDelta.revisedTotalMinor, "revisedTotalMinor"),
           deltaAmountMinor: finiteNumber(paymentDelta.deltaAmountMinor, "deltaAmountMinor"),
+          paymentRemainingMinor: finiteNumber(paymentDelta.paymentRemainingMinor, "paymentRemainingMinor"),
           status: enumValue(
             paymentDelta.status,
             Object.values(BookingPaymentAdjustmentStatus),

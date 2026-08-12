@@ -1,6 +1,7 @@
 import { Alert, Box, Button, CircularProgress, Paper, Step, StepLabel, Stepper, Typography } from "@mui/material";
 import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generated";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
+import FailureState from "../../../shared/components/FailureState";
 import { useBookingWizardState } from "../hooks/useBookingWizardState";
 import EventBookingStatusSummary from "./EventBookingStatusSummary";
 import TicketSelectionStep from "./wizardSteps/TicketSelectionStep";
@@ -38,6 +39,15 @@ export default function EventBookingWizard({
 
   if (wizard.loadingProfile || wizard.loadingBookings) {
     return <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><CircularProgress size={28} /></Box>;
+  }
+  if (wizard.bookingsError) {
+    return (
+      <FailureState
+        title="Booking unavailable"
+        message="We could not load your booking. Please try again."
+        onRetry={() => void wizard.refetchMyBookings()}
+      />
+    );
   }
   if (!wizard.membershipStatus) {
     return <Alert severity="warning" sx={{ mt: 2 }}>Complete your membership profile before booking events.</Alert>;
@@ -78,9 +88,21 @@ export default function EventBookingWizard({
       ) : null}
 
       {wizard.lastSubmission && !wizard.existingTerminalBooking ? (
-        <Alert severity={wizard.lastSubmission.paymentReady ? "success" : "warning"} sx={{ mt: 2 }}>
+        <Alert
+          severity={wizard.lastSubmission.paymentReady ? "success" : "warning"}
+          sx={{ mt: 2 }}
+          action={wizard.lastSubmission.paymentReady ? (
+            <Button
+              color="inherit"
+              disabled={wizard.payingAllTickets}
+              onClick={() => void wizard.handlePayAllTickets()}
+            >
+              {wizard.payingAllTickets ? "Starting checkout…" : "Continue to payment"}
+            </Button>
+          ) : undefined}
+        >
           {wizard.lastSubmission.paymentReady
-            ? "Your booking has been submitted. Payment is available next."
+            ? "Your booking has been submitted and is ready for payment."
             : "Your booking has been submitted and is awaiting organiser approval. Payment will become available after approval."}
         </Alert>
       ) : null}

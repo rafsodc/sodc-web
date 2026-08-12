@@ -5,7 +5,7 @@ import {
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
-import type { EventBookingAdminRow } from "../../components/sectionEventsManagerTypes";
+import type { EventBookingAdminRow, TicketOrderAdminRow } from "../../components/sectionEventsManagerTypes";
 import {
   activeEventTicketRows,
   currentActiveBookings,
@@ -13,7 +13,12 @@ import {
   type EventAttendeeTicketRow,
   pendingBookingRevisions,
   previousActiveBooking,
+  type TicketOrdersById,
 } from "../bookingApprovalsAdmin";
+
+function ticketOrdersById(orders: Array<Partial<TicketOrderAdminRow> & { id: string }>): TicketOrdersById {
+  return new Map(orders.map((order) => [order.id, order as TicketOrderAdminRow]));
+}
 
 function booking(overrides: Partial<EventBookingAdminRow> = {}): EventBookingAdminRow {
   return {
@@ -68,7 +73,7 @@ describe("booking approval admin model", () => {
               id: "allocation-member",
               allocatedAmountMinor: 2000,
               refundedAmountMinor: 0,
-              ticketOrder: { id: "order-member", status: TicketOrderStatus.PAID },
+              ticketOrderId: "order-member",
             }],
           },
         },
@@ -83,7 +88,10 @@ describe("booking approval admin model", () => {
       ] as EventBookingAdminRow["lines"],
     });
 
-    const rows = activeEventTicketRows([active]);
+    const rows = activeEventTicketRows(
+      [active],
+      ticketOrdersById([{ id: "order-member", status: TicketOrderStatus.PAID }])
+    );
     expect(rows).toEqual([
       expect.objectContaining({ attendeeName: "Alex Member", dietaryNote: "Vegetarian", paymentState: "PAID" }),
       expect.objectContaining({ attendeeName: "Jamie Guest", dietaryNote: "No nuts", paymentState: "UNPAID" }),
@@ -92,11 +100,14 @@ describe("booking approval admin model", () => {
   });
 
   it("does not include superseded, rejected, or pending revisions in the active ticket roster", () => {
-    expect(activeEventTicketRows([
-      booking({ supersededAt: "2026-08-11T11:00:00Z" }),
-      booking({ id: "pending", approvalStatus: BookingApprovalStatus.PENDING }),
-      booking({ id: "rejected", approvalStatus: BookingApprovalStatus.REJECTED }),
-    ])).toEqual([]);
+    expect(activeEventTicketRows(
+      [
+        booking({ supersededAt: "2026-08-11T11:00:00Z" }),
+        booking({ id: "pending", approvalStatus: BookingApprovalStatus.PENDING }),
+        booking({ id: "rejected", approvalStatus: BookingApprovalStatus.REJECTED }),
+      ],
+      ticketOrdersById([])
+    )).toEqual([]);
   });
 
   it("neutralizes spreadsheet formulas in exported attendee-controlled cells", () => {

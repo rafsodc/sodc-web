@@ -393,6 +393,13 @@ query GetSectionMembers($sectionId: UUID!) @auth(level: NO_ACCESS) {
 query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == true") {
   user(key: { id_expr: "auth.uid" }) {
     id
+    # Keep order status as a sibling selection. Nesting TicketOrder below
+    # Booking -> BookingLine -> BookingPlace -> BookingPlacePaymentAllocation
+    # produces PostgreSQL aliases that collide after its 63-character limit.
+    bookingTicketOrders: ticketOrders_on_user(where: { eventId: { eq: $eventId } }) {
+      id
+      status
+    }
     bookings: bookings_on_booker(where: { eventId: { eq: $eventId } }) {
       id
       status
@@ -413,11 +420,8 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
           id
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
+            ticketOrderId
             refundedAmountMinor
-            ticketOrder {
-              id
-              status
-            }
           }
         }
         sortOrder
@@ -603,14 +607,15 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         dietaryNote
         bookingPlace {
           id
+          # Keep order status as a sibling selection (see ListTicketOrdersForAdmin,
+          # fetched alongside this query). Nesting TicketOrder below
+          # Booking -> BookingLine -> BookingPlace -> BookingPlacePaymentAllocation
+          # produces PostgreSQL aliases that collide after its 63-character limit.
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
             allocatedAmountMinor
             refundedAmountMinor
-            ticketOrder {
-              id
-              status
-            }
+            ticketOrderId
           }
         }
         guestUser {

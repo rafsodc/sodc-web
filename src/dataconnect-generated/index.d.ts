@@ -1362,6 +1362,10 @@ export interface GetMyBookingsData {
 export interface GetMyBookingsForEventData {
   user?: {
     id: string;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
@@ -1382,11 +1386,8 @@ export interface GetMyBookingsForEventData {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
+            ticketOrderId: UUIDString;
             refundedAmountMinor: number;
-            ticketOrder: {
-              id: UUIDString;
-              status: TicketOrderStatus;
-            } & TicketOrder_Key;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;
@@ -2252,10 +2253,7 @@ export interface ListEventBookingsForAdminData {
             id: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
-            ticketOrder: {
-              id: UUIDString;
-              status: TicketOrderStatus;
-            } & TicketOrder_Key;
+            ticketOrderId: UUIDString;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         guestUser?: {

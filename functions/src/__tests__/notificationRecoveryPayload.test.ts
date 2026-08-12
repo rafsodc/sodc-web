@@ -18,6 +18,7 @@ describe("notification recovery payloads", () => {
         previousTotalMinor: 2_000,
         revisedTotalMinor: 2_500,
         deltaAmountMinor: 500,
+        paymentRemainingMinor: 500,
         status: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE,
       },
     };

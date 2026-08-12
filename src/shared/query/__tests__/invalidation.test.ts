@@ -1,10 +1,25 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
+
+const bookingQueryMocks = vi.hoisted(() => ({
+  getMyBookingsForEvent: vi.fn(),
+  getMyBookings: vi.fn(),
+  getMyTicketOrders: vi.fn(),
+  getMyBookingPaymentAdjustments: vi.fn(),
+}));
+
+vi.mock("@dataconnect/generated", () => bookingQueryMocks);
+vi.mock("../../../config/firebase", () => ({ dataConnect: { mocked: true } }));
+vi.mock("firebase/data-connect", () => ({
+  QueryFetchPolicy: { SERVER_ONLY: "SERVER_ONLY" },
+}));
+
 import {
   invalidateAnnouncementPreferences,
   invalidateMyBookings,
   invalidateSectionsForUser,
   invalidateUserSectionAccess,
+  refreshMyBookingsFromServer,
 } from "../invalidation";
 
 function queryClientWithInvalidateSpy() {
@@ -16,6 +31,10 @@ function queryClientWithInvalidateSpy() {
 }
 
 describe("cross-view query invalidation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("invalidates aggregate and section announcement preferences", async () => {
     const { queryClient, invalidateQueries } = queryClientWithInvalidateSpy();
 
@@ -74,5 +93,38 @@ describe("cross-view query invalidation", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingsForEvent"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyTicketOrders"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingPaymentAdjustments"] });
+  });
+
+  it("bypasses the Data Connect cache after a callable booking write", async () => {
+    const queryClient = new QueryClient();
+    const eventBookings = { user: { bookings: [{ id: "booking-1" }], bookingTicketOrders: [] } };
+    const allBookings = { user: { bookings: [{ id: "booking-1" }] } };
+    const ticketOrders = { user: { ticketOrders: [{ id: "order-1" }] } };
+    const paymentAdjustments = { user: { bookings: [] } };
+    bookingQueryMocks.getMyBookingsForEvent.mockResolvedValue({ data: eventBookings });
+    bookingQueryMocks.getMyBookings.mockResolvedValue({ data: allBookings });
+    bookingQueryMocks.getMyTicketOrders.mockResolvedValue({ data: ticketOrders });
+    bookingQueryMocks.getMyBookingPaymentAdjustments.mockResolvedValue({ data: paymentAdjustments });
+
+    const result = await refreshMyBookingsFromServer(queryClient, "event-1");
+
+    expect(result).toEqual(eventBookings);
+    expect(bookingQueryMocks.getMyBookingsForEvent).toHaveBeenCalledWith(
+      { mocked: true },
+      { eventId: "event-1" },
+      { fetchPolicy: "SERVER_ONLY" },
+    );
+    for (const query of [
+      bookingQueryMocks.getMyBookings,
+      bookingQueryMocks.getMyTicketOrders,
+      bookingQueryMocks.getMyBookingPaymentAdjustments,
+    ]) {
+      expect(query).toHaveBeenCalledWith({ mocked: true }, { fetchPolicy: "SERVER_ONLY" });
+    }
+    expect(queryClient.getQueryData(["GetMyBookingsForEvent", { eventId: "event-1" }])).toEqual(eventBookings);
+    expect(queryClient.getQueryData(["GetMyBookings", null])).toEqual(allBookings);
+    expect(queryClient.getQueryData(["GetMyTicketOrders", null])).toEqual(ticketOrders);
+    expect(queryClient.getQueryData(["GetMyBookingPaymentAdjustments", null])).toEqual(paymentAdjustments);
+    queryClient.clear();
   });
 });

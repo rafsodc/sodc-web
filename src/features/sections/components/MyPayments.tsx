@@ -15,7 +15,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
-import { TicketOrderStatus } from "@dataconnect/generated";
+import { BookingPaymentAdjustmentStatus, TicketOrderStatus } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
@@ -58,12 +58,14 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   const orders = useMemo(() => data?.user?.ticketOrders ?? [], [data?.user?.ticketOrders]);
   const paymentGroups = useMemo(() => groupTicketOrdersForDisplay(orders), [orders]);
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
-    (booking.adjustments ?? []).map((adjustment) => ({
+    (booking.adjustments ?? [])
+      .filter((adjustment) => adjustment.status !== BookingPaymentAdjustmentStatus.NOT_REQUIRED)
+      .map((adjustment) => ({
       bookingId: booking.id,
       eventTitle: booking.event?.title ?? "Event",
       revisionNumber: booking.revisionNumber,
       ...adjustment,
-    }))
+      }))
   );
 
   useEffect(() => {
