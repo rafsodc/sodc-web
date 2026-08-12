@@ -88,9 +88,21 @@ export default function EventBookingWizard({
       ) : null}
 
       {wizard.lastSubmission && !wizard.existingTerminalBooking ? (
-        <Alert severity={wizard.lastSubmission.paymentReady ? "success" : "warning"} sx={{ mt: 2 }}>
+        <Alert
+          severity={wizard.lastSubmission.paymentReady ? "success" : "warning"}
+          sx={{ mt: 2 }}
+          action={wizard.lastSubmission.paymentReady ? (
+            <Button
+              color="inherit"
+              disabled={wizard.payingAllTickets}
+              onClick={() => void wizard.handlePayAllTickets()}
+            >
+              {wizard.payingAllTickets ? "Starting checkout…" : "Continue to payment"}
+            </Button>
+          ) : undefined}
+        >
           {wizard.lastSubmission.paymentReady
-            ? "Your booking has been submitted. Payment is available next."
+            ? "Your booking has been submitted and is ready for payment."
             : "Your booking has been submitted and is awaiting organiser approval. Payment will become available after approval."}
         </Alert>
       ) : null}

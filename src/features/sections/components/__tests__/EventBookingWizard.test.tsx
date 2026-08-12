@@ -137,6 +137,13 @@ function renderWizard(props: {
 describe("EventBookingWizard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(firebaseFunctions.submitEventBooking).mockResolvedValue({
+      bookingId: "booking-new",
+      status: "SUBMITTED",
+      approvalStatus: "PENDING",
+      outcome: "PENDING_APPROVAL",
+      paymentReady: false,
+    });
     vi.mocked(reactGenerated.useGetCurrentUser).mockReturnValue({
       data: { user: { id: "user-1", membershipStatus: "REGULAR" } },
       isLoading: false,
@@ -193,6 +200,34 @@ describe("EventBookingWizard", () => {
       expect.objectContaining({ guestDisplayName: "Alex Guest", dietaryNote: "Vegan" }),
       expect.objectContaining({ guestDisplayName: "Sam Guest", dietaryNote: "Gluten free" }),
     ]);
+    expect(screen.queryByRole("button", { name: "Continue to payment" })).not.toBeInTheDocument();
+  });
+
+  it("offers payment immediately after a booking that does not require approval", async () => {
+    vi.mocked(firebaseFunctions.submitEventBooking).mockResolvedValue({
+      bookingId: "booking-new",
+      status: "SUBMITTED",
+      approvalStatus: "NOT_REQUIRED",
+      outcome: "READY_FOR_PAYMENT",
+      paymentReady: true,
+    });
+    vi.mocked(firebaseFunctions.createEventBookingCheckoutSession).mockResolvedValue({
+      url: null,
+      orderIds: [],
+      confirmed: true,
+    });
+    const user = userEvent.setup();
+    renderWizard();
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Submit booking" }));
+
+    const paymentButton = await screen.findByRole("button", { name: "Continue to payment" });
+    expect(screen.getByText("Your booking has been submitted and is ready for payment.")).toBeInTheDocument();
+    await user.click(paymentButton);
+
+    expect(firebaseFunctions.createEventBookingCheckoutSession).toHaveBeenCalledWith({ eventId: "event-1" });
   });
 
   it("shows a retryable error instead of an empty booking page when loading fails", async () => {
