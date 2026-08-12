@@ -33,7 +33,7 @@ import type {
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "../sectionEventsManagerTypes";
-import type { EventAttendeeTicketRow } from "../../utils/bookingApprovalsAdmin";
+import type { EventAttendeeTicketRow, TicketOrdersById } from "../../utils/bookingApprovalsAdmin";
 import {
   attendeePaymentState,
   eventTicketRowsCsv,
@@ -58,6 +58,7 @@ interface TicketAdminSurfaceProps {
   onApprovalStatusFilterChange: (value: BookingApprovalStatusFilter) => void;
   approvalBookings: EventBookingAdminRow[];
   allEventBookings: EventBookingAdminRow[];
+  ticketOrdersById: TicketOrdersById;
   attendeeTickets: EventAttendeeTicketRow[];
   moderatorNoteDraft: Record<string, string>;
   onModeratorNoteChange: (bookingId: string, value: string) => void;
@@ -90,6 +91,7 @@ export function TicketAdminSurface({
   onApprovalStatusFilterChange,
   approvalBookings,
   allEventBookings,
+  ticketOrdersById,
   attendeeTickets,
   moderatorNoteDraft,
   onModeratorNoteChange,
@@ -132,6 +134,7 @@ export function TicketAdminSurface({
           loading={loadingEventBookings}
           bookings={approvalBookings}
           allBookings={allEventBookings}
+          ticketOrdersById={ticketOrdersById}
           moderatorNoteDraft={moderatorNoteDraft}
           onModeratorNoteChange={onModeratorNoteChange}
           reviewingBookingId={reviewingBookingId}
@@ -297,6 +300,7 @@ function BookingApprovalsSection({
   loading,
   bookings,
   allBookings,
+  ticketOrdersById,
   moderatorNoteDraft,
   onModeratorNoteChange,
   reviewingBookingId,
@@ -307,6 +311,7 @@ function BookingApprovalsSection({
   loading: boolean;
   bookings: EventBookingAdminRow[];
   allBookings: EventBookingAdminRow[];
+  ticketOrdersById: TicketOrdersById;
   moderatorNoteDraft: Record<string, string>;
   onModeratorNoteChange: (bookingId: string, value: string) => void;
   reviewingBookingId: string | null;
@@ -401,7 +406,7 @@ function BookingApprovalsSection({
                           <strong>{line.guestDisplayName || (line.ticketType.audience === "MEMBER" ? "Member" : "Guest")}</strong>
                           {` — ${line.ticketType.title}`}
                           {line.dietaryNote ? ` · Dietary: ${line.dietaryNote}` : ""}
-                          {` · Payment: ${attendeePaymentState(line).replaceAll("_", " ").toLowerCase()}`}
+                          {` · Payment: ${attendeePaymentState(line, ticketOrdersById).replaceAll("_", " ").toLowerCase()}`}
                         </Box>
                       ))}
                     </Box>

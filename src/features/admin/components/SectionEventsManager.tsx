@@ -421,8 +421,18 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       )
       .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
   }, [approvalStatusFilter, eventBookings]);
-  const attendeeTickets = useMemo(() => activeEventTicketRows(eventBookings), [eventBookings]);
-  const ticketOrders: TicketOrderAdminRow[] = ticketOrdersData?.event?.ticketOrders ?? [];
+  const ticketOrders = useMemo<TicketOrderAdminRow[]>(
+    () => ticketOrdersData?.event?.ticketOrders ?? [],
+    [ticketOrdersData]
+  );
+  const ticketOrdersById = useMemo(
+    () => new Map(ticketOrders.map((order) => [order.id, order])),
+    [ticketOrders]
+  );
+  const attendeeTickets = useMemo(
+    () => activeEventTicketRows(eventBookings, ticketOrdersById),
+    [eventBookings, ticketOrdersById]
+  );
   const bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[] = paymentAdjustmentsData?.event?.bookings ?? [];
 
   const handleReviewBooking = async (
@@ -499,6 +509,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onApprovalStatusFilterChange={setApprovalStatusFilter}
           approvalBookings={approvalBookings}
           allEventBookings={eventBookings}
+          ticketOrdersById={ticketOrdersById}
           attendeeTickets={attendeeTickets}
           moderatorNoteDraft={moderatorNoteDraft}
           onModeratorNoteChange={(bookingId, value) =>

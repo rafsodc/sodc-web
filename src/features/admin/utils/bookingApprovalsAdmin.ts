@@ -4,7 +4,9 @@ import {
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
-import type { EventBookingAdminRow } from "../components/sectionEventsManagerTypes";
+import type { EventBookingAdminRow, TicketOrderAdminRow } from "../components/sectionEventsManagerTypes";
+
+export type TicketOrdersById = ReadonlyMap<string, TicketOrderAdminRow>;
 
 export type AttendeePaymentState = "FREE" | "UNPAID" | "PAYMENT_PENDING" | "PAID" | "REFUNDED";
 
@@ -69,23 +71,26 @@ export function previousActiveBooking(
 }
 
 export function attendeePaymentState(
-  line: EventBookingAdminRow["lines"][number]
+  line: EventBookingAdminRow["lines"][number],
+  ticketOrdersById: TicketOrdersById
 ): AttendeePaymentState {
   if (line.ticketType.price <= 0) return "FREE";
   const allocations = line.bookingPlace.paymentAllocations ?? [];
-  if (allocations.some((allocation) => allocation.ticketOrder.status === TicketOrderStatus.PAID)) {
+  const statuses = allocations.map((allocation) => ticketOrdersById.get(allocation.ticketOrderId)?.status);
+  if (statuses.some((status) => status === TicketOrderStatus.PAID)) {
     const allocated = allocations.reduce((total, allocation) => total + allocation.allocatedAmountMinor, 0);
     const refunded = allocations.reduce((total, allocation) => total + allocation.refundedAmountMinor, 0);
     return allocated > 0 && refunded >= allocated ? "REFUNDED" : "PAID";
   }
-  if (allocations.some((allocation) => allocation.ticketOrder.status === TicketOrderStatus.PENDING)) {
+  if (statuses.some((status) => status === TicketOrderStatus.PENDING)) {
     return "PAYMENT_PENDING";
   }
   return "UNPAID";
 }
 
 export function activeEventTicketRows(
-  bookings: readonly EventBookingAdminRow[]
+  bookings: readonly EventBookingAdminRow[],
+  ticketOrdersById: TicketOrdersById
 ): EventAttendeeTicketRow[] {
   return currentActiveBookings(bookings).flatMap((booking) =>
     [...booking.lines]
@@ -107,7 +112,7 @@ export function activeEventTicketRows(
           ticketType: line.ticketType.title,
           dietaryNote: line.dietaryNote?.trim() || null,
           approvalStatus: booking.approvalStatus,
-          paymentState: attendeePaymentState(line),
+          paymentState: attendeePaymentState(line, ticketOrdersById),
         };
       })
   );

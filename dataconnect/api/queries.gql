@@ -607,14 +607,15 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         dietaryNote
         bookingPlace {
           id
+          # Keep order status as a sibling selection (see ListTicketOrdersForAdmin,
+          # fetched alongside this query). Nesting TicketOrder below
+          # Booking -> BookingLine -> BookingPlace -> BookingPlacePaymentAllocation
+          # produces PostgreSQL aliases that collide after its 63-character limit.
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
             allocatedAmountMinor
             refundedAmountMinor
-            ticketOrder {
-              id
-              status
-            }
+            ticketOrderId
           }
         }
         guestUser {

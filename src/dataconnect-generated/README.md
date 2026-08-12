@@ -8768,10 +8768,7 @@ export interface ListEventBookingsForAdminData {
             id: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
-            ticketOrder: {
-              id: UUIDString;
-              status: TicketOrderStatus;
-            } & TicketOrder_Key;
+            ticketOrderId: UUIDString;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         guestUser?: {
