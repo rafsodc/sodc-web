@@ -489,8 +489,11 @@ type Booking
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # Booking writes are NO_ACCESS Admin SDK operations (booking-service connector).
+  # Admin requests do not impersonate an end user, so auth.uid defaults fail
+  # before explicit mutation values are applied. Every write supplies these.
+  createdBy: String
+  updatedBy: String
 }
 
 # Stable identity for one member/guest ticket place across booking revisions.
@@ -502,8 +505,11 @@ type BookingPlace @table {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # BookingPlace writes are NO_ACCESS Admin SDK operations (booking-service
+  # connector); auth.uid defaults fail without a request context. Every write
+  # supplies these explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # One line per ticket; ticket type audience must match use (member vs guest). Guest identity optional.
@@ -519,8 +525,11 @@ type BookingLine @table {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # BookingLine writes are NO_ACCESS Admin SDK operations (booking-service
+  # connector); auth.uid defaults fail without a request context. Every write
+  # supplies these explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # Payment order for Stripe Checkout fulfillment and reconciliation.
@@ -550,8 +559,10 @@ type TicketOrder @table @unique(fields: ["stripeCheckoutSessionId"]) {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # TicketOrder writes are NO_ACCESS Admin SDK operations; auth.uid defaults
+  # fail without a request context. Every write supplies these explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # Allocates a paid/order quantity to an exact stable booking place. It never
@@ -569,8 +580,11 @@ type BookingPlacePaymentAllocation @table @unique(fields: ["ticketOrder", "booki
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # BookingPlacePaymentAllocation writes are NO_ACCESS Admin SDK operations;
+  # auth.uid defaults fail without a request context. Every write supplies
+  # these explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # Immutable ledger of Stripe webhook events for idempotency and reconciliation audit.
@@ -588,8 +602,11 @@ type PaymentWebhookEvent @table @unique(fields: ["stripeEventId"]) {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # PaymentWebhookEvent writes are NO_ACCESS Admin SDK operations; auth.uid
+  # defaults fail without a request context. Every write supplies these
+  # explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 type PaymentReconciliationException @table {
@@ -604,8 +621,11 @@ type PaymentReconciliationException @table {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # PaymentReconciliationException writes are NO_ACCESS Admin SDK operations;
+  # auth.uid defaults fail without a request context. Every write supplies
+  # these explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # Generic delivery ledger for notification idempotency across channels/providers.
@@ -631,8 +651,11 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # NotificationDelivery writes are NO_ACCESS Admin SDK operations; auth.uid
+  # defaults fail without a request context. Every write supplies these
+  # explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # Announcement send summary — one per bulk send triggered by a moderator.
@@ -706,8 +729,11 @@ type NotifyDeliveryReceipt @table {
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # NotifyDeliveryReceipt writes are NO_ACCESS Admin SDK operations; auth.uid
+  # defaults fail without a request context. Every write supplies these
+  # explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking"]) {
@@ -720,8 +746,11 @@ type BookingPaymentAdjustment @table(key: ["revisionBooking", "supersededBooking
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
-  createdBy: String @default(expr: "auth.uid")
-  updatedBy: String @default(expr: "auth.uid")
+  # BookingPaymentAdjustment writes are NO_ACCESS Admin SDK operations
+  # (booking-service connector); auth.uid defaults fail without a request
+  # context. Every write supplies these explicitly.
+  createdBy: String
+  updatedBy: String
 }
 
 # Legacy read-then-write counters retained so the connector can be deployed before the
