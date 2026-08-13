@@ -95,6 +95,23 @@ describe("summarizeEventBookingPayment", () => {
     });
     expect(summary.kind).toBe("adjustment_refund");
   });
+
+  it("keeps checkout available for an additional-payment adjustment", () => {
+    const summary = summarizeEventBookingPayment({
+      booking,
+      eventId,
+      ticketOrders: [{
+        status: TicketOrderStatus.PAID,
+        quantity: 1,
+        event: { id: eventId },
+        ticketType: { id: memberTicketId },
+      }],
+      adjustments: [{ status: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE }],
+    });
+
+    expect(summary.kind).toBe("not_started");
+    expect(summary.unpaidTicketTypeId).toBe(guestTicketId);
+  });
 });
 
 describe("hasExpiredDraftHold", () => {

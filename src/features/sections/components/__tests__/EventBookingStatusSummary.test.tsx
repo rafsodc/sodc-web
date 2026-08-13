@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "../../../../test-utils";
-import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
+import {
+  BookingPaymentAdjustmentStatus,
+  BookingStatus,
+  TicketAudience,
+  TicketOrderStatus,
+} from "@dataconnect/generated";
 import EventBookingStatusSummary from "../EventBookingStatusSummary";
 
 function booking(overrides: Record<string, unknown> = {}) {
@@ -25,7 +30,11 @@ function booking(overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
-function renderSummary(args: { booking?: ReturnType<typeof booking>; orders?: unknown[] } = {}) {
+function renderSummary(args: {
+  booking?: ReturnType<typeof booking>;
+  orders?: unknown[];
+  adjustments?: unknown[];
+} = {}) {
   render(
     <MemoryRouter>
       <EventBookingStatusSummary
@@ -33,7 +42,7 @@ function renderSummary(args: { booking?: ReturnType<typeof booking>; orders?: un
         eventId="event-1"
         eventTitle="Annual Dinner"
         ticketOrders={(args.orders ?? []) as never}
-        paymentAdjustments={[]}
+        paymentAdjustments={(args.adjustments ?? []) as never}
         onEditBooking={vi.fn()}
         onPayNow={vi.fn()}
       />
@@ -59,6 +68,18 @@ describe("EventBookingStatusSummary", () => {
 
   it("directs an approved booking to payment", () => {
     renderSummary();
+    expect(screen.getByRole("heading", { name: "Payment required" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+  });
+
+  it("continues to offer payment when a charge adjustment records the unpaid balance", () => {
+    renderSummary({
+      adjustments: [{
+        status: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE,
+        deltaAmountMinor: 5000,
+      }],
+    });
+
     expect(screen.getByRole("heading", { name: "Payment required" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
   });

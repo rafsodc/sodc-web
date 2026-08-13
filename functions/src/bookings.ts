@@ -5,13 +5,17 @@ import {
   BookingApprovalStatus,
   BookingStatus,
   TicketAudience,
+  getBookingReplayForBookerEventKey,
   getBookingsForBookerAndEvent,
   getEventByIdForCallable,
   getSectionByIdForCallable,
   getUserMembershipStatus,
   getUserUserGroupsForAdmin,
 } from "@dataconnect/admin-generated";
-import type { UUIDString } from "@dataconnect/admin-generated";
+import type {
+  GetBookingReplayForBookerEventKeyData,
+  UUIDString,
+} from "@dataconnect/admin-generated";
 import {
   BOOKING_RULE_ERROR_CODES,
   bookingApprovalAllowsPayment,
@@ -213,6 +217,58 @@ function parseSubmitEventBookingRequest(data: unknown, uid: string) {
   };
 }
 
+type ParsedSubmitEventBookingRequest = ReturnType<typeof parseSubmitEventBookingRequest>;
+type BookingReplay = NonNullable<GetBookingReplayForBookerEventKeyData["user"]>["bookings"][number];
+
+function normalizedStringList(values: readonly string[] | null | undefined): string[] {
+  return [...(values ?? [])].map((value) => value.trim()).filter(Boolean).sort();
+}
+
+/** Prevents one idempotency key from silently representing two different bookings. */
+export function bookingReplayMatchesRequest(
+  booking: BookingReplay,
+  request: ParsedSubmitEventBookingRequest
+): boolean {
+  const requestedLines = [...request.lines].sort((a, b) => a.sortOrder - b.sortOrder);
+  const storedLines = [...booking.lines].sort((a, b) => a.sortOrder - b.sortOrder);
+  if (requestedLines.length !== storedLines.length) return false;
+  const linesMatch = requestedLines.every((line, index) => {
+    const stored = storedLines[index]!;
+    return (
+      line.sortOrder === stored.sortOrder &&
+      bookingIdsEqual(line.ticketTypeId, stored.ticketType.id) &&
+      (line.guestUserId?.trim() || null) === (stored.guestUser?.id?.trim() || null) &&
+      (line.guestDisplayName?.trim() || null) === (stored.guestDisplayName?.trim() || null) &&
+      (line.dietaryNote?.trim() || null) === (stored.dietaryNote?.trim() || null)
+    );
+  });
+  if (!linesMatch) return false;
+  return (
+    JSON.stringify(normalizedStringList(request.sitNextToUserIds)) ===
+      JSON.stringify(normalizedStringList(booking.sitNextToUserIds)) &&
+    request.accommodationRequested === booking.accommodationRequested &&
+    (request.accommodationRequested ? request.accommodationNote : null) ===
+      (booking.accommodationRequested ? booking.accommodationNote?.trim() || null : null)
+  );
+}
+
+function idempotencyKeyConflict(): HttpsError {
+  return new HttpsError(
+    "failed-precondition",
+    "This submission key has already been used for different booking details.",
+    { code: "IDEMPOTENCY_KEY_REUSE_CONFLICT" }
+  );
+}
+
+function replayResult(booking: BookingReplay) {
+  return {
+    bookingId: booking.id,
+    status: booking.status,
+    ...bookingSubmissionOutcome(booking.approvalStatus),
+    idempotentReplay: true,
+  } as const;
+}
+
 async function fetchBookingsForBookerAndEvent(bookerId: string, eventId: UUIDString) {
   const res = await getBookingsForBookerAndEvent({ bookerId, eventId });
   return hydrateBookingsWithTicketOrders(res.data);
@@ -239,7 +295,6 @@ function bookingSubmissionOutcome(approvalStatus: BookingApprovalStatus) {
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] }, async (request) => {
   requireEnabled(request);
   const uid = request.auth!.uid;
-  await enforceRateLimit("submitEventBooking", uid, submitEventBookingRateLimitCost(request.data?.lines));
 
   const parsedRequest = (() => {
     try {
@@ -259,6 +314,22 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     accommodationRequested,
     accommodationNote,
   } = parsedRequest;
+
+  // A separate low-cost bucket keeps the recovery read bounded without making
+  // a safe replay depend on remaining weighted write allowance.
+  await enforceRateLimit("submitEventBookingReplayLookup", uid);
+  const replayLookup = await getBookingReplayForBookerEventKey({
+    bookerId: uid,
+    eventId,
+    clientSubmissionKey: idempotencyKey,
+  });
+  const completedReplay = replayLookup.data?.user?.bookings?.[0];
+  if (completedReplay) {
+    if (!bookingReplayMatchesRequest(completedReplay, parsedRequest)) throw idempotencyKeyConflict();
+    return replayResult(completedReplay);
+  }
+
+  await enforceRateLimit("submitEventBooking", uid, submitEventBookingRateLimitCost(request.data?.lines));
 
   try {
     const [eventResult, userStatusResult, userGroupsResult, initialBookings] = await Promise.all([
@@ -356,12 +427,8 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     );
     const replayCompleted = terminalBookings.find((b) => b.clientSubmissionKey === idempotencyKey);
     if (replayCompleted) {
-      return {
-        bookingId: replayCompleted.id,
-        status: replayCompleted.status,
-        ...bookingSubmissionOutcome(replayCompleted.approvalStatus),
-        idempotentReplay: true,
-      };
+      if (!bookingReplayMatchesRequest(replayCompleted, parsedRequest)) throw idempotencyKeyConflict();
+      return replayResult(replayCompleted);
     }
     const revisionPlan = computeRevisionPlan(
       terminalBookings.map((b) => ({
@@ -493,12 +560,8 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
           (booking.status === BookingStatus.SUBMITTED || booking.status === BookingStatus.CONFIRMED)
       );
       if (replay) {
-        return {
-          bookingId: replay.id,
-          status: replay.status,
-          ...bookingSubmissionOutcome(replay.approvalStatus),
-          idempotentReplay: true,
-        };
+        if (!bookingReplayMatchesRequest(replay, parsedRequest)) throw idempotencyKeyConflict();
+        return replayResult(replay);
       }
       throw new HttpsError("aborted", "Booking revision conflict: retry from the latest booking", {
         code: "BOOKING_REVISION_CONFLICT",

@@ -4,11 +4,18 @@ import {
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
-import type { EventBookingAdminRow, TicketOrderAdminRow } from "../components/sectionEventsManagerTypes";
+import type { EventBookingAdminRow } from "../components/sectionEventsManagerTypes";
 
-export type TicketOrdersById = ReadonlyMap<string, TicketOrderAdminRow>;
+export type TicketOrdersById = ReadonlyMap<string, { id: string; status: TicketOrderStatus | string }>;
 
-export type AttendeePaymentState = "FREE" | "UNPAID" | "PAYMENT_PENDING" | "PAID" | "REFUNDED";
+export type AttendeePaymentState =
+  | "FREE"
+  | "UNPAID"
+  | "PARTIALLY_PAID"
+  | "PAYMENT_PENDING"
+  | "PAID"
+  | "REFUNDED"
+  | "UNKNOWN";
 
 export interface EventAttendeeTicketRow {
   key: string;
@@ -76,15 +83,27 @@ export function attendeePaymentState(
 ): AttendeePaymentState {
   if (line.ticketType.price <= 0) return "FREE";
   const allocations = line.bookingPlace.paymentAllocations ?? [];
-  const statuses = allocations.map((allocation) => ticketOrdersById.get(allocation.ticketOrderId)?.status);
-  if (statuses.some((status) => status === TicketOrderStatus.PAID)) {
-    const allocated = allocations.reduce((total, allocation) => total + allocation.allocatedAmountMinor, 0);
-    const refunded = allocations.reduce((total, allocation) => total + allocation.refundedAmountMinor, 0);
-    return allocated > 0 && refunded >= allocated ? "REFUNDED" : "PAID";
+  if (allocations.some((allocation) => !ticketOrdersById.has(allocation.ticketOrderId))) return "UNKNOWN";
+
+  const requiredMinor = Math.round(line.ticketType.price * 100);
+  let settledMinor = 0;
+  let pendingMinor = 0;
+  let settledAllocatedMinor = 0;
+  let settledRefundedMinor = 0;
+  for (const allocation of allocations) {
+    const status = ticketOrdersById.get(allocation.ticketOrderId)?.status;
+    if (status === TicketOrderStatus.PAID || status === TicketOrderStatus.REFUNDED) {
+      settledAllocatedMinor += allocation.allocatedAmountMinor;
+      settledRefundedMinor += allocation.refundedAmountMinor;
+      settledMinor += Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor);
+    } else if (status === TicketOrderStatus.PENDING) {
+      pendingMinor += Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor);
+    }
   }
-  if (statuses.some((status) => status === TicketOrderStatus.PENDING)) {
-    return "PAYMENT_PENDING";
-  }
+  if (settledMinor >= requiredMinor) return "PAID";
+  if (pendingMinor > 0) return "PAYMENT_PENDING";
+  if (settledMinor > 0) return "PARTIALLY_PAID";
+  if (settledAllocatedMinor > 0 && settledRefundedMinor >= settledAllocatedMinor) return "REFUNDED";
   return "UNPAID";
 }
 

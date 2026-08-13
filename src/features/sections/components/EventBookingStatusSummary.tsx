@@ -60,7 +60,7 @@ function bookingStatusCard(
       message: booking.approvalNote?.trim() || "The organiser has asked you to update your booking.",
     };
   }
-  if (paymentSummary.kind === "pending" || paymentSummary.kind === "adjustment_charge" || paymentSummary.kind === "adjustment_refund") {
+  if (paymentSummary.kind === "pending" || paymentSummary.kind === "adjustment_refund") {
     return {
       heading: "Payment processing",
       severity: "info" as const,

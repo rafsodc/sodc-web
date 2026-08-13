@@ -543,6 +543,13 @@ function getSectionByIdForCallable(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getSectionByIdForCallable = getSectionByIdForCallable;
 
+function getBookingReplayForBookerEventKey(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetBookingReplayForBookerEventKey', inputVars, inputOpts);
+}
+exports.getBookingReplayForBookerEventKey = getBookingReplayForBookerEventKey;
+
 function getBookingsForBookerAndEvent(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

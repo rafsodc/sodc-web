@@ -185,7 +185,21 @@ describe("function entry guard contracts", () => {
     }
 
     const bookings = readSource("bookings.ts");
-    assertOnCallGuard(bookings, "submitEventBooking", "enforceRateLimit(\"submitEventBooking\"", 200);
+    assertOnCallGuard(
+      bookings,
+      "submitEventBooking",
+      "enforceRateLimit(\"submitEventBookingReplayLookup\"",
+      1_500,
+    );
+    assertOnCallGuard(
+      bookings,
+      "submitEventBooking",
+      "enforceRateLimit(\"submitEventBooking\"",
+      1_500,
+    );
+    const replayLimitIdx = bookings.indexOf("enforceRateLimit(\"submitEventBookingReplayLookup\"");
+    const weightedLimitIdx = bookings.indexOf("enforceRateLimit(\"submitEventBooking\"");
+    expect(replayLimitIdx).toBeLessThan(weightedLimitIdx);
 
     const bookingApprovals = readSource("bookingApprovals.ts");
     assertOnCallGuard(bookingApprovals, "reviewBookingRevision", "requireAdmin(request);", 300);

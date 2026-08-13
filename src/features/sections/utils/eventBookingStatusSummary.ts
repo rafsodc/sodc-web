@@ -263,18 +263,6 @@ export function summarizeEventBookingPayment(params: {
   adjustments: EventBookingPaymentAdjustmentInput[];
 }): EventBookingPaymentSummary {
   const { booking, eventId, ticketOrders, adjustments } = params;
-  const pendingCharge = adjustments.find(
-    (a) => a.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE
-  );
-  if (pendingCharge) {
-    return {
-      kind: "adjustment_charge",
-      label: getBookingPaymentAdjustmentStatusLabel(pendingCharge.status),
-      severity: "warning",
-      unpaidTicketTypeId: null,
-    };
-  }
-
   const pendingRefund = adjustments.find(
     (a) => a.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND
   );

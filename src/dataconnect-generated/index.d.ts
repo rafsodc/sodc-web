@@ -980,6 +980,38 @@ export interface GetBookingForNotificationVariables {
   bookingId: UUIDString;
 }
 
+export interface GetBookingReplayForBookerEventKeyData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      lines: ({
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+        } & TicketType_Key;
+      })[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+
+export interface GetBookingReplayForBookerEventKeyVariables {
+  bookerId: string;
+  eventId: UUIDString;
+  clientSubmissionKey: string;
+}
+
 export interface GetBookingRevisionForApprovalFromCallableData {
   booking?: {
     id: UUIDString;
@@ -2210,6 +2242,10 @@ export interface ListBookingPaymentAdjustmentsForAdminVariables {
 export interface ListEventBookingsForAdminData {
   event?: {
     id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
@@ -4002,6 +4038,18 @@ export const getSectionByIdForCallableRef: GetSectionByIdForCallableRef;
 
 export function getSectionByIdForCallable(vars: GetSectionByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionByIdForCallableData, GetSectionByIdForCallableVariables>;
 export function getSectionByIdForCallable(dc: DataConnect, vars: GetSectionByIdForCallableVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionByIdForCallableData, GetSectionByIdForCallableVariables>;
+
+interface GetBookingReplayForBookerEventKeyRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingReplayForBookerEventKeyVariables): QueryRef<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetBookingReplayForBookerEventKeyVariables): QueryRef<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+  operationName: string;
+}
+export const getBookingReplayForBookerEventKeyRef: GetBookingReplayForBookerEventKeyRef;
+
+export function getBookingReplayForBookerEventKey(vars: GetBookingReplayForBookerEventKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+export function getBookingReplayForBookerEventKey(dc: DataConnect, vars: GetBookingReplayForBookerEventKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
 
 interface GetBookingsForBookerAndEventRef {
   /* Allow users to create refs without passing in DataConnect */

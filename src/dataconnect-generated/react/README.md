@@ -38,6 +38,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetTicketTypeForCheckout*](#gettickettypeforcheckout)
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
+  - [*GetBookingReplayForBookerEventKey*](#getbookingreplayforbookereventkey)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
   - [*GetBookingRevisionForApprovalFromCallable*](#getbookingrevisionforapprovalfromcallable)
   - [*GetTicketOrdersForBookerAndEvent*](#getticketordersforbookerandevent)
@@ -2278,6 +2279,114 @@ export default function GetSectionByIdForCallableComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.section);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetBookingReplayForBookerEventKey
+You can execute the `GetBookingReplayForBookerEventKey` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetBookingReplayForBookerEventKey(dc: DataConnect, vars: GetBookingReplayForBookerEventKeyVariables, options?: useDataConnectQueryOptions<GetBookingReplayForBookerEventKeyData>): UseDataConnectQueryResult<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetBookingReplayForBookerEventKey(vars: GetBookingReplayForBookerEventKeyVariables, options?: useDataConnectQueryOptions<GetBookingReplayForBookerEventKeyData>): UseDataConnectQueryResult<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+```
+
+### Variables
+The `GetBookingReplayForBookerEventKey` Query requires an argument of type `GetBookingReplayForBookerEventKeyVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetBookingReplayForBookerEventKeyVariables {
+  bookerId: string;
+  eventId: UUIDString;
+  clientSubmissionKey: string;
+}
+```
+### Return Type
+Recall that calling the `GetBookingReplayForBookerEventKey` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetBookingReplayForBookerEventKey` Query is of type `GetBookingReplayForBookerEventKeyData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetBookingReplayForBookerEventKeyData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      lines: ({
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+        } & TicketType_Key;
+      })[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetBookingReplayForBookerEventKey`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetBookingReplayForBookerEventKeyVariables } from '@dataconnect/generated';
+import { useGetBookingReplayForBookerEventKey } from '@dataconnect/generated/react'
+
+export default function GetBookingReplayForBookerEventKeyComponent() {
+  // The `useGetBookingReplayForBookerEventKey` Query hook requires an argument of type `GetBookingReplayForBookerEventKeyVariables`:
+  const getBookingReplayForBookerEventKeyVars: GetBookingReplayForBookerEventKeyVariables = {
+    bookerId: ..., 
+    eventId: ..., 
+    clientSubmissionKey: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetBookingReplayForBookerEventKey(getBookingReplayForBookerEventKeyVars);
+  // Variables can be defined inline as well.
+  const query = useGetBookingReplayForBookerEventKey({ bookerId: ..., eventId: ..., clientSubmissionKey: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetBookingReplayForBookerEventKey(dataConnect, getBookingReplayForBookerEventKeyVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingReplayForBookerEventKey(getBookingReplayForBookerEventKeyVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetBookingReplayForBookerEventKey(dataConnect, getBookingReplayForBookerEventKeyVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -6927,6 +7036,10 @@ To access the data returned by a Query, use the `UseQueryResult.data` field. The
 export interface ListEventBookingsForAdminData {
   event?: {
     id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
     bookings: ({
       id: UUIDString;
       status: BookingStatus;

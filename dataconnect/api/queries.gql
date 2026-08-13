@@ -568,6 +568,12 @@ query GetMyBookingPaymentAdjustments @auth(expr: "auth.token.enabled == true") {
 query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   event(id: $eventId) {
     id
+    # Keep the allocation/order join in one consistent snapshot while avoiding the
+    # overlong deeply nested SQL alias described below.
+    bookingTicketOrders: ticketOrders_on_event(limit: 5000) {
+      id
+      status
+    }
     bookings: bookings_on_event {
       id
       status
@@ -639,7 +645,7 @@ query ListTicketOrdersForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin ==
   event(id: $eventId) {
     id
     title
-    ticketOrders: ticketOrders_on_event(orderBy: { updatedAt: DESC }) {
+    ticketOrders: ticketOrders_on_event(orderBy: { updatedAt: DESC }, limit: 5000) {
       id
       status
       quantity

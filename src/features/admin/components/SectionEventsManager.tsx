@@ -426,8 +426,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     [ticketOrdersData]
   );
   const ticketOrdersById = useMemo(
-    () => new Map(ticketOrders.map((order) => [order.id, order])),
-    [ticketOrders]
+    () => new Map((eventBookingsData?.event?.bookingTicketOrders ?? []).map((order) => [order.id, order])),
+    [eventBookingsData]
   );
   const attendeeTickets = useMemo(
     () => activeEventTicketRows(eventBookings, ticketOrdersById),

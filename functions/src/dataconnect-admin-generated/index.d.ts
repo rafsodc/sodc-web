@@ -958,6 +958,38 @@ export interface GetBookingForNotificationVariables {
   bookingId: UUIDString;
 }
 
+export interface GetBookingReplayForBookerEventKeyData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      lines: ({
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+        } & TicketType_Key;
+      })[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+
+export interface GetBookingReplayForBookerEventKeyVariables {
+  bookerId: string;
+  eventId: UUIDString;
+  clientSubmissionKey: string;
+}
+
 export interface GetBookingRevisionForApprovalFromCallableData {
   booking?: {
     id: UUIDString;
@@ -2188,6 +2220,10 @@ export interface ListBookingPaymentAdjustmentsForAdminVariables {
 export interface ListEventBookingsForAdminData {
   event?: {
     id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
     bookings: ({
       id: UUIDString;
       status: BookingStatus;
@@ -3602,6 +3638,11 @@ export function getEventByIdForCallable(vars: GetEventByIdForCallableVariables, 
 export function getSectionByIdForCallable(dc: DataConnect, vars: GetSectionByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdForCallableData>>;
 /** Generated Node Admin SDK operation action function for the 'GetSectionByIdForCallable' Query. Allow users to pass in custom DataConnect instances. */
 export function getSectionByIdForCallable(vars: GetSectionByIdForCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetSectionByIdForCallableData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetBookingReplayForBookerEventKey' Query. Allow users to execute without passing in DataConnect. */
+export function getBookingReplayForBookerEventKey(dc: DataConnect, vars: GetBookingReplayForBookerEventKeyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingReplayForBookerEventKeyData>>;
+/** Generated Node Admin SDK operation action function for the 'GetBookingReplayForBookerEventKey' Query. Allow users to pass in custom DataConnect instances. */
+export function getBookingReplayForBookerEventKey(vars: GetBookingReplayForBookerEventKeyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingReplayForBookerEventKeyData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetBookingsForBookerAndEvent' Query. Allow users to execute without passing in DataConnect. */
 export function getBookingsForBookerAndEvent(dc: DataConnect, vars: GetBookingsForBookerAndEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetBookingsForBookerAndEventData>>;
