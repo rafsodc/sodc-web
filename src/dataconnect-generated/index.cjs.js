@@ -942,6 +942,21 @@ exports.getSectionByIdForCallable = function getSectionByIdForCallable(dcOrVars,
 }
 ;
 
+const getBookingReplayForBookerEventKeyRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetBookingReplayForBookerEventKey', inputVars);
+}
+getBookingReplayForBookerEventKeyRef.operationName = 'GetBookingReplayForBookerEventKey';
+exports.getBookingReplayForBookerEventKeyRef = getBookingReplayForBookerEventKeyRef;
+
+exports.getBookingReplayForBookerEventKey = function getBookingReplayForBookerEventKey(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getBookingReplayForBookerEventKeyRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const getBookingsForBookerAndEventRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

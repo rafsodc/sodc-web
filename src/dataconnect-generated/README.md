@@ -31,6 +31,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetTicketTypeForCheckout*](#gettickettypeforcheckout)
   - [*GetEventByIdForCallable*](#geteventbyidforcallable)
   - [*GetSectionByIdForCallable*](#getsectionbyidforcallable)
+  - [*GetBookingReplayForBookerEventKey*](#getbookingreplayforbookereventkey)
   - [*GetBookingsForBookerAndEvent*](#getbookingsforbookerandevent)
   - [*GetBookingRevisionForApprovalFromCallable*](#getbookingrevisionforapprovalfromcallable)
   - [*GetTicketOrdersForBookerAndEvent*](#getticketordersforbookerandevent)
@@ -2806,6 +2807,143 @@ console.log(data.section);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.section);
+});
+```
+
+## GetBookingReplayForBookerEventKey
+You can execute the `GetBookingReplayForBookerEventKey` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getBookingReplayForBookerEventKey(vars: GetBookingReplayForBookerEventKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+
+interface GetBookingReplayForBookerEventKeyRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetBookingReplayForBookerEventKeyVariables): QueryRef<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+}
+export const getBookingReplayForBookerEventKeyRef: GetBookingReplayForBookerEventKeyRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getBookingReplayForBookerEventKey(dc: DataConnect, vars: GetBookingReplayForBookerEventKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+
+interface GetBookingReplayForBookerEventKeyRef {
+  ...
+  (dc: DataConnect, vars: GetBookingReplayForBookerEventKeyVariables): QueryRef<GetBookingReplayForBookerEventKeyData, GetBookingReplayForBookerEventKeyVariables>;
+}
+export const getBookingReplayForBookerEventKeyRef: GetBookingReplayForBookerEventKeyRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getBookingReplayForBookerEventKeyRef:
+```typescript
+const name = getBookingReplayForBookerEventKeyRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetBookingReplayForBookerEventKey` query requires an argument of type `GetBookingReplayForBookerEventKeyVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetBookingReplayForBookerEventKeyVariables {
+  bookerId: string;
+  eventId: UUIDString;
+  clientSubmissionKey: string;
+}
+```
+### Return Type
+Recall that executing the `GetBookingReplayForBookerEventKey` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetBookingReplayForBookerEventKeyData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetBookingReplayForBookerEventKeyData {
+  user?: {
+    id: string;
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      lines: ({
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        guestUser?: {
+          id: string;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+        } & TicketType_Key;
+      })[];
+    } & Booking_Key)[];
+  } & User_Key;
+}
+```
+### Using `GetBookingReplayForBookerEventKey`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getBookingReplayForBookerEventKey, GetBookingReplayForBookerEventKeyVariables } from '@dataconnect/generated';
+
+// The `GetBookingReplayForBookerEventKey` query requires an argument of type `GetBookingReplayForBookerEventKeyVariables`:
+const getBookingReplayForBookerEventKeyVars: GetBookingReplayForBookerEventKeyVariables = {
+  bookerId: ..., 
+  eventId: ..., 
+  clientSubmissionKey: ..., 
+};
+
+// Call the `getBookingReplayForBookerEventKey()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getBookingReplayForBookerEventKey(getBookingReplayForBookerEventKeyVars);
+// Variables can be defined inline as well.
+const { data } = await getBookingReplayForBookerEventKey({ bookerId: ..., eventId: ..., clientSubmissionKey: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getBookingReplayForBookerEventKey(dataConnect, getBookingReplayForBookerEventKeyVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getBookingReplayForBookerEventKey(getBookingReplayForBookerEventKeyVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetBookingReplayForBookerEventKey`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getBookingReplayForBookerEventKeyRef, GetBookingReplayForBookerEventKeyVariables } from '@dataconnect/generated';
+
+// The `GetBookingReplayForBookerEventKey` query requires an argument of type `GetBookingReplayForBookerEventKeyVariables`:
+const getBookingReplayForBookerEventKeyVars: GetBookingReplayForBookerEventKeyVariables = {
+  bookerId: ..., 
+  eventId: ..., 
+  clientSubmissionKey: ..., 
+};
+
+// Call the `getBookingReplayForBookerEventKeyRef()` function to get a reference to the query.
+const ref = getBookingReplayForBookerEventKeyRef(getBookingReplayForBookerEventKeyVars);
+// Variables can be defined inline as well.
+const ref = getBookingReplayForBookerEventKeyRef({ bookerId: ..., eventId: ..., clientSubmissionKey: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getBookingReplayForBookerEventKeyRef(dataConnect, getBookingReplayForBookerEventKeyVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
 });
 ```
 
@@ -8725,6 +8863,10 @@ The `data` property is an object of type `ListEventBookingsForAdminData`, which 
 export interface ListEventBookingsForAdminData {
   event?: {
     id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
     bookings: ({
       id: UUIDString;
       status: BookingStatus;

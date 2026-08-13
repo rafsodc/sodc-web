@@ -5,9 +5,10 @@ import {
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
-import type { EventBookingAdminRow, TicketOrderAdminRow } from "../../components/sectionEventsManagerTypes";
+import type { EventBookingAdminRow } from "../../components/sectionEventsManagerTypes";
 import {
   activeEventTicketRows,
+  attendeePaymentState,
   currentActiveBookings,
   eventTicketRowsCsv,
   type EventAttendeeTicketRow,
@@ -16,8 +17,8 @@ import {
   type TicketOrdersById,
 } from "../bookingApprovalsAdmin";
 
-function ticketOrdersById(orders: Array<Partial<TicketOrderAdminRow> & { id: string }>): TicketOrdersById {
-  return new Map(orders.map((order) => [order.id, order as TicketOrderAdminRow]));
+function ticketOrdersById(orders: Array<{ id: string; status: TicketOrderStatus }>): TicketOrdersById {
+  return new Map(orders.map((order) => [order.id, order]));
 }
 
 function booking(overrides: Partial<EventBookingAdminRow> = {}): EventBookingAdminRow {
@@ -108,6 +109,68 @@ describe("booking approval admin model", () => {
       ],
       ticketOrdersById([])
     )).toEqual([]);
+  });
+
+  it.each([
+    ["partial settlement", 1000, 0, TicketOrderStatus.PAID, "PARTIALLY_PAID"],
+    ["full payment pending", 2000, 0, TicketOrderStatus.PENDING, "PAYMENT_PENDING"],
+    ["fully refunded", 2000, 2000, TicketOrderStatus.REFUNDED, "REFUNDED"],
+    ["partially refunded", 2000, 500, TicketOrderStatus.PAID, "PARTIALLY_PAID"],
+    ["failed payment", 2000, 0, TicketOrderStatus.FAILED, "UNPAID"],
+  ])("reports %s precisely", (_label, allocatedAmountMinor, refundedAmountMinor, status, expected) => {
+    const line = {
+      ticketType: { price: 20 },
+      bookingPlace: { paymentAllocations: [{
+        ticketOrderId: "order-1",
+        allocatedAmountMinor,
+        refundedAmountMinor,
+      }] },
+    } as EventBookingAdminRow["lines"][number];
+
+    expect(attendeePaymentState(line, ticketOrdersById([{ id: "order-1", status }]))).toBe(expected);
+  });
+
+  it("reports payment pending when pending allocations cover the remaining balance", () => {
+    const line = {
+      ticketType: { price: 20 },
+      bookingPlace: { paymentAllocations: [
+        { ticketOrderId: "paid-order", allocatedAmountMinor: 1500, refundedAmountMinor: 0 },
+        { ticketOrderId: "pending-order", allocatedAmountMinor: 500, refundedAmountMinor: 0 },
+      ] },
+    } as EventBookingAdminRow["lines"][number];
+
+    expect(attendeePaymentState(line, ticketOrdersById([
+      { id: "paid-order", status: TicketOrderStatus.PAID },
+      { id: "pending-order", status: TicketOrderStatus.PENDING },
+    ]))).toBe("PAYMENT_PENDING");
+  });
+
+  it("retains partial payment state when pending allocations do not cover the remaining balance", () => {
+    const line = {
+      ticketType: { price: 20 },
+      bookingPlace: { paymentAllocations: [
+        { ticketOrderId: "paid-order", allocatedAmountMinor: 1500, refundedAmountMinor: 0 },
+        { ticketOrderId: "pending-order", allocatedAmountMinor: 100, refundedAmountMinor: 0 },
+      ] },
+    } as EventBookingAdminRow["lines"][number];
+
+    expect(attendeePaymentState(line, ticketOrdersById([
+      { id: "paid-order", status: TicketOrderStatus.PAID },
+      { id: "pending-order", status: TicketOrderStatus.PENDING },
+    ]))).toBe("PARTIALLY_PAID");
+  });
+
+  it("reports an explicit unknown state when an allocation cannot be joined to its order", () => {
+    const line = {
+      ticketType: { price: 20 },
+      bookingPlace: { paymentAllocations: [{
+        ticketOrderId: "missing-order",
+        allocatedAmountMinor: 2000,
+        refundedAmountMinor: 0,
+      }] },
+    } as EventBookingAdminRow["lines"][number];
+
+    expect(attendeePaymentState(line, ticketOrdersById([]))).toBe("UNKNOWN");
   });
 
   it("neutralizes spreadsheet formulas in exported attendee-controlled cells", () => {

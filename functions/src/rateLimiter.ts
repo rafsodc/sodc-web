@@ -28,6 +28,9 @@ export const CALLABLE_RATE_LIMITS = {
   listUsersPendingApproval: { limit: 30, windowMs: 5 * MINUTE_MS },
   syncPendingUserClaims: { limit: 10, windowMs: HOUR_MS },
   submitEventBooking: { limit: 20, windowMs: HOUR_MS },
+  // Separate bucket permits safe completed-request recovery even when a large
+  // first submission exhausted the weighted write allowance.
+  submitEventBookingReplayLookup: { limit: 60, windowMs: 5 * MINUTE_MS },
   reviewBookingRevision: { limit: 30, windowMs: HOUR_MS },
   updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
   resignMembership: { limit: 3, windowMs: HOUR_MS },

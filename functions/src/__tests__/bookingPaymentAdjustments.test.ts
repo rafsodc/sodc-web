@@ -9,7 +9,7 @@ describe("bookingPaymentAdjustments", () => {
     ticketOrder: { status: "PAID" },
   };
 
-  it("marks refund path when revised booking total decreases", () => {
+  it("does not create a refund when the revised total still equals the settled amount", () => {
     const result = computeBookingPaymentDelta(
       { lines: [
         { ticketType: { price: 30 }, bookingPlace: { paymentAllocations: [settledAllocation] } },
@@ -17,9 +17,9 @@ describe("bookingPaymentAdjustments", () => {
       ] },
       { lines: [{ ticketType: { price: 30 } }] }
     );
-    expect(result.deltaAmountMinor).toBe(-2000);
+    expect(result.deltaAmountMinor).toBe(0);
     expect(result.paymentRemainingMinor).toBe(0);
-    expect(result.status).toBe(BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND);
+    expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
 
   it("marks charge path when revised booking total increases", () => {
@@ -95,6 +95,44 @@ describe("bookingPaymentAdjustments", () => {
     expect(result.revisedTotalMinor).toBe(3000);
     // Only A is settled, so B's unpaid £10 must not be dropped: £20 remains (B + C), not £10.
     expect(result.paymentRemainingMinor).toBe(2000);
+    expect(result.deltaAmountMinor).toBe(2000);
+    expect(result.status).toBe(BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE);
+  });
+
+  it("does not refund a partially paid booking while its revised total still exceeds settlement", () => {
+    const result = computeBookingPaymentDelta(
+      { lines: [{
+        ticketType: { price: 50 },
+        bookingPlace: { paymentAllocations: [{
+          allocatedAmountMinor: 2000,
+          refundedAmountMinor: 0,
+          ticketOrder: { status: "PAID" },
+        }] },
+      }] },
+      { lines: [{ ticketType: { price: 40 } }] }
+    );
+
+    expect(result.paymentRemainingMinor).toBe(2000);
+    expect(result.deltaAmountMinor).toBe(2000);
+    expect(result.status).toBe(BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE);
+  });
+
+  it("bases refunds on net settled allocations after earlier refunds", () => {
+    const result = computeBookingPaymentDelta(
+      { lines: [{
+        ticketType: { price: 50 },
+        bookingPlace: { paymentAllocations: [{
+          allocatedAmountMinor: 5000,
+          refundedAmountMinor: 1000,
+          ticketOrder: { status: "PAID" },
+        }] },
+      }] },
+      { lines: [{ ticketType: { price: 30 } }] }
+    );
+
+    expect(result.paymentRemainingMinor).toBe(0);
+    expect(result.deltaAmountMinor).toBe(-1000);
+    expect(result.status).toBe(BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND);
   });
 
   it("treats a missing previous booking as having no payable lines, so the revised total is fully owed", () => {

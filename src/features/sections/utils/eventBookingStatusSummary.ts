@@ -34,7 +34,6 @@ export type EventBookingPaymentSummaryKind =
   | "failed"
   | "not_started"
   | "partial"
-  | "adjustment_charge"
   | "adjustment_refund";
 
 export interface EventBookingPaymentSummary {
@@ -235,13 +234,6 @@ export function isBookingPaymentComplete(summary: EventBookingPaymentSummary): b
   return summary.kind === "paid" || summary.kind === "adjustment_refund";
 }
 
-export function bookingNeedsPayment(summary: EventBookingPaymentSummary | null | undefined): boolean {
-  if (!summary) {
-    return false;
-  }
-  return !isBookingPaymentComplete(summary) && summary.kind !== "adjustment_charge";
-}
-
 export function hasExpiredDraftHold(
   bookings: Array<{ status: BookingStatus | string }> | null | undefined
 ): boolean {
@@ -263,18 +255,6 @@ export function summarizeEventBookingPayment(params: {
   adjustments: EventBookingPaymentAdjustmentInput[];
 }): EventBookingPaymentSummary {
   const { booking, eventId, ticketOrders, adjustments } = params;
-  const pendingCharge = adjustments.find(
-    (a) => a.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE
-  );
-  if (pendingCharge) {
-    return {
-      kind: "adjustment_charge",
-      label: getBookingPaymentAdjustmentStatusLabel(pendingCharge.status),
-      severity: "warning",
-      unpaidTicketTypeId: null,
-    };
-  }
-
   const pendingRefund = adjustments.find(
     (a) => a.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND
   );

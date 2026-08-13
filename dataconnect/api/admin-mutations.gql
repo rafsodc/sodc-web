@@ -1318,6 +1318,39 @@ query GetSectionByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
 }
 
 # Load bookings for a booker and event (Firebase Functions / admin SDK only).
+query GetBookingReplayForBookerEventKey(
+  $bookerId: String!
+  $eventId: UUID!
+  $clientSubmissionKey: String!
+) @auth(level: NO_ACCESS) {
+  user(id: $bookerId) {
+    id
+    bookings: bookings_on_booker(
+      where: {
+        eventId: { eq: $eventId }
+        clientSubmissionKey: { eq: $clientSubmissionKey }
+        status: { in: [SUBMITTED, CONFIRMED] }
+      }
+      limit: 1
+    ) {
+      id
+      status
+      approvalStatus
+      clientSubmissionKey
+      sitNextToUserIds
+      accommodationRequested
+      accommodationNote
+      lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+        sortOrder
+        guestDisplayName
+        dietaryNote
+        guestUser { id }
+        ticketType { id }
+      }
+    }
+  }
+}
+
 query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(level: NO_ACCESS) {
   user(id: $bookerId) {
     id
