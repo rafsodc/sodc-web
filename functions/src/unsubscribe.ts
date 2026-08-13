@@ -1,7 +1,8 @@
-import { onRequest } from "firebase-functions/v2/https";
+import { onRequest, type Request } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { Response } from "express";
 import { adminOptOutSectionAnnouncement } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 
@@ -45,46 +46,109 @@ function verifyUnsubscribeToken(token: string, secret: string): UnsubscribePaylo
   return payload;
 }
 
+function htmlEscape(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function requestString(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function confirmationPage(token: string, sectionName: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confirm unsubscribe</title>
+</head>
+<body>
+  <main>
+    <h1>Unsubscribe from ${htmlEscape(sectionName)}?</h1>
+    <p>You will stop receiving announcement emails for this section.</p>
+    <form method="post" action="/unsubscribe">
+      <input type="hidden" name="token" value="${htmlEscape(token)}">
+      <input type="hidden" name="browserConfirmation" value="1">
+      <button type="submit">Confirm unsubscribe</button>
+    </form>
+  </main>
+</body>
+</html>`;
+}
+
+export interface UnsubscribeHandlerDependencies {
+  optOut?: typeof adminOptOutSectionAnnouncement;
+}
+
+export async function handleUnsubscribeRequest(
+  req: Request,
+  res: Response,
+  secret: string,
+  dependencies: UnsubscribeHandlerDependencies = {}
+): Promise<void> {
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.setHeader("Allow", "GET, POST");
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
+  // Token-bearing responses must not be cached or exposed as referrers. A
+  // successful browser POST redirects to a token-free confirmation URL.
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Referrer-Policy", "no-referrer");
+
+  const token = requestString(req.query.token) ?? requestString(req.body?.token);
+  if (!token) {
+    res.status(400).send("Missing token");
+    return;
+  }
+
+  let payload: UnsubscribePayload;
+  try {
+    payload = verifyUnsubscribeToken(token, secret);
+  } catch {
+    res.status(400).send("Invalid or expired unsubscribe link");
+    return;
+  }
+
+  if (req.method === "GET") {
+    res.status(200).type("html").send(confirmationPage(token, payload.sectionName));
+    return;
+  }
+
+  try {
+    await (dependencies.optOut ?? adminOptOutSectionAnnouncement)({
+      userId: payload.userId,
+      sectionId: payload.sectionId,
+    });
+  } catch (err) {
+    logger.error("Failed to record announcement opt-out", {
+      err,
+      userId: payload.userId,
+      sectionId: payload.sectionId,
+    });
+    res.status(500).send("Unsubscribe failed — please try again later");
+    return;
+  }
+
+  if (req.body?.browserConfirmation === "1") {
+    const params = new URLSearchParams({ section: payload.sectionName });
+    res.redirect(303, `${APP_BASE_URL}/unsubscribe/confirmed?${params.toString()}`);
+    return;
+  }
+
+  // RFC 8058 one-click unsubscribe — email clients POST to the signed URL.
+  res.status(200).send("OK");
+}
+
 // ── Cloud Function ────────────────────────────────────────────────────────────
 
 export const unsubscribeAnnouncement = onRequest(
   { region: FUNCTIONS_REGION, secrets: [unsubscribeSecret], invoker: "public" },
-  async (req, res) => {
-    const token = typeof req.query.token === "string" ? req.query.token : undefined;
-
-    if (!token) {
-      res.status(400).send("Missing token");
-      return;
-    }
-
-    const secret = unsubscribeSecret.value();
-    let payload: UnsubscribePayload;
-    try {
-      payload = verifyUnsubscribeToken(token, secret);
-    } catch {
-      res.status(400).send("Invalid or expired unsubscribe link");
-      return;
-    }
-
-    try {
-      await adminOptOutSectionAnnouncement({
-        userId: payload.userId,
-        sectionId: payload.sectionId,
-      });
-    } catch (err) {
-      logger.error("Failed to record announcement opt-out", { err, userId: payload.userId, sectionId: payload.sectionId });
-      res.status(500).send("Unsubscribe failed — please try again later");
-      return;
-    }
-
-    if (req.method === "POST") {
-      // RFC 8058 one-click unsubscribe — email clients POST here
-      res.status(200).send("OK");
-      return;
-    }
-
-    // GET — redirect to confirmation page
-    const params = new URLSearchParams({ section: payload.sectionName });
-    res.redirect(302, `${APP_BASE_URL}/unsubscribe/confirmed?${params.toString()}`);
-  }
+  (req, res) => handleUnsubscribeRequest(req, res, unsubscribeSecret.value())
 );
