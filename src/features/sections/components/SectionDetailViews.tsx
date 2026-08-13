@@ -339,11 +339,11 @@ export function SectionEventDetailView({
       <Button size="small" onClick={onBackToEvents} sx={{ mb: 2 }}>
         Back to events
       </Button>
-      {loading ? (
+      {loading && !event ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
           <CircularProgress aria-label="Loading event" />
         </Box>
-      ) : isError ? (
+      ) : isError && !event ? (
         <FailureState
           title="Event unavailable"
           message="We could not load this event. Please try again."
