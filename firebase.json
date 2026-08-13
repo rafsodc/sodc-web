@@ -20,6 +20,11 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
+        "src/__tests__/**",
+        "src/**/*.test.ts",
+        "lib/__tests__/**",
+        "lib/**/*.test.js",
+        "lib/**/*.test.js.map",
         "*.local"
       ],
       "predeploy": [
