@@ -65,7 +65,8 @@ has not been duplicated or truncated. Then smoke-test:
 3. App Check/reCAPTCHA with `VITE_RECAPTCHA_SITE_KEY` configured;
 4. Analytics collection when a measurement ID is configured;
 5. Stripe Checkout redirect, return, and receipt links; and
-6. announcement unsubscribe GET redirect and one-click POST.
+6. announcement unsubscribe GET confirmation (without changing preferences), browser confirmation
+   POST, and RFC 8058 one-click POST.
 
 Use the browser console and Network panel to investigate CSP violations. Add an origin only after
 confirming which application feature requires it; do not add broad `https:` or wildcard Google
