@@ -113,7 +113,7 @@ describe("booking approval admin model", () => {
 
   it.each([
     ["partial settlement", 1000, 0, TicketOrderStatus.PAID, "PARTIALLY_PAID"],
-    ["remaining payment pending", 1000, 0, TicketOrderStatus.PENDING, "PAYMENT_PENDING"],
+    ["full payment pending", 2000, 0, TicketOrderStatus.PENDING, "PAYMENT_PENDING"],
     ["fully refunded", 2000, 2000, TicketOrderStatus.REFUNDED, "REFUNDED"],
     ["partially refunded", 2000, 500, TicketOrderStatus.PAID, "PARTIALLY_PAID"],
     ["failed payment", 2000, 0, TicketOrderStatus.FAILED, "UNPAID"],
@@ -128,6 +128,36 @@ describe("booking approval admin model", () => {
     } as EventBookingAdminRow["lines"][number];
 
     expect(attendeePaymentState(line, ticketOrdersById([{ id: "order-1", status }]))).toBe(expected);
+  });
+
+  it("reports payment pending when pending allocations cover the remaining balance", () => {
+    const line = {
+      ticketType: { price: 20 },
+      bookingPlace: { paymentAllocations: [
+        { ticketOrderId: "paid-order", allocatedAmountMinor: 1500, refundedAmountMinor: 0 },
+        { ticketOrderId: "pending-order", allocatedAmountMinor: 500, refundedAmountMinor: 0 },
+      ] },
+    } as EventBookingAdminRow["lines"][number];
+
+    expect(attendeePaymentState(line, ticketOrdersById([
+      { id: "paid-order", status: TicketOrderStatus.PAID },
+      { id: "pending-order", status: TicketOrderStatus.PENDING },
+    ]))).toBe("PAYMENT_PENDING");
+  });
+
+  it("retains partial payment state when pending allocations do not cover the remaining balance", () => {
+    const line = {
+      ticketType: { price: 20 },
+      bookingPlace: { paymentAllocations: [
+        { ticketOrderId: "paid-order", allocatedAmountMinor: 1500, refundedAmountMinor: 0 },
+        { ticketOrderId: "pending-order", allocatedAmountMinor: 100, refundedAmountMinor: 0 },
+      ] },
+    } as EventBookingAdminRow["lines"][number];
+
+    expect(attendeePaymentState(line, ticketOrdersById([
+      { id: "paid-order", status: TicketOrderStatus.PAID },
+      { id: "pending-order", status: TicketOrderStatus.PENDING },
+    ]))).toBe("PARTIALLY_PAID");
   });
 
   it("reports an explicit unknown state when an allocation cannot be joined to its order", () => {

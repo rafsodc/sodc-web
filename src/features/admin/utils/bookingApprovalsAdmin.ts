@@ -6,7 +6,7 @@ import {
 } from "@dataconnect/generated";
 import type { EventBookingAdminRow } from "../components/sectionEventsManagerTypes";
 
-export type TicketOrdersById = ReadonlyMap<string, { id: string; status: TicketOrderStatus | string }>;
+export type TicketOrdersById = ReadonlyMap<string, { id: string; status: TicketOrderStatus }>;
 
 export type AttendeePaymentState =
   | "FREE"
@@ -101,7 +101,8 @@ export function attendeePaymentState(
     }
   }
   if (settledMinor >= requiredMinor) return "PAID";
-  if (pendingMinor > 0) return "PAYMENT_PENDING";
+  const outstandingMinor = requiredMinor - settledMinor;
+  if (pendingMinor >= outstandingMinor) return "PAYMENT_PENDING";
   if (settledMinor > 0) return "PARTIALLY_PAID";
   if (settledAllocatedMinor > 0 && settledRefundedMinor >= settledAllocatedMinor) return "REFUNDED";
   return "UNPAID";

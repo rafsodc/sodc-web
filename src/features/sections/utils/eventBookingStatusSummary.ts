@@ -34,7 +34,6 @@ export type EventBookingPaymentSummaryKind =
   | "failed"
   | "not_started"
   | "partial"
-  | "adjustment_charge"
   | "adjustment_refund";
 
 export interface EventBookingPaymentSummary {
@@ -233,13 +232,6 @@ export function bookingTicketPaymentChipColor(
 
 export function isBookingPaymentComplete(summary: EventBookingPaymentSummary): boolean {
   return summary.kind === "paid" || summary.kind === "adjustment_refund";
-}
-
-export function bookingNeedsPayment(summary: EventBookingPaymentSummary | null | undefined): boolean {
-  if (!summary) {
-    return false;
-  }
-  return !isBookingPaymentComplete(summary) && summary.kind !== "adjustment_charge";
 }
 
 export function hasExpiredDraftHold(
