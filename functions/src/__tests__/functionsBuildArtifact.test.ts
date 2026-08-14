@@ -15,6 +15,15 @@ function seedArtifact(relativePath: string): void {
   seededPaths.push(target);
 }
 
+function ensureBuildEntryPoint(): void {
+  const entryPoint = path.resolve(outputDirectory, "index.js");
+  if (fs.existsSync(entryPoint)) return;
+
+  fs.mkdirSync(outputDirectory, { recursive: true });
+  fs.writeFileSync(entryPoint, "// Test build entry point\n");
+  seededPaths.push(entryPoint);
+}
+
 function verifyBuild() {
   return spawnSync(process.execPath, ["scripts/verify-functions-build.mjs"], {
     cwd: functionsDirectory,
@@ -90,6 +99,7 @@ describe("Functions production build artifact", () => {
     "nested/example.spec.js",
     "nested/example.spec.js.map",
   ])("rejects forbidden compiled artifact %s", (relativePath) => {
+    ensureBuildEntryPoint();
     seedArtifact(relativePath);
 
     const result = verifyBuild();
