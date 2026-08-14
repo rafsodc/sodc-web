@@ -5,15 +5,6 @@ import { fileURLToPath } from "node:url";
 const functionsDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = resolve(functionsDirectory, "lib");
 
-async function filesUnder(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const nested = await Promise.all(entries.map((entry) => {
-    const path = resolve(directory, entry.name);
-    return entry.isDirectory() ? filesUnder(path) : [path];
-  }));
-  return nested.flat();
-}
-
 const entryPoint = resolve(outputDirectory, "index.js");
 let entryPointStat;
 try {
@@ -25,8 +16,9 @@ if (!entryPointStat.isFile()) {
   throw new Error(`Functions build entry point is not a file: ${entryPoint}`);
 }
 
-const forbidden = (await filesUnder(outputDirectory))
-  .map((path) => relative(outputDirectory, path))
+const forbidden = (await readdir(outputDirectory, { recursive: true, withFileTypes: true }))
+  .filter((entry) => !entry.isDirectory())
+  .map((entry) => relative(outputDirectory, resolve(entry.parentPath, entry.name)))
   .filter((path) =>
     path.split(sep).includes("__tests__") ||
     /\.(?:test|spec)\.js(?:\.map)?$/.test(path)
