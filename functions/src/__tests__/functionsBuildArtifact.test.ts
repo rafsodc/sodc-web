@@ -1,8 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 const functionsDirectory = process.cwd();
+const outputDirectory = path.resolve(functionsDirectory, "lib");
+const seededPaths: string[] = [];
+
+function seedArtifact(relativePath: string): void {
+  const target = path.resolve(outputDirectory, relativePath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, "test artifact");
+  seededPaths.push(target);
+}
+
+function verifyBuild() {
+  return spawnSync(process.execPath, ["scripts/verify-functions-build.mjs"], {
+    cwd: functionsDirectory,
+    encoding: "utf8",
+  });
+}
+
+afterEach(() => {
+  for (const target of seededPaths.splice(0)) fs.rmSync(target, { force: true });
+});
 
 describe("Functions production build artifact", () => {
   it("uses a clean, test-excluding, verified build pipeline", () => {
@@ -21,6 +42,7 @@ describe("Functions production build artifact", () => {
     expect(buildConfig.exclude).toEqual(expect.arrayContaining([
       "src/__tests__/**",
       "src/**/*.test.ts",
+      "src/**/*.spec.ts",
     ]));
 
     expect(packageJson.scripts?.["dev-reset"]).toBe(
@@ -37,9 +59,27 @@ describe("Functions production build artifact", () => {
     expect(ignore).toEqual(expect.arrayContaining([
       "src/__tests__/**",
       "src/**/*.test.ts",
+      "src/**/*.spec.ts",
       "lib/__tests__/**",
       "lib/**/*.test.js",
       "lib/**/*.test.js.map",
+      "lib/**/*.spec.js",
+      "lib/**/*.spec.js.map",
     ]));
+  });
+
+  it.each([
+    "__tests__/example.js",
+    "nested/example.test.js",
+    "nested/example.test.js.map",
+    "nested/example.spec.js",
+    "nested/example.spec.js.map",
+  ])("rejects forbidden compiled artifact %s", (relativePath) => {
+    seedArtifact(relativePath);
+
+    const result = verifyBuild();
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).toContain(relativePath);
   });
 });

@@ -15,17 +15,21 @@ async function filesUnder(directory) {
 }
 
 const entryPoint = resolve(outputDirectory, "index.js");
+let entryPointStat;
 try {
-  if (!(await stat(entryPoint)).isFile()) throw new Error("not a file");
-} catch {
-  throw new Error(`Functions build is missing its entry point: ${entryPoint}`);
+  entryPointStat = await stat(entryPoint);
+} catch (error) {
+  throw new Error(`Could not read Functions build entry point: ${entryPoint}`, { cause: error });
+}
+if (!entryPointStat.isFile()) {
+  throw new Error(`Functions build entry point is not a file: ${entryPoint}`);
 }
 
 const forbidden = (await filesUnder(outputDirectory))
   .map((path) => relative(outputDirectory, path))
   .filter((path) =>
     path.split(sep).includes("__tests__") ||
-    /\.test\.js(?:\.map)?$/.test(path)
+    /\.(?:test|spec)\.js(?:\.map)?$/.test(path)
   );
 
 if (forbidden.length > 0) {

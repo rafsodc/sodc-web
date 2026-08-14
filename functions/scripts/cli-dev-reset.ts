@@ -36,8 +36,6 @@
  * 
  * Usage:
  *   npm run dev-reset -- admin@example.com
- *   or
- *   npm run dev-reset -- admin@example.com
  */
 
 import * as admin from "firebase-admin";

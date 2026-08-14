@@ -22,9 +22,12 @@
         "firebase-debug.*.log",
         "src/__tests__/**",
         "src/**/*.test.ts",
+        "src/**/*.spec.ts",
         "lib/__tests__/**",
         "lib/**/*.test.js",
         "lib/**/*.test.js.map",
+        "lib/**/*.spec.js",
+        "lib/**/*.spec.js.map",
         "*.local"
       ],
       "predeploy": [
