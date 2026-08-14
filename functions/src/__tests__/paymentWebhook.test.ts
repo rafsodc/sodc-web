@@ -441,7 +441,7 @@ describe("stripe payment webhook orchestration", () => {
         stripeEventId: "evt_unknown_order",
         outcome: PaymentWebhookEventOutcome.IGNORED,
         reason: "order_not_found",
-        ticketOrderId: ORDER_ID,
+        ticketOrderId: null,
       })
     );
     expect(serviceMocks.applyTransitions).not.toHaveBeenCalled();
