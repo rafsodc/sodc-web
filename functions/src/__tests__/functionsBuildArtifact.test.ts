@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import vitestConfig from "../../vitest.config";
 
 const functionsDirectory = process.cwd();
 const outputDirectory = path.resolve(functionsDirectory, "lib");
@@ -40,7 +41,7 @@ describe("Functions production build artifact", () => {
       fs.readFileSync(path.resolve(functionsDirectory, "tsconfig.build.json"), "utf8")
     ) as { exclude?: string[] };
     expect(buildConfig.exclude).toEqual(expect.arrayContaining([
-      "src/__tests__/**",
+      "src/**/__tests__/**",
       "src/**/*.test.ts",
       "src/**/*.spec.ts",
     ]));
@@ -48,6 +49,20 @@ describe("Functions production build artifact", () => {
     expect(packageJson.scripts?.["dev-reset"]).toBe(
       "ts-node --project tsconfig.scripts.json scripts/cli-dev-reset.ts"
     );
+
+    const testConfig = vitestConfig.test as {
+      include?: string[];
+      coverage?: { exclude?: string[] };
+    };
+    expect(testConfig.include).toEqual(expect.arrayContaining([
+      "src/**/*.test.ts",
+      "src/**/*.spec.ts",
+    ]));
+    expect(testConfig.coverage?.exclude).toEqual(expect.arrayContaining([
+      "src/**/*.test.ts",
+      "src/**/*.spec.ts",
+      "src/**/__tests__/**",
+    ]));
   });
 
   it("keeps test sources and compiled tests out of Firebase uploads", () => {
@@ -57,10 +72,10 @@ describe("Functions production build artifact", () => {
     const ignore = firebaseConfig.functions?.[0]?.ignore ?? [];
 
     expect(ignore).toEqual(expect.arrayContaining([
-      "src/__tests__/**",
+      "src/**/__tests__/**",
       "src/**/*.test.ts",
       "src/**/*.spec.ts",
-      "lib/__tests__/**",
+      "lib/**/__tests__/**",
       "lib/**/*.test.js",
       "lib/**/*.test.js.map",
       "lib/**/*.spec.js",
@@ -69,7 +84,7 @@ describe("Functions production build artifact", () => {
   });
 
   it.each([
-    "__tests__/example.js",
+    "nested/__tests__/example.js",
     "nested/example.test.js",
     "nested/example.test.js.map",
     "nested/example.spec.js",
