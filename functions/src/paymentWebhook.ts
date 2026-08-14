@@ -265,7 +265,6 @@ async function handleStripeWebhookRequest(args: {
         eventType: event.type,
         outcome: PaymentWebhookEventOutcome.IGNORED,
         reason: "order_not_found",
-        ticketOrderId: canonicalOrderId,
         stripeObjectId,
         livemode: event.livemode,
       });
