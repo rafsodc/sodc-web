@@ -99,12 +99,13 @@ describe("section file storage foundation", () => {
   });
 
   it("bounds scanner metadata and object download requests", () => {
-    const scanner = readRepoFile("services/section-file-malware-scanner/server.js");
+    const scanner = readRepoFile("services/section-file-malware-scanner/scanner.js");
 
-    expect(scanner).toContain("metadataTimeoutMs = 5_000");
-    expect(scanner).toContain("objectDownloadTimeoutMs = 60_000");
-    expect(scanner).toContain("AbortSignal.timeout(metadataTimeoutMs)");
-    expect(scanner).toContain("AbortSignal.timeout(objectDownloadTimeoutMs)");
+    expect(scanner).toContain("METADATA_TIMEOUT_MS = 5_000");
+    expect(scanner).toContain("OBJECT_DOWNLOAD_TIMEOUT_MS = 60_000");
+    expect(scanner).toContain("timeoutMs = METADATA_TIMEOUT_MS");
+    expect(scanner).toContain("timeoutMs = OBJECT_DOWNLOAD_TIMEOUT_MS");
+    expect(scanner).toContain("signal: AbortSignal.timeout(timeoutMs)");
   });
 
   it("denies Firebase client access and expires only temporary uploads", () => {

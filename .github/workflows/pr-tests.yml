@@ -164,3 +164,18 @@ jobs:
 
       - name: Run functions security suites
         run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts gqlSchemaIntegrity --run
+
+  malware-scanner-tests:
+    name: Malware scanner tests and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run scanner tests and coverage gate
+        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix services/section-file-malware-scanner run test:coverage
