@@ -114,6 +114,12 @@ All auth patterns are documented in `AUTH_EXPRESSIONS.md`. Key patterns:
 
 ## Deployment
 
+The frontend SDK in `src/dataconnect-generated` and Admin SDK in
+`functions/src/dataconnect-admin-generated` are generated output that remains
+committed to the repository. Do not edit these files directly; regenerate both
+SDKs from the schema and connector sources under `dataconnect/` whenever those
+sources change.
+
 After making changes, generate and compile against the SDKs **before** changing a remote environment:
 
 1. Run `npx firebase dataconnect:sdk:generate` from the repository root.

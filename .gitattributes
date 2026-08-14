@@ -1,3 +1,8 @@
+# Data Connect SDKs are generated from the schema and connector sources but
+# remain committed so installs and builds do not require the generator.
+src/dataconnect-generated/** linguist-generated=true
+functions/src/dataconnect-admin-generated/** linguist-generated=true
+
 # The Data Connect SDK generator emits example placeholders with trailing spaces.
 # Keep generated documentation reproducible while excluding that generator-owned
 # formatting from Git's whitespace error checks.
