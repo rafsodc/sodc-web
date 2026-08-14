@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/__tests__/setup.ts'],
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
@@ -15,6 +15,7 @@ export default defineConfig({
         'lib/**',
         'src/**/*.d.ts',
         'src/**/*.test.ts',
+        'src/**/*.spec.ts',
         'src/**/__tests__/**',
         'src/dataconnect-admin-generated/**',
         'src/generatedEmailTemplateManifest.ts',

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "$comment": "These root file boundaries are intentionally explicit. TypeScript replaces rather than merges include/exclude across extends, so production-only exclusions belong here and must be reviewed with the artifact verifier.",
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
+  ]
+}
