@@ -355,8 +355,8 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: /event admin/i }));
     await user.click(screen.getByRole("button", { name: /^event details$/i }));
     await user.click(screen.getByRole("button", { name: /edit event details/i }));
-    await user.clear(screen.getByLabelText(/^sponsors$/i));
-    await user.clear(screen.getByLabelText(/^event details$/i));
+    fireEvent.change(screen.getByLabelText(/^sponsors$/i), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText(/^event details$/i), { target: { value: "" } });
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(generated.updateEventRef).toHaveBeenCalled());
@@ -415,8 +415,7 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: /event admin/i }));
     await user.click(screen.getByRole("button", { name: /^event details$/i }));
     await user.click(screen.getByRole("button", { name: /edit event details/i }));
-    await user.clear(screen.getByLabelText(/title/i));
-    await user.type(screen.getByLabelText(/title/i), "Updated Dinner");
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Updated Dinner" } });
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
