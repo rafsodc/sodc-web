@@ -224,8 +224,6 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     if (!selectedEventId) {
       eventDetailRequestIdRef.current += 1;
       setEventDetailData(undefined);
-      setLoadingEventDetail(false);
-      setErrorEventDetail(false);
       return;
     }
     void refetchEventDetail();
