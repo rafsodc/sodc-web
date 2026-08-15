@@ -16,12 +16,17 @@ function script(name: string): string {
 }
 
 function inventoryRows(heading: string): Map<string, string[]> {
-  const sectionStart = policy.indexOf(`## ${heading}`);
+  const lines = policy.split("\n");
+  const sectionStart = lines.indexOf(`## ${heading}`);
   expect(sectionStart, `Missing policy section: ${heading}`).toBeGreaterThanOrEqual(0);
-  const nextSection = policy.indexOf("\n## ", sectionStart + 1);
-  const section = policy.slice(sectionStart, nextSection < 0 ? policy.length : nextSection);
+  const nextSectionOffset = lines
+    .slice(sectionStart + 1)
+    .findIndex((line) => line.startsWith("## "));
+  const sectionEnd = nextSectionOffset < 0
+    ? lines.length
+    : sectionStart + 1 + nextSectionOffset;
   const rows = new Map<string, string[]>();
-  for (const line of section.split("\n")) {
+  for (const line of lines.slice(sectionStart, sectionEnd)) {
     const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
     const entryPoint = cells[0]?.match(/^`([^`]+)`$/)?.[1];
     if (entryPoint) rows.set(entryPoint, cells);
@@ -40,8 +45,9 @@ describe("Functions executable coverage policy", () => {
     for (const name of executableScripts) {
       const row = rows.get(name);
       expect(row, `${name} is missing from the executable coverage inventory`).toBeDefined();
-      expect(row?.[1], `${name} has no automated evidence`).not.toBe("");
-      expect(row?.[2], `${name} has no rationale or manual verification`).not.toBe("");
+      expect(row?.length, `${name} does not have exactly three inventory columns`).toBe(3);
+      expect(row?.[1], `${name} has no automated evidence`).toBeTruthy();
+      expect(row?.[2], `${name} has no rationale or manual verification`).toBeTruthy();
     }
   });
 
@@ -54,7 +60,7 @@ describe("Functions executable coverage policy", () => {
       coverage?: { include?: string[] };
     };
 
-    expect(testConfig.coverage?.include).toEqual(expect.arrayContaining(["src/**/*.ts"]));
+    expect(testConfig.coverage?.include).toEqual(["src/**/*.ts"]);
     expect(policy).toMatch(/does\s+not count `functions\/scripts`/);
     expect(workflow).toContain("Malware scanner tests and coverage");
     expect(workflow).toContain("services/section-file-malware-scanner run test:coverage");
