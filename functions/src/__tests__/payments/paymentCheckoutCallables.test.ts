@@ -176,10 +176,24 @@ describe("payment checkout callables", () => {
     expect(result).toEqual({ url: "https://checkout.stripe.test/session", orderIds: [ORDER_ID], confirmed: false });
   });
 
-  it("allows a matching section moderator to pay for a booking after closing", async () => {
+  it("allows an eligible member with a payment-ready booking to pay after closing", async () => {
     const closedTicketType = ticketType();
     closedTicketType.event.bookingEndDateTime = "2021-01-01T00:00:00.000Z";
     getTicketType.mockResolvedValue({ data: { ticketType: closedTicketType } } as never);
+    getBookings.mockResolvedValue({ data: { user: { bookings: [booking(BookingApprovalStatus.NOT_REQUIRED)] } } } as never);
+    const stripe = stripeClient();
+    mocks.requireStripe.mockReturnValue(stripe);
+
+    await expect(eventHandler(enabledRequest({ eventId: EVENT_ID }))).resolves.toMatchObject({
+      url: "https://checkout.stripe.test/session",
+    });
+  });
+
+  it("allows a matching section moderator to pay before bookings open", async () => {
+    const futureTicketType = ticketType();
+    futureTicketType.event.bookingStartDateTime = "2101-01-01T00:00:00.000Z";
+    futureTicketType.event.bookingEndDateTime = "2102-01-01T00:00:00.000Z";
+    getTicketType.mockResolvedValue({ data: { ticketType: futureTicketType } } as never);
     getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
       { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
       { purposes: [SectionUserGroupPurpose.MODERATOR], userGroup: { id: GROUP_ID, membershipStatuses: null } },
@@ -193,10 +207,11 @@ describe("payment checkout callables", () => {
     });
   });
 
-  it("rejects late checkout when the moderator group belongs to another section", async () => {
-    const closedTicketType = ticketType();
-    closedTicketType.event.bookingEndDateTime = "2021-01-01T00:00:00.000Z";
-    getTicketType.mockResolvedValue({ data: { ticketType: closedTicketType } } as never);
+  it("rejects checkout before opening when the moderator group belongs to another section", async () => {
+    const futureTicketType = ticketType();
+    futureTicketType.event.bookingStartDateTime = "2101-01-01T00:00:00.000Z";
+    futureTicketType.event.bookingEndDateTime = "2102-01-01T00:00:00.000Z";
+    getTicketType.mockResolvedValue({ data: { ticketType: futureTicketType } } as never);
     getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
       { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
       { purposes: [SectionUserGroupPurpose.MODERATOR], userGroup: { id: OTHER_GROUP_ID, membershipStatuses: null } },

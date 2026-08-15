@@ -130,7 +130,7 @@ describe("bookingRules", () => {
       nowMs: Date.parse("2026-01-01T00:00:00.000Z"),
     });
 
-    expect(result).toEqual({ ok: true, moderatorLateBooking: true });
+    expect(result).toEqual({ ok: true, moderatorWindowOverride: true });
   });
 
   it("does not allow an ordinary booker or another section's moderator after closing", () => {
@@ -150,7 +150,7 @@ describe("bookingRules", () => {
     if (!result.ok) expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW);
   });
 
-  it("does not let a moderator book before the published opening time", () => {
+  it("allows a matching section moderator to book before the published opening time", () => {
     const result = evaluateBookingGatekeeping({
       purposeLinks: [
         { purposes: ["ACCESS", "BOOKER", "MODERATOR"], userGroup: group("g1", ["REGULAR"]) },
@@ -162,8 +162,7 @@ describe("bookingRules", () => {
       nowMs: Date.parse("2024-12-31T23:59:59.000Z"),
     });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW);
+    expect(result).toEqual({ ok: true, moderatorWindowOverride: true });
   });
 
   it("evaluateBookingLines accepts member-only then guest", () => {

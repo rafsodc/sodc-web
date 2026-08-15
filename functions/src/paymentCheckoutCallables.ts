@@ -101,10 +101,13 @@ async function ensureTicketCheckoutEligibility(args: {
     ticketType.event.bookingStartDateTime,
     ticketType.event.bookingEndDateTime
   );
-  const moderatorLateBooking =
-    bookingWindowState === "AFTER" &&
+  const moderatorEarlyCheckout =
+    bookingWindowState === "BEFORE" &&
     userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus);
-  if (bookingWindowState !== "OPEN" && !moderatorLateBooking) {
+  if (
+    bookingWindowState === "INVALID" ||
+    (bookingWindowState === "BEFORE" && !moderatorEarlyCheckout)
+  ) {
     throw new HttpsError("failed-precondition", "Ticket sales are not open for this event");
   }
   return { membershipStatus, explicitGroupIds };

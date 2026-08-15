@@ -100,7 +100,7 @@ describe("bookingEligibility", () => {
         nowMs: Date.parse("2026-01-01T00:00:00.000Z"),
       });
 
-      expect(r).toEqual({ ok: true, moderatorLateBooking: true });
+      expect(r).toEqual({ ok: true, moderatorWindowOverride: "AFTER" });
     });
 
     it("keeps an ordinary booker and another section's moderator closed out", () => {
@@ -122,7 +122,7 @@ describe("bookingEligibility", () => {
       }
     });
 
-    it("does not open bookings early for moderators", () => {
+    it("allows a matching section moderator before bookings open", () => {
       const r = evaluateBookingGatePreview({
         purposeLinks: [
           ...baseLinks,
@@ -134,8 +134,7 @@ describe("bookingEligibility", () => {
         nowMs: Date.parse("2024-12-31T23:59:59.000Z"),
       });
 
-      expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.code).toBe("OUTSIDE_BOOKING_WINDOW");
+      expect(r).toEqual({ ok: true, moderatorWindowOverride: "BEFORE" });
     });
 
     it("fails without BOOKER purpose", () => {

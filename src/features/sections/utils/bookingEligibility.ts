@@ -83,7 +83,7 @@ export type BookingGateFailureCode =
   | "OUTSIDE_BOOKING_WINDOW";
 
 export type BookingGateResult =
-  | { ok: true; moderatorLateBooking: boolean }
+  | { ok: true; moderatorWindowOverride: "BEFORE" | "AFTER" | null }
   | { ok: false; code: BookingGateFailureCode; message: string };
 
 /**
@@ -122,10 +122,12 @@ export function evaluateBookingGatePreview(args: {
     };
   }
   const bookingWindowState = getBookingWindowState(bookingStartDateTime, bookingEndDateTime, nowMs);
-  const moderatorLateBooking =
-    bookingWindowState === "AFTER" &&
-    userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus);
-  if (bookingWindowState !== "OPEN" && !moderatorLateBooking) {
+  const moderatorWindowOverride =
+    (bookingWindowState === "BEFORE" || bookingWindowState === "AFTER") &&
+    userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus)
+      ? bookingWindowState
+      : null;
+  if (bookingWindowState !== "OPEN" && !moderatorWindowOverride) {
     return {
       ok: false,
       code: "OUTSIDE_BOOKING_WINDOW",
@@ -135,5 +137,5 @@ export function evaluateBookingGatePreview(args: {
           : "Booking is only open during the published booking window.",
     };
   }
-  return { ok: true, moderatorLateBooking };
+  return { ok: true, moderatorWindowOverride };
 }

@@ -25,7 +25,7 @@ export type BookingRuleErrorCode = (typeof BOOKING_RULE_ERROR_CODES)[keyof typeo
 export type BookingRulesFailure = { ok: false; code: BookingRuleErrorCode; message: string };
 export type BookingRulesSuccess = { ok: true };
 export type BookingRulesResult = BookingRulesFailure | BookingRulesSuccess;
-export type BookingGatekeepingResult = BookingRulesFailure | { ok: true; moderatorLateBooking: boolean };
+export type BookingGatekeepingResult = BookingRulesFailure | { ok: true; moderatorWindowOverride: boolean };
 
 function fail(code: BookingRuleErrorCode, message: string): BookingRulesFailure {
   return { ok: false, code, message };
@@ -324,11 +324,11 @@ export function evaluateBookingGatekeeping(args: {
     args.bookingEndDateTime,
     args.nowMs
   );
-  const moderatorLateBooking =
-    bookingWindowState === "AFTER" &&
+  const moderatorWindowOverride =
+    (bookingWindowState === "BEFORE" || bookingWindowState === "AFTER") &&
     userHasModeratorPurpose(args.purposeLinks, args.explicitGroupIds, args.membershipStatus);
-  if (bookingWindowState !== "OPEN" && !moderatorLateBooking) {
+  if (bookingWindowState !== "OPEN" && !moderatorWindowOverride) {
     return fail(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW, "Booking is only allowed during the published booking window");
   }
-  return { ok: true, moderatorLateBooking };
+  return { ok: true, moderatorWindowOverride };
 }
