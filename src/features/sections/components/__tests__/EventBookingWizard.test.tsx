@@ -209,6 +209,31 @@ describe("EventBookingWizard", () => {
     expect(screen.getByText("Your details")).toBeInTheDocument();
   });
 
+  it("keeps the booking interface closed for an ordinary member after the booking window", () => {
+    renderWizard({
+      eventOverride: {
+        id: "event-1",
+        title: "Annual Dinner",
+        bookingStartDateTime: "2019-01-01T00:00:00Z",
+        bookingEndDateTime: "2020-01-01T00:00:00Z",
+        maxGuestsWithoutModeratorApproval: 1,
+        ticketTypes: [
+          {
+            id: "ticket-member",
+            title: "Member standard",
+            audience: TicketAudience.MEMBER,
+            price: 50,
+            userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Bookings for this event are closed.");
+    expect(screen.queryByText(/as a moderator for this section/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Your details")).not.toBeInTheDocument();
+  });
+
   it("submits member and all guest dietary details atomically and explains over-limit approval", async () => {
     const user = userEvent.setup();
     renderWizard();
