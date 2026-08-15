@@ -250,6 +250,30 @@ describe("GQL schema integrity", () => {
     expect(eventMutations.match(/\$maxGuestsWithoutModeratorApproval: Int!/g)).toHaveLength(2);
   });
 
+  it("threads optional event sponsors and details through the event connector operations", () => {
+    const schema = readSchemaFile();
+    const eventStart = schema.indexOf("type Event @table");
+    const eventEnd = schema.indexOf("\n}", eventStart);
+    const eventBlock = schema.slice(eventStart, eventEnd + 2);
+    expect(eventBlock).toContain("sponsors: String");
+    expect(eventBlock).toContain("details: String");
+
+    const eventMutations = readApiFile("user-group-mutations.gql");
+    expect(eventMutations.match(/\$sponsors: String/g)).toHaveLength(2);
+    expect(eventMutations.match(/\$details: String/g)).toHaveLength(2);
+    expect(eventMutations.match(/sponsors: \$sponsors/g)).toHaveLength(2);
+    expect(eventMutations.match(/details: \$details/g)).toHaveLength(2);
+
+    const memberQueries = readApiFile("queries.gql");
+    expect(memberQueries.match(/^\s+sponsors$/gm)).toHaveLength(2);
+    expect(memberQueries.match(/^\s+details$/gm)).toHaveLength(2);
+
+    const callableQueries = readApiFile("admin-mutations.gql");
+    expect(callableQueries).toMatch(
+      /query GetEventByIdForCallable[\s\S]*?guestOfHonour\s+sponsors\s+details\s+startDateTime/,
+    );
+  });
+
   it("backfills legacy null guest limits before applying the non-null constraint", () => {
     const migration = readMigrationFile(
       "2026-08-11-issue-543-required-guest-approval-limit.sql",

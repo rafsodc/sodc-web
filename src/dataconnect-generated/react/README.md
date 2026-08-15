@@ -2112,6 +2112,8 @@ export interface GetEventByIdForCallableData {
     title: string;
     location?: string | null;
     guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
     startDateTime: TimestampString;
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
@@ -5931,6 +5933,8 @@ export interface GetEventsForSectionData {
       title: string;
       location?: string | null;
       guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
       startDateTime: TimestampString;
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
@@ -6027,6 +6031,8 @@ export interface GetEventByIdData {
     title: string;
     location?: string | null;
     guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
     startDateTime: TimestampString;
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
@@ -16014,6 +16020,8 @@ export interface CreateEventVariables {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: TimestampString;
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
@@ -16072,6 +16080,8 @@ export default function CreateEventComponent() {
     title: ..., 
     location: ..., // optional
     guestOfHonour: ..., // optional
+    sponsors: ..., // optional
+    details: ..., // optional
     startDateTime: ..., 
     endDateTime: ..., 
     bookingStartDateTime: ..., 
@@ -16080,7 +16090,7 @@ export default function CreateEventComponent() {
   };
   mutation.mutate(createEventVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+  mutation.mutate({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -16124,6 +16134,8 @@ export interface UpdateEventVariables {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: TimestampString;
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
@@ -16182,6 +16194,8 @@ export default function UpdateEventComponent() {
     title: ..., 
     location: ..., // optional
     guestOfHonour: ..., // optional
+    sponsors: ..., // optional
+    details: ..., // optional
     startDateTime: ..., 
     endDateTime: ..., 
     bookingStartDateTime: ..., 
@@ -16190,7 +16204,7 @@ export default function UpdateEventComponent() {
   };
   mutation.mutate(updateEventVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+  mutation.mutate({ id: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

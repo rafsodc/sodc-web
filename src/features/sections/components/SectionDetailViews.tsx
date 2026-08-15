@@ -27,6 +27,7 @@ import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetail
 import ContactDetailsDialog from "./ContactDetailsDialog";
 import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
+import EventDetailsContent from "./EventDetailsContent";
 import SectionEventCard from "./SectionEventCard";
 import SectionMemberCard from "./SectionMemberCard";
 import SectionMemberListItem from "./SectionMemberListItem";
@@ -367,6 +368,7 @@ export function SectionEventDetailView({
           {activeTab === "about" || !hasCurrentUser ? (
             <>
               <EventDetailHero event={event} />
+              <EventDetailsContent details={event.details} />
               {hasCurrentUser ? (
                 <Box sx={{ mt: 2 }}>
                   <Button

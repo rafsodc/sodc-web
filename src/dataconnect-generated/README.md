@@ -2600,6 +2600,8 @@ export interface GetEventByIdForCallableData {
     title: string;
     location?: string | null;
     guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
     startDateTime: TimestampString;
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
@@ -7481,6 +7483,8 @@ export interface GetEventsForSectionData {
       title: string;
       location?: string | null;
       guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
       startDateTime: TimestampString;
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
@@ -7604,6 +7608,8 @@ export interface GetEventByIdData {
     title: string;
     location?: string | null;
     guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
     startDateTime: TimestampString;
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
@@ -19577,6 +19583,8 @@ export interface CreateEventVariables {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: TimestampString;
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
@@ -19605,6 +19613,8 @@ const createEventVars: CreateEventVariables = {
   title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
+  sponsors: ..., // optional
+  details: ..., // optional
   startDateTime: ..., 
   endDateTime: ..., 
   bookingStartDateTime: ..., 
@@ -19616,7 +19626,7 @@ const createEventVars: CreateEventVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createEvent(createEventVars);
 // Variables can be defined inline as well.
-const { data } = await createEvent({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+const { data } = await createEvent({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -19643,6 +19653,8 @@ const createEventVars: CreateEventVariables = {
   title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
+  sponsors: ..., // optional
+  details: ..., // optional
   startDateTime: ..., 
   endDateTime: ..., 
   bookingStartDateTime: ..., 
@@ -19653,7 +19665,7 @@ const createEventVars: CreateEventVariables = {
 // Call the `createEventRef()` function to get a reference to the mutation.
 const ref = createEventRef(createEventVars);
 // Variables can be defined inline as well.
-const ref = createEventRef({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+const ref = createEventRef({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -19710,6 +19722,8 @@ export interface UpdateEventVariables {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: TimestampString;
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
@@ -19738,6 +19752,8 @@ const updateEventVars: UpdateEventVariables = {
   title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
+  sponsors: ..., // optional
+  details: ..., // optional
   startDateTime: ..., 
   endDateTime: ..., 
   bookingStartDateTime: ..., 
@@ -19749,7 +19765,7 @@ const updateEventVars: UpdateEventVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateEvent(updateEventVars);
 // Variables can be defined inline as well.
-const { data } = await updateEvent({ id: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+const { data } = await updateEvent({ id: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -19776,6 +19792,8 @@ const updateEventVars: UpdateEventVariables = {
   title: ..., 
   location: ..., // optional
   guestOfHonour: ..., // optional
+  sponsors: ..., // optional
+  details: ..., // optional
   startDateTime: ..., 
   endDateTime: ..., 
   bookingStartDateTime: ..., 
@@ -19786,7 +19804,7 @@ const updateEventVars: UpdateEventVariables = {
 // Call the `updateEventRef()` function to get a reference to the mutation.
 const ref = updateEventRef(updateEventVars);
 // Variables can be defined inline as well.
-const ref = updateEventRef({ id: ..., title: ..., location: ..., guestOfHonour: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+const ref = updateEventRef({ id: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

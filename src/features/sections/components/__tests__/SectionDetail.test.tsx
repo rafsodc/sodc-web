@@ -755,9 +755,12 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 2 })).toBeInTheDocument();
+      expect(screen.getByText('Location')).toBeInTheDocument();
       expect(screen.getByText('Main Hall')).toBeInTheDocument();
-      expect(screen.getByText(/Guest of honour: Jane Doe/)).toBeInTheDocument();
-      expect(screen.getByText(/Standard · £25\.00/)).toBeInTheDocument();
+      expect(screen.getByText('Guest of honour')).toBeInTheDocument();
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+      expect(screen.queryByText(/Standard/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/£25\.00/)).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
@@ -1277,7 +1280,11 @@ describe('SectionDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Old Dinner')).toBeInTheDocument();
-      expect(screen.getByText('Guest of honour: Guest')).toBeInTheDocument();
+      expect(screen.getByText('Date')).toBeInTheDocument();
+      expect(screen.getByText('Time')).toBeInTheDocument();
+      expect(screen.getByText('Location')).toBeInTheDocument();
+      expect(screen.getByText('Hall')).toBeInTheDocument();
+      expect(screen.queryByText(/Guest of honour/)).not.toBeInTheDocument();
     });
   });
 
@@ -1312,7 +1319,7 @@ describe('SectionDetail', () => {
     });
   });
 
-  it('should show ticket type without price on the About tab', async () => {
+  it('does not show ticket types on the About tab', async () => {
     const eventId = 'event-1';
     const mockSectionData = {
       section: {
@@ -1369,8 +1376,8 @@ describe('SectionDetail', () => {
     await waitFor(() => expect(screen.getByText('Annual Dinner')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /annual dinner/i }));
 
-    // About tab is default — EventDetailHero shows with no price on ticket chip
-    await waitFor(() => expect(screen.getByText('Standard')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Booking window')).toBeInTheDocument());
+    expect(screen.queryByText('Standard')).not.toBeInTheDocument();
     expect(screen.queryByText(/£/)).not.toBeInTheDocument();
   });
 

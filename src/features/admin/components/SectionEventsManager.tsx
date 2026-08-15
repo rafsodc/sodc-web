@@ -76,6 +76,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [guestOfHonour, setGuestOfHonour] = useState("");
+  const [sponsors, setSponsors] = useState("");
+  const [details, setDetails] = useState("");
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
   const [bookingStartDateTime, setBookingStartDateTime] = useState("");
@@ -204,6 +206,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setTitle(event.title);
       setLocation(event.location ?? "");
       setGuestOfHonour(event.guestOfHonour ?? "");
+      setSponsors(event.sponsors ?? "");
+      setDetails(event.details ?? "");
       setStartDateTime(toDatetimeLocal(event.startDateTime));
       setEndDateTime(toDatetimeLocal(event.endDateTime));
       setBookingStartDateTime(toDatetimeLocal(event.bookingStartDateTime));
@@ -216,6 +220,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setTitle("");
       setLocation("");
       setGuestOfHonour("");
+      setSponsors("");
+      setDetails("");
       const now = new Date();
       setStartDateTime(toDatetimeLocal(now.toISOString()));
       setEndDateTime(toDatetimeLocal(now.toISOString()));
@@ -250,6 +256,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
             title: title.trim(),
             location: location.trim() || null,
             guestOfHonour: guestOfHonour.trim() || null,
+            sponsors: sponsors.trim() || null,
+            details: details.trim() || null,
             startDateTime: fromDatetimeLocal(startDateTime),
             endDateTime: fromDatetimeLocal(endDateTime),
             bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
@@ -264,6 +272,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
             title: title.trim(),
             location: location.trim() || null,
             guestOfHonour: guestOfHonour.trim() || null,
+            sponsors: sponsors.trim() || null,
+            details: details.trim() || null,
             startDateTime: fromDatetimeLocal(startDateTime),
             endDateTime: fromDatetimeLocal(endDateTime),
             bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
@@ -482,6 +492,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           title: eventDetailData.event.title,
           location: eventDetailData.event.location,
           guestOfHonour: eventDetailData.event.guestOfHonour,
+          sponsors: eventDetailData.event.sponsors,
+          details: eventDetailData.event.details,
           startDateTime: eventDetailData.event.startDateTime,
           endDateTime: eventDetailData.event.endDateTime,
           bookingStartDateTime: eventDetailData.event.bookingStartDateTime,
@@ -553,6 +565,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           title={title}
           location={location}
           guestOfHonour={guestOfHonour}
+          sponsors={sponsors}
+          details={details}
           startDateTime={startDateTime}
           endDateTime={endDateTime}
           bookingStartDateTime={bookingStartDateTime}
@@ -564,6 +578,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onTitleChange={setTitle}
           onLocationChange={setLocation}
           onGuestOfHonourChange={setGuestOfHonour}
+          onSponsorsChange={setSponsors}
+          onDetailsChange={setDetails}
           onStartDateTimeChange={setStartDateTime}
           onEndDateTimeChange={setEndDateTime}
           onBookingStartDateTimeChange={setBookingStartDateTime}
@@ -599,6 +615,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         title={title}
         location={location}
         guestOfHonour={guestOfHonour}
+        sponsors={sponsors}
+        details={details}
         startDateTime={startDateTime}
         endDateTime={endDateTime}
         bookingStartDateTime={bookingStartDateTime}
@@ -610,6 +628,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         onTitleChange={setTitle}
         onLocationChange={setLocation}
         onGuestOfHonourChange={setGuestOfHonour}
+        onSponsorsChange={setSponsors}
+        onDetailsChange={setDetails}
         onStartDateTimeChange={setStartDateTime}
         onEndDateTimeChange={setEndDateTime}
         onBookingStartDateTimeChange={setBookingStartDateTime}

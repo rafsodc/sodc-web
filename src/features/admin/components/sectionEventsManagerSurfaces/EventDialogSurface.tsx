@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   CircularProgress,
   Dialog,
@@ -6,7 +7,9 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
+  Typography,
 } from "@mui/material";
+import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventRow } from "../sectionEventsManagerTypes";
 
 interface EventDialogSurfaceProps {
@@ -15,6 +18,8 @@ interface EventDialogSurfaceProps {
   title: string;
   location: string;
   guestOfHonour: string;
+  sponsors: string;
+  details: string;
   startDateTime: string;
   endDateTime: string;
   bookingStartDateTime: string;
@@ -26,6 +31,8 @@ interface EventDialogSurfaceProps {
   onTitleChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onGuestOfHonourChange: (value: string) => void;
+  onSponsorsChange: (value: string) => void;
+  onDetailsChange: (value: string) => void;
   onStartDateTimeChange: (value: string) => void;
   onEndDateTimeChange: (value: string) => void;
   onBookingStartDateTimeChange: (value: string) => void;
@@ -38,6 +45,8 @@ export function EventDialogSurface({
   title,
   location,
   guestOfHonour,
+  sponsors,
+  details,
   startDateTime,
   endDateTime,
   bookingStartDateTime,
@@ -49,14 +58,17 @@ export function EventDialogSurface({
   onTitleChange,
   onLocationChange,
   onGuestOfHonourChange,
+  onSponsorsChange,
+  onDetailsChange,
   onStartDateTimeChange,
   onEndDateTimeChange,
   onBookingStartDateTimeChange,
   onBookingEndDateTimeChange,
   onMaxGuestsChange,
 }: EventDialogSurfaceProps) {
+  const previewDetails = details.trim();
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{editingEvent ? "Edit event" : "Add event"}</DialogTitle>
       <DialogContent>
         <TextField label="Title" fullWidth value={title} onChange={(event) => onTitleChange(event.target.value)} margin="dense" required />
@@ -68,6 +80,36 @@ export function EventDialogSurface({
           onChange={(event) => onGuestOfHonourChange(event.target.value)}
           margin="dense"
         />
+        <TextField
+          label="Sponsors"
+          fullWidth
+          multiline
+          minRows={2}
+          value={sponsors}
+          onChange={(event) => onSponsorsChange(event.target.value)}
+          margin="dense"
+          helperText="Enter one or more sponsor names. Line breaks are preserved."
+        />
+        <TextField
+          label="Event details"
+          fullWidth
+          multiline
+          minRows={6}
+          value={details}
+          onChange={(event) => onDetailsChange(event.target.value)}
+          margin="dense"
+          helperText="Supports Markdown headings, paragraphs, emphasis, lists, links, quotes, and inline code. Raw HTML is ignored."
+        />
+        <Typography variant="subtitle2" sx={{ mt: 2 }}>
+          Event details preview
+        </Typography>
+        <Box sx={{ mt: 1, mb: 1, p: 2, minHeight: 64, border: 1, borderColor: "divider", borderRadius: 1 }}>
+          {previewDetails ? (
+            <SafeMarkdown>{previewDetails}</SafeMarkdown>
+          ) : (
+            <Typography variant="body2" color="text.secondary">Nothing to preview.</Typography>
+          )}
+        </Box>
         <TextField
           label="Start date/time"
           type="datetime-local"

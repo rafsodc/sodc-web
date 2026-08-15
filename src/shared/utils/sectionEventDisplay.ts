@@ -9,6 +9,47 @@ export interface SectionEventListItem {
   imageUrl?: string | null;
 }
 
+const eventDateFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+const eventTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function isValidDate(value: Date): boolean {
+  return !Number.isNaN(value.getTime());
+}
+
+function isSameCalendarDay(start: Date, end: Date): boolean {
+  return (
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate()
+  );
+}
+
+export function formatSectionEventDate(startDateTime: string, endDateTime: string): string {
+  const start = new Date(startDateTime);
+  const end = new Date(endDateTime);
+  if (!isValidDate(start) || !isValidDate(end)) return "Date unavailable";
+  return isSameCalendarDay(start, end)
+    ? eventDateFormatter.format(start)
+    : `${eventDateFormatter.format(start)} – ${eventDateFormatter.format(end)}`;
+}
+
+export function formatSectionEventTime(startDateTime: string, endDateTime: string): string {
+  const start = new Date(startDateTime);
+  const end = new Date(endDateTime);
+  if (!isValidDate(start) || !isValidDate(end)) return "Time unavailable";
+  return isSameCalendarDay(start, end)
+    ? `${eventTimeFormatter.format(start)} – ${eventTimeFormatter.format(end)}`
+    : `Starts ${eventTimeFormatter.format(start)} · Ends ${eventTimeFormatter.format(end)}`;
+}
+
 /**
  * Upcoming events: endDateTime is still in the future (includes events currently in progress).
  * Matches the welcome dashboard rule in useUpcomingEventsForUser (#232).
