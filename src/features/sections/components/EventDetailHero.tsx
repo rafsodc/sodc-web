@@ -34,6 +34,10 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
+function isValidDate(value: Date): boolean {
+  return !Number.isNaN(value.getTime());
+}
+
 function sameCalendarDay(start: Date, end: Date): boolean {
   return (
     start.getFullYear() === end.getFullYear() &&
@@ -45,6 +49,9 @@ function sameCalendarDay(start: Date, end: Date): boolean {
 function formatEventDate(startDateTime: string, endDateTime: string): string {
   const start = new Date(startDateTime);
   const end = new Date(endDateTime);
+  if (!isValidDate(start) || !isValidDate(end)) {
+    return "Date unavailable";
+  }
   return sameCalendarDay(start, end)
     ? dateFormatter.format(start)
     : `${dateFormatter.format(start)} – ${dateFormatter.format(end)}`;
@@ -53,13 +60,21 @@ function formatEventDate(startDateTime: string, endDateTime: string): string {
 function formatEventTime(startDateTime: string, endDateTime: string): string {
   const start = new Date(startDateTime);
   const end = new Date(endDateTime);
+  if (!isValidDate(start) || !isValidDate(end)) {
+    return "Time unavailable";
+  }
   return sameCalendarDay(start, end)
     ? `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`
     : `Starts ${timeFormatter.format(start)} · Ends ${timeFormatter.format(end)}`;
 }
 
 function formatBookingWindow(startDateTime: string, endDateTime: string): string {
-  return `${shortDateFormatter.format(new Date(startDateTime))} to ${shortDateFormatter.format(new Date(endDateTime))}`;
+  const start = new Date(startDateTime);
+  const end = new Date(endDateTime);
+  if (!isValidDate(start) || !isValidDate(end)) {
+    return "Booking dates unavailable";
+  }
+  return `${shortDateFormatter.format(start)} to ${shortDateFormatter.format(end)}`;
 }
 
 function EventMetaItem({

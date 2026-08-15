@@ -64,6 +64,24 @@ describe("event content", () => {
     expect(screen.queryByText("Sponsored by")).not.toBeInTheDocument();
   });
 
+  it("shows friendly fallbacks when event dates are invalid", () => {
+    render(
+      <EventDetailHero
+        event={{
+          ...(event as object),
+          startDateTime: "invalid-start",
+          endDateTime: "invalid-end",
+          bookingStartDateTime: "invalid-booking-start",
+          bookingEndDateTime: "invalid-booking-end",
+        } as never}
+      />
+    );
+
+    expect(screen.getByText("Date unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Time unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Booking dates unavailable")).toBeInTheDocument();
+  });
+
   it("renders no details surface for empty content", () => {
     const { container } = render(<EventDetailsContent details="   " />);
     expect(container).toBeEmptyDOMElement();
