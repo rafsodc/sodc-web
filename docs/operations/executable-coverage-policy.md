@@ -14,8 +14,15 @@ coverage gate. CLI adapters are protected by focused source-contract tests,
 safe dry runs or build execution, and the manual checks below.
 
 The malware-scanner service has an independent Node test and coverage gate.
-PR CI measures `scanner.js` with minimums of 90% lines, 85% functions and 80%
-branches. `server.js`, the container definition and the definitions-update shell
+PR CI measures `scanner.js` against these minimums:
+
+| Metric | Minimum |
+| --- | ---: |
+| Lines | 90% |
+| Functions | 85% |
+| Branches | 80% |
+
+`server.js`, the container definition and the definitions-update shell
 entry point are tested as executable contracts rather than being included in
 the JavaScript percentage.
 

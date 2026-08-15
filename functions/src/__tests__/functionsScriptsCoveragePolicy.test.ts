@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import vitestConfig from "../../vitest.config";
 
 const functionsDirectory = process.cwd();
 const repoRoot = path.resolve(functionsDirectory, "..");
@@ -14,29 +15,46 @@ function script(name: string): string {
   return fs.readFileSync(path.resolve(scriptsDirectory, name), "utf8");
 }
 
+function inventoryRows(heading: string): Map<string, string[]> {
+  const sectionStart = policy.indexOf(`## ${heading}`);
+  expect(sectionStart, `Missing policy section: ${heading}`).toBeGreaterThanOrEqual(0);
+  const nextSection = policy.indexOf("\n## ", sectionStart + 1);
+  const section = policy.slice(sectionStart, nextSection < 0 ? policy.length : nextSection);
+  const rows = new Map<string, string[]>();
+  for (const line of section.split("\n")) {
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const entryPoint = cells[0]?.match(/^`([^`]+)`$/)?.[1];
+    if (entryPoint) rows.set(entryPoint, cells);
+  }
+  return rows;
+}
+
 describe("Functions executable coverage policy", () => {
   it("inventories every executable Functions script", () => {
-    const executableScripts = fs.readdirSync(scriptsDirectory)
-      .filter((name) => /\.(?:ts|mjs)$/.test(name));
+    const executableScripts = fs.readdirSync(scriptsDirectory, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name);
+    const rows = inventoryRows("Functions script inventory");
 
     expect(executableScripts.length).toBeGreaterThan(0);
     for (const name of executableScripts) {
-      expect(policy, `${name} is missing from the executable coverage inventory`)
-        .toContain(`\`${name}\``);
+      const row = rows.get(name);
+      expect(row, `${name} is missing from the executable coverage inventory`).toBeDefined();
+      expect(row?.[1], `${name} has no automated evidence`).not.toBe("");
+      expect(row?.[2], `${name} has no rationale or manual verification`).not.toBe("");
     }
   });
 
   it("documents the measured Functions source boundary and scanner gate", () => {
-    const vitestConfig = fs.readFileSync(
-      path.resolve(functionsDirectory, "vitest.config.ts"),
-      "utf8",
-    );
     const workflow = fs.readFileSync(
       path.resolve(repoRoot, ".github/workflows/pr-tests.yml"),
       "utf8",
     );
+    const testConfig = vitestConfig.test as {
+      coverage?: { include?: string[] };
+    };
 
-    expect(vitestConfig).toContain("include: ['src/**/*.ts']");
+    expect(testConfig.coverage?.include).toEqual(expect.arrayContaining(["src/**/*.ts"]));
     expect(policy).toMatch(/does\s+not count `functions\/scripts`/);
     expect(workflow).toContain("Malware scanner tests and coverage");
     expect(workflow).toContain("services/section-file-malware-scanner run test:coverage");

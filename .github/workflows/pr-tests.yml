@@ -177,5 +177,8 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install scanner dependencies
+        run: npm ci --prefix services/section-file-malware-scanner
+
       - name: Run scanner tests and coverage gate
         run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix services/section-file-malware-scanner run test:coverage
