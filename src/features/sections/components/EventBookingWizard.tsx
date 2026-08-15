@@ -66,6 +66,14 @@ export default function EventBookingWizard({
 
   return (
     <Box sx={{ mt: 1 }}>
+      {wizard.gate.moderatorWindowOverride ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {wizard.gate.moderatorWindowOverride === "BEFORE"
+            ? "Bookings are not yet open to members."
+            : "Bookings are closed to members."}{" "}
+          As a moderator for this section, you can create or amend your own booking.
+        </Alert>
+      ) : null}
       {wizard.showBookingSummary && wizard.existingTerminalBooking ? (
         <>
           <EventBookingStatusSummary
