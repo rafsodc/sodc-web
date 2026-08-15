@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Alert,
   Box,
@@ -24,6 +24,7 @@ import {
   type AnnouncementRecipient,
 } from "../../../shared/utils/firebaseFunctions";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 interface Props {
   sectionId: string;
@@ -206,28 +207,28 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
   const [sends, setSends] = useState<AnnouncementSend[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const historyRequestIdRef = useRef(0);
+  const historyRequestGuard = useLatestRequestGuard();
 
   useEffect(() => {
-    const requestId = ++historyRequestIdRef.current;
+    const requestToken = historyRequestGuard.start();
     setLoading(true);
     setError(null);
     getAnnouncementSendHistory(sectionId)
       .then((result) => {
-        if (historyRequestIdRef.current === requestId) setSends(result);
+        if (historyRequestGuard.isCurrent(requestToken)) setSends(result);
       })
       .catch((caught: unknown) => {
-        if (historyRequestIdRef.current !== requestId) return;
+        if (!historyRequestGuard.isCurrent(requestToken)) return;
         reportError("admin.announcements.history", caught, { sectionId });
         setError(toAdminUserFacingError(caught, "announcements").message);
       })
       .finally(() => {
-        if (historyRequestIdRef.current === requestId) setLoading(false);
+        if (historyRequestGuard.isCurrent(requestToken)) setLoading(false);
       });
     return () => {
-      if (historyRequestIdRef.current === requestId) historyRequestIdRef.current += 1;
+      if (historyRequestGuard.isCurrent(requestToken)) historyRequestGuard.invalidate();
     };
-  }, [sectionId, refreshTrigger]);
+  }, [sectionId, refreshTrigger, historyRequestGuard]);
 
   return (
     <Box sx={{ mt: 4 }}>

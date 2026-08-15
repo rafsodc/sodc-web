@@ -24,6 +24,7 @@ import { MembershipStatus } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 import { searchUsers } from "../../users/utils/searchUsers";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
@@ -78,7 +79,8 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
-  const userSearchRequestIdRef = useRef(0);
+  const allUsersRequestGuard = useLatestRequestGuard();
+  const userSearchRequestGuard = useLatestRequestGuard();
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   // All users: for merged group membership (explicit + by membership status)
@@ -157,13 +159,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
   useEffect(() => {
     if (!isAdmin) return;
-    let cancelled = false;
+    const requestToken = allUsersRequestGuard.start();
     setLoadingAllUsers(true);
     (async () => {
       try {
         const ref = listUsersRef(dataConnect);
         const result = await executeDataConnectQuery(ref);
-        if (!cancelled && result.data?.users) {
+        if (allUsersRequestGuard.isCurrent(requestToken) && result.data?.users) {
           setAllUsers(
             result.data.users.map((u) => ({
               id: u.id,
@@ -176,18 +178,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         }
       } catch (caught) {
         reportError("admin.user-groups.members", caught);
-        if (!cancelled) {
+        if (allUsersRequestGuard.isCurrent(requestToken)) {
           setAllUsers([]);
           setError(toAdminUserFacingError(caught, "user-groups").message);
         }
       } finally {
-        if (!cancelled) setLoadingAllUsers(false);
+        if (allUsersRequestGuard.isCurrent(requestToken)) setLoadingAllUsers(false);
       }
     })();
     return () => {
-      cancelled = true;
+      if (allUsersRequestGuard.isCurrent(requestToken)) allUsersRequestGuard.invalidate();
     };
-  }, [isAdmin]);
+  }, [isAdmin, allUsersRequestGuard]);
 
   const handleExpand = (group: UserGroupWithDetails) => {
     if (expandedGroupId === group.id) {
@@ -221,7 +223,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   };
 
   const handleSearchUsers = useCallback(async (term: string) => {
-    const requestId = ++userSearchRequestIdRef.current;
+    const requestToken = userSearchRequestGuard.start();
     if (!term.trim() || term.length < 2) {
       setSearchResults([]);
       setSearchingUsers(false);
@@ -262,20 +264,20 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
             return null;
           })
         );
-        if (userSearchRequestIdRef.current !== requestId) return;
+        if (!userSearchRequestGuard.isCurrent(requestToken)) return;
         setSearchResults(usersWithData.filter((u): u is NonNullable<typeof u> => u !== null));
       }
     } catch (caught) {
-      if (userSearchRequestIdRef.current !== requestId) return;
+      if (!userSearchRequestGuard.isCurrent(requestToken)) return;
       reportError("admin.user-groups.search", caught);
       setError(toAdminUserFacingError(caught, "users").message);
       setSearchResults([]);
     } finally {
-      if (userSearchRequestIdRef.current === requestId) {
+      if (userSearchRequestGuard.isCurrent(requestToken)) {
         setSearchingUsers(false);
       }
     }
-  }, []);
+  }, [userSearchRequestGuard]);
 
   const handleAddUserToGroup = async (userId: string) => {
     if (!addingToGroupId) return;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
   Alert,
@@ -50,6 +50,7 @@ import {
   SectionMembersView,
 } from "./SectionDetailViews";
 import { invalidateUserSectionAccess } from "../../../shared/query/invalidation";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -88,40 +89,40 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   // manual refetchSection() from a retry/subscribe handler racing an in-flight one) overwriting
   // state with a stale response. Only the most recently started call may still be pending when
   // its own result arrives.
-  const sectionRequestIdRef = useRef(0);
+  const sectionRequestGuard = useLatestRequestGuard();
   const refetchSection = useCallback(async () => {
     if (!sectionId) return;
-    const requestId = ++sectionRequestIdRef.current;
+    const requestToken = sectionRequestGuard.start();
     setLoadingSection(true);
     setErrorSection(false);
     try {
       const result = await getSectionForUser(sectionId);
-      if (sectionRequestIdRef.current !== requestId) return;
+      if (!sectionRequestGuard.isCurrent(requestToken)) return;
       setSectionData({ section: result.section });
     } catch (error) {
-      if (sectionRequestIdRef.current !== requestId) return;
+      if (!sectionRequestGuard.isCurrent(requestToken)) return;
       reportError("sections.detail", error);
       setSectionData(undefined);
       setErrorSection(true);
     } finally {
-      if (sectionRequestIdRef.current === requestId) {
+      if (sectionRequestGuard.isCurrent(requestToken)) {
         setLoadingSection(false);
       }
     }
-  }, [sectionId]);
+  }, [sectionId, sectionRequestGuard]);
 
   useEffect(() => {
     void refetchSection();
   }, [refetchSection]);
 
-  const membersRequestIdRef = useRef(0);
+  const membersRequestGuard = useLatestRequestGuard();
   const fetchMembers = useCallback(async () => {
-    const requestId = ++membersRequestIdRef.current;
+    const requestToken = membersRequestGuard.start();
     setLoadingMembers(true);
     setErrorMembers(false);
     try {
       const res = await getSectionMembersMerged(sectionId);
-      if (membersRequestIdRef.current !== requestId) return;
+      if (!membersRequestGuard.isCurrent(requestToken)) return;
       const members: SectionMember[] = (res.members || []).map((m) => ({
         userId: m.id,
         firstName: m.firstName,
@@ -134,16 +135,16 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       }));
       setSectionMembers(members);
     } catch (err: unknown) {
-      if (membersRequestIdRef.current !== requestId) return;
+      if (!membersRequestGuard.isCurrent(requestToken)) return;
       reportError("sections.members", err);
       setErrorMembers(true);
       setSectionMembers([]);
     } finally {
-      if (membersRequestIdRef.current === requestId) {
+      if (membersRequestGuard.isCurrent(requestToken)) {
         setLoadingMembers(false);
       }
     }
-  }, [sectionId]);
+  }, [sectionId, membersRequestGuard]);
 
   useEffect(() => {
     if (!sectionId) return;
@@ -166,27 +167,27 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [errorEvents, setErrorEvents] = useState(false);
 
-  const eventsRequestIdRef = useRef(0);
+  const eventsRequestGuard = useLatestRequestGuard();
   const refetchEvents = useCallback(async () => {
     if (!sectionId) return;
-    const requestId = ++eventsRequestIdRef.current;
+    const requestToken = eventsRequestGuard.start();
     setLoadingEvents(true);
     setErrorEvents(false);
     try {
       const result = await getSectionEventsForUser(sectionId);
-      if (eventsRequestIdRef.current !== requestId) return;
+      if (!eventsRequestGuard.isCurrent(requestToken)) return;
       setEventsData({ section: { events: result.events } });
     } catch (error) {
-      if (eventsRequestIdRef.current !== requestId) return;
+      if (!eventsRequestGuard.isCurrent(requestToken)) return;
       reportError("sections.events", error);
       setEventsData(undefined);
       setErrorEvents(true);
     } finally {
-      if (eventsRequestIdRef.current === requestId) {
+      if (eventsRequestGuard.isCurrent(requestToken)) {
         setLoadingEvents(false);
       }
     }
-  }, [sectionId]);
+  }, [sectionId, eventsRequestGuard]);
 
   useEffect(() => {
     void refetchEvents();
@@ -198,36 +199,36 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingEventDetail, setLoadingEventDetail] = useState(false);
   const [errorEventDetail, setErrorEventDetail] = useState(false);
 
-  const eventDetailRequestIdRef = useRef(0);
+  const eventDetailRequestGuard = useLatestRequestGuard();
   const refetchEventDetail = useCallback(async () => {
     if (!selectedEventId) return;
-    const requestId = ++eventDetailRequestIdRef.current;
+    const requestToken = eventDetailRequestGuard.start();
     setLoadingEventDetail(true);
     setErrorEventDetail(false);
     try {
       const result = await getEventForUser(selectedEventId);
-      if (eventDetailRequestIdRef.current !== requestId) return;
+      if (!eventDetailRequestGuard.isCurrent(requestToken)) return;
       setEventDetailData({ event: result.event });
     } catch (error) {
-      if (eventDetailRequestIdRef.current !== requestId) return;
+      if (!eventDetailRequestGuard.isCurrent(requestToken)) return;
       reportError("sections.event-detail", error);
       setEventDetailData(undefined);
       setErrorEventDetail(true);
     } finally {
-      if (eventDetailRequestIdRef.current === requestId) {
+      if (eventDetailRequestGuard.isCurrent(requestToken)) {
         setLoadingEventDetail(false);
       }
     }
-  }, [selectedEventId]);
+  }, [selectedEventId, eventDetailRequestGuard]);
 
   useEffect(() => {
     if (!selectedEventId) {
-      eventDetailRequestIdRef.current += 1;
+      eventDetailRequestGuard.invalidate();
       setEventDetailData(undefined);
       return;
     }
     void refetchEventDetail();
-  }, [selectedEventId, refetchEventDetail]);
+  }, [selectedEventId, refetchEventDetail, eventDetailRequestGuard]);
 
   // Extract user's user group IDs
   const userUserGroupIds = useMemo(() => {

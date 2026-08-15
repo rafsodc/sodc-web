@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Alert,
@@ -29,6 +29,7 @@ import {
 import PageHeader from "../../../shared/components/PageHeader";
 import "../../../shared/components/PageContainer.css";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 interface AuditLogsProps {
   onBack: () => void;
@@ -42,7 +43,7 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   const [allUsers, setAllUsers] = useState<ListUsersData["users"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const dataRequestIdRef = useRef(0);
+  const dataRequestGuard = useLatestRequestGuard();
 
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -55,36 +56,36 @@ export default function AuditLogs({ onBack }: AuditLogsProps) {
   }, []);
 
   const fetchData = useCallback(async () => {
-    const requestId = ++dataRequestIdRef.current;
+    const requestToken = dataRequestGuard.start();
     setLoading(true);
     setError(null);
     try {
       if (tabValue === 0) {
         const ref = listUsersRef(dataConnect);
         const result = await executeDataConnectQuery(ref);
-        if (dataRequestIdRef.current !== requestId) return;
+        if (!dataRequestGuard.isCurrent(requestToken)) return;
         setUsers(result.data?.users || []);
       } else if (tabValue === 1) {
         const ref = listUserGroupsRef(dataConnect);
         const result = await executeDataConnectQuery(ref);
-        if (dataRequestIdRef.current !== requestId) return;
+        if (!dataRequestGuard.isCurrent(requestToken)) return;
         setUserGroups(result.data?.userGroups || []);
       } else if (tabValue === 2) {
         const ref = listSectionsRef(dataConnect);
         const result = await executeDataConnectQuery(ref);
-        if (dataRequestIdRef.current !== requestId) return;
+        if (!dataRequestGuard.isCurrent(requestToken)) return;
         setSections(result.data?.sections || []);
       }
     } catch (caught) {
-      if (dataRequestIdRef.current !== requestId) return;
+      if (!dataRequestGuard.isCurrent(requestToken)) return;
       reportError("admin.audit-logs.load", caught, { tab: tabValue });
       setError(toAdminUserFacingError(caught, "audit-logs").message);
     } finally {
-      if (dataRequestIdRef.current === requestId) {
+      if (dataRequestGuard.isCurrent(requestToken)) {
         setLoading(false);
       }
     }
-  }, [tabValue]);
+  }, [tabValue, dataRequestGuard]);
 
   useEffect(() => {
     void fetchAllUsers();

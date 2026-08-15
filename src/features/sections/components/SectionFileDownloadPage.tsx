@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { requestSectionFileDownload } from "../../../shared/utils/firebaseFunctions";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 export default function SectionFileDownloadPage({
   sectionId,
@@ -12,21 +13,22 @@ export default function SectionFileDownloadPage({
 }) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const downloadRequestGuard = useLatestRequestGuard();
 
   useEffect(() => {
-    let active = true;
+    const requestToken = downloadRequestGuard.start();
     setFailed(false);
     void requestSectionFileDownload(sectionId, fileId)
       .then(({ downloadUrl }) => {
-        if (active) window.location.assign(downloadUrl);
+        if (downloadRequestGuard.isCurrent(requestToken)) window.location.assign(downloadUrl);
       })
       .catch(() => {
-        if (active) setFailed(true);
+        if (downloadRequestGuard.isCurrent(requestToken)) setFailed(true);
       });
     return () => {
-      active = false;
+      if (downloadRequestGuard.isCurrent(requestToken)) downloadRequestGuard.invalidate();
     };
-  }, [sectionId, fileId, attempt]);
+  }, [sectionId, fileId, attempt, downloadRequestGuard]);
 
   return (
     <Box sx={{ maxWidth: 640, mx: "auto", py: 6 }}>
