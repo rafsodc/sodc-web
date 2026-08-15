@@ -331,7 +331,6 @@ Set secrets interactively so values do not appear in command history:
 
 ```sh
 firebase functions:secrets:set STRIPE_SECRET --project prod
-firebase functions:secrets:set STRIPE_WEBHOOK_SECRET --project prod
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET_PAYMENTS --project prod
 firebase functions:secrets:set GOV_NOTIFY_LIVE_API_KEY --project prod
 firebase functions:secrets:set GOV_NOTIFY_TEST_API_KEY --project prod
@@ -342,9 +341,8 @@ firebase functions:secrets:set NOTIFY_CALLBACK_BEARER_TOKEN --project prod
 
 Use independent, cryptographically random values for the unsubscribe and Notify
 callback bearer tokens. `STRIPE_WEBHOOK_SECRET_PAYMENTS` comes from the dedicated
-payments endpoint. Keep `STRIPE_WEBHOOK_SECRET` for the legacy endpoint/fallback
-while that endpoint remains deployed. Redeploy every Function that references a
-secret whenever its value rotates.
+payments endpoint. Redeploy every Function that references a secret whenever its
+value rotates.
 
 Before deploying, review the CLI output showing which environment file was loaded.
 Stop if it names a Dev/Beta file or if `APP_BASE_URL` is not the production origin.
@@ -362,8 +360,7 @@ Use Stripe **live mode**, not test mode:
 5. store that endpoint's signing secret as `STRIPE_WEBHOOK_SECRET_PAYMENTS`.
 
 Never reuse a Beta endpoint secret. Record the Stripe account, mode, endpoint ID,
-owner, event list, and rotation date in the private operations record. Keep the
-legacy webhook only for the documented cutover period and monitor delivery results.
+owner, event list, and rotation date in the private operations record.
 
 ## 9. Configure GOV.UK Notify
 

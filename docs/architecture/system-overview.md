@@ -38,7 +38,7 @@ flowchart LR
    - Frontend calls `createTicketCheckoutSession`.
    - Function creates order + Stripe session, then browser redirects to Stripe.
 4. **Payment fulfillment**
-   - Stripe sends webhook to `stripeWebhook`.
+   - Stripe sends webhook to `stripeWebhookPayments`.
    - Function verifies signature and updates order state.
    - On applied lifecycle transitions, customer transactional email may be sent via GOV.UK Notify (idempotent ledger).
 5. **Transactional email (app-owned)**

@@ -5,7 +5,6 @@ import Stripe from "stripe";
 export type StripeClient = InstanceType<typeof Stripe>;
 
 export const stripeSecret = defineSecret("STRIPE_SECRET");
-export const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 export const stripeWebhookPaymentsSecret = defineSecret("STRIPE_WEBHOOK_SECRET_PAYMENTS");
 
 export const APP_BASE_URL = (() => {

@@ -43,7 +43,7 @@ This document summarizes how access is enforced across Data Connect and Firebase
 | Callable | `grantAdmin` / `revokeAdmin` / `listAdminUsers` | enabled admin |
 | Callable | section-file list/download | enabled user with current section access, or enabled global admin |
 | Callable | section-file upload/manage/delete | enabled moderator of that section, or enabled global admin |
-| Webhook | `stripeWebhook` | Stripe signature-verified request |
+| Webhook | `stripeWebhookPayments` | Stripe signature-verified request |
 
 ## Function guard model
 
@@ -125,6 +125,6 @@ npm run test -- src/__tests__/users-auth/authGuards.test.ts src/__tests__/cross-
 - **Data Connect operation unexpectedly accessible/restricted**
   - Verify `@auth(...)` directive in source `.gql` and regenerate SDKs after changes.
 - **Webhook processing failures**
-  - Confirm `STRIPE_WEBHOOK_SECRET` is configured and signature header is present.
+  - Confirm `STRIPE_WEBHOOK_SECRET_PAYMENTS` is configured and signature header is present.
 - **Security tests fail in CI**
   - Usually indicates changed auth directives/guards; update code or test expectations intentionally in the same PR.

@@ -38,7 +38,6 @@
     "GOV_NOTIFY_TEST_API_KEY",
     "NOTIFY_CALLBACK_BEARER_TOKEN",
     "STRIPE_SECRET",
-    "STRIPE_WEBHOOK_SECRET",
     "STRIPE_WEBHOOK_SECRET_PAYMENTS",
     "UNSUBSCRIBE_SECRET"
   ],
@@ -103,7 +102,6 @@
     "sendSectionAnnouncement",
     "setNotifyTemplateBinding",
     "setNotifyTemplateReplyToOverride",
-    "stripeWebhook",
     "stripeWebhookPayments",
     "submitEventBooking",
     "subscribeToUserGroup",

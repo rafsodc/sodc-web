@@ -9,7 +9,6 @@ import {
   PaymentWebhookEventOutcome,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
-import Stripe from "stripe";
 import { validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import {
@@ -25,7 +24,6 @@ import {
   requireStripe,
   stripeSecret,
   stripeWebhookPaymentsSecret,
-  stripeWebhookSecret,
 } from "./paymentConfig";
 import {
   applyPaymentTransitionToOrders,
@@ -116,27 +114,20 @@ async function appendWebhookLedgerEvent(args: {
   });
 }
 
-function webhookSecretCandidates(endpointName: "stripeWebhookPayments" | "stripeWebhook"): string[] {
-  const payments = stripeWebhookPaymentsSecret.value();
-  const legacy = stripeWebhookSecret.value();
-  const candidates = endpointName === "stripeWebhookPayments" ? [payments, legacy] : [legacy, payments];
-  return candidates.filter((value): value is string => Boolean(value));
-}
-
 async function handleStripeWebhookRequest(args: {
   domain: "payments";
-  endpointName: "stripeWebhookPayments" | "stripeWebhook";
   req: { headers: Record<string, unknown>; rawBody: Buffer };
   res: { status: (code: number) => { send: (body: string) => void } };
 }): Promise<void> {
-  const { req, res, domain, endpointName } = args;
+  const { req, res, domain } = args;
+  const endpointName = "stripeWebhookPayments";
   try {
     const stripeClient = requireStripe(stripeSecret.value());
-    const candidates = webhookSecretCandidates(endpointName);
-    if (candidates.length === 0) {
+    const webhookSecret = stripeWebhookPaymentsSecret.value();
+    if (!webhookSecret) {
       logger.error(`${endpointName} missing webhook secret`, {
         domain,
-        expectedSecret: "STRIPE_WEBHOOK_SECRET_PAYMENTS or STRIPE_WEBHOOK_SECRET",
+        expectedSecret: "STRIPE_WEBHOOK_SECRET_PAYMENTS",
       });
       res.status(500).send("Webhook secret not configured");
       return;
@@ -147,27 +138,7 @@ async function handleStripeWebhookRequest(args: {
       return;
     }
 
-    let event: ReturnType<InstanceType<typeof Stripe>["webhooks"]["constructEvent"]> | null = null;
-    let matchedSecretIndex = -1;
-    let constructEventError: unknown = null;
-    for (let i = 0; i < candidates.length; i += 1) {
-      try {
-        event = stripeClient.webhooks.constructEvent(req.rawBody, signature, candidates[i]);
-        matchedSecretIndex = i;
-        break;
-      } catch (err) {
-        constructEventError = err;
-      }
-    }
-    if (!event) {
-      throw constructEventError ?? new Error("Unable to verify webhook signature");
-    }
-    if (matchedSecretIndex > 0) {
-      logger.warn(`${endpointName} verified with fallback webhook secret`, {
-        domain,
-        fallbackIndex: matchedSecretIndex,
-      });
-    }
+    const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
     const supportedEventType = isSupportedStripeEventType(event.type);
     const routedDomain = classifyStripeWebhookDomain(event.type);
     if (routedDomain !== domain) {
@@ -443,29 +414,11 @@ export const stripeWebhookPayments = onRequest(
     region: FUNCTIONS_REGION,
     secrets: [
       stripeSecret,
-      stripeWebhookSecret,
       stripeWebhookPaymentsSecret,
       ...govNotifySecrets,
     ],
   },
   async (req, res) => {
-    await handleStripeWebhookRequest({ domain: "payments", endpointName: "stripeWebhookPayments", req, res });
-  }
-);
-export const stripeWebhook = onRequest(
-  {
-    region: FUNCTIONS_REGION,
-    secrets: [
-      stripeSecret,
-      stripeWebhookSecret,
-      stripeWebhookPaymentsSecret,
-      ...govNotifySecrets,
-    ],
-  },
-  async (req, res) => {
-    logger.warn("stripeWebhook legacy endpoint invoked", {
-      migrationTarget: "stripeWebhookPayments",
-    });
-    await handleStripeWebhookRequest({ domain: "payments", endpointName: "stripeWebhook", req, res });
+    await handleStripeWebhookRequest({ domain: "payments", req, res });
   }
 );
