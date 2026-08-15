@@ -60,7 +60,7 @@ describe("Functions executable coverage policy", () => {
   it("keeps informational drift checks non-blocking and generated output identifiable", () => {
     const drift = script("check-template-sync.ts");
     expect(drift).toContain("GOV_NOTIFY_LIVE_API_KEY not set");
-    expect(drift).toContain('status: "fetch_error"');
+    expect(drift).toContain("status: \"fetch_error\"");
     expect(drift).toContain("run().catch");
     expect(drift).toContain("Always exit 0");
     expect(drift).toContain("process.exit(0)");
