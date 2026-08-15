@@ -25,6 +25,7 @@ export type BookingRuleErrorCode = (typeof BOOKING_RULE_ERROR_CODES)[keyof typeo
 export type BookingRulesFailure = { ok: false; code: BookingRuleErrorCode; message: string };
 export type BookingRulesSuccess = { ok: true };
 export type BookingRulesResult = BookingRulesFailure | BookingRulesSuccess;
+export type BookingGatekeepingResult = BookingRulesFailure | { ok: true; moderatorLateBooking: boolean };
 
 function fail(code: BookingRuleErrorCode, message: string): BookingRulesFailure {
   return { ok: false, code, message };
@@ -74,15 +75,39 @@ export function userHasBookerPurpose(
   return bookerLinks.some((l) => userMatchesUserGroup(membershipStatus, l.userGroup, explicitGroupIds));
 }
 
+export function userHasModeratorPurpose(
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
+  explicitGroupIds: Set<string>,
+  membershipStatus: string
+): boolean {
+  return purposeLinks.some(
+    (link) =>
+      linkHasPurpose(link, "MODERATOR") &&
+      userMatchesUserGroup(membershipStatus, link.userGroup, explicitGroupIds)
+  );
+}
+
+export type BookingWindowState = "BEFORE" | "OPEN" | "AFTER" | "INVALID";
+
+export function getBookingWindowState(
+  bookingStartDateTime: string,
+  bookingEndDateTime: string,
+  nowMs: number = Date.now()
+): BookingWindowState {
+  const start = Date.parse(bookingStartDateTime);
+  const end = Date.parse(bookingEndDateTime);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return "INVALID";
+  if (nowMs < start) return "BEFORE";
+  if (nowMs > end) return "AFTER";
+  return "OPEN";
+}
+
 export function isWithinBookingWindow(
   bookingStartDateTime: string,
   bookingEndDateTime: string,
   nowMs: number = Date.now()
 ): boolean {
-  const start = Date.parse(bookingStartDateTime);
-  const end = Date.parse(bookingEndDateTime);
-  if (Number.isNaN(start) || Number.isNaN(end)) return false;
-  return nowMs >= start && nowMs <= end;
+  return getBookingWindowState(bookingStartDateTime, bookingEndDateTime, nowMs) === "OPEN";
 }
 
 export interface TicketTypeForRules {
@@ -284,7 +309,7 @@ export function evaluateBookingGatekeeping(args: {
   bookingStartDateTime: string;
   bookingEndDateTime: string;
   nowMs?: number;
-}): BookingRulesResult {
+}): BookingGatekeepingResult {
   if (!userHasSectionAccess(args.purposeLinks, args.explicitGroupIds, args.membershipStatus)) {
     return fail(BOOKING_RULE_ERROR_CODES.NO_SECTION_ACCESS, "You do not have permission to access this section");
   }
@@ -294,8 +319,16 @@ export function evaluateBookingGatekeeping(args: {
   if (!userHasBookerPurpose(args.purposeLinks, args.explicitGroupIds, args.membershipStatus)) {
     return fail(BOOKING_RULE_ERROR_CODES.NOT_AUTHORIZED_BOOKER, "You are not in a group allowed to book for this section");
   }
-  if (!isWithinBookingWindow(args.bookingStartDateTime, args.bookingEndDateTime, args.nowMs)) {
+  const bookingWindowState = getBookingWindowState(
+    args.bookingStartDateTime,
+    args.bookingEndDateTime,
+    args.nowMs
+  );
+  const moderatorLateBooking =
+    bookingWindowState === "AFTER" &&
+    userHasModeratorPurpose(args.purposeLinks, args.explicitGroupIds, args.membershipStatus);
+  if (bookingWindowState !== "OPEN" && !moderatorLateBooking) {
     return fail(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW, "Booking is only allowed during the published booking window");
   }
-  return { ok: true };
+  return { ok: true, moderatorLateBooking };
 }

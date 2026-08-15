@@ -18,7 +18,12 @@ import { createHash } from "node:crypto";
 import { requireEnabled, validateUUID } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
-import { userMatchesUserGroup, userHasBookerPurpose } from "./bookingRules";
+import {
+  getBookingWindowState,
+  userMatchesUserGroup,
+  userHasBookerPurpose,
+  userHasModeratorPurpose,
+} from "./bookingRules";
 import {
   bookingIdsEqual,
   bookingIsFullyPaid,
@@ -56,22 +61,11 @@ export function buildStripeCheckoutReturnUrls(
   };
 }
 
-function ensureBookingWindow(start: string, end: string): void {
-  const now = Date.now();
-  const s = Date.parse(start);
-  const e = Date.parse(end);
-  if (!Number.isFinite(s) || !Number.isFinite(e) || now < s || now > e) {
-    throw new HttpsError("failed-precondition", "Ticket sales are not open for this event");
-  }
-}
-
 async function ensureTicketCheckoutEligibility(args: {
   uid: string;
   ticketType: NonNullable<Awaited<ReturnType<typeof getTicketTypeForCheckout>>["data"]["ticketType"]>;
 }): Promise<{ membershipStatus: string; explicitGroupIds: Set<string> }> {
   const { uid, ticketType } = args;
-  ensureBookingWindow(ticketType.event.bookingStartDateTime, ticketType.event.bookingEndDateTime);
-
   const section = await getSectionByIdForCallable({ id: ticketType.event.section.id as UUIDString });
   const sectionData = section.data?.section;
   if (!sectionData) throw new HttpsError("not-found", "Section not found");
@@ -81,12 +75,13 @@ async function ensureTicketCheckoutEligibility(args: {
   const user = dcUser.data?.user;
   if (!user) throw new HttpsError("failed-precondition", "User profile is required");
   const membershipStatus = user.membershipStatus;
+  const purposeLinks = (sectionData.purposeLinks ?? []).map((l) => ({
+    purposes: l.purposes ?? [],
+    userGroup: { id: validateUUID(l.userGroup.id), membershipStatuses: l.userGroup.membershipStatuses ?? null },
+  }));
   if (
     !userHasBookerPurpose(
-      (sectionData.purposeLinks ?? []).map((l) => ({
-        purposes: l.purposes ?? [],
-        userGroup: { id: validateUUID(l.userGroup.id), membershipStatuses: l.userGroup.membershipStatuses ?? null },
-      })),
+      purposeLinks,
       explicitGroupIds,
       membershipStatus
     )
@@ -101,6 +96,16 @@ async function ensureTicketCheckoutEligibility(args: {
     )
   ) {
     throw new HttpsError("permission-denied", "You are not eligible for this ticket type");
+  }
+  const bookingWindowState = getBookingWindowState(
+    ticketType.event.bookingStartDateTime,
+    ticketType.event.bookingEndDateTime
+  );
+  const moderatorLateBooking =
+    bookingWindowState === "AFTER" &&
+    userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus);
+  if (bookingWindowState !== "OPEN" && !moderatorLateBooking) {
+    throw new HttpsError("failed-precondition", "Ticket sales are not open for this event");
   }
   return { membershipStatus, explicitGroupIds };
 }

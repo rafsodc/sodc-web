@@ -117,6 +117,55 @@ describe("bookingRules", () => {
     expect(isWithinBookingWindow(start, end, Date.now() - 400_000)).toBe(false);
   });
 
+  it("allows a matching section moderator to book after the window closes", () => {
+    const result = evaluateBookingGatekeeping({
+      purposeLinks: [
+        { purposes: ["ACCESS", "BOOKER"], userGroup: group("g1", ["REGULAR"]) },
+        { purpose: "MODERATOR", userGroup: group("moderators") },
+      ],
+      membershipStatus: "REGULAR",
+      explicitGroupIds: new Set(["g1", "moderators"]),
+      bookingStartDateTime: "2025-01-01T00:00:00.000Z",
+      bookingEndDateTime: "2025-12-31T23:59:59.000Z",
+      nowMs: Date.parse("2026-01-01T00:00:00.000Z"),
+    });
+
+    expect(result).toEqual({ ok: true, moderatorLateBooking: true });
+  });
+
+  it("does not allow an ordinary booker or another section's moderator after closing", () => {
+    const result = evaluateBookingGatekeeping({
+      purposeLinks: [
+        { purposes: ["ACCESS", "BOOKER"], userGroup: group("g1", ["REGULAR"]) },
+        { purpose: "MODERATOR", userGroup: group("other-section-moderators") },
+      ],
+      membershipStatus: "REGULAR",
+      explicitGroupIds: new Set(["g1", "my-other-moderator-group"]),
+      bookingStartDateTime: "2025-01-01T00:00:00.000Z",
+      bookingEndDateTime: "2025-12-31T23:59:59.000Z",
+      nowMs: Date.parse("2026-01-01T00:00:00.000Z"),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW);
+  });
+
+  it("does not let a moderator book before the published opening time", () => {
+    const result = evaluateBookingGatekeeping({
+      purposeLinks: [
+        { purposes: ["ACCESS", "BOOKER", "MODERATOR"], userGroup: group("g1", ["REGULAR"]) },
+      ],
+      membershipStatus: "REGULAR",
+      explicitGroupIds: new Set(["g1"]),
+      bookingStartDateTime: "2025-01-01T00:00:00.000Z",
+      bookingEndDateTime: "2025-12-31T23:59:59.000Z",
+      nowMs: Date.parse("2024-12-31T23:59:59.000Z"),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW);
+  });
+
   it("evaluateBookingLines accepts member-only then guest", () => {
     const lines: LineInputForRules[] = [
       { ticketTypeId: "tt-m", sortOrder: 0 },

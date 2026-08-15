@@ -107,6 +107,8 @@ function renderWizard(props: {
   bookingTicketOrders?: unknown[];
   bookingsError?: boolean;
   wizardOpen?: boolean;
+  sectionOverride?: unknown;
+  eventOverride?: unknown;
 } = {}) {
   vi.mocked(reactGenerated.useGetMyBookingsForEvent).mockReturnValue({
     data: {
@@ -129,7 +131,11 @@ function renderWizard(props: {
   } as never);
   return render(
     <MemoryRouter>
-      <EventBookingWizard section={section} event={event} wizardOpen={props.wizardOpen ?? true} />
+      <EventBookingWizard
+        section={(props.sectionOverride ?? section) as never}
+        event={(props.eventOverride ?? event) as never}
+        wizardOpen={props.wizardOpen ?? true}
+      />
     </MemoryRouter>
   );
 }
@@ -167,6 +173,40 @@ describe("EventBookingWizard", () => {
     expect(screen.getByText("Guests")).toBeInTheDocument();
     expect(screen.getByText("Review and submit")).toBeInTheDocument();
     expect(screen.queryByText("Pay")).not.toBeInTheDocument();
+  });
+
+  it("explains the late-booking exception to an authorised section moderator", () => {
+    renderWizard({
+      sectionOverride: {
+        id: "section-1",
+        name: "Events",
+        type: "EVENTS",
+        purposeLinks: [
+          { purposes: ["ACCESS", "BOOKER"], userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] } },
+          { purposes: ["MODERATOR"], userGroup: { id: "group-1", membershipStatuses: null } },
+        ],
+      },
+      eventOverride: {
+        id: "event-1",
+        title: "Annual Dinner",
+        bookingStartDateTime: "2019-01-01T00:00:00Z",
+        bookingEndDateTime: "2020-01-01T00:00:00Z",
+        maxGuestsWithoutModeratorApproval: 1,
+        ticketTypes: [
+          {
+            id: "ticket-member",
+            title: "Member standard",
+            audience: TicketAudience.MEMBER,
+            price: 50,
+            userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText(/bookings are closed to members/i)).toBeInTheDocument();
+    expect(screen.getByText(/as a moderator for this section/i)).toBeInTheDocument();
+    expect(screen.getByText("Your details")).toBeInTheDocument();
   });
 
   it("submits member and all guest dietary details atomically and explains over-limit approval", async () => {

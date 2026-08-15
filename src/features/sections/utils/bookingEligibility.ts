@@ -41,15 +41,39 @@ export function userHasBookerPurpose(
   return bookerLinks.some((l) => userMatchesUserGroup(membershipStatus, l.userGroup, explicitGroupIds));
 }
 
+export function userHasModeratorPurpose(
+  purposeLinks: { purpose?: string; purposes?: string[] | null; userGroup: { id: string; membershipStatuses?: string[] | null } }[],
+  explicitGroupIds: Set<string>,
+  membershipStatus: string
+): boolean {
+  return purposeLinks.some(
+    (link) =>
+      linkHasPurpose(link, "MODERATOR") &&
+      userMatchesUserGroup(membershipStatus, link.userGroup, explicitGroupIds)
+  );
+}
+
+export type BookingWindowState = "BEFORE" | "OPEN" | "AFTER" | "INVALID";
+
+export function getBookingWindowState(
+  bookingStartDateTime: string,
+  bookingEndDateTime: string,
+  nowMs: number = Date.now()
+): BookingWindowState {
+  const start = Date.parse(bookingStartDateTime);
+  const end = Date.parse(bookingEndDateTime);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return "INVALID";
+  if (nowMs < start) return "BEFORE";
+  if (nowMs > end) return "AFTER";
+  return "OPEN";
+}
+
 export function isWithinBookingWindow(
   bookingStartDateTime: string,
   bookingEndDateTime: string,
   nowMs: number = Date.now()
 ): boolean {
-  const start = Date.parse(bookingStartDateTime);
-  const end = Date.parse(bookingEndDateTime);
-  if (Number.isNaN(start) || Number.isNaN(end)) return false;
-  return nowMs >= start && nowMs <= end;
+  return getBookingWindowState(bookingStartDateTime, bookingEndDateTime, nowMs) === "OPEN";
 }
 
 export type BookingGateFailureCode =
@@ -59,7 +83,7 @@ export type BookingGateFailureCode =
   | "OUTSIDE_BOOKING_WINDOW";
 
 export type BookingGateResult =
-  | { ok: true }
+  | { ok: true; moderatorLateBooking: boolean }
   | { ok: false; code: BookingGateFailureCode; message: string };
 
 /**
@@ -97,12 +121,19 @@ export function evaluateBookingGatePreview(args: {
       message: "You are not in a group allowed to book for this section.",
     };
   }
-  if (!isWithinBookingWindow(bookingStartDateTime, bookingEndDateTime, nowMs)) {
+  const bookingWindowState = getBookingWindowState(bookingStartDateTime, bookingEndDateTime, nowMs);
+  const moderatorLateBooking =
+    bookingWindowState === "AFTER" &&
+    userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus);
+  if (bookingWindowState !== "OPEN" && !moderatorLateBooking) {
     return {
       ok: false,
       code: "OUTSIDE_BOOKING_WINDOW",
-      message: "Booking is only open during the published booking window.",
+      message:
+        bookingWindowState === "AFTER"
+          ? "Bookings for this event are closed."
+          : "Booking is only open during the published booking window.",
     };
   }
-  return { ok: true };
+  return { ok: true, moderatorLateBooking };
 }

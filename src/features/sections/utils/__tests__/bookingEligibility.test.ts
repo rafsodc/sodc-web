@@ -88,6 +88,56 @@ describe("bookingEligibility", () => {
       if (!r.ok) expect(r.code).toBe("OUTSIDE_BOOKING_WINDOW");
     });
 
+    it("allows a matching section moderator after bookings close", () => {
+      const r = evaluateBookingGatePreview({
+        purposeLinks: [
+          ...baseLinks,
+          { purpose: "MODERATOR", userGroup: { id: "moderators" } },
+        ],
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(["moderators"]),
+        ...window,
+        nowMs: Date.parse("2026-01-01T00:00:00.000Z"),
+      });
+
+      expect(r).toEqual({ ok: true, moderatorLateBooking: true });
+    });
+
+    it("keeps an ordinary booker and another section's moderator closed out", () => {
+      const r = evaluateBookingGatePreview({
+        purposeLinks: [
+          ...baseLinks,
+          { purpose: "MODERATOR", userGroup: { id: "other-section-moderators" } },
+        ],
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(["my-other-moderator-group"]),
+        ...window,
+        nowMs: Date.parse("2026-01-01T00:00:00.000Z"),
+      });
+
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.code).toBe("OUTSIDE_BOOKING_WINDOW");
+        expect(r.message).toBe("Bookings for this event are closed.");
+      }
+    });
+
+    it("does not open bookings early for moderators", () => {
+      const r = evaluateBookingGatePreview({
+        purposeLinks: [
+          ...baseLinks,
+          { purpose: "MODERATOR", userGroup: { id: "moderators" } },
+        ],
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(["moderators"]),
+        ...window,
+        nowMs: Date.parse("2024-12-31T23:59:59.000Z"),
+      });
+
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.code).toBe("OUTSIDE_BOOKING_WINDOW");
+    });
+
     it("fails without BOOKER purpose", () => {
       const r = evaluateBookingGatePreview({
         purposeLinks: [{ purpose: "ACCESS", userGroup: { id: "ag", membershipStatuses: ["REGULAR"] } }],

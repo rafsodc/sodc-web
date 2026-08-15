@@ -43,6 +43,7 @@ const USER_ID = "user-1";
 const EVENT_ID = "11111111-1111-4111-8111-111111111111";
 const SECTION_ID = "22222222-2222-4222-8222-222222222222";
 const GROUP_ID = "33333333-3333-4333-8333-333333333333";
+const OTHER_GROUP_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TICKET_TYPE_ID = "44444444-4444-4444-8444-444444444444";
 const ORDER_ID = "55555555-5555-4555-8555-555555555555";
 const STALE_ORDER_ID = "66666666-6666-4666-8666-666666666666";
@@ -173,6 +174,39 @@ describe("payment checkout callables", () => {
       { idempotencyKey: bookingCheckoutIdempotencyKey(BOOKING_ID, [ORDER_ID]) }
     );
     expect(result).toEqual({ url: "https://checkout.stripe.test/session", orderIds: [ORDER_ID], confirmed: false });
+  });
+
+  it("allows a matching section moderator to pay for a booking after closing", async () => {
+    const closedTicketType = ticketType();
+    closedTicketType.event.bookingEndDateTime = "2021-01-01T00:00:00.000Z";
+    getTicketType.mockResolvedValue({ data: { ticketType: closedTicketType } } as never);
+    getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+      { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      { purposes: [SectionUserGroupPurpose.MODERATOR], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+    ] } } } as never);
+    getBookings.mockResolvedValue({ data: { user: { bookings: [booking(BookingApprovalStatus.NOT_REQUIRED)] } } } as never);
+    const stripe = stripeClient();
+    mocks.requireStripe.mockReturnValue(stripe);
+
+    await expect(eventHandler(enabledRequest({ eventId: EVENT_ID }))).resolves.toMatchObject({
+      url: "https://checkout.stripe.test/session",
+    });
+  });
+
+  it("rejects late checkout when the moderator group belongs to another section", async () => {
+    const closedTicketType = ticketType();
+    closedTicketType.event.bookingEndDateTime = "2021-01-01T00:00:00.000Z";
+    getTicketType.mockResolvedValue({ data: { ticketType: closedTicketType } } as never);
+    getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+      { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      { purposes: [SectionUserGroupPurpose.MODERATOR], userGroup: { id: OTHER_GROUP_ID, membershipStatuses: null } },
+    ] } } } as never);
+    getBookings.mockResolvedValue({ data: { user: { bookings: [booking(BookingApprovalStatus.NOT_REQUIRED)] } } } as never);
+
+    await expect(eventHandler(enabledRequest({ eventId: EVENT_ID }))).rejects.toMatchObject({
+      code: "failed-precondition",
+    });
+    expect(mocks.requireStripe).not.toHaveBeenCalled();
   });
 
   it("reuses only an exactly allocated pending order and fails stale pending orders", async () => {
