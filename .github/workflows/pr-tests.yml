@@ -163,7 +163,13 @@ jobs:
         run: npm ci --prefix functions
 
       - name: Run functions security suites
-        run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts gqlSchemaIntegrity --run
+        run: >-
+          node .github/scripts/fail-on-warning-output.mjs -- npm --prefix functions run test --
+          src/__tests__/users-auth/authGuards.test.ts
+          src/__tests__/cross-cutting/contracts/dataconnectAuthContracts.test.ts
+          src/__tests__/cross-cutting/contracts/functionEntryGuardContracts.test.ts
+          src/__tests__/cross-cutting/contracts/gqlSchemaIntegrity.test.ts
+          --run
 
   malware-scanner-tests:
     name: Malware scanner tests and coverage
