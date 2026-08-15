@@ -66,6 +66,23 @@ describe("Functions executable coverage policy", () => {
     expect(workflow).toContain("services/section-file-malware-scanner run test:coverage");
   });
 
+  it("keeps documented Functions test evidence paths valid", () => {
+    const testReferences = [...policy.matchAll(/`([^`]+\.test\.ts)`/g)]
+      .map((match) => match[1]);
+
+    expect(testReferences.length).toBeGreaterThan(0);
+    for (const reference of testReferences) {
+      expect(
+        reference.startsWith("functions/src/__tests__/"),
+        `${reference} must use its full repository path`,
+      ).toBe(true);
+      expect(
+        fs.existsSync(path.resolve(repoRoot, reference)),
+        `${reference} does not resolve to a test file`,
+      ).toBe(true);
+    }
+  });
+
   it("locks in destructive CLI safety and protected artifact contracts", () => {
     const reset = script("cli-dev-reset.ts");
     expect(reset).toContain("getProductionProjectIds");
