@@ -178,9 +178,11 @@ describe("SectionEventsManager", () => {
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
 
     await user.click(screen.getByRole("button", { name: /add event/i }));
-    await user.type(screen.getByLabelText(/title/i), "Sponsored dinner");
-    await user.type(screen.getByLabelText(/^sponsors$/i), "Example Ltd");
-    await user.type(screen.getByLabelText(/^event details$/i), "# Welcome\n\nPlease read **carefully**.");
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Sponsored dinner" } });
+    fireEvent.change(screen.getByLabelText(/^sponsors$/i), { target: { value: "Example Ltd" } });
+    fireEvent.change(screen.getByLabelText(/^event details$/i), {
+      target: { value: "# Welcome\n\nPlease read **carefully**." },
+    });
 
     expect(screen.getByRole("heading", { name: "Welcome", level: 3 })).toBeInTheDocument();
     expect(screen.getByText("carefully").tagName).toBe("STRONG");
