@@ -6,10 +6,7 @@ import {
 } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
 import * as logger from "firebase-functions/logger";
-import {
-  stripeWebhookPaymentsSecret,
-  stripeWebhookSecret,
-} from "../../paymentConfig";
+import { stripeWebhookPaymentsSecret } from "../../paymentConfig";
 
 const serviceMocks = vi.hoisted(() => ({
   applyTransitions: vi.fn(),
@@ -39,11 +36,10 @@ vi.mock("../../paymentOpsInternalAlerts", async (importOriginal) => ({
   notifyPaymentOpsDisputeSideState: opsMocks.notifyDispute,
 }));
 
-import { stripeWebhook, stripeWebhookPayments } from "../../paymentWebhook";
+import { stripeWebhookPayments } from "../../paymentWebhook";
 
 const ORDER_ID = "11111111-1111-4111-8111-111111111111";
 const WEBHOOK_SECRET = "whsec_payments_test";
-const LEGACY_SECRET = "whsec_legacy_test";
 
 const getWebhookEvent = vi.spyOn(admin, "getPaymentWebhookEventByStripeEventId");
 const createWebhookEvent = vi.spyOn(admin, "createPaymentWebhookEvent");
@@ -57,7 +53,6 @@ type Handler = (
 ) => Promise<void>;
 
 const handler = stripeWebhookPayments as unknown as Handler;
-const legacyHandler = stripeWebhook as unknown as Handler;
 
 function stripeEvent(args: {
   id?: string;
@@ -100,7 +95,6 @@ describe("stripe payment webhook orchestration", () => {
     vi.clearAllMocks();
     vi.stubEnv("STRIPE_SECRET", "sk_test_webhook");
     vi.stubEnv("STRIPE_WEBHOOK_SECRET_PAYMENTS", WEBHOOK_SECRET);
-    vi.stubEnv("STRIPE_WEBHOOK_SECRET", LEGACY_SECRET);
     getWebhookEvent.mockResolvedValue({
       data: { paymentWebhookEvents: [] },
     } as never);
@@ -143,12 +137,9 @@ describe("stripe payment webhook orchestration", () => {
     expect(getWebhookEvent).not.toHaveBeenCalled();
   });
 
-  it("fails closed when neither webhook secret is configured", async () => {
+  it("fails closed when the payments webhook secret is not configured", async () => {
     const paymentsSecretValue = vi
       .spyOn(stripeWebhookPaymentsSecret, "value")
-      .mockReturnValue("");
-    const legacySecretValue = vi
-      .spyOn(stripeWebhookSecret, "value")
       .mockReturnValue("");
     const response = responseHarness();
 
@@ -159,7 +150,6 @@ describe("stripe payment webhook orchestration", () => {
       );
     } finally {
       paymentsSecretValue.mockRestore();
-      legacySecretValue.mockRestore();
     }
 
     expect(response.send).toHaveBeenCalledWith(500, "Webhook secret not configured");
@@ -193,36 +183,6 @@ describe("stripe payment webhook orchestration", () => {
     expect(response.send).toHaveBeenCalledWith(200, "Ignored out-of-domain event");
     expect(getWebhookEvent).not.toHaveBeenCalled();
     expect(createWebhookEvent).not.toHaveBeenCalled();
-  });
-
-  it("uses the legacy secret only as a logged fallback", async () => {
-    const response = responseHarness();
-
-    await handler(
-      signedRequest(stripeEvent({ type: "customer.updated" }), LEGACY_SECRET),
-      response.res
-    );
-
-    expect(response.send).toHaveBeenCalledWith(200, "Ignored out-of-domain event");
-    expect(logger.warn).toHaveBeenCalledWith(
-      "stripeWebhookPayments verified with fallback webhook secret",
-      { domain: "payments", fallbackIndex: 1 }
-    );
-  });
-
-  it("keeps the legacy endpoint routed through signature verification", async () => {
-    const response = responseHarness();
-
-    await legacyHandler(
-      signedRequest(stripeEvent({ type: "customer.updated" }), LEGACY_SECRET),
-      response.res
-    );
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      "stripeWebhook legacy endpoint invoked",
-      { migrationTarget: "stripeWebhookPayments" }
-    );
-    expect(response.send).toHaveBeenCalledWith(200, "Ignored out-of-domain event");
   });
 
   it("reconciles a duplicate completed checkout without appending a second ledger row", async () => {

@@ -61,12 +61,11 @@ Functions maintain an explicit Stripe event allowlist in code (`SUPPORTED_STRIPE
 
 ## Endpoint Topology
 
-Stripe webhooks are split by domain starting with a dedicated payments endpoint:
+Stripe payment lifecycle events use one dedicated endpoint:
 
-- `stripeWebhookPayments` (preferred): handles payment lifecycle allowlisted events.
-- `stripeWebhook` (legacy compatibility): still accepts payment lifecycle events during cutover.
+- `stripeWebhookPayments`: handles payment lifecycle allowlisted events.
 
-See `docs/operations/stripe-webhook-endpoints.md` for endpoint URLs, Stripe dashboard setup, secret mapping, local replay/testing, and migration steps.
+See `docs/operations/stripe-webhook-endpoints.md` for endpoint URLs, Stripe dashboard setup, secret mapping, and local replay/testing.
 
 ## Refund/Dispute Persistence Model
 

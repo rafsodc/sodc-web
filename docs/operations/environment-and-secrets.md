@@ -28,9 +28,8 @@ Defined via `.env*` files and read from `import.meta.env`:
 
 | Name | Type | Used by | Required |
 |---|---|---|---|
-| `STRIPE_SECRET` | Firebase secret | `createTicketCheckoutSession`, `stripeWebhook` | yes for payments |
-| `STRIPE_WEBHOOK_SECRET` | Firebase secret | `stripeWebhook` | yes for webhook processing |
-| `STRIPE_WEBHOOK_SECRET_PAYMENTS` | Firebase secret | `stripeWebhookPayments` (with legacy fallback during migration) | yes for the dedicated payments webhook |
+| `STRIPE_SECRET` | Firebase secret | `createTicketCheckoutSession`, `stripeWebhookPayments` | yes for payments |
+| `STRIPE_WEBHOOK_SECRET_PAYMENTS` | Firebase secret | `stripeWebhookPayments` | yes for webhook processing |
 | `GOV_NOTIFY_LIVE_API_KEY` | Firebase secret | GOV.UK Notify unrestricted live key | required when site/request ceiling can resolve to `LIVE` |
 | `GOV_NOTIFY_TEST_API_KEY` | Firebase secret | GOV.UK Notify test key; accepts fan-out without delivery | required when mode can resolve to `SIMULATION` |
 | `GOV_NOTIFY_TEAM_API_KEY` | Firebase secret | GOV.UK Notify team-and-guest-list key | required when mode can resolve to `TEAM_TEST` |

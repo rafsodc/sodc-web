@@ -11,4 +11,4 @@ export {
 export { getMyTicketOrderStripeArtifactsBatch } from "./paymentStripeArtifacts";
 export { reconcileMyCheckoutSessionOrders } from "./paymentReconciliationCallable";
 export { shouldSendReconciliationExceptionOpenedAlert } from "./paymentReconciliationService";
-export { stripeWebhook, stripeWebhookPayments } from "./paymentWebhook";
+export { stripeWebhookPayments } from "./paymentWebhook";

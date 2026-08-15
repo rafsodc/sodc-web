@@ -1,11 +1,10 @@
 # Stripe Webhook Endpoints
 
-This runbook defines how Stripe webhook endpoints are configured for this project, including URL patterns, secret mapping, and migration from the legacy consolidated endpoint.
+This runbook defines how the Stripe payments webhook endpoint is configured for this project, including URL patterns, secret mapping, deployment, and replay.
 
 ## Endpoints
 
-- Preferred payments endpoint: `stripeWebhookPayments`
-- Legacy compatibility endpoint: `stripeWebhook`
+- Payments endpoint: `stripeWebhookPayments`
 
 ## URL Patterns
 
@@ -13,12 +12,8 @@ Use your Firebase project id in place of `<project-id>`.
 
 - Production payments endpoint:
   - `https://europe-west2-<project-id>.cloudfunctions.net/stripeWebhookPayments`
-- Production legacy endpoint:
-  - `https://europe-west2-<project-id>.cloudfunctions.net/stripeWebhook`
 - Local emulator payments endpoint:
   - `http://127.0.0.1:5001/<project-id>/europe-west2/stripeWebhookPayments`
-- Local emulator legacy endpoint:
-  - `http://127.0.0.1:5001/<project-id>/europe-west2/stripeWebhook`
 
 ## Stripe Dashboard Setup
 
@@ -36,21 +31,31 @@ Use your Firebase project id in place of `<project-id>`.
    - `charge.dispute.closed`
 5. Save, then reveal the signing secret for that endpoint.
 6. Store the secret for Functions:
-   - Primary: `STRIPE_WEBHOOK_SECRET_PAYMENTS`
-   - Fallback during migration: `STRIPE_WEBHOOK_SECRET`
+   - `STRIPE_WEBHOOK_SECRET_PAYMENTS`
 
 ## Secret and Endpoint Mapping
 
 - `STRIPE_WEBHOOK_SECRET_PAYMENTS`: signing secret for `stripeWebhookPayments`.
-- `STRIPE_WEBHOOK_SECRET`: legacy endpoint secret, also used as fallback if the payments-specific secret is not yet configured.
 
-## Cutover Plan
+## Retiring the Legacy Endpoint
 
-1. Deploy code with both `stripeWebhookPayments` and `stripeWebhook`.
-2. Configure Stripe to deliver payment events to `stripeWebhookPayments`.
-3. Monitor logs and payment state transitions for stable processing.
-4. Keep legacy endpoint available during transition to avoid missed events.
-5. After verification, remove payment event subscriptions from legacy endpoint.
+Before removing an existing `stripeWebhook` deployment, confirm in every Stripe
+environment that no webhook endpoint targets its URL. Deploy the current Functions
+revision, then remove the legacy function if the deploy did not prompt for deletion:
+
+```bash
+firebase functions:delete stripeWebhook --region europe-west2 --project <project-alias>
+```
+
+After all deployed Functions have stopped referencing `STRIPE_WEBHOOK_SECRET`, prune
+unused secret versions:
+
+```bash
+firebase functions:secrets:prune --project <project-alias>
+```
+
+Verify a representative payment event reaches `stripeWebhookPayments` before
+considering the retirement complete.
 
 ## Local Testing and Replay
 
