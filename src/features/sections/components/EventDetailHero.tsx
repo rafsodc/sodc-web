@@ -38,6 +38,11 @@ export default function EventDetailHero({ event }: EventDetailHeroProps) {
             Guest of honour: {event.guestOfHonour}
           </Typography>
         ) : null}
+        {event.sponsors?.trim() ? (
+          <Typography variant="body2" fontWeight={500} sx={{ whiteSpace: "pre-line" }}>
+            Sponsored by: {event.sponsors.trim()}
+          </Typography>
+        ) : null}
         <Typography variant="body2" color="text.secondary">
           {formatBookingWindow(event.bookingStartDateTime, event.bookingEndDateTime)}
         </Typography>

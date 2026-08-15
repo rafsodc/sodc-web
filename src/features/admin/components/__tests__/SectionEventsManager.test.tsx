@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
 import * as reactGenerated from "@dataconnect/generated/react";
+import * as generated from "@dataconnect/generated";
+import * as firebaseDataConnect from "firebase/data-connect";
 import userEvent from "@testing-library/user-event";
 import {
   dataConnectQueryResult,
@@ -68,6 +70,7 @@ vi.mock("@dataconnect/generated", async () => {
   const actual = await vi.importActual("@dataconnect/generated");
   return {
     ...actual,
+    createEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
   };
 });
@@ -170,6 +173,32 @@ describe("SectionEventsManager", () => {
     });
   });
 
+  it("creates an event with sponsors and Markdown details and previews the details", async () => {
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+
+    await user.click(screen.getByRole("button", { name: /add event/i }));
+    await user.type(screen.getByLabelText(/title/i), "Sponsored dinner");
+    await user.type(screen.getByLabelText(/^sponsors$/i), "Example Ltd");
+    await user.type(screen.getByLabelText(/^event details$/i), "# Welcome\n\nPlease read **carefully**.");
+
+    expect(screen.getByRole("heading", { name: "Welcome", level: 3 })).toBeInTheDocument();
+    expect(screen.getByText("carefully").tagName).toBe("STRONG");
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(generated.createEventRef).toHaveBeenCalled());
+    expect(generated.createEventRef).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        title: "Sponsored dinner",
+        sponsors: "Example Ltd",
+        details: "# Welcome\n\nPlease read **carefully**.",
+      })
+    );
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalled();
+  });
+
   it("renders a complete pending booking and approves its exact revision", async () => {
     const user = userEvent.setup();
     mockGetEventsForSection({
@@ -241,6 +270,8 @@ describe("SectionEventsManager", () => {
               bookingEndDateTime: "2025-02-28T23:59:59Z",
               location: "Main Hall",
               guestOfHonour: "Jane Doe",
+              sponsors: "Example Ltd",
+              details: "## Evening programme\n\nDinner and dancing.",
               maxGuestsWithoutModeratorApproval: 2,
             },
           ],
@@ -260,6 +291,8 @@ describe("SectionEventsManager", () => {
           bookingEndDateTime: "2025-02-28T23:59:59Z",
           location: "Main Hall",
           guestOfHonour: "Jane Doe",
+          sponsors: "Example Ltd",
+          details: "## Evening programme\n\nDinner and dancing.",
           maxGuestsWithoutModeratorApproval: 2,
           ticketTypes: [],
         },
@@ -276,7 +309,43 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("dialog", { name: /edit event/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/title/i)).toHaveValue("Annual Dinner");
     expect(screen.getByLabelText(/location/i)).toHaveValue("Main Hall");
+    expect(screen.getByLabelText(/^sponsors$/i)).toHaveValue("Example Ltd");
+    expect(screen.getByLabelText(/^event details$/i)).toHaveValue("## Evening programme\n\nDinner and dancing.");
+    expect(screen.getByRole("heading", { name: "Evening programme", level: 4 })).toBeInTheDocument();
     expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
+  });
+
+  it("persists cleared optional event content as null", async () => {
+    const user = userEvent.setup();
+    const event = {
+      id: "ev-1",
+      title: "Annual Dinner",
+      startDateTime: "2025-03-01T18:00:00Z",
+      endDateTime: "2025-03-01T22:00:00Z",
+      bookingStartDateTime: "2025-02-01T00:00:00Z",
+      bookingEndDateTime: "2025-02-28T23:59:59Z",
+      location: "Main Hall",
+      guestOfHonour: "Jane Doe",
+      sponsors: "Example Ltd",
+      details: "Existing details",
+      maxGuestsWithoutModeratorApproval: 2,
+    };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    mockGetEventById({ data: { event: { ...event, ticketTypes: [] } }, isLoading: false, isError: false });
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^event details$/i }));
+    await user.click(screen.getByRole("button", { name: /edit event details/i }));
+    await user.clear(screen.getByLabelText(/^sponsors$/i));
+    await user.clear(screen.getByLabelText(/^event details$/i));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(generated.updateEventRef).toHaveBeenCalled());
+    expect(generated.updateEventRef).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sponsors: null, details: null })
+    );
   });
 
   it("renders refreshed selected-event details after editing", async () => {

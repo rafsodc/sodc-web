@@ -492,6 +492,8 @@ export interface CreateEventVariables {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: TimestampString;
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;
@@ -1172,6 +1174,8 @@ export interface GetEventByIdData {
     title: string;
     location?: string | null;
     guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
     startDateTime: TimestampString;
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
@@ -1202,6 +1206,8 @@ export interface GetEventByIdForCallableData {
     title: string;
     location?: string | null;
     guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
     startDateTime: TimestampString;
     endDateTime: TimestampString;
     bookingStartDateTime: TimestampString;
@@ -1239,6 +1245,8 @@ export interface GetEventsForSectionData {
       title: string;
       location?: string | null;
       guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
       startDateTime: TimestampString;
       endDateTime: TimestampString;
       bookingStartDateTime: TimestampString;
@@ -3178,6 +3186,8 @@ export interface UpdateEventVariables {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: TimestampString;
   endDateTime: TimestampString;
   bookingStartDateTime: TimestampString;

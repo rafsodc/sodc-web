@@ -1275,6 +1275,8 @@ query GetEventByIdForCallable($id: UUID!) @auth(level: NO_ACCESS) {
     title
     location
     guestOfHonour
+    sponsors
+    details
     startDateTime
     endDateTime
     bookingStartDateTime

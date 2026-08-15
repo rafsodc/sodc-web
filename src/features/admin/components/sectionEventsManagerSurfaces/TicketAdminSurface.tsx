@@ -33,6 +33,7 @@ import type {
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "../sectionEventsManagerTypes";
+import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventAttendeeTicketRow, TicketOrdersById } from "../../utils/bookingApprovalsAdmin";
 import {
   attendeePaymentState,
@@ -202,6 +203,16 @@ function EventDetailsSection({
             <TableRow>
               <TableCell sx={{ fontWeight: 600 }}>Guest of honour</TableCell>
               <TableCell>{event.guestOfHonour ?? "—"}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Sponsors</TableCell>
+              <TableCell sx={{ whiteSpace: "pre-line" }}>{event.sponsors?.trim() || "—"}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Details</TableCell>
+              <TableCell>
+                {event.details?.trim() ? <SafeMarkdown>{event.details}</SafeMarkdown> : "—"}
+              </TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ fontWeight: 600 }}>Booking window</TableCell>

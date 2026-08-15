@@ -153,6 +153,8 @@ mutation CreateEvent(
   $title: String!
   $location: String
   $guestOfHonour: String
+  $sponsors: String
+  $details: String
   $startDateTime: Timestamp!
   $endDateTime: Timestamp!
   $bookingStartDateTime: Timestamp!
@@ -165,6 +167,8 @@ mutation CreateEvent(
       title: $title
       location: $location
       guestOfHonour: $guestOfHonour
+      sponsors: $sponsors
+      details: $details
       startDateTime: $startDateTime
       endDateTime: $endDateTime
       bookingStartDateTime: $bookingStartDateTime
@@ -179,6 +183,8 @@ mutation UpdateEvent(
   $title: String!
   $location: String
   $guestOfHonour: String
+  $sponsors: String
+  $details: String
   $startDateTime: Timestamp!
   $endDateTime: Timestamp!
   $bookingStartDateTime: Timestamp!
@@ -191,6 +197,8 @@ mutation UpdateEvent(
       title: $title
       location: $location
       guestOfHonour: $guestOfHonour
+      sponsors: $sponsors
+      details: $details
       startDateTime: $startDateTime
       endDateTime: $endDateTime
       bookingStartDateTime: $bookingStartDateTime

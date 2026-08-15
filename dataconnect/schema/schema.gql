@@ -431,6 +431,8 @@ type Event @table {
   title: String!
   location: String
   guestOfHonour: String
+  sponsors: String
+  details: String
   startDateTime: Timestamp!
   endDateTime: Timestamp!
   bookingStartDateTime: Timestamp!

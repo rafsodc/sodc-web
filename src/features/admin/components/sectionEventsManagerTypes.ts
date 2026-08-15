@@ -10,6 +10,8 @@ export interface EventRow {
   title: string;
   location?: string | null;
   guestOfHonour?: string | null;
+  sponsors?: string | null;
+  details?: string | null;
   startDateTime: string;
   endDateTime: string;
   bookingStartDateTime: string;
