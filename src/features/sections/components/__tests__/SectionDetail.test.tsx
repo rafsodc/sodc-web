@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '../../../../test-utils';
+import { act, render, screen, waitFor } from '../../../../test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import SectionDetail from '../SectionDetail';
 import * as reactGenerated from '@dataconnect/generated/react';
@@ -762,6 +762,85 @@ describe('SectionDetail', () => {
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
+  });
+
+  it('does not let a stale event-detail response overwrite a newer selection', async () => {
+    const mockSectionData = {
+      section: {
+        id: sectionId,
+        name: 'Events Section',
+        type: 'EVENTS',
+        description: 'Events description',
+        purposeLinks: [],
+      },
+    };
+    const eventSummaries = [
+      {
+        id: 'event-1',
+        title: 'First Dinner',
+        ...upcomingEventTimes,
+        location: 'First Hall',
+        guestOfHonour: null,
+      },
+      {
+        id: 'event-2',
+        title: 'Second Dinner',
+        ...upcomingEventTimes,
+        location: 'Second Hall',
+        guestOfHonour: null,
+      },
+    ];
+    const eventDetail = (id: string, title: string, location: string) => ({
+      event: {
+        id,
+        section: { id: sectionId },
+        title,
+        ...upcomingEventTimes,
+        location,
+        guestOfHonour: null,
+        maxGuestsWithoutModeratorApproval: null,
+        ticketTypes: [],
+      },
+    } as unknown as Awaited<ReturnType<typeof getEventForUser>>);
+
+    let resolveFirstEvent!: (value: Awaited<ReturnType<typeof getEventForUser>>) => void;
+    const firstEventRequest = new Promise<Awaited<ReturnType<typeof getEventForUser>>>((resolve) => {
+      resolveFirstEvent = resolve;
+    });
+    vi.mocked(getEventForUser).mockImplementation((eventId: string) => {
+      if (eventId === 'event-1') return firstEventRequest;
+      return Promise.resolve(eventDetail('event-2', 'Second Dinner', 'Second Hall'));
+    });
+
+    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+    mockGetUserAccessGroups({
+      data: { user: { id: 'user-1', userGroups: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: eventSummaries } },
+      isLoading: false,
+      isError: false,
+    });
+
+    const userEvent = (await import('@testing-library/user-event')).userEvent;
+    const user = userEvent.setup();
+    renderSectionDetail();
+
+    await user.click(await screen.findByRole('button', { name: /first dinner/i }));
+    await user.click(await screen.findByText('Back to events'));
+    await user.click(await screen.findByRole('button', { name: /second dinner/i }));
+
+    expect(await screen.findByRole('heading', { name: 'Second Dinner', level: 2 })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirstEvent(eventDetail('event-1', 'First Dinner', 'First Hall'));
+      await firstEventRequest;
+    });
+
+    expect(screen.getByRole('heading', { name: 'Second Dinner', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'First Dinner', level: 2 })).not.toBeInTheDocument();
   });
 
   it('should show the booking summary with pay action when payment is still due', async () => {

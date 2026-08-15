@@ -667,34 +667,3 @@ export function AddUserToGroupDialogSurface({
     </Dialog>
   );
 }
-
-interface UserDetailDialogSurfaceProps {
-  user: UserSummary | null;
-  onClose: () => void;
-}
-
-export function UserDetailDialogSurface({ user, onClose }: UserDetailDialogSurfaceProps) {
-  return (
-    <Dialog open={!!user} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>User</DialogTitle>
-      <DialogContent>
-        {user && (
-          <Box sx={{ pt: 0.5 }}>
-            <Typography variant="body2">
-              <strong>
-                {user.firstName} {user.lastName}
-              </strong>
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {user.email || "No email"}
-            </Typography>
-            <Chip label={user.membershipStatus} size="small" variant="outlined" sx={{ mt: 1 }} />
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
-  );
-}

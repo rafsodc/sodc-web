@@ -71,7 +71,6 @@ vi.mock("../UserGroupsSurfaces", () => ({
     </div>
   ) : null,
   AddUserToGroupDialogSurface: () => null,
-  UserDetailDialogSurface: () => null,
 }));
 
 let updated = false;

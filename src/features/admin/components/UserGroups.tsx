@@ -31,7 +31,6 @@ import { useLocation } from "react-router-dom";
 import "../../../shared/components/PageContainer.css";
 import {
   AddUserToGroupDialogSurface,
-  UserDetailDialogSurface,
   UserGroupDialogSurface,
   UserGroupsListSurface,
 } from "./UserGroupsSurfaces";
@@ -85,8 +84,6 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   // All users: for merged group membership (explicit + by membership status)
   const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
   const [loadingAllUsers, setLoadingAllUsers] = useState(false);
-
-  const [selectedUserDetail, setSelectedUserDetail] = useState<UserSummary | null>(null);
 
   const fetchUserGroupsList = useCallback(async () => {
     setLoading(true);
@@ -540,8 +537,6 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         onSearchTermChange={handleAddUserSearchTermChange}
         onSelectUser={handleAddUserToGroup}
       />
-
-      <UserDetailDialogSurface user={selectedUserDetail} onClose={() => setSelectedUserDetail(null)} />
 
       <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
