@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatSectionEventDate,
+  formatSectionEventTime,
   formatSectionEventWhen,
   isUpcomingSectionEvent,
   partitionSectionEventsByTiming,
@@ -65,5 +67,12 @@ describe("sectionEventDisplay", () => {
     );
     expect(formatted).toContain("–");
     expect(formatted.length).toBeGreaterThan(10);
+  });
+
+  it("formats event dates and times separately with safe fallbacks", () => {
+    expect(formatSectionEventDate("2026-07-01T18:00:00.000Z", "2026-07-01T22:00:00.000Z")).not.toContain("–");
+    expect(formatSectionEventTime("2026-07-01T18:00:00.000Z", "2026-07-01T22:00:00.000Z")).toContain("–");
+    expect(formatSectionEventDate("invalid", "invalid")).toBe("Date unavailable");
+    expect(formatSectionEventTime("invalid", "invalid")).toBe("Time unavailable");
   });
 });

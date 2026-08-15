@@ -1280,7 +1280,11 @@ describe('SectionDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Old Dinner')).toBeInTheDocument();
-      expect(screen.getByText('Guest of honour: Guest')).toBeInTheDocument();
+      expect(screen.getByText('Date')).toBeInTheDocument();
+      expect(screen.getByText('Time')).toBeInTheDocument();
+      expect(screen.getByText('Location')).toBeInTheDocument();
+      expect(screen.getByText('Hall')).toBeInTheDocument();
+      expect(screen.queryByText(/Guest of honour/)).not.toBeInTheDocument();
     });
   });
 

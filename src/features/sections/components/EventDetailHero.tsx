@@ -10,6 +10,10 @@ import {
 } from "@mui/icons-material";
 import { Box, Paper, Typography } from "@mui/material";
 import type { GetEventByIdData } from "@dataconnect/generated";
+import {
+  formatSectionEventDate,
+  formatSectionEventTime,
+} from "../../../shared/utils/sectionEventDisplay";
 import { formatEventGuestPolicy } from "../utils/eventGuestPolicy";
 
 type EventDetail = NonNullable<GetEventByIdData["event"]>;
@@ -18,54 +22,13 @@ export interface EventDetailHeroProps {
   event: EventDetail;
 }
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
   month: "long",
   year: "numeric",
 });
-const timeFormatter = new Intl.DateTimeFormat(undefined, {
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 function isValidDate(value: Date): boolean {
   return !Number.isNaN(value.getTime());
-}
-
-function sameCalendarDay(start: Date, end: Date): boolean {
-  return (
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth() &&
-    start.getDate() === end.getDate()
-  );
-}
-
-function formatEventDate(startDateTime: string, endDateTime: string): string {
-  const start = new Date(startDateTime);
-  const end = new Date(endDateTime);
-  if (!isValidDate(start) || !isValidDate(end)) {
-    return "Date unavailable";
-  }
-  return sameCalendarDay(start, end)
-    ? dateFormatter.format(start)
-    : `${dateFormatter.format(start)} – ${dateFormatter.format(end)}`;
-}
-
-function formatEventTime(startDateTime: string, endDateTime: string): string {
-  const start = new Date(startDateTime);
-  const end = new Date(endDateTime);
-  if (!isValidDate(start) || !isValidDate(end)) {
-    return "Time unavailable";
-  }
-  return sameCalendarDay(start, end)
-    ? `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`
-    : `Starts ${timeFormatter.format(start)} · Ends ${timeFormatter.format(end)}`;
 }
 
 function formatBookingWindow(startDateTime: string, endDateTime: string): string {
@@ -137,10 +100,10 @@ export default function EventDetailHero({ event }: EventDetailHeroProps) {
         }}
       >
         <EventMetaItem icon={<CalendarMonthOutlined fontSize="small" />} label="Date">
-          {formatEventDate(event.startDateTime, event.endDateTime)}
+          {formatSectionEventDate(event.startDateTime, event.endDateTime)}
         </EventMetaItem>
         <EventMetaItem icon={<AccessTimeOutlined fontSize="small" />} label="Time">
-          {formatEventTime(event.startDateTime, event.endDateTime)}
+          {formatSectionEventTime(event.startDateTime, event.endDateTime)}
         </EventMetaItem>
         {event.location?.trim() ? (
           <EventMetaItem icon={<LocationOnOutlined fontSize="small" />} label="Location">
