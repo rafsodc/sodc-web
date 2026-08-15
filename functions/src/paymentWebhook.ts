@@ -115,11 +115,11 @@ async function appendWebhookLedgerEvent(args: {
 }
 
 async function handleStripeWebhookRequest(args: {
-  domain: "payments";
   req: { headers: Record<string, unknown>; rawBody: Buffer };
   res: { status: (code: number) => { send: (body: string) => void } };
 }): Promise<void> {
-  const { req, res, domain } = args;
+  const { req, res } = args;
+  const domain = "payments";
   const endpointName = "stripeWebhookPayments";
   try {
     const stripeClient = requireStripe(stripeSecret.value());
@@ -419,6 +419,6 @@ export const stripeWebhookPayments = onRequest(
     ],
   },
   async (req, res) => {
-    await handleStripeWebhookRequest({ domain: "payments", req, res });
+    await handleStripeWebhookRequest({ req, res });
   }
 );
