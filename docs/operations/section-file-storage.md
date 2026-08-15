@@ -383,6 +383,18 @@ object solely because a single reconciliation query cannot find it.
 
 ## Scanner deployment
 
+Before building or promoting the scanner image, run its independent test and
+coverage gate:
+
+```sh
+npm --prefix services/section-file-malware-scanner run test:coverage
+```
+
+The gate covers request validation, generation-bound downloads, checksum and
+size enforcement, ClamAV result handling, temporary-file cleanup and fail-closed
+HTTP responses. The remaining container, definitions-job and EICAR checks are
+listed in the [executable coverage policy](./executable-coverage-policy.md).
+
 Build `services/section-file-malware-scanner` into Artifact Registry. Create
 separate scanner and definitions-updater service accounts, plus a private
 regional definitions bucket. The scanner receives

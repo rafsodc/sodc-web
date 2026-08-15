@@ -48,6 +48,9 @@ npm --prefix functions run lint
 npm --prefix functions run test
 npm --prefix functions run test:coverage
 
+# Section-file malware scanner
+npm --prefix services/section-file-malware-scanner run test:coverage
+
 # Full functions suite (includes mailers, dispatchers, wiring tests)
 cd functions
 npm run test
@@ -89,6 +92,11 @@ Higher grouped thresholds protect code at critical boundaries:
 
 Treat these values as ratchets. Raise the relevant whole-number threshold when a change creates durable headroom; do not lower one without explaining the coverage loss and follow-up plan in the PR. Integration-heavy callable and webhook entry points remain covered by the global gate and security contract tests, while extracted deterministic payment and state-transition modules use the higher grouped thresholds above.
 
+Operational files under `functions/scripts` are deliberately outside the
+Functions percentage. The scanner has its own coverage gate. See the
+[executable coverage policy](operations/executable-coverage-policy.md) for the
+entry-point inventory, automated evidence, exemptions and manual checks.
+
 When changing transactional email (callables, webhooks, dispatchers), run the **full** functions suite and update [`operations/transactional-email-workflows.md`](operations/transactional-email-workflows.md) when triggers or delivery keys change.
 
 ## CI and required checks
@@ -105,6 +113,7 @@ After CI workflows are in place, configure these as required in branch protectio
 - `Functions full test suite`
 - `Functions coverage gate (ratcheted)`
 - `Functions security tests`
+- `Malware scanner tests and coverage`
 
 Set in GitHub repository settings:
 
