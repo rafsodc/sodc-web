@@ -25,6 +25,7 @@ import {
 } from "../utils/passwordValidation";
 import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
 import { reportError, toAuthUserFacingError } from "../../../shared/errors";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 type ActionState = "checking" | "ready" | "invalid" | "complete";
 
@@ -43,9 +44,10 @@ export default function AuthActionPage() {
   const [confirmation, setConfirmation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const actionRequestGuard = useLatestRequestGuard();
 
   useEffect(() => {
-    let active = true;
+    const requestToken = actionRequestGuard.start();
     if (
       !["resetPassword", "verifyEmail", "verifyAndChangeEmail"].includes(mode ?? "") ||
       !oobCode
@@ -53,14 +55,14 @@ export default function AuthActionPage() {
       setState("invalid");
       setError("This email action link is invalid.");
       return () => {
-        active = false;
+        if (actionRequestGuard.isCurrent(requestToken)) actionRequestGuard.invalidate();
       };
     }
 
     const completeAction = async () => {
       if (mode === "resetPassword") {
         await verifyPasswordResetCode(auth, oobCode);
-        if (active) setState("ready");
+        if (actionRequestGuard.isCurrent(requestToken)) setState("ready");
         return;
       }
 
@@ -79,12 +81,12 @@ export default function AuthActionPage() {
           }
         }
       }
-      if (active) setState("complete");
+      if (actionRequestGuard.isCurrent(requestToken)) setState("complete");
     };
 
     void completeAction().catch((actionError: unknown) => {
       reportError("auth.action.apply", actionError, { mode: mode ?? "missing" });
-      if (active) {
+      if (actionRequestGuard.isCurrent(requestToken)) {
         const context = mode === "resetPassword" ? "password-reset" : "email-action";
         setError(toAuthUserFacingError(actionError, context).message);
         setState("invalid");
@@ -92,9 +94,9 @@ export default function AuthActionPage() {
     });
 
     return () => {
-      active = false;
+      if (actionRequestGuard.isCurrent(requestToken)) actionRequestGuard.invalidate();
     };
-  }, [mode, oobCode]);
+  }, [mode, oobCode, actionRequestGuard]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

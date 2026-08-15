@@ -79,6 +79,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const allUsersRequestGuard = useLatestRequestGuard();
   const userSearchRequestGuard = useLatestRequestGuard();
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
@@ -158,13 +159,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
   useEffect(() => {
     if (!isAdmin) return;
-    let cancelled = false;
+    const requestToken = allUsersRequestGuard.start();
     setLoadingAllUsers(true);
     (async () => {
       try {
         const ref = listUsersRef(dataConnect);
         const result = await executeDataConnectQuery(ref);
-        if (!cancelled && result.data?.users) {
+        if (allUsersRequestGuard.isCurrent(requestToken) && result.data?.users) {
           setAllUsers(
             result.data.users.map((u) => ({
               id: u.id,
@@ -177,18 +178,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         }
       } catch (caught) {
         reportError("admin.user-groups.members", caught);
-        if (!cancelled) {
+        if (allUsersRequestGuard.isCurrent(requestToken)) {
           setAllUsers([]);
           setError(toAdminUserFacingError(caught, "user-groups").message);
         }
       } finally {
-        if (!cancelled) setLoadingAllUsers(false);
+        if (allUsersRequestGuard.isCurrent(requestToken)) setLoadingAllUsers(false);
       }
     })();
     return () => {
-      cancelled = true;
+      if (allUsersRequestGuard.isCurrent(requestToken)) allUsersRequestGuard.invalidate();
     };
-  }, [isAdmin]);
+  }, [isAdmin, allUsersRequestGuard]);
 
   const handleExpand = (group: UserGroupWithDetails) => {
     if (expandedGroupId === group.id) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSectionForUser } from "../../../shared/utils/firebaseFunctions";
 import { auth } from "../../../config/firebase";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 interface UseCanModerateSectionResult {
   /** True once the section access check has resolved (or failed). */
@@ -22,6 +23,7 @@ export function useCanModerateSection(sectionId: string | undefined): UseCanMode
   const isAdmin = useAdminClaim(currentUser);
   const [canModerateSection, setCanModerateSection] = useState(false);
   const [isResolved, setIsResolved] = useState(false);
+  const requestGuard = useLatestRequestGuard();
 
   useEffect(() => {
     if (!sectionId) {
@@ -29,25 +31,25 @@ export function useCanModerateSection(sectionId: string | undefined): UseCanMode
       setIsResolved(true);
       return;
     }
-    let cancelled = false;
+    const requestToken = requestGuard.start();
     setIsResolved(false);
     getSectionForUser(sectionId)
       .then((result) => {
-        if (cancelled) return;
+        if (!requestGuard.isCurrent(requestToken)) return;
         setCanModerateSection(result.canModerate);
       })
       .catch(() => {
-        if (cancelled) return;
+        if (!requestGuard.isCurrent(requestToken)) return;
         setCanModerateSection(false);
       })
       .finally(() => {
-        if (cancelled) return;
+        if (!requestGuard.isCurrent(requestToken)) return;
         setIsResolved(true);
       });
     return () => {
-      cancelled = true;
+      if (requestGuard.isCurrent(requestToken)) requestGuard.invalidate();
     };
-  }, [sectionId]);
+  }, [sectionId, requestGuard]);
 
   return {
     isResolved,

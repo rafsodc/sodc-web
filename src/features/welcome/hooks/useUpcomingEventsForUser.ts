@@ -9,6 +9,7 @@ import {
   isUpcomingSectionEvent,
   sortUpcomingSectionEvents,
 } from "../../../shared/utils/sectionEventDisplay";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 export interface UpcomingEventRow {
   id: string;
@@ -52,6 +53,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
   const [isError, setIsError] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const lastFetchedKeyRef = useRef<string | null>(null);
+  const requestGuard = useLatestRequestGuard();
 
   useEffect(() => {
     const ids = eventSectionIdsKey
@@ -66,7 +68,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
       return;
     }
 
-    let alive = true;
+    const requestToken = requestGuard.start();
     const isNewFetch = lastFetchedKeyRef.current !== eventSectionIdsKey;
     lastFetchedKeyRef.current = eventSectionIdsKey;
 
@@ -99,27 +101,27 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
           results.flat().filter((event) => isUpcomingSectionEvent(event, now))
         );
 
-        if (alive) {
+        if (requestGuard.isCurrent(requestToken)) {
           setEvents(upcoming);
           setIsError(false);
         }
       } catch (error) {
-        if (alive) {
+        if (requestGuard.isCurrent(requestToken)) {
           reportError("welcome.upcoming-events", error);
           setIsError(true);
           // Keep any previously loaded events visible while the retry option is shown.
         }
       } finally {
-        if (alive) {
+        if (requestGuard.isCurrent(requestToken)) {
           setLoading(false);
         }
       }
     })();
 
     return () => {
-      alive = false;
+      if (requestGuard.isCurrent(requestToken)) requestGuard.invalidate();
     };
-  }, [eventSectionIdsKey, sectionNameById, retryAttempt]);
+  }, [eventSectionIdsKey, sectionNameById, retryAttempt, requestGuard]);
 
   return {
     events,
