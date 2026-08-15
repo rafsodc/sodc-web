@@ -66,6 +66,7 @@ export function EventDialogSurface({
   onBookingEndDateTimeChange,
   onMaxGuestsChange,
 }: EventDialogSurfaceProps) {
+  const previewDetails = details.trim();
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{editingEvent ? "Edit event" : "Add event"}</DialogTitle>
@@ -103,8 +104,8 @@ export function EventDialogSurface({
           Event details preview
         </Typography>
         <Box sx={{ mt: 1, mb: 1, p: 2, minHeight: 64, border: 1, borderColor: "divider", borderRadius: 1 }}>
-          {details.trim() ? (
-            <SafeMarkdown>{details}</SafeMarkdown>
+          {previewDetails ? (
+            <SafeMarkdown>{previewDetails}</SafeMarkdown>
           ) : (
             <Typography variant="body2" color="text.secondary">Nothing to preview.</Typography>
           )}

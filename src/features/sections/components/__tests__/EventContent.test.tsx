@@ -15,7 +15,9 @@ const event = {
   bookingStartDateTime: "2026-08-01T00:00:00Z",
   bookingEndDateTime: "2026-09-20T23:59:59Z",
   maxGuestsWithoutModeratorApproval: 1,
-  ticketTypes: [],
+  ticketTypes: [
+    { id: "ticket-1", title: "Dinner ticket", price: 50 },
+  ],
 } as never;
 
 describe("event content", () => {
@@ -27,7 +29,15 @@ describe("event content", () => {
       </>
     );
 
-    expect(screen.getByText(/Sponsored by:/)).toHaveTextContent("Example Ltd Partner Org");
+    expect(screen.getByText("Date")).toBeInTheDocument();
+    expect(screen.getByText("Time")).toBeInTheDocument();
+    expect(screen.getByText("Location")).toBeInTheDocument();
+    expect(screen.getByText("Guest of honour")).toBeInTheDocument();
+    expect(screen.getByText("Sponsored by")).toBeInTheDocument();
+    expect(screen.getByText(/Example Ltd/)).toHaveTextContent("Example Ltd Partner Org");
+    expect(screen.getByText("Booking window")).toBeInTheDocument();
+    expect(screen.getByText("Guest bookings")).toBeInTheDocument();
+    expect(screen.queryByText(/Dinner ticket/)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Event details", level: 2 })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Programme", level: 4 })).toBeInTheDocument();
     expect(screen.getByText("everyone").tagName).toBe("STRONG");
@@ -35,6 +45,23 @@ describe("event content", () => {
       "href",
       "https://example.com/event"
     );
+  });
+
+  it("omits optional metadata when it is not configured", () => {
+    render(
+      <EventDetailHero
+        event={{
+          ...(event as object),
+          location: null,
+          guestOfHonour: null,
+          sponsors: null,
+        } as never}
+      />
+    );
+
+    expect(screen.queryByText("Location")).not.toBeInTheDocument();
+    expect(screen.queryByText("Guest of honour")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sponsored by")).not.toBeInTheDocument();
   });
 
   it("renders no details surface for empty content", () => {

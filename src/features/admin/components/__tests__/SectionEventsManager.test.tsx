@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as generated from "@dataconnect/generated";
@@ -197,6 +197,22 @@ describe("SectionEventsManager", () => {
       })
     );
     expect(firebaseDataConnect.executeMutation).toHaveBeenCalled();
+  });
+
+  it("uses the safe Markdown renderer for the admin preview", async () => {
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+
+    await user.click(screen.getByRole("button", { name: /add event/i }));
+    fireEvent.change(screen.getByLabelText(/^event details$/i), {
+      target: {
+        value: '<script>alert("preview unsafe")</script>\n\n[Unsafe preview](javascript:alert(1))',
+      },
+    });
+
+    expect(screen.queryByText('alert("preview unsafe")')).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Unsafe preview" })).not.toBeInTheDocument();
+    expect(screen.getByText("Unsafe preview")).toBeInTheDocument();
   });
 
   it("renders a complete pending booking and approves its exact revision", async () => {

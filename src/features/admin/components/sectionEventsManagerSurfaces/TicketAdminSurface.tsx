@@ -175,6 +175,7 @@ function EventDetailsSection({
   if (!event) {
     return <Alert severity="info">Event details are not available.</Alert>;
   }
+  const details = event.details?.trim();
 
   return (
     <Box>
@@ -211,7 +212,7 @@ function EventDetailsSection({
             <TableRow>
               <TableCell sx={{ fontWeight: 600 }}>Details</TableCell>
               <TableCell>
-                {event.details?.trim() ? <SafeMarkdown>{event.details}</SafeMarkdown> : "—"}
+                {details ? <SafeMarkdown>{details}</SafeMarkdown> : "—"}
               </TableCell>
             </TableRow>
             <TableRow>
