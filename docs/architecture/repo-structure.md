@@ -26,7 +26,8 @@ Generated SDK imports remain at domain-module boundaries; generated files are ne
 ## Testing layout
 
 - Frontend tests live near domain code in `src/**/__tests__/`.
-- Functions/backend tests live in `functions/src/__tests__/`.
+- Functions/backend tests are grouped by domain under `functions/src/__tests__/`;
+  the directory README defines ownership for feature and cross-cutting suites.
 - Permission and auth contract tests should be backend-owned by default, even when they validate Data Connect operation directives.
 
 ## Generated artifacts

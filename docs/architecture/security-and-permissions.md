@@ -97,14 +97,15 @@ This protects payment state transitions against forged webhook requests.
 
 ## Regression test coverage
 
-Security/permission regression tests live in `functions/src/__tests__/`:
+Security/permission regression tests live in the domain-oriented Functions test
+folders:
 
-- `authGuards.test.ts`
+- `functions/src/__tests__/users-auth/authGuards.test.ts`
   - guard helper allow/deny behavior
-- `dataconnectAuthContracts.test.ts`
+- `functions/src/__tests__/cross-cutting/contracts/dataconnectAuthContracts.test.ts`
   - verifies required `@auth(...)` directives on critical operations
   - full sweep check over `dataconnect/api/*.gql` operation headers
-- `functionEntryGuardContracts.test.ts`
+- `functions/src/__tests__/cross-cutting/contracts/functionEntryGuardContracts.test.ts`
   - verifies callable entry points retain expected guard calls
   - verifies Stripe webhook signature-check contract markers
 
@@ -112,7 +113,7 @@ Run explicitly:
 
 ```sh
 cd functions
-npm run test -- authGuards dataconnectAuthContracts functionEntryGuardContracts --run
+npm run test -- src/__tests__/users-auth/authGuards.test.ts src/__tests__/cross-cutting/contracts/dataconnectAuthContracts.test.ts src/__tests__/cross-cutting/contracts/functionEntryGuardContracts.test.ts --run
 ```
 
 ## Troubleshooting

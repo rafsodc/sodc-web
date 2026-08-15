@@ -67,4 +67,5 @@ source the Template sync page checks.
 When adding or removing a template, update the index in the same PR: a
 `### \`templateKey\`` heading must exist in
 `docs/operations/govuk-notify-template-copy.md` for every template here, and vice
-versa. `functions/src/__tests__/emailTemplateDocsContracts.test.ts` enforces this.
+versa. `functions/src/__tests__/email-templates/emailTemplateDocsContracts.test.ts`
+enforces this.
