@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { searchUsers } from "../utils/searchUsers";
 import type { SearchUser } from "../../../types";
 import { ITEMS_PER_PAGE } from "../../../constants";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
 interface UseUserSearchResult {
   users: SearchUser[];
@@ -34,10 +35,10 @@ export function useUserSearch(
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const searchRequestIdRef = useRef(0);
+  const searchRequestGuard = useLatestRequestGuard();
 
   const performSearch = useCallback(async (term: string, pageNum: number = 1) => {
-    const requestId = ++searchRequestIdRef.current;
+    const requestToken = searchRequestGuard.start();
     if (!term.trim()) {
       setUsers([]);
       setError(null);
@@ -51,7 +52,7 @@ export function useUserSearch(
     setError(null);
     try {
       const result = await searchUsers(term, pageNum, ITEMS_PER_PAGE);
-      if (searchRequestIdRef.current !== requestId) return;
+      if (!searchRequestGuard.isCurrent(requestToken)) return;
       if (result.success && result.data) {
         setUsers(result.data.users);
         setTotalPages(result.data.totalPages);
@@ -63,22 +64,18 @@ export function useUserSearch(
         setTotal(0);
       }
     } catch (caught) {
-      if (searchRequestIdRef.current !== requestId) return;
+      if (!searchRequestGuard.isCurrent(requestToken)) return;
       reportError("admin.users.search", caught);
       setError(toAdminUserFacingError(caught, "users").message);
       setUsers([]);
       setTotalPages(1);
       setTotal(0);
     } finally {
-      if (searchRequestIdRef.current === requestId) {
+      if (searchRequestGuard.isCurrent(requestToken)) {
         setLoading(false);
       }
     }
-  }, []);
-
-  useEffect(() => () => {
-    searchRequestIdRef.current += 1;
-  }, []);
+  }, [searchRequestGuard]);
 
   // Debounced search - only triggers when searchTerm changes
   useEffect(() => {
@@ -88,7 +85,7 @@ export function useUserSearch(
         setPage(1);
       } else {
         // Clear results when search term is empty
-        searchRequestIdRef.current += 1;
+        searchRequestGuard.invalidate();
         setUsers([]);
         setError(null);
         setTotalPages(1);
@@ -98,7 +95,7 @@ export function useUserSearch(
     }, debounceMs);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, performSearch, debounceMs]);
+  }, [searchTerm, performSearch, debounceMs, searchRequestGuard]);
 
   // Handle page changes - only triggers when page changes (not searchTerm)
   // Note: searchTerm is intentionally not in dependencies to avoid bypassing debounce
@@ -111,9 +108,9 @@ export function useUserSearch(
   }, [page, performSearch]); // searchTerm intentionally omitted to prevent immediate searches on typing
 
   const setSearchTerm = useCallback((term: string) => {
-    searchRequestIdRef.current += 1;
+    searchRequestGuard.invalidate();
     setSearchTermState(term);
-  }, []);
+  }, [searchRequestGuard]);
 
   const refetch = useCallback(() => {
     performSearch(searchTerm, page);
