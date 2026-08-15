@@ -198,24 +198,31 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [loadingEventDetail, setLoadingEventDetail] = useState(false);
   const [errorEventDetail, setErrorEventDetail] = useState(false);
 
+  const eventDetailRequestIdRef = useRef(0);
   const refetchEventDetail = useCallback(async () => {
     if (!selectedEventId) return;
+    const requestId = ++eventDetailRequestIdRef.current;
     setLoadingEventDetail(true);
     setErrorEventDetail(false);
     try {
       const result = await getEventForUser(selectedEventId);
+      if (eventDetailRequestIdRef.current !== requestId) return;
       setEventDetailData({ event: result.event });
     } catch (error) {
+      if (eventDetailRequestIdRef.current !== requestId) return;
       reportError("sections.event-detail", error);
       setEventDetailData(undefined);
       setErrorEventDetail(true);
     } finally {
-      setLoadingEventDetail(false);
+      if (eventDetailRequestIdRef.current === requestId) {
+        setLoadingEventDetail(false);
+      }
     }
   }, [selectedEventId]);
 
   useEffect(() => {
     if (!selectedEventId) {
+      eventDetailRequestIdRef.current += 1;
       setEventDetailData(undefined);
       return;
     }
