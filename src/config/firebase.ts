@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDataConnect } from "firebase/data-connect";
 import { getFunctions } from "firebase/functions";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { connectorConfig } from "../dataconnect-generated";
 
 // Optional: only load Analytics in the browser and only if a measurementId is provided.
@@ -41,7 +41,7 @@ export const functions = getFunctions(firebaseApp, "europe-west2");
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 if (recaptchaSiteKey && typeof window !== "undefined") {
   initializeAppCheck(firebaseApp, {
-    provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+    provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   });
 }

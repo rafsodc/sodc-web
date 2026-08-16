@@ -386,10 +386,13 @@ end-to-end trigger per email domain before launch.
 ## 10. Register App Check
 
 The current client initializes Firebase App Check only when
-`VITE_RECAPTCHA_SITE_KEY` is present. Register a production reCAPTCHA key whose
-allowed domains contain only the production Hosting/custom domains. In Firebase
-console **App Check**, register the production Web app with the matching secret,
-then put the public site key in `.env.production.local`.
+`VITE_RECAPTCHA_SITE_KEY` is present. In the production Google Cloud project,
+create a Fraud Defense Web key with score-based integration whose allowed domains
+contain only the production Hosting/custom domains. In Firebase console **App
+Check**, register the production Web app with the reCAPTCHA Enterprise provider
+and that key, then put the public key in `.env.production.local`. Firebase App
+Check creates and authenticates Fraud Defense assessments; no shared secret,
+service-account credential, or API key belongs in the client configuration.
 
 Deploy first with tokens being sent but enforcement disabled. Monitor App Check
 metrics for legitimate production traffic. Enable enforcement service by service
@@ -403,9 +406,10 @@ Firebase/GCP project. `npm run build:prod` loads the production public site key;
 after deploying it, record valid-token metrics and the reviewed enforcement
 decision before enabling callable enforcement.
 
-The existing implementation uses reCAPTCHA v3. Firebase recommends reCAPTCHA
-Enterprise for new integrations; migrating providers is a separate reviewed change,
-not a launch-day configuration switch.
+The implementation uses the reCAPTCHA Enterprise provider for Google Cloud Fraud
+Defense score-based keys. Start with Firebase's recommended risk threshold of
+`0.5`, confirm valid-token traffic before enforcement, and select a token TTL that
+balances replay exposure against assessment usage.
 
 ## 11. Bootstrap the first administrator
 

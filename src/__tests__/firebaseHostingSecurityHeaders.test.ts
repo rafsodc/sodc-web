@@ -65,6 +65,7 @@ describe("Firebase Hosting security headers", () => {
         "https://identitytoolkit.googleapis.com",
         "https://securetoken.googleapis.com",
         "https://firebaseappcheck.googleapis.com",
+        "https://content-firebaseappcheck.googleapis.com",
         "https://firebaseinstallations.googleapis.com",
         "https://firebase.googleapis.com",
         "https://firebasedataconnect.googleapis.com",

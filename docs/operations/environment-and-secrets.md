@@ -22,7 +22,7 @@ Defined via `.env*` files and read from `import.meta.env`:
 | `VITE_FIREBASE_APP_ID` | Firebase app config | yes |
 | `VITE_FIREBASE_MEASUREMENT_ID` | Analytics (optional) | optional |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe Checkout client init | yes for payments |
-| `VITE_RECAPTCHA_SITE_KEY` | App Check reCAPTCHA v3 site key (see #345) — public value, safe to commit to `.env*.local`. Registered per Firebase web app under Project Settings → App Check; the paired secret key is entered directly into that same Firebase Console screen, not as an env var. | optional — App Check init is skipped entirely if unset |
+| `VITE_RECAPTCHA_SITE_KEY` | App Check reCAPTCHA Enterprise/Fraud Defense score-based Web key (see #345) — public value, safe to commit to `.env*.local`. Create it in the matching Google Cloud project and register the key for the Web app under Firebase Security → App Check; there is no paired shared secret in the client configuration. | optional — App Check init is skipped entirely if unset |
 
 ## Functions runtime env / secrets
 
