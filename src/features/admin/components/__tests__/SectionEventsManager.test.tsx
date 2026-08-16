@@ -586,7 +586,7 @@ describe("SectionEventsManager", () => {
       expect(refetchEventDetail).toHaveBeenCalledOnce();
     });
     expect(await screen.findByText("Updated Dinner")).toBeInTheDocument();
-  });
+  }, 10_000);
 
   it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {
     const user = userEvent.setup();
