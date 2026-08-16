@@ -44,6 +44,7 @@ import type {
   UserSummary,
 } from "./userGroupsTypes";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { SEARCH_DEBOUNCE_MS } from "../../../constants";
 
 interface UserGroupsProps {
   onBack: () => void;
@@ -218,13 +219,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   };
 
   const handleAddUserSearchTermChange = (value: string) => {
+    userSearchRequestGuard.invalidate();
     setUserSearchTerm(value);
-    handleSearchUsers(value);
+    if (value.trim().length < 2) {
+      setSearchResults([]);
+      setSearchingUsers(false);
+    }
   };
 
   const handleSearchUsers = useCallback(async (term: string) => {
     const requestToken = userSearchRequestGuard.start();
-    if (!term.trim() || term.length < 2) {
+    const searchTerm = term.trim();
+    if (searchTerm.length < 2) {
       setSearchResults([]);
       setSearchingUsers(false);
       return;
@@ -232,7 +238,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
     setSearchingUsers(true);
     try {
-      const result = await searchUsers(term, 1, 10);
+      const result = await searchUsers(searchTerm, 1, 10);
       if (result.success && result.data) {
         // Fetch full user data from DataConnect for each user to get membership status
         const usersWithData = await Promise.all(
@@ -278,6 +284,14 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       }
     }
   }, [userSearchRequestGuard]);
+
+  useEffect(() => {
+    if (!addUserDialogOpen || userSearchTerm.trim().length < 2) return;
+    const timer = window.setTimeout(() => {
+      void handleSearchUsers(userSearchTerm);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [addUserDialogOpen, handleSearchUsers, userSearchTerm]);
 
   const handleAddUserToGroup = async (userId: string) => {
     if (!addingToGroupId) return;
