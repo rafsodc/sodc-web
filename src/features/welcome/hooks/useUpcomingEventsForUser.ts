@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getEventsForSection } from "@dataconnect/generated";
-import type { UUIDString } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
-import { dataConnect } from "../../../config/firebase";
 import type { AccessibleSection } from "../../../shared/navigation/extractAccessibleSections";
 import { reportError } from "../../../shared/errors";
+import { getSectionEventsForUser } from "../../../shared/utils/firebaseFunctions";
 import {
   isUpcomingSectionEvent,
   sortUpcomingSectionEvents,
@@ -40,7 +38,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
       names[section.id] = section.name;
     }
     return {
-      eventSectionIds: eventSections.map((s) => s.id as UUIDString).sort(),
+      eventSectionIds: eventSections.map((s) => s.id).sort(),
       sectionNameById: names,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- fingerprint encodes sections content without unstable array refs
@@ -57,7 +55,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
 
   useEffect(() => {
     const ids = eventSectionIdsKey
-      ? (eventSectionIdsKey.split(",").filter(Boolean) as UUIDString[])
+      ? eventSectionIdsKey.split(",").filter(Boolean)
       : [];
 
     if (ids.length === 0) {
@@ -81,9 +79,8 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
       try {
         const results = await Promise.all(
           ids.map(async (sectionId) => {
-            const result = await getEventsForSection(dataConnect, { sectionId });
-            const section = result.data?.section;
-            return (section?.events ?? []).map((event) => ({
+            const result = await getSectionEventsForUser(sectionId);
+            return result.events.map((event) => ({
               id: event.id,
               title: event.title,
               location: event.location,

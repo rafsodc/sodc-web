@@ -1,15 +1,13 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { SectionType } from "@dataconnect/generated";
-import { getEventsForSection } from "@dataconnect/generated";
+import { getSectionEventsForUser } from "../../../../shared/utils/firebaseFunctions";
 import { sectionsFingerprint, useUpcomingEventsForUser } from "../useUpcomingEventsForUser";
 import type { AccessibleSection } from "../../../../shared/navigation/extractAccessibleSections";
 
-vi.mock("@dataconnect/generated", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@dataconnect/generated")>();
+vi.mock("../../../../shared/utils/firebaseFunctions", () => {
   return {
-    ...actual,
-    getEventsForSection: vi.fn(),
+    getSectionEventsForUser: vi.fn(),
   };
 });
 
@@ -30,61 +28,52 @@ describe("sectionsFingerprint", () => {
 
 describe("useUpcomingEventsForUser", () => {
   beforeEach(() => {
-    vi.mocked(getEventsForSection).mockReset();
-    vi.mocked(getEventsForSection).mockResolvedValue({
-      data: {
-        section: {
-          id: "section-1",
-          events: [
-            {
-              id: "event-1",
-              title: "Dinner",
-              location: "Club",
-              guestOfHonour: null,
-              startDateTime: "2030-01-01T18:00:00.000Z",
-              endDateTime: "2030-01-01T22:00:00.000Z",
-              bookingStartDateTime: "2029-01-01T00:00:00.000Z",
-              bookingEndDateTime: "2030-01-01T00:00:00.000Z",
-              maxGuestsWithoutModeratorApproval: null,
-            },
-          ],
+    vi.mocked(getSectionEventsForUser).mockReset();
+    vi.mocked(getSectionEventsForUser).mockResolvedValue({
+      events: [
+        {
+          id: "event-1",
+          title: "Dinner",
+          location: "Club",
+          guestOfHonour: null,
+          startDateTime: "2030-01-01T18:00:00.000Z",
+          endDateTime: "2030-01-01T22:00:00.000Z",
+          bookingStartDateTime: "2029-01-01T00:00:00.000Z",
+          bookingEndDateTime: "2030-01-01T00:00:00.000Z",
+          maxGuestsWithoutModeratorApproval: null,
         },
-      },
-    } as unknown as Awaited<ReturnType<typeof getEventsForSection>>);
+      ],
+    } as unknown as Awaited<ReturnType<typeof getSectionEventsForUser>>);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("does not refetch when the sections array reference changes but content is the same", async () => {
+  it("loads events through the member-safe callable without refetching unchanged sections", async () => {
     const { result, rerender } = renderHook(
       ({ sections }) => useUpcomingEventsForUser(sections),
       { initialProps: { sections: [eventSection] } }
     );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(getEventsForSection).toHaveBeenCalledTimes(1);
+    expect(getSectionEventsForUser).toHaveBeenCalledOnce();
+    expect(getSectionEventsForUser).toHaveBeenCalledWith("section-1");
 
     rerender({ sections: [{ ...eventSection }] });
 
     await waitFor(() => expect(result.current.events).toHaveLength(1));
-    expect(getEventsForSection).toHaveBeenCalledTimes(1);
+    expect(getSectionEventsForUser).toHaveBeenCalledTimes(1);
   });
 
   it("can retry a failed request and recover", async () => {
     const failure = new Error("temporary network failure");
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.mocked(getEventsForSection)
+    vi.mocked(getSectionEventsForUser)
       .mockRejectedValueOnce(failure)
       .mockResolvedValueOnce({
-        data: {
-          section: {
-            id: "section-1",
-            events: [],
-          },
-        },
-      } as unknown as Awaited<ReturnType<typeof getEventsForSection>>);
+        events: [],
+      } as Awaited<ReturnType<typeof getSectionEventsForUser>>);
 
     const { result } = renderHook(() => useUpcomingEventsForUser([eventSection]));
     await waitFor(() => expect(result.current.isError).toBe(true));
@@ -92,7 +81,7 @@ describe("useUpcomingEventsForUser", () => {
     act(() => result.current.retry());
 
     await waitFor(() => expect(result.current.isError).toBe(false));
-    expect(getEventsForSection).toHaveBeenCalledTimes(2);
+    expect(getSectionEventsForUser).toHaveBeenCalledTimes(2);
     expect(consoleError).toHaveBeenCalledWith("[welcome.upcoming-events]", failure, {});
     consoleError.mockRestore();
   });
