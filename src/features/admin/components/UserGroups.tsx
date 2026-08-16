@@ -44,7 +44,7 @@ import type {
   UserSummary,
 } from "./userGroupsTypes";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
-import { SEARCH_DEBOUNCE_MS } from "../../../constants";
+import { MIN_SEARCH_CHARACTERS, SEARCH_DEBOUNCE_MS } from "../../../constants";
 
 interface UserGroupsProps {
   onBack: () => void;
@@ -221,7 +221,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const handleAddUserSearchTermChange = (value: string) => {
     userSearchRequestGuard.invalidate();
     setUserSearchTerm(value);
-    if (value.trim().length < 2) {
+    if (value.trim().length < MIN_SEARCH_CHARACTERS) {
       setSearchResults([]);
       setSearchingUsers(false);
     }
@@ -230,7 +230,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const handleSearchUsers = useCallback(async (term: string) => {
     const requestToken = userSearchRequestGuard.start();
     const searchTerm = term.trim();
-    if (searchTerm.length < 2) {
+    if (searchTerm.length < MIN_SEARCH_CHARACTERS) {
       setSearchResults([]);
       setSearchingUsers(false);
       return;
@@ -286,7 +286,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   }, [userSearchRequestGuard]);
 
   useEffect(() => {
-    if (!addUserDialogOpen || userSearchTerm.trim().length < 2) return;
+    if (!addUserDialogOpen || userSearchTerm.trim().length < MIN_SEARCH_CHARACTERS) return;
     const timer = window.setTimeout(() => {
       void handleSearchUsers(userSearchTerm);
     }, SEARCH_DEBOUNCE_MS);

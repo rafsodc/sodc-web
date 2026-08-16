@@ -13,6 +13,7 @@ export const ITEMS_PER_PAGE = 25;
 
 // Debounce delays (in milliseconds)
 export const SEARCH_DEBOUNCE_MS = 500;
+export const MIN_SEARCH_CHARACTERS = 2;
 
 // UI timeouts (in milliseconds)
 export const SUCCESS_MESSAGE_TIMEOUT = 1500;

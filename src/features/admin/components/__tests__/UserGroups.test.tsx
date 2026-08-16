@@ -1,10 +1,11 @@
-import { describe, beforeEach, expect, it, vi } from "vitest";
+import { describe, beforeEach, afterEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { executeMutation, executeQuery, QueryFetchPolicy } from "firebase/data-connect";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { act, fireEvent, render, screen } from "../../../../test-utils";
 import UserGroups from "../UserGroups";
 import { searchUsers } from "../../../users/utils/searchUsers";
+import { SEARCH_DEBOUNCE_MS } from "../../../../constants";
 
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn(),
@@ -142,6 +143,10 @@ describe("UserGroups", () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("replaces cached group details with server data after editing", async () => {
     const user = userEvent.setup();
     render(
@@ -168,22 +173,31 @@ describe("UserGroups", () => {
       success: true,
       data: { users: [], total: 0, page: 1, pageSize: 10, totalPages: 1 },
     });
-    const user = userEvent.setup();
+    const initialUser = userEvent.setup();
     render(
       <MemoryRouter>
         <UserGroups onBack={vi.fn()} />
       </MemoryRouter>
     );
 
-    await user.click(await screen.findByRole("button", { name: "Add user to Original Group" }));
+    await initialUser.click(await screen.findByRole("button", { name: "Add user to Original Group" }));
+    vi.useFakeTimers();
     const searchInput = screen.getByLabelText("Search Users");
-    await user.type(searchInput, "a");
-    await new Promise((resolve) => window.setTimeout(resolve, 550));
+    fireEvent.change(searchInput, { target: { value: "a" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS);
+    });
     expect(searchUsers).not.toHaveBeenCalled();
 
-    await user.type(searchInput, "b");
+    fireEvent.change(searchInput, { target: { value: "ab" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS - 1);
+    });
     expect(searchUsers).not.toHaveBeenCalled();
-    await waitFor(() => expect(searchUsers).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(searchUsers).toHaveBeenCalledTimes(1);
     expect(searchUsers).toHaveBeenCalledWith("ab", 1, 10);
   });
 });

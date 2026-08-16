@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { searchUsers } from "../utils/searchUsers";
 import type { SearchUser } from "../../../types";
-import { ITEMS_PER_PAGE } from "../../../constants";
+import { ITEMS_PER_PAGE, MIN_SEARCH_CHARACTERS } from "../../../constants";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
-
-const MIN_SEARCH_CHARACTERS = 2;
 
 interface UseUserSearchResult {
   users: SearchUser[];

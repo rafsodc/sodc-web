@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { searchSectionMembers } from "../../../shared/utils/firebaseFunctions";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
-import { SEARCH_DEBOUNCE_MS } from "../../../constants";
+import { MIN_SEARCH_CHARACTERS, SEARCH_DEBOUNCE_MS } from "../../../constants";
 
 export interface SectionMemberSeatingOption {
   id: string;
   label: string;
 }
-
-const MIN_SEARCH_CHARACTERS = 2;
 
 /**
  * Typeahead search over a section's population for the booking wizard's "sit next to" field.
