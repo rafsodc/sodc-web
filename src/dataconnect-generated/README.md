@@ -49,11 +49,17 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetSectionAnnouncementOptOutsPaged*](#getsectionannouncementoptoutspaged)
   - [*GetAnnouncementRecipientProgress*](#getannouncementrecipientprogress)
   - [*GetAnnouncementRecipientProgressPaged*](#getannouncementrecipientprogresspaged)
+  - [*GetAnnouncementRecipientProgressSummary*](#getannouncementrecipientprogresssummary)
   - [*GetAnnouncementRecipientsForResume*](#getannouncementrecipientsforresume)
   - [*GetAnnouncementRecipientsForResumePaged*](#getannouncementrecipientsforresumepaged)
   - [*GetAnnouncementSendHistory*](#getannouncementsendhistory)
   - [*GetAnnouncementSendRecipients*](#getannouncementsendrecipients)
   - [*GetAnnouncementSendRecipientsPaged*](#getannouncementsendrecipientspaged)
+  - [*GetAnnouncementSendRecipientPage*](#getannouncementsendrecipientpage)
+  - [*GetAnnouncementAudienceSection*](#getannouncementaudiencesection)
+  - [*GetAnnouncementAudiencePurposeLinksPaged*](#getannouncementaudiencepurposelinkspaged)
+  - [*GetAnnouncementExplicitMembersPaged*](#getannouncementexplicitmemberspaged)
+  - [*GetAnnouncementStatusMembersPaged*](#getannouncementstatusmemberspaged)
   - [*GetAnnouncementSendById*](#getannouncementsendbyid)
   - [*GetAnnouncementRecipientBySendAndUser*](#getannouncementrecipientbysendanduser)
   - [*GetUserByEmail*](#getuserbyemail)
@@ -5130,6 +5136,118 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetAnnouncementRecipientProgressSummary
+You can execute the `GetAnnouncementRecipientProgressSummary` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementRecipientProgressSummary(vars: GetAnnouncementRecipientProgressSummaryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+
+interface GetAnnouncementRecipientProgressSummaryRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientProgressSummaryVariables): QueryRef<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+}
+export const getAnnouncementRecipientProgressSummaryRef: GetAnnouncementRecipientProgressSummaryRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementRecipientProgressSummary(dc: DataConnect, vars: GetAnnouncementRecipientProgressSummaryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+
+interface GetAnnouncementRecipientProgressSummaryRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementRecipientProgressSummaryVariables): QueryRef<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+}
+export const getAnnouncementRecipientProgressSummaryRef: GetAnnouncementRecipientProgressSummaryRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementRecipientProgressSummaryRef:
+```typescript
+const name = getAnnouncementRecipientProgressSummaryRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementRecipientProgressSummary` query requires an argument of type `GetAnnouncementRecipientProgressSummaryVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementRecipientProgressSummaryVariables {
+  sendId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementRecipientProgressSummary` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementRecipientProgressSummaryData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementRecipientProgressSummaryData {
+  announcementRecipients: ({
+    status: string;
+    _count: number;
+  })[];
+}
+```
+### Using `GetAnnouncementRecipientProgressSummary`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementRecipientProgressSummary, GetAnnouncementRecipientProgressSummaryVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementRecipientProgressSummary` query requires an argument of type `GetAnnouncementRecipientProgressSummaryVariables`:
+const getAnnouncementRecipientProgressSummaryVars: GetAnnouncementRecipientProgressSummaryVariables = {
+  sendId: ..., 
+};
+
+// Call the `getAnnouncementRecipientProgressSummary()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementRecipientProgressSummary(getAnnouncementRecipientProgressSummaryVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementRecipientProgressSummary({ sendId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementRecipientProgressSummary(dataConnect, getAnnouncementRecipientProgressSummaryVars);
+
+console.log(data.announcementRecipients);
+
+// Or, you can use the `Promise` API.
+getAnnouncementRecipientProgressSummary(getAnnouncementRecipientProgressSummaryVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipients);
+});
+```
+
+### Using `GetAnnouncementRecipientProgressSummary`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementRecipientProgressSummaryRef, GetAnnouncementRecipientProgressSummaryVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementRecipientProgressSummary` query requires an argument of type `GetAnnouncementRecipientProgressSummaryVariables`:
+const getAnnouncementRecipientProgressSummaryVars: GetAnnouncementRecipientProgressSummaryVariables = {
+  sendId: ..., 
+};
+
+// Call the `getAnnouncementRecipientProgressSummaryRef()` function to get a reference to the query.
+const ref = getAnnouncementRecipientProgressSummaryRef(getAnnouncementRecipientProgressSummaryVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementRecipientProgressSummaryRef({ sendId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementRecipientProgressSummaryRef(dataConnect, getAnnouncementRecipientProgressSummaryVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.announcementRecipients);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementRecipients);
+});
+```
+
 ## GetAnnouncementRecipientsForResume
 You can execute the `GetAnnouncementRecipientsForResume` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -5728,6 +5846,643 @@ console.log(data.announcementRecipients);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.announcementRecipients);
+});
+```
+
+## GetAnnouncementSendRecipientPage
+You can execute the `GetAnnouncementSendRecipientPage` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementSendRecipientPage(vars: GetAnnouncementSendRecipientPageVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+
+interface GetAnnouncementSendRecipientPageRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementSendRecipientPageVariables): QueryRef<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+}
+export const getAnnouncementSendRecipientPageRef: GetAnnouncementSendRecipientPageRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementSendRecipientPage(dc: DataConnect, vars: GetAnnouncementSendRecipientPageVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+
+interface GetAnnouncementSendRecipientPageRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementSendRecipientPageVariables): QueryRef<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+}
+export const getAnnouncementSendRecipientPageRef: GetAnnouncementSendRecipientPageRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementSendRecipientPageRef:
+```typescript
+const name = getAnnouncementSendRecipientPageRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementSendRecipientPage` query requires an argument of type `GetAnnouncementSendRecipientPageVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementSendRecipientPageVariables {
+  sendId: UUIDString;
+  statuses: string[];
+  failureCategories: string[];
+  searchPattern: string;
+  initials: string[];
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementSendRecipientPage` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementSendRecipientPageData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementSendRecipientPageData {
+  total: ({
+    _count: number;
+  })[];
+  filtered: ({
+    surnameInitial: string;
+    _count: number;
+  })[];
+  recipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    surnameInitial: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+    failureCategory: string;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
+  } & AnnouncementRecipient_Key)[];
+}
+```
+### Using `GetAnnouncementSendRecipientPage`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementSendRecipientPage, GetAnnouncementSendRecipientPageVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementSendRecipientPage` query requires an argument of type `GetAnnouncementSendRecipientPageVariables`:
+const getAnnouncementSendRecipientPageVars: GetAnnouncementSendRecipientPageVariables = {
+  sendId: ..., 
+  statuses: ..., 
+  failureCategories: ..., 
+  searchPattern: ..., 
+  initials: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementSendRecipientPage()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementSendRecipientPage(getAnnouncementSendRecipientPageVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementSendRecipientPage({ sendId: ..., statuses: ..., failureCategories: ..., searchPattern: ..., initials: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementSendRecipientPage(dataConnect, getAnnouncementSendRecipientPageVars);
+
+console.log(data.total);
+console.log(data.filtered);
+console.log(data.recipients);
+
+// Or, you can use the `Promise` API.
+getAnnouncementSendRecipientPage(getAnnouncementSendRecipientPageVars).then((response) => {
+  const data = response.data;
+  console.log(data.total);
+  console.log(data.filtered);
+  console.log(data.recipients);
+});
+```
+
+### Using `GetAnnouncementSendRecipientPage`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementSendRecipientPageRef, GetAnnouncementSendRecipientPageVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementSendRecipientPage` query requires an argument of type `GetAnnouncementSendRecipientPageVariables`:
+const getAnnouncementSendRecipientPageVars: GetAnnouncementSendRecipientPageVariables = {
+  sendId: ..., 
+  statuses: ..., 
+  failureCategories: ..., 
+  searchPattern: ..., 
+  initials: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementSendRecipientPageRef()` function to get a reference to the query.
+const ref = getAnnouncementSendRecipientPageRef(getAnnouncementSendRecipientPageVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementSendRecipientPageRef({ sendId: ..., statuses: ..., failureCategories: ..., searchPattern: ..., initials: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementSendRecipientPageRef(dataConnect, getAnnouncementSendRecipientPageVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.total);
+console.log(data.filtered);
+console.log(data.recipients);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.total);
+  console.log(data.filtered);
+  console.log(data.recipients);
+});
+```
+
+## GetAnnouncementAudienceSection
+You can execute the `GetAnnouncementAudienceSection` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementAudienceSection(vars: GetAnnouncementAudienceSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+
+interface GetAnnouncementAudienceSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementAudienceSectionVariables): QueryRef<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+}
+export const getAnnouncementAudienceSectionRef: GetAnnouncementAudienceSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementAudienceSection(dc: DataConnect, vars: GetAnnouncementAudienceSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+
+interface GetAnnouncementAudienceSectionRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementAudienceSectionVariables): QueryRef<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+}
+export const getAnnouncementAudienceSectionRef: GetAnnouncementAudienceSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementAudienceSectionRef:
+```typescript
+const name = getAnnouncementAudienceSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementAudienceSection` query requires an argument of type `GetAnnouncementAudienceSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementAudienceSectionVariables {
+  sectionId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementAudienceSection` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementAudienceSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementAudienceSectionData {
+  section?: {
+    id: UUIDString;
+    name: string;
+  } & Section_Key;
+}
+```
+### Using `GetAnnouncementAudienceSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAudienceSection, GetAnnouncementAudienceSectionVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAudienceSection` query requires an argument of type `GetAnnouncementAudienceSectionVariables`:
+const getAnnouncementAudienceSectionVars: GetAnnouncementAudienceSectionVariables = {
+  sectionId: ..., 
+};
+
+// Call the `getAnnouncementAudienceSection()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementAudienceSection(getAnnouncementAudienceSectionVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementAudienceSection({ sectionId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementAudienceSection(dataConnect, getAnnouncementAudienceSectionVars);
+
+console.log(data.section);
+
+// Or, you can use the `Promise` API.
+getAnnouncementAudienceSection(getAnnouncementAudienceSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.section);
+});
+```
+
+### Using `GetAnnouncementAudienceSection`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAudienceSectionRef, GetAnnouncementAudienceSectionVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAudienceSection` query requires an argument of type `GetAnnouncementAudienceSectionVariables`:
+const getAnnouncementAudienceSectionVars: GetAnnouncementAudienceSectionVariables = {
+  sectionId: ..., 
+};
+
+// Call the `getAnnouncementAudienceSectionRef()` function to get a reference to the query.
+const ref = getAnnouncementAudienceSectionRef(getAnnouncementAudienceSectionVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementAudienceSectionRef({ sectionId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementAudienceSectionRef(dataConnect, getAnnouncementAudienceSectionVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.section);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.section);
+});
+```
+
+## GetAnnouncementAudiencePurposeLinksPaged
+You can execute the `GetAnnouncementAudiencePurposeLinksPaged` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementAudiencePurposeLinksPaged(vars: GetAnnouncementAudiencePurposeLinksPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+
+interface GetAnnouncementAudiencePurposeLinksPagedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementAudiencePurposeLinksPagedVariables): QueryRef<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+}
+export const getAnnouncementAudiencePurposeLinksPagedRef: GetAnnouncementAudiencePurposeLinksPagedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementAudiencePurposeLinksPaged(dc: DataConnect, vars: GetAnnouncementAudiencePurposeLinksPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+
+interface GetAnnouncementAudiencePurposeLinksPagedRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementAudiencePurposeLinksPagedVariables): QueryRef<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+}
+export const getAnnouncementAudiencePurposeLinksPagedRef: GetAnnouncementAudiencePurposeLinksPagedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementAudiencePurposeLinksPagedRef:
+```typescript
+const name = getAnnouncementAudiencePurposeLinksPagedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementAudiencePurposeLinksPaged` query requires an argument of type `GetAnnouncementAudiencePurposeLinksPagedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementAudiencePurposeLinksPagedVariables {
+  sectionId: UUIDString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementAudiencePurposeLinksPaged` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementAudiencePurposeLinksPagedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementAudiencePurposeLinksPagedData {
+  sectionUserGroupPurposeLinks: ({
+    purposes?: SectionUserGroupPurpose[] | null;
+    userGroup: {
+      id: UUIDString;
+      membershipStatuses?: MembershipStatus[] | null;
+    } & UserGroup_Key;
+  })[];
+}
+```
+### Using `GetAnnouncementAudiencePurposeLinksPaged`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAudiencePurposeLinksPaged, GetAnnouncementAudiencePurposeLinksPagedVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAudiencePurposeLinksPaged` query requires an argument of type `GetAnnouncementAudiencePurposeLinksPagedVariables`:
+const getAnnouncementAudiencePurposeLinksPagedVars: GetAnnouncementAudiencePurposeLinksPagedVariables = {
+  sectionId: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementAudiencePurposeLinksPaged()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementAudiencePurposeLinksPaged(getAnnouncementAudiencePurposeLinksPagedVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementAudiencePurposeLinksPaged({ sectionId: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementAudiencePurposeLinksPaged(dataConnect, getAnnouncementAudiencePurposeLinksPagedVars);
+
+console.log(data.sectionUserGroupPurposeLinks);
+
+// Or, you can use the `Promise` API.
+getAnnouncementAudiencePurposeLinksPaged(getAnnouncementAudiencePurposeLinksPagedVars).then((response) => {
+  const data = response.data;
+  console.log(data.sectionUserGroupPurposeLinks);
+});
+```
+
+### Using `GetAnnouncementAudiencePurposeLinksPaged`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAudiencePurposeLinksPagedRef, GetAnnouncementAudiencePurposeLinksPagedVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAudiencePurposeLinksPaged` query requires an argument of type `GetAnnouncementAudiencePurposeLinksPagedVariables`:
+const getAnnouncementAudiencePurposeLinksPagedVars: GetAnnouncementAudiencePurposeLinksPagedVariables = {
+  sectionId: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementAudiencePurposeLinksPagedRef()` function to get a reference to the query.
+const ref = getAnnouncementAudiencePurposeLinksPagedRef(getAnnouncementAudiencePurposeLinksPagedVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementAudiencePurposeLinksPagedRef({ sectionId: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementAudiencePurposeLinksPagedRef(dataConnect, getAnnouncementAudiencePurposeLinksPagedVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.sectionUserGroupPurposeLinks);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sectionUserGroupPurposeLinks);
+});
+```
+
+## GetAnnouncementExplicitMembersPaged
+You can execute the `GetAnnouncementExplicitMembersPaged` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementExplicitMembersPaged(vars: GetAnnouncementExplicitMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+
+interface GetAnnouncementExplicitMembersPagedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementExplicitMembersPagedVariables): QueryRef<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+}
+export const getAnnouncementExplicitMembersPagedRef: GetAnnouncementExplicitMembersPagedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementExplicitMembersPaged(dc: DataConnect, vars: GetAnnouncementExplicitMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+
+interface GetAnnouncementExplicitMembersPagedRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementExplicitMembersPagedVariables): QueryRef<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+}
+export const getAnnouncementExplicitMembersPagedRef: GetAnnouncementExplicitMembersPagedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementExplicitMembersPagedRef:
+```typescript
+const name = getAnnouncementExplicitMembersPagedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementExplicitMembersPaged` query requires an argument of type `GetAnnouncementExplicitMembersPagedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementExplicitMembersPagedVariables {
+  userGroupIds: UUIDString[];
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementExplicitMembersPaged` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementExplicitMembersPagedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementExplicitMembersPagedData {
+  userUserGroups: ({
+    userGroupId: UUIDString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      membershipStatus: MembershipStatus;
+      announcementOptOutAll: boolean;
+    } & User_Key;
+  })[];
+}
+```
+### Using `GetAnnouncementExplicitMembersPaged`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementExplicitMembersPaged, GetAnnouncementExplicitMembersPagedVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementExplicitMembersPaged` query requires an argument of type `GetAnnouncementExplicitMembersPagedVariables`:
+const getAnnouncementExplicitMembersPagedVars: GetAnnouncementExplicitMembersPagedVariables = {
+  userGroupIds: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementExplicitMembersPaged()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementExplicitMembersPaged(getAnnouncementExplicitMembersPagedVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementExplicitMembersPaged({ userGroupIds: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementExplicitMembersPaged(dataConnect, getAnnouncementExplicitMembersPagedVars);
+
+console.log(data.userUserGroups);
+
+// Or, you can use the `Promise` API.
+getAnnouncementExplicitMembersPaged(getAnnouncementExplicitMembersPagedVars).then((response) => {
+  const data = response.data;
+  console.log(data.userUserGroups);
+});
+```
+
+### Using `GetAnnouncementExplicitMembersPaged`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementExplicitMembersPagedRef, GetAnnouncementExplicitMembersPagedVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementExplicitMembersPaged` query requires an argument of type `GetAnnouncementExplicitMembersPagedVariables`:
+const getAnnouncementExplicitMembersPagedVars: GetAnnouncementExplicitMembersPagedVariables = {
+  userGroupIds: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementExplicitMembersPagedRef()` function to get a reference to the query.
+const ref = getAnnouncementExplicitMembersPagedRef(getAnnouncementExplicitMembersPagedVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementExplicitMembersPagedRef({ userGroupIds: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementExplicitMembersPagedRef(dataConnect, getAnnouncementExplicitMembersPagedVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.userUserGroups);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.userUserGroups);
+});
+```
+
+## GetAnnouncementStatusMembersPaged
+You can execute the `GetAnnouncementStatusMembersPaged` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementStatusMembersPaged(vars: GetAnnouncementStatusMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+
+interface GetAnnouncementStatusMembersPagedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementStatusMembersPagedVariables): QueryRef<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+}
+export const getAnnouncementStatusMembersPagedRef: GetAnnouncementStatusMembersPagedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementStatusMembersPaged(dc: DataConnect, vars: GetAnnouncementStatusMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+
+interface GetAnnouncementStatusMembersPagedRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementStatusMembersPagedVariables): QueryRef<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+}
+export const getAnnouncementStatusMembersPagedRef: GetAnnouncementStatusMembersPagedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementStatusMembersPagedRef:
+```typescript
+const name = getAnnouncementStatusMembersPagedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementStatusMembersPaged` query requires an argument of type `GetAnnouncementStatusMembersPagedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementStatusMembersPagedVariables {
+  membershipStatuses: MembershipStatus[];
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementStatusMembersPaged` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementStatusMembersPagedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementStatusMembersPagedData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    membershipStatus: MembershipStatus;
+    announcementOptOutAll: boolean;
+  } & User_Key)[];
+}
+```
+### Using `GetAnnouncementStatusMembersPaged`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementStatusMembersPaged, GetAnnouncementStatusMembersPagedVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementStatusMembersPaged` query requires an argument of type `GetAnnouncementStatusMembersPagedVariables`:
+const getAnnouncementStatusMembersPagedVars: GetAnnouncementStatusMembersPagedVariables = {
+  membershipStatuses: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementStatusMembersPaged()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementStatusMembersPaged(getAnnouncementStatusMembersPagedVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementStatusMembersPaged({ membershipStatuses: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementStatusMembersPaged(dataConnect, getAnnouncementStatusMembersPagedVars);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+getAnnouncementStatusMembersPaged(getAnnouncementStatusMembersPagedVars).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+### Using `GetAnnouncementStatusMembersPaged`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementStatusMembersPagedRef, GetAnnouncementStatusMembersPagedVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementStatusMembersPaged` query requires an argument of type `GetAnnouncementStatusMembersPagedVariables`:
+const getAnnouncementStatusMembersPagedVars: GetAnnouncementStatusMembersPagedVariables = {
+  membershipStatuses: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementStatusMembersPagedRef()` function to get a reference to the query.
+const ref = getAnnouncementStatusMembersPagedRef(getAnnouncementStatusMembersPagedVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementStatusMembersPagedRef({ membershipStatuses: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementStatusMembersPagedRef(dataConnect, getAnnouncementStatusMembersPagedVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.users);
 });
 ```
 
@@ -16879,6 +17634,7 @@ export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
   email: string;
   firstName: string;
   lastName: string;
+  surnameInitial: string;
   status: string;
   skippedReason?: string | null;
   sentAt?: TimestampString | null;
@@ -16909,6 +17665,7 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
   email: ..., 
   firstName: ..., 
   lastName: ..., 
+  surnameInitial: ..., 
   status: ..., 
   skippedReason: ..., // optional
   sentAt: ..., // optional
@@ -16920,7 +17677,7 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementRecipientWithDeliveryMode(createAnnouncementRecipientWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementRecipientWithDeliveryMode({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+const { data } = await createAnnouncementRecipientWithDeliveryMode({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -16949,6 +17706,7 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
   email: ..., 
   firstName: ..., 
   lastName: ..., 
+  surnameInitial: ..., 
   status: ..., 
   skippedReason: ..., // optional
   sentAt: ..., // optional
@@ -16959,7 +17717,7 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
 // Call the `createAnnouncementRecipientWithDeliveryModeRef()` function to get a reference to the mutation.
 const ref = createAnnouncementRecipientWithDeliveryModeRef(createAnnouncementRecipientWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementRecipientWithDeliveryModeRef({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+const ref = createAnnouncementRecipientWithDeliveryModeRef({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -17020,6 +17778,7 @@ export interface TryUpdateAnnouncementRecipientProcessingStatusVariables {
   processingStartedAt?: TimestampString | null;
   sentAt?: TimestampString | null;
   failureReason?: string | null;
+  failureCategory: string;
   providerNotificationId?: string | null;
 }
 ```
@@ -17048,6 +17807,7 @@ const tryUpdateAnnouncementRecipientProcessingStatusVars: TryUpdateAnnouncementR
   processingStartedAt: ..., // optional
   sentAt: ..., // optional
   failureReason: ..., // optional
+  failureCategory: ..., 
   providerNotificationId: ..., // optional
 };
 
@@ -17055,7 +17815,7 @@ const tryUpdateAnnouncementRecipientProcessingStatusVars: TryUpdateAnnouncementR
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await tryUpdateAnnouncementRecipientProcessingStatus(tryUpdateAnnouncementRecipientProcessingStatusVars);
 // Variables can be defined inline as well.
-const { data } = await tryUpdateAnnouncementRecipientProcessingStatus({ id: ..., expectedStatus: ..., expectedProcessingVersion: ..., status: ..., processingVersion: ..., processingStartedAt: ..., sentAt: ..., failureReason: ..., providerNotificationId: ..., });
+const { data } = await tryUpdateAnnouncementRecipientProcessingStatus({ id: ..., expectedStatus: ..., expectedProcessingVersion: ..., status: ..., processingVersion: ..., processingStartedAt: ..., sentAt: ..., failureReason: ..., failureCategory: ..., providerNotificationId: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -17086,13 +17846,14 @@ const tryUpdateAnnouncementRecipientProcessingStatusVars: TryUpdateAnnouncementR
   processingStartedAt: ..., // optional
   sentAt: ..., // optional
   failureReason: ..., // optional
+  failureCategory: ..., 
   providerNotificationId: ..., // optional
 };
 
 // Call the `tryUpdateAnnouncementRecipientProcessingStatusRef()` function to get a reference to the mutation.
 const ref = tryUpdateAnnouncementRecipientProcessingStatusRef(tryUpdateAnnouncementRecipientProcessingStatusVars);
 // Variables can be defined inline as well.
-const ref = tryUpdateAnnouncementRecipientProcessingStatusRef({ id: ..., expectedStatus: ..., expectedProcessingVersion: ..., status: ..., processingVersion: ..., processingStartedAt: ..., sentAt: ..., failureReason: ..., providerNotificationId: ..., });
+const ref = tryUpdateAnnouncementRecipientProcessingStatusRef({ id: ..., expectedStatus: ..., expectedProcessingVersion: ..., status: ..., processingVersion: ..., processingStartedAt: ..., sentAt: ..., failureReason: ..., failureCategory: ..., providerNotificationId: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -17262,6 +18023,7 @@ export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
   deliveryVersion: number;
   status: string;
   failureReason?: string | null;
+  failureCategory: string;
   deliveryStatusUpdatedAt: TimestampString;
   deliveryReceiptId: string;
 }
@@ -17288,6 +18050,7 @@ const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRec
   deliveryVersion: ..., 
   status: ..., 
   failureReason: ..., // optional
+  failureCategory: ..., 
   deliveryStatusUpdatedAt: ..., 
   deliveryReceiptId: ..., 
 };
@@ -17296,7 +18059,7 @@ const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRec
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await tryUpdateAnnouncementRecipientDeliveryStatus(tryUpdateAnnouncementRecipientDeliveryStatusVars);
 // Variables can be defined inline as well.
-const { data } = await tryUpdateAnnouncementRecipientDeliveryStatus({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
+const { data } = await tryUpdateAnnouncementRecipientDeliveryStatus({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., failureCategory: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -17324,6 +18087,7 @@ const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRec
   deliveryVersion: ..., 
   status: ..., 
   failureReason: ..., // optional
+  failureCategory: ..., 
   deliveryStatusUpdatedAt: ..., 
   deliveryReceiptId: ..., 
 };
@@ -17331,7 +18095,7 @@ const tryUpdateAnnouncementRecipientDeliveryStatusVars: TryUpdateAnnouncementRec
 // Call the `tryUpdateAnnouncementRecipientDeliveryStatusRef()` function to get a reference to the mutation.
 const ref = tryUpdateAnnouncementRecipientDeliveryStatusRef(tryUpdateAnnouncementRecipientDeliveryStatusVars);
 // Variables can be defined inline as well.
-const ref = tryUpdateAnnouncementRecipientDeliveryStatusRef({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
+const ref = tryUpdateAnnouncementRecipientDeliveryStatusRef({ id: ..., expectedDeliveryVersion: ..., deliveryVersion: ..., status: ..., failureReason: ..., failureCategory: ..., deliveryStatusUpdatedAt: ..., deliveryReceiptId: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

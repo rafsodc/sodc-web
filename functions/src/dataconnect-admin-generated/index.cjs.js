@@ -816,6 +816,13 @@ function getAnnouncementRecipientProgressPaged(dcOrVarsOrOptions, varsOrOptions,
 }
 exports.getAnnouncementRecipientProgressPaged = getAnnouncementRecipientProgressPaged;
 
+function getAnnouncementRecipientProgressSummary(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientProgressSummary', inputVars, inputOpts);
+}
+exports.getAnnouncementRecipientProgressSummary = getAnnouncementRecipientProgressSummary;
+
 function getAnnouncementRecipientsForResume(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -850,6 +857,41 @@ function getAnnouncementSendRecipientsPaged(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeQuery('GetAnnouncementSendRecipientsPaged', inputVars, inputOpts);
 }
 exports.getAnnouncementSendRecipientsPaged = getAnnouncementSendRecipientsPaged;
+
+function getAnnouncementSendRecipientPage(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendRecipientPage', inputVars, inputOpts);
+}
+exports.getAnnouncementSendRecipientPage = getAnnouncementSendRecipientPage;
+
+function getAnnouncementAudienceSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementAudienceSection', inputVars, inputOpts);
+}
+exports.getAnnouncementAudienceSection = getAnnouncementAudienceSection;
+
+function getAnnouncementAudiencePurposeLinksPaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementAudiencePurposeLinksPaged', inputVars, inputOpts);
+}
+exports.getAnnouncementAudiencePurposeLinksPaged = getAnnouncementAudiencePurposeLinksPaged;
+
+function getAnnouncementExplicitMembersPaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementExplicitMembersPaged', inputVars, inputOpts);
+}
+exports.getAnnouncementExplicitMembersPaged = getAnnouncementExplicitMembersPaged;
+
+function getAnnouncementStatusMembersPaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementStatusMembersPaged', inputVars, inputOpts);
+}
+exports.getAnnouncementStatusMembersPaged = getAnnouncementStatusMembersPaged;
 
 function getAnnouncementSendById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

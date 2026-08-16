@@ -7,6 +7,7 @@ import AnnouncementSendHistory from "../AnnouncementSendHistory";
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getAnnouncementSendHistory: vi.fn(),
   getAnnouncementSendRecipients: vi.fn(),
+  retryAnnouncementPreparation: vi.fn(),
 }));
 
 const SECTION_ID = "section-abc";
@@ -29,6 +30,10 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     skippedCount: 1,
     processedCount: 3,
     failureCount: 1,
+    enqueueFailureCount: 0,
+    recordedRecipientCount: 4,
+    progressAvailable: true,
+    preparationIncomplete: false,
   },
   {
     ...LIVE_SEND_MODES,
@@ -42,6 +47,10 @@ const mockSends: firebaseFunctions.AnnouncementSend[] = [
     skippedCount: 0,
     processedCount: 2,
     failureCount: 0,
+    enqueueFailureCount: 0,
+    recordedRecipientCount: 2,
+    progressAvailable: true,
+    preparationIncomplete: false,
   },
 ];
 
@@ -287,6 +296,66 @@ describe("AnnouncementSendHistory", () => {
       expect(firebaseFunctions.getAnnouncementSendHistory).toHaveBeenCalledTimes(2);
       expect(firebaseFunctions.getAnnouncementSendRecipients).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("distinguishes a send with no recorded recipients from an empty filter result", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue({
+      ...mockRecipientPage,
+      recipients: [],
+      totalCount: 0,
+      filteredCount: 0,
+      initialCounts: Object.fromEntries(
+        [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "OTHER"].map((initial) => [initial, 0]),
+      ),
+    });
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+
+    expect(await screen.findByText("No recipients recorded.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("shows unavailable progress rather than a false zero", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue([{
+      ...mockSends[0],
+      processedCount: null,
+      failureCount: null,
+      enqueueFailureCount: null,
+      recordedRecipientCount: null,
+      progressAvailable: false,
+    }]);
+
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+
+    expect(await screen.findByText("Unavailable")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("queues a new preparation generation for an incomplete send", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue([{
+      ...mockSends[0],
+      enqueueFailureCount: 1,
+      recordedRecipientCount: 3,
+      preparationIncomplete: true,
+    }]);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue(mockRecipientPage);
+    vi.mocked(firebaseFunctions.retryAnnouncementPreparation).mockResolvedValue();
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+    await user.click(await screen.findByRole("button", { name: "Retry preparation" }));
+
+    await waitFor(() => expect(firebaseFunctions.retryAnnouncementPreparation).toHaveBeenCalledWith(
+      "send-1",
+      SECTION_ID,
+      expect.stringMatching(/^[0-9a-f-]{36}$/i),
+    ));
+    expect(await screen.findByText("Preparation retry queued. Refresh shortly to see progress."))
+      .toBeInTheDocument();
   });
 
   it("shows an error when recipients fail to load", async () => {

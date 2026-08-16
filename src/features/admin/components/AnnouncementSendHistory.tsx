@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Alert,
   Box,
@@ -29,6 +29,7 @@ import { ExpandLess, ExpandMore, History, Refresh } from "@mui/icons-material";
 import {
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
+  retryAnnouncementPreparation,
   type AnnouncementSend,
   type AnnouncementRecipient,
   type AnnouncementRecipientInitial,
@@ -126,7 +127,11 @@ function SendRow({
   const [statusFilter, setStatusFilter] = useState<AnnouncementRecipientStatusFilter>("ALL");
   const [initial, setInitial] = useState<AnnouncementRecipientInitial>("ALL");
   const [page, setPage] = useState(1);
-  const requestVersion = useRef(0);
+  const [retryingPreparation, setRetryingPreparation] = useState(false);
+  const [retryAttemptId, setRetryAttemptId] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const recipientRequestGuard = useLatestRequestGuard();
+  const retryRequestGuard = useLatestRequestGuard();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -137,7 +142,7 @@ function SendRow({
   }, [searchInput]);
 
   const load = useCallback(async () => {
-    const version = ++requestVersion.current;
+    const requestToken = recipientRequestGuard.start();
     setLoading(true);
     setError(null);
     try {
@@ -147,7 +152,7 @@ function SendRow({
         initial,
         page,
       });
-      if (version !== requestVersion.current) return;
+      if (!recipientRequestGuard.isCurrent(requestToken)) return;
       if (initial !== "ALL" && (result.initialCounts[initial] ?? 0) === 0) {
         setInitial("ALL");
         setPage(1);
@@ -156,13 +161,33 @@ function SendRow({
       setData(result);
       if (result.page !== page) setPage(result.page);
     } catch (caught) {
-      if (version !== requestVersion.current) return;
+      if (!recipientRequestGuard.isCurrent(requestToken)) return;
       reportError("admin.announcements.recipients", caught, { sendId: send.id });
       setError(toAdminUserFacingError(caught, "announcements").message);
     } finally {
-      if (version === requestVersion.current) setLoading(false);
+      if (recipientRequestGuard.isCurrent(requestToken)) setLoading(false);
     }
-  }, [send.id, sectionId, search, statusFilter, initial, page]);
+  }, [send.id, sectionId, search, statusFilter, initial, page, recipientRequestGuard]);
+
+  const retryPreparation = useCallback(async () => {
+    const requestToken = retryRequestGuard.start();
+    const attemptId = retryAttemptId ?? crypto.randomUUID();
+    if (!retryAttemptId) setRetryAttemptId(attemptId);
+    setRetryingPreparation(true);
+    setRetryMessage(null);
+    try {
+      await retryAnnouncementPreparation(send.id, sectionId, attemptId);
+      if (!retryRequestGuard.isCurrent(requestToken)) return;
+      setRetryAttemptId(null);
+      setRetryMessage("Preparation retry queued. Refresh shortly to see progress.");
+    } catch (caught) {
+      if (!retryRequestGuard.isCurrent(requestToken)) return;
+      reportError("admin.announcements.retryPreparation", caught, { sendId: send.id });
+      setRetryMessage(toAdminUserFacingError(caught, "announcements").message);
+    } finally {
+      if (retryRequestGuard.isCurrent(requestToken)) setRetryingPreparation(false);
+    }
+  }, [retryAttemptId, retryRequestGuard, sectionId, send.id]);
 
   useEffect(() => {
     if (open) void load();
@@ -220,7 +245,11 @@ function SendRow({
           />
         </TableCell>
         <TableCell align="right">
-          {send.processedCount < send.recipientCount ? (
+          {!send.progressAvailable || send.processedCount === null ? (
+            <Tooltip title="Progress is temporarily unavailable">
+              <Typography variant="body2" color="warning.main">Unavailable</Typography>
+            </Tooltip>
+          ) : send.processedCount < send.recipientCount ? (
             <Tooltip title={`${send.processedCount} of ${send.recipientCount} processed`}>
               <Box sx={{ minWidth: 80 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -239,8 +268,8 @@ function SendRow({
         </TableCell>
         <TableCell align="right"><Typography variant="body2" color="text.secondary">{send.skippedCount}</Typography></TableCell>
         <TableCell align="right">
-          <Typography variant="body2" color={send.failureCount > 0 ? "error.main" : "text.secondary"}>
-            {send.failureCount}
+          <Typography variant="body2" color={(send.failureCount ?? 0) > 0 ? "error.main" : "text.secondary"}>
+            {send.failureCount ?? "—"}
           </Typography>
         </TableCell>
       </TableRow>
@@ -253,6 +282,26 @@ function SendRow({
                   ? `${send.replyToDisplayLabel}${send.replyToEmailAddress ? ` — ${send.replyToEmailAddress}` : ""}`
                   : "system / GOV.UK Notify default"}
               </Typography>
+
+              {send.preparationIncomplete && (
+                <Alert
+                  severity="warning"
+                  action={(
+                    <Button
+                      color="inherit"
+                      size="small"
+                      disabled={retryingPreparation}
+                      onClick={() => void retryPreparation()}
+                    >
+                      {retryingPreparation ? "Queuing…" : "Retry preparation"}
+                    </Button>
+                  )}
+                  sx={{ mb: 2 }}
+                >
+                  Some recipient emails were not queued for delivery.
+                </Alert>
+              )}
+              {retryMessage && <Alert severity="info" sx={{ mb: 2 }}>{retryMessage}</Alert>}
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mb: 2 }}>
                 <TextField
@@ -327,7 +376,10 @@ function SendRow({
 
               {loading && <LinearProgress aria-label="Loading recipients" sx={{ mb: 1 }} />}
               {error && <Alert severity="error" sx={{ my: 1 }}>{error}</Alert>}
-              {!loading && !error && selectedCount === 0 && (
+              {!loading && !error && result.totalCount === 0 && (
+                <Alert severity="info" sx={{ my: 1 }}>No recipients recorded.</Alert>
+              )}
+              {!loading && !error && result.totalCount > 0 && selectedCount === 0 && (
                 <Alert
                   severity="info"
                   action={<Button color="inherit" size="small" onClick={clearFilters}>Clear filters</Button>}

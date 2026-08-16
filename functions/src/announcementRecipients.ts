@@ -23,6 +23,25 @@ export interface AnnouncementPurposeLink {
   };
 }
 
+export const ANNOUNCEMENT_FAILURE_CATEGORY_NONE = "none";
+export const ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY = "notify_team_only";
+
+export function isNotifyTeamOnlyFailure(reason: string | null | undefined): boolean {
+  return typeof reason === "string" && /team-only api key/i.test(reason);
+}
+
+export function announcementFailureCategory(reason: string | null | undefined): string {
+  return isNotifyTeamOnlyFailure(reason)
+    ? ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY
+    : ANNOUNCEMENT_FAILURE_CATEGORY_NONE;
+}
+
+export function announcementRecipientInitial(lastName: string): string {
+  const normalized = lastName.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const initial = normalized.charAt(0).toUpperCase();
+  return /^[A-Z]$/.test(initial) ? initial : "OTHER";
+}
+
 function linkHasAudiencePurpose(link: AnnouncementPurposeLink): boolean {
   const purposes = link.purposes ?? (link.purpose ? [link.purpose] : []);
   return purposes.includes("ACCESS") || purposes.includes("MODERATOR");

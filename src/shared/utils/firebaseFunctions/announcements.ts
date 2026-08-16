@@ -170,14 +170,30 @@ export interface AnnouncementSend {
   sentAt: string;
   recipientCount: number;
   skippedCount: number;
-  processedCount: number;
-  failureCount: number;
+  processedCount: number | null;
+  failureCount: number | null;
+  enqueueFailureCount: number | null;
+  recordedRecipientCount: number | null;
+  progressAvailable: boolean;
+  preparationIncomplete: boolean;
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
   replyToAddressId?: string | null;
   replyToDisplayLabel?: string | null;
   replyToEmailAddress?: string | null;
+}
+
+export async function retryAnnouncementPreparation(
+  sendId: string,
+  sectionId: string,
+  attemptId: string,
+): Promise<void> {
+  const callable = httpsCallable<
+    { sendId: string; sectionId: string; attemptId: string },
+    { preparationQueued: true }
+  >(functions, "retryAnnouncementPreparation");
+  await callable({ sendId, sectionId, attemptId });
 }
 
 export type AnnouncementRecipientStatus =

@@ -16,6 +16,7 @@ import {
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
   prepareAnnouncementSendTask,
+  retryAnnouncementPreparation,
   resolveAnnouncementRecipients,
   extractTemplateVariables,
   buildRecipientPersonalisation,
@@ -24,10 +25,14 @@ import { govNotifyLiveApiKey } from "../../mailer";
 import { unsubscribeSecret } from "../../unsubscribe";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
-const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipientsPaged");
+const mockGetAnnouncementSendRecipientPage = vi.spyOn(admin, "getAnnouncementSendRecipientPage");
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
-const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
-const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockGetAnnouncementAudienceSection = vi.spyOn(admin, "getAnnouncementAudienceSection");
+const mockGetAnnouncementAudiencePurposeLinks = vi.spyOn(admin, "getAnnouncementAudiencePurposeLinksPaged");
+const mockGetAnnouncementExplicitMembers = vi.spyOn(admin, "getAnnouncementExplicitMembersPaged");
+const mockGetAnnouncementStatusMembers = vi.spyOn(admin, "getAnnouncementStatusMembersPaged");
+const mockGetAnnouncementProgressSummary = vi.spyOn(admin, "getAnnouncementRecipientProgressSummary");
+const mockGetAnnouncementHistory = vi.spyOn(admin, "getAnnouncementSendHistory");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 const mockGetSectionAnnouncementOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOutsPaged");
@@ -87,34 +92,29 @@ const announcementCallables = [
   sendSectionAnnouncement,
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
+  retryAnnouncementPreparation,
 ] as const;
 
 describe("resolveAnnouncementRecipients", () => {
   beforeEach(() => {
-    mockGetSectionMembers.mockReset();
-    mockListUsers.mockReset();
+    mockGetAnnouncementAudienceSection.mockReset();
+    mockGetAnnouncementAudiencePurposeLinks.mockReset();
+    mockGetAnnouncementExplicitMembers.mockReset();
+    mockGetAnnouncementStatusMembers.mockReset();
+    mockGetAnnouncementAudienceSection.mockResolvedValue({
+      data: { section: { id: sectionAId, name: "Signals" } },
+    } as never);
   });
 
   it("loads and merges users matching an eligible group's membership statuses", async () => {
-    mockGetSectionMembers.mockResolvedValue({
-      data: {
-        section: {
-          id: sectionAId,
-          name: "Signals",
-          purposeLinks: [
-            {
-              purposes: ["ACCESS"],
-              userGroup: {
-                id: "regular-access",
-                membershipStatuses: ["REGULAR"],
-                users: [],
-              },
-            },
-          ],
-        },
-      },
-    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
-    mockListUsers.mockResolvedValue({
+    mockGetAnnouncementAudiencePurposeLinks.mockResolvedValue({
+      data: { sectionUserGroupPurposeLinks: [{
+        purposes: ["ACCESS"],
+        userGroup: { id: "regular-access", membershipStatuses: ["REGULAR"] },
+      }] },
+    } as never);
+    mockGetAnnouncementExplicitMembers.mockResolvedValue({ data: { userUserGroups: [] } } as never);
+    mockGetAnnouncementStatusMembers.mockResolvedValue({
       data: {
         users: [
           {
@@ -127,31 +127,61 @@ describe("resolveAnnouncementRecipients", () => {
           },
         ],
       },
-    } as unknown as Awaited<ReturnType<typeof admin.listUsers>>);
+    } as never);
 
     const result = await resolveAnnouncementRecipients(sectionAId);
 
     expect(result.sectionName).toBe("Signals");
     expect(result.recipients.map(({ id }) => id)).toEqual(["status-user"]);
-    expect(mockListUsers).toHaveBeenCalledOnce();
+    expect(mockGetAnnouncementStatusMembers).toHaveBeenCalledOnce();
   });
 
   it("does not load all users when no eligible inherited statuses are configured", async () => {
-    mockGetSectionMembers.mockResolvedValue({
-      data: {
-        section: {
-          id: sectionAId,
-          name: "Signals",
-          purposeLinks: [],
-        },
-      },
-    } as unknown as Awaited<ReturnType<typeof admin.getSectionMembers>>);
+    mockGetAnnouncementAudiencePurposeLinks.mockResolvedValue({
+      data: { sectionUserGroupPurposeLinks: [] },
+    } as never);
 
     await expect(resolveAnnouncementRecipients(sectionAId)).resolves.toEqual({
       recipients: [],
       sectionName: "Signals",
     });
-    expect(mockListUsers).not.toHaveBeenCalled();
+    expect(mockGetAnnouncementStatusMembers).not.toHaveBeenCalled();
+    expect(mockGetAnnouncementExplicitMembers).not.toHaveBeenCalled();
+  });
+
+  it("pages explicit group membership without an audience ceiling", async () => {
+    const users = Array.from({ length: 1001 }, (_, index) => ({
+      userGroupId: "regular-access",
+      user: {
+        id: `user-${index}`,
+        firstName: "Member",
+        lastName: String(index),
+        email: `member-${index}@example.com`,
+        serviceNumber: `S${index}`,
+        membershipStatus: "REGULAR",
+      },
+    }));
+    mockGetAnnouncementAudiencePurposeLinks.mockResolvedValue({
+      data: { sectionUserGroupPurposeLinks: [{
+        purposes: ["ACCESS"],
+        userGroup: { id: "regular-access", membershipStatuses: [] },
+      }] },
+    } as never);
+    mockGetAnnouncementExplicitMembers.mockImplementation(async ({ limit, offset }) => ({
+      data: { userUserGroups: users.slice(offset, offset + limit) },
+    }) as never);
+
+    const result = await resolveAnnouncementRecipients(sectionAId);
+
+    expect(result.recipients).toHaveLength(1001);
+    expect(mockGetAnnouncementExplicitMembers).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      limit: 1000,
+      offset: 0,
+    }));
+    expect(mockGetAnnouncementExplicitMembers).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      limit: 1000,
+      offset: 1000,
+    }));
   });
 });
 
@@ -176,22 +206,23 @@ describe("sendSectionAnnouncement asynchronous durable enqueue", () => {
       serviceNumber: `S${index}`,
       membershipStatus: "REGULAR",
     }));
-    mockGetSectionMembers.mockResolvedValue({
-      data: {
-        section: {
-          id: sectionAId,
-          name: "Signals",
-          purposeLinks: [{
-            purposes: ["ACCESS"],
-            userGroup: {
-              id: "direct-members",
-              membershipStatuses: [],
-              users: audience.map((user) => ({ user })),
-            },
-          }],
-        },
-      },
+    mockGetAnnouncementAudienceSection.mockResolvedValue({
+      data: { section: { id: sectionAId, name: "Signals" } },
     } as never);
+    mockGetAnnouncementAudiencePurposeLinks.mockResolvedValue({
+      data: { sectionUserGroupPurposeLinks: [{
+        purposes: ["ACCESS"],
+        userGroup: { id: "direct-members", membershipStatuses: [] },
+      }] },
+    } as never);
+    mockGetAnnouncementExplicitMembers.mockImplementation(async ({ limit, offset }) => ({
+      data: {
+        userUserGroups: audience.slice(offset, offset + limit).map((user) => ({
+          userGroupId: "direct-members",
+          user,
+        })),
+      },
+    }) as never);
     mockGetSectionAnnouncementOptOuts.mockResolvedValue({
       data: { sectionAnnouncementOptOuts: [] },
     } as never);
@@ -272,7 +303,7 @@ describe("sendSectionAnnouncement asynchronous durable enqueue", () => {
     expect(rows).toHaveLength(0);
     expect(taskQueueMocks.enqueue).toHaveBeenCalledWith(
       { sendId: requestId },
-      { dispatchDeadlineSeconds: 300 },
+      expect.objectContaining({ dispatchDeadlineSeconds: 300, id: expect.any(String) }),
     );
 
     await expect(prepareAnnouncementSendTask({ sendId: requestId })).rejects.toThrow(
@@ -289,8 +320,9 @@ describe("sendSectionAnnouncement asynchronous durable enqueue", () => {
       queuedCount: 800,
       failedToEnqueueCount: 0,
     });
-    expect(mockGetSectionMembers).toHaveBeenCalledOnce();
+    expect(mockGetAnnouncementAudienceSection).toHaveBeenCalledOnce();
     expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+    expect(mockGetAnnouncementRecipientsForResume).toHaveBeenCalledTimes(2);
     expect(rows).toHaveLength(800);
   });
 });
@@ -317,11 +349,139 @@ describe("announcement callable enabled-account boundary", () => {
   });
 });
 
+describe("announcement preparation recovery", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAnnouncementSendById.mockResolvedValue({
+      data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
+    } as never);
+  });
+
+  it("deduplicates a repeated recovery attempt while allowing a new generation", async () => {
+    const attemptA = "00000000-0000-4000-8000-0000000000a1";
+    const attemptB = "00000000-0000-4000-8000-0000000000a2";
+    const seenTaskIds = new Set<string>();
+    taskQueueMocks.enqueue.mockImplementation(async (_data, options) => {
+      const id = (options as { id: string }).id;
+      if (seenTaskIds.has(id)) {
+        throw Object.assign(new Error("Task already exists"), {
+          code: "functions/task-already-exists",
+        });
+      }
+      seenTaskIds.add(id);
+    });
+    const call = (attemptId: string) => retryAnnouncementPreparation.run({
+      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      data: { sectionId: sectionBId, sendId: sendIdForSectionB, attemptId },
+    } as never);
+
+    await expect(call(attemptA)).resolves.toEqual({ preparationQueued: true });
+    await expect(call(attemptA)).resolves.toEqual({ preparationQueued: true });
+    await expect(call(attemptB)).resolves.toEqual({ preparationQueued: true });
+
+    const ids = taskQueueMocks.enqueue.mock.calls.map((entry) => (entry[1] as { id: string }).id);
+    expect(ids[0]).toBe(ids[1]);
+    expect(ids[2]).not.toBe(ids[0]);
+  });
+});
+
+describe("getAnnouncementSendHistory progress", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAnnouncementHistory.mockResolvedValue({
+      data: {
+        announcementSends: [{
+          id: sendIdForSectionB,
+          templateUuid: "template-1",
+          templateName: "BULK: Update",
+          sentBy: "admin-1",
+          sentAt: "2026-08-16T12:00:00.000Z",
+          recipientCount: 8,
+          skippedCount: 2,
+          requestedDeliveryMode: "LIVE",
+          siteDeliveryMode: "LIVE",
+          effectiveDeliveryMode: "LIVE",
+        }],
+      },
+    } as never);
+  });
+
+  it("uses grouped counts and identifies an incomplete preparation", async () => {
+    mockGetAnnouncementProgressSummary.mockResolvedValue({
+      data: {
+        announcementRecipients: [
+          { status: "delivered", _count: 4 },
+          { status: "queued", _count: 3 },
+          { status: "enqueue_failed", _count: 1 },
+          { status: "skipped", _count: 1 },
+        ],
+      },
+    } as never);
+
+    const result = await getAnnouncementSendHistory.run({
+      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      data: { sectionId: sectionBId },
+    } as never);
+
+    expect(result.sends[0]).toMatchObject({
+      processedCount: 4,
+      failureCount: 1,
+      enqueueFailureCount: 1,
+      recordedRecipientCount: 9,
+      progressAvailable: true,
+      preparationIncomplete: true,
+    });
+    expect(mockGetAnnouncementProgressSummary).toHaveBeenCalledOnce();
+  });
+
+  it("reports unavailable progress instead of a false zero when the summary fails", async () => {
+    mockGetAnnouncementProgressSummary.mockRejectedValue(new Error("second page unavailable"));
+
+    const result = await getAnnouncementSendHistory.run({
+      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      data: { sectionId: sectionBId },
+    } as never);
+
+    expect(result.sends[0]).toMatchObject({
+      processedCount: null,
+      failureCount: null,
+      progressAvailable: false,
+      preparationIncomplete: false,
+    });
+  });
+});
+
 describe("getAnnouncementSendRecipients", () => {
   beforeEach(() => {
     mockGetAnnouncementSendById.mockReset();
-    mockGetAnnouncementSendRecipients.mockReset();
+    mockGetAnnouncementSendRecipientPage.mockReset();
   });
+
+  function mockRecipientQuery(rows: Array<Record<string, unknown>>) {
+    mockGetAnnouncementSendRecipientPage.mockImplementation(async (variables) => {
+      const search = new RegExp(variables.searchPattern, "i");
+      const filtered = rows.filter((row) =>
+        variables.statuses.includes(String(row.status)) &&
+        variables.failureCategories.includes(String(row.failureCategory ?? "none")) &&
+        [row.firstName, row.lastName, row.email].some((value) => search.test(String(value)))
+      );
+      const initialCounts = new Map<string, number>();
+      filtered.forEach((row) => {
+        const initial = String(row.surnameInitial ?? "OTHER");
+        initialCounts.set(initial, (initialCounts.get(initial) ?? 0) + 1);
+      });
+      const selected = filtered.filter((row) =>
+        variables.initials.includes(String(row.surnameInitial ?? "OTHER"))
+      );
+      return {
+        data: {
+          total: [{ _count: rows.length }],
+          filtered: [...initialCounts].map(([surnameInitial, _count]) => ({ surnameInitial, _count })),
+          recipients: selected.slice(variables.offset, variables.offset + variables.limit),
+        },
+      } as never;
+    });
+  }
 
   it("rejects a sendId that belongs to a different section than the one the caller was authorized for", async () => {
     mockGetAnnouncementSendById.mockResolvedValue({
@@ -332,30 +492,27 @@ describe("getAnnouncementSendRecipients", () => {
       callAsAdmin({ sectionId: sectionAId, sendId: sendIdForSectionB })
     ).rejects.toMatchObject({ code: "not-found" });
 
-    expect(mockGetAnnouncementSendRecipients).not.toHaveBeenCalled();
+    expect(mockGetAnnouncementSendRecipientPage).not.toHaveBeenCalled();
   });
 
   it("returns recipients when the sendId belongs to the authorized section", async () => {
     mockGetAnnouncementSendById.mockResolvedValue({
       data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
     } as Awaited<ReturnType<typeof admin.getAnnouncementSendById>>);
-    mockGetAnnouncementSendRecipients.mockResolvedValue({
-      data: {
-        announcementRecipients: [
-          {
-            id: "recipient-1",
-            userId: "user-1",
-            email: "user1@example.com",
-            firstName: "First",
-            lastName: "Last",
-            status: "sent",
-            skippedReason: null,
-            sentAt: "2026-01-01T00:00:00Z",
-            failureReason: null,
-          },
-        ],
-      },
-    } as Awaited<ReturnType<typeof admin.getAnnouncementSendRecipients>>);
+    mockRecipientQuery([{
+      id: "recipient-1",
+      userId: "user-1",
+      email: "user1@example.com",
+      firstName: "First",
+      lastName: "Last",
+      surnameInitial: "L",
+      status: "sent",
+      skippedReason: null,
+      sentAt: "2026-01-01T00:00:00Z",
+      failureReason: null,
+      failureCategory: "none",
+      effectiveDeliveryMode: "LIVE",
+    }]);
 
     const result = await callAsAdmin({ sectionId: sectionBId, sendId: sendIdForSectionB });
 
@@ -374,10 +531,12 @@ describe("getAnnouncementSendRecipients", () => {
       email: `passed-${index}@example.com`,
       firstName: `Person ${index}`,
       lastName: `Adams ${index}`,
+      surnameInitial: "A",
       status: "delivered",
       skippedReason: null,
       sentAt: "2026-01-01T00:00:00Z",
       failureReason: null,
+      failureCategory: "none",
       effectiveDeliveryMode: "TEAM_TEST",
     }));
     const notOnTeam = Array.from({ length: 3 }, (_, index) => ({
@@ -386,15 +545,15 @@ describe("getAnnouncementSendRecipients", () => {
       email: `team-${index}@example.com`,
       firstName: `Team ${index}`,
       lastName: `Brown ${index}`,
+      surnameInitial: "B",
       status: "failed",
       skippedReason: null,
       sentAt: null,
       failureReason: "Can’t send to this recipient using a team-only API key",
+      failureCategory: "notify_team_only",
       effectiveDeliveryMode: "TEAM_TEST",
     }));
-    mockGetAnnouncementSendRecipients.mockResolvedValue({
-      data: { announcementRecipients: [...passed, ...notOnTeam] },
-    } as never);
+    mockRecipientQuery([...passed, ...notOnTeam]);
 
     const secondPage = await callAsAdmin({
       sectionId: sectionBId,
@@ -435,7 +594,7 @@ describe("getAnnouncementSendRecipients", () => {
     )).toBe(true);
   });
 
-  it("exhausts Data Connect pages instead of stopping at a row ceiling", async () => {
+  it("asks Data Connect only for the requested numeric page", async () => {
     mockGetAnnouncementSendById.mockResolvedValue({
       data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
     } as Awaited<ReturnType<typeof admin.getAnnouncementSendById>>);
@@ -445,15 +604,15 @@ describe("getAnnouncementSendRecipients", () => {
       email: `user-${index}@example.com`,
       firstName: `First ${index}`,
       lastName: `Smith ${index}`,
+      surnameInitial: "S",
       status: "delivered",
       skippedReason: null,
       sentAt: "2026-01-01T00:00:00Z",
       failureReason: null,
+      failureCategory: "none",
       effectiveDeliveryMode: "LIVE",
     }));
-    mockGetAnnouncementSendRecipients.mockImplementation(async ({ limit, offset }) => ({
-      data: { announcementRecipients: rows.slice(offset, offset + limit) },
-    }) as never);
+    mockRecipientQuery(rows);
 
     const result = await callAsAdmin({
       sectionId: sectionBId,
@@ -463,16 +622,13 @@ describe("getAnnouncementSendRecipients", () => {
 
     expect(result).toMatchObject({ totalCount: 1001, filteredCount: 1001, pageCount: 21 });
     expect(result.recipients).toHaveLength(50);
-    expect(mockGetAnnouncementSendRecipients).toHaveBeenNthCalledWith(1, {
+    expect(mockGetAnnouncementSendRecipientPage).toHaveBeenCalledTimes(1);
+    expect(mockGetAnnouncementSendRecipientPage).toHaveBeenCalledWith(expect.objectContaining({
       sendId: sendIdForSectionB,
-      limit: 1000,
+      statuses: ["sent", "delivered"],
+      limit: 50,
       offset: 0,
-    });
-    expect(mockGetAnnouncementSendRecipients).toHaveBeenNthCalledWith(2, {
-      sendId: sendIdForSectionB,
-      limit: 1000,
-      offset: 1000,
-    });
+    }));
   });
 
   it("rejects when the send does not exist", async () => {

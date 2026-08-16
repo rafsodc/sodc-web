@@ -1506,6 +1506,21 @@ exports.getAnnouncementRecipientProgressPaged = function getAnnouncementRecipien
 }
 ;
 
+const getAnnouncementRecipientProgressSummaryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementRecipientProgressSummary', inputVars);
+}
+getAnnouncementRecipientProgressSummaryRef.operationName = 'GetAnnouncementRecipientProgressSummary';
+exports.getAnnouncementRecipientProgressSummaryRef = getAnnouncementRecipientProgressSummaryRef;
+
+exports.getAnnouncementRecipientProgressSummary = function getAnnouncementRecipientProgressSummary(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementRecipientProgressSummaryRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const getAnnouncementRecipientsForResumeRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -1578,6 +1593,81 @@ exports.getAnnouncementSendRecipientsPaged = function getAnnouncementSendRecipie
 
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getAnnouncementSendRecipientsPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementSendRecipientPageRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementSendRecipientPage', inputVars);
+}
+getAnnouncementSendRecipientPageRef.operationName = 'GetAnnouncementSendRecipientPage';
+exports.getAnnouncementSendRecipientPageRef = getAnnouncementSendRecipientPageRef;
+
+exports.getAnnouncementSendRecipientPage = function getAnnouncementSendRecipientPage(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementSendRecipientPageRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementAudienceSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementAudienceSection', inputVars);
+}
+getAnnouncementAudienceSectionRef.operationName = 'GetAnnouncementAudienceSection';
+exports.getAnnouncementAudienceSectionRef = getAnnouncementAudienceSectionRef;
+
+exports.getAnnouncementAudienceSection = function getAnnouncementAudienceSection(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementAudienceSectionRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementAudiencePurposeLinksPagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementAudiencePurposeLinksPaged', inputVars);
+}
+getAnnouncementAudiencePurposeLinksPagedRef.operationName = 'GetAnnouncementAudiencePurposeLinksPaged';
+exports.getAnnouncementAudiencePurposeLinksPagedRef = getAnnouncementAudiencePurposeLinksPagedRef;
+
+exports.getAnnouncementAudiencePurposeLinksPaged = function getAnnouncementAudiencePurposeLinksPaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementAudiencePurposeLinksPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementExplicitMembersPagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementExplicitMembersPaged', inputVars);
+}
+getAnnouncementExplicitMembersPagedRef.operationName = 'GetAnnouncementExplicitMembersPaged';
+exports.getAnnouncementExplicitMembersPagedRef = getAnnouncementExplicitMembersPagedRef;
+
+exports.getAnnouncementExplicitMembersPaged = function getAnnouncementExplicitMembersPaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementExplicitMembersPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementStatusMembersPagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementStatusMembersPaged', inputVars);
+}
+getAnnouncementStatusMembersPagedRef.operationName = 'GetAnnouncementStatusMembersPaged';
+exports.getAnnouncementStatusMembersPagedRef = getAnnouncementStatusMembersPagedRef;
+
+exports.getAnnouncementStatusMembersPaged = function getAnnouncementStatusMembersPaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementStatusMembersPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 

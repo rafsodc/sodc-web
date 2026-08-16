@@ -46,8 +46,11 @@ export const CALLABLE_RATE_LIMITS = {
   getAnnouncementTemplates: { limit: 30, windowMs: 5 * MINUTE_MS },
   previewAnnouncementTemplate: { limit: 30, windowMs: 5 * MINUTE_MS },
   sendSectionAnnouncement: { limit: 5, windowMs: HOUR_MS },
+  retryAnnouncementPreparation: { limit: 10, windowMs: HOUR_MS },
   sendNotifyReplyToVerificationTest: { limit: 10, windowMs: HOUR_MS },
-  getAnnouncementSendRecipients: { limit: 60, windowMs: 5 * MINUTE_MS },
+  // Recipient history is moderator-only and database-filtered. The higher read
+  // allowance supports debounced search, A-Z browsing, paging and multi-row refresh.
+  getAnnouncementSendRecipients: { limit: 180, windowMs: 5 * MINUTE_MS },
   requestSectionFileUpload: { limit: 20, windowMs: HOUR_MS },
   finalizeSectionFileUpload: { limit: 30, windowMs: HOUR_MS },
   listSectionFiles: { limit: 60, windowMs: 5 * MINUTE_MS },

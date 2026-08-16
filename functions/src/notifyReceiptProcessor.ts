@@ -22,6 +22,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { parseAnnouncementReference } from "./announcementReference.js";
 import { invalidateDcProfileCache } from "./users.js";
 import { reconcileEnabledClaim } from "./enabledClaimReconciliation.js";
+import { ANNOUNCEMENT_FAILURE_CATEGORY_NONE } from "./announcementRecipients.js";
 
 export const BOUNCE_THRESHOLD = 3;
 export const DEFAULT_NOTIFY_RECEIPT_LEASE_MS = 10 * 60 * 1000;
@@ -309,7 +310,10 @@ export const dataConnectNotifyReceiptRepository: NotifyReceiptRepository = {
   },
 
   async tryApplyAnnouncementState(args) {
-    const result = await tryUpdateAnnouncementRecipientDeliveryStatus(args);
+    const result = await tryUpdateAnnouncementRecipientDeliveryStatus({
+      ...args,
+      failureCategory: ANNOUNCEMENT_FAILURE_CATEGORY_NONE,
+    });
     return result.data.announcementRecipient_updateMany === 1;
   },
 };

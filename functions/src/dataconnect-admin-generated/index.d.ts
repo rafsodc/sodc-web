@@ -417,6 +417,7 @@ export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
   email: string;
   firstName: string;
   lastName: string;
+  surnameInitial: string;
   status: string;
   skippedReason?: string | null;
   sentAt?: TimestampString | null;
@@ -804,6 +805,54 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetAnnouncementAudiencePurposeLinksPagedData {
+  sectionUserGroupPurposeLinks: ({
+    purposes?: SectionUserGroupPurpose[] | null;
+    userGroup: {
+      id: UUIDString;
+      membershipStatuses?: MembershipStatus[] | null;
+    } & UserGroup_Key;
+  })[];
+}
+
+export interface GetAnnouncementAudiencePurposeLinksPagedVariables {
+  sectionId: UUIDString;
+  limit: number;
+  offset: number;
+}
+
+export interface GetAnnouncementAudienceSectionData {
+  section?: {
+    id: UUIDString;
+    name: string;
+  } & Section_Key;
+}
+
+export interface GetAnnouncementAudienceSectionVariables {
+  sectionId: UUIDString;
+}
+
+export interface GetAnnouncementExplicitMembersPagedData {
+  userUserGroups: ({
+    userGroupId: UUIDString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      membershipStatus: MembershipStatus;
+      announcementOptOutAll: boolean;
+    } & User_Key;
+  })[];
+}
+
+export interface GetAnnouncementExplicitMembersPagedVariables {
+  userGroupIds: UUIDString[];
+  limit: number;
+  offset: number;
+}
+
 export interface GetAnnouncementRecipientBySendAndUserData {
   announcementRecipients: ({
     id: UUIDString;
@@ -840,6 +889,17 @@ export interface GetAnnouncementRecipientProgressPagedVariables {
   sendId: UUIDString;
   limit: number;
   offset: number;
+}
+
+export interface GetAnnouncementRecipientProgressSummaryData {
+  announcementRecipients: ({
+    status: string;
+    _count: number;
+  })[];
+}
+
+export interface GetAnnouncementRecipientProgressSummaryVariables {
+  sendId: UUIDString;
 }
 
 export interface GetAnnouncementRecipientProgressVariables {
@@ -918,6 +978,40 @@ export interface GetAnnouncementSendHistoryVariables {
   sectionId: UUIDString;
 }
 
+export interface GetAnnouncementSendRecipientPageData {
+  total: ({
+    _count: number;
+  })[];
+  filtered: ({
+    surnameInitial: string;
+    _count: number;
+  })[];
+  recipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    surnameInitial: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+    failureCategory: string;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementSendRecipientPageVariables {
+  sendId: UUIDString;
+  statuses: string[];
+  failureCategories: string[];
+  searchPattern: string;
+  initials: string[];
+  limit: number;
+  offset: number;
+}
+
 export interface GetAnnouncementSendRecipientsData {
   announcementRecipients: ({
     id: UUIDString;
@@ -956,6 +1050,24 @@ export interface GetAnnouncementSendRecipientsPagedVariables {
 
 export interface GetAnnouncementSendRecipientsVariables {
   sendId: UUIDString;
+}
+
+export interface GetAnnouncementStatusMembersPagedData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    membershipStatus: MembershipStatus;
+    announcementOptOutAll: boolean;
+  } & User_Key)[];
+}
+
+export interface GetAnnouncementStatusMembersPagedVariables {
+  membershipStatuses: MembershipStatus[];
+  limit: number;
+  offset: number;
 }
 
 export interface GetBookingForNotificationData {
@@ -3148,6 +3260,7 @@ export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
   deliveryVersion: number;
   status: string;
   failureReason?: string | null;
+  failureCategory: string;
   deliveryStatusUpdatedAt: TimestampString;
   deliveryReceiptId: string;
 }
@@ -3165,6 +3278,7 @@ export interface TryUpdateAnnouncementRecipientProcessingStatusVariables {
   processingStartedAt?: TimestampString | null;
   sentAt?: TimestampString | null;
   failureReason?: string | null;
+  failureCategory: string;
   providerNotificationId?: string | null;
 }
 
@@ -3925,6 +4039,11 @@ export function getAnnouncementRecipientProgressPaged(dc: DataConnect, vars: Get
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientProgressPaged' Query. Allow users to pass in custom DataConnect instances. */
 export function getAnnouncementRecipientProgressPaged(vars: GetAnnouncementRecipientProgressPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientProgressPagedData>>;
 
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientProgressSummary' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementRecipientProgressSummary(dc: DataConnect, vars: GetAnnouncementRecipientProgressSummaryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientProgressSummaryData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientProgressSummary' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementRecipientProgressSummary(vars: GetAnnouncementRecipientProgressSummaryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientProgressSummaryData>>;
+
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientsForResume' Query. Allow users to execute without passing in DataConnect. */
 export function getAnnouncementRecipientsForResume(dc: DataConnect, vars: GetAnnouncementRecipientsForResumeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementRecipientsForResumeData>>;
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementRecipientsForResume' Query. Allow users to pass in custom DataConnect instances. */
@@ -3949,6 +4068,31 @@ export function getAnnouncementSendRecipients(vars: GetAnnouncementSendRecipient
 export function getAnnouncementSendRecipientsPaged(dc: DataConnect, vars: GetAnnouncementSendRecipientsPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientsPagedData>>;
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendRecipientsPaged' Query. Allow users to pass in custom DataConnect instances. */
 export function getAnnouncementSendRecipientsPaged(vars: GetAnnouncementSendRecipientsPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientsPagedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendRecipientPage' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementSendRecipientPage(dc: DataConnect, vars: GetAnnouncementSendRecipientPageVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientPageData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendRecipientPage' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementSendRecipientPage(vars: GetAnnouncementSendRecipientPageVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendRecipientPageData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementAudienceSection' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementAudienceSection(dc: DataConnect, vars: GetAnnouncementAudienceSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementAudienceSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementAudienceSection' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementAudienceSection(vars: GetAnnouncementAudienceSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementAudienceSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementAudiencePurposeLinksPaged' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementAudiencePurposeLinksPaged(dc: DataConnect, vars: GetAnnouncementAudiencePurposeLinksPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementAudiencePurposeLinksPagedData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementAudiencePurposeLinksPaged' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementAudiencePurposeLinksPaged(vars: GetAnnouncementAudiencePurposeLinksPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementAudiencePurposeLinksPagedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementExplicitMembersPaged' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementExplicitMembersPaged(dc: DataConnect, vars: GetAnnouncementExplicitMembersPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementExplicitMembersPagedData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementExplicitMembersPaged' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementExplicitMembersPaged(vars: GetAnnouncementExplicitMembersPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementExplicitMembersPagedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementStatusMembersPaged' Query. Allow users to execute without passing in DataConnect. */
+export function getAnnouncementStatusMembersPaged(dc: DataConnect, vars: GetAnnouncementStatusMembersPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementStatusMembersPagedData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAnnouncementStatusMembersPaged' Query. Allow users to pass in custom DataConnect instances. */
+export function getAnnouncementStatusMembersPaged(vars: GetAnnouncementStatusMembersPagedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementStatusMembersPagedData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementSendById' Query. Allow users to execute without passing in DataConnect. */
 export function getAnnouncementSendById(dc: DataConnect, vars: GetAnnouncementSendByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementSendByIdData>>;

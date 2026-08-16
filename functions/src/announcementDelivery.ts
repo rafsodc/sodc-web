@@ -15,6 +15,10 @@ import {
 } from "./govNotifyDeliveryMode";
 import { getGovNotifyEmailReplyToId } from "./govNotifyReplyToId";
 import { sanitizeMailerError } from "./mailerErrors";
+import {
+  announcementFailureCategory,
+  announcementRecipientInitial,
+} from "./announcementRecipients";
 
 // A task dispatch has a 60-second deadline. Keep the lease long enough that a
 // timed-out invocation cannot still be calling Notify, but short enough that
@@ -147,6 +151,7 @@ const dataConnectAnnouncementDeliveryRepository: AnnouncementDeliveryRepository 
         email: task.email,
         firstName: task.firstName,
         lastName: task.lastName,
+        surnameInitial: announcementRecipientInitial(task.lastName),
         status: "queued",
         skippedReason: null,
         sentAt: null,
@@ -169,6 +174,7 @@ const dataConnectAnnouncementDeliveryRepository: AnnouncementDeliveryRepository 
       processingStartedAt: args.processingStartedAt,
       sentAt: args.sentAt,
       failureReason: args.failureReason,
+      failureCategory: announcementFailureCategory(args.failureReason),
       providerNotificationId: args.providerNotificationId,
     });
     return result.data.announcementRecipient_updateMany === 1;
