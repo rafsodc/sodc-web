@@ -94,6 +94,7 @@
     "requestSectionFileReplacement",
     "requestSectionFileUpload",
     "resignMembership",
+    "retryAnnouncementPreparation",
     "reviewBookingRevision",
     "revokeAdmin",
     "searchSectionMembers",

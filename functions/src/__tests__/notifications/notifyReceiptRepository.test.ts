@@ -210,5 +210,19 @@ describe("Data Connect Notify receipt repository", () => {
         deliveryReceiptId: RECEIPT_ID,
       })
     ).resolves.toBe(true);
+    await expect(
+      dataConnectNotifyReceiptRepository.tryApplyAnnouncementState({
+        id: recipientId,
+        expectedDeliveryVersion: 1,
+        deliveryVersion: 2,
+        status: "failed",
+        failureReason: "Can’t send to this recipient using a team-only API key",
+        deliveryStatusUpdatedAt: EVENT_AT,
+        deliveryReceiptId: RECEIPT_ID,
+      })
+    ).resolves.toBe(true);
+    expect(updateRecipient).toHaveBeenLastCalledWith(expect.objectContaining({
+      failureCategory: "notify_team_only",
+    }));
   });
 });

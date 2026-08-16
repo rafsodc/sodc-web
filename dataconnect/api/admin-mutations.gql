@@ -2153,6 +2153,19 @@ query GetSectionAnnouncementOptOuts($sectionId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+query GetSectionAnnouncementOptOutsPaged($sectionId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  sectionAnnouncementOptOuts(
+    where: { sectionId: { eq: $sectionId } }
+    orderBy: { userId: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
+    user {
+      id
+    }
+  }
+}
+
 # ── Announcement audit trail ─────────────────────────────────────────────────
 
 mutation CreateAnnouncementSend(
@@ -2246,6 +2259,10 @@ mutation CreateAnnouncementRecipientWithDeliveryMode(
   $email: String!
   $firstName: String!
   $lastName: String!
+  $surnameInitial: String!
+  $surnameSortKey: String!
+  $firstNameSortKey: String!
+  $searchText: String!
   $status: String!
   $skippedReason: String
   $sentAt: Timestamp
@@ -2259,6 +2276,10 @@ mutation CreateAnnouncementRecipientWithDeliveryMode(
     email: $email
     firstName: $firstName
     lastName: $lastName
+    surnameInitial: $surnameInitial
+    surnameSortKey: $surnameSortKey
+    firstNameSortKey: $firstNameSortKey
+    searchText: $searchText
     status: $status
     skippedReason: $skippedReason
     sentAt: $sentAt
@@ -2273,8 +2294,44 @@ query GetAnnouncementRecipientProgress($sendId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+query GetAnnouncementRecipientProgressPaged($sendId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: { id: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
+    status
+  }
+}
+
+# One grouped row per status, so send history progress never needs to scan and
+# transfer the complete recipient table.
+query GetAnnouncementRecipientProgressSummary($sendId: UUID!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: { status: ASC }
+  ) {
+    status
+    _count
+  }
+}
+
 query GetAnnouncementRecipientsForResume($sendId: UUID!) @auth(level: NO_ACCESS) {
   announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
+    id
+    userId
+    status
+  }
+}
+
+query GetAnnouncementRecipientsForResumePaged($sendId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: { id: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
     id
     userId
     status
@@ -2318,6 +2375,156 @@ query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
     sentAt
     failureReason
     effectiveDeliveryMode
+  }
+}
+
+query GetAnnouncementSendRecipientsPaged($sendId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: [{ lastName: ASC }, { firstName: ASC }, { id: ASC }]
+    limit: $limit
+    offset: $offset
+  ) {
+    id
+    userId
+    email
+    firstName
+    lastName
+    status
+    skippedReason
+    sentAt
+    failureReason
+    effectiveDeliveryMode
+  }
+}
+
+# Server-filtered recipient history. Aggregates provide total and A-Z counts;
+# recipients contains only the requested numeric page or complete initial group.
+query GetAnnouncementSendRecipientPage(
+  $sendId: UUID!
+  $statuses: [String!]!
+  $failureCategories: [String!]!
+  $searchPattern: String!
+  $initials: [String!]!
+  $limit: Int!
+  $offset: Int!
+) @auth(level: NO_ACCESS) {
+  total: announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
+    _count
+  }
+  filtered: announcementRecipients(
+    where: {
+      _and: [
+        { announcementSendId: { eq: $sendId } }
+        { status: { in: $statuses } }
+        { failureCategory: { in: $failureCategories } }
+        { searchText: { pattern: { regex: $searchPattern } } }
+      ]
+    }
+    orderBy: { surnameInitial: ASC }
+  ) {
+    surnameInitial
+    _count
+  }
+  recipients: announcementRecipients(
+    where: {
+      _and: [
+        { announcementSendId: { eq: $sendId } }
+        { status: { in: $statuses } }
+        { failureCategory: { in: $failureCategories } }
+        { surnameInitial: { in: $initials } }
+        { searchText: { pattern: { regex: $searchPattern } } }
+      ]
+    }
+    orderBy: [{ surnameSortKey: ASC }, { firstNameSortKey: ASC }, { id: ASC }]
+    limit: $limit
+    offset: $offset
+  ) {
+    id
+    userId
+    email
+    firstName
+    lastName
+    surnameInitial
+    status
+    skippedReason
+    sentAt
+    failureReason
+    failureCategory
+    effectiveDeliveryMode
+  }
+}
+
+# Announcement audience resolution is deliberately split into root-level,
+# offset-paged queries. Nested relationship limits silently truncate large groups.
+query GetAnnouncementAudienceSection($sectionId: UUID!) @auth(level: NO_ACCESS) {
+  section(id: $sectionId) {
+    id
+    name
+  }
+}
+
+query GetAnnouncementAudiencePurposeLinksPaged(
+  $sectionId: UUID!
+  $limit: Int!
+  $offset: Int!
+) @auth(level: NO_ACCESS) {
+  sectionUserGroupPurposeLinks(
+    where: { sectionId: { eq: $sectionId } }
+    orderBy: [{ userGroupId: ASC }]
+    limit: $limit
+    offset: $offset
+  ) {
+    purposes
+    userGroup {
+      id
+      membershipStatuses
+    }
+  }
+}
+
+query GetAnnouncementExplicitMembersPaged(
+  $userGroupIds: [UUID!]!
+  $limit: Int!
+  $offset: Int!
+) @auth(level: NO_ACCESS) {
+  userUserGroups(
+    where: { userGroupId: { in: $userGroupIds } }
+    orderBy: [{ userId: ASC }, { userGroupId: ASC }]
+    limit: $limit
+    offset: $offset
+  ) {
+    userGroupId
+    user {
+      id
+      firstName
+      lastName
+      email
+      serviceNumber
+      membershipStatus
+      announcementOptOutAll
+    }
+  }
+}
+
+query GetAnnouncementStatusMembersPaged(
+  $membershipStatuses: [MembershipStatus!]!
+  $limit: Int!
+  $offset: Int!
+) @auth(level: NO_ACCESS) {
+  users(
+    where: { membershipStatus: { in: $membershipStatuses } }
+    orderBy: { id: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
+    id
+    firstName
+    lastName
+    email
+    serviceNumber
+    membershipStatus
+    announcementOptOutAll
   }
 }
 
@@ -2373,6 +2580,7 @@ mutation TryUpdateAnnouncementRecipientProcessingStatus(
   $processingStartedAt: Timestamp
   $sentAt: Timestamp
   $failureReason: String
+  $failureCategory: String!
   $providerNotificationId: String
 ) @auth(level: NO_ACCESS) {
   announcementRecipient_updateMany(
@@ -2387,6 +2595,7 @@ mutation TryUpdateAnnouncementRecipientProcessingStatus(
       processingStartedAt: $processingStartedAt
       sentAt: $sentAt
       failureReason: $failureReason
+      failureCategory: $failureCategory
       providerNotificationId: $providerNotificationId
     }
   )
@@ -2415,6 +2624,7 @@ mutation TryUpdateAnnouncementRecipientDeliveryStatus(
   $deliveryVersion: Int!
   $status: String!
   $failureReason: String
+  $failureCategory: String!
   $deliveryStatusUpdatedAt: Timestamp!
   $deliveryReceiptId: String!
 ) @auth(level: NO_ACCESS) {
@@ -2426,6 +2636,7 @@ mutation TryUpdateAnnouncementRecipientDeliveryStatus(
     data: {
       status: $status
       failureReason: $failureReason
+      failureCategory: $failureCategory
       deliveryVersion: $deliveryVersion
       deliveryStatusUpdatedAt: $deliveryStatusUpdatedAt
       deliveryReceiptId: $deliveryReceiptId

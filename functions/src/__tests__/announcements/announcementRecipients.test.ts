@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
+  ANNOUNCEMENT_NAME_COMPATIBILITY_FOLDS,
   mergeAnnouncementRecipients,
   partitionAnnouncementRecipients,
+  announcementRecipientInitial,
+  announcementRecipientSortKey,
+  announcementRecipientSearchText,
+  foldAnnouncementName,
   type AnnouncementPurposeLink,
   type AnnouncementAudienceRecipient,
 } from "../../announcementRecipients";
@@ -117,5 +124,84 @@ describe("announcement recipient resolution", () => {
     );
 
     expect(recipients).toEqual([]);
+  });
+});
+
+describe("announcement recipient query keys", () => {
+  it.each([
+    ["Łukasz", "L"],
+    ["Øystein", "O"],
+    ["Đorđe", "D"],
+    ["Ěva", "E"],
+    ["Ĺudovít", "L"],
+    ["Ċetina", "C"],
+    ["Éclair", "E"],
+    ["123 Services", "OTHER"],
+  ])("buckets %s consistently as %s", (surname, expected) => {
+    expect(announcementRecipientInitial(surname)).toBe(expected);
+  });
+
+  it("builds accent-folded, numeric-aware sort keys", () => {
+    expect(
+      announcementRecipientSortKey("Müller 2")
+        < announcementRecipientSortKey("Muller 10"),
+    ).toBe(true);
+    expect(announcementRecipientSortKey("Łukasz")).toBe("lukasz");
+    expect(announcementRecipientSortKey(`Agent ${"1".repeat(21)}`))
+      .toBe(`agent ${"1".repeat(21)}`);
+  });
+
+  it("trims JavaScript Unicode whitespace before folding", () => {
+    expect(foldAnnouncementName("\t\u00a0Ěva\ufeff\n")).toBe("eva");
+  });
+
+  it("builds the combined multi-word recipient search surface", () => {
+    expect(announcementRecipientSearchText({
+      firstName: "Jane",
+      lastName: "Doe",
+      email: "jane@example.com",
+    })).toBe("Jane Doe jane@example.com");
+  });
+
+  it("keeps the SQL backfill contract in parity with live name folding", () => {
+    const migration = fs.readFileSync(path.resolve(
+      process.cwd(),
+      "..",
+      "dataconnect",
+      "migrations",
+      "2026-08-16-issue-609-announcement-recipient-indexes.sql",
+    ), "utf8");
+    const sqlFolds = [...migration.matchAll(/ARRAY\['\[([^']+)]', '([^']+)'\]/g)]
+      .map((match) => [match[1], match[2]]);
+    const javaScriptTrimCodePoints = [
+      ...Array.from({ length: 5 }, (_, index) => index + 0x0009),
+      0x0020,
+      0x00a0,
+      0x1680,
+      ...Array.from({ length: 11 }, (_, index) => index + 0x2000),
+      0x2028,
+      0x2029,
+      0x202f,
+      0x205f,
+      0x3000,
+      0xfeff,
+    ];
+    const expectedSqlTrimSet = javaScriptTrimCodePoints
+      .map((codePoint) => `\\${codePoint.toString(16).toUpperCase().padStart(4, "0")}`)
+      .join("");
+
+    expect(sqlFolds).toEqual(ANNOUNCEMENT_NAME_COMPATIBILITY_FOLDS);
+    expect(javaScriptTrimCodePoints.every((codePoint) =>
+      String.fromCodePoint(codePoint).trim() === ""
+    )).toBe(true);
+    expect(migration).toContain(`U&'${expectedSqlTrimSet}'`);
+    expect(migration).toContain(
+      "search_text = public.announcement_unicode_trim(first_name || ' ' || last_name || ' ' || email)",
+    );
+    expect(migration).toContain("normalize(public.announcement_unicode_trim(input_value), NFKD)");
+    expect(migration).toContain("U&'[\\0300-\\036F]'");
+    expect(migration).toContain("RETURN translate(result, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')");
+    expect(migration).toContain("length(token_value) < 20");
+    expect(migration).not.toMatch(/\blower\s*\(/i);
   });
 });

@@ -122,9 +122,9 @@ export async function previewAnnouncementTemplate(
 
 export interface SendAnnouncementResult {
   sendId: string;
-  queuedCount: number;
-  failedToEnqueueCount: number;
+  recipientCount: number;
   skippedCount: number;
+  preparationQueued: true;
   resumed: boolean;
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
@@ -170,14 +170,30 @@ export interface AnnouncementSend {
   sentAt: string;
   recipientCount: number;
   skippedCount: number;
-  processedCount: number;
-  failureCount: number;
+  processedCount: number | null;
+  failureCount: number | null;
+  enqueueFailureCount: number | null;
+  recordedRecipientCount: number | null;
+  progressAvailable: boolean;
+  preparationIncomplete: boolean;
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
   effectiveDeliveryMode: GovNotifyDeliveryMode;
   replyToAddressId?: string | null;
   replyToDisplayLabel?: string | null;
   replyToEmailAddress?: string | null;
+}
+
+export async function retryAnnouncementPreparation(
+  sendId: string,
+  sectionId: string,
+  attemptId: string,
+): Promise<void> {
+  const callable = httpsCallable<
+    { sendId: string; sectionId: string; attemptId: string },
+    { preparationQueued: true }
+  >(functions, "retryAnnouncementPreparation");
+  await callable({ sendId, sectionId, attemptId });
 }
 
 export type AnnouncementRecipientStatus =
@@ -203,7 +219,28 @@ export interface AnnouncementRecipient {
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;
+  failureCategory?: "notify_team_only";
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+
+export type AnnouncementRecipientStatusFilter =
+  | "ALL"
+  | "IN_PROGRESS"
+  | "PASSED"
+  | "NOT_ON_TEAM"
+  | "FAILED"
+  | "SKIPPED";
+
+export type AnnouncementRecipientInitial = "ALL" | "OTHER" | string;
+
+export interface AnnouncementRecipientPage {
+  recipients: AnnouncementRecipient[];
+  totalCount: number;
+  filteredCount: number;
+  initialCounts: Record<string, number>;
+  page: number;
+  pageSize: number;
+  pageCount: number;
 }
 
 export async function getAnnouncementSendHistory(
@@ -219,12 +256,25 @@ export async function getAnnouncementSendHistory(
 
 export async function getAnnouncementSendRecipients(
   sendId: string,
-  sectionId: string
-): Promise<AnnouncementRecipient[]> {
+  sectionId: string,
+  options: {
+    search?: string;
+    statusFilter?: AnnouncementRecipientStatusFilter;
+    initial?: AnnouncementRecipientInitial;
+    page?: number;
+  } = {},
+): Promise<AnnouncementRecipientPage> {
   const callable = httpsCallable<
-    { sendId: string; sectionId: string },
-    { recipients: AnnouncementRecipient[] }
+    {
+      sendId: string;
+      sectionId: string;
+      search?: string;
+      statusFilter?: AnnouncementRecipientStatusFilter;
+      initial?: AnnouncementRecipientInitial;
+      page?: number;
+    },
+    AnnouncementRecipientPage
   >(functions, "getAnnouncementSendRecipients");
-  const result = await callable({ sendId, sectionId });
-  return result.data.recipients;
+  const result = await callable({ sendId, sectionId, ...options });
+  return result.data;
 }

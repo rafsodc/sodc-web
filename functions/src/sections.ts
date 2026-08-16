@@ -17,6 +17,7 @@ import {
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { linkHasPurpose, resolveSectionAccess } from "./sectionAccess";
+import { caseInsensitiveContainsPattern } from "./dataConnectSearch";
 
 export interface SectionMemberResponse {
   id: string;
@@ -249,11 +250,6 @@ async function loadSectionMemberSearchScope(
       ...new Set(sourceLinks.flatMap((link) => link.userGroup.membershipStatuses ?? [])),
     ],
   };
-}
-
-function caseInsensitiveContainsPattern(searchTerm: string): string {
-  const escaped = searchTerm.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
-  return `(?i).*${escaped}.*`;
 }
 
 export interface SectionMemberSearchResult {

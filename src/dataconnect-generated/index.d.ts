@@ -439,6 +439,10 @@ export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
   email: string;
   firstName: string;
   lastName: string;
+  surnameInitial: string;
+  surnameSortKey: string;
+  firstNameSortKey: string;
+  searchText: string;
   status: string;
   skippedReason?: string | null;
   sentAt?: TimestampString | null;
@@ -826,6 +830,54 @@ export interface GetAllUserGroupsWithStatusesData {
   } & UserGroup_Key)[];
 }
 
+export interface GetAnnouncementAudiencePurposeLinksPagedData {
+  sectionUserGroupPurposeLinks: ({
+    purposes?: SectionUserGroupPurpose[] | null;
+    userGroup: {
+      id: UUIDString;
+      membershipStatuses?: MembershipStatus[] | null;
+    } & UserGroup_Key;
+  })[];
+}
+
+export interface GetAnnouncementAudiencePurposeLinksPagedVariables {
+  sectionId: UUIDString;
+  limit: number;
+  offset: number;
+}
+
+export interface GetAnnouncementAudienceSectionData {
+  section?: {
+    id: UUIDString;
+    name: string;
+  } & Section_Key;
+}
+
+export interface GetAnnouncementAudienceSectionVariables {
+  sectionId: UUIDString;
+}
+
+export interface GetAnnouncementExplicitMembersPagedData {
+  userUserGroups: ({
+    userGroupId: UUIDString;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      serviceNumber: string;
+      membershipStatus: MembershipStatus;
+      announcementOptOutAll: boolean;
+    } & User_Key;
+  })[];
+}
+
+export interface GetAnnouncementExplicitMembersPagedVariables {
+  userGroupIds: UUIDString[];
+  limit: number;
+  offset: number;
+}
+
 export interface GetAnnouncementRecipientBySendAndUserData {
   announcementRecipients: ({
     id: UUIDString;
@@ -852,6 +904,29 @@ export interface GetAnnouncementRecipientProgressData {
   })[];
 }
 
+export interface GetAnnouncementRecipientProgressPagedData {
+  announcementRecipients: ({
+    status: string;
+  })[];
+}
+
+export interface GetAnnouncementRecipientProgressPagedVariables {
+  sendId: UUIDString;
+  limit: number;
+  offset: number;
+}
+
+export interface GetAnnouncementRecipientProgressSummaryData {
+  announcementRecipients: ({
+    status: string;
+    _count: number;
+  })[];
+}
+
+export interface GetAnnouncementRecipientProgressSummaryVariables {
+  sendId: UUIDString;
+}
+
 export interface GetAnnouncementRecipientProgressVariables {
   sendId: UUIDString;
 }
@@ -862,6 +937,20 @@ export interface GetAnnouncementRecipientsForResumeData {
     userId: string;
     status: string;
   } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementRecipientsForResumePagedData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    status: string;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementRecipientsForResumePagedVariables {
+  sendId: UUIDString;
+  limit: number;
+  offset: number;
 }
 
 export interface GetAnnouncementRecipientsForResumeVariables {
@@ -914,6 +1003,40 @@ export interface GetAnnouncementSendHistoryVariables {
   sectionId: UUIDString;
 }
 
+export interface GetAnnouncementSendRecipientPageData {
+  total: ({
+    _count: number;
+  })[];
+  filtered: ({
+    surnameInitial: string;
+    _count: number;
+  })[];
+  recipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    surnameInitial: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+    failureCategory: string;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementSendRecipientPageVariables {
+  sendId: UUIDString;
+  statuses: string[];
+  failureCategories: string[];
+  searchPattern: string;
+  initials: string[];
+  limit: number;
+  offset: number;
+}
+
 export interface GetAnnouncementSendRecipientsData {
   announcementRecipients: ({
     id: UUIDString;
@@ -929,8 +1052,47 @@ export interface GetAnnouncementSendRecipientsData {
   } & AnnouncementRecipient_Key)[];
 }
 
+export interface GetAnnouncementSendRecipientsPagedData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
+  } & AnnouncementRecipient_Key)[];
+}
+
+export interface GetAnnouncementSendRecipientsPagedVariables {
+  sendId: UUIDString;
+  limit: number;
+  offset: number;
+}
+
 export interface GetAnnouncementSendRecipientsVariables {
   sendId: UUIDString;
+}
+
+export interface GetAnnouncementStatusMembersPagedData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    membershipStatus: MembershipStatus;
+    announcementOptOutAll: boolean;
+  } & User_Key)[];
+}
+
+export interface GetAnnouncementStatusMembersPagedVariables {
+  membershipStatuses: MembershipStatus[];
+  limit: number;
+  offset: number;
 }
 
 export interface GetBookingForNotificationData {
@@ -1707,6 +1869,20 @@ export interface GetSectionAnnouncementOptOutsData {
       id: string;
     } & User_Key;
   })[];
+}
+
+export interface GetSectionAnnouncementOptOutsPagedData {
+  sectionAnnouncementOptOuts: ({
+    user: {
+      id: string;
+    } & User_Key;
+  })[];
+}
+
+export interface GetSectionAnnouncementOptOutsPagedVariables {
+  sectionId: UUIDString;
+  limit: number;
+  offset: number;
 }
 
 export interface GetSectionAnnouncementOptOutsVariables {
@@ -3109,6 +3285,7 @@ export interface TryUpdateAnnouncementRecipientDeliveryStatusVariables {
   deliveryVersion: number;
   status: string;
   failureReason?: string | null;
+  failureCategory: string;
   deliveryStatusUpdatedAt: TimestampString;
   deliveryReceiptId: string;
 }
@@ -3126,6 +3303,7 @@ export interface TryUpdateAnnouncementRecipientProcessingStatusVariables {
   processingStartedAt?: TimestampString | null;
   sentAt?: TimestampString | null;
   failureReason?: string | null;
+  failureCategory: string;
   providerNotificationId?: string | null;
 }
 
@@ -4453,6 +4631,18 @@ export const getSectionAnnouncementOptOutsRef: GetSectionAnnouncementOptOutsRef;
 export function getSectionAnnouncementOptOuts(vars: GetSectionAnnouncementOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutsData, GetSectionAnnouncementOptOutsVariables>;
 export function getSectionAnnouncementOptOuts(dc: DataConnect, vars: GetSectionAnnouncementOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutsData, GetSectionAnnouncementOptOutsVariables>;
 
+interface GetSectionAnnouncementOptOutsPagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetSectionAnnouncementOptOutsPagedVariables): QueryRef<GetSectionAnnouncementOptOutsPagedData, GetSectionAnnouncementOptOutsPagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetSectionAnnouncementOptOutsPagedVariables): QueryRef<GetSectionAnnouncementOptOutsPagedData, GetSectionAnnouncementOptOutsPagedVariables>;
+  operationName: string;
+}
+export const getSectionAnnouncementOptOutsPagedRef: GetSectionAnnouncementOptOutsPagedRef;
+
+export function getSectionAnnouncementOptOutsPaged(vars: GetSectionAnnouncementOptOutsPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutsPagedData, GetSectionAnnouncementOptOutsPagedVariables>;
+export function getSectionAnnouncementOptOutsPaged(dc: DataConnect, vars: GetSectionAnnouncementOptOutsPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetSectionAnnouncementOptOutsPagedData, GetSectionAnnouncementOptOutsPagedVariables>;
+
 interface CreateAnnouncementSendRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: CreateAnnouncementSendVariables): MutationRef<CreateAnnouncementSendData, CreateAnnouncementSendVariables>;
@@ -4513,6 +4703,30 @@ export const getAnnouncementRecipientProgressRef: GetAnnouncementRecipientProgre
 export function getAnnouncementRecipientProgress(vars: GetAnnouncementRecipientProgressVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressData, GetAnnouncementRecipientProgressVariables>;
 export function getAnnouncementRecipientProgress(dc: DataConnect, vars: GetAnnouncementRecipientProgressVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressData, GetAnnouncementRecipientProgressVariables>;
 
+interface GetAnnouncementRecipientProgressPagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientProgressPagedVariables): QueryRef<GetAnnouncementRecipientProgressPagedData, GetAnnouncementRecipientProgressPagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementRecipientProgressPagedVariables): QueryRef<GetAnnouncementRecipientProgressPagedData, GetAnnouncementRecipientProgressPagedVariables>;
+  operationName: string;
+}
+export const getAnnouncementRecipientProgressPagedRef: GetAnnouncementRecipientProgressPagedRef;
+
+export function getAnnouncementRecipientProgressPaged(vars: GetAnnouncementRecipientProgressPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressPagedData, GetAnnouncementRecipientProgressPagedVariables>;
+export function getAnnouncementRecipientProgressPaged(dc: DataConnect, vars: GetAnnouncementRecipientProgressPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressPagedData, GetAnnouncementRecipientProgressPagedVariables>;
+
+interface GetAnnouncementRecipientProgressSummaryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientProgressSummaryVariables): QueryRef<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementRecipientProgressSummaryVariables): QueryRef<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+  operationName: string;
+}
+export const getAnnouncementRecipientProgressSummaryRef: GetAnnouncementRecipientProgressSummaryRef;
+
+export function getAnnouncementRecipientProgressSummary(vars: GetAnnouncementRecipientProgressSummaryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+export function getAnnouncementRecipientProgressSummary(dc: DataConnect, vars: GetAnnouncementRecipientProgressSummaryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientProgressSummaryData, GetAnnouncementRecipientProgressSummaryVariables>;
+
 interface GetAnnouncementRecipientsForResumeRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: GetAnnouncementRecipientsForResumeVariables): QueryRef<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
@@ -4524,6 +4738,18 @@ export const getAnnouncementRecipientsForResumeRef: GetAnnouncementRecipientsFor
 
 export function getAnnouncementRecipientsForResume(vars: GetAnnouncementRecipientsForResumeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
 export function getAnnouncementRecipientsForResume(dc: DataConnect, vars: GetAnnouncementRecipientsForResumeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientsForResumeData, GetAnnouncementRecipientsForResumeVariables>;
+
+interface GetAnnouncementRecipientsForResumePagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementRecipientsForResumePagedVariables): QueryRef<GetAnnouncementRecipientsForResumePagedData, GetAnnouncementRecipientsForResumePagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementRecipientsForResumePagedVariables): QueryRef<GetAnnouncementRecipientsForResumePagedData, GetAnnouncementRecipientsForResumePagedVariables>;
+  operationName: string;
+}
+export const getAnnouncementRecipientsForResumePagedRef: GetAnnouncementRecipientsForResumePagedRef;
+
+export function getAnnouncementRecipientsForResumePaged(vars: GetAnnouncementRecipientsForResumePagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientsForResumePagedData, GetAnnouncementRecipientsForResumePagedVariables>;
+export function getAnnouncementRecipientsForResumePaged(dc: DataConnect, vars: GetAnnouncementRecipientsForResumePagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementRecipientsForResumePagedData, GetAnnouncementRecipientsForResumePagedVariables>;
 
 interface GetAnnouncementSendHistoryRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -4548,6 +4774,78 @@ export const getAnnouncementSendRecipientsRef: GetAnnouncementSendRecipientsRef;
 
 export function getAnnouncementSendRecipients(vars: GetAnnouncementSendRecipientsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientsData, GetAnnouncementSendRecipientsVariables>;
 export function getAnnouncementSendRecipients(dc: DataConnect, vars: GetAnnouncementSendRecipientsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientsData, GetAnnouncementSendRecipientsVariables>;
+
+interface GetAnnouncementSendRecipientsPagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementSendRecipientsPagedVariables): QueryRef<GetAnnouncementSendRecipientsPagedData, GetAnnouncementSendRecipientsPagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementSendRecipientsPagedVariables): QueryRef<GetAnnouncementSendRecipientsPagedData, GetAnnouncementSendRecipientsPagedVariables>;
+  operationName: string;
+}
+export const getAnnouncementSendRecipientsPagedRef: GetAnnouncementSendRecipientsPagedRef;
+
+export function getAnnouncementSendRecipientsPaged(vars: GetAnnouncementSendRecipientsPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientsPagedData, GetAnnouncementSendRecipientsPagedVariables>;
+export function getAnnouncementSendRecipientsPaged(dc: DataConnect, vars: GetAnnouncementSendRecipientsPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientsPagedData, GetAnnouncementSendRecipientsPagedVariables>;
+
+interface GetAnnouncementSendRecipientPageRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementSendRecipientPageVariables): QueryRef<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementSendRecipientPageVariables): QueryRef<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+  operationName: string;
+}
+export const getAnnouncementSendRecipientPageRef: GetAnnouncementSendRecipientPageRef;
+
+export function getAnnouncementSendRecipientPage(vars: GetAnnouncementSendRecipientPageVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+export function getAnnouncementSendRecipientPage(dc: DataConnect, vars: GetAnnouncementSendRecipientPageVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementSendRecipientPageData, GetAnnouncementSendRecipientPageVariables>;
+
+interface GetAnnouncementAudienceSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementAudienceSectionVariables): QueryRef<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementAudienceSectionVariables): QueryRef<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+  operationName: string;
+}
+export const getAnnouncementAudienceSectionRef: GetAnnouncementAudienceSectionRef;
+
+export function getAnnouncementAudienceSection(vars: GetAnnouncementAudienceSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+export function getAnnouncementAudienceSection(dc: DataConnect, vars: GetAnnouncementAudienceSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudienceSectionData, GetAnnouncementAudienceSectionVariables>;
+
+interface GetAnnouncementAudiencePurposeLinksPagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementAudiencePurposeLinksPagedVariables): QueryRef<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementAudiencePurposeLinksPagedVariables): QueryRef<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+  operationName: string;
+}
+export const getAnnouncementAudiencePurposeLinksPagedRef: GetAnnouncementAudiencePurposeLinksPagedRef;
+
+export function getAnnouncementAudiencePurposeLinksPaged(vars: GetAnnouncementAudiencePurposeLinksPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+export function getAnnouncementAudiencePurposeLinksPaged(dc: DataConnect, vars: GetAnnouncementAudiencePurposeLinksPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAudiencePurposeLinksPagedData, GetAnnouncementAudiencePurposeLinksPagedVariables>;
+
+interface GetAnnouncementExplicitMembersPagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementExplicitMembersPagedVariables): QueryRef<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementExplicitMembersPagedVariables): QueryRef<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+  operationName: string;
+}
+export const getAnnouncementExplicitMembersPagedRef: GetAnnouncementExplicitMembersPagedRef;
+
+export function getAnnouncementExplicitMembersPaged(vars: GetAnnouncementExplicitMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+export function getAnnouncementExplicitMembersPaged(dc: DataConnect, vars: GetAnnouncementExplicitMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementExplicitMembersPagedData, GetAnnouncementExplicitMembersPagedVariables>;
+
+interface GetAnnouncementStatusMembersPagedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementStatusMembersPagedVariables): QueryRef<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAnnouncementStatusMembersPagedVariables): QueryRef<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+  operationName: string;
+}
+export const getAnnouncementStatusMembersPagedRef: GetAnnouncementStatusMembersPagedRef;
+
+export function getAnnouncementStatusMembersPaged(vars: GetAnnouncementStatusMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
+export function getAnnouncementStatusMembersPaged(dc: DataConnect, vars: GetAnnouncementStatusMembersPagedVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementStatusMembersPagedData, GetAnnouncementStatusMembersPagedVariables>;
 
 interface GetAnnouncementSendByIdRef {
   /* Allow users to create refs without passing in DataConnect */

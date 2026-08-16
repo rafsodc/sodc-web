@@ -23,6 +23,61 @@ export interface AnnouncementPurposeLink {
   };
 }
 
+export const ANNOUNCEMENT_FAILURE_CATEGORY_NONE = "none";
+export const ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY = "notify_team_only";
+
+export function isNotifyTeamOnlyFailure(reason: string | null | undefined): boolean {
+  return typeof reason === "string" && /team-only api key/i.test(reason);
+}
+
+export function announcementFailureCategory(reason: string | null | undefined): string {
+  return isNotifyTeamOnlyFailure(reason)
+    ? ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY
+    : ANNOUNCEMENT_FAILURE_CATEGORY_NONE;
+}
+
+export const ANNOUNCEMENT_NAME_COMPATIBILITY_FOLDS: ReadonlyArray<readonly [string, string]> = [
+  ["Ææ", "ae"],
+  ["ÐðĐđ", "d"],
+  ["Ħħ", "h"],
+  ["ı", "i"],
+  ["Łł", "l"],
+  ["Œœ", "oe"],
+  ["Øø", "o"],
+  ["ßẞ", "ss"],
+  ["Ŧŧ", "t"],
+  ["Þþ", "th"],
+];
+const ANNOUNCEMENT_NAME_FOLD_MAP = new Map<string, string>(
+  ANNOUNCEMENT_NAME_COMPATIBILITY_FOLDS.flatMap(([characters, replacement]) =>
+    [...characters].map((character) => [character, replacement] as const)
+  ),
+);
+
+export function foldAnnouncementName(value: string): string {
+  return [...value.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")]
+    .map((character) => ANNOUNCEMENT_NAME_FOLD_MAP.get(character) ?? character)
+    .join("")
+    .replace(/[A-Z]/g, (character) => character.toLowerCase());
+}
+
+export function announcementRecipientInitial(lastName: string): string {
+  const initial = foldAnnouncementName(lastName).charAt(0).toUpperCase();
+  return /^[A-Z]$/.test(initial) ? initial : "OTHER";
+}
+
+export function announcementRecipientSortKey(value: string): string {
+  return foldAnnouncementName(value).replace(/\d+/g, (digits) => digits.padStart(20, "0"));
+}
+
+export function announcementRecipientSearchText(recipient: {
+  firstName: string;
+  lastName: string;
+  email: string;
+}): string {
+  return `${recipient.firstName} ${recipient.lastName} ${recipient.email}`.trim();
+}
+
 function linkHasAudiencePurpose(link: AnnouncementPurposeLink): boolean {
   const purposes = link.purposes ?? (link.purpose ? [link.purpose] : []);
   return purposes.includes("ACCESS") || purposes.includes("MODERATOR");

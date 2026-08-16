@@ -67,6 +67,7 @@ describe("function entry guard contracts", () => {
       "getAnnouncementTemplates",
       "previewAnnouncementTemplate",
       "sendSectionAnnouncement",
+      "retryAnnouncementPreparation",
       "getAnnouncementSendHistory",
       "getAnnouncementSendRecipients",
     ]) {
@@ -261,6 +262,7 @@ describe("function entry guard contracts", () => {
       "getAnnouncementTemplates",
       "previewAnnouncementTemplate",
       "sendSectionAnnouncement",
+      "retryAnnouncementPreparation",
       "getAnnouncementSendRecipients",
     ]) {
       assertOnCallGuard(announcements, fn, `enforceRateLimit("${fn}"`, 350);

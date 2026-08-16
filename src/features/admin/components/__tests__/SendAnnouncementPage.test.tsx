@@ -31,30 +31,19 @@ describe("SendAnnouncementPage", () => {
     });
   });
 
-  it("reuses the same request ID when retrying a partial enqueue", async () => {
+  it("acknowledges background preparation without waiting for recipient enqueueing", async () => {
     const requestId = "00000000-0000-4000-8000-000000000408";
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(requestId);
-    vi.mocked(firebaseFunctions.sendSectionAnnouncement)
-      .mockResolvedValueOnce({
-        sendId: requestId,
-        queuedCount: 799,
-        failedToEnqueueCount: 1,
-        skippedCount: 2,
-        resumed: false,
-        requestedDeliveryMode: "LIVE",
-        siteDeliveryMode: "LIVE",
-        effectiveDeliveryMode: "LIVE",
-      })
-      .mockResolvedValueOnce({
-        sendId: requestId,
-        queuedCount: 800,
-        failedToEnqueueCount: 0,
-        skippedCount: 2,
-        resumed: true,
-        requestedDeliveryMode: "LIVE",
-        siteDeliveryMode: "LIVE",
-        effectiveDeliveryMode: "LIVE",
-      });
+    vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockResolvedValue({
+      sendId: requestId,
+      recipientCount: 800,
+      skippedCount: 2,
+      preparationQueued: true,
+      resumed: false,
+      requestedDeliveryMode: "LIVE",
+      siteDeliveryMode: "LIVE",
+      effectiveDeliveryMode: "LIVE",
+    });
     const user = userEvent.setup();
 
     render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} />);
@@ -63,20 +52,8 @@ describe("SendAnnouncementPage", () => {
     await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
     await user.click(await screen.findByRole("button", { name: "Send to Signals members" }));
 
-    expect(await screen.findByText(/1 could not be queued and can be retried/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Retry 1 failed enqueue" }));
-
-    expect(await screen.findByText(/This send was resumed from its original recipient list/)).toBeInTheDocument();
-    expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenNthCalledWith(
-      1,
-      "section-1",
-      "template-1",
-      requestId,
-      "BULK: Section update",
-      "LIVE",
-    );
-    expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenNthCalledWith(
-      2,
+    expect(await screen.findByText(/Preparing 800 emails in the background/)).toBeInTheDocument();
+    expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenCalledWith(
       "section-1",
       "template-1",
       requestId,
@@ -112,9 +89,9 @@ describe("SendAnnouncementPage", () => {
     });
     vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockResolvedValue({
       sendId: "00000000-0000-4000-8000-000000000409",
-      queuedCount: 2,
-      failedToEnqueueCount: 0,
+      recipientCount: 2,
       skippedCount: 0,
+      preparationQueued: true,
       resumed: false,
       requestedDeliveryMode: "LIVE",
       siteDeliveryMode: "LIVE",
