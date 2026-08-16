@@ -68,6 +68,19 @@ describe("useUserSearch", () => {
     expect(mockSearchUsers).not.toHaveBeenCalled();
   });
 
+  it("does not search until at least two trimmed characters are entered", async () => {
+    const { result } = renderHook(() => useUserSearch(""));
+
+    act(() => result.current.setSearchTerm(" a "));
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+      await Promise.resolve();
+    });
+
+    expect(mockSearchUsers).not.toHaveBeenCalled();
+    expect(result.current.users).toEqual([]);
+  });
+
   it("searches with initial search term after debounce", async () => {
     mockSearchUsers.mockResolvedValue(emptyResult);
 

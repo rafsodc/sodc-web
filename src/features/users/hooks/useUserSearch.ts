@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { searchUsers } from "../utils/searchUsers";
 import type { SearchUser } from "../../../types";
-import { ITEMS_PER_PAGE } from "../../../constants";
+import { ITEMS_PER_PAGE, MIN_SEARCH_CHARACTERS } from "../../../constants";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
@@ -39,7 +39,8 @@ export function useUserSearch(
 
   const performSearch = useCallback(async (term: string, pageNum: number = 1) => {
     const requestToken = searchRequestGuard.start();
-    if (!term.trim()) {
+    const searchTerm = term.trim();
+    if (searchTerm.length < MIN_SEARCH_CHARACTERS) {
       setUsers([]);
       setError(null);
       setTotalPages(1);
@@ -51,7 +52,7 @@ export function useUserSearch(
     setLoading(true);
     setError(null);
     try {
-      const result = await searchUsers(term, pageNum, ITEMS_PER_PAGE);
+      const result = await searchUsers(searchTerm, pageNum, ITEMS_PER_PAGE);
       if (!searchRequestGuard.isCurrent(requestToken)) return;
       if (result.success && result.data) {
         setUsers(result.data.users);
@@ -80,7 +81,7 @@ export function useUserSearch(
   // Debounced search - only triggers when searchTerm changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchTerm.trim()) {
+      if (searchTerm.trim().length >= MIN_SEARCH_CHARACTERS) {
         performSearch(searchTerm, 1);
         setPage(1);
       } else {
@@ -101,7 +102,7 @@ export function useUserSearch(
   // Note: searchTerm is intentionally not in dependencies to avoid bypassing debounce
   // The closure will capture the current searchTerm value when this effect runs
   useEffect(() => {
-    if (searchTerm.trim()) {
+    if (searchTerm.trim().length >= MIN_SEARCH_CHARACTERS) {
       performSearch(searchTerm, page);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

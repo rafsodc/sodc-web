@@ -1,9 +1,11 @@
-import { describe, beforeEach, expect, it, vi } from "vitest";
+import { describe, beforeEach, afterEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { executeMutation, executeQuery, QueryFetchPolicy } from "firebase/data-connect";
-import { render, screen } from "../../../../test-utils";
+import { act, fireEvent, render, screen } from "../../../../test-utils";
 import UserGroups from "../UserGroups";
+import { searchUsers } from "../../../users/utils/searchUsers";
+import { SEARCH_DEBOUNCE_MS } from "../../../../constants";
 
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn(),
@@ -37,11 +39,13 @@ vi.mock("../UserGroupsSurfaces", () => ({
     mergedUsersForGroup,
     onExpand,
     onEdit,
+    onAddUser,
   }: {
     userGroups: Array<{ id: string; name: string }>;
     mergedUsersForGroup: Array<{ id: string; firstName: string; lastName: string }>;
     onExpand: (group: { id: string; name: string }) => void;
     onEdit: (group: { id: string; name: string }) => void;
+    onAddUser: (groupId: string) => void;
   }) => (
     <div>
       {userGroups.map((group) => (
@@ -49,6 +53,7 @@ vi.mock("../UserGroupsSurfaces", () => ({
           <span>{group.name}</span>
           <button onClick={() => onExpand(group)}>Expand {group.name}</button>
           <button onClick={() => onEdit(group)}>Edit {group.name}</button>
+          <button onClick={() => onAddUser(group.id)}>Add user to {group.name}</button>
         </div>
       ))}
       {mergedUsersForGroup.map((user) => <div key={user.id}>{user.firstName} {user.lastName}</div>)}
@@ -70,7 +75,20 @@ vi.mock("../UserGroupsSurfaces", () => ({
       <button onClick={onSubmit}>Save Group</button>
     </div>
   ) : null,
-  AddUserToGroupDialogSurface: () => null,
+  AddUserToGroupDialogSurface: ({
+    open,
+    userSearchTerm,
+    onSearchTermChange,
+  }: {
+    open: boolean;
+    userSearchTerm: string;
+    onSearchTermChange: (value: string) => void;
+  }) => open ? (
+    <label>
+      Search Users
+      <input value={userSearchTerm} onChange={(event) => onSearchTermChange(event.target.value)} />
+    </label>
+  ) : null,
 }));
 
 let updated = false;
@@ -125,6 +143,10 @@ describe("UserGroups", () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("replaces cached group details with server data after editing", async () => {
     const user = userEvent.setup();
     render(
@@ -144,5 +166,38 @@ describe("UserGroups", () => {
     expect(await screen.findByText("Updated Group")).toBeInTheDocument();
     expect(await screen.findByText("After Member")).toBeInTheDocument();
     expect(screen.queryByText("Before Member")).not.toBeInTheDocument();
+  });
+
+  it("debounces add-user searches and requires two characters", async () => {
+    vi.mocked(searchUsers).mockResolvedValue({
+      success: true,
+      data: { users: [], total: 0, page: 1, pageSize: 10, totalPages: 1 },
+    });
+    const initialUser = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <UserGroups onBack={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    await initialUser.click(await screen.findByRole("button", { name: "Add user to Original Group" }));
+    vi.useFakeTimers();
+    const searchInput = screen.getByLabelText("Search Users");
+    fireEvent.change(searchInput, { target: { value: "a" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS);
+    });
+    expect(searchUsers).not.toHaveBeenCalled();
+
+    fireEvent.change(searchInput, { target: { value: "ab" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS - 1);
+    });
+    expect(searchUsers).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(searchUsers).toHaveBeenCalledTimes(1);
+    expect(searchUsers).toHaveBeenCalledWith("ab", 1, 10);
   });
 });

@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { searchSectionMembers } from "../../../shared/utils/firebaseFunctions";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { MIN_SEARCH_CHARACTERS, SEARCH_DEBOUNCE_MS } from "../../../constants";
 
 export interface SectionMemberSeatingOption {
   id: string;
   label: string;
 }
-
-const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Typeahead search over a section's population for the booking wizard's "sit next to" field.
@@ -61,7 +60,8 @@ export function useSectionMemberSeatingSearch(
   }, [sectionId, selectedIds.join(","), selectedLabelsRequestGuard]);
 
   useEffect(() => {
-    if (!inputValue.trim()) {
+    const searchTerm = inputValue.trim();
+    if (searchTerm.length < MIN_SEARCH_CHARACTERS) {
       setSearchResults([]);
       setLoading(false);
       return;
@@ -71,7 +71,7 @@ export function useSectionMemberSeatingSearch(
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const result = await searchSectionMembers(sectionId, inputValue, selectedIds);
+          const result = await searchSectionMembers(sectionId, searchTerm, selectedIds);
           if (!searchRequestGuard.isCurrent(requestToken)) return;
           setSearchResults(
             result.members
