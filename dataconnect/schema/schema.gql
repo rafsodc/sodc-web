@@ -456,6 +456,8 @@ type TicketType @table {
   title: String!
   description: String
   price: Float!
+  includesDinner: Boolean! @default(value: false)
+  includesSymposium: Boolean! @default(value: false)
   sortOrder: Int! @default(value: 0)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")

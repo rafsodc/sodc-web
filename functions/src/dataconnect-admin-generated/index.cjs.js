@@ -1019,6 +1019,13 @@ function listUsers(dcOrOptions, options) {
 }
 exports.listUsers = listUsers;
 
+function listUserNamesByIds(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListUserNamesByIds', inputVars, inputOpts);
+}
+exports.listUserNamesByIds = listUserNamesByIds;
+
 function listSections(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);

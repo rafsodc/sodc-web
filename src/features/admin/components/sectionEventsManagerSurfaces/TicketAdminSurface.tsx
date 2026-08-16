@@ -261,6 +261,8 @@ function TicketTypesTable({
             <TableCell>Description</TableCell>
             <TableCell>Price</TableCell>
             <TableCell>{TICKET_CATEGORY_LABEL}</TableCell>
+            <TableCell>Dinner</TableCell>
+            <TableCell>Symposium</TableCell>
             <TableCell>Access group</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -272,6 +274,8 @@ function TicketTypesTable({
               <TableCell>{ticketType.description ?? "—"}</TableCell>
               <TableCell>{ticketType.price}</TableCell>
               <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
+              <TableCell>{ticketType.includesDinner ? "Yes" : "No"}</TableCell>
+              <TableCell>{ticketType.includesSymposium ? "Yes" : "No"}</TableCell>
               <TableCell>
                 {ticketType.userGroup ? (
                   <Chip label={ticketType.userGroup.name} size="small" variant="outlined" color="primary" />
@@ -280,12 +284,17 @@ function TicketTypesTable({
                 )}
               </TableCell>
               <TableCell align="right">
-                <IconButton size="small" onClick={() => onEdit(ticketType)}>
+                <IconButton
+                  size="small"
+                  aria-label={`Edit ${ticketType.title}`}
+                  onClick={() => onEdit(ticketType)}
+                >
                   <EditIcon />
                 </IconButton>
                 <IconButton
                   size="small"
                   color="error"
+                  aria-label={`Delete ${ticketType.title}`}
                   disabled={deletingTicketTypeId === ticketType.id}
                   onClick={() => onDelete(ticketType.id)}
                 >
@@ -494,16 +503,19 @@ function EventAttendeeTicketsSection({
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
       </Box>
-      <AdminTable minWidth={880}>
+      <AdminTable minWidth={1260}>
         <TableHead>
           <TableRow>
             <TableCell>Attendee</TableCell>
             <TableCell>Audience</TableCell>
             <TableCell>Ticket</TableCell>
+            <TableCell>Dinner</TableCell>
+            <TableCell>Symposium</TableCell>
+            <TableCell>Accommodation</TableCell>
+            <TableCell>Seating preferences</TableCell>
             <TableCell>Dietary requirements</TableCell>
             <TableCell>Approval</TableCell>
             <TableCell>Payment</TableCell>
-            <TableCell>Revision</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -512,10 +524,13 @@ function EventAttendeeTicketsSection({
               <TableCell>{row.attendeeName}</TableCell>
               <TableCell>{getTicketCategoryLabel(row.audience)}</TableCell>
               <TableCell>{row.ticketType}</TableCell>
+              <TableCell>{row.includesDinner ? "Yes" : "No"}</TableCell>
+              <TableCell>{row.includesSymposium ? "Yes" : "No"}</TableCell>
+              <TableCell>{row.accommodationRequested ? "Yes" : "No"}</TableCell>
+              <TableCell>{row.seatingPreferences.join(", ") || "—"}</TableCell>
               <TableCell>{row.dietaryNote ?? "—"}</TableCell>
               <TableCell><Chip size="small" label={row.approvalStatus.replaceAll("_", " ")} color={approvalStatusColor(row.approvalStatus)} /></TableCell>
               <TableCell><Chip size="small" variant="outlined" label={row.paymentState.replaceAll("_", " ")} /></TableCell>
-              <TableCell>Rev {row.revisionNumber}</TableCell>
             </TableRow>
           ))}
         </TableBody>

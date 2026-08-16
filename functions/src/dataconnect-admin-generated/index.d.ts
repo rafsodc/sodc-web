@@ -629,6 +629,8 @@ export interface CreateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder?: number | null;
 }
 
@@ -1165,6 +1167,8 @@ export interface GetEventByIdData {
       description?: string | null;
       audience: TicketAudience;
       price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
       sortOrder: number;
       userGroup: {
         id: UUIDString;
@@ -2288,6 +2292,8 @@ export interface ListEventBookingsForAdminData {
           title: string;
           audience: TicketAudience;
           price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -2633,6 +2639,18 @@ export interface ListUserGroupsData {
     createdBy?: string | null;
     updatedBy?: string | null;
   } & UserGroup_Key)[];
+}
+
+export interface ListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface ListUserNamesByIdsVariables {
+  ids: string[];
 }
 
 export interface ListUsersData {
@@ -3227,6 +3245,8 @@ export interface UpdateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder: number;
 }
 
@@ -3988,6 +4008,11 @@ export function getUserById(vars: GetUserByIdVariables, options?: OperationOptio
 export function listUsers(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
 /** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to pass in custom DataConnect instances. */
 export function listUsers(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListUserNamesByIds' Query. Allow users to execute without passing in DataConnect. */
+export function listUserNamesByIds(dc: DataConnect, vars: ListUserNamesByIdsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserNamesByIdsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUserNamesByIds' Query. Allow users to pass in custom DataConnect instances. */
+export function listUserNamesByIds(vars: ListUserNamesByIdsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserNamesByIdsData>>;
 
 /** Generated Node Admin SDK operation action function for the 'ListSections' Query. Allow users to execute without passing in DataConnect. */
 export function listSections(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionsData>>;

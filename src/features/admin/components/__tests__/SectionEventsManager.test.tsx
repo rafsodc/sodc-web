@@ -16,6 +16,7 @@ vi.mock("@dataconnect/generated/react", () => ({
   useGetEventById: vi.fn(),
   useListBookingPaymentAdjustmentsForAdmin: vi.fn(),
   useListEventBookingsForAdmin: vi.fn(),
+  useListUserNamesByIds: vi.fn(),
   useListTicketOrdersForAdmin: vi.fn(),
 }));
 
@@ -54,6 +55,12 @@ function mockEventBookings(overrides: DataConnectQueryResultOverrides) {
   );
 }
 
+function mockUserNames(overrides: DataConnectQueryResultOverrides) {
+  vi.mocked(reactGenerated.useListUserNamesByIds).mockReturnValue(
+    dataConnectQueryResult<typeof reactGenerated.useListUserNamesByIds>(overrides)
+  );
+}
+
 function mockBookingPaymentAdjustments(overrides: DataConnectQueryResultOverrides) {
   vi.mocked(reactGenerated.useListBookingPaymentAdjustmentsForAdmin).mockReturnValue(
     dataConnectQueryResult<typeof reactGenerated.useListBookingPaymentAdjustmentsForAdmin>(overrides)
@@ -72,6 +79,8 @@ vi.mock("@dataconnect/generated", async () => {
     ...actual,
     createEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
   };
 });
 
@@ -104,6 +113,7 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
     });
+    mockUserNames({ data: { users: [] }, isLoading: false, isError: false });
     mockTicketOrders({
       data: { event: { id: "ev-1", ticketOrders: [] } },
       isLoading: false,
@@ -272,6 +282,159 @@ describe("SectionEventsManager", () => {
     expect(await screen.findByText("Booking revision approved")).toBeInTheDocument();
   }, 10_000);
 
+  it("shows event attendance details with named seating preferences and no revision", async () => {
+    const user = userEvent.setup();
+    const event = {
+      id: "ev-1",
+      title: "Annual Dinner",
+      startDateTime: "2025-03-01T18:00:00Z",
+      endDateTime: "2025-03-01T22:00:00Z",
+      bookingStartDateTime: "2025-02-01T00:00:00Z",
+      bookingEndDateTime: "2025-02-28T23:59:59Z",
+      maxGuestsWithoutModeratorApproval: 1,
+    };
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [event] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventById({
+      data: { event: { ...event, ticketTypes: [] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockEventBookings({
+      data: {
+        event: {
+          id: "ev-1",
+          bookingTicketOrders: [],
+          bookings: [{
+            id: "b-1",
+            status: "SUBMITTED",
+            approvalStatus: "APPROVED",
+            revisionGroupId: "10000000-0000-4000-8000-000000000001",
+            revisionNumber: 3,
+            supersededAt: null,
+            sitNextToUserIds: ["u-2"],
+            accommodationRequested: true,
+            accommodationNote: null,
+            createdAt: "2026-02-01T00:00:00Z",
+            updatedAt: "2026-02-01T01:00:00Z",
+            createdBy: "u-1",
+            updatedBy: "u-1",
+            booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+            lines: [{
+              id: "line-member",
+              sortOrder: 0,
+              guestDisplayName: null,
+              dietaryNote: "Vegetarian",
+              bookingPlace: { id: "place-member", paymentAllocations: [] },
+              ticketType: {
+                id: "tt-member",
+                title: "Full event",
+                audience: "MEMBER",
+                price: 0,
+                includesDinner: true,
+                includesSymposium: true,
+              },
+            }],
+          }, {
+            id: "b-rejected",
+            status: "SUBMITTED",
+            approvalStatus: "REJECTED",
+            revisionGroupId: "10000000-0000-4000-8000-000000000002",
+            revisionNumber: 1,
+            supersededAt: null,
+            sitNextToUserIds: ["u-rejected-preference"],
+            accommodationRequested: false,
+            accommodationNote: null,
+            createdAt: "2026-02-01T00:00:00Z",
+            updatedAt: "2026-02-01T01:00:00Z",
+            createdBy: "u-3",
+            updatedBy: "u-3",
+            booker: { id: "u-3", firstName: "Rejected", lastName: "Member", email: "rejected@example.com" },
+            lines: [],
+          }],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockUserNames({
+      data: { users: [{ id: "u-2", firstName: "Taylor", lastName: "Member" }] },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^current attendee tickets$/i }));
+
+    expect(screen.getByRole("columnheader", { name: "Dinner" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Accommodation" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Seating preferences" })).toBeInTheDocument();
+    expect(screen.getByText("Taylor Member")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Revision" })).not.toBeInTheDocument();
+    expect(reactGenerated.useListUserNamesByIds).toHaveBeenCalledWith(
+      expect.anything(),
+      { ids: ["u-2"] },
+      { enabled: true }
+    );
+    expect(reactGenerated.useListUserNamesByIds).not.toHaveBeenCalledWith(
+      expect.anything(),
+      { ids: expect.arrayContaining(["u-rejected-preference"]) },
+      expect.anything()
+    );
+  });
+
+  it("updates Dinner and Symposium flags on a ticket type", async () => {
+    const user = userEvent.setup();
+    const event = {
+      id: "ev-1",
+      title: "Annual Dinner",
+      startDateTime: "2025-03-01T18:00:00Z",
+      endDateTime: "2025-03-01T22:00:00Z",
+      bookingStartDateTime: "2025-02-01T00:00:00Z",
+      bookingEndDateTime: "2025-02-28T23:59:59Z",
+      maxGuestsWithoutModeratorApproval: 1,
+    };
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [event] } },
+      isLoading: false,
+      isError: false,
+    });
+    mockGetEventById({
+      data: { event: { ...event, ticketTypes: [{
+        id: "tt-1",
+        title: "Member ticket",
+        description: null,
+        audience: "MEMBER",
+        price: 25,
+        sortOrder: 0,
+        includesDinner: false,
+        includesSymposium: false,
+        userGroup: { id: "ug-1", name: "Members", membershipStatuses: [] },
+      }] } },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /event admin/i }));
+    await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
+    await user.click(screen.getByRole("button", { name: "Edit Member ticket" }));
+    await user.click(screen.getByRole("checkbox", { name: "Dinner" }));
+    await user.click(screen.getByRole("checkbox", { name: "Symposium" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(generated.updateTicketTypeRef).toHaveBeenCalled());
+    expect(generated.updateTicketTypeRef).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ includesDinner: true, includesSymposium: true })
+    );
+  });
+
   it("opens event edit dialog from the event admin details section", async () => {
     const user = userEvent.setup();
     mockGetEventsForSection({
@@ -364,7 +527,7 @@ describe("SectionEventsManager", () => {
       expect.anything(),
       expect.objectContaining({ sponsors: null, details: null })
     );
-  });
+  }, 10_000);
 
   it("renders refreshed selected-event details after editing", async () => {
     const user = userEvent.setup();

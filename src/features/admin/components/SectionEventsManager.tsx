@@ -11,6 +11,7 @@ import {
   useGetEventById,
   useListBookingPaymentAdjustmentsForAdmin,
   useListEventBookingsForAdmin,
+  useListUserNamesByIds,
   useListTicketOrdersForAdmin,
 } from "@dataconnect/generated/react";
 import {
@@ -39,6 +40,7 @@ import type {
 import { fromDatetimeLocal, toDatetimeLocal } from "../utils/eventDatetime";
 import {
   activeEventTicketRows,
+  currentActiveBookings,
   pendingBookingRevisions,
 } from "../utils/bookingApprovalsAdmin";
 import {
@@ -109,6 +111,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [ttSortOrder, setTtSortOrder] = useState<string>("0");
   const [ttAccessGroup, setTtAccessGroup] = useState<{ id: string; name: string } | null>(null);
   const [ttAudience, setTtAudience] = useState<TicketAudience>(TicketAudience.MEMBER);
+  const [ttIncludesDinner, setTtIncludesDinner] = useState(false);
+  const [ttIncludesSymposium, setTtIncludesSymposium] = useState(false);
   const [allUserGroups, setAllUserGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [submittingTicketType, setSubmittingTicketType] = useState(false);
@@ -138,6 +142,18 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
+  );
+  const seatingPreferenceUserIds = useMemo(
+    () => Array.from(new Set(
+      currentActiveBookings(eventBookingsData?.event?.bookings ?? [])
+        .flatMap((booking) => booking.sitNextToUserIds ?? [])
+    )),
+    [eventBookingsData]
+  );
+  const { data: seatingPreferenceUsersData } = useListUserNamesByIds(
+    dataConnect,
+    { ids: seatingPreferenceUserIds },
+    { enabled: !!ticketTypesEventId && seatingPreferenceUserIds.length > 0 }
   );
   const {
     data: paymentAdjustmentsData,
@@ -335,6 +351,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setTtPrice(String(ticketType.price));
       setTtSortOrder(String(ticketType.sortOrder));
       setTtAudience(ticketType.audience);
+      setTtIncludesDinner(ticketType.includesDinner);
+      setTtIncludesSymposium(ticketType.includesSymposium);
       setTtAccessGroup(ticketType.userGroup ? { id: ticketType.userGroup.id, name: ticketType.userGroup.name } : null);
     } else {
       setEditingTicketType(null);
@@ -343,6 +361,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setTtPrice("0");
       setTtSortOrder(String((eventDetailData?.event?.ticketTypes?.length ?? 0)));
       setTtAudience(TicketAudience.MEMBER);
+      setTtIncludesDinner(false);
+      setTtIncludesSymposium(false);
       setTtAccessGroup(null);
     }
     setTicketTypeDialogOpen(true);
@@ -372,6 +392,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
             price: priceNum,
+            includesDinner: ttIncludesDinner,
+            includesSymposium: ttIncludesSymposium,
             sortOrder: sortOrderNum,
           })
         );
@@ -384,6 +406,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
             price: priceNum,
+            includesDinner: ttIncludesDinner,
+            includesSymposium: ttIncludesSymposium,
             sortOrder: sortOrderNum,
           })
         );
@@ -439,9 +463,16 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     () => new Map((eventBookingsData?.event?.bookingTicketOrders ?? []).map((order) => [order.id, order])),
     [eventBookingsData]
   );
+  const seatingPreferenceUserNamesById = useMemo(
+    () => new Map((seatingPreferenceUsersData?.users ?? []).map((user) => [
+      user.id,
+      `${user.firstName} ${user.lastName}`.trim(),
+    ])),
+    [seatingPreferenceUsersData]
+  );
   const attendeeTickets = useMemo(
-    () => activeEventTicketRows(eventBookings, ticketOrdersById),
-    [eventBookings, ticketOrdersById]
+    () => activeEventTicketRows(eventBookings, ticketOrdersById, seatingPreferenceUserNamesById),
+    [eventBookings, seatingPreferenceUserNamesById, ticketOrdersById]
   );
   const bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[] = paymentAdjustmentsData?.event?.bookings ?? [];
 
@@ -545,6 +576,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           price={ttPrice}
           sortOrder={ttSortOrder}
           audience={ttAudience}
+          includesDinner={ttIncludesDinner}
+          includesSymposium={ttIncludesSymposium}
           accessGroup={ttAccessGroup}
           userGroups={allUserGroups}
           loadingUserGroups={loadingUserGroups}
@@ -556,6 +589,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onPriceChange={setTtPrice}
           onSortOrderChange={setTtSortOrder}
           onAudienceChange={setTtAudience}
+          onIncludesDinnerChange={setTtIncludesDinner}
+          onIncludesSymposiumChange={setTtIncludesSymposium}
           onAccessGroupChange={setTtAccessGroup}
         />
 

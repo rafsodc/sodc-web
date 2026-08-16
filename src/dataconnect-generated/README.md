@@ -61,6 +61,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
+  - [*ListUserNamesByIds*](#listusernamesbyids)
   - [*ListSections*](#listsections)
   - [*GetSectionsForUser*](#getsectionsforuser)
   - [*ListUserGroups*](#listusergroups)
@@ -6553,6 +6554,119 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## ListUserNamesByIds
+You can execute the `ListUserNamesByIds` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listUserNamesByIds(vars: ListUserNamesByIdsVariables, options?: ExecuteQueryOptions): QueryPromise<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+
+interface ListUserNamesByIdsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListUserNamesByIdsVariables): QueryRef<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+}
+export const listUserNamesByIdsRef: ListUserNamesByIdsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listUserNamesByIds(dc: DataConnect, vars: ListUserNamesByIdsVariables, options?: ExecuteQueryOptions): QueryPromise<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+
+interface ListUserNamesByIdsRef {
+  ...
+  (dc: DataConnect, vars: ListUserNamesByIdsVariables): QueryRef<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+}
+export const listUserNamesByIdsRef: ListUserNamesByIdsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listUserNamesByIdsRef:
+```typescript
+const name = listUserNamesByIdsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListUserNamesByIds` query requires an argument of type `ListUserNamesByIdsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListUserNamesByIdsVariables {
+  ids: string[];
+}
+```
+### Return Type
+Recall that executing the `ListUserNamesByIds` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListUserNamesByIdsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+```
+### Using `ListUserNamesByIds`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listUserNamesByIds, ListUserNamesByIdsVariables } from '@dataconnect/generated';
+
+// The `ListUserNamesByIds` query requires an argument of type `ListUserNamesByIdsVariables`:
+const listUserNamesByIdsVars: ListUserNamesByIdsVariables = {
+  ids: ..., 
+};
+
+// Call the `listUserNamesByIds()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listUserNamesByIds(listUserNamesByIdsVars);
+// Variables can be defined inline as well.
+const { data } = await listUserNamesByIds({ ids: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listUserNamesByIds(dataConnect, listUserNamesByIdsVars);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+listUserNamesByIds(listUserNamesByIdsVars).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+### Using `ListUserNamesByIds`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listUserNamesByIdsRef, ListUserNamesByIdsVariables } from '@dataconnect/generated';
+
+// The `ListUserNamesByIds` query requires an argument of type `ListUserNamesByIdsVariables`:
+const listUserNamesByIdsVars: ListUserNamesByIdsVariables = {
+  ids: ..., 
+};
+
+// Call the `listUserNamesByIdsRef()` function to get a reference to the query.
+const ref = listUserNamesByIdsRef(listUserNamesByIdsVars);
+// Variables can be defined inline as well.
+const ref = listUserNamesByIdsRef({ ids: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listUserNamesByIdsRef(dataConnect, listUserNamesByIdsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
 ## ListSections
 You can execute the `ListSections` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -7621,6 +7735,8 @@ export interface GetEventByIdData {
       description?: string | null;
       audience: TicketAudience;
       price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
       sortOrder: number;
       userGroup: {
         id: UUIDString;
@@ -8929,6 +9045,8 @@ export interface ListEventBookingsForAdminData {
           title: string;
           audience: TicketAudience;
           price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -19972,6 +20090,8 @@ export interface CreateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder?: number | null;
 }
 ```
@@ -19998,6 +20118,8 @@ const createTicketTypeVars: CreateTicketTypeVariables = {
   title: ..., 
   description: ..., // optional
   price: ..., 
+  includesDinner: ..., 
+  includesSymposium: ..., 
   sortOrder: ..., // optional
 };
 
@@ -20005,7 +20127,7 @@ const createTicketTypeVars: CreateTicketTypeVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createTicketType(createTicketTypeVars);
 // Variables can be defined inline as well.
-const { data } = await createTicketType({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+const { data } = await createTicketType({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -20034,13 +20156,15 @@ const createTicketTypeVars: CreateTicketTypeVariables = {
   title: ..., 
   description: ..., // optional
   price: ..., 
+  includesDinner: ..., 
+  includesSymposium: ..., 
   sortOrder: ..., // optional
 };
 
 // Call the `createTicketTypeRef()` function to get a reference to the mutation.
 const ref = createTicketTypeRef(createTicketTypeVars);
 // Variables can be defined inline as well.
-const ref = createTicketTypeRef({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+const ref = createTicketTypeRef({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -20099,6 +20223,8 @@ export interface UpdateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder: number;
 }
 ```
@@ -20125,6 +20251,8 @@ const updateTicketTypeVars: UpdateTicketTypeVariables = {
   title: ..., 
   description: ..., // optional
   price: ..., 
+  includesDinner: ..., 
+  includesSymposium: ..., 
   sortOrder: ..., 
 };
 
@@ -20132,7 +20260,7 @@ const updateTicketTypeVars: UpdateTicketTypeVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateTicketType(updateTicketTypeVars);
 // Variables can be defined inline as well.
-const { data } = await updateTicketType({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+const { data } = await updateTicketType({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -20161,13 +20289,15 @@ const updateTicketTypeVars: UpdateTicketTypeVariables = {
   title: ..., 
   description: ..., // optional
   price: ..., 
+  includesDinner: ..., 
+  includesSymposium: ..., 
   sortOrder: ..., 
 };
 
 // Call the `updateTicketTypeRef()` function to get a reference to the mutation.
 const ref = updateTicketTypeRef(updateTicketTypeVars);
 // Variables can be defined inline as well.
-const ref = updateTicketTypeRef({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+const ref = updateTicketTypeRef({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

@@ -651,6 +651,8 @@ export interface CreateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder?: number | null;
 }
 
@@ -1187,6 +1189,8 @@ export interface GetEventByIdData {
       description?: string | null;
       audience: TicketAudience;
       price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
       sortOrder: number;
       userGroup: {
         id: UUIDString;
@@ -2310,6 +2314,8 @@ export interface ListEventBookingsForAdminData {
           title: string;
           audience: TicketAudience;
           price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -2655,6 +2661,18 @@ export interface ListUserGroupsData {
     createdBy?: string | null;
     updatedBy?: string | null;
   } & UserGroup_Key)[];
+}
+
+export interface ListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface ListUserNamesByIdsVariables {
+  ids: string[];
 }
 
 export interface ListUsersData {
@@ -3249,6 +3267,8 @@ export interface UpdateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder: number;
 }
 
@@ -4864,6 +4884,18 @@ export const listUsersRef: ListUsersRef;
 
 export function listUsers(options?: ExecuteQueryOptions): QueryPromise<ListUsersData, undefined>;
 export function listUsers(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<ListUsersData, undefined>;
+
+interface ListUserNamesByIdsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListUserNamesByIdsVariables): QueryRef<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListUserNamesByIdsVariables): QueryRef<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+  operationName: string;
+}
+export const listUserNamesByIdsRef: ListUserNamesByIdsRef;
+
+export function listUserNamesByIds(vars: ListUserNamesByIdsVariables, options?: ExecuteQueryOptions): QueryPromise<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+export function listUserNamesByIds(dc: DataConnect, vars: ListUserNamesByIdsVariables, options?: ExecuteQueryOptions): QueryPromise<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
 
 interface ListSectionsRef {
   /* Allow users to create refs without passing in DataConnect */

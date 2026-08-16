@@ -61,13 +61,22 @@ describe("booking approval admin model", () => {
   it("builds one current roster row per attendee with dietary and exact-place payment state", () => {
     const active = booking({
       approvalStatus: BookingApprovalStatus.APPROVED,
+      sitNextToUserIds: ["u2"],
+      accommodationRequested: true,
       lines: [
         {
           id: "line-member",
           sortOrder: 0,
           dietaryNote: "Vegetarian",
           guestDisplayName: null,
-          ticketType: { id: "member", title: "Member ticket", audience: TicketAudience.MEMBER, price: 20 },
+          ticketType: {
+            id: "member",
+            title: "Member ticket",
+            audience: TicketAudience.MEMBER,
+            price: 20,
+            includesDinner: true,
+            includesSymposium: false,
+          },
           bookingPlace: {
             id: "place-member",
             paymentAllocations: [{
@@ -83,7 +92,14 @@ describe("booking approval admin model", () => {
           sortOrder: 1,
           dietaryNote: "No nuts",
           guestDisplayName: "Jamie Guest",
-          ticketType: { id: "guest", title: "Guest ticket", audience: TicketAudience.GUEST, price: 10 },
+          ticketType: {
+            id: "guest",
+            title: "Guest ticket",
+            audience: TicketAudience.GUEST,
+            price: 10,
+            includesDinner: false,
+            includesSymposium: true,
+          },
           bookingPlace: { id: "place-guest", paymentAllocations: [] },
         },
       ] as EventBookingAdminRow["lines"],
@@ -91,13 +107,33 @@ describe("booking approval admin model", () => {
 
     const rows = activeEventTicketRows(
       [active],
-      ticketOrdersById([{ id: "order-member", status: TicketOrderStatus.PAID }])
+      ticketOrdersById([{ id: "order-member", status: TicketOrderStatus.PAID }]),
+      new Map([["u2", "Taylor Member"]])
     );
     expect(rows).toEqual([
-      expect.objectContaining({ attendeeName: "Alex Member", dietaryNote: "Vegetarian", paymentState: "PAID" }),
-      expect.objectContaining({ attendeeName: "Jamie Guest", dietaryNote: "No nuts", paymentState: "UNPAID" }),
+      expect.objectContaining({
+        attendeeName: "Alex Member",
+        includesDinner: true,
+        includesSymposium: false,
+        accommodationRequested: true,
+        seatingPreferences: ["Taylor Member"],
+        dietaryNote: "Vegetarian",
+        paymentState: "PAID",
+      }),
+      expect.objectContaining({
+        attendeeName: "Jamie Guest",
+        includesDinner: false,
+        includesSymposium: true,
+        accommodationRequested: true,
+        seatingPreferences: ["Taylor Member"],
+        dietaryNote: "No nuts",
+        paymentState: "UNPAID",
+      }),
     ]);
-    expect(eventTicketRowsCsv(rows)).toContain("Jamie Guest,GUEST,Guest ticket,No nuts,APPROVED,UNPAID,1");
+    expect(eventTicketRowsCsv(rows)).toContain(
+      "Jamie Guest,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
+    );
+    expect(eventTicketRowsCsv(rows)).not.toContain("Revision");
   });
 
   it("does not include superseded, rejected, or pending revisions in the active ticket roster", () => {
@@ -178,10 +214,13 @@ describe("booking approval admin model", () => {
       {
         key: "booking-1:line-1",
         bookingId: "booking-1",
-        revisionNumber: 1,
         attendeeName: "=2+2",
         audience: TicketAudience.GUEST,
         ticketType: "+Guest ticket",
+        includesDinner: true,
+        includesSymposium: false,
+        accommodationRequested: true,
+        seatingPreferences: ["=Seating name"],
         dietaryNote: '-HYPERLINK("https://example.com","click")',
         approvalStatus: BookingApprovalStatus.APPROVED,
         paymentState: "UNPAID",
@@ -189,10 +228,13 @@ describe("booking approval admin model", () => {
       {
         key: "booking-1:line-2",
         bookingId: "booking-1",
-        revisionNumber: 1,
         attendeeName: "@SUM(1,1)",
         audience: TicketAudience.GUEST,
         ticketType: "Guest ticket",
+        includesDinner: false,
+        includesSymposium: true,
+        accommodationRequested: false,
+        seatingPreferences: [],
         dietaryNote: "No nuts, please",
         approvalStatus: BookingApprovalStatus.APPROVED,
         paymentState: "PAID",
@@ -200,9 +242,34 @@ describe("booking approval admin model", () => {
     ];
 
     expect(eventTicketRowsCsv(rows)).toBe([
-      "Attendee,Audience,Ticket,Dietary requirements,Approval,Payment,Revision",
-      "'=2+2,GUEST,'+Guest ticket,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID,1",
-      "\"'@SUM(1,1)\",GUEST,Guest ticket,\"No nuts, please\",APPROVED,PAID,1",
+      "Attendee,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
+      "'=2+2,GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
+      "\"'@SUM(1,1)\",GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
     ].join("\n"));
+  });
+
+  it("never exposes an unresolved seating preference UUID", () => {
+    const active = booking({
+      sitNextToUserIds: ["unresolved-user-id"],
+      lines: [{
+        id: "line-member",
+        sortOrder: 0,
+        dietaryNote: null,
+        guestDisplayName: null,
+        ticketType: {
+          id: "member",
+          title: "Member ticket",
+          audience: TicketAudience.MEMBER,
+          price: 0,
+          includesDinner: false,
+          includesSymposium: false,
+        },
+        bookingPlace: { id: "place-member", paymentAllocations: [] },
+      }] as EventBookingAdminRow["lines"],
+    });
+
+    const [row] = activeEventTicketRows([active], ticketOrdersById([]));
+    expect(row.seatingPreferences).toEqual(["Unavailable member"]);
+    expect(eventTicketRowsCsv([row])).not.toContain("unresolved-user-id");
   });
 });
