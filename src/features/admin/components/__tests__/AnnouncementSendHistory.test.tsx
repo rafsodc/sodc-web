@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { act, render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import AnnouncementSendHistory from "../AnnouncementSendHistory";
@@ -282,20 +282,33 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.getByText("Showing 1–3 of 3 recipients with surname B")).toBeInTheDocument();
   });
 
-  it("shows numeric pages when a surname-initial group exceeds its bounded page size", async () => {
+  it("automatically loads and virtualizes a surname-initial group that exceeds the API page size", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    const smiths = Array.from({ length: 251 }, (_value, index) => ({
+      ...mockRecipients[0],
+      id: `smith-${index + 1}`,
+      userId: `smith-user-${index + 1}`,
+      email: `smith-${index + 1}@example.com`,
+      firstName: `Person ${index + 1}`,
+      lastName: `Smith ${index + 1}`,
+    }));
     vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
-      async (_sendId, _sectionId, options) => ({
-        ...mockRecipientPage,
-        filteredCount: 251,
-        initialCounts: {
-          ...mockRecipientPage.initialCounts,
-          S: 251,
-        },
-        page: options?.page ?? 1,
-        pageSize: 250,
-        pageCount: options?.initial === "S" ? 2 : 6,
-      }),
+      async (_sendId, _sectionId, options) => options?.initial === "S"
+        ? {
+            ...mockRecipientPage,
+            recipients: options.page === 2 ? smiths.slice(250) : smiths.slice(0, 250),
+            filteredCount: 251,
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 251 },
+            page: options.page ?? 1,
+            pageSize: 250,
+            pageCount: 2,
+          }
+        : {
+            ...mockRecipientPage,
+            filteredCount: 251,
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 251 },
+            pageCount: 6,
+          },
     );
 
     const user = userEvent.setup();
@@ -303,7 +316,171 @@ describe("AnnouncementSendHistory", () => {
     await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
     await user.click(screen.getByRole("button", { name: "S: 251 recipients" }));
 
-    expect(await screen.findByLabelText("S surname recipient result pages")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 1–251 of 251 recipients with surname S")).toBeInTheDocument();
+    expect(screen.getByLabelText("Virtualized recipient results")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Recipient result pages")).not.toBeInTheDocument();
+    expect(firebaseFunctions.getAnnouncementSendRecipients).toHaveBeenNthCalledWith(
+      2,
+      "send-1",
+      SECTION_ID,
+      expect.objectContaining({ initial: "S", page: 1 }),
+    );
+    expect(firebaseFunctions.getAnnouncementSendRecipients).toHaveBeenNthCalledWith(
+      3,
+      "send-1",
+      SECTION_ID,
+      expect.objectContaining({ initial: "S", page: 2 }),
+    );
+  });
+
+  it("keeps loaded recipients and retries from a failed surname-initial chunk", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    const pageTwoRecipient = {
+      ...mockRecipients[0],
+      id: "rec-s-3",
+      userId: "user-s-3",
+      firstName: "Third",
+      lastName: "Smith",
+      email: "third.smith@example.com",
+    };
+    let pageTwoAttempts = 0;
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
+      async (_sendId, _sectionId, options) => {
+        if (options?.initial !== "S") {
+          return {
+            ...mockRecipientPage,
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+          };
+        }
+        if (options.page === 2) {
+          pageTwoAttempts += 1;
+          if (pageTwoAttempts === 1) throw new Error("temporary failure");
+          return {
+            ...mockRecipientPage,
+            recipients: [pageTwoRecipient],
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+            filteredCount: 3,
+            page: 2,
+            pageSize: 2,
+            pageCount: 2,
+          };
+        }
+        return {
+          ...mockRecipientPage,
+          recipients: mockRecipients.slice(0, 2),
+          initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+          filteredCount: 3,
+          pageSize: 2,
+          pageCount: 2,
+        };
+      },
+    );
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+    await user.click(screen.getByRole("button", { name: "S: 3 recipients" }));
+
+    expect(await screen.findByText(/Loaded 2 of 3; the group is incomplete/)).toBeInTheDocument();
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry loading remaining recipients" }));
+
+    expect(await screen.findByText("Showing 1–3 of 3 recipients with surname S")).toBeInTheDocument();
+    expect(screen.getByText("Third Smith")).toBeInTheDocument();
+    expect(pageTwoAttempts).toBe(2);
+  });
+
+  it("asks for a refresh when surname-initial counts change between chunks", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
+      async (_sendId, _sectionId, options) => options?.initial === "S" && options.page === 2
+        ? {
+            ...mockRecipientPage,
+            recipients: [mockRecipients[2]],
+            filteredCount: 4,
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 4 },
+            page: 2,
+            pageSize: 2,
+            pageCount: 2,
+          }
+        : {
+            ...mockRecipientPage,
+            recipients: options?.initial === "S" ? mockRecipients.slice(0, 2) : mockRecipients,
+            filteredCount: 3,
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+            pageSize: options?.initial === "S" ? 2 : 50,
+            pageCount: options?.initial === "S" ? 2 : 1,
+          },
+    );
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+    await user.click(screen.getByRole("button", { name: "S: 3 recipients" }));
+
+    expect(await screen.findByText("Results changed while loading. Refresh to load the current group."))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Refresh group" })).toBeInTheDocument();
+  });
+
+  it("ignores a chained surname response after switching back to All", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    let resolveSecondSurnamePage!: (value: firebaseFunctions.AnnouncementRecipientPage) => void;
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
+      async (_sendId, _sectionId, options) => {
+        if (options?.initial === "S" && options.page === 2) {
+          return new Promise((resolve) => { resolveSecondSurnamePage = resolve; });
+        }
+        if (options?.initial === "S") {
+          return {
+            ...mockRecipientPage,
+            recipients: mockRecipients.slice(0, 2),
+            filteredCount: 3,
+            initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+            pageSize: 2,
+            pageCount: 2,
+          };
+        }
+        return {
+          ...mockRecipientPage,
+          initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+        };
+      },
+    );
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+    await user.click(screen.getByRole("button", { name: "S: 3 recipients" }));
+    await waitFor(() => expect(firebaseFunctions.getAnnouncementSendRecipients).toHaveBeenCalledWith(
+      "send-1",
+      SECTION_ID,
+      expect.objectContaining({ initial: "S", page: 2 }),
+    ));
+
+    await user.click(screen.getByRole("button", { name: /^All \(/ }));
+    expect(await screen.findByText(`Showing 1–${mockRecipients.length} of ${mockRecipients.length} recipients`))
+      .toBeInTheDocument();
+
+    await act(async () => {
+      resolveSecondSurnamePage({
+        ...mockRecipientPage,
+        recipients: [{
+          ...mockRecipients[0],
+          id: "stale-recipient",
+          firstName: "Stale",
+          lastName: "Smith",
+        }],
+        filteredCount: 3,
+        initialCounts: { ...mockRecipientPage.initialCounts, S: 3 },
+        page: 2,
+        pageSize: 2,
+        pageCount: 2,
+      });
+    });
+
+    expect(screen.queryByText("Stale Smith")).not.toBeInTheDocument();
+    expect(screen.getByText("Alice Smith")).toBeInTheDocument();
   });
 
   it("refreshes history and any expanded recipient view", async () => {
