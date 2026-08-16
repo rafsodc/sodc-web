@@ -17635,6 +17635,9 @@ export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
   firstName: string;
   lastName: string;
   surnameInitial: string;
+  surnameSortKey: string;
+  firstNameSortKey: string;
+  searchText: string;
   status: string;
   skippedReason?: string | null;
   sentAt?: TimestampString | null;
@@ -17666,6 +17669,9 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
   firstName: ..., 
   lastName: ..., 
   surnameInitial: ..., 
+  surnameSortKey: ..., 
+  firstNameSortKey: ..., 
+  searchText: ..., 
   status: ..., 
   skippedReason: ..., // optional
   sentAt: ..., // optional
@@ -17677,7 +17683,7 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementRecipientWithDeliveryMode(createAnnouncementRecipientWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementRecipientWithDeliveryMode({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+const { data } = await createAnnouncementRecipientWithDeliveryMode({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., surnameSortKey: ..., firstNameSortKey: ..., searchText: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -17707,6 +17713,9 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
   firstName: ..., 
   lastName: ..., 
   surnameInitial: ..., 
+  surnameSortKey: ..., 
+  firstNameSortKey: ..., 
+  searchText: ..., 
   status: ..., 
   skippedReason: ..., // optional
   sentAt: ..., // optional
@@ -17717,7 +17726,7 @@ const createAnnouncementRecipientWithDeliveryModeVars: CreateAnnouncementRecipie
 // Call the `createAnnouncementRecipientWithDeliveryModeRef()` function to get a reference to the mutation.
 const ref = createAnnouncementRecipientWithDeliveryModeRef(createAnnouncementRecipientWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementRecipientWithDeliveryModeRef({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+const ref = createAnnouncementRecipientWithDeliveryModeRef({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., surnameSortKey: ..., firstNameSortKey: ..., searchText: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

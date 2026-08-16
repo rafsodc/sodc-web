@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   mergeAnnouncementRecipients,
   partitionAnnouncementRecipients,
+  announcementRecipientInitial,
+  announcementRecipientSortKey,
+  announcementRecipientSearchText,
   type AnnouncementPurposeLink,
   type AnnouncementAudienceRecipient,
 } from "../../announcementRecipients";
@@ -117,5 +120,33 @@ describe("announcement recipient resolution", () => {
     );
 
     expect(recipients).toEqual([]);
+  });
+});
+
+describe("announcement recipient query keys", () => {
+  it.each([
+    ["Łukasz", "L"],
+    ["Øystein", "O"],
+    ["Đorđe", "D"],
+    ["Éclair", "E"],
+    ["123 Services", "OTHER"],
+  ])("buckets %s consistently as %s", (surname, expected) => {
+    expect(announcementRecipientInitial(surname)).toBe(expected);
+  });
+
+  it("builds accent-folded, numeric-aware sort keys", () => {
+    expect(
+      announcementRecipientSortKey("Müller 2")
+        < announcementRecipientSortKey("Muller 10"),
+    ).toBe(true);
+    expect(announcementRecipientSortKey("Łukasz")).toBe("lukasz");
+  });
+
+  it("builds the combined multi-word recipient search surface", () => {
+    expect(announcementRecipientSearchText({
+      firstName: "Jane",
+      lastName: "Doe",
+      email: "jane@example.com",
+    })).toBe("Jane Doe jane@example.com");
   });
 });

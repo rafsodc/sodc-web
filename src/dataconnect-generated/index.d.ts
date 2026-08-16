@@ -440,6 +440,9 @@ export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
   firstName: string;
   lastName: string;
   surnameInitial: string;
+  surnameSortKey: string;
+  firstNameSortKey: string;
+  searchText: string;
   status: string;
   skippedReason?: string | null;
   sentAt?: TimestampString | null;

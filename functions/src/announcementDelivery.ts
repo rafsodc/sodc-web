@@ -18,6 +18,8 @@ import { sanitizeMailerError } from "./mailerErrors";
 import {
   announcementFailureCategory,
   announcementRecipientInitial,
+  announcementRecipientSearchText,
+  announcementRecipientSortKey,
 } from "./announcementRecipients";
 
 // A task dispatch has a 60-second deadline. Keep the lease long enough that a
@@ -152,6 +154,9 @@ const dataConnectAnnouncementDeliveryRepository: AnnouncementDeliveryRepository 
         firstName: task.firstName,
         lastName: task.lastName,
         surnameInitial: announcementRecipientInitial(task.lastName),
+        surnameSortKey: announcementRecipientSortKey(task.lastName),
+        firstNameSortKey: announcementRecipientSortKey(task.firstName),
+        searchText: announcementRecipientSearchText(task),
         status: "queued",
         skippedReason: null,
         sentAt: null,

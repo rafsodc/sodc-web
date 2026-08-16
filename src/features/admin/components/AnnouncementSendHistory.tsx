@@ -212,11 +212,14 @@ function SendRow({
     : result.initialCounts[initial] ?? 0;
   const start = selectedCount === 0
     ? 0
-    : initial === "ALL"
-      ? (result.page - 1) * result.pageSize + 1
-      : 1;
+    : (result.page - 1) * result.pageSize + 1;
   const end = selectedCount === 0 ? 0 : start + result.recipients.length - 1;
   const resultNoun = STATUS_OPTIONS.find((option) => option.value === statusFilter)?.noun ?? "recipients";
+  const initialSuffix = initial === "ALL"
+    ? ""
+    : initial === "OTHER"
+      ? " in Other surnames"
+      : ` with surname ${initial}`;
 
   return (
     <>
@@ -371,7 +374,7 @@ function SendRow({
               <Typography variant="body2" color="text.secondary" aria-live="polite" sx={{ mb: 1 }}>
                 {selectedCount === 0
                   ? `No ${resultNoun} to show`
-                  : `Showing ${start}–${end} of ${selectedCount} ${resultNoun}`}
+                  : `Showing ${start}–${end} of ${selectedCount} ${resultNoun}${initialSuffix}`}
               </Typography>
 
               {loading && <LinearProgress aria-label="Loading recipients" sx={{ mb: 1 }} />}
@@ -418,12 +421,14 @@ function SendRow({
                   </Table>
                 </TableContainer>
               )}
-              {initial === "ALL" && result.pageCount > 1 && (
+              {result.pageCount > 1 && (
                 <Pagination
                   page={result.page}
                   count={result.pageCount}
                   onChange={(_event, nextPage) => setPage(nextPage)}
-                  aria-label="Recipient result pages"
+                  aria-label={initial === "ALL"
+                    ? "Recipient result pages"
+                    : `${initial} surname recipient result pages`}
                   sx={{ display: "flex", justifyContent: "center", mt: 2 }}
                 />
               )}

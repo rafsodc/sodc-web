@@ -53,10 +53,13 @@ import {
   type AnnouncementPurposeLink,
   type AnnouncementAudienceRecipient,
   announcementRecipientInitial,
+  announcementRecipientSearchText,
+  announcementRecipientSortKey,
   isNotifyTeamOnlyFailure,
   ANNOUNCEMENT_FAILURE_CATEGORY_NONE,
   ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY,
 } from "./announcementRecipients";
+import { dataConnectContainsPattern } from "./dataConnectSearch";
 
 const BULK_PREFIX = "BULK:";
 
@@ -435,6 +438,7 @@ interface AnnouncementRecipientSnapshot {
 const WRITE_CHUNK_SIZE = 10;
 const ENQUEUE_CHUNK_SIZE = 20;
 const RECIPIENT_HISTORY_PAGE_SIZE = 50;
+const RECIPIENT_INITIAL_PAGE_SIZE = 250;
 const DATA_CONNECT_PAGE_SIZE = 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -535,6 +539,9 @@ async function ensureRecipientRows(
           firstName: recipient.firstName,
           lastName: recipient.lastName,
           surnameInitial: announcementRecipientInitial(recipient.lastName),
+          surnameSortKey: announcementRecipientSortKey(recipient.lastName),
+          firstNameSortKey: announcementRecipientSortKey(recipient.firstName),
+          searchText: announcementRecipientSearchText(recipient),
           status: recipient.status,
           skippedReason: recipient.skippedReason,
           sentAt: null,
@@ -1039,7 +1046,7 @@ export const getAnnouncementSendRecipients = onCall(
       : 1;
 
     const filterConfig = recipientFilterQueryConfig(statusFilter);
-    const searchPattern = search.length > 0 ? escapePosixRegex(search) : ".*";
+    const searchPattern = search.length > 0 ? dataConnectContainsPattern(search) : ".*";
     const selectedInitials = requestedInitial === "ALL"
       ? [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "OTHER"]
       : [requestedInitial];
@@ -1055,11 +1062,12 @@ export const getAnnouncementSendRecipients = onCall(
 
     let result: Awaited<ReturnType<typeof dcGetAnnouncementSendRecipientPage>>;
     try {
-      const requestedOffset = requestedInitial === "ALL"
-        ? (requestedPage - 1) * RECIPIENT_HISTORY_PAGE_SIZE
-        : 0;
+      const requestedPageSize = requestedInitial === "ALL"
+        ? RECIPIENT_HISTORY_PAGE_SIZE
+        : RECIPIENT_INITIAL_PAGE_SIZE;
+      const requestedOffset = (requestedPage - 1) * requestedPageSize;
       result = await queryPage(
-        requestedInitial === "ALL" ? RECIPIENT_HISTORY_PAGE_SIZE : DATA_CONNECT_PAGE_SIZE,
+        requestedPageSize,
         requestedOffset,
       );
     } catch (err) {
@@ -1075,37 +1083,24 @@ export const getAnnouncementSendRecipients = onCall(
       initialCounts[row.surnameInitial] = row._count;
     }
     const filteredCount = Object.values(initialCounts).reduce((total, value) => total + value, 0);
-    const pageCount = requestedInitial === "ALL"
-      ? Math.max(1, Math.ceil(filteredCount / RECIPIENT_HISTORY_PAGE_SIZE))
-      : 1;
-    const page = requestedInitial === "ALL" ? Math.min(requestedPage, pageCount) : 1;
+    const selectedCount = requestedInitial === "ALL"
+      ? filteredCount
+      : initialCounts[requestedInitial] ?? 0;
+    const pageSize = requestedInitial === "ALL"
+      ? RECIPIENT_HISTORY_PAGE_SIZE
+      : RECIPIENT_INITIAL_PAGE_SIZE;
+    const pageCount = Math.max(1, Math.ceil(selectedCount / pageSize));
+    const page = Math.min(requestedPage, pageCount);
 
-    if (requestedInitial === "ALL" && page !== requestedPage) {
+    if (page !== requestedPage) {
       try {
-        result = await queryPage(RECIPIENT_HISTORY_PAGE_SIZE, (page - 1) * RECIPIENT_HISTORY_PAGE_SIZE);
+        result = await queryPage(pageSize, (page - 1) * pageSize);
       } catch (err) {
         logger.error("dcGetAnnouncementSendRecipients corrected page failed", { sendId, page, err });
         throw new HttpsError("internal", "Failed to load recipients");
       }
     }
-    let rawRecipients = result.data?.recipients ?? [];
-    if (requestedInitial !== "ALL") {
-      const selectedCount = initialCounts[requestedInitial] ?? 0;
-      for (let offset = rawRecipients.length; offset < selectedCount; offset += DATA_CONNECT_PAGE_SIZE) {
-        try {
-          const next = await queryPage(DATA_CONNECT_PAGE_SIZE, offset);
-          rawRecipients = [...rawRecipients, ...(next.data?.recipients ?? [])];
-        } catch (err) {
-          logger.error("dcGetAnnouncementSendRecipients initial page failed", {
-            sendId,
-            initial: requestedInitial,
-            offset,
-            err,
-          });
-          throw new HttpsError("internal", "Failed to load recipients");
-        }
-      }
-    }
+    const rawRecipients = result.data?.recipients ?? [];
     const allRecipients: AnnouncementRecipient[] = rawRecipients.map((r) => ({
       id: r.id,
       sendId,
@@ -1131,15 +1126,11 @@ export const getAnnouncementSendRecipients = onCall(
       filteredCount,
       initialCounts,
       page,
-      pageSize: RECIPIENT_HISTORY_PAGE_SIZE,
+      pageSize,
       pageCount,
     };
   }
 );
-
-function escapePosixRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
-}
 
 function recipientFilterQueryConfig(filter: AnnouncementRecipientStatusFilter): {
   statuses: string[];
@@ -1156,7 +1147,10 @@ function recipientFilterQueryConfig(filter: AnnouncementRecipientStatusFilter): 
     return { statuses: ["sent", "delivered"], failureCategories: bothCategories };
   }
   if (filter === "NOT_ON_TEAM") {
-    return { statuses: ["failed"], failureCategories: [ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY] };
+    return {
+      statuses: ["queued", "enqueue_failed", "sending", "retrying", "delivery_unknown", "sent", "delivered", "bounced", "failed", "skipped"],
+      failureCategories: [ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY],
+    };
   }
   if (filter === "FAILED") {
     return {

@@ -2260,6 +2260,9 @@ mutation CreateAnnouncementRecipientWithDeliveryMode(
   $firstName: String!
   $lastName: String!
   $surnameInitial: String!
+  $surnameSortKey: String!
+  $firstNameSortKey: String!
+  $searchText: String!
   $status: String!
   $skippedReason: String
   $sentAt: Timestamp
@@ -2274,6 +2277,9 @@ mutation CreateAnnouncementRecipientWithDeliveryMode(
     firstName: $firstName
     lastName: $lastName
     surnameInitial: $surnameInitial
+    surnameSortKey: $surnameSortKey
+    firstNameSortKey: $firstNameSortKey
+    searchText: $searchText
     status: $status
     skippedReason: $skippedReason
     sentAt: $sentAt
@@ -2412,11 +2418,7 @@ query GetAnnouncementSendRecipientPage(
         { announcementSendId: { eq: $sendId } }
         { status: { in: $statuses } }
         { failureCategory: { in: $failureCategories } }
-        { _or: [
-          { firstName: { pattern: { regex: $searchPattern, ignoreCase: true } } }
-          { lastName: { pattern: { regex: $searchPattern, ignoreCase: true } } }
-          { email: { pattern: { regex: $searchPattern, ignoreCase: true } } }
-        ] }
+        { searchText: { pattern: { regex: $searchPattern, ignoreCase: true } } }
       ]
     }
     orderBy: { surnameInitial: ASC }
@@ -2431,14 +2433,10 @@ query GetAnnouncementSendRecipientPage(
         { status: { in: $statuses } }
         { failureCategory: { in: $failureCategories } }
         { surnameInitial: { in: $initials } }
-        { _or: [
-          { firstName: { pattern: { regex: $searchPattern, ignoreCase: true } } }
-          { lastName: { pattern: { regex: $searchPattern, ignoreCase: true } } }
-          { email: { pattern: { regex: $searchPattern, ignoreCase: true } } }
-        ] }
+        { searchText: { pattern: { regex: $searchPattern, ignoreCase: true } } }
       ]
     }
-    orderBy: [{ lastName: ASC }, { firstName: ASC }, { id: ASC }]
+    orderBy: [{ surnameSortKey: ASC }, { firstNameSortKey: ASC }, { id: ASC }]
     limit: $limit
     offset: $offset
   ) {

@@ -36,10 +36,50 @@ export function announcementFailureCategory(reason: string | null | undefined): 
     : ANNOUNCEMENT_FAILURE_CATEGORY_NONE;
 }
 
+const ANNOUNCEMENT_NAME_FOLD_GROUPS: ReadonlyArray<readonly [string, string]> = [
+  ["a", "àáâãäåāăą"],
+  ["c", "çćč"],
+  ["d", "ďđ"],
+  ["e", "èéêëēėę"],
+  ["g", "ğ"],
+  ["i", "ìíîïīį"],
+  ["l", "ł"],
+  ["n", "ñńň"],
+  ["o", "òóôõöøōő"],
+  ["r", "ř"],
+  ["s", "śšş"],
+  ["t", "ť"],
+  ["u", "ùúûüūůű"],
+  ["y", "ýÿ"],
+  ["z", "žźż"],
+];
+const ANNOUNCEMENT_NAME_FOLD_MAP = new Map<string, string>(
+  ANNOUNCEMENT_NAME_FOLD_GROUPS.flatMap(([replacement, characters]) =>
+    [...characters].map((character) => [character, replacement] as const)
+  ),
+);
+
+export function foldAnnouncementName(value: string): string {
+  return [...value.trim().normalize("NFC").toLocaleLowerCase("en-GB")]
+    .map((character) => ANNOUNCEMENT_NAME_FOLD_MAP.get(character) ?? character)
+    .join("");
+}
+
 export function announcementRecipientInitial(lastName: string): string {
-  const normalized = lastName.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
-  const initial = normalized.charAt(0).toUpperCase();
+  const initial = foldAnnouncementName(lastName).charAt(0).toUpperCase();
   return /^[A-Z]$/.test(initial) ? initial : "OTHER";
+}
+
+export function announcementRecipientSortKey(value: string): string {
+  return foldAnnouncementName(value).replace(/\d+/g, (digits) => digits.padStart(20, "0"));
+}
+
+export function announcementRecipientSearchText(recipient: {
+  firstName: string;
+  lastName: string;
+  email: string;
+}): string {
+  return `${recipient.firstName} ${recipient.lastName} ${recipient.email}`.trim();
 }
 
 function linkHasAudiencePurpose(link: AnnouncementPurposeLink): boolean {

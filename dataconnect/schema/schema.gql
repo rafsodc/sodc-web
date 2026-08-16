@@ -697,6 +697,10 @@ type AnnouncementRecipient @table @unique(fields: ["announcementSend", "userId"]
   # This lets send history count and page surname groups in SQL without loading
   # every recipient into a Cloud Function first.
   surnameInitial: String! @default(value: "OTHER")
+  surnameSortKey: String! @default(value: "")
+  firstNameSortKey: String! @default(value: "")
+  # Combined immutable recipient identity used for multi-word name/email search.
+  searchText: String! @default(value: "")
   status: String!
   # Stable query category for the one provider failure that moderators can act
   # on differently. All other states use "none" and continue to be classified

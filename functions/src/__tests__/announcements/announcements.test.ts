@@ -463,7 +463,7 @@ describe("getAnnouncementSendRecipients", () => {
       const filtered = rows.filter((row) =>
         variables.statuses.includes(String(row.status)) &&
         variables.failureCategories.includes(String(row.failureCategory ?? "none")) &&
-        [row.firstName, row.lastName, row.email].some((value) => search.test(String(value)))
+        search.test(String(row.searchText ?? `${row.firstName} ${row.lastName} ${row.email}`))
       );
       const initialCounts = new Map<string, number>();
       filtered.forEach((row) => {
@@ -592,6 +592,94 @@ describe("getAnnouncementSendRecipients", () => {
     expect(teamOnly.recipients.every((recipient) =>
       recipient.failureCategory === "notify_team_only"
     )).toBe(true);
+  });
+
+  it("preserves multi-word full-name search through the database query", async () => {
+    mockGetAnnouncementSendById.mockResolvedValue({
+      data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
+    } as never);
+    mockRecipientQuery([{
+      id: "jane-doe",
+      userId: "user-jane",
+      email: "jane@example.com",
+      firstName: "Jane",
+      lastName: "Doe",
+      searchText: "Jane Doe jane@example.com",
+      surnameInitial: "D",
+      status: "delivered",
+      failureCategory: "none",
+      effectiveDeliveryMode: "LIVE",
+    }]);
+
+    const result = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      search: "Jane Doe",
+    });
+
+    expect(result.recipients.map(({ id }) => id)).toEqual(["jane-doe"]);
+    expect(mockGetAnnouncementSendRecipientPage).toHaveBeenCalledWith(expect.objectContaining({
+      searchPattern: String.raw`.*jane doe.*`,
+    }));
+  });
+
+  it("caps and paginates a large surname-initial group at 250 rows", async () => {
+    mockGetAnnouncementSendById.mockResolvedValue({
+      data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
+    } as never);
+    const rows = Array.from({ length: 251 }, (_, index) => ({
+      id: `smith-${index}`,
+      userId: `smith-user-${index}`,
+      email: `smith-${index}@example.com`,
+      firstName: `Person ${index}`,
+      lastName: `Smith ${index}`,
+      surnameInitial: "S",
+      status: "delivered",
+      failureCategory: "none",
+      effectiveDeliveryMode: "LIVE",
+    }));
+    mockRecipientQuery(rows);
+
+    const result = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      initial: "S",
+      page: 2,
+    });
+
+    expect(result).toMatchObject({ filteredCount: 251, page: 2, pageSize: 250, pageCount: 2 });
+    expect(result.recipients).toHaveLength(1);
+    expect(mockGetAnnouncementSendRecipientPage).toHaveBeenCalledWith(expect.objectContaining({
+      initials: ["S"],
+      limit: 250,
+      offset: 250,
+    }));
+  });
+
+  it("keeps an inconsistent team-only backfill visible in the dedicated filter", async () => {
+    mockGetAnnouncementSendById.mockResolvedValue({
+      data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
+    } as never);
+    mockRecipientQuery([{
+      id: "legacy-team-row",
+      userId: "legacy-user",
+      email: "legacy@example.com",
+      firstName: "Legacy",
+      lastName: "Member",
+      surnameInitial: "M",
+      status: "delivered",
+      failureReason: "team-only API key",
+      failureCategory: "notify_team_only",
+      effectiveDeliveryMode: "TEAM_TEST",
+    }]);
+
+    const result = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      statusFilter: "NOT_ON_TEAM",
+    });
+
+    expect(result.recipients).toHaveLength(1);
   });
 
   it("asks Data Connect only for the requested numeric page", async () => {

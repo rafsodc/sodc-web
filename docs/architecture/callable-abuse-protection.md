@@ -55,7 +55,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `sendSectionAnnouncement` | 5 | 1 hour | Recipient resolution and bulk task/email fan-out |
 | `retryAnnouncementPreparation` | 10 | 1 hour | Moderator recovery of a durable bulk-send preparation attempt |
 | `sendNotifyReplyToVerificationTest` | 10 | 1 hour | GOV.UK Notify provider verification sends |
-| `getAnnouncementSendRecipients` | 180 | 5 minutes | Database-filtered recipient PII browsing, paging and refresh |
+| `getAnnouncementSendRecipients` | 180 | 5 minutes | Database-filtered recipient PII browsing; 50-row All pages and 250-row initial pages |
 | `requestSectionFileUpload` | 20 | 1 hour | Signed upload capability and storage allocation |
 | `finalizeSectionFileUpload` | 30 | 1 hour | Object validation, hashing, copy, and metadata write |
 | `listSectionFiles` | 60 | 5 minutes | Restricted metadata enumeration |
@@ -120,7 +120,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `sendSectionAnnouncement` | High | High | GOV.UK Notify | Very high | Enabled + moderator; 5/hour; queued delivery |
 | `retryAnnouncementPreparation` | High | High | Cloud Tasks | High | Enabled + moderator; send/section binding; 10/hour; idempotent attempt ID |
 | `getAnnouncementSendHistory` | Low | Medium | None | Low | Enabled + moderator; bounded history query |
-| `getAnnouncementSendRecipients` | High | High | None | Medium | Enabled + moderator; 180/5 minutes; database-filtered; send/section binding |
+| `getAnnouncementSendRecipients` | High | High | None | Medium | Enabled + moderator; 180/5 minutes; send/section binding; PII capped at 50 rows for All or 250 for one initial per call |
 | `requestSectionFileUpload` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 20/hour; validated size/type; generated path |
 | `finalizeSectionFileUpload` | High | None | Cloud Storage | High | Enabled + section moderator/admin; 30/hour; stored-object validation; lifecycle CAS |
 | `listSectionFiles` | Medium | Medium | None | Medium | Enabled + current section access; 60/5 minutes; available objects only |

@@ -253,7 +253,7 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.getByRole("button", { name: "B: 3 recipients" })).toBeEnabled();
   });
 
-  it("uses numeric pages for All and complete surname-initial groups", async () => {
+  it("uses numeric pages for All and keeps small surname-initial groups together", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
     vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
       async (_sendId, _sectionId, options) => ({
@@ -279,7 +279,31 @@ describe("AnnouncementSendHistory", () => {
       expect.objectContaining({ initial: "B", page: 1 }),
     ));
     expect(screen.queryByLabelText("Recipient result pages")).not.toBeInTheDocument();
-    expect(screen.getByText("Showing 1–3 of 3 recipients")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–3 of 3 recipients with surname B")).toBeInTheDocument();
+  });
+
+  it("shows numeric pages when a surname-initial group exceeds its bounded page size", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
+      async (_sendId, _sectionId, options) => ({
+        ...mockRecipientPage,
+        filteredCount: 251,
+        initialCounts: {
+          ...mockRecipientPage.initialCounts,
+          S: 251,
+        },
+        page: options?.page ?? 1,
+        pageSize: 250,
+        pageCount: options?.initial === "S" ? 2 : 6,
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+    await user.click(screen.getByRole("button", { name: "S: 251 recipients" }));
+
+    expect(await screen.findByLabelText("S surname recipient result pages")).toBeInTheDocument();
   });
 
   it("refreshes history and any expanded recipient view", async () => {

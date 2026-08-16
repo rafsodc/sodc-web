@@ -14256,6 +14256,9 @@ export interface CreateAnnouncementRecipientWithDeliveryModeVariables {
   firstName: string;
   lastName: string;
   surnameInitial: string;
+  surnameSortKey: string;
+  firstNameSortKey: string;
+  searchText: string;
   status: string;
   skippedReason?: string | null;
   sentAt?: TimestampString | null;
@@ -14317,6 +14320,9 @@ export default function CreateAnnouncementRecipientWithDeliveryModeComponent() {
     firstName: ..., 
     lastName: ..., 
     surnameInitial: ..., 
+    surnameSortKey: ..., 
+    firstNameSortKey: ..., 
+    searchText: ..., 
     status: ..., 
     skippedReason: ..., // optional
     sentAt: ..., // optional
@@ -14325,7 +14331,7 @@ export default function CreateAnnouncementRecipientWithDeliveryModeComponent() {
   };
   mutation.mutate(createAnnouncementRecipientWithDeliveryModeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
+  mutation.mutate({ id: ..., announcementSendId: ..., userId: ..., email: ..., firstName: ..., lastName: ..., surnameInitial: ..., surnameSortKey: ..., firstNameSortKey: ..., searchText: ..., status: ..., skippedReason: ..., sentAt: ..., failureReason: ..., effectiveDeliveryMode: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
