@@ -36,33 +36,29 @@ export function announcementFailureCategory(reason: string | null | undefined): 
     : ANNOUNCEMENT_FAILURE_CATEGORY_NONE;
 }
 
-const ANNOUNCEMENT_NAME_FOLD_GROUPS: ReadonlyArray<readonly [string, string]> = [
-  ["a", "àáâãäåāăą"],
-  ["c", "çćč"],
-  ["d", "ďđ"],
-  ["e", "èéêëēėę"],
-  ["g", "ğ"],
-  ["i", "ìíîïīį"],
-  ["l", "ł"],
-  ["n", "ñńň"],
-  ["o", "òóôõöøōő"],
-  ["r", "ř"],
-  ["s", "śšş"],
-  ["t", "ť"],
-  ["u", "ùúûüūůű"],
-  ["y", "ýÿ"],
-  ["z", "žźż"],
+export const ANNOUNCEMENT_NAME_COMPATIBILITY_FOLDS: ReadonlyArray<readonly [string, string]> = [
+  ["Ææ", "ae"],
+  ["ÐðĐđ", "d"],
+  ["Ħħ", "h"],
+  ["ı", "i"],
+  ["Łł", "l"],
+  ["Œœ", "oe"],
+  ["Øø", "o"],
+  ["ßẞ", "ss"],
+  ["Ŧŧ", "t"],
+  ["Þþ", "th"],
 ];
 const ANNOUNCEMENT_NAME_FOLD_MAP = new Map<string, string>(
-  ANNOUNCEMENT_NAME_FOLD_GROUPS.flatMap(([replacement, characters]) =>
+  ANNOUNCEMENT_NAME_COMPATIBILITY_FOLDS.flatMap(([characters, replacement]) =>
     [...characters].map((character) => [character, replacement] as const)
   ),
 );
 
 export function foldAnnouncementName(value: string): string {
-  return [...value.trim().normalize("NFC").toLocaleLowerCase("en-GB")]
+  return [...value.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")]
     .map((character) => ANNOUNCEMENT_NAME_FOLD_MAP.get(character) ?? character)
-    .join("");
+    .join("")
+    .replace(/[A-Z]/g, (character) => character.toLowerCase());
 }
 
 export function announcementRecipientInitial(lastName: string): string {

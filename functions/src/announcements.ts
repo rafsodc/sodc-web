@@ -59,7 +59,7 @@ import {
   ANNOUNCEMENT_FAILURE_CATEGORY_NONE,
   ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY,
 } from "./announcementRecipients";
-import { dataConnectContainsPattern } from "./dataConnectSearch";
+import { caseInsensitiveContainsPattern } from "./dataConnectSearch";
 
 const BULK_PREFIX = "BULK:";
 
@@ -1046,7 +1046,7 @@ export const getAnnouncementSendRecipients = onCall(
       : 1;
 
     const filterConfig = recipientFilterQueryConfig(statusFilter);
-    const searchPattern = search.length > 0 ? dataConnectContainsPattern(search) : ".*";
+    const searchPattern = search.length > 0 ? caseInsensitiveContainsPattern(search) : ".*";
     const selectedInitials = requestedInitial === "ALL"
       ? [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "OTHER"]
       : [requestedInitial];
@@ -1147,6 +1147,9 @@ function recipientFilterQueryConfig(filter: AnnouncementRecipientStatusFilter): 
     return { statuses: ["sent", "delivered"], failureCategories: bothCategories };
   }
   if (filter === "NOT_ON_TEAM") {
+    // Category is the durable invariant: live writers derive it only through
+    // announcementFailureCategory. Accept every status so a legacy/backfilled
+    // row with an inconsistent status cannot disappear from this filter.
     return {
       statuses: ["queued", "enqueue_failed", "sending", "retrying", "delivery_unknown", "sent", "delivered", "bounced", "failed", "skipped"],
       failureCategories: [ANNOUNCEMENT_FAILURE_CATEGORY_NOTIFY_TEAM_ONLY],

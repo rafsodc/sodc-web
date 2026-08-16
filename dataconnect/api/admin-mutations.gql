@@ -2418,7 +2418,7 @@ query GetAnnouncementSendRecipientPage(
         { announcementSendId: { eq: $sendId } }
         { status: { in: $statuses } }
         { failureCategory: { in: $failureCategories } }
-        { searchText: { pattern: { regex: $searchPattern, ignoreCase: true } } }
+        { searchText: { pattern: { regex: $searchPattern } } }
       ]
     }
     orderBy: { surnameInitial: ASC }
@@ -2433,7 +2433,7 @@ query GetAnnouncementSendRecipientPage(
         { status: { in: $statuses } }
         { failureCategory: { in: $failureCategories } }
         { surnameInitial: { in: $initials } }
-        { searchText: { pattern: { regex: $searchPattern, ignoreCase: true } } }
+        { searchText: { pattern: { regex: $searchPattern } } }
       ]
     }
     orderBy: [{ surnameSortKey: ASC }, { firstNameSortKey: ASC }, { id: ASC }]

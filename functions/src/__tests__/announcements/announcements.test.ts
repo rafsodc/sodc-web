@@ -459,7 +459,7 @@ describe("getAnnouncementSendRecipients", () => {
 
   function mockRecipientQuery(rows: Array<Record<string, unknown>>) {
     mockGetAnnouncementSendRecipientPage.mockImplementation(async (variables) => {
-      const search = new RegExp(variables.searchPattern, "i");
+      const search = new RegExp(variables.searchPattern.replace(/^\(\?i\)/, ""), "i");
       const filtered = rows.filter((row) =>
         variables.statuses.includes(String(row.status)) &&
         variables.failureCategories.includes(String(row.failureCategory ?? "none")) &&
@@ -619,7 +619,7 @@ describe("getAnnouncementSendRecipients", () => {
 
     expect(result.recipients.map(({ id }) => id)).toEqual(["jane-doe"]);
     expect(mockGetAnnouncementSendRecipientPage).toHaveBeenCalledWith(expect.objectContaining({
-      searchPattern: String.raw`.*jane doe.*`,
+      searchPattern: String.raw`(?i).*jane doe.*`,
     }));
   });
 
