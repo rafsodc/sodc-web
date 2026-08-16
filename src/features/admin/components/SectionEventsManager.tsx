@@ -40,6 +40,7 @@ import type {
 import { fromDatetimeLocal, toDatetimeLocal } from "../utils/eventDatetime";
 import {
   activeEventTicketRows,
+  currentActiveBookings,
   pendingBookingRevisions,
 } from "../utils/bookingApprovalsAdmin";
 import {
@@ -144,7 +145,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   );
   const seatingPreferenceUserIds = useMemo(
     () => Array.from(new Set(
-      (eventBookingsData?.event?.bookings ?? []).flatMap((booking) => booking.sitNextToUserIds ?? [])
+      currentActiveBookings(eventBookingsData?.event?.bookings ?? [])
+        .flatMap((booking) => booking.sitNextToUserIds ?? [])
     )),
     [eventBookingsData]
   );

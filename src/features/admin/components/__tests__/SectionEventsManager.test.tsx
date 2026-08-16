@@ -338,6 +338,22 @@ describe("SectionEventsManager", () => {
                 includesSymposium: true,
               },
             }],
+          }, {
+            id: "b-rejected",
+            status: "SUBMITTED",
+            approvalStatus: "REJECTED",
+            revisionGroupId: "10000000-0000-4000-8000-000000000002",
+            revisionNumber: 1,
+            supersededAt: null,
+            sitNextToUserIds: ["u-rejected-preference"],
+            accommodationRequested: false,
+            accommodationNote: null,
+            createdAt: "2026-02-01T00:00:00Z",
+            updatedAt: "2026-02-01T01:00:00Z",
+            createdBy: "u-3",
+            updatedBy: "u-3",
+            booker: { id: "u-3", firstName: "Rejected", lastName: "Member", email: "rejected@example.com" },
+            lines: [],
           }],
         },
       },
@@ -360,6 +376,16 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("columnheader", { name: "Seating preferences" })).toBeInTheDocument();
     expect(screen.getByText("Taylor Member")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Revision" })).not.toBeInTheDocument();
+    expect(reactGenerated.useListUserNamesByIds).toHaveBeenCalledWith(
+      expect.anything(),
+      { ids: ["u-2"] },
+      { enabled: true }
+    );
+    expect(reactGenerated.useListUserNamesByIds).not.toHaveBeenCalledWith(
+      expect.anything(),
+      { ids: expect.arrayContaining(["u-rejected-preference"]) },
+      expect.anything()
+    );
   });
 
   it("updates Dinner and Symposium flags on a ticket type", async () => {
