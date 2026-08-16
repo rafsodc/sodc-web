@@ -386,7 +386,7 @@ query GetSectionMembers($sectionId: UUID!) @auth(level: NO_ACCESS) {
         id
         name
         membershipStatuses
-        users: userUserGroups_on_userGroup {
+        users: userUserGroups_on_userGroup(limit: 5000) {
           user {
             id
             firstName

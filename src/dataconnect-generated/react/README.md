@@ -53,10 +53,14 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListStaleDraftBookingsForScheduler*](#liststaledraftbookingsforscheduler)
   - [*ListStalePendingTicketOrdersForScheduler*](#liststalependingticketordersforscheduler)
   - [*GetSectionAnnouncementOptOuts*](#getsectionannouncementoptouts)
+  - [*GetSectionAnnouncementOptOutsPaged*](#getsectionannouncementoptoutspaged)
   - [*GetAnnouncementRecipientProgress*](#getannouncementrecipientprogress)
+  - [*GetAnnouncementRecipientProgressPaged*](#getannouncementrecipientprogresspaged)
   - [*GetAnnouncementRecipientsForResume*](#getannouncementrecipientsforresume)
+  - [*GetAnnouncementRecipientsForResumePaged*](#getannouncementrecipientsforresumepaged)
   - [*GetAnnouncementSendHistory*](#getannouncementsendhistory)
   - [*GetAnnouncementSendRecipients*](#getannouncementsendrecipients)
+  - [*GetAnnouncementSendRecipientsPaged*](#getannouncementsendrecipientspaged)
   - [*GetAnnouncementSendById*](#getannouncementsendbyid)
   - [*GetAnnouncementRecipientBySendAndUser*](#getannouncementrecipientbysendanduser)
   - [*GetUserByEmail*](#getuserbyemail)
@@ -3836,6 +3840,96 @@ export default function GetSectionAnnouncementOptOutsComponent() {
 }
 ```
 
+## GetSectionAnnouncementOptOutsPaged
+You can execute the `GetSectionAnnouncementOptOutsPaged` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetSectionAnnouncementOptOutsPaged(dc: DataConnect, vars: GetSectionAnnouncementOptOutsPagedVariables, options?: useDataConnectQueryOptions<GetSectionAnnouncementOptOutsPagedData>): UseDataConnectQueryResult<GetSectionAnnouncementOptOutsPagedData, GetSectionAnnouncementOptOutsPagedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetSectionAnnouncementOptOutsPaged(vars: GetSectionAnnouncementOptOutsPagedVariables, options?: useDataConnectQueryOptions<GetSectionAnnouncementOptOutsPagedData>): UseDataConnectQueryResult<GetSectionAnnouncementOptOutsPagedData, GetSectionAnnouncementOptOutsPagedVariables>;
+```
+
+### Variables
+The `GetSectionAnnouncementOptOutsPaged` Query requires an argument of type `GetSectionAnnouncementOptOutsPagedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetSectionAnnouncementOptOutsPagedVariables {
+  sectionId: UUIDString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `GetSectionAnnouncementOptOutsPaged` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetSectionAnnouncementOptOutsPaged` Query is of type `GetSectionAnnouncementOptOutsPagedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetSectionAnnouncementOptOutsPagedData {
+  sectionAnnouncementOptOuts: ({
+    user: {
+      id: string;
+    } & User_Key;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetSectionAnnouncementOptOutsPaged`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetSectionAnnouncementOptOutsPagedVariables } from '@dataconnect/generated';
+import { useGetSectionAnnouncementOptOutsPaged } from '@dataconnect/generated/react'
+
+export default function GetSectionAnnouncementOptOutsPagedComponent() {
+  // The `useGetSectionAnnouncementOptOutsPaged` Query hook requires an argument of type `GetSectionAnnouncementOptOutsPagedVariables`:
+  const getSectionAnnouncementOptOutsPagedVars: GetSectionAnnouncementOptOutsPagedVariables = {
+    sectionId: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetSectionAnnouncementOptOutsPaged(getSectionAnnouncementOptOutsPagedVars);
+  // Variables can be defined inline as well.
+  const query = useGetSectionAnnouncementOptOutsPaged({ sectionId: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetSectionAnnouncementOptOutsPaged(dataConnect, getSectionAnnouncementOptOutsPagedVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetSectionAnnouncementOptOutsPaged(getSectionAnnouncementOptOutsPagedVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetSectionAnnouncementOptOutsPaged(dataConnect, getSectionAnnouncementOptOutsPagedVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.sectionAnnouncementOptOuts);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetAnnouncementRecipientProgress
 You can execute the `GetAnnouncementRecipientProgress` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -3902,6 +3996,94 @@ export default function GetAnnouncementRecipientProgressComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetAnnouncementRecipientProgress(dataConnect, getAnnouncementRecipientProgressVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.announcementRecipients);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetAnnouncementRecipientProgressPaged
+You can execute the `GetAnnouncementRecipientProgressPaged` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetAnnouncementRecipientProgressPaged(dc: DataConnect, vars: GetAnnouncementRecipientProgressPagedVariables, options?: useDataConnectQueryOptions<GetAnnouncementRecipientProgressPagedData>): UseDataConnectQueryResult<GetAnnouncementRecipientProgressPagedData, GetAnnouncementRecipientProgressPagedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetAnnouncementRecipientProgressPaged(vars: GetAnnouncementRecipientProgressPagedVariables, options?: useDataConnectQueryOptions<GetAnnouncementRecipientProgressPagedData>): UseDataConnectQueryResult<GetAnnouncementRecipientProgressPagedData, GetAnnouncementRecipientProgressPagedVariables>;
+```
+
+### Variables
+The `GetAnnouncementRecipientProgressPaged` Query requires an argument of type `GetAnnouncementRecipientProgressPagedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetAnnouncementRecipientProgressPagedVariables {
+  sendId: UUIDString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `GetAnnouncementRecipientProgressPaged` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAnnouncementRecipientProgressPaged` Query is of type `GetAnnouncementRecipientProgressPagedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetAnnouncementRecipientProgressPagedData {
+  announcementRecipients: ({
+    status: string;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetAnnouncementRecipientProgressPaged`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetAnnouncementRecipientProgressPagedVariables } from '@dataconnect/generated';
+import { useGetAnnouncementRecipientProgressPaged } from '@dataconnect/generated/react'
+
+export default function GetAnnouncementRecipientProgressPagedComponent() {
+  // The `useGetAnnouncementRecipientProgressPaged` Query hook requires an argument of type `GetAnnouncementRecipientProgressPagedVariables`:
+  const getAnnouncementRecipientProgressPagedVars: GetAnnouncementRecipientProgressPagedVariables = {
+    sendId: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetAnnouncementRecipientProgressPaged(getAnnouncementRecipientProgressPagedVars);
+  // Variables can be defined inline as well.
+  const query = useGetAnnouncementRecipientProgressPaged({ sendId: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetAnnouncementRecipientProgressPaged(dataConnect, getAnnouncementRecipientProgressPagedVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementRecipientProgressPaged(getAnnouncementRecipientProgressPagedVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementRecipientProgressPaged(dataConnect, getAnnouncementRecipientProgressPagedVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -3988,6 +4170,96 @@ export default function GetAnnouncementRecipientsForResumeComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetAnnouncementRecipientsForResume(dataConnect, getAnnouncementRecipientsForResumeVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.announcementRecipients);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetAnnouncementRecipientsForResumePaged
+You can execute the `GetAnnouncementRecipientsForResumePaged` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetAnnouncementRecipientsForResumePaged(dc: DataConnect, vars: GetAnnouncementRecipientsForResumePagedVariables, options?: useDataConnectQueryOptions<GetAnnouncementRecipientsForResumePagedData>): UseDataConnectQueryResult<GetAnnouncementRecipientsForResumePagedData, GetAnnouncementRecipientsForResumePagedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetAnnouncementRecipientsForResumePaged(vars: GetAnnouncementRecipientsForResumePagedVariables, options?: useDataConnectQueryOptions<GetAnnouncementRecipientsForResumePagedData>): UseDataConnectQueryResult<GetAnnouncementRecipientsForResumePagedData, GetAnnouncementRecipientsForResumePagedVariables>;
+```
+
+### Variables
+The `GetAnnouncementRecipientsForResumePaged` Query requires an argument of type `GetAnnouncementRecipientsForResumePagedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetAnnouncementRecipientsForResumePagedVariables {
+  sendId: UUIDString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `GetAnnouncementRecipientsForResumePaged` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAnnouncementRecipientsForResumePaged` Query is of type `GetAnnouncementRecipientsForResumePagedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetAnnouncementRecipientsForResumePagedData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    status: string;
+  } & AnnouncementRecipient_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetAnnouncementRecipientsForResumePaged`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetAnnouncementRecipientsForResumePagedVariables } from '@dataconnect/generated';
+import { useGetAnnouncementRecipientsForResumePaged } from '@dataconnect/generated/react'
+
+export default function GetAnnouncementRecipientsForResumePagedComponent() {
+  // The `useGetAnnouncementRecipientsForResumePaged` Query hook requires an argument of type `GetAnnouncementRecipientsForResumePagedVariables`:
+  const getAnnouncementRecipientsForResumePagedVars: GetAnnouncementRecipientsForResumePagedVariables = {
+    sendId: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetAnnouncementRecipientsForResumePaged(getAnnouncementRecipientsForResumePagedVars);
+  // Variables can be defined inline as well.
+  const query = useGetAnnouncementRecipientsForResumePaged({ sendId: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetAnnouncementRecipientsForResumePaged(dataConnect, getAnnouncementRecipientsForResumePagedVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementRecipientsForResumePaged(getAnnouncementRecipientsForResumePagedVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementRecipientsForResumePaged(dataConnect, getAnnouncementRecipientsForResumePagedVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {
@@ -4177,6 +4449,103 @@ export default function GetAnnouncementSendRecipientsComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetAnnouncementSendRecipients(dataConnect, getAnnouncementSendRecipientsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.announcementRecipients);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetAnnouncementSendRecipientsPaged
+You can execute the `GetAnnouncementSendRecipientsPaged` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetAnnouncementSendRecipientsPaged(dc: DataConnect, vars: GetAnnouncementSendRecipientsPagedVariables, options?: useDataConnectQueryOptions<GetAnnouncementSendRecipientsPagedData>): UseDataConnectQueryResult<GetAnnouncementSendRecipientsPagedData, GetAnnouncementSendRecipientsPagedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetAnnouncementSendRecipientsPaged(vars: GetAnnouncementSendRecipientsPagedVariables, options?: useDataConnectQueryOptions<GetAnnouncementSendRecipientsPagedData>): UseDataConnectQueryResult<GetAnnouncementSendRecipientsPagedData, GetAnnouncementSendRecipientsPagedVariables>;
+```
+
+### Variables
+The `GetAnnouncementSendRecipientsPaged` Query requires an argument of type `GetAnnouncementSendRecipientsPagedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetAnnouncementSendRecipientsPagedVariables {
+  sendId: UUIDString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `GetAnnouncementSendRecipientsPaged` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAnnouncementSendRecipientsPaged` Query is of type `GetAnnouncementSendRecipientsPagedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetAnnouncementSendRecipientsPagedData {
+  announcementRecipients: ({
+    id: UUIDString;
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+    skippedReason?: string | null;
+    sentAt?: TimestampString | null;
+    failureReason?: string | null;
+    effectiveDeliveryMode: GovNotifyDeliveryMode;
+  } & AnnouncementRecipient_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetAnnouncementSendRecipientsPaged`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetAnnouncementSendRecipientsPagedVariables } from '@dataconnect/generated';
+import { useGetAnnouncementSendRecipientsPaged } from '@dataconnect/generated/react'
+
+export default function GetAnnouncementSendRecipientsPagedComponent() {
+  // The `useGetAnnouncementSendRecipientsPaged` Query hook requires an argument of type `GetAnnouncementSendRecipientsPagedVariables`:
+  const getAnnouncementSendRecipientsPagedVars: GetAnnouncementSendRecipientsPagedVariables = {
+    sendId: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetAnnouncementSendRecipientsPaged(getAnnouncementSendRecipientsPagedVars);
+  // Variables can be defined inline as well.
+  const query = useGetAnnouncementSendRecipientsPaged({ sendId: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetAnnouncementSendRecipientsPaged(dataConnect, getAnnouncementSendRecipientsPagedVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementSendRecipientsPaged(getAnnouncementSendRecipientsPagedVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAnnouncementSendRecipientsPaged(dataConnect, getAnnouncementSendRecipientsPagedVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {

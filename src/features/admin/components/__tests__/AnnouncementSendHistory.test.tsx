@@ -77,7 +77,8 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     firstName: "Carol",
     lastName: "Brown",
     status: "failed",
-    failureReason: "GOV Notify rejected",
+    failureReason: "Can’t send to this recipient using a team-only API key",
+    failureCategory: "notify_team_only",
   },
   {
     effectiveDeliveryMode: "LIVE",
@@ -123,6 +124,20 @@ const mockRecipients: firebaseFunctions.AnnouncementRecipient[] = [
     status: "delivery_unknown",
   },
 ];
+
+const mockRecipientPage: firebaseFunctions.AnnouncementRecipientPage = {
+  recipients: mockRecipients,
+  totalCount: mockRecipients.length,
+  filteredCount: mockRecipients.length,
+  initialCounts: {
+    A: 0, B: 3, C: 0, D: 0, E: 0, F: 0, G: 1, H: 0, I: 0,
+    J: 1, K: 0, L: 0, M: 0, N: 0, O: 0, P: 0, Q: 0, R: 0,
+    S: 1, T: 0, U: 0, V: 0, W: 1, X: 0, Y: 0, Z: 0, OTHER: 0,
+  },
+  page: 1,
+  pageSize: 50,
+  pageCount: 1,
+};
 
 describe("AnnouncementSendHistory", () => {
   beforeEach(() => {
@@ -191,7 +206,7 @@ describe("AnnouncementSendHistory", () => {
 
   it("expands a row and loads recipients", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
-    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue(mockRecipients);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue(mockRecipientPage);
 
     const user = userEvent.setup();
     render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
@@ -214,18 +229,64 @@ describe("AnnouncementSendHistory", () => {
     expect(screen.getByText("Frank Green")).toBeInTheDocument();
     expect(screen.getByText("Grace Blue")).toBeInTheDocument();
     expect(screen.getByText("Recipient opted out")).toBeInTheDocument();
-    expect(screen.getAllByText("Delivery failed; diagnostic detail is available in secure logs.")).toHaveLength(2);
-    expect(screen.queryByText("GOV Notify rejected")).not.toBeInTheDocument();
+    expect(screen.getByText("Recipient is not on the GOV.UK Notify team or guest list.")).toBeInTheDocument();
+    expect(screen.getByText("Delivery failed; diagnostic detail is available in secure logs.")).toBeInTheDocument();
+    expect(screen.queryByText(/team-only API key/i)).not.toBeInTheDocument();
     expect(screen.queryByText("GOV Notify reported permanent-failure")).not.toBeInTheDocument();
 
-    // Status chips — "Sent"/"Skipped"/"Failed" also appear as column headers, so use getAllByText
-    expect(screen.getAllByText("Sent").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Accepted")).toBeInTheDocument();
     expect(screen.getAllByText("Skipped").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Failed").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Delivered")).toBeInTheDocument();
     expect(screen.getByText("Bounced")).toBeInTheDocument();
     expect(screen.getByText("Queued")).toBeInTheDocument();
     expect(screen.getByText("Checking delivery")).toBeInTheDocument();
+    expect(screen.getByText("Not on Notify team")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "B: 3 recipients" })).toBeEnabled();
+  });
+
+  it("uses numeric pages for All and complete surname-initial groups", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
+      async (_sendId, _sectionId, options) => ({
+        ...mockRecipientPage,
+        filteredCount: 51,
+        pageCount: options?.initial === "B" ? 1 : 2,
+        recipients: options?.initial === "B"
+          ? mockRecipients.filter((recipient) => recipient.lastName.startsWith("B"))
+          : mockRecipients,
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+
+    expect(await screen.findByLabelText("Recipient result pages")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "B: 3 recipients" }));
+
+    await waitFor(() => expect(firebaseFunctions.getAnnouncementSendRecipients).toHaveBeenLastCalledWith(
+      "send-1",
+      SECTION_ID,
+      expect.objectContaining({ initial: "B", page: 1 }),
+    ));
+    expect(screen.queryByLabelText("Recipient result pages")).not.toBeInTheDocument();
+    expect(screen.getByText("Showing 1–3 of 3 recipients")).toBeInTheDocument();
+  });
+
+  it("refreshes history and any expanded recipient view", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue(mockRecipientPage);
+
+    const user = userEvent.setup();
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} />);
+    await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
+    await screen.findByText("Alice Smith");
+    await user.click(screen.getByRole("button", { name: "Refresh send history" }));
+
+    await waitFor(() => {
+      expect(firebaseFunctions.getAnnouncementSendHistory).toHaveBeenCalledTimes(2);
+      expect(firebaseFunctions.getAnnouncementSendRecipients).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("shows an error when recipients fail to load", async () => {
@@ -249,7 +310,7 @@ describe("AnnouncementSendHistory", () => {
 
   it("collapses an expanded row on second click", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
-    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue(mockRecipients);
+    vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockResolvedValue(mockRecipientPage);
 
     const user = userEvent.setup();
     render(<AnnouncementSendHistory sectionId={SECTION_ID} />);

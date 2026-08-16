@@ -767,6 +767,13 @@ function getSectionAnnouncementOptOuts(dcOrVarsOrOptions, varsOrOptions, options
 }
 exports.getSectionAnnouncementOptOuts = getSectionAnnouncementOptOuts;
 
+function getSectionAnnouncementOptOutsPaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetSectionAnnouncementOptOutsPaged', inputVars, inputOpts);
+}
+exports.getSectionAnnouncementOptOutsPaged = getSectionAnnouncementOptOutsPaged;
+
 function createAnnouncementSend(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -802,12 +809,26 @@ function getAnnouncementRecipientProgress(dcOrVarsOrOptions, varsOrOptions, opti
 }
 exports.getAnnouncementRecipientProgress = getAnnouncementRecipientProgress;
 
+function getAnnouncementRecipientProgressPaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientProgressPaged', inputVars, inputOpts);
+}
+exports.getAnnouncementRecipientProgressPaged = getAnnouncementRecipientProgressPaged;
+
 function getAnnouncementRecipientsForResume(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeQuery('GetAnnouncementRecipientsForResume', inputVars, inputOpts);
 }
 exports.getAnnouncementRecipientsForResume = getAnnouncementRecipientsForResume;
+
+function getAnnouncementRecipientsForResumePaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementRecipientsForResumePaged', inputVars, inputOpts);
+}
+exports.getAnnouncementRecipientsForResumePaged = getAnnouncementRecipientsForResumePaged;
 
 function getAnnouncementSendHistory(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -822,6 +843,13 @@ function getAnnouncementSendRecipients(dcOrVarsOrOptions, varsOrOptions, options
   return dcInstance.executeQuery('GetAnnouncementSendRecipients', inputVars, inputOpts);
 }
 exports.getAnnouncementSendRecipients = getAnnouncementSendRecipients;
+
+function getAnnouncementSendRecipientsPaged(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementSendRecipientsPaged', inputVars, inputOpts);
+}
+exports.getAnnouncementSendRecipientsPaged = getAnnouncementSendRecipientsPaged;
 
 function getAnnouncementSendById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

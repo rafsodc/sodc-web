@@ -1211,6 +1211,19 @@ export function getSectionAnnouncementOptOuts(dcOrVars, varsOrOptions, options) 
   return executeQuery(getSectionAnnouncementOptOutsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
+export const getSectionAnnouncementOptOutsPagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetSectionAnnouncementOptOutsPaged', inputVars);
+}
+getSectionAnnouncementOptOutsPagedRef.operationName = 'GetSectionAnnouncementOptOutsPaged';
+
+export function getSectionAnnouncementOptOutsPaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getSectionAnnouncementOptOutsPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
 export const createAnnouncementSendRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -1272,6 +1285,19 @@ export function getAnnouncementRecipientProgress(dcOrVars, varsOrOptions, option
   return executeQuery(getAnnouncementRecipientProgressRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
+export const getAnnouncementRecipientProgressPagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementRecipientProgressPaged', inputVars);
+}
+getAnnouncementRecipientProgressPagedRef.operationName = 'GetAnnouncementRecipientProgressPaged';
+
+export function getAnnouncementRecipientProgressPaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementRecipientProgressPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
 export const getAnnouncementRecipientsForResumeRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -1283,6 +1309,19 @@ export function getAnnouncementRecipientsForResume(dcOrVars, varsOrOptions, opti
 
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getAnnouncementRecipientsForResumeRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const getAnnouncementRecipientsForResumePagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementRecipientsForResumePaged', inputVars);
+}
+getAnnouncementRecipientsForResumePagedRef.operationName = 'GetAnnouncementRecipientsForResumePaged';
+
+export function getAnnouncementRecipientsForResumePaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementRecipientsForResumePagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getAnnouncementSendHistoryRef = (dcOrVars, vars) => {
@@ -1309,6 +1348,19 @@ export function getAnnouncementSendRecipients(dcOrVars, varsOrOptions, options) 
 
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getAnnouncementSendRecipientsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const getAnnouncementSendRecipientsPagedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementSendRecipientsPaged', inputVars);
+}
+getAnnouncementSendRecipientsPagedRef.operationName = 'GetAnnouncementSendRecipientsPaged';
+
+export function getAnnouncementSendRecipientsPaged(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementSendRecipientsPagedRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getAnnouncementSendByIdRef = (dcOrVars, vars) => {

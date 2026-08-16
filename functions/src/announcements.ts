@@ -10,16 +10,16 @@ import {
   getUserAccessGroupsById,
   getUserMembershipStatus,
   listUsers,
-  getSectionAnnouncementOptOuts,
+  getSectionAnnouncementOptOutsPaged,
   createAnnouncementSendWithDeliveryMode,
   createAnnouncementRecipientWithDeliveryMode,
-  getAnnouncementRecipientProgress,
-  getAnnouncementRecipientsForResume,
+  getAnnouncementRecipientProgressPaged,
+  getAnnouncementRecipientsForResumePaged,
   getAnnouncementSendById,
   tryMarkAnnouncementRecipientEnqueueFailed,
   tryUpdateAnnouncementRecipientProcessingStatus,
   getAnnouncementSendHistory as dcGetAnnouncementSendHistory,
-  getAnnouncementSendRecipients as dcGetAnnouncementSendRecipients,
+  getAnnouncementSendRecipientsPaged as dcGetAnnouncementSendRecipientsPaged,
   GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
 } from "@dataconnect/admin-generated";
 import { requireEnabled, requireString, validateUUID } from "./helpers";
@@ -301,9 +301,9 @@ export const previewAnnouncementTemplate = onCall(
 
 export interface SendAnnouncementResult {
   sendId: string;
-  queuedCount: number;
-  failedToEnqueueCount: number;
+  recipientCount: number;
   skippedCount: number;
+  preparationQueued: true;
   resumed: boolean;
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
@@ -340,7 +340,28 @@ export interface AnnouncementRecipient {
   skippedReason?: string;
   sentAt?: string;
   failureReason?: string;
+  failureCategory?: "notify_team_only";
   effectiveDeliveryMode: GovNotifyDeliveryMode;
+}
+
+export type AnnouncementRecipientStatusFilter =
+  | "ALL"
+  | "IN_PROGRESS"
+  | "PASSED"
+  | "NOT_ON_TEAM"
+  | "FAILED"
+  | "SKIPPED";
+
+export type AnnouncementRecipientInitial = "ALL" | "OTHER" | Uppercase<string>;
+
+export interface AnnouncementRecipientPage {
+  recipients: AnnouncementRecipient[];
+  totalCount: number;
+  filteredCount: number;
+  initialCounts: Record<string, number>;
+  page: number;
+  pageSize: number;
+  pageCount: number;
 }
 
 interface SkippedAnnouncementRecipient {
@@ -359,6 +380,8 @@ interface AnnouncementRecipientSnapshot {
 
 const WRITE_CHUNK_SIZE = 10;
 const ENQUEUE_CHUNK_SIZE = 20;
+const RECIPIENT_HISTORY_PAGE_SIZE = 50;
+const DATA_CONNECT_PAGE_SIZE = 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -373,6 +396,17 @@ function isTaskAlreadyExists(error: unknown): boolean {
   }
   const message = error instanceof Error ? error.message : String(error);
   return /task-already-exists|already exists/i.test(message);
+}
+
+async function collectDataConnectPages<T>(
+  fetchPage: (limit: number, offset: number) => Promise<readonly T[]>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let offset = 0; ; offset += DATA_CONNECT_PAGE_SIZE) {
+    const page = await fetchPage(DATA_CONNECT_PAGE_SIZE, offset);
+    rows.push(...page);
+    if (page.length < DATA_CONNECT_PAGE_SIZE) return rows;
+  }
 }
 
 export function announcementTaskId(
@@ -403,9 +437,12 @@ async function ensureRecipientRows(
   sendId: string,
   snapshot: AnnouncementRecipientSnapshot,
 ): Promise<Map<string, { id: string; status: string }>> {
-  const current = await getAnnouncementRecipientsForResume({ sendId });
+  const current = await collectDataConnectPages(async (limit, offset) => {
+    const result = await getAnnouncementRecipientsForResumePaged({ sendId, limit, offset });
+    return result.data?.announcementRecipients ?? [];
+  });
   const existing = new Map(
-    (current.data?.announcementRecipients ?? []).map((row) => [row.userId, { id: row.id, status: row.status }]),
+    current.map((row) => [row.userId, { id: row.id, status: row.status }]),
   );
   const missing = [
     ...snapshot.tasks
@@ -456,9 +493,12 @@ async function ensureRecipientRows(
     if (failure) throw failure.reason;
   }
 
-  const refreshed = await getAnnouncementRecipientsForResume({ sendId });
+  const refreshed = await collectDataConnectPages(async (limit, offset) => {
+    const result = await getAnnouncementRecipientsForResumePaged({ sendId, limit, offset });
+    return result.data?.announcementRecipients ?? [];
+  });
   return new Map(
-    (refreshed.data?.announcementRecipients ?? []).map((row) => [row.userId, { id: row.id, status: row.status }]),
+    refreshed.map((row) => [row.userId, { id: row.id, status: row.status }]),
   );
 }
 
@@ -521,6 +561,39 @@ async function enqueueSnapshot(
     queuedCount: snapshot.tasks.length - failedToEnqueueCount,
     failedToEnqueueCount,
   };
+}
+
+interface PrepareAnnouncementSendTask {
+  sendId: string;
+}
+
+async function enqueueAnnouncementPreparation(sendId: string): Promise<void> {
+  const queue = getFunctions().taskQueue(
+    `locations/${FUNCTIONS_REGION}/functions/prepareAnnouncementSend`,
+  );
+  await queue.enqueue({ sendId }, { dispatchDeadlineSeconds: 300 });
+}
+
+export async function prepareAnnouncementSendTask(
+  task: PrepareAnnouncementSendTask,
+): Promise<{ queuedCount: number; failedToEnqueueCount: number }> {
+  const sendResult = await getAnnouncementSendById({ id: task.sendId });
+  const send = sendResult.data?.announcementSend;
+  if (!send) throw new Error(`Announcement send ${task.sendId} was not found`);
+  const snapshot = parseRecipientSnapshot(send.recipientSnapshot);
+  const result = await enqueueSnapshot(task.sendId, snapshot);
+  logger.info("Announcement recipient preparation completed", {
+    announcementSendId: task.sendId,
+    queuedCount: result.queuedCount,
+    failedToEnqueueCount: result.failedToEnqueueCount,
+    skippedCount: snapshot.skippedRecipients.length,
+  });
+  if (result.failedToEnqueueCount > 0) {
+    throw new Error(
+      `Announcement preparation left ${result.failedToEnqueueCount} recipient task(s) unqueued`,
+    );
+  }
+  return result;
 }
 
 export const sendSectionAnnouncement = onCall(
@@ -596,12 +669,15 @@ export const sendSectionAnnouncement = onCall(
       const template = templateResponse.data as { body?: string; subject?: string };
       const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
-      const [{ recipients, sectionName }, optOutResult] = await Promise.all([
+      const [{ recipients, sectionName }, sectionOptOuts] = await Promise.all([
         resolveAnnouncementRecipients(sectionId),
-        getSectionAnnouncementOptOuts({ sectionId }),
+        collectDataConnectPages(async (limit, offset) => {
+          const result = await getSectionAnnouncementOptOutsPaged({ sectionId, limit, offset });
+          return result.data?.sectionAnnouncementOptOuts ?? [];
+        }),
       ]);
       const sectionOptOutIds = new Set(
-        (optOutResult.data?.sectionAnnouncementOptOuts ?? []).map(
+        sectionOptOuts.map(
           (row: { user: { id: string } }) => row.user.id,
         ),
       );
@@ -688,14 +764,13 @@ export const sendSectionAnnouncement = onCall(
       }
     }
 
-    const enqueueResult = await enqueueSnapshot(requestId, snapshot);
+    await enqueueAnnouncementPreparation(requestId);
 
-    logger.info("Announcement queued", {
+    logger.info("Announcement accepted for background preparation", {
       announcementSendId: requestId,
       sectionId,
       templateUuid,
-      queuedCount: enqueueResult.queuedCount,
-      failedToEnqueueCount: enqueueResult.failedToEnqueueCount,
+      recipientCount: snapshot.tasks.length,
       skippedCount: snapshot.skippedRecipients.length,
       resumed,
       requestedDeliveryMode: deliveryMode.requestedMode,
@@ -704,15 +779,27 @@ export const sendSectionAnnouncement = onCall(
     });
     return {
       sendId: requestId,
-      queuedCount: enqueueResult.queuedCount,
-      failedToEnqueueCount: enqueueResult.failedToEnqueueCount,
+      recipientCount: snapshot.tasks.length,
       skippedCount: snapshot.skippedRecipients.length,
+      preparationQueued: true,
       resumed,
       requestedDeliveryMode: deliveryMode.requestedMode,
       siteDeliveryMode: deliveryMode.siteMode,
       effectiveDeliveryMode: deliveryMode.effectiveMode,
     };
   }
+);
+
+export const prepareAnnouncementSend = onTaskDispatched<PrepareAnnouncementSendTask>(
+  {
+    region: FUNCTIONS_REGION,
+    timeoutSeconds: 300,
+    rateLimits: { maxConcurrentDispatches: 2 },
+    retryConfig: { maxAttempts: 4, minBackoffSeconds: 30, maxBackoffSeconds: 120 },
+  },
+  async (req) => {
+    await prepareAnnouncementSendTask(req.data);
+  },
 );
 
 export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
@@ -744,8 +831,10 @@ export const getAnnouncementSendHistory = onCall(
     const progress = await Promise.all(
       rawSends.map(async (s) => {
         try {
-          const result = await getAnnouncementRecipientProgress({ sendId: s.id });
-          const statuses = (result.data?.announcementRecipients ?? []).map((row) => row.status);
+          const statuses = await collectDataConnectPages(async (limit, offset) => {
+            const result = await getAnnouncementRecipientProgressPaged({ sendId: s.id, limit, offset });
+            return (result.data?.announcementRecipients ?? []).map((row) => row.status);
+          });
           return {
             processedCount: statuses.filter((status) =>
               status === "sent" || status === "delivered" || status === "bounced" || status === "failed"
@@ -786,7 +875,7 @@ export const getAnnouncementSendHistory = onCall(
 
 export const getAnnouncementSendRecipients = onCall(
   { region: FUNCTIONS_REGION },
-  async (request): Promise<{ recipients: AnnouncementRecipient[] }> => {
+  async (request): Promise<AnnouncementRecipientPage> => {
     requireEnabled(request);
     await enforceRateLimit("getAnnouncementSendRecipients", request.auth!.uid);
     const sendId = requireString(request.data?.sendId, "sendId");
@@ -803,14 +892,42 @@ export const getAnnouncementSendRecipients = onCall(
       throw new HttpsError("not-found", "Announcement send not found");
     }
 
-    let result: Awaited<ReturnType<typeof dcGetAnnouncementSendRecipients>>;
+    const search = typeof request.data?.search === "string"
+      ? request.data.search.trim().toLocaleLowerCase("en-GB").slice(0, 200)
+      : "";
+    const requestedFilter = typeof request.data?.statusFilter === "string"
+      ? request.data.statusFilter
+      : "ALL";
+    const allowedFilters: AnnouncementRecipientStatusFilter[] = [
+      "ALL", "IN_PROGRESS", "PASSED", "NOT_ON_TEAM", "FAILED", "SKIPPED",
+    ];
+    if (!allowedFilters.includes(requestedFilter as AnnouncementRecipientStatusFilter)) {
+      throw new HttpsError("invalid-argument", "statusFilter is invalid");
+    }
+    const statusFilter = requestedFilter as AnnouncementRecipientStatusFilter;
+    const requestedInitial = typeof request.data?.initial === "string"
+      ? request.data.initial.toUpperCase()
+      : "ALL";
+    if (requestedInitial !== "ALL" && requestedInitial !== "OTHER" && !/^[A-Z]$/.test(requestedInitial)) {
+      throw new HttpsError("invalid-argument", "initial is invalid");
+    }
+    const requestedPage = Number.isInteger(request.data?.page) && request.data.page > 0
+      ? request.data.page
+      : 1;
+
+    let rawRecipients: NonNullable<
+      Awaited<ReturnType<typeof dcGetAnnouncementSendRecipientsPaged>>["data"]["announcementRecipients"]
+    >;
     try {
-      result = await dcGetAnnouncementSendRecipients({ sendId });
+      rawRecipients = await collectDataConnectPages(async (limit, offset) => {
+        const result = await dcGetAnnouncementSendRecipientsPaged({ sendId, limit, offset });
+        return result.data?.announcementRecipients ?? [];
+      });
     } catch (err) {
       logger.error("dcGetAnnouncementSendRecipients failed", { sendId, err });
       throw new HttpsError("internal", "Failed to load recipients");
     }
-    const recipients: AnnouncementRecipient[] = (result.data?.announcementRecipients ?? []).map((r) => ({
+    const allRecipients: AnnouncementRecipient[] = rawRecipients.map((r) => ({
       id: r.id,
       sendId,
       userId: r.userId,
@@ -821,9 +938,80 @@ export const getAnnouncementSendRecipients = onCall(
       skippedReason: r.skippedReason ?? undefined,
       sentAt: r.sentAt ?? undefined,
       failureReason: r.failureReason ?? undefined,
+      failureCategory: isNotifyTeamOnlyFailure(r.failureReason) ? "notify_team_only" : undefined,
       effectiveDeliveryMode: r.effectiveDeliveryMode as GovNotifyDeliveryMode,
     }));
 
-    return { recipients };
+    const searched = search
+      ? allRecipients.filter((recipient) =>
+        `${recipient.firstName} ${recipient.lastName} ${recipient.email}`
+          .toLocaleLowerCase("en-GB")
+          .includes(search)
+      )
+      : allRecipients;
+    const statusFiltered = searched.filter((recipient) =>
+      matchesRecipientStatusFilter(recipient, statusFilter)
+    );
+    const initialCounts = Object.fromEntries([
+      ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => [letter, 0]),
+      ["OTHER", 0],
+    ]) as Record<string, number>;
+    for (const recipient of statusFiltered) {
+      initialCounts[recipientInitial(recipient.lastName)]! += 1;
+    }
+    const initialFiltered = requestedInitial === "ALL"
+      ? statusFiltered
+      : statusFiltered.filter((recipient) => recipientInitial(recipient.lastName) === requestedInitial);
+    const sorted = [...initialFiltered].sort(compareRecipientsBySurname);
+    const pageCount = requestedInitial === "ALL"
+      ? Math.max(1, Math.ceil(sorted.length / RECIPIENT_HISTORY_PAGE_SIZE))
+      : 1;
+    const page = requestedInitial === "ALL" ? Math.min(requestedPage, pageCount) : 1;
+    const recipients = requestedInitial === "ALL"
+      ? sorted.slice((page - 1) * RECIPIENT_HISTORY_PAGE_SIZE, page * RECIPIENT_HISTORY_PAGE_SIZE)
+      : sorted;
+
+    return {
+      recipients,
+      totalCount: allRecipients.length,
+      filteredCount: statusFiltered.length,
+      initialCounts,
+      page,
+      pageSize: RECIPIENT_HISTORY_PAGE_SIZE,
+      pageCount,
+    };
   }
 );
+
+function isNotifyTeamOnlyFailure(reason: string | null | undefined): boolean {
+  return typeof reason === "string" && /team-only api key/i.test(reason);
+}
+
+function matchesRecipientStatusFilter(
+  recipient: AnnouncementRecipient,
+  filter: AnnouncementRecipientStatusFilter,
+): boolean {
+  if (filter === "ALL") return true;
+  if (filter === "IN_PROGRESS") {
+    return ["queued", "sending", "retrying", "delivery_unknown"].includes(recipient.status);
+  }
+  if (filter === "PASSED") return recipient.status === "sent" || recipient.status === "delivered";
+  if (filter === "NOT_ON_TEAM") return recipient.failureCategory === "notify_team_only";
+  if (filter === "SKIPPED") return recipient.status === "skipped";
+  return ["enqueue_failed", "bounced", "failed"].includes(recipient.status) &&
+    recipient.failureCategory !== "notify_team_only";
+}
+
+function recipientInitial(lastName: string): string {
+  const normalized = lastName.trim().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const initial = normalized.charAt(0).toUpperCase();
+  return /^[A-Z]$/.test(initial) ? initial : "OTHER";
+}
+
+const recipientCollator = new Intl.Collator("en-GB", { sensitivity: "base", numeric: true });
+
+function compareRecipientsBySurname(a: AnnouncementRecipient, b: AnnouncementRecipient): number {
+  return recipientCollator.compare(a.lastName, b.lastName) ||
+    recipientCollator.compare(a.firstName, b.firstName) ||
+    a.id.localeCompare(b.id);
+}

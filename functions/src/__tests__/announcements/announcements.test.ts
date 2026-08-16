@@ -15,6 +15,7 @@ import {
   sendSectionAnnouncement,
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
+  prepareAnnouncementSendTask,
   resolveAnnouncementRecipients,
   extractTemplateVariables,
   buildRecipientPersonalisation,
@@ -23,19 +24,19 @@ import { govNotifyLiveApiKey } from "../../mailer";
 import { unsubscribeSecret } from "../../unsubscribe";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
-const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipients");
+const mockGetAnnouncementSendRecipients = vi.spyOn(admin, "getAnnouncementSendRecipientsPaged");
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
-const mockGetSectionAnnouncementOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOuts");
+const mockGetSectionAnnouncementOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOutsPaged");
 const mockCreateAnnouncementSend = vi.spyOn(admin, "createAnnouncementSendWithDeliveryMode");
 const mockCreateAnnouncementRecipient = vi.spyOn(
   admin,
   "createAnnouncementRecipientWithDeliveryMode",
 );
-const mockGetAnnouncementRecipientsForResume = vi.spyOn(admin, "getAnnouncementRecipientsForResume");
+const mockGetAnnouncementRecipientsForResume = vi.spyOn(admin, "getAnnouncementRecipientsForResumePaged");
 const mockTryMarkAnnouncementRecipientEnqueueFailed = vi.spyOn(admin, "tryMarkAnnouncementRecipientEnqueueFailed");
 const mockTryUpdateAnnouncementRecipientProcessingStatus = vi.spyOn(admin, "tryUpdateAnnouncementRecipientProcessingStatus");
 const mockGetGovNotifyDeliveryConfiguration = vi.spyOn(admin, "getGovNotifyDeliveryConfiguration");
@@ -154,7 +155,7 @@ describe("resolveAnnouncementRecipients", () => {
   });
 });
 
-describe("sendSectionAnnouncement durable enqueue", () => {
+describe("sendSectionAnnouncement asynchronous durable enqueue", () => {
   const requestId = "00000000-0000-4000-8000-000000000408";
 
   beforeEach(() => {
@@ -166,7 +167,7 @@ describe("sendSectionAnnouncement durable enqueue", () => {
     } as never);
   });
 
-  it("persists and enqueues a large audience, reports one failure, then resumes the same snapshot", async () => {
+  it("returns after scheduling preparation, then persists and enqueues a large audience idempotently", async () => {
     const audience = Array.from({ length: 800 }, (_, index) => ({
       id: `user-${index}`,
       firstName: `First${index}`,
@@ -264,19 +265,29 @@ describe("sendSectionAnnouncement durable enqueue", () => {
 
     await expect(call()).resolves.toMatchObject({
       sendId: requestId,
-      queuedCount: 799,
-      failedToEnqueueCount: 1,
+      recipientCount: 800,
+      preparationQueued: true,
       resumed: false,
     });
+    expect(rows).toHaveLength(0);
+    expect(taskQueueMocks.enqueue).toHaveBeenCalledWith(
+      { sendId: requestId },
+      { dispatchDeadlineSeconds: 300 },
+    );
+
+    await expect(prepareAnnouncementSendTask({ sendId: requestId })).rejects.toThrow(
+      "left 1 recipient task(s) unqueued",
+    );
     expect(rows).toHaveLength(800);
-    expect(new Set(taskQueueMocks.enqueue.mock.calls.map((call) => (call[1] as { id: string }).id)).size)
+    const recipientTaskCalls = taskQueueMocks.enqueue.mock.calls.filter(
+      (call) => typeof (call[0] as { recipientId?: string }).recipientId === "string",
+    );
+    expect(new Set(recipientTaskCalls.map((call) => (call[1] as { id: string }).id)).size)
       .toBe(800);
 
-    await expect(call()).resolves.toMatchObject({
-      sendId: requestId,
+    await expect(prepareAnnouncementSendTask({ sendId: requestId })).resolves.toEqual({
       queuedCount: 800,
       failedToEnqueueCount: 0,
-      resumed: true,
     });
     expect(mockGetSectionMembers).toHaveBeenCalledOnce();
     expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
@@ -350,6 +361,118 @@ describe("getAnnouncementSendRecipients", () => {
 
     expect(result.recipients).toHaveLength(1);
     expect(result.recipients[0].email).toBe("user1@example.com");
+    expect(result).toMatchObject({ totalCount: 1, filteredCount: 1, page: 1, pageCount: 1 });
+  });
+
+  it("filters, classifies, groups, and pages recipient history server-side", async () => {
+    mockGetAnnouncementSendById.mockResolvedValue({
+      data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
+    } as Awaited<ReturnType<typeof admin.getAnnouncementSendById>>);
+    const passed = Array.from({ length: 55 }, (_, index) => ({
+      id: `passed-${String(index).padStart(2, "0")}`,
+      userId: `passed-user-${index}`,
+      email: `passed-${index}@example.com`,
+      firstName: `Person ${index}`,
+      lastName: `Adams ${index}`,
+      status: "delivered",
+      skippedReason: null,
+      sentAt: "2026-01-01T00:00:00Z",
+      failureReason: null,
+      effectiveDeliveryMode: "TEAM_TEST",
+    }));
+    const notOnTeam = Array.from({ length: 3 }, (_, index) => ({
+      id: `team-${index}`,
+      userId: `team-user-${index}`,
+      email: `team-${index}@example.com`,
+      firstName: `Team ${index}`,
+      lastName: `Brown ${index}`,
+      status: "failed",
+      skippedReason: null,
+      sentAt: null,
+      failureReason: "Can’t send to this recipient using a team-only API key",
+      effectiveDeliveryMode: "TEAM_TEST",
+    }));
+    mockGetAnnouncementSendRecipients.mockResolvedValue({
+      data: { announcementRecipients: [...passed, ...notOnTeam] },
+    } as never);
+
+    const secondPage = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      statusFilter: "PASSED",
+      initial: "ALL",
+      page: 2,
+    });
+    expect(secondPage).toMatchObject({
+      totalCount: 58,
+      filteredCount: 55,
+      page: 2,
+      pageSize: 50,
+      pageCount: 2,
+    });
+    expect(secondPage.recipients).toHaveLength(5);
+    expect(secondPage.initialCounts.A).toBe(55);
+
+    const completeInitial = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      statusFilter: "PASSED",
+      initial: "A",
+      page: 2,
+    });
+    expect(completeInitial.recipients).toHaveLength(55);
+    expect(completeInitial).toMatchObject({ page: 1, pageCount: 1 });
+
+    const teamOnly = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      statusFilter: "NOT_ON_TEAM",
+    });
+    expect(teamOnly.filteredCount).toBe(3);
+    expect(teamOnly.initialCounts.B).toBe(3);
+    expect(teamOnly.recipients.every((recipient) =>
+      recipient.failureCategory === "notify_team_only"
+    )).toBe(true);
+  });
+
+  it("exhausts Data Connect pages instead of stopping at a row ceiling", async () => {
+    mockGetAnnouncementSendById.mockResolvedValue({
+      data: { announcementSend: { id: sendIdForSectionB, sectionId: sectionBId } },
+    } as Awaited<ReturnType<typeof admin.getAnnouncementSendById>>);
+    const rows = Array.from({ length: 1001 }, (_, index) => ({
+      id: `recipient-${String(index).padStart(4, "0")}`,
+      userId: `user-${index}`,
+      email: `user-${index}@example.com`,
+      firstName: `First ${index}`,
+      lastName: `Smith ${index}`,
+      status: "delivered",
+      skippedReason: null,
+      sentAt: "2026-01-01T00:00:00Z",
+      failureReason: null,
+      effectiveDeliveryMode: "LIVE",
+    }));
+    mockGetAnnouncementSendRecipients.mockImplementation(async ({ limit, offset }) => ({
+      data: { announcementRecipients: rows.slice(offset, offset + limit) },
+    }) as never);
+
+    const result = await callAsAdmin({
+      sectionId: sectionBId,
+      sendId: sendIdForSectionB,
+      statusFilter: "PASSED",
+    });
+
+    expect(result).toMatchObject({ totalCount: 1001, filteredCount: 1001, pageCount: 21 });
+    expect(result.recipients).toHaveLength(50);
+    expect(mockGetAnnouncementSendRecipients).toHaveBeenNthCalledWith(1, {
+      sendId: sendIdForSectionB,
+      limit: 1000,
+      offset: 0,
+    });
+    expect(mockGetAnnouncementSendRecipients).toHaveBeenNthCalledWith(2, {
+      sendId: sendIdForSectionB,
+      limit: 1000,
+      offset: 1000,
+    });
   });
 
   it("rejects when the send does not exist", async () => {

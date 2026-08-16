@@ -324,28 +324,17 @@ export default function SendAnnouncementPage({
           </FormControl>
           {sendResult ? (
             <>
-              <Alert severity={sendResult.failedToEnqueueCount > 0 ? "warning" : "success"} sx={{ mb: 2 }}>
-                {sendResult.queuedCount} email{sendResult.queuedCount !== 1 ? "s" : ""} queued
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Announcement accepted. Preparing {sendResult.recipientCount} email
+                {sendResult.recipientCount !== 1 ? "s" : ""} in the background
                 {sendResult.effectiveDeliveryMode === "SIMULATION"
                   ? " for simulated provider acceptance; no email will be delivered."
-                  : " for delivery."}
-                {sendResult.failedToEnqueueCount > 0 &&
-                  ` ${sendResult.failedToEnqueueCount} could not be queued and can be retried.`}
+                  : "."}
                 {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped (opted out).`}
                 {sendResult.resumed && " This send was resumed from its original recipient list."}
                 {` Effective mode: ${sendResult.effectiveDeliveryMode.replace("_", " ")}.`}
                 {" "}Check send history below to track progress.
               </Alert>
-              {sendResult.failedToEnqueueCount > 0 && (
-                <Button
-                  variant="outlined"
-                  onClick={() => void handleSend()}
-                  disabled={sending}
-                  sx={{ mb: 2 }}
-                >
-                  {sending ? "Retrying…" : `Retry ${sendResult.failedToEnqueueCount} failed enqueue${sendResult.failedToEnqueueCount === 1 ? "" : "s"}`}
-                </Button>
-              )}
             </>
           ) : (
             <>
@@ -356,7 +345,7 @@ export default function SendAnnouncementPage({
                 onClick={() => void handleSend()}
                 disabled={sending || !siteDeliveryMode}
               >
-                {sending ? "Sending…" : sendRequestId ? "Resume announcement send" : `Send to ${sectionName} members`}
+                {sending ? "Starting…" : sendRequestId ? "Resume announcement send" : `Send to ${sectionName} members`}
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 Members who have opted out of announcements will not receive this email.

@@ -2153,6 +2153,19 @@ query GetSectionAnnouncementOptOuts($sectionId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+query GetSectionAnnouncementOptOutsPaged($sectionId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  sectionAnnouncementOptOuts(
+    where: { sectionId: { eq: $sectionId } }
+    orderBy: { userId: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
+    user {
+      id
+    }
+  }
+}
+
 # ── Announcement audit trail ─────────────────────────────────────────────────
 
 mutation CreateAnnouncementSend(
@@ -2273,8 +2286,32 @@ query GetAnnouncementRecipientProgress($sendId: UUID!) @auth(level: NO_ACCESS) {
   }
 }
 
+query GetAnnouncementRecipientProgressPaged($sendId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: { id: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
+    status
+  }
+}
+
 query GetAnnouncementRecipientsForResume($sendId: UUID!) @auth(level: NO_ACCESS) {
   announcementRecipients(where: { announcementSendId: { eq: $sendId } }) {
+    id
+    userId
+    status
+  }
+}
+
+query GetAnnouncementRecipientsForResumePaged($sendId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: { id: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
     id
     userId
     status
@@ -2307,6 +2344,26 @@ query GetAnnouncementSendRecipients($sendId: UUID!) @auth(level: NO_ACCESS) {
   announcementRecipients(
     where: { announcementSendId: { eq: $sendId } }
     orderBy: { lastName: ASC }
+  ) {
+    id
+    userId
+    email
+    firstName
+    lastName
+    status
+    skippedReason
+    sentAt
+    failureReason
+    effectiveDeliveryMode
+  }
+}
+
+query GetAnnouncementSendRecipientsPaged($sendId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  announcementRecipients(
+    where: { announcementSendId: { eq: $sendId } }
+    orderBy: [{ lastName: ASC }, { firstName: ASC }, { id: ASC }]
+    limit: $limit
+    offset: $offset
   ) {
     id
     userId
