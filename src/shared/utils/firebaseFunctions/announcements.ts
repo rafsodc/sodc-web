@@ -231,7 +231,11 @@ export type AnnouncementRecipientStatusFilter =
   | "FAILED"
   | "SKIPPED";
 
-export type AnnouncementRecipientInitial = "ALL" | "OTHER" | string;
+export type AnnouncementRecipientSurnameInitial =
+  | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+  | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+  | "OTHER";
+export type AnnouncementRecipientInitial = "ALL" | AnnouncementRecipientSurnameInitial;
 
 export interface AnnouncementRecipientPage {
   recipients: AnnouncementRecipient[];

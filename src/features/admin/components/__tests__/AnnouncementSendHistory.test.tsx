@@ -390,7 +390,7 @@ describe("AnnouncementSendHistory", () => {
     expect(pageTwoAttempts).toBe(2);
   });
 
-  it("asks for a refresh when surname-initial counts change between chunks", async () => {
+  it("completes the group and explains when mutable status counts change between chunks", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
     vi.mocked(firebaseFunctions.getAnnouncementSendRecipients).mockImplementation(
       async (_sendId, _sectionId, options) => options?.initial === "S" && options.page === 2
@@ -418,9 +418,10 @@ describe("AnnouncementSendHistory", () => {
     await user.click((await screen.findAllByRole("button", { name: "Expand" }))[0]);
     await user.click(screen.getByRole("button", { name: "S: 3 recipients" }));
 
-    expect(await screen.findByText("Results changed while loading. Refresh to load the current group."))
+    expect(await screen.findByText(/Recipient results changed while this group was loading/))
       .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Refresh group" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh group" })).not.toBeInTheDocument();
+    expect(screen.getByText("Showing 1–3 of 4 recipients with surname S")).toBeInTheDocument();
   });
 
   it("ignores a chained surname response after switching back to All", async () => {

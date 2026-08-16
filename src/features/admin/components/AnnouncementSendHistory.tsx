@@ -39,6 +39,7 @@ import {
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 import {
+  announcementRecipientRetryDelayMs,
   loadCompleteInitialGroup,
   type CompleteInitialLoadOutcome,
 } from "../utils/announcementRecipientInitialLoader";
@@ -48,7 +49,10 @@ interface Props {
   refreshTrigger?: number;
 }
 
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const ALPHABET = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+] as const;
 const VIRTUAL_ROW_HEIGHT = 53;
 const VIRTUAL_VIEWPORT_HEIGHT = 530;
 const VIRTUAL_OVERSCAN = 5;
@@ -190,8 +194,8 @@ function RecipientTable({
 }
 
 type InitialLoadState =
-  | { status: "idle" | "loading" | "complete" }
-  | { status: "changed" }
+  | { status: "idle" | "loading" }
+  | { status: "complete"; resultsChanged: boolean }
   | { status: "partial"; failedPage: number; message: string };
 
 function SendRow({
@@ -252,7 +256,7 @@ function SendRow({
       });
       return;
     }
-    setInitialLoadState({ status: outcome.status });
+    setInitialLoadState({ status: "complete", resultsChanged: outcome.resultsChanged });
   }, [initial, send.id]);
 
   const loadInitialRemainder = useCallback(async (
@@ -270,6 +274,7 @@ function SendRow({
       onProgress: (progress) => {
         if (recipientRequestGuard.isCurrent(requestToken)) setData(progress);
       },
+      retryDelayMs: announcementRecipientRetryDelayMs,
     });
     if (recipientRequestGuard.isCurrent(requestToken)) applyInitialOutcome(outcome);
   }, [applyInitialOutcome, fetchRecipientPage, initial, recipientRequestGuard]);
@@ -293,7 +298,7 @@ function SendRow({
       } else if (result.pageCount > 1) {
         await loadInitialRemainder(requestToken, result, 2);
       } else {
-        setInitialLoadState({ status: "complete" });
+        setInitialLoadState({ status: "complete", resultsChanged: false });
       }
     } catch (caught) {
       if (!recipientRequestGuard.isCurrent(requestToken)) return;
@@ -536,9 +541,9 @@ function SendRow({
 
               {loading && <LinearProgress aria-label="Loading recipients" sx={{ mb: 1 }} />}
               {error && <Alert severity="error" sx={{ my: 1 }}>{error}</Alert>}
-              {initialLoadState.status === "changed" && (
-                <Alert severity="warning" action={<Button color="inherit" size="small" onClick={() => void load()}>Refresh group</Button>} sx={{ my: 1 }}>
-                  Results changed while loading. Refresh to load the current group.
+              {initialLoadState.status === "complete" && initialLoadState.resultsChanged && (
+                <Alert severity="info" sx={{ my: 1 }}>
+                  Recipient results changed while this group was loading. The completed list reflects each recipient when loaded; use Refresh for the latest statuses.
                 </Alert>
               )}
               {initialLoadState.status === "partial" && (

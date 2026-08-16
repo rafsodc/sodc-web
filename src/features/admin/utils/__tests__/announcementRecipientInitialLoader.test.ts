@@ -3,7 +3,10 @@ import type {
   AnnouncementRecipient,
   AnnouncementRecipientPage,
 } from "../../../../shared/utils/firebaseFunctions";
-import { loadCompleteInitialGroup } from "../announcementRecipientInitialLoader";
+import {
+  announcementRecipientRetryDelayMs,
+  loadCompleteInitialGroup,
+} from "../announcementRecipientInitialLoader";
 
 function recipient(id: string): AnnouncementRecipient {
   return {
@@ -67,17 +70,58 @@ describe("loadCompleteInitialGroup", () => {
     expect(maxConcurrent).toBe(1);
   });
 
-  it("stops when the selected count changes", async () => {
+  it("adapts when mutable status counts change during the load", async () => {
+    const fetchPage = vi.fn(async () => page({
+      recipients: [recipient("2")],
+      selectedCount: 4,
+      pageCount: 4,
+    }));
     const outcome = await loadCompleteInitialGroup({
       initial: "S",
       seed: page({ recipients: [recipient("1")] }),
       startPage: 2,
-      fetchPage: async () => page({ recipients: [recipient("2")], selectedCount: 4, pageCount: 4 }),
+      fetchPage,
       isCurrent: () => true,
     });
 
-    expect(outcome.status).toBe("changed");
-    expect(outcome.data.recipients.map(({ id }) => id)).toEqual(["1"]);
+    expect(outcome).toMatchObject({ status: "complete", resultsChanged: true });
+    expect(outcome.data.recipients.map(({ id }) => id)).toEqual(["1", "2"]);
+    expect(fetchPage.mock.calls).toEqual([[2], [3], [4]]);
+  });
+
+  it("backs off and retries rate-limit failures before returning a partial result", async () => {
+    const rateLimitError = { code: "functions/resource-exhausted" };
+    const fetchPage = vi.fn()
+      .mockRejectedValueOnce(rateLimitError)
+      .mockRejectedValueOnce(rateLimitError)
+      .mockResolvedValue(page({
+        page: 2,
+        pageCount: 2,
+        selectedCount: 2,
+        recipients: [recipient("2")],
+      }));
+    const wait = vi.fn(async () => undefined);
+
+    const outcome = await loadCompleteInitialGroup({
+      initial: "S",
+      seed: page({ recipients: [recipient("1")], selectedCount: 2, pageCount: 2 }),
+      startPage: 2,
+      fetchPage,
+      isCurrent: () => true,
+      retryDelayMs: announcementRecipientRetryDelayMs,
+      wait,
+    });
+
+    expect(outcome).toMatchObject({ status: "complete", resultsChanged: false });
+    expect(wait.mock.calls).toEqual([[1_000], [2_000]]);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry non-rate-limit failures or retry rate limits indefinitely", () => {
+    expect(announcementRecipientRetryDelayMs({ code: "functions/internal" }, 0)).toBeNull();
+    expect(announcementRecipientRetryDelayMs({ code: "functions/resource-exhausted" }, 0)).toBe(1_000);
+    expect(announcementRecipientRetryDelayMs({ code: "functions/resource-exhausted" }, 2)).toBe(4_000);
+    expect(announcementRecipientRetryDelayMs({ code: "functions/resource-exhausted" }, 3)).toBeNull();
   });
 
   it("returns a resumable partial result when a later page fails", async () => {

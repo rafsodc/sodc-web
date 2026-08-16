@@ -1,21 +1,33 @@
 import type {
-  AnnouncementRecipientInitial,
   AnnouncementRecipientPage,
+  AnnouncementRecipientSurnameInitial,
 } from "../../../shared/utils/firebaseFunctions";
+import { classifyError } from "../../../shared/errors";
+
+const RATE_LIMIT_BACKOFF_MS = [1_000, 2_000, 4_000] as const;
+
+export function announcementRecipientRetryDelayMs(
+  error: unknown,
+  failedAttempt: number,
+): number | null {
+  if (classifyError(error) !== "rate-limit") return null;
+  return RATE_LIMIT_BACKOFF_MS[failedAttempt] ?? null;
+}
 
 export type CompleteInitialLoadOutcome =
-  | { status: "complete"; data: AnnouncementRecipientPage }
-  | { status: "changed"; data: AnnouncementRecipientPage }
+  | { status: "complete"; data: AnnouncementRecipientPage; resultsChanged: boolean }
   | { status: "partial"; data: AnnouncementRecipientPage; failedPage: number; error: unknown }
   | { status: "stale"; data: AnnouncementRecipientPage };
 
 interface LoadCompleteInitialGroupOptions {
-  initial: Exclude<AnnouncementRecipientInitial, "ALL">;
+  initial: AnnouncementRecipientSurnameInitial;
   seed: AnnouncementRecipientPage;
   startPage: number;
   fetchPage: (page: number) => Promise<AnnouncementRecipientPage>;
   isCurrent: () => boolean;
   onProgress?: (data: AnnouncementRecipientPage) => void;
+  retryDelayMs?: (error: unknown, failedAttempt: number) => number | null;
+  wait?: (delayMs: number) => Promise<void>;
 }
 
 function appendUniqueRecipients(
@@ -41,31 +53,43 @@ export async function loadCompleteInitialGroup({
   fetchPage,
   isCurrent,
   onProgress,
+  retryDelayMs,
+  wait = (delayMs) => new Promise((resolve) => window.setTimeout(resolve, delayMs)),
 }: LoadCompleteInitialGroupOptions): Promise<CompleteInitialLoadOutcome> {
-  const expectedCount = seed.initialCounts[initial] ?? 0;
-  const expectedPageCount = seed.pageCount;
+  let latestCount = seed.initialCounts[initial] ?? 0;
+  let targetPageCount = seed.pageCount;
+  let resultsChanged = false;
   let data = { ...seed, page: 1, recipients: appendUniqueRecipients([], seed.recipients) };
 
-  for (let nextPage = startPage; nextPage <= expectedPageCount; nextPage += 1) {
+  for (let nextPage = startPage; nextPage <= targetPageCount; nextPage += 1) {
     let next: AnnouncementRecipientPage;
-    try {
-      next = await fetchPage(nextPage);
-    } catch (error) {
-      return { status: "partial", data, failedPage: nextPage, error };
+    let failedAttempt = 0;
+    while (true) {
+      try {
+        next = await fetchPage(nextPage);
+        break;
+      } catch (error) {
+        const delayMs = retryDelayMs?.(error, failedAttempt) ?? null;
+        if (delayMs === null) return { status: "partial", data, failedPage: nextPage, error };
+        failedAttempt += 1;
+        await wait(delayMs);
+        if (!isCurrent()) return { status: "stale", data };
+      }
     }
     if (!isCurrent()) return { status: "stale", data };
-    if ((next.initialCounts[initial] ?? 0) !== expectedCount || next.pageCount !== expectedPageCount) {
-      return { status: "changed", data };
-    }
+
+    const nextCount = next.initialCounts[initial] ?? 0;
+    resultsChanged ||= nextCount !== latestCount || next.pageCount !== targetPageCount;
+    latestCount = nextCount;
+    targetPageCount = next.pageCount;
 
     data = {
-      ...data,
+      ...next,
+      page: 1,
       recipients: appendUniqueRecipients(data.recipients, next.recipients),
     };
     onProgress?.(data);
   }
 
-  return data.recipients.length === expectedCount
-    ? { status: "complete", data }
-    : { status: "changed", data };
+  return { status: "complete", data, resultsChanged };
 }
