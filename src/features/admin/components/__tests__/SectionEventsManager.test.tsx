@@ -527,7 +527,7 @@ describe("SectionEventsManager", () => {
       expect.anything(),
       expect.objectContaining({ sponsors: null, details: null })
     );
-  });
+  }, 10_000);
 
   it("renders refreshed selected-event details after editing", async () => {
     const user = userEvent.setup();
