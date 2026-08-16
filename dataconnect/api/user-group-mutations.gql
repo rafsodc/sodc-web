@@ -225,6 +225,8 @@ mutation CreateTicketType(
   $title: String!
   $description: String
   $price: Float!
+  $includesDinner: Boolean!
+  $includesSymposium: Boolean!
   $sortOrder: Int
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   ticketType_insert(
@@ -235,6 +237,8 @@ mutation CreateTicketType(
       title: $title
       description: $description
       price: $price
+      includesDinner: $includesDinner
+      includesSymposium: $includesSymposium
       sortOrder: $sortOrder
     }
   )
@@ -247,6 +251,8 @@ mutation UpdateTicketType(
   $title: String!
   $description: String
   $price: Float!
+  $includesDinner: Boolean!
+  $includesSymposium: Boolean!
   $sortOrder: Int!
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
   ticketType_update(
@@ -257,6 +263,8 @@ mutation UpdateTicketType(
       title: $title
       description: $description
       price: $price
+      includesDinner: $includesDinner
+      includesSymposium: $includesSymposium
       sortOrder: $sortOrder
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"

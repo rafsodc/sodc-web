@@ -20,10 +20,13 @@ export type AttendeePaymentState =
 export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
-  revisionNumber: number;
   attendeeName: string;
   audience: TicketAudience;
   ticketType: string;
+  includesDinner: boolean;
+  includesSymposium: boolean;
+  accommodationRequested: boolean;
+  seatingPreferences: string[];
   dietaryNote: string | null;
   approvalStatus: BookingApprovalStatus;
   paymentState: AttendeePaymentState;
@@ -110,7 +113,8 @@ export function attendeePaymentState(
 
 export function activeEventTicketRows(
   bookings: readonly EventBookingAdminRow[],
-  ticketOrdersById: TicketOrdersById
+  ticketOrdersById: TicketOrdersById,
+  userNamesById: ReadonlyMap<string, string> = new Map()
 ): EventAttendeeTicketRow[] {
   return currentActiveBookings(bookings).flatMap((booking) =>
     [...booking.lines]
@@ -123,13 +127,19 @@ export function activeEventTicketRows(
           line.ticketType.audience === TicketAudience.MEMBER
             ? `${booking.booker.firstName} ${booking.booker.lastName}`.trim()
             : line.guestDisplayName?.trim() || linkedName || "Guest";
+        const seatingPreferences = (booking.sitNextToUserIds ?? []).map(
+          (userId) => userNamesById.get(userId) ?? "Unavailable member"
+        );
         return {
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
-          revisionNumber: booking.revisionNumber,
           attendeeName,
           audience: line.ticketType.audience,
           ticketType: line.ticketType.title,
+          includesDinner: line.ticketType.includesDinner,
+          includesSymposium: line.ticketType.includesSymposium,
+          accommodationRequested: booking.accommodationRequested,
+          seatingPreferences,
           dietaryNote: line.dietaryNote?.trim() || null,
           approvalStatus: booking.approvalStatus,
           paymentState: attendeePaymentState(line, ticketOrdersById),
@@ -145,15 +155,29 @@ function csvCell(value: string | number): string {
 }
 
 export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): string {
-  const header = ["Attendee", "Audience", "Ticket", "Dietary requirements", "Approval", "Payment", "Revision"];
+  const header = [
+    "Attendee",
+    "Audience",
+    "Ticket",
+    "Dinner",
+    "Symposium",
+    "Accommodation",
+    "Seating preferences",
+    "Dietary requirements",
+    "Approval",
+    "Payment",
+  ];
   const body = rows.map((row) => [
     row.attendeeName,
     row.audience,
     row.ticketType,
+    row.includesDinner ? "Yes" : "No",
+    row.includesSymposium ? "Yes" : "No",
+    row.accommodationRequested ? "Yes" : "No",
+    row.seatingPreferences.join("; "),
     row.dietaryNote ?? "",
     row.approvalStatus,
     row.paymentState,
-    row.revisionNumber,
   ]);
   return [header, ...body].map((cells) => cells.map(csvCell).join(",")).join("\n");
 }

@@ -1,12 +1,14 @@
 import {
   Autocomplete,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -24,6 +26,8 @@ interface TicketTypeDialogSurfaceProps {
   price: string;
   sortOrder: string;
   audience: TicketAudience;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   accessGroup: { id: string; name: string } | null;
   userGroups: Array<{ id: string; name: string }>;
   loadingUserGroups: boolean;
@@ -35,6 +39,8 @@ interface TicketTypeDialogSurfaceProps {
   onPriceChange: (value: string) => void;
   onSortOrderChange: (value: string) => void;
   onAudienceChange: (value: TicketAudience) => void;
+  onIncludesDinnerChange: (value: boolean) => void;
+  onIncludesSymposiumChange: (value: boolean) => void;
   onAccessGroupChange: (value: { id: string; name: string } | null) => void;
 }
 export function TicketTypeDialogSurface({
@@ -45,6 +51,8 @@ export function TicketTypeDialogSurface({
   price,
   sortOrder,
   audience,
+  includesDinner,
+  includesSymposium,
   accessGroup,
   userGroups,
   loadingUserGroups,
@@ -56,6 +64,8 @@ export function TicketTypeDialogSurface({
   onPriceChange,
   onSortOrderChange,
   onAudienceChange,
+  onIncludesDinnerChange,
+  onIncludesSymposiumChange,
   onAccessGroupChange,
 }: TicketTypeDialogSurfaceProps) {
   return (
@@ -100,6 +110,24 @@ export function TicketTypeDialogSurface({
             <MenuItem value={TicketAudience.GUEST}>{getTicketCategoryLabel(TicketAudience.GUEST)}</MenuItem>
           </Select>
         </FormControl>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={includesDinner}
+              onChange={(event) => onIncludesDinnerChange(event.target.checked)}
+            />
+          }
+          label="Dinner"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={includesSymposium}
+              onChange={(event) => onIncludesSymposiumChange(event.target.checked)}
+            />
+          }
+          label="Symposium"
+        />
         <Autocomplete
           options={userGroups}
           getOptionLabel={(option) => option.name}

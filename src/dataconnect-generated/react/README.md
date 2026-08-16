@@ -68,6 +68,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
+  - [*ListUserNamesByIds*](#listusernamesbyids)
   - [*ListSections*](#listsections)
   - [*GetSectionsForUser*](#getsectionsforuser)
   - [*ListUserGroups*](#listusergroups)
@@ -5213,6 +5214,92 @@ export default function ListUsersComponent() {
 }
 ```
 
+## ListUserNamesByIds
+You can execute the `ListUserNamesByIds` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListUserNamesByIds(dc: DataConnect, vars: ListUserNamesByIdsVariables, options?: useDataConnectQueryOptions<ListUserNamesByIdsData>): UseDataConnectQueryResult<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListUserNamesByIds(vars: ListUserNamesByIdsVariables, options?: useDataConnectQueryOptions<ListUserNamesByIdsData>): UseDataConnectQueryResult<ListUserNamesByIdsData, ListUserNamesByIdsVariables>;
+```
+
+### Variables
+The `ListUserNamesByIds` Query requires an argument of type `ListUserNamesByIdsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListUserNamesByIdsVariables {
+  ids: string[];
+}
+```
+### Return Type
+Recall that calling the `ListUserNamesByIds` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListUserNamesByIds` Query is of type `ListUserNamesByIdsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListUserNamesByIds`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListUserNamesByIdsVariables } from '@dataconnect/generated';
+import { useListUserNamesByIds } from '@dataconnect/generated/react'
+
+export default function ListUserNamesByIdsComponent() {
+  // The `useListUserNamesByIds` Query hook requires an argument of type `ListUserNamesByIdsVariables`:
+  const listUserNamesByIdsVars: ListUserNamesByIdsVariables = {
+    ids: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListUserNamesByIds(listUserNamesByIdsVars);
+  // Variables can be defined inline as well.
+  const query = useListUserNamesByIds({ ids: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListUserNamesByIds(dataConnect, listUserNamesByIdsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListUserNamesByIds(listUserNamesByIdsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListUserNamesByIds(dataConnect, listUserNamesByIdsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.users);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## ListSections
 You can execute the `ListSections` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -6044,6 +6131,8 @@ export interface GetEventByIdData {
       description?: string | null;
       audience: TicketAudience;
       price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
       sortOrder: number;
       userGroup: {
         id: UUIDString;
@@ -7102,6 +7191,8 @@ export interface ListEventBookingsForAdminData {
           title: string;
           audience: TicketAudience;
           price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
         } & TicketType_Key;
       } & BookingLine_Key)[];
     } & Booking_Key)[];
@@ -16344,6 +16435,8 @@ export interface CreateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder?: number | null;
 }
 ```
@@ -16400,11 +16493,13 @@ export default function CreateTicketTypeComponent() {
     title: ..., 
     description: ..., // optional
     price: ..., 
+    includesDinner: ..., 
+    includesSymposium: ..., 
     sortOrder: ..., // optional
   };
   mutation.mutate(createTicketTypeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+  mutation.mutate({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -16450,6 +16545,8 @@ export interface UpdateTicketTypeVariables {
   title: string;
   description?: string | null;
   price: number;
+  includesDinner: boolean;
+  includesSymposium: boolean;
   sortOrder: number;
 }
 ```
@@ -16506,11 +16603,13 @@ export default function UpdateTicketTypeComponent() {
     title: ..., 
     description: ..., // optional
     price: ..., 
+    includesDinner: ..., 
+    includesSymposium: ..., 
     sortOrder: ..., 
   };
   mutation.mutate(updateTicketTypeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., sortOrder: ..., });
+  mutation.mutate({ id: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
