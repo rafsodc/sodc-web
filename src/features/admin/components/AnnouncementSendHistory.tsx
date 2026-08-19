@@ -38,13 +38,24 @@ import {
 } from "../../../shared/utils/firebaseFunctions";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import {
+  announcementRecipientRetryDelayMs,
+  loadCompleteInitialGroup,
+  type CompleteInitialLoadOutcome,
+} from "../utils/announcementRecipientInitialLoader";
 
 interface Props {
   sectionId: string;
   refreshTrigger?: number;
 }
 
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const ALPHABET = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+] as const;
+const VIRTUAL_ROW_HEIGHT = 53;
+const VIRTUAL_VIEWPORT_HEIGHT = 530;
+const VIRTUAL_OVERSCAN = 5;
 const STATUS_OPTIONS: Array<{ value: AnnouncementRecipientStatusFilter; label: string; noun: string }> = [
   { value: "ALL", label: "All statuses", noun: "recipients" },
   { value: "IN_PROGRESS", label: "In progress", noun: "in-progress recipients" },
@@ -109,6 +120,84 @@ function emptyRecipientPage(): AnnouncementRecipientPage {
   };
 }
 
+function RecipientRow({ recipient }: { recipient: AnnouncementRecipient }) {
+  return (
+    <TableRow sx={{ height: VIRTUAL_ROW_HEIGHT }}>
+      <TableCell sx={{ whiteSpace: "nowrap" }}>{recipient.firstName} {recipient.lastName}</TableCell>
+      <TableCell sx={{ whiteSpace: "nowrap" }}>{recipient.email}</TableCell>
+      <TableCell>{statusChip(recipient)}</TableCell>
+      <TableCell sx={{ whiteSpace: "nowrap" }}>{recipient.effectiveDeliveryMode.replace("_", " ")}</TableCell>
+      <TableCell>
+        <Typography variant="caption" color="text.secondary" noWrap display="block">
+          {recipientDetail(recipient)}
+        </Typography>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function RecipientTable({
+  recipients,
+  virtualized,
+}: {
+  recipients: AnnouncementRecipient[];
+  virtualized: boolean;
+}) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const visibleRows = Math.ceil(VIRTUAL_VIEWPORT_HEIGHT / VIRTUAL_ROW_HEIGHT);
+  const startIndex = virtualized
+    ? Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN)
+    : 0;
+  const endIndex = virtualized
+    ? Math.min(recipients.length, startIndex + visibleRows + (VIRTUAL_OVERSCAN * 2))
+    : recipients.length;
+  const topSpacerHeight = startIndex * VIRTUAL_ROW_HEIGHT;
+  const bottomSpacerHeight = (recipients.length - endIndex) * VIRTUAL_ROW_HEIGHT;
+
+  return (
+    <TableContainer
+      aria-label={virtualized ? "Virtualized recipient results" : undefined}
+      onScroll={virtualized ? (event) => setScrollTop(event.currentTarget.scrollTop) : undefined}
+      sx={{
+        overflowX: "auto",
+        ...(virtualized ? { maxHeight: VIRTUAL_VIEWPORT_HEIGHT, overflowY: "auto" } : {}),
+      }}
+    >
+      <Table size="small" stickyHeader={virtualized} sx={virtualized ? { tableLayout: "fixed" } : undefined}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Name</TableCell>
+            <TableCell>Email</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Mode</TableCell>
+            <TableCell>Detail</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {topSpacerHeight > 0 && (
+            <TableRow aria-hidden="true" sx={{ height: topSpacerHeight }}>
+              <TableCell colSpan={5} sx={{ height: topSpacerHeight, p: 0, border: 0 }} />
+            </TableRow>
+          )}
+          {recipients.slice(startIndex, endIndex).map((recipient) => (
+            <RecipientRow key={recipient.id} recipient={recipient} />
+          ))}
+          {bottomSpacerHeight > 0 && (
+            <TableRow aria-hidden="true" sx={{ height: bottomSpacerHeight }}>
+              <TableCell colSpan={5} sx={{ height: bottomSpacerHeight, p: 0, border: 0 }} />
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+type InitialLoadState =
+  | { status: "idle" | "loading" }
+  | { status: "complete"; resultsChanged: boolean }
+  | { status: "partial"; failedPage: number; message: string };
+
 function SendRow({
   send,
   sectionId,
@@ -127,6 +216,7 @@ function SendRow({
   const [statusFilter, setStatusFilter] = useState<AnnouncementRecipientStatusFilter>("ALL");
   const [initial, setInitial] = useState<AnnouncementRecipientInitial>("ALL");
   const [page, setPage] = useState(1);
+  const [initialLoadState, setInitialLoadState] = useState<InitialLoadState>({ status: "idle" });
   const [retryingPreparation, setRetryingPreparation] = useState(false);
   const [retryAttemptId, setRetryAttemptId] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
@@ -141,17 +231,61 @@ function SendRow({
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
+  const fetchRecipientPage = useCallback((requestedPage: number) => (
+    getAnnouncementSendRecipients(send.id, sectionId, {
+      search,
+      statusFilter,
+      initial,
+      page: requestedPage,
+    })
+  ), [initial, search, sectionId, send.id, statusFilter]);
+
+  const applyInitialOutcome = useCallback((outcome: CompleteInitialLoadOutcome) => {
+    if (outcome.status === "stale") return;
+    setData(outcome.data);
+    if (outcome.status === "partial") {
+      reportError("admin.announcements.recipients.remainder", outcome.error, {
+        sendId: send.id,
+        initial,
+        failedPage: outcome.failedPage,
+      });
+      setInitialLoadState({
+        status: "partial",
+        failedPage: outcome.failedPage,
+        message: toAdminUserFacingError(outcome.error, "announcements").message,
+      });
+      return;
+    }
+    setInitialLoadState({ status: "complete", resultsChanged: outcome.resultsChanged });
+  }, [initial, send.id]);
+
+  const loadInitialRemainder = useCallback(async (
+    requestToken: number,
+    seed: AnnouncementRecipientPage,
+    startPage: number,
+  ) => {
+    if (initial === "ALL") return;
+    const outcome = await loadCompleteInitialGroup({
+      initial,
+      seed,
+      startPage,
+      fetchPage: fetchRecipientPage,
+      isCurrent: () => recipientRequestGuard.isCurrent(requestToken),
+      onProgress: (progress) => {
+        if (recipientRequestGuard.isCurrent(requestToken)) setData(progress);
+      },
+      retryDelayMs: announcementRecipientRetryDelayMs,
+    });
+    if (recipientRequestGuard.isCurrent(requestToken)) applyInitialOutcome(outcome);
+  }, [applyInitialOutcome, fetchRecipientPage, initial, recipientRequestGuard]);
+
   const load = useCallback(async () => {
     const requestToken = recipientRequestGuard.start();
     setLoading(true);
     setError(null);
+    setInitialLoadState({ status: initial === "ALL" ? "idle" : "loading" });
     try {
-      const result = await getAnnouncementSendRecipients(send.id, sectionId, {
-        search,
-        statusFilter,
-        initial,
-        page,
-      });
+      const result = await fetchRecipientPage(initial === "ALL" ? page : 1);
       if (!recipientRequestGuard.isCurrent(requestToken)) return;
       if (initial !== "ALL" && (result.initialCounts[initial] ?? 0) === 0) {
         setInitial("ALL");
@@ -159,15 +293,34 @@ function SendRow({
         return;
       }
       setData(result);
-      if (result.page !== page) setPage(result.page);
+      if (initial === "ALL") {
+        if (result.page !== page) setPage(result.page);
+      } else if (result.pageCount > 1) {
+        await loadInitialRemainder(requestToken, result, 2);
+      } else {
+        setInitialLoadState({ status: "complete", resultsChanged: false });
+      }
     } catch (caught) {
       if (!recipientRequestGuard.isCurrent(requestToken)) return;
       reportError("admin.announcements.recipients", caught, { sendId: send.id });
       setError(toAdminUserFacingError(caught, "announcements").message);
+      setInitialLoadState({ status: "idle" });
     } finally {
       if (recipientRequestGuard.isCurrent(requestToken)) setLoading(false);
     }
-  }, [send.id, sectionId, search, statusFilter, initial, page, recipientRequestGuard]);
+  }, [fetchRecipientPage, initial, loadInitialRemainder, page, recipientRequestGuard, send.id]);
+
+  const retryRemainingRecipients = useCallback(async () => {
+    if (initial === "ALL" || initialLoadState.status !== "partial" || data === null) return;
+    const requestToken = recipientRequestGuard.start();
+    setLoading(true);
+    setInitialLoadState({ status: "loading" });
+    try {
+      await loadInitialRemainder(requestToken, data, initialLoadState.failedPage);
+    } finally {
+      if (recipientRequestGuard.isCurrent(requestToken)) setLoading(false);
+    }
+  }, [data, initial, initialLoadState, loadInitialRemainder, recipientRequestGuard]);
 
   const retryPreparation = useCallback(async () => {
     const requestToken = retryRequestGuard.start();
@@ -196,6 +349,13 @@ function SendRow({
   const selectInitial = (nextInitial: AnnouncementRecipientInitial) => {
     setInitial(nextInitial);
     setPage(1);
+    setInitialLoadState({ status: nextInitial === "ALL" ? "idle" : "loading" });
+    setData((current) => current === null ? null : {
+      ...current,
+      recipients: [],
+      page: 1,
+      pageCount: 1,
+    });
   };
 
   const clearFilters = () => {
@@ -212,7 +372,7 @@ function SendRow({
     : result.initialCounts[initial] ?? 0;
   const start = selectedCount === 0
     ? 0
-    : (result.page - 1) * result.pageSize + 1;
+    : initial === "ALL" ? (result.page - 1) * result.pageSize + 1 : 1;
   const end = selectedCount === 0 ? 0 : start + result.recipients.length - 1;
   const resultNoun = STATUS_OPTIONS.find((option) => option.value === statusFilter)?.noun ?? "recipients";
   const initialSuffix = initial === "ALL"
@@ -374,11 +534,28 @@ function SendRow({
               <Typography variant="body2" color="text.secondary" aria-live="polite" sx={{ mb: 1 }}>
                 {selectedCount === 0
                   ? `No ${resultNoun} to show`
-                  : `Showing ${start}–${end} of ${selectedCount} ${resultNoun}${initialSuffix}`}
+                  : initial !== "ALL" && initialLoadState.status !== "complete"
+                    ? `Loaded ${result.recipients.length} of ${selectedCount} ${resultNoun}${initialSuffix}`
+                    : `Showing ${start}–${end} of ${selectedCount} ${resultNoun}${initialSuffix}`}
               </Typography>
 
               {loading && <LinearProgress aria-label="Loading recipients" sx={{ mb: 1 }} />}
               {error && <Alert severity="error" sx={{ my: 1 }}>{error}</Alert>}
+              {initialLoadState.status === "complete" && initialLoadState.resultsChanged && (
+                <Alert severity="info" sx={{ my: 1 }}>
+                  Recipient results changed while this group was loading. The completed list reflects each recipient when loaded; use Refresh for the latest statuses.
+                </Alert>
+              )}
+              {initialLoadState.status === "partial" && (
+                <Alert
+                  severity="error"
+                  action={<Button color="inherit" size="small" onClick={() => void retryRemainingRecipients()}>Retry loading remaining recipients</Button>}
+                  sx={{ my: 1 }}
+                >
+                  {initialLoadState.message} Loading stopped at chunk {initialLoadState.failedPage} of {result.pageCount}.
+                  {" "}Loaded {result.recipients.length} of {selectedCount}; the group is incomplete.
+                </Alert>
+              )}
               {!loading && !error && result.totalCount === 0 && (
                 <Alert severity="info" sx={{ my: 1 }}>No recipients recorded.</Alert>
               )}
@@ -392,43 +569,18 @@ function SendRow({
                 </Alert>
               )}
               {!error && result.recipients.length > 0 && (
-                <TableContainer sx={{ overflowX: "auto" }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Mode</TableCell>
-                        <TableCell>Detail</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {result.recipients.map((recipient) => (
-                        <TableRow key={recipient.id}>
-                          <TableCell>{recipient.firstName} {recipient.lastName}</TableCell>
-                          <TableCell>{recipient.email}</TableCell>
-                          <TableCell>{statusChip(recipient)}</TableCell>
-                          <TableCell>{recipient.effectiveDeliveryMode.replace("_", " ")}</TableCell>
-                          <TableCell>
-                            <Typography variant="caption" color="text.secondary">
-                              {recipientDetail(recipient)}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <RecipientTable
+                  key={`${initial}:${search}:${statusFilter}`}
+                  recipients={result.recipients}
+                  virtualized={initial !== "ALL" && selectedCount > 250}
+                />
               )}
-              {result.pageCount > 1 && (
+              {initial === "ALL" && result.pageCount > 1 && (
                 <Pagination
                   page={result.page}
                   count={result.pageCount}
                   onChange={(_event, nextPage) => setPage(nextPage)}
-                  aria-label={initial === "ALL"
-                    ? "Recipient result pages"
-                    : `${initial} surname recipient result pages`}
+                  aria-label="Recipient result pages"
                   sx={{ display: "flex", justifyContent: "center", mt: 2 }}
                 />
               )}
