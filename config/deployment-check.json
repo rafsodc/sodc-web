@@ -114,7 +114,8 @@
     "updateNotifyReplyToAddress",
     "updateNotifyReplyToAvailability",
     "updateSectionFileMetadata",
-    "updateUserDisplayName"
+    "updateUserDisplayName",
+    "updateUserEmail"
   ],
   "environments": {
     "dev": {
