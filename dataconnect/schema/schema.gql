@@ -246,6 +246,10 @@ type User @table {
   firstName: String!
   lastName: String!
   email: String!
+  # Serialises Auth/profile email writes across callable instances. The lease
+  # exceeds the callable timeout and is never writable by clients.
+  emailChangeLeaseId: String! @default(value: "")
+  emailChangeLeaseExpiresAt: Timestamp! @default(value: "1970-01-01T00:00:00Z")
   serviceNumber: String!
   # Stored in E.164 format when present. Nullable so legacy records without a
   # usable number can be staged and completed during the member review flow.

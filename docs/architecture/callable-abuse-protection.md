@@ -32,6 +32,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `listAdminUsers` | 30 | 5 minutes | Firebase Auth enumeration |
 | `updateDisplayName` | 5 | 1 hour | Firebase Auth write |
 | `updateUserDisplayName` | 30 | 1 hour | Firebase Auth write |
+| `updateUserEmail` | 30 | 1 hour | Firebase Auth and profile email write |
 | `searchUsers` | 60 | 5 minutes | Account enumeration |
 | `listUsersWithoutDataConnectProfile` | 30 | 5 minutes | Full Auth/Data Connect enumeration |
 | `listUsersPendingApproval` | 30 | 5 minutes | Full Auth/Data Connect enumeration |
@@ -81,6 +82,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `listAdminUsers` | Medium | High | Firebase Auth | Medium | Admin + enabled; 30/5 minutes |
 | `updateDisplayName` | Medium | None | Firebase Auth | Low | Authenticated onboarding exception; 5/hour |
 | `updateUserDisplayName` | Medium | None | Firebase Auth | Low | Admin + enabled; 30/hour |
+| `updateUserEmail` | High | Single verification email | Firebase Auth + Data Connect | Low | Admin + enabled; 30/hour; per-user lease |
 | `searchUsers` | High | High | Firebase Auth | High | Admin + enabled; 60/5 minutes; bounded page size |
 | `listUsersWithoutDataConnectProfile` | Medium | High | Firebase Auth | High | Admin + enabled; 30/5 minutes |
 | `listUsersPendingApproval` | Medium | High | Firebase Auth | High | Admin + enabled; 30/5 minutes |

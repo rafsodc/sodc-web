@@ -129,6 +129,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*BeginSectionFileDeletion*](#beginsectionfiledeletion)
   - [*MarkSectionFileDeleted*](#marksectionfiledeleted)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
+  - [*AcquireUserEmailLease*](#acquireuseremaillease)
+  - [*ReleaseUserEmailLease*](#releaseuseremaillease)
   - [*UpdateUserEmailFromAuth*](#updateuseremailfromauth)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
@@ -11194,6 +11196,200 @@ export default function UpdateUserMembershipStatusComponent() {
 }
 ```
 
+## AcquireUserEmailLease
+You can execute the `AcquireUserEmailLease` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAcquireUserEmailLease(options?: useDataConnectMutationOptions<AcquireUserEmailLeaseData, FirebaseError, AcquireUserEmailLeaseVariables>): UseDataConnectMutationResult<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAcquireUserEmailLease(dc: DataConnect, options?: useDataConnectMutationOptions<AcquireUserEmailLeaseData, FirebaseError, AcquireUserEmailLeaseVariables>): UseDataConnectMutationResult<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+```
+
+### Variables
+The `AcquireUserEmailLease` Mutation requires an argument of type `AcquireUserEmailLeaseVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AcquireUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+  expiresAt: TimestampString;
+}
+```
+### Return Type
+Recall that calling the `AcquireUserEmailLease` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AcquireUserEmailLease` Mutation is of type `AcquireUserEmailLeaseData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AcquireUserEmailLeaseData {
+  user_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AcquireUserEmailLease`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AcquireUserEmailLeaseVariables } from '@dataconnect/generated';
+import { useAcquireUserEmailLease } from '@dataconnect/generated/react'
+
+export default function AcquireUserEmailLeaseComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAcquireUserEmailLease();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAcquireUserEmailLease(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAcquireUserEmailLease(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAcquireUserEmailLease(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAcquireUserEmailLease` Mutation requires an argument of type `AcquireUserEmailLeaseVariables`:
+  const acquireUserEmailLeaseVars: AcquireUserEmailLeaseVariables = {
+    userId: ..., 
+    leaseId: ..., 
+    expiresAt: ..., 
+  };
+  mutation.mutate(acquireUserEmailLeaseVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., leaseId: ..., expiresAt: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(acquireUserEmailLeaseVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ReleaseUserEmailLease
+You can execute the `ReleaseUserEmailLease` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useReleaseUserEmailLease(options?: useDataConnectMutationOptions<ReleaseUserEmailLeaseData, FirebaseError, ReleaseUserEmailLeaseVariables>): UseDataConnectMutationResult<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useReleaseUserEmailLease(dc: DataConnect, options?: useDataConnectMutationOptions<ReleaseUserEmailLeaseData, FirebaseError, ReleaseUserEmailLeaseVariables>): UseDataConnectMutationResult<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+```
+
+### Variables
+The `ReleaseUserEmailLease` Mutation requires an argument of type `ReleaseUserEmailLeaseVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ReleaseUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+}
+```
+### Return Type
+Recall that calling the `ReleaseUserEmailLease` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ReleaseUserEmailLease` Mutation is of type `ReleaseUserEmailLeaseData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ReleaseUserEmailLeaseData {
+  user_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ReleaseUserEmailLease`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ReleaseUserEmailLeaseVariables } from '@dataconnect/generated';
+import { useReleaseUserEmailLease } from '@dataconnect/generated/react'
+
+export default function ReleaseUserEmailLeaseComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useReleaseUserEmailLease();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useReleaseUserEmailLease(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useReleaseUserEmailLease(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useReleaseUserEmailLease(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useReleaseUserEmailLease` Mutation requires an argument of type `ReleaseUserEmailLeaseVariables`:
+  const releaseUserEmailLeaseVars: ReleaseUserEmailLeaseVariables = {
+    userId: ..., 
+    leaseId: ..., 
+  };
+  mutation.mutate(releaseUserEmailLeaseVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., leaseId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(releaseUserEmailLeaseVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## UpdateUserEmailFromAuth
 You can execute the `UpdateUserEmailFromAuth` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -11211,6 +11407,8 @@ The `UpdateUserEmailFromAuth` Mutation requires an argument of type `UpdateUserE
 export interface UpdateUserEmailFromAuthVariables {
   userId: string;
   email: string;
+  leaseId: string;
+  changedBy: string;
 }
 ```
 ### Return Type
@@ -11223,7 +11421,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateUserEmailFromAuth` Mutation is of type `UpdateUserEmailFromAuthData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface UpdateUserEmailFromAuthData {
-  user_update?: User_Key | null;
+  user_updateMany: number;
 }
 ```
 
@@ -11262,10 +11460,12 @@ export default function UpdateUserEmailFromAuthComponent() {
   const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
     userId: ..., 
     email: ..., 
+    leaseId: ..., 
+    changedBy: ..., 
   };
   mutation.mutate(updateUserEmailFromAuthVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., email: ..., });
+  mutation.mutate({ userId: ..., email: ..., leaseId: ..., changedBy: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -11284,7 +11484,7 @@ export default function UpdateUserEmailFromAuthComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_update);
+    console.log(mutation.data.user_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -17723,7 +17923,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateUserProfile` Mutation is of type `CreateUserProfileData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateUserProfileData {
-  user_upsert: User_Key;
+  user_insert: User_Key;
 }
 ```
 
@@ -17794,7 +17994,7 @@ export default function CreateUserProfileComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_upsert);
+    console.log(mutation.data.user_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -17838,7 +18038,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpsertUser` Mutation is of type `UpsertUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface UpsertUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 ```
 
@@ -17908,7 +18108,7 @@ export default function UpsertUserComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_upsert);
+    console.log(mutation.data.user_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -17932,7 +18132,6 @@ export interface UpdateUserVariables {
   userId: string;
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   mobileNumber?: string | null;
   postNominals?: string | null;
@@ -17952,7 +18151,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateUser` Mutation is of type `UpdateUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface UpdateUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 ```
 
@@ -17992,7 +18191,6 @@ export default function UpdateUserComponent() {
     userId: ..., 
     firstName: ..., 
     lastName: ..., 
-    email: ..., 
     serviceNumber: ..., 
     mobileNumber: ..., // optional
     postNominals: ..., // optional
@@ -18003,7 +18201,7 @@ export default function UpdateUserComponent() {
   };
   mutation.mutate(updateUserVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+  mutation.mutate({ userId: ..., firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -18022,7 +18220,7 @@ export default function UpdateUserComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.user_upsert);
+    console.log(mutation.data.user_update);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

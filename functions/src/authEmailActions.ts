@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { createHash, randomUUID } from "node:crypto";
-import { updateUserEmailFromAuth } from "@dataconnect/admin-generated";
+import { withUserEmailLease } from "./userEmailSync";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireAuth, requireEnabled, validateEmail } from "./helpers";
 import {
@@ -328,16 +328,18 @@ export const requestEmailChange = onCall(
 );
 
 export const reconcileMyEmail = onCall(
-  { region: FUNCTIONS_REGION },
+  { region: FUNCTIONS_REGION, timeoutSeconds: 60 },
   async (request): Promise<{ success: true; email: string }> => {
     requireAuth(request);
     await enforceRateLimit("reconcileMyEmail", request.auth!.uid);
-    const user = await admin.auth().getUser(request.auth!.uid);
-    if (!user.email || !user.emailVerified) {
-      throw new HttpsError("failed-precondition", "A verified email address is required.");
-    }
-    const email = validateEmail(user.email);
-    await updateUserEmailFromAuth({ userId: user.uid, email });
-    return { success: true, email };
+    return withUserEmailLease(request.auth!.uid, async (writeEmail) => {
+      const user = await admin.auth().getUser(request.auth!.uid);
+      if (!user.email || !user.emailVerified) {
+        throw new HttpsError("failed-precondition", "A verified email address is required.");
+      }
+      const email = validateEmail(user.email);
+      await writeEmail(email, user.uid);
+      return { success: true, email };
+    });
   },
 );

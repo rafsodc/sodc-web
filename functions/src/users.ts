@@ -245,7 +245,7 @@ export const listUsersPendingApproval = onCall(
             id: profile.id,
             firstName: profile.firstName,
             lastName: profile.lastName,
-            email: profile.email,
+            email: authUser.email ?? profile.email,
             serviceNumber: profile.serviceNumber,
             membershipStatus: profile.membershipStatus,
             requestedMembershipStatus: profile.requestedMembershipStatus ?? null,

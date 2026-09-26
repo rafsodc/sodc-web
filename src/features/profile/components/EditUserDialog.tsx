@@ -19,11 +19,13 @@ import {
   Typography,
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
+import { QueryFetchPolicy } from "firebase/data-connect";
+import ChangeUserEmailDialog from "./ChangeUserEmailDialog";
+import { queryClient } from "../../../shared/query/queryClient";
 import type { SearchUser } from "../../../types";
 import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../dataconnect-generated";
 import {
   MEMBERSHIP_STATUS_OPTIONS,
-  MAX_EMAIL_LENGTH,
   MAX_MOBILE_NUMBER_LENGTH,
   MAX_NAME_LENGTH,
   MAX_POST_NOMINALS_LENGTH,
@@ -53,6 +55,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   const [submitting, setSubmitting] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profileExists, setProfileExists] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<MembershipStatus | null>(null);
 
   // Get admin status
@@ -62,6 +65,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [signInEmail, setSignInEmail] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
   const [serviceNumber, setServiceNumber] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [postNominals, setPostNominals] = useState("");
@@ -84,13 +89,17 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
       setSubmitting(false);
       setUpdateMessage(null);
       setLoading(false);
+      setChangingEmail(false);
     }
   }, [open, user]);
 
   const loadUserData = async (userToLoad: SearchUser) => {
+    setProfileExists(false);
+    setSignInEmail(userToLoad.email || "");
     try {
-      const userResult = await getUserById(dataConnect, { id: userToLoad.uid });
+      const userResult = await getUserById(dataConnect, { id: userToLoad.uid }, { fetchPolicy: QueryFetchPolicy.SERVER_ONLY });
       if (userResult.data?.user) {
+        setProfileExists(true);
         const fullUser = userResult.data.user;
         setFirstName(fullUser.firstName || "");
         setLastName(fullUser.lastName || "");
@@ -151,7 +160,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !profileExists) return;
 
     const validation = validateUserForm(firstName, lastName, email, serviceNumber);
     if (!validation.isValid) {
@@ -194,7 +203,6 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         userId: user.uid,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: email.trim(),
         serviceNumber: serviceNumber.trim(),
         mobileNumber: normalizedMobileNumber,
         postNominals: postNominals.trim() || null,
@@ -203,7 +211,8 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         isCivilServant,
         isIndustry,
       };
-      await updateUser(dataConnect, vars);
+      const saved = await updateUser(dataConnect, vars);
+      if (!saved.data.user_update) throw new Error("The user profile no longer exists.");
 
       // Admin saves also invoke the status callable when the value is unchanged. The
       // server treats that as an idempotent enabled-claim reconciliation operation.
@@ -252,6 +261,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
   };
 
   return (
+    <>
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit User Profile</DialogTitle>
       <DialogContent
@@ -285,6 +295,9 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
           </Stack>
         ) : (
           <>
+            {!profileExists && <Alert severity="warning" sx={{ mb: 2 }}>
+              A saved profile is required before editing this user. If they have not completed registration, ask them to complete their profile first. Otherwise, close and reopen this screen to retry loading it.
+            </Alert>}
             {updateMessage && updateMessage.type === "error" && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {updateMessage.text}
@@ -315,13 +328,12 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
                 label="Email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
                 fullWidth
                 disabled={submitting}
-                inputProps={{ maxLength: MAX_EMAIL_LENGTH }}
-                helperText={`${email.length}/${MAX_EMAIL_LENGTH} characters`}
+                slotProps={{ input: { readOnly: true } }}
+                helperText="Use Change email to update the profile and sign-in address together."
               />
+              {isAdmin && <Button disabled={submitting || !signInEmail || !profileExists} onClick={() => setChangingEmail(true)}>Change email</Button>}
               <TextField
                 label="Service Number"
                 value={serviceNumber}
@@ -449,7 +461,7 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={submitting || loading || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
+          disabled={submitting || loading || !profileExists || !firstName.trim() || !lastName.trim() || !email.trim() || !serviceNumber.trim()}
           sx={{
             backgroundColor: "secondary.main",
             color: "secondary.contrastText",
@@ -463,5 +475,19 @@ export default function EditUserDialog({ open, user, onClose, onSave, onSuccess 
         </Button>
       </DialogActions>
     </Dialog>
+    {changingEmail && user && <ChangeUserEmailDialog
+      userId={user.uid}
+      currentEmail={signInEmail}
+      onClose={() => setChangingEmail(false)}
+      onChanged={async (newEmail) => {
+        setEmail(newEmail);
+        setSignInEmail(newEmail);
+        // Callable writes bypass the browser Data Connect cache.
+        await getUserById(dataConnect, { id: user.uid }, { fetchPolicy: QueryFetchPolicy.SERVER_ONLY });
+        await queryClient.invalidateQueries();
+        await onSave();
+      }}
+    />}
+    </>
   );
 }

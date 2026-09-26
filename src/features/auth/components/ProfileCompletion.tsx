@@ -12,8 +12,8 @@ import {
   Divider,
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
-import { mutationRef } from "firebase/data-connect";
-import { MembershipStatus } from "@dataconnect/generated";
+import { mutationRef, QueryFetchPolicy } from "firebase/data-connect";
+import { checkUserProfileExists, MembershipStatus } from "@dataconnect/generated";
 import { validateUserForm } from "../../users/utils/userHelpers";
 import {
   MAX_MOBILE_NUMBER_LENGTH,
@@ -98,10 +98,15 @@ export default function ProfileCompletion({
         rank: rank || null,
       });
 
-      const result = await executeDataConnectMutation(mutation);
-
-      if (!result.data) {
-        throw new Error("Failed to save profile");
+      try {
+        const result = await executeDataConnectMutation(mutation);
+        if (!result.data) throw new Error("Failed to save profile");
+      } catch (creationError) {
+        // Creation is insert-only so a stale onboarding token cannot overwrite
+        // an administrator's email change. Resume after a lost response or a
+        // previous claims-sync failure without inserting the profile again.
+        const existing = await checkUserProfileExists(dataConnect, { fetchPolicy: QueryFetchPolicy.SERVER_ONLY });
+        if (!existing.data.user) throw creationError;
       }
 
       // Best-effort update of displayName in Firebase Auth

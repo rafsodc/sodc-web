@@ -850,17 +850,35 @@ mutation UpdateUserMembershipStatus($userId: String!, $membershipStatus: Members
   )
 }
 
-# Reconcile profile email after Firebase has completed a verified email change.
-# The callable supplies both values from the Firebase Auth user record.
-mutation UpdateUserEmailFromAuth($userId: String!, $email: String!) @auth(level: NO_ACCESS) {
-  user_update(
-    id: $userId
-    data: {
-      email: $email
-      updatedAt_expr: "request.time"
-      updatedBy: "system"
-    }
+# Email writes share a per-user lease, including member reconciliation. A lease
+# lasts longer than the callable's 60-second timeout; expired attempts can retry.
+mutation AcquireUserEmailLease($userId: String!, $leaseId: String!, $expiresAt: Timestamp!)
+@auth(level: NO_ACCESS) @transaction {
+  user_updateMany(
+    where: { id: { eq: $userId }, emailChangeLeaseExpiresAt: { le_expr: "request.time" } }
+    data: { emailChangeLeaseId: $leaseId, emailChangeLeaseExpiresAt: $expiresAt }
+  ) @check(expr: "this == 1", message: "EMAIL_CHANGE_BUSY")
+}
+
+mutation ReleaseUserEmailLease($userId: String!, $leaseId: String!) @auth(level: NO_ACCESS) {
+  user_updateMany(
+    where: { id: { eq: $userId }, emailChangeLeaseId: { eq: $leaseId } }
+    data: { emailChangeLeaseId: "", emailChangeLeaseExpiresAt: "1970-01-01T00:00:00Z" }
   )
+}
+
+# Only a current lease holder can synchronise the fresh Auth email. updatedBy
+# and updatedAt retain the existing user audit metadata; outcomes are also logged.
+mutation UpdateUserEmailFromAuth($userId: String!, $email: String!, $leaseId: String!, $changedBy: String!)
+@auth(level: NO_ACCESS) @transaction {
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      emailChangeLeaseId: { eq: $leaseId }
+      emailChangeLeaseExpiresAt: { gt_expr: "request.time" }
+    }
+    data: { email: $email, updatedAt_expr: "request.time", updatedBy: $changedBy }
+  ) @check(expr: "this == 1", message: "EMAIL_CHANGE_LEASE_LOST")
 }
 
 # Delete a user (SDK only)
