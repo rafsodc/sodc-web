@@ -10,7 +10,7 @@ import * as dataconnect from "@dataconnect/generated";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
 vi.mock("@dataconnect/generated", () => ({
-  upsertUser: vi.fn().mockResolvedValue({ data: {} }),
+  upsertUser: vi.fn().mockResolvedValue({ data: { user_update: { id: "user-1" } } }),
   MembershipStatus: {
     REGULAR: "REGULAR",
     RESERVE: "RESERVE",
@@ -136,6 +136,44 @@ describe("Profile", () => {
         MembershipStatus.RESERVE
       );
     });
+  });
+
+  it.each([null, undefined])("rejects a missing update result (%s) before changing membership or display name", async (user_update) => {
+    vi.mocked(dataconnect.upsertUser).mockResolvedValueOnce({ data: { user_update } } as Awaited<ReturnType<typeof dataconnect.upsertUser>>);
+    const onUpdate = vi.fn();
+    const user = userEvent.setup();
+    renderProfile({ userData, userEmail: userData.email, onUpdate });
+    fireEvent.mouseDown(screen.getByTestId("membership-status-select").querySelector('[role="combobox"]')!);
+    await user.click(await screen.findByRole("option", { name: "Reserve" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(await screen.findByText("Your profile could not be found. Contact an administrator before trying again.")).toBeInTheDocument();
+    expect(screen.queryByText("Profile updated successfully!")).not.toBeInTheDocument();
+    expect(firebaseFunctions.updateMembershipStatus).not.toHaveBeenCalled();
+    expect(firebaseFunctions.updateDisplayName).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+  });
+
+  it("does not report success for an enabled user without a profile", async () => {
+    vi.mocked(dataconnect.upsertUser).mockResolvedValueOnce({ data: { user_update: null } } as Awaited<ReturnType<typeof dataconnect.upsertUser>>);
+    const onUpdate = vi.fn();
+    const user = userEvent.setup();
+    renderProfile({ userData: null, userEmail: userData.email, onUpdate });
+    fireEvent.change(screen.getByLabelText(/First Name/), { target: { value: "Alex" } });
+    fireEvent.change(screen.getByLabelText(/Last Name/), { target: { value: "Member" } });
+    fireEvent.change(screen.getByLabelText(/Service Number/), { target: { value: "12345" } });
+    fireEvent.change(screen.getByLabelText(/Mobile number/), { target: { value: "+447700900123" } });
+    fireEvent.mouseDown(screen.getByTestId("membership-status-select").querySelector('[role="combobox"]')!);
+    await user.click(await screen.findByRole("option", { name: "Regular" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    expect(await screen.findByText("Your profile could not be found. Contact an administrator before trying again.")).toBeInTheDocument();
+    expect(dataconnect.upsertUser).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Profile updated successfully!")).not.toBeInTheDocument();
+    expect(firebaseFunctions.updateDisplayName).not.toHaveBeenCalled();
+    expect(firebaseFunctions.updateMembershipStatus).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it("shows trusted guidance when a membership transition is rejected", async () => {

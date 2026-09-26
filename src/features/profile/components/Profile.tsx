@@ -116,7 +116,11 @@ export default function Profile({ userData, userDataLoading = false, userEmail, 
         isIndustry,
         rank: rank || null,
       };
-      await upsertUser(dataConnect, vars);
+      const result = await upsertUser(dataConnect, vars);
+      if (!result.data.user_update) {
+        setError("Your profile could not be found. Contact an administrator before trying again.");
+        return;
+      }
 
       const currentStatus = userData?.membershipStatus || null;
       if (membershipStatus && membershipStatus !== currentStatus) {

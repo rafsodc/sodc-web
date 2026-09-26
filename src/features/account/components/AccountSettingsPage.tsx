@@ -366,7 +366,12 @@ export default function AccountSettingsPage({
         rank: userData.rank,
         shareContactInfo: newValue,
       };
-      await upsertUser(dataConnect, vars);
+      const result = await upsertUser(dataConnect, vars);
+      if (!result.data.user_update) {
+        setShareContactInfoOverride(null);
+        setShareContactInfoError("Your profile could not be found. Your privacy setting has not been saved. Contact an administrator before trying again.");
+        return;
+      }
       if (onUserDataUpdate) {
         await onUserDataUpdate();
         setShareContactInfoOverride(null);
