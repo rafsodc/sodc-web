@@ -20,6 +20,7 @@ export * from "./sectionFileReconciliation";
 export * from "./govNotifyDeliveryAdmin";
 export * from "./notifyReplyToAdmin";
 export * from "./authEmailActions";
+export { updateUserEmail } from "./adminUserEmail";
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {

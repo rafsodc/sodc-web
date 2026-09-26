@@ -651,6 +651,34 @@ exports.updateUserMembershipStatus = function updateUserMembershipStatus(dcOrVar
 }
 ;
 
+const acquireUserEmailLeaseRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AcquireUserEmailLease', inputVars);
+}
+acquireUserEmailLeaseRef.operationName = 'AcquireUserEmailLease';
+exports.acquireUserEmailLeaseRef = acquireUserEmailLeaseRef;
+
+exports.acquireUserEmailLease = function acquireUserEmailLease(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(acquireUserEmailLeaseRef(dcInstance, inputVars));
+}
+;
+
+const releaseUserEmailLeaseRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ReleaseUserEmailLease', inputVars);
+}
+releaseUserEmailLeaseRef.operationName = 'ReleaseUserEmailLease';
+exports.releaseUserEmailLeaseRef = releaseUserEmailLeaseRef;
+
+exports.releaseUserEmailLease = function releaseUserEmailLease(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(releaseUserEmailLeaseRef(dcInstance, inputVars));
+}
+;
+
 const updateUserEmailFromAuthRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

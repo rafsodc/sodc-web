@@ -122,6 +122,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*BeginSectionFileDeletion*](#beginsectionfiledeletion)
   - [*MarkSectionFileDeleted*](#marksectionfiledeleted)
   - [*UpdateUserMembershipStatus*](#updateusermembershipstatus)
+  - [*AcquireUserEmailLease*](#acquireuseremaillease)
+  - [*ReleaseUserEmailLease*](#releaseuseremaillease)
   - [*UpdateUserEmailFromAuth*](#updateuseremailfromauth)
   - [*DeleteUser*](#deleteuser)
   - [*CreateUser*](#createuser)
@@ -13960,6 +13962,233 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## AcquireUserEmailLease
+You can execute the `AcquireUserEmailLease` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+acquireUserEmailLease(vars: AcquireUserEmailLeaseVariables): MutationPromise<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+
+interface AcquireUserEmailLeaseRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AcquireUserEmailLeaseVariables): MutationRef<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+}
+export const acquireUserEmailLeaseRef: AcquireUserEmailLeaseRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+acquireUserEmailLease(dc: DataConnect, vars: AcquireUserEmailLeaseVariables): MutationPromise<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+
+interface AcquireUserEmailLeaseRef {
+  ...
+  (dc: DataConnect, vars: AcquireUserEmailLeaseVariables): MutationRef<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+}
+export const acquireUserEmailLeaseRef: AcquireUserEmailLeaseRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the acquireUserEmailLeaseRef:
+```typescript
+const name = acquireUserEmailLeaseRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AcquireUserEmailLease` mutation requires an argument of type `AcquireUserEmailLeaseVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AcquireUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+  expiresAt: TimestampString;
+}
+```
+### Return Type
+Recall that executing the `AcquireUserEmailLease` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AcquireUserEmailLeaseData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AcquireUserEmailLeaseData {
+  user_updateMany: number;
+}
+```
+### Using `AcquireUserEmailLease`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, acquireUserEmailLease, AcquireUserEmailLeaseVariables } from '@dataconnect/generated';
+
+// The `AcquireUserEmailLease` mutation requires an argument of type `AcquireUserEmailLeaseVariables`:
+const acquireUserEmailLeaseVars: AcquireUserEmailLeaseVariables = {
+  userId: ..., 
+  leaseId: ..., 
+  expiresAt: ..., 
+};
+
+// Call the `acquireUserEmailLease()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await acquireUserEmailLease(acquireUserEmailLeaseVars);
+// Variables can be defined inline as well.
+const { data } = await acquireUserEmailLease({ userId: ..., leaseId: ..., expiresAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await acquireUserEmailLease(dataConnect, acquireUserEmailLeaseVars);
+
+console.log(data.user_updateMany);
+
+// Or, you can use the `Promise` API.
+acquireUserEmailLease(acquireUserEmailLeaseVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+});
+```
+
+### Using `AcquireUserEmailLease`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, acquireUserEmailLeaseRef, AcquireUserEmailLeaseVariables } from '@dataconnect/generated';
+
+// The `AcquireUserEmailLease` mutation requires an argument of type `AcquireUserEmailLeaseVariables`:
+const acquireUserEmailLeaseVars: AcquireUserEmailLeaseVariables = {
+  userId: ..., 
+  leaseId: ..., 
+  expiresAt: ..., 
+};
+
+// Call the `acquireUserEmailLeaseRef()` function to get a reference to the mutation.
+const ref = acquireUserEmailLeaseRef(acquireUserEmailLeaseVars);
+// Variables can be defined inline as well.
+const ref = acquireUserEmailLeaseRef({ userId: ..., leaseId: ..., expiresAt: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = acquireUserEmailLeaseRef(dataConnect, acquireUserEmailLeaseVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+});
+```
+
+## ReleaseUserEmailLease
+You can execute the `ReleaseUserEmailLease` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+releaseUserEmailLease(vars: ReleaseUserEmailLeaseVariables): MutationPromise<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+
+interface ReleaseUserEmailLeaseRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ReleaseUserEmailLeaseVariables): MutationRef<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+}
+export const releaseUserEmailLeaseRef: ReleaseUserEmailLeaseRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+releaseUserEmailLease(dc: DataConnect, vars: ReleaseUserEmailLeaseVariables): MutationPromise<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+
+interface ReleaseUserEmailLeaseRef {
+  ...
+  (dc: DataConnect, vars: ReleaseUserEmailLeaseVariables): MutationRef<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+}
+export const releaseUserEmailLeaseRef: ReleaseUserEmailLeaseRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the releaseUserEmailLeaseRef:
+```typescript
+const name = releaseUserEmailLeaseRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ReleaseUserEmailLease` mutation requires an argument of type `ReleaseUserEmailLeaseVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ReleaseUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+}
+```
+### Return Type
+Recall that executing the `ReleaseUserEmailLease` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ReleaseUserEmailLeaseData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ReleaseUserEmailLeaseData {
+  user_updateMany: number;
+}
+```
+### Using `ReleaseUserEmailLease`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, releaseUserEmailLease, ReleaseUserEmailLeaseVariables } from '@dataconnect/generated';
+
+// The `ReleaseUserEmailLease` mutation requires an argument of type `ReleaseUserEmailLeaseVariables`:
+const releaseUserEmailLeaseVars: ReleaseUserEmailLeaseVariables = {
+  userId: ..., 
+  leaseId: ..., 
+};
+
+// Call the `releaseUserEmailLease()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await releaseUserEmailLease(releaseUserEmailLeaseVars);
+// Variables can be defined inline as well.
+const { data } = await releaseUserEmailLease({ userId: ..., leaseId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await releaseUserEmailLease(dataConnect, releaseUserEmailLeaseVars);
+
+console.log(data.user_updateMany);
+
+// Or, you can use the `Promise` API.
+releaseUserEmailLease(releaseUserEmailLeaseVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+});
+```
+
+### Using `ReleaseUserEmailLease`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, releaseUserEmailLeaseRef, ReleaseUserEmailLeaseVariables } from '@dataconnect/generated';
+
+// The `ReleaseUserEmailLease` mutation requires an argument of type `ReleaseUserEmailLeaseVariables`:
+const releaseUserEmailLeaseVars: ReleaseUserEmailLeaseVariables = {
+  userId: ..., 
+  leaseId: ..., 
+};
+
+// Call the `releaseUserEmailLeaseRef()` function to get a reference to the mutation.
+const ref = releaseUserEmailLeaseRef(releaseUserEmailLeaseVars);
+// Variables can be defined inline as well.
+const ref = releaseUserEmailLeaseRef({ userId: ..., leaseId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = releaseUserEmailLeaseRef(dataConnect, releaseUserEmailLeaseVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+});
+```
+
 ## UpdateUserEmailFromAuth
 You can execute the `UpdateUserEmailFromAuth` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -13996,6 +14225,8 @@ The `UpdateUserEmailFromAuth` mutation requires an argument of type `UpdateUserE
 export interface UpdateUserEmailFromAuthVariables {
   userId: string;
   email: string;
+  leaseId: string;
+  changedBy: string;
 }
 ```
 ### Return Type
@@ -14004,7 +14235,7 @@ Recall that executing the `UpdateUserEmailFromAuth` mutation returns a `Mutation
 The `data` property is an object of type `UpdateUserEmailFromAuthData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface UpdateUserEmailFromAuthData {
-  user_update?: User_Key | null;
+  user_updateMany: number;
 }
 ```
 ### Using `UpdateUserEmailFromAuth`'s action shortcut function
@@ -14017,24 +14248,26 @@ import { connectorConfig, updateUserEmailFromAuth, UpdateUserEmailFromAuthVariab
 const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
   userId: ..., 
   email: ..., 
+  leaseId: ..., 
+  changedBy: ..., 
 };
 
 // Call the `updateUserEmailFromAuth()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateUserEmailFromAuth(updateUserEmailFromAuthVars);
 // Variables can be defined inline as well.
-const { data } = await updateUserEmailFromAuth({ userId: ..., email: ..., });
+const { data } = await updateUserEmailFromAuth({ userId: ..., email: ..., leaseId: ..., changedBy: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateUserEmailFromAuth(dataConnect, updateUserEmailFromAuthVars);
 
-console.log(data.user_update);
+console.log(data.user_updateMany);
 
 // Or, you can use the `Promise` API.
 updateUserEmailFromAuth(updateUserEmailFromAuthVars).then((response) => {
   const data = response.data;
-  console.log(data.user_update);
+  console.log(data.user_updateMany);
 });
 ```
 
@@ -14048,12 +14281,14 @@ import { connectorConfig, updateUserEmailFromAuthRef, UpdateUserEmailFromAuthVar
 const updateUserEmailFromAuthVars: UpdateUserEmailFromAuthVariables = {
   userId: ..., 
   email: ..., 
+  leaseId: ..., 
+  changedBy: ..., 
 };
 
 // Call the `updateUserEmailFromAuthRef()` function to get a reference to the mutation.
 const ref = updateUserEmailFromAuthRef(updateUserEmailFromAuthVars);
 // Variables can be defined inline as well.
-const ref = updateUserEmailFromAuthRef({ userId: ..., email: ..., });
+const ref = updateUserEmailFromAuthRef({ userId: ..., email: ..., leaseId: ..., changedBy: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -14063,12 +14298,12 @@ const ref = updateUserEmailFromAuthRef(dataConnect, updateUserEmailFromAuthVars)
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.user_update);
+console.log(data.user_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.user_update);
+  console.log(data.user_updateMany);
 });
 ```
 
@@ -21737,7 +21972,7 @@ Recall that executing the `CreateUserProfile` mutation returns a `MutationPromis
 The `data` property is an object of type `CreateUserProfileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateUserProfileData {
-  user_upsert: User_Key;
+  user_insert: User_Key;
 }
 ```
 ### Using `CreateUserProfile`'s action shortcut function
@@ -21772,12 +22007,12 @@ const { data } = await createUserProfile({ firstName: ..., lastName: ..., servic
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createUserProfile(dataConnect, createUserProfileVars);
 
-console.log(data.user_upsert);
+console.log(data.user_insert);
 
 // Or, you can use the `Promise` API.
 createUserProfile(createUserProfileVars).then((response) => {
   const data = response.data;
-  console.log(data.user_upsert);
+  console.log(data.user_insert);
 });
 ```
 
@@ -21816,12 +22051,12 @@ const ref = createUserProfileRef(dataConnect, createUserProfileVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.user_upsert);
+console.log(data.user_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.user_upsert);
+  console.log(data.user_insert);
 });
 ```
 
@@ -21878,7 +22113,7 @@ Recall that executing the `UpsertUser` mutation returns a `MutationPromise` that
 The `data` property is an object of type `UpsertUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface UpsertUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 ```
 ### Using `UpsertUser`'s action shortcut function
@@ -21912,12 +22147,12 @@ const { data } = await upsertUser({ firstName: ..., lastName: ..., serviceNumber
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await upsertUser(dataConnect, upsertUserVars);
 
-console.log(data.user_upsert);
+console.log(data.user_update);
 
 // Or, you can use the `Promise` API.
 upsertUser(upsertUserVars).then((response) => {
   const data = response.data;
-  console.log(data.user_upsert);
+  console.log(data.user_update);
 });
 ```
 
@@ -21955,12 +22190,12 @@ const ref = upsertUserRef(dataConnect, upsertUserVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.user_upsert);
+console.log(data.user_update);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.user_upsert);
+  console.log(data.user_update);
 });
 ```
 
@@ -22001,7 +22236,6 @@ export interface UpdateUserVariables {
   userId: string;
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   mobileNumber?: string | null;
   postNominals?: string | null;
@@ -22017,7 +22251,7 @@ Recall that executing the `UpdateUser` mutation returns a `MutationPromise` that
 The `data` property is an object of type `UpdateUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface UpdateUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 ```
 ### Using `UpdateUser`'s action shortcut function
@@ -22031,7 +22265,6 @@ const updateUserVars: UpdateUserVariables = {
   userId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
   serviceNumber: ..., 
   mobileNumber: ..., // optional
   postNominals: ..., // optional
@@ -22045,18 +22278,18 @@ const updateUserVars: UpdateUserVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateUser(updateUserVars);
 // Variables can be defined inline as well.
-const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+const { data } = await updateUser({ userId: ..., firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateUser(dataConnect, updateUserVars);
 
-console.log(data.user_upsert);
+console.log(data.user_update);
 
 // Or, you can use the `Promise` API.
 updateUser(updateUserVars).then((response) => {
   const data = response.data;
-  console.log(data.user_upsert);
+  console.log(data.user_update);
 });
 ```
 
@@ -22071,7 +22304,6 @@ const updateUserVars: UpdateUserVariables = {
   userId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
   serviceNumber: ..., 
   mobileNumber: ..., // optional
   postNominals: ..., // optional
@@ -22084,7 +22316,7 @@ const updateUserVars: UpdateUserVariables = {
 // Call the `updateUserRef()` function to get a reference to the mutation.
 const ref = updateUserRef(updateUserVars);
 // Variables can be defined inline as well.
-const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., email: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
+const ref = updateUserRef({ userId: ..., firstName: ..., lastName: ..., serviceNumber: ..., mobileNumber: ..., postNominals: ..., isRegular: ..., isReserve: ..., isCivilServant: ..., isIndustry: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22094,12 +22326,12 @@ const ref = updateUserRef(dataConnect, updateUserVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.user_upsert);
+console.log(data.user_update);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.user_upsert);
+  console.log(data.user_update);
 });
 ```
 

@@ -348,6 +348,18 @@ export function updateUserMembershipStatus(dcOrVarsOrOptions, varsOrOptions, opt
   return dcInstance.executeMutation('UpdateUserMembershipStatus', inputVars, inputOpts);
 }
 
+export function acquireUserEmailLease(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AcquireUserEmailLease', inputVars, inputOpts);
+}
+
+export function releaseUserEmailLease(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ReleaseUserEmailLease', inputVars, inputOpts);
+}
+
 export function updateUserEmailFromAuth(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

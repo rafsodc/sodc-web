@@ -23,6 +23,7 @@ export const CALLABLE_RATE_LIMITS = {
   listAdminUsers: { limit: 30, windowMs: 5 * MINUTE_MS },
   updateDisplayName: { limit: 5, windowMs: HOUR_MS },
   updateUserDisplayName: { limit: 30, windowMs: HOUR_MS },
+  updateUserEmail: { limit: 30, windowMs: HOUR_MS },
   searchUsers: { limit: 60, windowMs: 5 * MINUTE_MS },
   listUsersWithoutDataConnectProfile: { limit: 30, windowMs: 5 * MINUTE_MS },
   listUsersPendingApproval: { limit: 30, windowMs: 5 * MINUTE_MS },

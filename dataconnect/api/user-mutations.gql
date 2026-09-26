@@ -26,7 +26,7 @@ mutation CreateUserProfile(
   $rank: String
   $shareContactInfo: Boolean
 ) @auth(expr: "auth.token.email_verified == true") {
-  user_upsert(
+  user_insert(
     data: {
       id_expr: "auth.uid"
       firstName: $firstName
@@ -48,9 +48,8 @@ mutation CreateUserProfile(
   )
 }
 
-# Create or update a user profile based on their auth.uid
-# The "auth.uid" server value ensures that users can only register/update their own profile.
-# This mutation will create the user if they don't exist, or update if they do.
+# Update the existing profile belonging to auth.uid. Email is synchronised
+# from a fresh Firebase Auth record by a callable, never from a cached token.
 # NOTE: membershipStatus is NOT included here - it must be updated via UpdateMembershipStatus mutation
 # which validates the transition server-side to prevent bypassing restrictions.
 # Requires enabled claim (admins must also be enabled)
@@ -67,12 +66,11 @@ mutation UpsertUser(
   $rank: String
   $shareContactInfo: Boolean
 ) @auth(expr: "auth.token.enabled == true") {
-  user_upsert(
+  user_update(
+    id_expr: "auth.uid"
     data: {
-      id_expr: "auth.uid"
       firstName: $firstName
       lastName: $lastName
-      email_expr: "auth.token.email"
       serviceNumber: $serviceNumber
       mobileNumber: $mobileNumber
       postNominals: $postNominals
@@ -97,7 +95,6 @@ mutation UpdateUser(
   $userId: String!
   $firstName: String!
   $lastName: String!
-  $email: String!
   $serviceNumber: String!
   $mobileNumber: String
   $postNominals: String
@@ -106,12 +103,11 @@ mutation UpdateUser(
   $isCivilServant: Boolean
   $isIndustry: Boolean
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  user_upsert(
+  user_update(
+    id: $userId
     data: {
-      id: $userId
       firstName: $firstName
       lastName: $lastName
-      email: $email
       serviceNumber: $serviceNumber
       mobileNumber: $mobileNumber
       postNominals: $postNominals

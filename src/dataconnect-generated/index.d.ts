@@ -167,6 +167,16 @@ export interface AbortSectionFileReplacementVariables {
   updatedBy: string;
 }
 
+export interface AcquireUserEmailLeaseData {
+  user_updateMany: number;
+}
+
+export interface AcquireUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+  expiresAt: TimestampString;
+}
+
 export interface AddUserToUserGroupAdminData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -686,7 +696,7 @@ export interface CreateUserGroupVariables {
 }
 
 export interface CreateUserProfileData {
-  user_upsert: User_Key;
+  user_insert: User_Key;
 }
 
 export interface CreateUserProfileVariables {
@@ -3097,6 +3107,15 @@ export interface RegisterForSectionVariables {
   userGroupId: UUIDString;
 }
 
+export interface ReleaseUserEmailLeaseData {
+  user_updateMany: number;
+}
+
+export interface ReleaseUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+}
+
 export interface RemoveUserFromUserGroupAdminData {
   userUserGroup_delete?: UserUserGroup_Key | null;
 }
@@ -3451,16 +3470,18 @@ export interface UpdateTicketTypeVariables {
 }
 
 export interface UpdateUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 
 export interface UpdateUserEmailFromAuthData {
-  user_update?: User_Key | null;
+  user_updateMany: number;
 }
 
 export interface UpdateUserEmailFromAuthVariables {
   userId: string;
   email: string;
+  leaseId: string;
+  changedBy: string;
 }
 
 export interface UpdateUserGroupData {
@@ -3497,7 +3518,6 @@ export interface UpdateUserVariables {
   userId: string;
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   mobileNumber?: string | null;
   postNominals?: string | null;
@@ -3566,7 +3586,7 @@ export interface UpsertTicketOrderDisputeFromWebhookVariables {
 }
 
 export interface UpsertUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 
 export interface UpsertUserVariables {
@@ -4006,6 +4026,30 @@ export const updateUserMembershipStatusRef: UpdateUserMembershipStatusRef;
 
 export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables): MutationPromise<UpdateUserMembershipStatusData, UpdateUserMembershipStatusVariables>;
+
+interface AcquireUserEmailLeaseRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AcquireUserEmailLeaseVariables): MutationRef<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AcquireUserEmailLeaseVariables): MutationRef<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+  operationName: string;
+}
+export const acquireUserEmailLeaseRef: AcquireUserEmailLeaseRef;
+
+export function acquireUserEmailLease(vars: AcquireUserEmailLeaseVariables): MutationPromise<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+export function acquireUserEmailLease(dc: DataConnect, vars: AcquireUserEmailLeaseVariables): MutationPromise<AcquireUserEmailLeaseData, AcquireUserEmailLeaseVariables>;
+
+interface ReleaseUserEmailLeaseRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ReleaseUserEmailLeaseVariables): MutationRef<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ReleaseUserEmailLeaseVariables): MutationRef<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+  operationName: string;
+}
+export const releaseUserEmailLeaseRef: ReleaseUserEmailLeaseRef;
+
+export function releaseUserEmailLease(vars: ReleaseUserEmailLeaseVariables): MutationPromise<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
+export function releaseUserEmailLease(dc: DataConnect, vars: ReleaseUserEmailLeaseVariables): MutationPromise<ReleaseUserEmailLeaseData, ReleaseUserEmailLeaseVariables>;
 
 interface UpdateUserEmailFromAuthRef {
   /* Allow users to create refs without passing in DataConnect */

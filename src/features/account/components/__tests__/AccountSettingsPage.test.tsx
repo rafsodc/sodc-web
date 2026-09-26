@@ -28,7 +28,7 @@ vi.mock("firebase/auth", () => ({
   }),
 }));
 
-const mockUpsertUser = vi.fn().mockResolvedValue({ data: {} });
+const mockUpsertUser = vi.fn().mockResolvedValue({ data: { user_update: { id: "user-1" } } });
 
 vi.mock("@dataconnect/generated", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dataconnect/generated")>();
@@ -244,6 +244,20 @@ describe("AccountSettingsPage", () => {
       ).toBeInTheDocument();
     });
     expect(toggle).toBeChecked();
+  });
+
+  it.each([null, undefined])("reverts the privacy toggle when no profile was updated (%s)", async (user_update) => {
+    mockUpsertUser.mockResolvedValueOnce({ data: { user_update } });
+    const onUserDataUpdate = vi.fn();
+    const user = userEvent.setup();
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false, onUserDataUpdate });
+    const toggle = screen.getByRole("switch", { name: "Share my contact details with other section members" });
+    await user.click(toggle);
+
+    expect(await screen.findByText("Your profile could not be found. Your privacy setting has not been saved. Contact an administrator before trying again.")).toBeInTheDocument();
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeEnabled();
+    expect(onUserDataUpdate).not.toHaveBeenCalled();
   });
 
   it("updates password after re-authentication", async () => {

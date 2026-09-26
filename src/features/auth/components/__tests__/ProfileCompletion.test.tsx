@@ -2,14 +2,21 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import ProfileCompletion from "../ProfileCompletion";
-import { MembershipStatus } from "@dataconnect/generated";
+import { checkUserProfileExists, MembershipStatus } from "@dataconnect/generated";
+import { syncPendingUserClaims } from "../../../../shared/utils/firebaseFunctions";
 
 const executeMutation = vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } });
 const mutationRef = vi.fn((_dc: unknown, _name: unknown, vars: unknown) => vars);
 
 vi.mock("firebase/data-connect", () => ({
+  QueryFetchPolicy: { SERVER_ONLY: "server-only" },
   executeMutation: (mutation: unknown) => executeMutation(mutation),
   mutationRef: (dc: unknown, name: unknown, vars: unknown) => mutationRef(dc, name, vars),
+}));
+
+vi.mock("@dataconnect/generated", async (original) => ({
+  ...await original<typeof import("@dataconnect/generated")>(),
+  checkUserProfileExists: vi.fn(),
 }));
 
 vi.mock("../../../../config/firebase", () => ({
@@ -92,5 +99,22 @@ describe("ProfileCompletion", () => {
         expect.objectContaining({ rank: "Flight Lieutenant" })
       );
     });
+  });
+
+  it("resumes an already-created profile after a lost response without overwriting it", async () => {
+    executeMutation.mockRejectedValueOnce(new Error("profile already exists"));
+    vi.mocked(checkUserProfileExists).mockResolvedValue({ data: { user: { id: "user-1" } } } as Awaited<ReturnType<typeof checkUserProfileExists>>);
+    const onComplete = vi.fn();
+    render(<ProfileCompletion userEmail="new@example.com" onComplete={onComplete} />);
+    const textboxes = screen.getAllByRole("textbox");
+    fireEvent.change(textboxes[0], { target: { value: "New" } });
+    fireEvent.change(textboxes[1], { target: { value: "Member" } });
+    fireEvent.change(document.querySelector('input[maxlength="50"]')!, { target: { value: "99999" } });
+    fireEvent.change(screen.getByLabelText(/Mobile number/i), { target: { value: "07700 900123" } });
+    fireEvent.click(screen.getByRole("button", { name: /submit profile/i }));
+    await screen.findByText(/your profile has been submitted/);
+    expect(checkUserProfileExists).toHaveBeenCalledWith({}, { fetchPolicy: "server-only" });
+    expect(syncPendingUserClaims).toHaveBeenCalledOnce();
+    expect(executeMutation).toHaveBeenCalledOnce();
   });
 });

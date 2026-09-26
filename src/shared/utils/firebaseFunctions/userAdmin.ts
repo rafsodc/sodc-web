@@ -3,6 +3,35 @@ import type { MembershipStatus } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
 import { extractDomainErrorCode, reportError } from "../../errors";
 
+export interface UpdateUserEmailResult {
+  success: true;
+  email: string;
+  verificationRequired: boolean;
+  verificationEmailSent: boolean;
+}
+
+export async function updateUserEmail(userId: string, email: string, expectedEmail: string): Promise<UpdateUserEmailResult> {
+  const callable = httpsCallable<
+    { userId: string; email: string; expectedEmail: string },
+    UpdateUserEmailResult
+  >(functions, "updateUserEmail");
+  return (await callable({ userId, email, expectedEmail })).data;
+}
+
+export function userEmailChangeError(error: unknown): string {
+  const domain = extractDomainErrorCode(error);
+  if (domain === "EMAIL_CHANGE_BUSY") return "Another email update is in progress. Retry in five minutes.";
+  if (domain === "EMAIL_CHANGE_CONFLICT") return "The sign-in email has changed. Close and reopen the user before trying again.";
+  if (domain === "EMAIL_CHANGE_INCOMPLETE") return "The update could not be completed. The sign-in email may already have changed. Retry with the same new address to finish synchronising the account.";
+  const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+  if (domain === "EMAIL_ALREADY_IN_USE" || code === "functions/already-exists") return "This email address is already linked to another account.";
+  if (code === "functions/invalid-argument") return "Enter a valid email address.";
+  if (code === "functions/not-found") return "The user must have both a sign-in account and a profile before their email can be changed.";
+  if (code === "functions/permission-denied" || code === "functions/unauthenticated") return "Sign in with an enabled administrator account to change this email.";
+  if (code === "functions/resource-exhausted") return "Too many email updates. Please try again later.";
+  return "The update could not be confirmed. Retry with the same new address to check and finish the change.";
+}
+
 // ============================================================================
 // Admin Functions
 // ============================================================================

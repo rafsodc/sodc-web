@@ -145,6 +145,16 @@ export interface AbortSectionFileReplacementVariables {
   updatedBy: string;
 }
 
+export interface AcquireUserEmailLeaseData {
+  user_updateMany: number;
+}
+
+export interface AcquireUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+  expiresAt: TimestampString;
+}
+
 export interface AddUserToUserGroupAdminData {
   userUserGroup_upsert: UserUserGroup_Key;
 }
@@ -664,7 +674,7 @@ export interface CreateUserGroupVariables {
 }
 
 export interface CreateUserProfileData {
-  user_upsert: User_Key;
+  user_insert: User_Key;
 }
 
 export interface CreateUserProfileVariables {
@@ -3075,6 +3085,15 @@ export interface RegisterForSectionVariables {
   userGroupId: UUIDString;
 }
 
+export interface ReleaseUserEmailLeaseData {
+  user_updateMany: number;
+}
+
+export interface ReleaseUserEmailLeaseVariables {
+  userId: string;
+  leaseId: string;
+}
+
 export interface RemoveUserFromUserGroupAdminData {
   userUserGroup_delete?: UserUserGroup_Key | null;
 }
@@ -3429,16 +3448,18 @@ export interface UpdateTicketTypeVariables {
 }
 
 export interface UpdateUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 
 export interface UpdateUserEmailFromAuthData {
-  user_update?: User_Key | null;
+  user_updateMany: number;
 }
 
 export interface UpdateUserEmailFromAuthVariables {
   userId: string;
   email: string;
+  leaseId: string;
+  changedBy: string;
 }
 
 export interface UpdateUserGroupData {
@@ -3475,7 +3496,6 @@ export interface UpdateUserVariables {
   userId: string;
   firstName: string;
   lastName: string;
-  email: string;
   serviceNumber: string;
   mobileNumber?: string | null;
   postNominals?: string | null;
@@ -3544,7 +3564,7 @@ export interface UpsertTicketOrderDisputeFromWebhookVariables {
 }
 
 export interface UpsertUserData {
-  user_upsert: User_Key;
+  user_update?: User_Key | null;
 }
 
 export interface UpsertUserVariables {
@@ -3746,6 +3766,16 @@ export function markSectionFileDeleted(vars: MarkSectionFileDeletedVariables, op
 export function updateUserMembershipStatus(dc: DataConnect, vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateUserMembershipStatus' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateUserMembershipStatus(vars: UpdateUserMembershipStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserMembershipStatusData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AcquireUserEmailLease' Mutation. Allow users to execute without passing in DataConnect. */
+export function acquireUserEmailLease(dc: DataConnect, vars: AcquireUserEmailLeaseVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AcquireUserEmailLeaseData>>;
+/** Generated Node Admin SDK operation action function for the 'AcquireUserEmailLease' Mutation. Allow users to pass in custom DataConnect instances. */
+export function acquireUserEmailLease(vars: AcquireUserEmailLeaseVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AcquireUserEmailLeaseData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ReleaseUserEmailLease' Mutation. Allow users to execute without passing in DataConnect. */
+export function releaseUserEmailLease(dc: DataConnect, vars: ReleaseUserEmailLeaseVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReleaseUserEmailLeaseData>>;
+/** Generated Node Admin SDK operation action function for the 'ReleaseUserEmailLease' Mutation. Allow users to pass in custom DataConnect instances. */
+export function releaseUserEmailLease(vars: ReleaseUserEmailLeaseVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReleaseUserEmailLeaseData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpdateUserEmailFromAuth' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateUserEmailFromAuth(dc: DataConnect, vars: UpdateUserEmailFromAuthVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateUserEmailFromAuthData>>;
