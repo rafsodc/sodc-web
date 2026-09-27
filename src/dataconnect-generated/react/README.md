@@ -77,6 +77,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetCallableInvocation*](#getcallableinvocation)
   - [*GetAttendeeEventSection*](#getattendeeeventsection)
   - [*GetEventAttendeeNames*](#geteventattendeenames)
+  - [*ListPotentialLostProfiles*](#listpotentiallostprofiles)
+  - [*GetPotentialLostProfile*](#getpotentiallostprofile)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -167,7 +169,6 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*TryMarkAnnouncementRecipientEnqueueFailed*](#trymarkannouncementrecipientenqueuefailed)
   - [*TryUpdateAnnouncementRecipientDeliveryStatus*](#tryupdateannouncementrecipientdeliverystatus)
   - [*TryApplyNotifyDeliveryUserState*](#tryapplynotifydeliveryuserstate)
-  - [*TryApplyNotifyDeliveryUserStateAndMarkLost*](#tryapplynotifydeliveryuserstateandmarklost)
   - [*CreateNotifyDeliveryReceipt*](#createnotifydeliveryreceipt)
   - [*ClaimNotifyDeliveryReceipt*](#claimnotifydeliveryreceipt)
   - [*MarkNotifyDeliveryReceiptProcessed*](#marknotifydeliveryreceiptprocessed)
@@ -180,6 +181,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*AdminDeleteBookingLine*](#admindeletebookingline)
   - [*AdminDeleteBooking*](#admindeletebooking)
   - [*ResolvePaymentReconciliationException*](#resolvepaymentreconciliationexception)
+  - [*ConfirmPotentialLost*](#confirmpotentiallost)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -6067,6 +6069,192 @@ export default function GetEventAttendeeNamesComponent() {
 }
 ```
 
+## ListPotentialLostProfiles
+You can execute the `ListPotentialLostProfiles` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListPotentialLostProfiles(dc: DataConnect, vars: ListPotentialLostProfilesVariables, options?: useDataConnectQueryOptions<ListPotentialLostProfilesData>): UseDataConnectQueryResult<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListPotentialLostProfiles(vars: ListPotentialLostProfilesVariables, options?: useDataConnectQueryOptions<ListPotentialLostProfilesData>): UseDataConnectQueryResult<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+```
+
+### Variables
+The `ListPotentialLostProfiles` Query requires an argument of type `ListPotentialLostProfilesVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListPotentialLostProfilesVariables {
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `ListPotentialLostProfiles` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListPotentialLostProfiles` Query is of type `ListPotentialLostProfilesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListPotentialLostProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListPotentialLostProfiles`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListPotentialLostProfilesVariables } from '@dataconnect/generated';
+import { useListPotentialLostProfiles } from '@dataconnect/generated/react'
+
+export default function ListPotentialLostProfilesComponent() {
+  // The `useListPotentialLostProfiles` Query hook requires an argument of type `ListPotentialLostProfilesVariables`:
+  const listPotentialLostProfilesVars: ListPotentialLostProfilesVariables = {
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListPotentialLostProfiles(listPotentialLostProfilesVars);
+  // Variables can be defined inline as well.
+  const query = useListPotentialLostProfiles({ limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListPotentialLostProfiles(dataConnect, listPotentialLostProfilesVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListPotentialLostProfiles(listPotentialLostProfilesVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListPotentialLostProfiles(dataConnect, listPotentialLostProfilesVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.users);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetPotentialLostProfile
+You can execute the `GetPotentialLostProfile` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: useDataConnectQueryOptions<GetPotentialLostProfileData>): UseDataConnectQueryResult<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: useDataConnectQueryOptions<GetPotentialLostProfileData>): UseDataConnectQueryResult<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+```
+
+### Variables
+The `GetPotentialLostProfile` Query requires an argument of type `GetPotentialLostProfileVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetPotentialLostProfileVariables {
+  id: string;
+}
+```
+### Return Type
+Recall that calling the `GetPotentialLostProfile` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetPotentialLostProfile` Query is of type `GetPotentialLostProfileData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetPotentialLostProfileData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetPotentialLostProfile`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetPotentialLostProfileVariables } from '@dataconnect/generated';
+import { useGetPotentialLostProfile } from '@dataconnect/generated/react'
+
+export default function GetPotentialLostProfileComponent() {
+  // The `useGetPotentialLostProfile` Query hook requires an argument of type `GetPotentialLostProfileVariables`:
+  const getPotentialLostProfileVars: GetPotentialLostProfileVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetPotentialLostProfile(getPotentialLostProfileVars);
+  // Variables can be defined inline as well.
+  const query = useGetPotentialLostProfile({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetPotentialLostProfile(dataConnect, getPotentialLostProfileVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetPotentialLostProfile(getPotentialLostProfileVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetPotentialLostProfile(dataConnect, getPotentialLostProfileVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## GetCurrentUser
 You can execute the `GetCurrentUser` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -7664,6 +7852,7 @@ export interface GetSectionMembersData {
             serviceNumber: string;
             membershipStatus: MembershipStatus;
             rank?: string | null;
+            profileReviewedAt?: TimestampString | null;
             shareContactInfo?: boolean | null;
             mobileNumber?: string | null;
             announcementOptOutAll: boolean;
@@ -15174,114 +15363,6 @@ export default function TryApplyNotifyDeliveryUserStateComponent() {
 }
 ```
 
-## TryApplyNotifyDeliveryUserStateAndMarkLost
-You can execute the `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useTryApplyNotifyDeliveryUserStateAndMarkLost(options?: useDataConnectMutationOptions<TryApplyNotifyDeliveryUserStateAndMarkLostData, FirebaseError, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>): UseDataConnectMutationResult<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useTryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, options?: useDataConnectMutationOptions<TryApplyNotifyDeliveryUserStateAndMarkLostData, FirebaseError, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>): UseDataConnectMutationResult<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-```
-
-### Variables
-The `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
-  userId: string;
-  expectedEmailDeliveryVersion: number;
-  emailDeliveryVersion: number;
-  emailBounceCount: number;
-  emailLastBounceAt?: TimestampString | null;
-  emailDeliveryStatus: string;
-  emailDeliveryStatusUpdatedAt: TimestampString;
-  emailDeliveryReceiptId: string;
-}
-```
-### Return Type
-Recall that calling the `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `TryApplyNotifyDeliveryUserStateAndMarkLost` Mutation is of type `TryApplyNotifyDeliveryUserStateAndMarkLostData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
-  user_updateMany: number;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `TryApplyNotifyDeliveryUserStateAndMarkLost`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, TryApplyNotifyDeliveryUserStateAndMarkLostVariables } from '@dataconnect/generated';
-import { useTryApplyNotifyDeliveryUserStateAndMarkLost } from '@dataconnect/generated/react'
-
-export default function TryApplyNotifyDeliveryUserStateAndMarkLostComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useTryApplyNotifyDeliveryUserStateAndMarkLost(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useTryApplyNotifyDeliveryUserStateAndMarkLost` Mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
-  const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
-    userId: ..., 
-    expectedEmailDeliveryVersion: ..., 
-    emailDeliveryVersion: ..., 
-    emailBounceCount: ..., 
-    emailLastBounceAt: ..., // optional
-    emailDeliveryStatus: ..., 
-    emailDeliveryStatusUpdatedAt: ..., 
-    emailDeliveryReceiptId: ..., 
-  };
-  mutation.mutate(tryApplyNotifyDeliveryUserStateAndMarkLostVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(tryApplyNotifyDeliveryUserStateAndMarkLostVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.user_updateMany);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
 ## CreateNotifyDeliveryReceipt
 You can execute the `CreateNotifyDeliveryReceipt` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -16465,6 +16546,122 @@ export default function ResolvePaymentReconciliationExceptionComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.paymentReconciliationException_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ConfirmPotentialLost
+You can execute the `ConfirmPotentialLost` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useConfirmPotentialLost(options?: useDataConnectMutationOptions<ConfirmPotentialLostData, FirebaseError, ConfirmPotentialLostVariables>): UseDataConnectMutationResult<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useConfirmPotentialLost(dc: DataConnect, options?: useDataConnectMutationOptions<ConfirmPotentialLostData, FirebaseError, ConfirmPotentialLostVariables>): UseDataConnectMutationResult<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+```
+
+### Variables
+The `ConfirmPotentialLost` Mutation requires an argument of type `ConfirmPotentialLostVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ConfirmPotentialLostVariables {
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
+  emailBounceCount: number;
+}
+```
+### Return Type
+Recall that calling the `ConfirmPotentialLost` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `ConfirmPotentialLost` Mutation is of type `ConfirmPotentialLostData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ConfirmPotentialLostData {
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `ConfirmPotentialLost`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ConfirmPotentialLostVariables } from '@dataconnect/generated';
+import { useConfirmPotentialLost } from '@dataconnect/generated/react'
+
+export default function ConfirmPotentialLostComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useConfirmPotentialLost();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useConfirmPotentialLost(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useConfirmPotentialLost(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useConfirmPotentialLost(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useConfirmPotentialLost` Mutation requires an argument of type `ConfirmPotentialLostVariables`:
+  const confirmPotentialLostVars: ConfirmPotentialLostVariables = {
+    userId: ..., 
+    expectedStatus: ..., 
+    expectedUpdatedAt: ..., 
+    expectedEmailDeliveryVersion: ..., 
+    reviewedBy: ..., 
+    reasons: ..., 
+    lastSignInTime: ..., // optional
+    lastActivityTime: ..., // optional
+    inactivitySince: ..., // optional
+    activitySource: ..., // optional
+    emailBounceCount: ..., 
+  };
+  mutation.mutate(confirmPotentialLostVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., lastActivityTime: ..., inactivitySince: ..., activitySource: ..., emailBounceCount: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(confirmPotentialLostVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.user_updateMany);
+    console.log(mutation.data.potentialLostReview_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

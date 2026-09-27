@@ -144,6 +144,7 @@ function AppContent() {
     setProfileReviewCompletedForUid(user.uid);
     await refetch?.();
     setProfileReviewSaved(true);
+    window.dispatchEvent(new Event("member-profile-reviewed"));
   }, [refetch, user]);
 
   // Check if email is verified

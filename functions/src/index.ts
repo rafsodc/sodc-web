@@ -27,3 +27,5 @@ export { updateUserEmail } from "./adminUserEmail";
 if (!admin.apps.length) {
   admin.initializeApp();
 }
+
+export * from "./potentialLost";

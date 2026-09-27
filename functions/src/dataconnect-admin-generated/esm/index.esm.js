@@ -828,12 +828,6 @@ export function tryApplyNotifyDeliveryUserState(dcOrVarsOrOptions, varsOrOptions
   return dcInstance.executeMutation('TryApplyNotifyDeliveryUserState', inputVars, inputOpts);
 }
 
-export function tryApplyNotifyDeliveryUserStateAndMarkLost(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('TryApplyNotifyDeliveryUserStateAndMarkLost', inputVars, inputOpts);
-}
-
 export function getNotifyDeliveryReceipt(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -940,6 +934,24 @@ export function resolvePaymentReconciliationException(dcOrVarsOrOptions, varsOrO
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('ResolvePaymentReconciliationException', inputVars, inputOpts);
+}
+
+export function listPotentialLostProfiles(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListPotentialLostProfiles', inputVars, inputOpts);
+}
+
+export function getPotentialLostProfile(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetPotentialLostProfile', inputVars, inputOpts);
+}
+
+export function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmPotentialLost', inputVars, inputOpts);
 }
 
 export function getCurrentUser(dcOrOptions, options) {

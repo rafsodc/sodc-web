@@ -367,6 +367,25 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   reason?: string | null;
 }
 
+export interface ConfirmPotentialLostData {
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+
+export interface ConfirmPotentialLostVariables {
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
+  emailBounceCount: number;
+}
+
 export interface ConfirmProfileReviewData {
   user_update?: User_Key | null;
 }
@@ -1870,6 +1889,24 @@ export interface GetPaymentWebhookEventByStripeEventIdVariables {
   stripeEventId: string;
 }
 
+export interface GetPotentialLostProfileData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key;
+}
+
+export interface GetPotentialLostProfileVariables {
+  id: string;
+}
+
 export interface GetRecentNotifyDeliveryReceiptsForUserData {
   notifyDeliveryReceipts: ({
     id: string;
@@ -2018,6 +2055,7 @@ export interface GetSectionMembersData {
             serviceNumber: string;
             membershipStatus: MembershipStatus;
             rank?: string | null;
+            profileReviewedAt?: TimestampString | null;
             shareContactInfo?: boolean | null;
             mobileNumber?: string | null;
             announcementOptOutAll: boolean;
@@ -2695,6 +2733,25 @@ export interface ListOpenPaymentReconciliationExceptionsData {
   } & PaymentReconciliationException_Key)[];
 }
 
+export interface ListPotentialLostProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key)[];
+}
+
+export interface ListPotentialLostProfilesVariables {
+  limit: number;
+  offset: number;
+}
+
 export interface ListSectionFilesByStatusData {
   sectionFiles: ({
     id: UUIDString;
@@ -3066,6 +3123,11 @@ export interface PaymentWebhookEvent_Key {
   __typename?: 'PaymentWebhookEvent_Key';
 }
 
+export interface PotentialLostReview_Key {
+  id: UUIDString;
+  __typename?: 'PotentialLostReview_Key';
+}
+
 export interface RecordNotificationRecoveryFailureByIdData {
   notificationDelivery_updateMany: number;
 }
@@ -3273,21 +3335,6 @@ export interface TicketOrder_Key {
 export interface TicketType_Key {
   id: UUIDString;
   __typename?: 'TicketType_Key';
-}
-
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
-  user_updateMany: number;
-}
-
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
-  userId: string;
-  expectedEmailDeliveryVersion: number;
-  emailDeliveryVersion: number;
-  emailBounceCount: number;
-  emailLastBounceAt?: TimestampString | null;
-  emailDeliveryStatus: string;
-  emailDeliveryStatusUpdatedAt: TimestampString;
-  emailDeliveryReceiptId: string;
 }
 
 export interface TryApplyNotifyDeliveryUserStateData {
@@ -4209,11 +4256,6 @@ export function tryApplyNotifyDeliveryUserState(dc: DataConnect, vars: TryApplyN
 /** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserState' Mutation. Allow users to pass in custom DataConnect instances. */
 export function tryApplyNotifyDeliveryUserState(vars: TryApplyNotifyDeliveryUserStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateData>>;
 
-/** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserStateAndMarkLost' Mutation. Allow users to execute without passing in DataConnect. */
-export function tryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateAndMarkLostData>>;
-/** Generated Node Admin SDK operation action function for the 'TryApplyNotifyDeliveryUserStateAndMarkLost' Mutation. Allow users to pass in custom DataConnect instances. */
-export function tryApplyNotifyDeliveryUserStateAndMarkLost(vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<TryApplyNotifyDeliveryUserStateAndMarkLostData>>;
-
 /** Generated Node Admin SDK operation action function for the 'GetNotifyDeliveryReceipt' Query. Allow users to execute without passing in DataConnect. */
 export function getNotifyDeliveryReceipt(dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotifyDeliveryReceiptData>>;
 /** Generated Node Admin SDK operation action function for the 'GetNotifyDeliveryReceipt' Query. Allow users to pass in custom DataConnect instances. */
@@ -4303,6 +4345,21 @@ export function adminDeleteBooking(vars: AdminDeleteBookingVariables, options?: 
 export function resolvePaymentReconciliationException(dc: DataConnect, vars: ResolvePaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ResolvePaymentReconciliationExceptionData>>;
 /** Generated Node Admin SDK operation action function for the 'ResolvePaymentReconciliationException' Mutation. Allow users to pass in custom DataConnect instances. */
 export function resolvePaymentReconciliationException(vars: ResolvePaymentReconciliationExceptionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ResolvePaymentReconciliationExceptionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListPotentialLostProfiles' Query. Allow users to execute without passing in DataConnect. */
+export function listPotentialLostProfiles(dc: DataConnect, vars: ListPotentialLostProfilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListPotentialLostProfilesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListPotentialLostProfiles' Query. Allow users to pass in custom DataConnect instances. */
+export function listPotentialLostProfiles(vars: ListPotentialLostProfilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListPotentialLostProfilesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetPotentialLostProfile' Query. Allow users to execute without passing in DataConnect. */
+export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPotentialLostProfileData>>;
+/** Generated Node Admin SDK operation action function for the 'GetPotentialLostProfile' Query. Allow users to pass in custom DataConnect instances. */
+export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPotentialLostProfileData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to execute without passing in DataConnect. */
+export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
+/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to pass in custom DataConnect instances. */
+export function confirmPotentialLost(vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
 export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;

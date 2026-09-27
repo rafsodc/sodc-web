@@ -12,7 +12,6 @@ import {
   markNotifyDeliveryReceiptFailed,
   markNotifyDeliveryReceiptProcessed,
   tryApplyNotifyDeliveryUserState,
-  tryApplyNotifyDeliveryUserStateAndMarkLost,
   tryUpdateAnnouncementRecipientDeliveryStatus,
   MembershipStatus,
   NotifyDeliveryReceiptOutcome,
@@ -20,8 +19,6 @@ import {
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { parseAnnouncementReference } from "./announcementReference.js";
-import { invalidateDcProfileCache } from "./users.js";
-import { reconcileEnabledClaim } from "./enabledClaimReconciliation.js";
 import { announcementFailureCategory } from "./announcementRecipients.js";
 
 export const BOUNCE_THRESHOLD = 3;
@@ -130,6 +127,7 @@ export interface NotifyReceiptRepository {
     emailDeliveryStatus: string;
     emailDeliveryStatusUpdatedAt: string;
     emailDeliveryReceiptId: string;
+    /** Deprecated compatibility input; delivery updates never change membership. */
     markLost: boolean;
   }): Promise<boolean>;
   findAnnouncementRecipient(sendId: string, userId: string): Promise<AnnouncementRecipientState | null>;
@@ -149,6 +147,7 @@ export interface NotifyReceiptProcessorDependencies {
   repository?: NotifyReceiptRepository;
   now?: () => string;
   leaseMs?: number;
+  /** Deprecated: receipt processing never changes membership or invokes this hook. */
   onMembershipLost?: (userId: string) => void | Promise<void>;
 }
 
@@ -273,9 +272,7 @@ export const dataConnectNotifyReceiptRepository: NotifyReceiptRepository = {
       emailDeliveryStatusUpdatedAt: args.emailDeliveryStatusUpdatedAt,
       emailDeliveryReceiptId: args.emailDeliveryReceiptId,
     };
-    const result = args.markLost
-      ? await tryApplyNotifyDeliveryUserStateAndMarkLost(variables)
-      : await tryApplyNotifyDeliveryUserState(variables);
+    const result = await tryApplyNotifyDeliveryUserState(variables);
     return result.data.user_updateMany === 1;
   },
 
@@ -482,10 +479,8 @@ function deriveBounceState(receipts: OrderedReceipt[]): {
 async function applyDerivedUserState(args: {
   repository: NotifyReceiptRepository;
   userId: string;
-  onMembershipLost: (userId: string) => void | Promise<void>;
-  reconcileExistingLost: boolean;
 }): Promise<"applied" | "no_state_change" | "no_user"> {
-  const { repository, userId, onMembershipLost, reconcileExistingLost } = args;
+  const { repository, userId } = args;
   for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
     const [user, recentReceipts] = await Promise.all([
       repository.getUserById(userId),
@@ -495,20 +490,13 @@ async function applyDerivedUserState(args: {
     const derived = deriveBounceState(recentReceipts);
     if (!derived) return "no_state_change";
 
-    const markLost =
-      derived.bounceCount >= BOUNCE_THRESHOLD && user.membershipStatus !== MembershipStatus.LOST;
-    const requiresLostClaimReconciliation =
-      derived.bounceCount >= BOUNCE_THRESHOLD &&
-      (markLost ||
-        (reconcileExistingLost && user.membershipStatus === MembershipStatus.LOST));
     const stateAlreadyCurrent =
       user.emailBounceCount === derived.bounceCount &&
       user.emailLastBounceAt === derived.lastBounceAt &&
       user.emailDeliveryStatus === derived.latest.notifyStatus &&
       user.emailDeliveryStatusUpdatedAt === derived.latest.eventAt &&
       user.emailDeliveryReceiptId === derived.latest.id;
-    if (stateAlreadyCurrent && !markLost) {
-      if (requiresLostClaimReconciliation) await onMembershipLost(userId);
+    if (stateAlreadyCurrent) {
       return "no_state_change";
     }
 
@@ -521,10 +509,9 @@ async function applyDerivedUserState(args: {
       emailDeliveryStatus: derived.latest.notifyStatus,
       emailDeliveryStatusUpdatedAt: derived.latest.eventAt,
       emailDeliveryReceiptId: derived.latest.id,
-      markLost,
+      markLost: false,
     });
     if (!applied) continue;
-    if (requiresLostClaimReconciliation) await onMembershipLost(userId);
     return "applied";
   }
   throw new Error(`Unable to update Notify delivery state for user ${userId} after repeated contention`);
@@ -597,10 +584,6 @@ export async function processNotifyReceipt(
   const repository = dependencies.repository ?? dataConnectNotifyReceiptRepository;
   const receivedAt = dependencies.now?.() ?? new Date().toISOString();
   const leaseMs = dependencies.leaseMs ?? DEFAULT_NOTIFY_RECEIPT_LEASE_MS;
-  const onMembershipLost = dependencies.onMembershipLost ?? (async (userId: string) => {
-    invalidateDcProfileCache();
-    await reconcileEnabledClaim(userId, "LOST");
-  });
   if (!Number.isFinite(leaseMs) || leaseMs <= 0) {
     throw new Error("Notify receipt lease duration must be a positive number");
   }
@@ -630,8 +613,6 @@ export async function processNotifyReceipt(
           ? applyDerivedUserState({
               repository,
               userId: initialUser.id,
-              onMembershipLost,
-              reconcileExistingLost: attemptCount > 1,
             })
           : Promise.resolve<"no_user">("no_user"),
         parsedReference

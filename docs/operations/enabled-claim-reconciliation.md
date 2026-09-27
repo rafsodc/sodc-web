@@ -30,10 +30,12 @@ cases are repaired through the same idempotent reconciliation path below.
 
 - Admin and self-service status changes reconcile the claim in
   `functions/src/membershipStatus.ts`.
-- A Notify permanent-failure threshold that marks a member `LOST` reconciles the claim
-  before its delivery receipt is marked processed.
-- If that Notify claim write fails, the receipt is marked `FAILED`. Reclaiming the same
-  receipt retries reconciliation even though the Data Connect status is already `LOST`.
+- Confirming a Potential lost review uses the same fail-closed membership/claim path,
+  with an atomic conditional status update and administrator audit entry. Retrying a
+  completed confirmation reconciles access without creating another audit entry.
+- Notify delivery receipts only maintain bounce/delivery evidence. Three permanent
+  failures flag a member for review; callbacks and receipt recovery never change
+  membership status or access claims.
 
 ## Detecting drift
 

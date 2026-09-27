@@ -70,6 +70,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetCallableInvocation*](#getcallableinvocation)
   - [*GetAttendeeEventSection*](#getattendeeeventsection)
   - [*GetEventAttendeeNames*](#geteventattendeenames)
+  - [*ListPotentialLostProfiles*](#listpotentiallostprofiles)
+  - [*GetPotentialLostProfile*](#getpotentiallostprofile)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -160,7 +162,6 @@ This README will guide you through the process of using the generated JavaScript
   - [*TryMarkAnnouncementRecipientEnqueueFailed*](#trymarkannouncementrecipientenqueuefailed)
   - [*TryUpdateAnnouncementRecipientDeliveryStatus*](#tryupdateannouncementrecipientdeliverystatus)
   - [*TryApplyNotifyDeliveryUserState*](#tryapplynotifydeliveryuserstate)
-  - [*TryApplyNotifyDeliveryUserStateAndMarkLost*](#tryapplynotifydeliveryuserstateandmarklost)
   - [*CreateNotifyDeliveryReceipt*](#createnotifydeliveryreceipt)
   - [*ClaimNotifyDeliveryReceipt*](#claimnotifydeliveryreceipt)
   - [*MarkNotifyDeliveryReceiptProcessed*](#marknotifydeliveryreceiptprocessed)
@@ -173,6 +174,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*AdminDeleteBookingLine*](#admindeletebookingline)
   - [*AdminDeleteBooking*](#admindeletebooking)
   - [*ResolvePaymentReconciliationException*](#resolvepaymentreconciliationexception)
+  - [*ConfirmPotentialLost*](#confirmpotentiallost)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -7688,6 +7690,247 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## ListPotentialLostProfiles
+You can execute the `ListPotentialLostProfiles` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listPotentialLostProfiles(vars: ListPotentialLostProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+
+interface ListPotentialLostProfilesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListPotentialLostProfilesVariables): QueryRef<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+}
+export const listPotentialLostProfilesRef: ListPotentialLostProfilesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listPotentialLostProfiles(dc: DataConnect, vars: ListPotentialLostProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+
+interface ListPotentialLostProfilesRef {
+  ...
+  (dc: DataConnect, vars: ListPotentialLostProfilesVariables): QueryRef<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+}
+export const listPotentialLostProfilesRef: ListPotentialLostProfilesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listPotentialLostProfilesRef:
+```typescript
+const name = listPotentialLostProfilesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListPotentialLostProfiles` query requires an argument of type `ListPotentialLostProfilesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListPotentialLostProfilesVariables {
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `ListPotentialLostProfiles` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListPotentialLostProfilesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListPotentialLostProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key)[];
+}
+```
+### Using `ListPotentialLostProfiles`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listPotentialLostProfiles, ListPotentialLostProfilesVariables } from '@dataconnect/generated';
+
+// The `ListPotentialLostProfiles` query requires an argument of type `ListPotentialLostProfilesVariables`:
+const listPotentialLostProfilesVars: ListPotentialLostProfilesVariables = {
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `listPotentialLostProfiles()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listPotentialLostProfiles(listPotentialLostProfilesVars);
+// Variables can be defined inline as well.
+const { data } = await listPotentialLostProfiles({ limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listPotentialLostProfiles(dataConnect, listPotentialLostProfilesVars);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+listPotentialLostProfiles(listPotentialLostProfilesVars).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+### Using `ListPotentialLostProfiles`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listPotentialLostProfilesRef, ListPotentialLostProfilesVariables } from '@dataconnect/generated';
+
+// The `ListPotentialLostProfiles` query requires an argument of type `ListPotentialLostProfilesVariables`:
+const listPotentialLostProfilesVars: ListPotentialLostProfilesVariables = {
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `listPotentialLostProfilesRef()` function to get a reference to the query.
+const ref = listPotentialLostProfilesRef(listPotentialLostProfilesVars);
+// Variables can be defined inline as well.
+const ref = listPotentialLostProfilesRef({ limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listPotentialLostProfilesRef(dataConnect, listPotentialLostProfilesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+## GetPotentialLostProfile
+You can execute the `GetPotentialLostProfile` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+
+interface GetPotentialLostProfileRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetPotentialLostProfileVariables): QueryRef<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+}
+export const getPotentialLostProfileRef: GetPotentialLostProfileRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+
+interface GetPotentialLostProfileRef {
+  ...
+  (dc: DataConnect, vars: GetPotentialLostProfileVariables): QueryRef<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+}
+export const getPotentialLostProfileRef: GetPotentialLostProfileRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getPotentialLostProfileRef:
+```typescript
+const name = getPotentialLostProfileRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetPotentialLostProfile` query requires an argument of type `GetPotentialLostProfileVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetPotentialLostProfileVariables {
+  id: string;
+}
+```
+### Return Type
+Recall that executing the `GetPotentialLostProfile` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetPotentialLostProfileData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetPotentialLostProfileData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key;
+}
+```
+### Using `GetPotentialLostProfile`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getPotentialLostProfile, GetPotentialLostProfileVariables } from '@dataconnect/generated';
+
+// The `GetPotentialLostProfile` query requires an argument of type `GetPotentialLostProfileVariables`:
+const getPotentialLostProfileVars: GetPotentialLostProfileVariables = {
+  id: ..., 
+};
+
+// Call the `getPotentialLostProfile()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getPotentialLostProfile(getPotentialLostProfileVars);
+// Variables can be defined inline as well.
+const { data } = await getPotentialLostProfile({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getPotentialLostProfile(dataConnect, getPotentialLostProfileVars);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+getPotentialLostProfile(getPotentialLostProfileVars).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
+### Using `GetPotentialLostProfile`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getPotentialLostProfileRef, GetPotentialLostProfileVariables } from '@dataconnect/generated';
+
+// The `GetPotentialLostProfile` query requires an argument of type `GetPotentialLostProfileVariables`:
+const getPotentialLostProfileVars: GetPotentialLostProfileVariables = {
+  id: ..., 
+};
+
+// Call the `getPotentialLostProfileRef()` function to get a reference to the query.
+const ref = getPotentialLostProfileRef(getPotentialLostProfileVars);
+// Variables can be defined inline as well.
+const ref = getPotentialLostProfileRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getPotentialLostProfileRef(dataConnect, getPotentialLostProfileVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.user);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user);
+});
+```
+
 ## GetCurrentUser
 You can execute the `GetCurrentUser` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -9723,6 +9966,7 @@ export interface GetSectionMembersData {
             serviceNumber: string;
             membershipStatus: MembershipStatus;
             rank?: string | null;
+            profileReviewedAt?: TimestampString | null;
             shareContactInfo?: boolean | null;
             mobileNumber?: string | null;
             announcementOptOutAll: boolean;
@@ -18738,136 +18982,6 @@ executeMutation(ref).then((response) => {
 });
 ```
 
-## TryApplyNotifyDeliveryUserStateAndMarkLost
-You can execute the `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-tryApplyNotifyDeliveryUserStateAndMarkLost(vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-
-interface TryApplyNotifyDeliveryUserStateAndMarkLostRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-}
-export const tryApplyNotifyDeliveryUserStateAndMarkLostRef: TryApplyNotifyDeliveryUserStateAndMarkLostRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-tryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-
-interface TryApplyNotifyDeliveryUserStateAndMarkLostRef {
-  ...
-  (dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-}
-export const tryApplyNotifyDeliveryUserStateAndMarkLostRef: TryApplyNotifyDeliveryUserStateAndMarkLostRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the tryApplyNotifyDeliveryUserStateAndMarkLostRef:
-```typescript
-const name = tryApplyNotifyDeliveryUserStateAndMarkLostRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
-  userId: string;
-  expectedEmailDeliveryVersion: number;
-  emailDeliveryVersion: number;
-  emailBounceCount: number;
-  emailLastBounceAt?: TimestampString | null;
-  emailDeliveryStatus: string;
-  emailDeliveryStatusUpdatedAt: TimestampString;
-  emailDeliveryReceiptId: string;
-}
-```
-### Return Type
-Recall that executing the `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `TryApplyNotifyDeliveryUserStateAndMarkLostData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
-  user_updateMany: number;
-}
-```
-### Using `TryApplyNotifyDeliveryUserStateAndMarkLost`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, tryApplyNotifyDeliveryUserStateAndMarkLost, TryApplyNotifyDeliveryUserStateAndMarkLostVariables } from '@dataconnect/generated';
-
-// The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
-const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
-  userId: ..., 
-  expectedEmailDeliveryVersion: ..., 
-  emailDeliveryVersion: ..., 
-  emailBounceCount: ..., 
-  emailLastBounceAt: ..., // optional
-  emailDeliveryStatus: ..., 
-  emailDeliveryStatusUpdatedAt: ..., 
-  emailDeliveryReceiptId: ..., 
-};
-
-// Call the `tryApplyNotifyDeliveryUserStateAndMarkLost()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await tryApplyNotifyDeliveryUserStateAndMarkLost(tryApplyNotifyDeliveryUserStateAndMarkLostVars);
-// Variables can be defined inline as well.
-const { data } = await tryApplyNotifyDeliveryUserStateAndMarkLost({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await tryApplyNotifyDeliveryUserStateAndMarkLost(dataConnect, tryApplyNotifyDeliveryUserStateAndMarkLostVars);
-
-console.log(data.user_updateMany);
-
-// Or, you can use the `Promise` API.
-tryApplyNotifyDeliveryUserStateAndMarkLost(tryApplyNotifyDeliveryUserStateAndMarkLostVars).then((response) => {
-  const data = response.data;
-  console.log(data.user_updateMany);
-});
-```
-
-### Using `TryApplyNotifyDeliveryUserStateAndMarkLost`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, tryApplyNotifyDeliveryUserStateAndMarkLostRef, TryApplyNotifyDeliveryUserStateAndMarkLostVariables } from '@dataconnect/generated';
-
-// The `TryApplyNotifyDeliveryUserStateAndMarkLost` mutation requires an argument of type `TryApplyNotifyDeliveryUserStateAndMarkLostVariables`:
-const tryApplyNotifyDeliveryUserStateAndMarkLostVars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables = {
-  userId: ..., 
-  expectedEmailDeliveryVersion: ..., 
-  emailDeliveryVersion: ..., 
-  emailBounceCount: ..., 
-  emailLastBounceAt: ..., // optional
-  emailDeliveryStatus: ..., 
-  emailDeliveryStatusUpdatedAt: ..., 
-  emailDeliveryReceiptId: ..., 
-};
-
-// Call the `tryApplyNotifyDeliveryUserStateAndMarkLostRef()` function to get a reference to the mutation.
-const ref = tryApplyNotifyDeliveryUserStateAndMarkLostRef(tryApplyNotifyDeliveryUserStateAndMarkLostVars);
-// Variables can be defined inline as well.
-const ref = tryApplyNotifyDeliveryUserStateAndMarkLostRef({ userId: ..., expectedEmailDeliveryVersion: ..., emailDeliveryVersion: ..., emailBounceCount: ..., emailLastBounceAt: ..., emailDeliveryStatus: ..., emailDeliveryStatusUpdatedAt: ..., emailDeliveryReceiptId: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = tryApplyNotifyDeliveryUserStateAndMarkLostRef(dataConnect, tryApplyNotifyDeliveryUserStateAndMarkLostVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.user_updateMany);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.user_updateMany);
-});
-```
-
 ## CreateNotifyDeliveryReceipt
 You can execute the `CreateNotifyDeliveryReceipt` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -20265,6 +20379,150 @@ console.log(data.paymentReconciliationException_update);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.paymentReconciliationException_update);
+});
+```
+
+## ConfirmPotentialLost
+You can execute the `ConfirmPotentialLost` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+confirmPotentialLost(vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+
+interface ConfirmPotentialLostRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+}
+export const confirmPotentialLostRef: ConfirmPotentialLostRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+
+interface ConfirmPotentialLostRef {
+  ...
+  (dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+}
+export const confirmPotentialLostRef: ConfirmPotentialLostRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the confirmPotentialLostRef:
+```typescript
+const name = confirmPotentialLostRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ConfirmPotentialLost` mutation requires an argument of type `ConfirmPotentialLostVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ConfirmPotentialLostVariables {
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
+  emailBounceCount: number;
+}
+```
+### Return Type
+Recall that executing the `ConfirmPotentialLost` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ConfirmPotentialLostData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ConfirmPotentialLostData {
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+```
+### Using `ConfirmPotentialLost`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, confirmPotentialLost, ConfirmPotentialLostVariables } from '@dataconnect/generated';
+
+// The `ConfirmPotentialLost` mutation requires an argument of type `ConfirmPotentialLostVariables`:
+const confirmPotentialLostVars: ConfirmPotentialLostVariables = {
+  userId: ..., 
+  expectedStatus: ..., 
+  expectedUpdatedAt: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  reviewedBy: ..., 
+  reasons: ..., 
+  lastSignInTime: ..., // optional
+  lastActivityTime: ..., // optional
+  inactivitySince: ..., // optional
+  activitySource: ..., // optional
+  emailBounceCount: ..., 
+};
+
+// Call the `confirmPotentialLost()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await confirmPotentialLost(confirmPotentialLostVars);
+// Variables can be defined inline as well.
+const { data } = await confirmPotentialLost({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., lastActivityTime: ..., inactivitySince: ..., activitySource: ..., emailBounceCount: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await confirmPotentialLost(dataConnect, confirmPotentialLostVars);
+
+console.log(data.user_updateMany);
+console.log(data.potentialLostReview_insert);
+
+// Or, you can use the `Promise` API.
+confirmPotentialLost(confirmPotentialLostVars).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+  console.log(data.potentialLostReview_insert);
+});
+```
+
+### Using `ConfirmPotentialLost`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, confirmPotentialLostRef, ConfirmPotentialLostVariables } from '@dataconnect/generated';
+
+// The `ConfirmPotentialLost` mutation requires an argument of type `ConfirmPotentialLostVariables`:
+const confirmPotentialLostVars: ConfirmPotentialLostVariables = {
+  userId: ..., 
+  expectedStatus: ..., 
+  expectedUpdatedAt: ..., 
+  expectedEmailDeliveryVersion: ..., 
+  reviewedBy: ..., 
+  reasons: ..., 
+  lastSignInTime: ..., // optional
+  lastActivityTime: ..., // optional
+  inactivitySince: ..., // optional
+  activitySource: ..., // optional
+  emailBounceCount: ..., 
+};
+
+// Call the `confirmPotentialLostRef()` function to get a reference to the mutation.
+const ref = confirmPotentialLostRef(confirmPotentialLostVars);
+// Variables can be defined inline as well.
+const ref = confirmPotentialLostRef({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., lastActivityTime: ..., inactivitySince: ..., activitySource: ..., emailBounceCount: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = confirmPotentialLostRef(dataConnect, confirmPotentialLostVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.user_updateMany);
+console.log(data.potentialLostReview_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.user_updateMany);
+  console.log(data.potentialLostReview_insert);
 });
 ```
 

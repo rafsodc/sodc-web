@@ -48,7 +48,7 @@ export default function SectionMemberListItem({ member, onSelect }: SectionMembe
       <TableCell>{getMembershipStatusLabel(member.membershipStatus)}</TableCell>
       <TableCell align="center">
         {!clickable && (
-          <Tooltip title="This member has chosen not to share their contact details">
+          <Tooltip title="Contact details are not available">
             <LockIcon titleAccess="Private" fontSize="small" sx={{ color: "text.secondary" }} />
           </Tooltip>
         )}

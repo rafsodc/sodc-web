@@ -1,0 +1,34 @@
+query ListPotentialLostProfiles($limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  users(orderBy: { id: ASC }, limit: $limit, offset: $offset) {
+    id firstName lastName email membershipStatus updatedAt
+    emailBounceCount emailLastBounceAt emailDeliveryVersion
+  }
+}
+
+query GetPotentialLostProfile($id: String!) @auth(level: NO_ACCESS) {
+  user(id: $id) {
+    id firstName lastName email membershipStatus updatedAt
+    emailBounceCount emailLastBounceAt emailDeliveryVersion
+  }
+}
+
+mutation ConfirmPotentialLost(
+  $userId: String!, $expectedStatus: MembershipStatus!, $expectedUpdatedAt: Timestamp!,
+  $expectedEmailDeliveryVersion: Int!, $reviewedBy: String!, $reasons: [String!]!,
+  $lastSignInTime: String, $lastActivityTime: String, $inactivitySince: String, $activitySource: String, $emailBounceCount: Int!
+) @auth(level: NO_ACCESS) @transaction {
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      membershipStatus: { eq: $expectedStatus }
+      updatedAt: { eq: $expectedUpdatedAt }
+      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
+    }
+    data: { membershipStatus: LOST, updatedAt_expr: "request.time", updatedBy: $reviewedBy }
+  ) @check(expr: "this == 1", message: "POTENTIAL_LOST_CONFLICT")
+  potentialLostReview_insert(data: {
+    userId: $userId, previousStatus: $expectedStatus, reasons: $reasons,
+    lastSignInTime: $lastSignInTime, lastActivityTime: $lastActivityTime,
+    inactivitySince: $inactivitySince, activitySource: $activitySource, emailBounceCount: $emailBounceCount, reviewedBy: $reviewedBy
+  })
+}

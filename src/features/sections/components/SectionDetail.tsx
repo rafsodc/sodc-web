@@ -151,6 +151,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     fetchMembers();
   }, [sectionId, fetchMembers]);
 
+  useEffect(() => {
+    const refreshDirectory = () => { void fetchMembers(); };
+    window.addEventListener("member-profile-reviewed", refreshDirectory);
+    return () => window.removeEventListener("member-profile-reviewed", refreshDirectory);
+  }, [fetchMembers]);
+
   // Get current user's user groups to check subscription status
   const {
     data: userAccessGroupsData,
