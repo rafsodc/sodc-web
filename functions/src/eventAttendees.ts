@@ -6,7 +6,7 @@ import { requireSectionAccess } from "./sectionAccess";
 import { enforceRateLimit } from "./rateLimiter";
 
 // Legacy guests have a single entered name. Preserve it without inventing a surname.
-type AttendeeName = ({ firstName: string; lastName: string } | { displayName: string }) & { includesSymposium: boolean; includesDinner: boolean };
+type AttendeeName = ({ firstName: string; lastName: string } | { displayName: string }) & { audience: "MEMBER" | "GUEST"; includesSymposium: boolean; includesDinner: boolean };
 
 export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   try {
@@ -32,7 +32,7 @@ export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (req
     for (const booking of current.values()) {
       for (const line of booking.lines) {
         const user = line.ticketType.audience === "MEMBER" ? booking.booker : line.guestUser;
-        const attendance = { includesSymposium: line.ticketType.includesSymposium, includesDinner: line.ticketType.includesDinner };
+        const attendance = { audience: line.ticketType.audience, includesSymposium: line.ticketType.includesSymposium, includesDinner: line.ticketType.includesDinner };
         if (user) attendees.push({ firstName: user.firstName, lastName: user.lastName, ...attendance });
         else if (line.guestDisplayName?.trim()) attendees.push({ displayName: line.guestDisplayName.trim(), ...attendance });
       }

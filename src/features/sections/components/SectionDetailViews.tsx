@@ -389,7 +389,7 @@ export function SectionEventDetailView({
 
           {activeTab === "attendees" && hasCurrentUser ? (
             <Box role="tabpanel" id={`${tabId}-attendees-panel`} aria-labelledby={`${tabId}-attendees-tab`}>
-              <EventAttendees key={event.id} eventId={event.id} />
+              <EventAttendees key={event.id} eventId={event.id} ticketTypes={event.ticketTypes ?? []} />
             </Box>
           ) : null}
 

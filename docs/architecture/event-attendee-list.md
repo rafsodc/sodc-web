@@ -9,7 +9,7 @@ do not grant access.
 `getEventAttendees` checks access before running the server-only attendee query.
 Its response is `{ attendees: [...] }`. Each entry contains `firstName` and
 `lastName`, or `displayName` for an unlinked guest whose legacy record stores a
-single name, plus `includesSymposium` and `includesDinner`. These two booleans
+single name, plus `audience` (MEMBER/GUEST), `includesSymposium` and `includesDinner`. These two booleans
 come directly from the current booking line's ticket type; no ticket title or
 price is returned. This is the explicitly authorised expansion of #616's original
 names-only response. No IDs, dietary requirements, contact information, approval
@@ -29,8 +29,11 @@ Members and linked guests use their structured profile names and sort by surname
 then first name. Legacy guest names are preserved intact and sorted by their full
 entered name; missing names are omitted rather than guessed. The interface pages
 the sorted attendees in groups of 50, with loading, empty and retry states.
-The responsive table has Name, Symposium and Dinner columns with explicit Yes/No
-labels and row/column headers. About retains its booking button without an attendee
+The responsive table always shows Name and Type (Member/Guest). Audience describes
+the ticket place, not the account's membership status: linked guests remain Guest.
+Symposium and Dinner columns appear only when at least one of the event's ticket
+types offers that option, independent of current bookings or the displayed page.
+These columns use explicit Yes/No labels with row/column headers. About retains its booking button without an attendee
 list above it. Attendee data is fetched only when its tab is selected. Lists are
 cached separately per viewer and discarded when unmounted; completing a booking
 invalidates the event's list.

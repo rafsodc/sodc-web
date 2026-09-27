@@ -7,8 +7,8 @@ vi.mock("../../../../shared/utils/firebaseFunctions/sectionAccess", () => ({ get
 vi.mock("../EventDetailHero", () => ({ default: () => <div>Event summary</div> }));
 vi.mock("../EventBookingWizard", () => ({ default: () => <div>Booking form</div> }));
 const getAttendees = vi.mocked(getEventAttendees);
-const props = { section: {} as never, event: { id: "event", details: "Event programme" } as never, loading: false, isError: false, hasCurrentUser: true, onBackToEvents: vi.fn(), onRetry: vi.fn(), onBookingComplete: vi.fn() };
-beforeEach(() => { getAttendees.mockReset(); getAttendees.mockResolvedValue({ attendees: [{ displayName: "Guest", includesSymposium: true, includesDinner: false }] }); });
+const props = { section: {} as never, event: { id: "event", details: "Event programme", ticketTypes: [{ includesSymposium: true, includesDinner: false }] } as never, loading: false, isError: false, hasCurrentUser: true, onBackToEvents: vi.fn(), onRetry: vi.fn(), onBookingComplete: vi.fn() };
+beforeEach(() => { getAttendees.mockReset(); getAttendees.mockResolvedValue({ attendees: [{ audience: "GUEST", displayName: "Guest", includesSymposium: true, includesDinner: false }] }); });
 describe("event detail tabs", () => {
   it("keeps booking on About and loads attendees only in their own tab", async () => {
     const user = userEvent.setup();
@@ -19,6 +19,8 @@ describe("event detail tabs", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Attendees" }));
     expect(await screen.findByRole("table", { name: "Event attendees" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Dinner" })).not.toBeInTheDocument();
     expect(screen.getByRole("tabpanel", { name: "Attendees" })).toBeInTheDocument();
     expect(screen.queryByText("Event programme")).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "About" }));
@@ -32,6 +34,8 @@ describe("event detail tabs", () => {
     await user.keyboard("{ArrowRight}{ArrowRight}{Enter}");
     expect(screen.getByRole("tab", { name: "Attendees" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("table", { name: "Event attendees" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Dinner" })).not.toBeInTheDocument();
   });
   it("does not expose the attendee tab to signed-out viewers", () => {
     render(<SectionEventDetailView {...props} hasCurrentUser={false} />);

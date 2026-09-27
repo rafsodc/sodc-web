@@ -12,7 +12,7 @@ const membershipQuery = vi.spyOn(sdk, "getUserMembershipStatus");
 const eventId = "00000000-0000-4000-8000-000000000001";
 const member = { firstName: "Alex", lastName: "Smith" };
 const attendance = { includesSymposium: false, includesDinner: false };
-const memberAttendance = { ...member, ...attendance };
+const memberAttendance = { ...member, audience: "MEMBER", ...attendance };
 const line = { ticketType: { audience: "MEMBER", ...attendance }, guestUser: null, guestDisplayName: null };
 const booking = { revisionGroupId: "group", revisionNumber: 1, status: "SUBMITTED", approvalStatus: "NOT_REQUIRED", supersededAt: null, booker: member, lines: [line] };
 function request(token: Record<string, unknown> = { enabled: true }, data: unknown = { eventId }) {
@@ -35,7 +35,7 @@ describe("minimal event attendees", () => {
     names([booking]);
   });
 
-  it("allows an enabled section viewer without a booking and returns exactly names and attendance flags", async () => {
+  it("allows an enabled section viewer without a booking and returns exactly names, member/guest audience and attendance flags", async () => {
     names([{ ...booking, booker: { ...member, email: "private", dietaryNote: "private" } }]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [memberAttendance] });
     expect(eventQuery).toHaveBeenCalledWith({ eventId });
@@ -84,7 +84,7 @@ describe("minimal event attendees", () => {
       ] },
       { ...booking, revisionGroupId: "namesake" },
     ]);
-    expect(await getEventAttendees.run(request())).toEqual({ attendees: [{ displayName: "Cher", ...attendance }, memberAttendance, memberAttendance, { ...anna, ...attendance }] });
+    expect(await getEventAttendees.run(request())).toEqual({ attendees: [{ displayName: "Cher", audience: "GUEST", ...attendance }, memberAttendance, memberAttendance, { ...anna, audience: "GUEST", ...attendance }] });
   });
   it.each([[true, true], [true, false], [false, true], [false, false]])("returns symposium=%s and dinner=%s for current member and guest tickets only", async (includesSymposium, includesDinner) => {
     const flags = { includesSymposium, includesDinner };
@@ -98,7 +98,7 @@ describe("minimal event attendees", () => {
       ] },
     ]);
     expect((await getEventAttendees.run(request())).attendees).toEqual([
-      { displayName: "Legacy Guest", ...flags }, { firstName: "Guest", lastName: "Linked", ...flags }, { ...member, ...flags },
+      { displayName: "Legacy Guest", audience: "GUEST", ...flags }, { firstName: "Guest", lastName: "Linked", audience: "GUEST", ...flags }, { ...member, audience: "MEMBER", ...flags },
     ]);
   });
   it("fetches every page and resolves revisions across page boundaries", async () => {
@@ -110,7 +110,7 @@ describe("minimal event attendees", () => {
       ] } } as never);
     const result = await getEventAttendees.run(request());
     expect(result.attendees).toHaveLength(501);
-    expect(result.attendees).toContainEqual({ firstName: "New", lastName: "Revision", ...attendance });
+    expect(result.attendees).toContainEqual({ firstName: "New", lastName: "Revision", audience: "MEMBER", ...attendance });
     expect(result.attendees.filter((name) => "firstName" in name && name.firstName === "Alex")).toHaveLength(500);
     expect(namesQuery).toHaveBeenNthCalledWith(1, { eventId, limit: 500, offset: 0 });
     expect(namesQuery).toHaveBeenNthCalledWith(2, { eventId, limit: 500, offset: 500 });

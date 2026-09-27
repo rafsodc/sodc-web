@@ -7,7 +7,14 @@ import { auth } from "../../../config/firebase";
 
 const PAGE_SIZE = 50;
 
-export default function EventAttendees({ eventId }: { eventId: string }) {
+interface EventAttendeesProps {
+  eventId: string;
+  ticketTypes: ReadonlyArray<{ includesSymposium: boolean; includesDinner: boolean }>;
+}
+
+export default function EventAttendees({ eventId, ticketTypes }: EventAttendeesProps) {
+  const showSymposium = ticketTypes.some((ticket) => ticket.includesSymposium);
+  const showDinner = ticketTypes.some((ticket) => ticket.includesDinner);
   const [page, setPage] = useState(1);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["eventAttendees", eventId, auth.currentUser?.uid],
@@ -37,9 +44,10 @@ export default function EventAttendees({ eventId }: { eventId: string }) {
             <Table aria-label="Event attendees" size="small" sx={{ tableLayout: "fixed", "& th, & td": { px: { xs: 1, sm: 2 }, py: 1.5 } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: "50%" }}>Name</TableCell>
-                  <TableCell align="center" sx={{ overflowWrap: "anywhere" }}>Symposium</TableCell>
-                  <TableCell align="center">Dinner</TableCell>
+                  <TableCell sx={{ width: showSymposium && showDinner ? "40%" : "50%" }}>Name</TableCell>
+                  <TableCell align="center">Type</TableCell>
+                  {showSymposium && <TableCell align="center" sx={{ overflowWrap: "anywhere" }}>Symposium</TableCell>}
+                  {showDinner && <TableCell align="center">Dinner</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -48,8 +56,9 @@ export default function EventAttendees({ eventId }: { eventId: string }) {
                     <TableCell component="th" scope="row" sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
                       {"displayName" in attendee ? attendee.displayName : `${attendee.firstName} ${attendee.lastName}`}
                     </TableCell>
-                    <TableCell align="center"><Chip size="small" label={attendee.includesSymposium ? "Yes" : "No"} variant={attendee.includesSymposium ? "filled" : "outlined"} /></TableCell>
-                    <TableCell align="center"><Chip size="small" label={attendee.includesDinner ? "Yes" : "No"} variant={attendee.includesDinner ? "filled" : "outlined"} /></TableCell>
+                    <TableCell align="center">{attendee.audience === "MEMBER" ? "Member" : "Guest"}</TableCell>
+                    {showSymposium && <TableCell align="center"><Chip size="small" label={attendee.includesSymposium ? "Yes" : "No"} variant={attendee.includesSymposium ? "filled" : "outlined"} /></TableCell>}
+                    {showDinner && <TableCell align="center"><Chip size="small" label={attendee.includesDinner ? "Yes" : "No"} variant={attendee.includesDinner ? "filled" : "outlined"} /></TableCell>}
                   </TableRow>
                 ))}
               </TableBody>
