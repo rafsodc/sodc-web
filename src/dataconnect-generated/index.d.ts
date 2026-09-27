@@ -389,6 +389,22 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   reason?: string | null;
 }
 
+export interface ConfirmPotentialLostData {
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+
+export interface ConfirmPotentialLostVariables {
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  emailBounceCount: number;
+}
+
 export interface ConfirmProfileReviewData {
   user_update?: User_Key | null;
 }
@@ -1892,6 +1908,24 @@ export interface GetPaymentWebhookEventByStripeEventIdVariables {
   stripeEventId: string;
 }
 
+export interface GetPotentialLostProfileData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key;
+}
+
+export interface GetPotentialLostProfileVariables {
+  id: string;
+}
+
 export interface GetRecentNotifyDeliveryReceiptsForUserData {
   notifyDeliveryReceipts: ({
     id: string;
@@ -2040,6 +2074,7 @@ export interface GetSectionMembersData {
             serviceNumber: string;
             membershipStatus: MembershipStatus;
             rank?: string | null;
+            profileReviewedAt?: TimestampString | null;
             shareContactInfo?: boolean | null;
             mobileNumber?: string | null;
             announcementOptOutAll: boolean;
@@ -2717,6 +2752,25 @@ export interface ListOpenPaymentReconciliationExceptionsData {
   } & PaymentReconciliationException_Key)[];
 }
 
+export interface ListPotentialLostProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    membershipStatus: MembershipStatus;
+    updatedAt: TimestampString;
+    emailBounceCount: number;
+    emailLastBounceAt?: TimestampString | null;
+    emailDeliveryVersion: number;
+  } & User_Key)[];
+}
+
+export interface ListPotentialLostProfilesVariables {
+  limit: number;
+  offset: number;
+}
+
 export interface ListSectionFilesByStatusData {
   sectionFiles: ({
     id: UUIDString;
@@ -3088,6 +3142,11 @@ export interface PaymentWebhookEvent_Key {
   __typename?: 'PaymentWebhookEvent_Key';
 }
 
+export interface PotentialLostReview_Key {
+  id: UUIDString;
+  __typename?: 'PotentialLostReview_Key';
+}
+
 export interface RecordNotificationRecoveryFailureByIdData {
   notificationDelivery_updateMany: number;
 }
@@ -3295,21 +3354,6 @@ export interface TicketOrder_Key {
 export interface TicketType_Key {
   id: UUIDString;
   __typename?: 'TicketType_Key';
-}
-
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostData {
-  user_updateMany: number;
-}
-
-export interface TryApplyNotifyDeliveryUserStateAndMarkLostVariables {
-  userId: string;
-  expectedEmailDeliveryVersion: number;
-  emailDeliveryVersion: number;
-  emailBounceCount: number;
-  emailLastBounceAt?: TimestampString | null;
-  emailDeliveryStatus: string;
-  emailDeliveryStatusUpdatedAt: TimestampString;
-  emailDeliveryReceiptId: string;
 }
 
 export interface TryApplyNotifyDeliveryUserStateData {
@@ -5029,18 +5073,6 @@ export const tryApplyNotifyDeliveryUserStateRef: TryApplyNotifyDeliveryUserState
 export function tryApplyNotifyDeliveryUserState(vars: TryApplyNotifyDeliveryUserStateVariables): MutationPromise<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 export function tryApplyNotifyDeliveryUserState(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateVariables): MutationPromise<TryApplyNotifyDeliveryUserStateData, TryApplyNotifyDeliveryUserStateVariables>;
 
-interface TryApplyNotifyDeliveryUserStateAndMarkLostRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationRef<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-  operationName: string;
-}
-export const tryApplyNotifyDeliveryUserStateAndMarkLostRef: TryApplyNotifyDeliveryUserStateAndMarkLostRef;
-
-export function tryApplyNotifyDeliveryUserStateAndMarkLost(vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-export function tryApplyNotifyDeliveryUserStateAndMarkLost(dc: DataConnect, vars: TryApplyNotifyDeliveryUserStateAndMarkLostVariables): MutationPromise<TryApplyNotifyDeliveryUserStateAndMarkLostData, TryApplyNotifyDeliveryUserStateAndMarkLostVariables>;
-
 interface GetNotifyDeliveryReceiptRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: GetNotifyDeliveryReceiptVariables): QueryRef<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
@@ -5256,6 +5288,42 @@ export const resolvePaymentReconciliationExceptionRef: ResolvePaymentReconciliat
 
 export function resolvePaymentReconciliationException(vars: ResolvePaymentReconciliationExceptionVariables): MutationPromise<ResolvePaymentReconciliationExceptionData, ResolvePaymentReconciliationExceptionVariables>;
 export function resolvePaymentReconciliationException(dc: DataConnect, vars: ResolvePaymentReconciliationExceptionVariables): MutationPromise<ResolvePaymentReconciliationExceptionData, ResolvePaymentReconciliationExceptionVariables>;
+
+interface ListPotentialLostProfilesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListPotentialLostProfilesVariables): QueryRef<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListPotentialLostProfilesVariables): QueryRef<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+  operationName: string;
+}
+export const listPotentialLostProfilesRef: ListPotentialLostProfilesRef;
+
+export function listPotentialLostProfiles(vars: ListPotentialLostProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+export function listPotentialLostProfiles(dc: DataConnect, vars: ListPotentialLostProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListPotentialLostProfilesData, ListPotentialLostProfilesVariables>;
+
+interface GetPotentialLostProfileRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetPotentialLostProfileVariables): QueryRef<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetPotentialLostProfileVariables): QueryRef<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+  operationName: string;
+}
+export const getPotentialLostProfileRef: GetPotentialLostProfileRef;
+
+export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
+
+interface ConfirmPotentialLostRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+  operationName: string;
+}
+export const confirmPotentialLostRef: ConfirmPotentialLostRef;
+
+export function confirmPotentialLost(vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
 
 interface GetCurrentUserRef {
   /* Allow users to create refs without passing in DataConnect */

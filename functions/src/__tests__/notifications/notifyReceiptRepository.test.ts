@@ -104,7 +104,6 @@ describe("Data Connect Notify receipt repository", () => {
     const getById = vi.spyOn(admin, "getNotifyCallbackUserById");
     const getRecent = vi.spyOn(admin, "getRecentNotifyDeliveryReceiptsForUser");
     const applyState = vi.spyOn(admin, "tryApplyNotifyDeliveryUserState");
-    const applyStateAndLost = vi.spyOn(admin, "tryApplyNotifyDeliveryUserStateAndMarkLost");
     const user = {
       id: "user-1",
       membershipStatus: MembershipStatus.REGULAR,
@@ -130,7 +129,6 @@ describe("Data Connect Notify receipt repository", () => {
       },
     } as never);
     applyState.mockResolvedValue({ data: { user_updateMany: 1 } } as never);
-    applyStateAndLost.mockResolvedValue({ data: { user_updateMany: 0 } } as never);
 
     await expect(dataConnectNotifyReceiptRepository.findUserByEmail("alice@example.com")).resolves.toBeNull();
     await expect(dataConnectNotifyReceiptRepository.findUserByEmail("alice@example.com")).resolves.toMatchObject(user);
@@ -151,9 +149,8 @@ describe("Data Connect Notify receipt repository", () => {
       emailDeliveryReceiptId: RECEIPT_ID,
     };
     await expect(dataConnectNotifyReceiptRepository.tryApplyUserState({ ...state, markLost: false })).resolves.toBe(true);
-    await expect(dataConnectNotifyReceiptRepository.tryApplyUserState({ ...state, markLost: true })).resolves.toBe(false);
+    await expect(dataConnectNotifyReceiptRepository.tryApplyUserState({ ...state, markLost: true })).resolves.toBe(true);
     expect(applyState).toHaveBeenCalledWith(state);
-    expect(applyStateAndLost).toHaveBeenCalledWith(state);
   });
 
   it("maps announcement recipient reads, latest receipts, and versioned updates", async () => {

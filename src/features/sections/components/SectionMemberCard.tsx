@@ -41,7 +41,7 @@ export default function SectionMemberCard({ member, onSelect }: SectionMemberCar
     return (
       <Card variant="outlined" component="li" sx={{ height: "100%", position: "relative" }}>
         <CardContent sx={cardContentSx}>{header}</CardContent>
-        <Tooltip title="This member has chosen not to share their contact details">
+        <Tooltip title="Contact details are not available">
           <LockIcon
             titleAccess="Private"
             fontSize="small"

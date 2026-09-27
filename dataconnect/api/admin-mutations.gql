@@ -2718,35 +2718,6 @@ mutation TryApplyNotifyDeliveryUserState(
   )
 }
 
-mutation TryApplyNotifyDeliveryUserStateAndMarkLost(
-  $userId: String!
-  $expectedEmailDeliveryVersion: Int!
-  $emailDeliveryVersion: Int!
-  $emailBounceCount: Int!
-  $emailLastBounceAt: Timestamp
-  $emailDeliveryStatus: String!
-  $emailDeliveryStatusUpdatedAt: Timestamp!
-  $emailDeliveryReceiptId: String!
-) @auth(level: NO_ACCESS) {
-  user_updateMany(
-    where: {
-      id: { eq: $userId }
-      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
-    }
-    data: {
-      membershipStatus: LOST
-      emailBounceCount: $emailBounceCount
-      emailLastBounceAt: $emailLastBounceAt
-      emailDeliveryVersion: $emailDeliveryVersion
-      emailDeliveryStatus: $emailDeliveryStatus
-      emailDeliveryStatusUpdatedAt: $emailDeliveryStatusUpdatedAt
-      emailDeliveryReceiptId: $emailDeliveryReceiptId
-      updatedAt_expr: "request.time"
-      updatedBy: "system"
-    }
-  )
-}
-
 # ── GOV.UK Notify callback receipt ledger ────────────────────────────────────
 
 query GetNotifyDeliveryReceipt($id: String!) @auth(level: NO_ACCESS) {

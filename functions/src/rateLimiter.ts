@@ -20,6 +20,8 @@ export interface RateLimitPolicy {
 export const CALLABLE_RATE_LIMITS = {
   grantAdmin: { limit: 20, windowMs: HOUR_MS },
   revokeAdmin: { limit: 20, windowMs: HOUR_MS },
+  listPotentialLostMembers: { limit: 30, windowMs: 5 * MINUTE_MS },
+  confirmPotentialLostMember: { limit: 30, windowMs: HOUR_MS },
   listAdminUsers: { limit: 30, windowMs: 5 * MINUTE_MS },
   updateDisplayName: { limit: 5, windowMs: HOUR_MS },
   updateUserDisplayName: { limit: 30, windowMs: HOUR_MS },

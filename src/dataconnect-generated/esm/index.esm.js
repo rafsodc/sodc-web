@@ -1565,18 +1565,6 @@ export function tryApplyNotifyDeliveryUserState(dcOrVars, vars) {
   return executeMutation(tryApplyNotifyDeliveryUserStateRef(dcInstance, inputVars));
 }
 
-export const tryApplyNotifyDeliveryUserStateAndMarkLostRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'TryApplyNotifyDeliveryUserStateAndMarkLost', inputVars);
-}
-tryApplyNotifyDeliveryUserStateAndMarkLostRef.operationName = 'TryApplyNotifyDeliveryUserStateAndMarkLost';
-
-export function tryApplyNotifyDeliveryUserStateAndMarkLost(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(tryApplyNotifyDeliveryUserStateAndMarkLostRef(dcInstance, inputVars));
-}
-
 export const getNotifyDeliveryReceiptRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -1797,6 +1785,44 @@ resolvePaymentReconciliationExceptionRef.operationName = 'ResolvePaymentReconcil
 export function resolvePaymentReconciliationException(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(resolvePaymentReconciliationExceptionRef(dcInstance, inputVars));
+}
+
+export const listPotentialLostProfilesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListPotentialLostProfiles', inputVars);
+}
+listPotentialLostProfilesRef.operationName = 'ListPotentialLostProfiles';
+
+export function listPotentialLostProfiles(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listPotentialLostProfilesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const getPotentialLostProfileRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetPotentialLostProfile', inputVars);
+}
+getPotentialLostProfileRef.operationName = 'GetPotentialLostProfile';
+
+export function getPotentialLostProfile(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getPotentialLostProfileRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const confirmPotentialLostRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ConfirmPotentialLost', inputVars);
+}
+confirmPotentialLostRef.operationName = 'ConfirmPotentialLost';
+
+export function confirmPotentialLost(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(confirmPotentialLostRef(dcInstance, inputVars));
 }
 
 export const getCurrentUserRef = (dc) => {

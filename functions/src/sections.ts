@@ -1,3 +1,5 @@
+import * as firebaseAdmin from "firebase-admin";
+import { hasCurrentProfileReview } from "./memberReviewRules";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { requireEnabled, requireString, handleFunctionError } from "./helpers";
@@ -41,8 +43,9 @@ function toSectionMemberResponse(u: {
   membershipStatus: string;
   rank?: string | null;
   shareContactInfo?: boolean | null;
+  profileReviewedAt?: string | null;
 }): SectionMemberResponse {
-  const sharesContactInfo = u.shareContactInfo !== false;
+  const sharesContactInfo = u.shareContactInfo !== false && hasCurrentProfileReview(u.profileReviewedAt);
   return {
     id: u.id,
     firstName: u.firstName,
@@ -55,6 +58,16 @@ function toSectionMemberResponse(u: {
   };
 }
 
+/** Auth batch lookups fail closed; missing/unverified accounts never enter the directory. */
+async function verifiedDirectoryMembers(members: SectionMemberResponse[]): Promise<SectionMemberResponse[]> {
+  const verified = new Set<string>();
+  for (let offset = 0; offset < members.length; offset += 100) {
+    const result = await firebaseAdmin.auth().getUsers(members.slice(offset, offset + 100).map(({ id }) => ({ uid: id })));
+    for (const user of result.users) if (user.emailVerified) verified.add(user.uid);
+  }
+  return members.filter((member) => verified.has(member.id));
+}
+
 interface RawSectionMemberUser {
   id: string;
   firstName: string;
@@ -64,6 +77,7 @@ interface RawSectionMemberUser {
   membershipStatus: string;
   rank?: string | null;
   shareContactInfo?: boolean | null;
+  profileReviewedAt?: string | null;
 }
 
 /**
@@ -143,6 +157,7 @@ async function loadSectionMemberPopulation(
     if (group.membershipStatuses) {
       group.membershipStatuses.forEach((s: string) => statuses.add(s));
     }
+    if ((group.users?.length ?? 0) >= 5000) throw new HttpsError("resource-exhausted", "Directory is too large to load safely");
     for (const uag of group.users || []) {
       const u = uag.user;
       if (!explicitMap.has(u.id)) {
@@ -152,18 +167,19 @@ async function loadSectionMemberPopulation(
   }
 
   if (statuses.size === 0) {
-    return Array.from(explicitMap.values());
+    return verifiedDirectoryMembers(Array.from(explicitMap.values()));
   }
 
   const listResult = await listUsers();
   const users = (listResult.data?.users || []) as RawSectionMemberUser[];
+  if (users.length >= 5000) throw new HttpsError("resource-exhausted", "Directory is too large to load safely");
   for (const u of users) {
     if (statuses.has(u.membershipStatus) && !explicitMap.has(u.id)) {
       explicitMap.set(u.id, toSectionMemberResponse(u));
     }
   }
 
-  return Array.from(explicitMap.values());
+  return verifiedDirectoryMembers(Array.from(explicitMap.values()));
 }
 
 /**

@@ -9,6 +9,9 @@ import {
   searchSectionMembers,
 } from "../../sections";
 
+const { mockGetUsers } = vi.hoisted(() => ({ mockGetUsers: vi.fn() }));
+vi.mock("firebase-admin", () => ({ auth: () => ({ getUsers: mockGetUsers }) }));
+
 const mockGetSectionById = vi.spyOn(admin, "getSectionById");
 const mockGetUserAccessGroupsById = vi.spyOn(admin, "getUserAccessGroupsById");
 const mockGetUserMembershipStatus = vi.spyOn(admin, "getUserMembershipStatus");
@@ -21,6 +24,7 @@ const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit")
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
 
 beforeEach(() => {
+  mockGetUsers.mockImplementation(async (ids: { uid: string }[]) => ({ users: ids.map(({ uid }) => ({ uid, emailVerified: true })) }));
   mockEnsureCallableRateLimitBucket.mockResolvedValue({ data: {} } as never);
   mockConsumeCallableRateLimit.mockResolvedValue({ data: {} } as never);
 });
@@ -208,6 +212,7 @@ describe("getSectionMembersMerged", () => {
     membershipStatus: string;
     rank: string | null;
     shareContactInfo: boolean | null;
+    profileReviewedAt: string | null;
   }> = {}) {
     return {
       id: "user-1",
@@ -218,6 +223,7 @@ describe("getSectionMembersMerged", () => {
       membershipStatus: MembershipStatus.REGULAR,
       rank: null,
       shareContactInfo: true,
+      profileReviewedAt: new Date().toISOString(),
       ...overrides,
     };
   }
@@ -265,6 +271,32 @@ describe("getSectionMembersMerged", () => {
     expect(mockGetSectionById).not.toHaveBeenCalled();
     expect(mockGetSectionMembers).not.toHaveBeenCalled();
     expect(mockGetUserAccessGroupsById).not.toHaveBeenCalled();
+  });
+
+  it("batches verification checks for directories larger than the Auth lookup limit", async () => {
+    mockMembers(Array.from({ length: 101 }, (_, i) => member({ id: `member-${i}` })));
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+    expect(result.members).toHaveLength(101);
+    expect(mockGetUsers.mock.calls.map(([ids]) => ids.length)).toEqual([100, 1]);
+  });
+
+  it("fails closed when verification cannot be checked", async () => {
+    mockMembers([member()]);
+    mockGetUsers.mockRejectedValue(new Error("Auth unavailable"));
+    await expect(callAs(getSectionMembersMerged, "member-1", false, { sectionId })).rejects.toMatchObject({ code: "internal" });
+  });
+
+  it("omits unverified and missing Auth accounts", async () => {
+    mockMembers([member(), member({ id: "user-2" }), member({ id: "missing" })]);
+    mockGetUsers.mockResolvedValue({ users: [{ uid: "user-1", emailVerified: false }, { uid: "user-2", emailVerified: true }] });
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+    expect(result.members.map((user: { id: string }) => user.id)).toEqual(["user-2"]);
+  });
+
+  it.each([null, "invalid", "2000-01-01T00:00:00Z"])("locks contacts for missing, invalid or expired review %s", async (profileReviewedAt) => {
+    mockMembers([member({ profileReviewedAt, mobileNumber: "+447700900123" })]);
+    const result = await callAs(getSectionMembersMerged, "member-1", false, { sectionId });
+    expect(result.members).toEqual([expect.objectContaining({ id: "user-1", sharesContactInfo: false, email: null, mobileNumber: null })]);
   });
 
   it("includes email and rank for a member who shares contact info", async () => {

@@ -16,6 +16,7 @@ import {
 } from "../../notifyCallback.js";
 import {
   DEFAULT_NOTIFY_RECEIPT_LEASE_MS,
+  eventTimestampForReceipt,
   recipientHashForEmail,
   type NotifyReceipt,
   type NotifyReceiptProcessorDependencies,
@@ -503,8 +504,8 @@ describe("handleNotifyDelivery", () => {
     ]);
 
     expect(user.emailBounceCount).toBe(BOUNCE_THRESHOLD);
-    expect(user.membershipStatus).toBe(MembershipStatus.LOST);
-    expect(onMembershipLost).toHaveBeenCalledTimes(1);
+    expect(user.membershipStatus).toBe(MembershipStatus.REGULAR);
+    expect(onMembershipLost).not.toHaveBeenCalled();
   });
 
   it("reclaims a stale PENDING receipt without replaying an already-applied effect", async () => {
@@ -545,7 +546,7 @@ describe("handleNotifyDelivery", () => {
     );
   });
 
-  it(`marks the user LOST exactly when the ${BOUNCE_THRESHOLD} failure threshold is reached`, async () => {
+  it(`keeps membership unchanged when the ${BOUNCE_THRESHOLD} failure threshold is reached`, async () => {
     const user = repository.addUser();
     const onMembershipLost = vi.fn();
     for (let index = 1; index <= BOUNCE_THRESHOLD; index += 1) {
@@ -561,62 +562,40 @@ describe("handleNotifyDelivery", () => {
     }
 
     expect(user.emailBounceCount).toBe(BOUNCE_THRESHOLD);
-    expect(user.membershipStatus).toBe(MembershipStatus.LOST);
-    expect(onMembershipLost).toHaveBeenCalledTimes(1);
+    expect(user.membershipStatus).toBe(MembershipStatus.REGULAR);
+    expect(onMembershipLost).not.toHaveBeenCalled();
   });
 
-  it("retries LOST claim reconciliation after the status update has already applied", async () => {
+  it("uses the best available timestamp for bounce ordering", () => {
+    expect(eventTimestampForReceipt(receipt({ completed_at: "invalid", sent_at: "2026-07-17T11:00:00Z" }), NOW)).toBe("2026-07-17T11:00:00.000Z");
+    expect(eventTimestampForReceipt(receipt({ completed_at: undefined, created_at: "2026-07-17T10:00:00Z" }), NOW)).toBe("2026-07-17T10:00:00.000Z");
+    expect(eventTimestampForReceipt(receipt({ completed_at: undefined }), NOW)).toBe(NOW);
+  });
+
+  it("recovers a failed bounce write without changing membership", async () => {
     const user = repository.addUser();
-    const onMembershipLost = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("Firebase Auth unavailable"))
-      .mockResolvedValue(undefined);
+    const write = vi.spyOn(repository, "tryApplyUserState").mockRejectedValueOnce(new Error("database unavailable"));
+    const item = receipt({ id: "failed-write", status: "permanent-failure" });
+    await expect(sendReceipt(repository, item)).rejects.toThrow("database unavailable");
+    expect(repository.receipts.get(item.id)?.processingStatus).toBe(NotifyDeliveryReceiptProcessingStatus.FAILED);
+    await sendReceipt(repository, item);
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(user.emailBounceCount).toBe(1);
+    expect(user.membershipStatus).toBe(MembershipStatus.REGULAR);
+    expect(repository.receipts.get(item.id)?.processingStatus).toBe(NotifyDeliveryReceiptProcessingStatus.PROCESSED);
+  });
 
-    await sendReceipt(
-      repository,
-      receipt({
-        id: "claim-retry-1",
-        status: "permanent-failure",
-        completed_at: "2026-07-17T10:00:00.000Z",
-      }),
-      onMembershipLost
-    );
-    await sendReceipt(
-      repository,
-      receipt({
-        id: "claim-retry-2",
-        status: "permanent-failure",
-        completed_at: "2026-07-17T11:00:00.000Z",
-      }),
-      onMembershipLost
-    );
-    const thresholdReceipt = receipt({
-      id: "claim-retry-3",
-      status: "permanent-failure",
-      completed_at: "2026-07-17T12:00:00.000Z",
-    });
-
-    await expect(
-      sendReceipt(repository, thresholdReceipt, onMembershipLost)
-    ).rejects.toThrow("Firebase Auth unavailable");
-    expect(user.membershipStatus).toBe(MembershipStatus.LOST);
-    expect(repository.receipts.get(thresholdReceipt.id)?.processingStatus).toBe(
-      NotifyDeliveryReceiptProcessingStatus.FAILED
-    );
-
-    const response = await sendReceipt(
-      repository,
-      thresholdReceipt,
-      onMembershipLost
-    );
-
-    expect(response.status).toHaveBeenCalledWith(200);
-    expect(onMembershipLost).toHaveBeenCalledTimes(2);
-    expect(repository.userStateApplyCount).toBe(3);
-    expect(repository.receipts.get(thresholdReceipt.id)?.attemptCount).toBe(2);
-    expect(repository.receipts.get(thresholdReceipt.id)?.processingStatus).toBe(
-      NotifyDeliveryReceiptProcessingStatus.PROCESSED
-    );
+  it("does not change membership or reconcile claims when a threshold receipt is replayed", async () => {
+    const user = repository.addUser();
+    const onMembershipLost = vi.fn().mockRejectedValue(new Error("must never be called"));
+    for (let index = 1; index <= 3; index++) {
+      const item = receipt({ id: `replay-${index}`, status: "permanent-failure", completed_at: `2026-07-17T1${index}:00:00.000Z` });
+      await sendReceipt(repository, item, onMembershipLost);
+      await sendReceipt(repository, item, onMembershipLost);
+    }
+    expect(user.emailBounceCount).toBe(3);
+    expect(user.membershipStatus).toBe(MembershipStatus.REGULAR);
+    expect(onMembershipLost).not.toHaveBeenCalled();
   });
 
   it("keeps announcement delivery state ordered independently of callback arrival", async () => {

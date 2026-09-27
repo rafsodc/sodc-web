@@ -792,3 +792,15 @@ type CallableRateLimitBucket @table(key: ["userId", "functionName", "windowStart
   windowStart: Timestamp!
   count: Int! @default(value: 0)
 }
+
+# Immutable administrator confirmation, committed atomically with the lost transition.
+type PotentialLostReview @table {
+  id: UUID! @default(expr: "uuidV4()")
+  user: User!
+  previousStatus: MembershipStatus!
+  reasons: [String!]!
+  lastSignInTime: String
+  emailBounceCount: Int!
+  reviewedBy: String!
+  reviewedAt: Timestamp! @default(expr: "request.time")
+}
