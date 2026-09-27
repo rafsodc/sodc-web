@@ -18,6 +18,9 @@ Draft, cancelled, rejected, pending and superseded revisions are excluded.
 Where a pending revision leaves an earlier approved revision active, that earlier
 revision remains visible. Only the latest eligible revision per revision group
 is used. Distinct ticket places with identical names remain separate entries.
+The query filters out inactive bookings in the database and reads all matching
+bookings in explicit pages of 500, ordered by booking ID. Revision selection runs
+across all pages, avoiding Data Connect's implicit 100-row query limit.
 
 Members and linked guests use their structured profile names and sort by surname,
 then first name. Legacy guest names are preserved intact and sorted by their full

@@ -3,8 +3,18 @@ query GetAttendeeEventSection($eventId: UUID!) @auth(level: NO_ACCESS) {
   event(id: $eventId) { section { id } }
 }
 
-query GetEventAttendeeNames($eventId: UUID!) @auth(level: NO_ACCESS) {
-  bookings(where: { eventId: { eq: $eventId } }) {
+query GetEventAttendeeNames($eventId: UUID!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  bookings(
+    where: {
+      eventId: { eq: $eventId }
+      status: { in: [SUBMITTED, CONFIRMED] }
+      approvalStatus: { in: [NOT_REQUIRED, APPROVED] }
+      supersededAt: { isNull: true }
+    }
+    orderBy: { id: ASC }
+    limit: $limit
+    offset: $offset
+  ) {
     revisionGroupId
     revisionNumber
     status

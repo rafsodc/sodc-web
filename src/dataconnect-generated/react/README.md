@@ -5978,6 +5978,8 @@ The `GetEventAttendeeNames` Query requires an argument of type `GetEventAttendee
 ```javascript
 export interface GetEventAttendeeNamesVariables {
   eventId: UUIDString;
+  limit: number;
+  offset: number;
 }
 ```
 ### Return Type
@@ -6025,13 +6027,15 @@ export default function GetEventAttendeeNamesComponent() {
   // The `useGetEventAttendeeNames` Query hook requires an argument of type `GetEventAttendeeNamesVariables`:
   const getEventAttendeeNamesVars: GetEventAttendeeNamesVariables = {
     eventId: ..., 
+    limit: ..., 
+    offset: ..., 
   };
 
   // You don't have to do anything to "execute" the Query.
   // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
   const query = useGetEventAttendeeNames(getEventAttendeeNamesVars);
   // Variables can be defined inline as well.
-  const query = useGetEventAttendeeNames({ eventId: ..., });
+  const query = useGetEventAttendeeNames({ eventId: ..., limit: ..., offset: ..., });
 
   // You can also pass in a `DataConnect` instance to the Query hook function.
   const dataConnect = getDataConnect(connectorConfig);

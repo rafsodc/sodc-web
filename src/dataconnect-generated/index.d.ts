@@ -1377,6 +1377,8 @@ export interface GetEventAttendeeNamesData {
 
 export interface GetEventAttendeeNamesVariables {
   eventId: UUIDString;
+  limit: number;
+  offset: number;
 }
 
 export interface GetEventByIdData {

@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getAttendeeEventSection, getEventAttendeeNames } from "@dataconnect/admin-generated";
+import { getAttendeeEventSection, getEventAttendeeNames, type GetEventAttendeeNamesData } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { requireSectionAccess } from "./sectionAccess";
@@ -16,13 +16,17 @@ export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (req
     const { data: eventData } = await getAttendeeEventSection({ eventId });
     if (!eventData.event) throw new HttpsError("not-found", "Resource not found");
     await requireSectionAccess(eventData.event.section.id, request.auth!.uid, request.auth!.token.admin === true);
-    const { data } = await getEventAttendeeNames({ eventId });
-    const current = new Map<string, typeof data.bookings[number]>();
-    for (const booking of data.bookings) {
-      if (booking.supersededAt != null || !["SUBMITTED", "CONFIRMED"].includes(booking.status) ||
-          !["NOT_REQUIRED", "APPROVED"].includes(booking.approvalStatus)) continue;
-      const previous = current.get(booking.revisionGroupId);
-      if (!previous || booking.revisionNumber > previous.revisionNumber) current.set(booking.revisionGroupId, booking);
+    const current = new Map<string, GetEventAttendeeNamesData["bookings"][number]>();
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data } = await getEventAttendeeNames({ eventId, limit: pageSize, offset });
+      for (const booking of data.bookings) {
+        if (booking.supersededAt != null || !["SUBMITTED", "CONFIRMED"].includes(booking.status) ||
+            !["NOT_REQUIRED", "APPROVED"].includes(booking.approvalStatus)) continue;
+        const previous = current.get(booking.revisionGroupId);
+        if (!previous || booking.revisionNumber > previous.revisionNumber) current.set(booking.revisionGroupId, booking);
+      }
+      if (data.bookings.length < pageSize) break;
     }
     const attendees: AttendeeName[] = [];
     for (const booking of current.values()) {

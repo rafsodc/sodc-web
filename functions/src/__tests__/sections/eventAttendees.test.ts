@@ -37,7 +37,7 @@ describe("names-only event attendees", () => {
     names([{ ...booking, booker: { ...member, email: "private", dietaryNote: "private" } }]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [member] });
     expect(eventQuery).toHaveBeenCalledWith({ eventId });
-    expect(namesQuery).toHaveBeenCalledWith({ eventId });
+    expect(namesQuery).toHaveBeenCalledWith({ eventId, limit: 500, offset: 0 });
   });
   it.each([undefined, { enabled: false }, { enabled: false, admin: true }])("rejects unauthenticated or disabled callers (%j)", async (token) => {
     const req = token ? request(token) : { data: { eventId } } as Parameters<typeof getEventAttendees.run>[0];
@@ -84,6 +84,20 @@ describe("names-only event attendees", () => {
     ]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [{ displayName: "Cher" }, member, member, anna] });
   });
+  it("fetches every page and resolves revisions across page boundaries", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, i) => ({ ...booking, revisionGroupId: `group-${i}` }));
+    namesQuery.mockResolvedValueOnce({ data: { bookings: firstPage } } as never)
+      .mockResolvedValueOnce({ data: { bookings: [
+        { ...booking, revisionGroupId: "group-0", revisionNumber: 2, booker: { firstName: "New", lastName: "Revision" } },
+        { ...booking, revisionGroupId: "group-500" },
+      ] } } as never);
+    const result = await getEventAttendees.run(request());
+    expect(result.attendees).toHaveLength(501);
+    expect(result.attendees).toContainEqual({ firstName: "New", lastName: "Revision" });
+    expect(result.attendees.filter((name) => "firstName" in name && name.firstName === "Alex")).toHaveLength(500);
+    expect(namesQuery).toHaveBeenNthCalledWith(1, { eventId, limit: 500, offset: 0 });
+    expect(namesQuery).toHaveBeenNthCalledWith(2, { eventId, limit: 500, offset: 500 });
+  });
   it("returns empty attendance and handles query failures", async () => {
     names([]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [] });
@@ -93,6 +107,12 @@ describe("names-only event attendees", () => {
   it("keeps the dedicated queries server-only and excludes private attendee data", () => {
     const query = readFileSync(new URL("../../../../dataconnect/api/attendees.gql", import.meta.url), "utf8");
     expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(2);
+    expect(query).toContain("status: { in: [SUBMITTED, CONFIRMED] }");
+    expect(query).toContain("approvalStatus: { in: [NOT_REQUIRED, APPROVED] }");
+    expect(query).toContain("supersededAt: { isNull: true }");
+    expect(query).toContain("orderBy: { id: ASC }");
+    expect(query).toContain("limit: $limit");
+    expect(query).toContain("offset: $offset");
     expect(query).not.toMatch(/dietary|email|phone|accommodation|price|payment|sitNextTo|approvalNote/i);
   });
 });

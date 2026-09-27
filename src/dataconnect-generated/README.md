@@ -7588,6 +7588,8 @@ The `GetEventAttendeeNames` query requires an argument of type `GetEventAttendee
 ```typescript
 export interface GetEventAttendeeNamesVariables {
   eventId: UUIDString;
+  limit: number;
+  offset: number;
 }
 ```
 ### Return Type
@@ -7628,13 +7630,15 @@ import { connectorConfig, getEventAttendeeNames, GetEventAttendeeNamesVariables 
 // The `GetEventAttendeeNames` query requires an argument of type `GetEventAttendeeNamesVariables`:
 const getEventAttendeeNamesVars: GetEventAttendeeNamesVariables = {
   eventId: ..., 
+  limit: ..., 
+  offset: ..., 
 };
 
 // Call the `getEventAttendeeNames()` function to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await getEventAttendeeNames(getEventAttendeeNamesVars);
 // Variables can be defined inline as well.
-const { data } = await getEventAttendeeNames({ eventId: ..., });
+const { data } = await getEventAttendeeNames({ eventId: ..., limit: ..., offset: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -7658,12 +7662,14 @@ import { connectorConfig, getEventAttendeeNamesRef, GetEventAttendeeNamesVariabl
 // The `GetEventAttendeeNames` query requires an argument of type `GetEventAttendeeNamesVariables`:
 const getEventAttendeeNamesVars: GetEventAttendeeNamesVariables = {
   eventId: ..., 
+  limit: ..., 
+  offset: ..., 
 };
 
 // Call the `getEventAttendeeNamesRef()` function to get a reference to the query.
 const ref = getEventAttendeeNamesRef(getEventAttendeeNamesVars);
 // Variables can be defined inline as well.
-const ref = getEventAttendeeNamesRef({ eventId: ..., });
+const ref = getEventAttendeeNamesRef({ eventId: ..., limit: ..., offset: ..., });
 
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
