@@ -1,16 +1,19 @@
-# Names-only event attendees (#616)
+# Event attendee tab (#616, #620)
 
-The event details page shows attendees to signed-in, enabled users who can view
+The event details page has a separate Attendees tab showing attendees to signed-in, enabled users who can view
 the event through its section. Explicit access groups, membership-based access,
 section moderators and administrators follow the existing section access rules.
 Having a booking is not required. Anonymous visitors and guest payment links
 do not grant access.
 
-`getEventAttendees` checks access before running the server-only names query.
-Its response is `{ attendees: [...] }`. Each entry contains only `firstName` and
+`getEventAttendees` checks access before running the server-only attendee query.
+Its response is `{ attendees: [...] }`. Each entry contains `firstName` and
 `lastName`, or `displayName` for an unlinked guest whose legacy record stores a
-single name. No IDs, dietary requirements, contact information, ticket details,
-approval status or payment information reach the browser in this response.
+single name, plus `includesSymposium` and `includesDinner`. These two booleans
+come directly from the current booking line's ticket type; no ticket title or
+price is returned. This is the explicitly authorised expansion of #616's original
+names-only response. No IDs, dietary requirements, contact information, approval
+status or payment information reach the browser in this response.
 
 Attendance follows the existing organiser ticket list: submitted and confirmed
 bookings with approved or unnecessary approval, including unpaid bookings.
@@ -25,10 +28,16 @@ across all pages, avoiding Data Connect's implicit 100-row query limit.
 Members and linked guests use their structured profile names and sort by surname,
 then first name. Legacy guest names are preserved intact and sorted by their full
 entered name; missing names are omitted rather than guessed. The interface pages
-the sorted names in groups of 50, with loading, empty and retry states. Lists are
+the sorted attendees in groups of 50, with loading, empty and retry states.
+The responsive table has Name, Symposium and Dinner columns with explicit Yes/No
+labels and row/column headers. About retains its booking button without an attendee
+list above it. Attendee data is fetched only when its tab is selected. Lists are
 cached separately per viewer and discarded when unmounted; completing a booking
 invalidates the event's list.
 
 Organiser-managed guests (#615) are not yet implemented. Their names should join
 this response when that booking model is added. Full organiser attendee views
 are unchanged.
+
+Deploy the updated connector and attendee callable before the frontend so the
+two attendance flags are available when the new tab is released.

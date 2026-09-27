@@ -1367,6 +1367,8 @@ export interface GetEventAttendeeNamesData {
       };
       ticketType: {
         audience: TicketAudience;
+        includesSymposium: boolean;
+        includesDinner: boolean;
       };
     })[];
   })[];

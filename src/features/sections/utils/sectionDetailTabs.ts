@@ -1,5 +1,5 @@
-export type EventDetailTab = "about" | "book";
+export type EventDetailTab = "about" | "book" | "attendees";
 
 export function eventDetailTabLabel(tab: EventDetailTab): string {
-  return tab === "about" ? "About" : "Book";
+  return { about: "About", book: "Book", attendees: "Attendees" }[tab];
 }

@@ -5,5 +5,6 @@ describe("sectionDetailTabs", () => {
   it("maps event detail tab ids to labels", () => {
     expect(eventDetailTabLabel("about")).toBe("About");
     expect(eventDetailTabLabel("book")).toBe("Book");
+    expect(eventDetailTabLabel("attendees")).toBe("Attendees");
   });
 });
