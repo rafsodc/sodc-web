@@ -15,7 +15,7 @@ query GetPotentialLostProfile($id: String!) @auth(level: NO_ACCESS) {
 mutation ConfirmPotentialLost(
   $userId: String!, $expectedStatus: MembershipStatus!, $expectedUpdatedAt: Timestamp!,
   $expectedEmailDeliveryVersion: Int!, $reviewedBy: String!, $reasons: [String!]!,
-  $lastSignInTime: String, $emailBounceCount: Int!
+  $lastSignInTime: String, $lastActivityTime: String, $inactivitySince: String, $activitySource: String, $emailBounceCount: Int!
 ) @auth(level: NO_ACCESS) @transaction {
   user_updateMany(
     where: {
@@ -28,6 +28,7 @@ mutation ConfirmPotentialLost(
   ) @check(expr: "this == 1", message: "POTENTIAL_LOST_CONFLICT")
   potentialLostReview_insert(data: {
     userId: $userId, previousStatus: $expectedStatus, reasons: $reasons,
-    lastSignInTime: $lastSignInTime, emailBounceCount: $emailBounceCount, reviewedBy: $reviewedBy
+    lastSignInTime: $lastSignInTime, lastActivityTime: $lastActivityTime,
+    inactivitySince: $inactivitySince, activitySource: $activitySource, emailBounceCount: $emailBounceCount, reviewedBy: $reviewedBy
   })
 }

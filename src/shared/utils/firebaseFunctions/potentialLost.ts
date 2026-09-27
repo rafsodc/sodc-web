@@ -9,6 +9,8 @@ export interface PotentialLostMember {
   membershipStatus: string;
   lastSignInTime: string | null;
   inactivitySince: string | null;
+  lastActivityTime: string | null;
+  activitySource: "TOKEN_REFRESH" | "SIGN_IN" | "ACCOUNT_CREATED" | null;
   emailBounceCount: number;
   emailLastBounceAt: string | null;
   reasons: string[];

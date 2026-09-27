@@ -26,18 +26,20 @@ with search and UI pagination. Server queries page through all profiles and Auth
 users, so candidates do not depend on returning to the website or a scheduled job.
 Each person appears once with every applicable reason:
 
-- Last sign-in is more than three calendar years old.
+- Last recorded activity is more than three calendar years old. Use the most
+  recent valid Auth token-refresh or sign-in timestamp. A token refresh signals
+  use of an authenticated session, not necessarily deliberate human interaction.
 - At least three distinct permanent email failures since the latest delivered
   message. Duplicate/replayed receipts do not increment this count.
 
-For never-signed-in accounts, the Auth creation date starts the inactivity clock.
+When neither activity timestamp is valid, the Auth creation date starts the inactivity clock.
 Imported accounts therefore accrue only observable time since creation on this
 system; historical inactivity is not invented. Missing/invalid dates do not prove
 inactivity. Profiles without an Auth account are omitted from this review flow.
 Already-LOST members are excluded. Protected administrator accounts are shown
 with the existing status-transition restriction and a disabled confirmation action.
 
-A new login or delivery clears the relevant reason on the next refresh. There is
+New recorded activity or delivery clears the relevant reason on the next refresh. There is
 no persistent dismiss/defer action in this first version: administrators can leave
 candidates pending. Flagging never changes access or membership, and receipts
 (including recovery/replay) no longer change either automatically.
@@ -46,7 +48,10 @@ candidates pending. Flagging never changes access or membership, and receipts
 changed evidence. The existing fail-closed membership helper revokes access before
 an atomic conditional profile update plus `PotentialLostReview` audit insert.
 The transaction compares membership status, update timestamp and delivery version.
-The audit records reviewer, timestamp, previous status and reviewed evidence.
+The audit records reviewer, timestamp, previous status and reviewed evidence,
+including the activity timestamp, its source and the inactivity baseline. The
+actual sign-in date remains separate. These values also enter the review token,
+so newer activity invalidates a previously loaded confirmation.
 A failed conditional write reconciles claims with the actual stored status;
 retrying a completed transition repairs claims without another audit entry.
 The existing membership notification path runs for a successful new transition.
@@ -54,8 +59,8 @@ The application's existing `LOST` status represents the requested `ROLE_LOST`.
 
 Calendar thresholds use UTC anniversaries with leap-day clamping. The exact
 anniversary remains within the window; immediately afterwards it is overdue.
-Auth and Data Connect are separate services: re-reading login evidence immediately
-before confirmation minimises, but cannot make atomic, a simultaneous sign-in.
+Auth and Data Connect are separate services: re-reading activity evidence immediately
+before confirmation minimises, but cannot make atomic, a simultaneous token refresh or sign-in.
 
 ## Deployment and validation
 

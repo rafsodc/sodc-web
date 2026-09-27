@@ -5,7 +5,7 @@ import { listPotentialLostMembers, confirmPotentialLostMember, type PotentialLos
 vi.mock("../../../../shared/utils/firebaseFunctions/potentialLost", () => ({ listPotentialLostMembers: vi.fn(), confirmPotentialLostMember: vi.fn() }));
 const list = vi.mocked(listPotentialLostMembers);
 const confirm = vi.mocked(confirmPotentialLostMember);
-const member: PotentialLostMember = { id: "one", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com", membershipStatus: "REGULAR", lastSignInTime: "2020-01-01", inactivitySince: "2020-01-01", emailBounceCount: 3, emailLastBounceAt: "2026-01-01", reasons: ["INACTIVE", "BOUNCES"], canConfirm: true, blockedReason: null, reviewToken: "review" };
+const member: PotentialLostMember = { id: "one", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com", membershipStatus: "REGULAR", lastSignInTime: "2020-01-01", inactivitySince: "2020-01-01", lastActivityTime: "2020-02-01", activitySource: "TOKEN_REFRESH", emailBounceCount: 3, emailLastBounceAt: "2026-01-01", reasons: ["INACTIVE", "BOUNCES"], canConfirm: true, blockedReason: null, reviewToken: "review" };
 beforeEach(() => { list.mockReset(); confirm.mockReset(); list.mockResolvedValue({ members: [member] }); });
 describe("potential lost admin list", () => {
   it("shows reasons and evidence but changes nothing until explicit confirmation", async () => {
@@ -13,7 +13,10 @@ describe("potential lost admin list", () => {
     render(<PotentialLostMembers />);
     expect(screen.getByLabelText("Loading potential lost members")).toBeInTheDocument();
     expect(await screen.findByText("ada@example.com")).toBeInTheDocument();
-    expect(screen.getByText("No sign-in for over three years; Repeated email bounces")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Last activity" })).toBeInTheDocument();
+    expect(screen.getByText("01/02/2020")).toBeInTheDocument();
+    expect(screen.getByText("Token refresh")).toBeInTheDocument();
+    expect(screen.getByText("No recorded activity for over three years; Repeated email bounces")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mark as Lost" }));
     expect(confirm).not.toHaveBeenCalled();
     expect(screen.getByText(/removes their member access/)).toBeInTheDocument();
@@ -40,10 +43,10 @@ describe("potential lost admin list", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
   it("disables changes when the existing membership rules forbid them", async () => {
-    list.mockResolvedValue({ members: [{ ...member, canConfirm: false, blockedReason: "Administrator accounts are protected", lastSignInTime: null }] });
+    list.mockResolvedValue({ members: [{ ...member, canConfirm: false, blockedReason: "Administrator accounts are protected", lastSignInTime: null, lastActivityTime: null, activitySource: "ACCOUNT_CREATED" }] });
     render(<PotentialLostMembers />);
     expect(await screen.findByRole("button", { name: "Mark as Lost" })).toBeDisabled();
-    expect(screen.getByText(/Never signed in/)).toBeInTheDocument();
+    expect(screen.getByText(/No activity recorded/)).toBeInTheDocument();
     expect(screen.getByText("Administrator accounts are protected")).toBeInTheDocument();
   });
 });

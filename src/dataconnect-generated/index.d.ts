@@ -402,6 +402,9 @@ export interface ConfirmPotentialLostVariables {
   reviewedBy: string;
   reasons: string[];
   lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
   emailBounceCount: number;
 }
 

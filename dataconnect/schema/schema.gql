@@ -800,6 +800,9 @@ type PotentialLostReview @table {
   previousStatus: MembershipStatus!
   reasons: [String!]!
   lastSignInTime: String
+  lastActivityTime: String
+  inactivitySince: String
+  activitySource: String
   emailBounceCount: Int!
   reviewedBy: String!
   reviewedAt: Timestamp! @default(expr: "request.time")

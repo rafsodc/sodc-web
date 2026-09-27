@@ -45,7 +45,7 @@ export default function PotentialLostMembers() {
   return (
     <Box>
       <Typography component="h2" variant="h6">Potential lost members</Typography>
-      <Typography sx={{ mb: 2 }}>Review members with no sign-in for over three years or three consecutive email bounces. Being listed here does not change their membership or access. Members leave this list when their qualifying reasons clear.</Typography>
+      <Typography sx={{ mb: 2 }}>Review members with no recorded activity for over three years or three consecutive email bounces. Being listed here does not change their membership or access. Members leave this list when their qualifying reasons clear.</Typography>
       <SearchBar value={search} onChange={(value) => { setSearch(value); setPage(1); }} onRefresh={refresh} loading={loading || saving} label="Find a member" />
       {message && <Alert severity="success" onClose={() => setMessage(null)}>{message}</Alert>}
       {error && <Alert severity="error" action={<Button color="inherit" disabled={saving} onClick={() => void refresh()}>Retry</Button>}>{error}</Alert>}
@@ -53,13 +53,13 @@ export default function PotentialLostMembers() {
         <>
           <TableContainer>
             <Table aria-label="Potential lost members">
-              <TableHead><TableRow><TableCell>Member</TableCell><TableCell>Membership</TableCell><TableCell>Reason</TableCell><TableCell>Last sign-in</TableCell><TableCell>Email bounces</TableCell><TableCell>Action</TableCell></TableRow></TableHead>
+              <TableHead><TableRow><TableCell>Member</TableCell><TableCell>Membership</TableCell><TableCell>Reason</TableCell><TableCell>Last activity</TableCell><TableCell>Email bounces</TableCell><TableCell>Action</TableCell></TableRow></TableHead>
               <TableBody>{filtered.slice((currentPage - 1) * 25, currentPage * 25).map((member) => (
                 <TableRow key={member.id}>
                   <TableCell>{member.firstName} {member.lastName}<Typography variant="body2">{member.email}</Typography></TableCell>
                   <TableCell>{getMembershipStatusLabel(member.membershipStatus)}</TableCell>
-                  <TableCell>{member.reasons.map((reason) => reason === "INACTIVE" ? "No sign-in for over three years" : "Repeated email bounces").join("; ")}</TableCell>
-                  <TableCell>{member.lastSignInTime ? date(member.lastSignInTime) : `Never signed in — account created ${date(member.inactivitySince)}`}</TableCell>
+                  <TableCell>{member.reasons.map((reason) => reason === "INACTIVE" ? "No recorded activity for over three years" : "Repeated email bounces").join("; ")}</TableCell>
+                  <TableCell>{member.lastActivityTime ? date(member.lastActivityTime) : member.inactivitySince ? `No activity recorded — account created ${date(member.inactivitySince)}` : "Not recorded"}{member.lastActivityTime && <Typography variant="body2">{member.activitySource === "TOKEN_REFRESH" ? "Token refresh" : "Sign-in"}</Typography>}</TableCell>
                   <TableCell>{member.emailBounceCount}{member.emailLastBounceAt && <Typography variant="body2">Last bounce: {date(member.emailLastBounceAt)}</Typography>}</TableCell>
                   <TableCell><Button disabled={!member.canConfirm || saving} onClick={() => setSelected(member)}>Mark as Lost</Button>{member.blockedReason && <Typography variant="body2">{member.blockedReason}</Typography>}</TableCell>
                 </TableRow>

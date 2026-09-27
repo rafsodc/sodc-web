@@ -52,6 +52,38 @@ describe("potential lost review", () => {
     expect(potentialLostCandidate({ ...profile, membershipStatus: sdk.MembershipStatus.LOST }, auth)).toBeNull();
     expect(potentialLostCandidate({ ...profile, emailBounceCount: 0 }, { ...auth, metadata: { ...auth.metadata, lastSignInTime: new Date().toISOString() } })).toBeNull();
   });
+  it("does not flag a member who stays signed in and refreshes tokens", () => {
+    const recent = { ...auth, metadata: { ...auth.metadata, lastRefreshTime: new Date().toISOString() } };
+    expect(potentialLostCandidate({ ...profile, emailBounceCount: 0 }, recent)).toBeNull();
+    expect(potentialLostCandidate(profile, recent)?.reasons).toEqual(["BOUNCES"]);
+  });
+  it.each([
+    ["2021-01-01", "2022-01-01", "2022-01-01T00:00:00.000Z", "TOKEN_REFRESH"],
+    ["2022-01-01", "2021-01-01", "2022-01-01T00:00:00.000Z", "SIGN_IN"],
+    ["invalid", "2022-01-01", "2022-01-01T00:00:00.000Z", "TOKEN_REFRESH"],
+    ["2022-01-01", "invalid", "2022-01-01T00:00:00.000Z", "SIGN_IN"],
+    ["invalid", "invalid", null, "ACCOUNT_CREATED"],
+  ])("selects the latest valid activity (%s / %s)", (lastSignInTime, lastRefreshTime, expected, source) => {
+    const candidate = potentialLostCandidate(profile, { ...auth, metadata: { ...auth.metadata, lastSignInTime, lastRefreshTime } });
+    expect(candidate?.lastActivityTime).toBe(expected);
+    expect(candidate?.activitySource).toBe(source);
+  });
+  it("rejects a newer token refresh between listing and confirmation even when bounces still qualify", async () => {
+    const initial = confirmation();
+    mocks.getUser.mockResolvedValue({ ...auth, metadata: { ...auth.metadata, lastRefreshTime: new Date().toISOString() } });
+    await expect(confirmPotentialLostMember.run(initial)).rejects.toMatchObject({ code: "failed-precondition" });
+    expect(mutation).not.toHaveBeenCalled();
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+  });
+  it("audits token activity separately from the actual sign-in", async () => {
+    const refreshed = { ...auth, metadata: { ...auth.metadata, lastRefreshTime: "2022-01-01T00:00:00Z" } };
+    mocks.getUser.mockResolvedValue(refreshed);
+    await confirmPotentialLostMember.run(request({ userId: "member", reviewToken: potentialLostCandidate(profile, refreshed)!.reviewToken }));
+    expect(mutation).toHaveBeenCalledWith(expect.objectContaining({
+      lastSignInTime: "2020-01-01T00:00:00.000Z", lastActivityTime: "2022-01-01T00:00:00.000Z",
+      inactivitySince: "2022-01-01T00:00:00.000Z", activitySource: "TOKEN_REFRESH",
+    }));
+  });
   it("uses account creation for never-login accounts without assuming pre-import history", () => {
     const never = { ...auth, metadata: { ...auth.metadata, lastSignInTime: "", creationTime: new Date().toISOString() } };
     expect(potentialLostCandidate({ ...profile, emailBounceCount: 0 }, never)).toBeNull();

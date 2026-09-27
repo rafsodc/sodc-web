@@ -16573,6 +16573,9 @@ export interface ConfirmPotentialLostVariables {
   reviewedBy: string;
   reasons: string[];
   lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
   emailBounceCount: number;
 }
 ```
@@ -16631,11 +16634,14 @@ export default function ConfirmPotentialLostComponent() {
     reviewedBy: ..., 
     reasons: ..., 
     lastSignInTime: ..., // optional
+    lastActivityTime: ..., // optional
+    inactivitySince: ..., // optional
+    activitySource: ..., // optional
     emailBounceCount: ..., 
   };
   mutation.mutate(confirmPotentialLostVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., emailBounceCount: ..., });
+  mutation.mutate({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., lastActivityTime: ..., inactivitySince: ..., activitySource: ..., emailBounceCount: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

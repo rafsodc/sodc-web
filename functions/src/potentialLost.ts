@@ -17,10 +17,22 @@ import { govNotifySecrets } from "./mailer";
 
 type Profile = NonNullable<GetPotentialLostProfileData["user"]>;
 
+function validTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
 export function potentialLostCandidate(profile: Profile, auth: admin.auth.UserRecord, now = new Date()) {
   if (profile.membershipStatus === "LOST") return null;
-  const lastSignInTime = auth.metadata.lastSignInTime || null;
-  const inactivitySince = lastSignInTime || auth.metadata.creationTime || null;
+  const lastSignInTime = validTimestamp(auth.metadata.lastSignInTime);
+  const lastRefreshTime = validTimestamp(auth.metadata.lastRefreshTime);
+  const refreshIsLatest = Boolean(lastRefreshTime && (!lastSignInTime || lastRefreshTime > lastSignInTime));
+  const lastActivityTime = refreshIsLatest ? lastRefreshTime : lastSignInTime;
+  const inactivitySince = lastActivityTime || validTimestamp(auth.metadata.creationTime);
+  const activitySource = lastActivityTime
+    ? (refreshIsLatest ? "TOKEN_REFRESH" : "SIGN_IN")
+    : (inactivitySince ? "ACCOUNT_CREATED" : null);
   const reasons: string[] = [];
   if (isOlderThanYears(inactivitySince, 3, now)) reasons.push("INACTIVE");
   if (profile.emailBounceCount >= 3) reasons.push("BOUNCES");
@@ -29,10 +41,10 @@ export function potentialLostCandidate(profile: Profile, auth: admin.auth.UserRe
   return {
     id: profile.id, firstName: profile.firstName, lastName: profile.lastName,
     email: profile.email, membershipStatus: profile.membershipStatus,
-    lastSignInTime, inactivitySince, emailBounceCount: profile.emailBounceCount,
+    lastSignInTime, lastActivityTime, inactivitySince, activitySource, emailBounceCount: profile.emailBounceCount,
     emailLastBounceAt: profile.emailLastBounceAt ?? null, reasons,
     canConfirm: validation.allowed, blockedReason: validation.allowed ? null : validation.error ?? "This status cannot be changed to Lost",
-    reviewToken: createHash("sha256").update(JSON.stringify({ profile, lastSignInTime, inactivitySince, reasons, admin: auth.customClaims?.admin === true })).digest("hex"),
+    reviewToken: createHash("sha256").update(JSON.stringify({ profile, lastSignInTime, lastActivityTime, inactivitySince, activitySource, reasons, admin: auth.customClaims?.admin === true })).digest("hex"),
   };
 }
 
@@ -82,7 +94,8 @@ export const confirmPotentialLostMember = onCall(
             await confirmPotentialLost({
               userId, expectedStatus: profile.membershipStatus, expectedUpdatedAt: profile.updatedAt,
               expectedEmailDeliveryVersion: profile.emailDeliveryVersion, reviewedBy: request.auth!.uid,
-              reasons: candidate.reasons, lastSignInTime: candidate.lastSignInTime, emailBounceCount: candidate.emailBounceCount,
+              reasons: candidate.reasons, lastSignInTime: candidate.lastSignInTime,
+              lastActivityTime: candidate.lastActivityTime, inactivitySince: candidate.inactivitySince, activitySource: candidate.activitySource, emailBounceCount: candidate.emailBounceCount,
             });
             invalidateDcProfileCache();
           },

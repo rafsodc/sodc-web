@@ -20423,6 +20423,9 @@ export interface ConfirmPotentialLostVariables {
   reviewedBy: string;
   reasons: string[];
   lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
   emailBounceCount: number;
 }
 ```
@@ -20451,6 +20454,9 @@ const confirmPotentialLostVars: ConfirmPotentialLostVariables = {
   reviewedBy: ..., 
   reasons: ..., 
   lastSignInTime: ..., // optional
+  lastActivityTime: ..., // optional
+  inactivitySince: ..., // optional
+  activitySource: ..., // optional
   emailBounceCount: ..., 
 };
 
@@ -20458,7 +20464,7 @@ const confirmPotentialLostVars: ConfirmPotentialLostVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await confirmPotentialLost(confirmPotentialLostVars);
 // Variables can be defined inline as well.
-const { data } = await confirmPotentialLost({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., emailBounceCount: ..., });
+const { data } = await confirmPotentialLost({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., lastActivityTime: ..., inactivitySince: ..., activitySource: ..., emailBounceCount: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -20490,13 +20496,16 @@ const confirmPotentialLostVars: ConfirmPotentialLostVariables = {
   reviewedBy: ..., 
   reasons: ..., 
   lastSignInTime: ..., // optional
+  lastActivityTime: ..., // optional
+  inactivitySince: ..., // optional
+  activitySource: ..., // optional
   emailBounceCount: ..., 
 };
 
 // Call the `confirmPotentialLostRef()` function to get a reference to the mutation.
 const ref = confirmPotentialLostRef(confirmPotentialLostVars);
 // Variables can be defined inline as well.
-const ref = confirmPotentialLostRef({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., emailBounceCount: ..., });
+const ref = confirmPotentialLostRef({ userId: ..., expectedStatus: ..., expectedUpdatedAt: ..., expectedEmailDeliveryVersion: ..., reviewedBy: ..., reasons: ..., lastSignInTime: ..., lastActivityTime: ..., inactivitySince: ..., activitySource: ..., emailBounceCount: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
