@@ -74,7 +74,7 @@ describe("minimal event attendees", () => {
     ]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [memberAttendance] });
   });
-  it("selects the latest active revision and sorts structured names without collapsing namesakes", async () => {
+  it("selects the latest revision and keeps guests with their booker without collapsing namesakes", async () => {
     const anna = { firstName: "Anna", lastName: "Smith" };
     names([
       { ...booking, booker: { firstName: "Old", lastName: "Revision" } },
@@ -85,7 +85,7 @@ describe("minimal event attendees", () => {
       ] },
       { ...booking, revisionGroupId: "namesake" },
     ]);
-    expect(await getEventAttendees.run(request())).toEqual({ attendees: [{ displayName: "Cher", audience: "GUEST", ...attendance }, memberAttendance, memberAttendance, { ...anna, audience: "GUEST", ...attendance }] });
+    expect(await getEventAttendees.run(request())).toEqual({ attendees: [memberAttendance, { displayName: "Cher", audience: "GUEST", ...attendance }, { ...anna, audience: "GUEST", ...attendance }, memberAttendance] });
   });
   it.each([[true, true], [true, false], [false, true], [false, false]])("returns symposium=%s and dinner=%s for current member and guest tickets only", async (includesSymposium, includesDinner) => {
     const flags = { includesSymposium, includesDinner };
@@ -99,7 +99,18 @@ describe("minimal event attendees", () => {
       ] },
     ]);
     expect((await getEventAttendees.run(request())).attendees).toEqual([
-      { displayName: "Legacy Guest", audience: "GUEST", ...flags }, { firstName: "Guest", lastName: "Linked", audience: "GUEST", ...flags }, { ...member, audience: "MEMBER", ...flags },
+      { ...member, audience: "MEMBER", ...flags }, { displayName: "Legacy Guest", audience: "GUEST", ...flags }, { firstName: "Guest", lastName: "Linked", audience: "GUEST", ...flags },
+    ]);
+  });
+  it("orders booking members by surname then first name, keeping alphabetically earlier guests after their booker", async () => {
+    const guestLine = (name: string) => ({ ...line, ticketType: { audience: "GUEST", ...attendance }, guestDisplayName: name });
+    names([
+      { ...booking, revisionGroupId: "z", booker: { firstName: "Alex", lastName: "Zulu" }, lines: [guestLine("Aaron"), line] },
+      { ...booking, revisionGroupId: "b", booker: { firstName: "Bob", lastName: "Alpha" }, lines: [line, guestLine("Zoe")] },
+      { ...booking, revisionGroupId: "a", booker: { firstName: "Amy", lastName: "alpha" }, lines: [guestLine("Wendy"), line, guestLine("Ben")] },
+    ]);
+    expect((await getEventAttendees.run(request())).attendees.map((person) => "displayName" in person ? person.displayName : `${person.firstName} ${person.lastName}`)).toEqual([
+      "Amy alpha", "Ben", "Wendy", "Bob Alpha", "Zoe", "Alex Zulu", "Aaron",
     ]);
   });
   it("fetches every page and resolves revisions across page boundaries", async () => {

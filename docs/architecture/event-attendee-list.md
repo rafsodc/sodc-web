@@ -25,9 +25,12 @@ The query filters out inactive bookings in the database and reads all matching
 bookings in explicit pages of 500, ordered by booking ID. Revision selection runs
 across all pages, avoiding Data Connect's implicit 100-row query limit.
 
-Members and linked guests use their structured profile names and sort by surname,
-then first name. Legacy guest names are preserved intact and sorted by their full
-entered name; missing names are omitted rather than guessed. The interface pages
+Bookings sort by the booking member's surname, then first name, ignoring case.
+Each booking member is followed immediately by their own guests, sorted by surname
+and first name within that booking. Legacy guest names are preserved intact and
+sorted by their full entered name; missing names are omitted rather than guessed.
+Identically named bookers remain separate groups using internal booking identity;
+no booking IDs or additional personal fields are returned. The interface pages
 the sorted attendees in groups of 50, with loading, empty and retry states.
 The responsive table always shows Name and Type (Member/Guest). Audience describes
 the ticket place, not the account's membership status: linked guests remain Guest.
