@@ -1,0 +1,20 @@
+# Only callables may read these. Section access is checked before fetching names.
+query GetAttendeeEventSection($eventId: UUID!) @auth(level: NO_ACCESS) {
+  event(id: $eventId) { section { id } }
+}
+
+query GetEventAttendeeNames($eventId: UUID!) @auth(level: NO_ACCESS) {
+  bookings(where: { eventId: { eq: $eventId } }) {
+    revisionGroupId
+    revisionNumber
+    status
+    approvalStatus
+    supersededAt
+    booker { firstName lastName }
+    lines: bookingLines_on_booking {
+      guestDisplayName
+      guestUser { firstName lastName }
+      ticketType { audience }
+    }
+  }
+}

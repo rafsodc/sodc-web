@@ -68,6 +68,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
   - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
+  - [*GetAttendeeEventSection*](#getattendeeeventsection)
+  - [*GetEventAttendeeNames*](#geteventattendeenames)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -7435,6 +7437,248 @@ console.log(data.callableInvocation);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.callableInvocation);
+});
+```
+
+## GetAttendeeEventSection
+You can execute the `GetAttendeeEventSection` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAttendeeEventSection(vars: GetAttendeeEventSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+
+interface GetAttendeeEventSectionRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendeeEventSectionVariables): QueryRef<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+}
+export const getAttendeeEventSectionRef: GetAttendeeEventSectionRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAttendeeEventSection(dc: DataConnect, vars: GetAttendeeEventSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+
+interface GetAttendeeEventSectionRef {
+  ...
+  (dc: DataConnect, vars: GetAttendeeEventSectionVariables): QueryRef<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+}
+export const getAttendeeEventSectionRef: GetAttendeeEventSectionRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAttendeeEventSectionRef:
+```typescript
+const name = getAttendeeEventSectionRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAttendeeEventSection` query requires an argument of type `GetAttendeeEventSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAttendeeEventSectionVariables {
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetAttendeeEventSection` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAttendeeEventSectionData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAttendeeEventSectionData {
+  event?: {
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+  };
+}
+```
+### Using `GetAttendeeEventSection`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAttendeeEventSection, GetAttendeeEventSectionVariables } from '@dataconnect/generated';
+
+// The `GetAttendeeEventSection` query requires an argument of type `GetAttendeeEventSectionVariables`:
+const getAttendeeEventSectionVars: GetAttendeeEventSectionVariables = {
+  eventId: ..., 
+};
+
+// Call the `getAttendeeEventSection()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAttendeeEventSection(getAttendeeEventSectionVars);
+// Variables can be defined inline as well.
+const { data } = await getAttendeeEventSection({ eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAttendeeEventSection(dataConnect, getAttendeeEventSectionVars);
+
+console.log(data.event);
+
+// Or, you can use the `Promise` API.
+getAttendeeEventSection(getAttendeeEventSectionVars).then((response) => {
+  const data = response.data;
+  console.log(data.event);
+});
+```
+
+### Using `GetAttendeeEventSection`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAttendeeEventSectionRef, GetAttendeeEventSectionVariables } from '@dataconnect/generated';
+
+// The `GetAttendeeEventSection` query requires an argument of type `GetAttendeeEventSectionVariables`:
+const getAttendeeEventSectionVars: GetAttendeeEventSectionVariables = {
+  eventId: ..., 
+};
+
+// Call the `getAttendeeEventSectionRef()` function to get a reference to the query.
+const ref = getAttendeeEventSectionRef(getAttendeeEventSectionVars);
+// Variables can be defined inline as well.
+const ref = getAttendeeEventSectionRef({ eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAttendeeEventSectionRef(dataConnect, getAttendeeEventSectionVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.event);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.event);
+});
+```
+
+## GetEventAttendeeNames
+You can execute the `GetEventAttendeeNames` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getEventAttendeeNames(vars: GetEventAttendeeNamesVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+
+interface GetEventAttendeeNamesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetEventAttendeeNamesVariables): QueryRef<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+}
+export const getEventAttendeeNamesRef: GetEventAttendeeNamesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getEventAttendeeNames(dc: DataConnect, vars: GetEventAttendeeNamesVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+
+interface GetEventAttendeeNamesRef {
+  ...
+  (dc: DataConnect, vars: GetEventAttendeeNamesVariables): QueryRef<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+}
+export const getEventAttendeeNamesRef: GetEventAttendeeNamesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getEventAttendeeNamesRef:
+```typescript
+const name = getEventAttendeeNamesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetEventAttendeeNames` query requires an argument of type `GetEventAttendeeNamesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetEventAttendeeNamesVariables {
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetEventAttendeeNames` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetEventAttendeeNamesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetEventAttendeeNamesData {
+  bookings: ({
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    supersededAt?: TimestampString | null;
+    booker: {
+      firstName: string;
+      lastName: string;
+    };
+    lines: ({
+      guestDisplayName?: string | null;
+      guestUser?: {
+        firstName: string;
+        lastName: string;
+      };
+      ticketType: {
+        audience: TicketAudience;
+      };
+    })[];
+  })[];
+}
+```
+### Using `GetEventAttendeeNames`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getEventAttendeeNames, GetEventAttendeeNamesVariables } from '@dataconnect/generated';
+
+// The `GetEventAttendeeNames` query requires an argument of type `GetEventAttendeeNamesVariables`:
+const getEventAttendeeNamesVars: GetEventAttendeeNamesVariables = {
+  eventId: ..., 
+};
+
+// Call the `getEventAttendeeNames()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getEventAttendeeNames(getEventAttendeeNamesVars);
+// Variables can be defined inline as well.
+const { data } = await getEventAttendeeNames({ eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getEventAttendeeNames(dataConnect, getEventAttendeeNamesVars);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+getEventAttendeeNames(getEventAttendeeNamesVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+### Using `GetEventAttendeeNames`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getEventAttendeeNamesRef, GetEventAttendeeNamesVariables } from '@dataconnect/generated';
+
+// The `GetEventAttendeeNames` query requires an argument of type `GetEventAttendeeNamesVariables`:
+const getEventAttendeeNamesVars: GetEventAttendeeNamesVariables = {
+  eventId: ..., 
+};
+
+// Call the `getEventAttendeeNamesRef()` function to get a reference to the query.
+const ref = getEventAttendeeNamesRef(getEventAttendeeNamesVars);
+// Variables can be defined inline as well.
+const ref = getEventAttendeeNamesRef({ eventId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getEventAttendeeNamesRef(dataConnect, getEventAttendeeNamesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
 });
 ```
 

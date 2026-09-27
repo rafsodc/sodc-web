@@ -2015,6 +2015,36 @@ exports.consumeCallableRateLimit = function consumeCallableRateLimit(dcOrVars, v
 }
 ;
 
+const getAttendeeEventSectionRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAttendeeEventSection', inputVars);
+}
+getAttendeeEventSectionRef.operationName = 'GetAttendeeEventSection';
+exports.getAttendeeEventSectionRef = getAttendeeEventSectionRef;
+
+exports.getAttendeeEventSection = function getAttendeeEventSection(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAttendeeEventSectionRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getEventAttendeeNamesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetEventAttendeeNames', inputVars);
+}
+getEventAttendeeNamesRef.operationName = 'GetEventAttendeeNames';
+exports.getEventAttendeeNamesRef = getEventAttendeeNamesRef;
+
+exports.getEventAttendeeNames = function getEventAttendeeNames(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getEventAttendeeNamesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const adminDeleteBookingLineRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

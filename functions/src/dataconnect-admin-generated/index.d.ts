@@ -1083,6 +1083,18 @@ export interface GetAnnouncementStatusMembersPagedVariables {
   offset: number;
 }
 
+export interface GetAttendeeEventSectionData {
+  event?: {
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+  };
+}
+
+export interface GetAttendeeEventSectionVariables {
+  eventId: UUIDString;
+}
+
 export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
@@ -1315,6 +1327,34 @@ export interface GetCurrentUserData {
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
+}
+
+export interface GetEventAttendeeNamesData {
+  bookings: ({
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    supersededAt?: TimestampString | null;
+    booker: {
+      firstName: string;
+      lastName: string;
+    };
+    lines: ({
+      guestDisplayName?: string | null;
+      guestUser?: {
+        firstName: string;
+        lastName: string;
+      };
+      ticketType: {
+        audience: TicketAudience;
+      };
+    })[];
+  })[];
+}
+
+export interface GetEventAttendeeNamesVariables {
+  eventId: UUIDString;
 }
 
 export interface GetEventByIdData {
@@ -4236,6 +4276,16 @@ export function ensureCallableRateLimitBucket(vars: EnsureCallableRateLimitBucke
 export function consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableRateLimitVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConsumeCallableRateLimitData>>;
 /** Generated Node Admin SDK operation action function for the 'ConsumeCallableRateLimit' Mutation. Allow users to pass in custom DataConnect instances. */
 export function consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConsumeCallableRateLimitData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAttendeeEventSection' Query. Allow users to execute without passing in DataConnect. */
+export function getAttendeeEventSection(dc: DataConnect, vars: GetAttendeeEventSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAttendeeEventSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAttendeeEventSection' Query. Allow users to pass in custom DataConnect instances. */
+export function getAttendeeEventSection(vars: GetAttendeeEventSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAttendeeEventSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetEventAttendeeNames' Query. Allow users to execute without passing in DataConnect. */
+export function getEventAttendeeNames(dc: DataConnect, vars: GetEventAttendeeNamesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventAttendeeNamesData>>;
+/** Generated Node Admin SDK operation action function for the 'GetEventAttendeeNames' Query. Allow users to pass in custom DataConnect instances. */
+export function getEventAttendeeNames(vars: GetEventAttendeeNamesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetEventAttendeeNamesData>>;
 
 /** Generated Node Admin SDK operation action function for the 'AdminDeleteBookingLine' Mutation. Allow users to execute without passing in DataConnect. */
 export function adminDeleteBookingLine(dc: DataConnect, vars: AdminDeleteBookingLineVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AdminDeleteBookingLineData>>;

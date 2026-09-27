@@ -133,6 +133,13 @@ export interface EventForUserResponse {
   event: NonNullable<GetEventByIdData["event"]> | null;
 }
 
+export type EventAttendeeName = { firstName: string; lastName: string } | { displayName: string };
+
+export async function getEventAttendees(eventId: string): Promise<{ attendees: EventAttendeeName[] }> {
+  const callable = httpsCallable<{ eventId: string }, { attendees: EventAttendeeName[] }>(functions, "getEventAttendees");
+  return (await callable({ eventId })).data;
+}
+
 export async function getEventForUser(eventId: string): Promise<EventForUserResponse> {
   const callable = httpsCallable<{ eventId: string }, EventForUserResponse>(
     functions,

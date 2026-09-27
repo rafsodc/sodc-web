@@ -912,6 +912,18 @@ export function consumeCallableRateLimit(dcOrVarsOrOptions, varsOrOptions, optio
   return dcInstance.executeMutation('ConsumeCallableRateLimit', inputVars, inputOpts);
 }
 
+export function getAttendeeEventSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAttendeeEventSection', inputVars, inputOpts);
+}
+
+export function getEventAttendeeNames(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetEventAttendeeNames', inputVars, inputOpts);
+}
+
 export function adminDeleteBookingLine(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
