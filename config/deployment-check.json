@@ -68,6 +68,7 @@
     "getAnnouncementSendHistory",
     "getAnnouncementSendRecipients",
     "getAnnouncementTemplates",
+    "getEventAttendees",
     "getEventForUser",
     "getGovNotifyDeliveryAdminConfiguration",
     "getMyTicketOrderStripeArtifactsBatch",

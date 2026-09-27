@@ -28,6 +28,7 @@ import ContactDetailsDialog from "./ContactDetailsDialog";
 import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
 import EventDetailsContent from "./EventDetailsContent";
+import EventAttendees from "./EventAttendees";
 import SectionEventCard from "./SectionEventCard";
 import SectionMemberCard from "./SectionMemberCard";
 import SectionMemberListItem from "./SectionMemberListItem";
@@ -369,6 +370,7 @@ export function SectionEventDetailView({
             <>
               <EventDetailHero event={event} />
               <EventDetailsContent details={event.details} />
+              {hasCurrentUser ? <EventAttendees key={event.id} eventId={event.id} /> : null}
               {hasCurrentUser ? (
                 <Box sx={{ mt: 2 }}>
                   <Button

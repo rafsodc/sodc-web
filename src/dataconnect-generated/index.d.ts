@@ -1105,6 +1105,18 @@ export interface GetAnnouncementStatusMembersPagedVariables {
   offset: number;
 }
 
+export interface GetAttendeeEventSectionData {
+  event?: {
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+  };
+}
+
+export interface GetAttendeeEventSectionVariables {
+  eventId: UUIDString;
+}
+
 export interface GetBookingForNotificationData {
   booking?: {
     id: UUIDString;
@@ -1337,6 +1349,36 @@ export interface GetCurrentUserData {
     createdAt: TimestampString;
     updatedAt: TimestampString;
   } & User_Key;
+}
+
+export interface GetEventAttendeeNamesData {
+  bookings: ({
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    supersededAt?: TimestampString | null;
+    booker: {
+      firstName: string;
+      lastName: string;
+    };
+    lines: ({
+      guestDisplayName?: string | null;
+      guestUser?: {
+        firstName: string;
+        lastName: string;
+      };
+      ticketType: {
+        audience: TicketAudience;
+      };
+    })[];
+  })[];
+}
+
+export interface GetEventAttendeeNamesVariables {
+  eventId: UUIDString;
+  limit: number;
+  offset: number;
 }
 
 export interface GetEventByIdData {
@@ -5154,6 +5196,30 @@ export const consumeCallableRateLimitRef: ConsumeCallableRateLimitRef;
 
 export function consumeCallableRateLimit(vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
 export function consumeCallableRateLimit(dc: DataConnect, vars: ConsumeCallableRateLimitVariables): MutationPromise<ConsumeCallableRateLimitData, ConsumeCallableRateLimitVariables>;
+
+interface GetAttendeeEventSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendeeEventSectionVariables): QueryRef<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAttendeeEventSectionVariables): QueryRef<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+  operationName: string;
+}
+export const getAttendeeEventSectionRef: GetAttendeeEventSectionRef;
+
+export function getAttendeeEventSection(vars: GetAttendeeEventSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+export function getAttendeeEventSection(dc: DataConnect, vars: GetAttendeeEventSectionVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+
+interface GetEventAttendeeNamesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetEventAttendeeNamesVariables): QueryRef<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetEventAttendeeNamesVariables): QueryRef<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+  operationName: string;
+}
+export const getEventAttendeeNamesRef: GetEventAttendeeNamesRef;
+
+export function getEventAttendeeNames(vars: GetEventAttendeeNamesVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+export function getEventAttendeeNames(dc: DataConnect, vars: GetEventAttendeeNamesVariables, options?: ExecuteQueryOptions): QueryPromise<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
 
 interface AdminDeleteBookingLineRef {
   /* Allow users to create refs without passing in DataConnect */

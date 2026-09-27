@@ -75,6 +75,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
   - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
+  - [*GetAttendeeEventSection*](#getattendeeeventsection)
+  - [*GetEventAttendeeNames*](#geteventattendeenames)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -5868,6 +5870,198 @@ export default function GetCallableInvocationComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.callableInvocation);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetAttendeeEventSection
+You can execute the `GetAttendeeEventSection` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetAttendeeEventSection(dc: DataConnect, vars: GetAttendeeEventSectionVariables, options?: useDataConnectQueryOptions<GetAttendeeEventSectionData>): UseDataConnectQueryResult<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetAttendeeEventSection(vars: GetAttendeeEventSectionVariables, options?: useDataConnectQueryOptions<GetAttendeeEventSectionData>): UseDataConnectQueryResult<GetAttendeeEventSectionData, GetAttendeeEventSectionVariables>;
+```
+
+### Variables
+The `GetAttendeeEventSection` Query requires an argument of type `GetAttendeeEventSectionVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetAttendeeEventSectionVariables {
+  eventId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetAttendeeEventSection` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAttendeeEventSection` Query is of type `GetAttendeeEventSectionData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetAttendeeEventSectionData {
+  event?: {
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+  };
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetAttendeeEventSection`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetAttendeeEventSectionVariables } from '@dataconnect/generated';
+import { useGetAttendeeEventSection } from '@dataconnect/generated/react'
+
+export default function GetAttendeeEventSectionComponent() {
+  // The `useGetAttendeeEventSection` Query hook requires an argument of type `GetAttendeeEventSectionVariables`:
+  const getAttendeeEventSectionVars: GetAttendeeEventSectionVariables = {
+    eventId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetAttendeeEventSection(getAttendeeEventSectionVars);
+  // Variables can be defined inline as well.
+  const query = useGetAttendeeEventSection({ eventId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetAttendeeEventSection(dataConnect, getAttendeeEventSectionVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAttendeeEventSection(getAttendeeEventSectionVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAttendeeEventSection(dataConnect, getAttendeeEventSectionVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.event);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetEventAttendeeNames
+You can execute the `GetEventAttendeeNames` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetEventAttendeeNames(dc: DataConnect, vars: GetEventAttendeeNamesVariables, options?: useDataConnectQueryOptions<GetEventAttendeeNamesData>): UseDataConnectQueryResult<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetEventAttendeeNames(vars: GetEventAttendeeNamesVariables, options?: useDataConnectQueryOptions<GetEventAttendeeNamesData>): UseDataConnectQueryResult<GetEventAttendeeNamesData, GetEventAttendeeNamesVariables>;
+```
+
+### Variables
+The `GetEventAttendeeNames` Query requires an argument of type `GetEventAttendeeNamesVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetEventAttendeeNamesVariables {
+  eventId: UUIDString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `GetEventAttendeeNames` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetEventAttendeeNames` Query is of type `GetEventAttendeeNamesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetEventAttendeeNamesData {
+  bookings: ({
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    status: BookingStatus;
+    approvalStatus: BookingApprovalStatus;
+    supersededAt?: TimestampString | null;
+    booker: {
+      firstName: string;
+      lastName: string;
+    };
+    lines: ({
+      guestDisplayName?: string | null;
+      guestUser?: {
+        firstName: string;
+        lastName: string;
+      };
+      ticketType: {
+        audience: TicketAudience;
+      };
+    })[];
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetEventAttendeeNames`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetEventAttendeeNamesVariables } from '@dataconnect/generated';
+import { useGetEventAttendeeNames } from '@dataconnect/generated/react'
+
+export default function GetEventAttendeeNamesComponent() {
+  // The `useGetEventAttendeeNames` Query hook requires an argument of type `GetEventAttendeeNamesVariables`:
+  const getEventAttendeeNamesVars: GetEventAttendeeNamesVariables = {
+    eventId: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetEventAttendeeNames(getEventAttendeeNamesVars);
+  // Variables can be defined inline as well.
+  const query = useGetEventAttendeeNames({ eventId: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetEventAttendeeNames(dataConnect, getEventAttendeeNamesVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetEventAttendeeNames(getEventAttendeeNamesVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetEventAttendeeNames(dataConnect, getEventAttendeeNamesVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.bookings);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }

@@ -563,6 +563,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           onRetry={() => refetchEventDetail()}
           onBookingComplete={() => {
             void refetchEventDetail();
+            void queryClient.invalidateQueries({ queryKey: ["eventAttendees", selectedEventId] });
           }}
         />
       ) : (
