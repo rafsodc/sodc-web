@@ -3,6 +3,7 @@ import * as sdk from "@dataconnect/admin-generated";
 import { confirmPotentialLostMember, listPotentialLostMembers, potentialLostCandidate } from "../../potentialLost";
 import { isOlderThanYears, hasCurrentProfileReview } from "../../memberReviewRules";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { UserRecord } from "firebase-admin/auth";
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), listUsers: vi.fn(), reconcile: vi.fn(), notify: vi.fn() }));
@@ -15,7 +16,19 @@ const profileQuery = vi.spyOn(sdk, "getPotentialLostProfile");
 const listQuery = vi.spyOn(sdk, "listPotentialLostProfiles");
 const mutation = vi.spyOn(sdk, "confirmPotentialLost");
 const profile = { id: "member", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com", membershipStatus: sdk.MembershipStatus.REGULAR, updatedAt: "2026-01-01T00:00:00Z", emailBounceCount: 3, emailLastBounceAt: "2026-01-01T00:00:00Z", emailDeliveryVersion: 4 };
-const auth = { uid: "member", customClaims: {}, metadata: { lastSignInTime: "2020-01-01T00:00:00Z", creationTime: "2019-01-01T00:00:00Z" } } as UserRecord;
+const auth = {
+  uid: "member",
+  emailVerified: true,
+  disabled: false,
+  providerData: [],
+  customClaims: {},
+  metadata: {
+    lastSignInTime: "2020-01-01T00:00:00Z",
+    creationTime: "2019-01-01T00:00:00Z",
+    toJSON: () => ({}),
+  },
+  toJSON: () => ({}),
+} satisfies UserRecord;
 function request(data: unknown = {}, token: Record<string, unknown> = { admin: true, enabled: true }) {
   return { auth: { uid: "reviewer", token }, data } as Parameters<typeof confirmPotentialLostMember.run>[0];
 }
@@ -140,7 +153,7 @@ describe("potential lost review", () => {
     expect(mocks.reconcile).toHaveBeenCalledWith("member", "LOST");
   });
   it("keeps queries server-only and status/audit updates atomic", () => {
-    const query = readFileSync(new URL("../../../../dataconnect/api/member-review.gql", import.meta.url), "utf8");
+    const query = readFileSync(resolve(__dirname, "../../../../dataconnect/api/member-review.gql"), "utf8");
     expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(3);
     expect(query).toContain("@transaction");
     expect(query).toContain("message: \"POTENTIAL_LOST_CONFLICT\"");

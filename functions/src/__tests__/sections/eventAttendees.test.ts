@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as sdk from "@dataconnect/admin-generated";
 import { getEventAttendees } from "../../eventAttendees";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 vi.mock("../../rateLimiter", () => ({ enforceRateLimit: vi.fn() }));
 const eventQuery = vi.spyOn(sdk, "getAttendeeEventSection");
@@ -59,7 +60,7 @@ describe("minimal event attendees", () => {
   });
   it("rejects missing events and invalid ids", async () => {
     await expect(getEventAttendees.run(request({ enabled: true }, { eventId: "bad" }))).rejects.toMatchObject({ code: "invalid-argument" });
-    eventQuery.mockResolvedValue({ data: { event: null } });
+    eventQuery.mockResolvedValue({ data: { event: undefined } });
     await expect(getEventAttendees.run(request())).rejects.toMatchObject({ code: "not-found" });
     expect(namesQuery).not.toHaveBeenCalled();
   });
@@ -122,7 +123,7 @@ describe("minimal event attendees", () => {
     await expect(getEventAttendees.run(request())).rejects.toMatchObject({ code: "internal" });
   });
   it("keeps the dedicated queries server-only and excludes private attendee data", () => {
-    const query = readFileSync(new URL("../../../../dataconnect/api/attendees.gql", import.meta.url), "utf8");
+    const query = readFileSync(resolve(__dirname, "../../../../dataconnect/api/attendees.gql"), "utf8");
     expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(2);
     expect(query).toContain("status: { in: [SUBMITTED, CONFIRMED] }");
     expect(query).toContain("approvalStatus: { in: [NOT_REQUIRED, APPROVED] }");
