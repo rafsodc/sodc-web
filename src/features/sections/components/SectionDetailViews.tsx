@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -331,6 +331,7 @@ export function SectionEventDetailView({
   onRetry,
   onBookingComplete,
 }: SectionEventDetailViewProps) {
+  const tabId = useId();
   const [activeTab, setActiveTab] = useState<EventDetailTab>("about");
   const [hasExistingBooking, setHasExistingBooking] = useState(false);
 
@@ -357,20 +358,21 @@ export function SectionEventDetailView({
         <>
           {hasCurrentUser ? (
             <Tabs
+              aria-label="Event information"
               value={activeTab}
               onChange={(_, v: EventDetailTab) => setActiveTab(v)}
               sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
             >
-              <Tab label={eventDetailTabLabel("about")} value="about" />
-              <Tab label={eventDetailTabLabel("book")} value="book" />
+              {(["about", "book", "attendees"] as const).map((tab) => (
+                <Tab key={tab} label={eventDetailTabLabel(tab)} value={tab} id={`${tabId}-${tab}-tab`} aria-controls={`${tabId}-${tab}-panel`} />
+              ))}
             </Tabs>
           ) : null}
 
           {activeTab === "about" || !hasCurrentUser ? (
-            <>
+            <Box role={hasCurrentUser ? "tabpanel" : undefined} id={`${tabId}-about-panel`} aria-labelledby={hasCurrentUser ? `${tabId}-about-tab` : undefined}>
               <EventDetailHero event={event} />
               <EventDetailsContent details={event.details} />
-              {hasCurrentUser ? <EventAttendees key={event.id} eventId={event.id} /> : null}
               {hasCurrentUser ? (
                 <Box sx={{ mt: 2 }}>
                   <Button
@@ -382,20 +384,28 @@ export function SectionEventDetailView({
                   </Button>
                 </Box>
               ) : null}
-            </>
+            </Box>
+          ) : null}
+
+          {activeTab === "attendees" && hasCurrentUser ? (
+            <Box role="tabpanel" id={`${tabId}-attendees-panel`} aria-labelledby={`${tabId}-attendees-tab`}>
+              <EventAttendees key={event.id} eventId={event.id} ticketTypes={event.ticketTypes ?? []} />
+            </Box>
           ) : null}
 
           {activeTab === "book" && hasCurrentUser ? (
-            <EventBookingWizard
-              section={section}
-              event={event}
-              wizardOpen={!hasExistingBooking}
-              onWizardOpenChange={(open) => {
-                if (!open) setActiveTab("about");
-              }}
-              onHasExistingBookingChange={setHasExistingBooking}
-              onBookingComplete={onBookingComplete}
-            />
+            <Box role="tabpanel" id={`${tabId}-book-panel`} aria-labelledby={`${tabId}-book-tab`}>
+              <EventBookingWizard
+                section={section}
+                event={event}
+                wizardOpen={!hasExistingBooking}
+                onWizardOpenChange={(open) => {
+                  if (!open) setActiveTab("about");
+                }}
+                onHasExistingBookingChange={setHasExistingBooking}
+                onBookingComplete={onBookingComplete}
+              />
+            </Box>
           ) : null}
         </>
       )}

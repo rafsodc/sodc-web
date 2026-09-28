@@ -1,4 +1,4 @@
-# Only callables may read these. Section access is checked before fetching names.
+# Only callables may read these. Section access is checked before fetching names and symposium/dinner flags.
 query GetAttendeeEventSection($eventId: UUID!) @auth(level: NO_ACCESS) {
   event(id: $eventId) { section { id } }
 }
@@ -24,7 +24,7 @@ query GetEventAttendeeNames($eventId: UUID!, $limit: Int!, $offset: Int!) @auth(
     lines: bookingLines_on_booking {
       guestDisplayName
       guestUser { firstName lastName }
-      ticketType { audience }
+      ticketType { audience includesSymposium includesDinner }
     }
   }
 }

@@ -46,7 +46,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `searchSectionMembers` | 60 | 5 minutes | Member-directory enumeration (bounded, name-match only) |
 | `listPotentialLostMembers` | 30 | 5 minutes | Admin-only member review evidence |
 | `confirmPotentialLostMember` | 30 | 1 hour | Admin-only audited membership restriction |
-| `getEventAttendees` | 60 | 5 minutes | Names-only attendee list; enabled account and event section access |
+| `getEventAttendees` | 60 | 5 minutes | Names, member/guest audience and symposium/dinner attendance; enabled account and event section access |
 | `createTicketCheckoutSession` | 10 | 15 minutes | Stripe session creation |
 | `createEventBookingCheckoutSession` | 10 | 15 minutes | Stripe session creation |
 | `reconcileMyCheckoutSessionOrders` | 20 | 15 minutes | Stripe retrieval and reconciliation writes |
@@ -99,7 +99,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `getEventForUser` | Low | Low | None | Low | Enabled + section access; single-event query |
 | `listPotentialLostMembers` | Medium | Medium | None | Low | Enabled admin; paged profiles and Auth records |
 | `confirmPotentialLostMember` | High | Low | Email | Medium | Enabled admin; fresh evidence and atomic status/audit write |
-| `getEventAttendees` | Medium | Low | None | Low | Enabled + section access; 60/5 minutes; dedicated names-only response |
+| `getEventAttendees` | Medium | Low | None | Low | Enabled + section access; 60/5 minutes; dedicated names, audience and attendance-flags response |
 | `submitEventBooking` | High | None | GOV.UK Notify | High | Enabled; validation/idempotency; 20/hour weighted by line count (#541) |
 | `submitEventBookingReplayLookup` | Medium | None | None | Low | Enabled; caller/event/key-scoped completed-booking lookup; 60/5 minutes |
 | `reviewBookingRevision` | High | None | GOV.UK Notify | Medium | Admin + enabled; exact revision and transition checks; 30/hour |

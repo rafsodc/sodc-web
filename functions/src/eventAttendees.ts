@@ -6,7 +6,8 @@ import { requireSectionAccess } from "./sectionAccess";
 import { enforceRateLimit } from "./rateLimiter";
 
 // Legacy guests have a single entered name. Preserve it without inventing a surname.
-type AttendeeName = { firstName: string; lastName: string } | { displayName: string };
+type NameParts = { firstName: string; lastName: string } | { displayName: string };
+type AttendeeName = NameParts & { audience: "MEMBER" | "GUEST"; includesSymposium: boolean; includesDinner: boolean };
 
 export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   try {
@@ -28,20 +29,28 @@ export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (req
       }
       if (data.bookings.length < pageSize) break;
     }
-    const attendees: AttendeeName[] = [];
-    for (const booking of current.values()) {
-      for (const line of booking.lines) {
-        const user = line.ticketType.audience === "MEMBER" ? booking.booker : line.guestUser;
-        if (user) attendees.push({ firstName: user.firstName, lastName: user.lastName });
-        else if (line.guestDisplayName?.trim()) attendees.push({ displayName: line.guestDisplayName.trim() });
-      }
-    }
-    const sortName = (name: AttendeeName) => "lastName" in name ? [name.lastName, name.firstName] : [name.displayName, ""];
-    attendees.sort((a, b) => {
+    const sortName = (name: NameParts) => "lastName" in name ? [name.lastName, name.firstName] : [name.displayName, ""];
+    const compareNames = (a: NameParts, b: NameParts) => {
       const [aLast, aFirst] = sortName(a);
       const [bLast, bFirst] = sortName(b);
       return aLast.localeCompare(bLast, "en", { sensitivity: "base" }) || aFirst.localeCompare(bFirst, "en", { sensitivity: "base" });
-    });
+    };
+    const bookings = Array.from(current.values()).sort((a, b) =>
+      compareNames(a.booker, b.booker) || a.revisionGroupId.localeCompare(b.revisionGroupId)
+    );
+    const attendees: AttendeeName[] = [];
+    for (const booking of bookings) {
+      const group: AttendeeName[] = [];
+      for (const line of booking.lines) {
+        const user = line.ticketType.audience === "MEMBER" ? booking.booker : line.guestUser;
+        const attendance = { audience: line.ticketType.audience, includesSymposium: line.ticketType.includesSymposium, includesDinner: line.ticketType.includesDinner };
+        if (user) group.push({ firstName: user.firstName, lastName: user.lastName, ...attendance });
+        else if (line.guestDisplayName?.trim()) group.push({ displayName: line.guestDisplayName.trim(), ...attendance });
+      }
+      // Keep every guest with their own booking, even when bookers have identical names.
+      group.sort((a, b) => Number(a.audience === "GUEST") - Number(b.audience === "GUEST") || compareNames(a, b));
+      attendees.push(...group);
+    }
     return { attendees };
   } catch (error) {
     handleFunctionError(error, "Unable to load attendees");
