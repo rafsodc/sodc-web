@@ -807,3 +807,57 @@ type PotentialLostReview @table {
   reviewedBy: String!
   reviewedAt: Timestamp! @default(expr: "request.time")
 }
+
+# Separate from member-bookable TicketType: organiser allocation only.
+type OrganiserGuestTicketType @table {
+  id: UUID! @default(expr: "uuidV4()")
+  event: Event!
+  title: String!
+  description: String
+  sortOrder: Int! @default(value: 0)
+  priceMinor: Int!
+  includesSymposium: Boolean!
+  includesDinner: Boolean!
+  active: Boolean! @default(value: true)
+  version: Int! @default(value: 1)
+  createdBy: String!
+  updatedBy: String!
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+# One reserved ticket per guest. No member account or member booking is required.
+type OrganiserGuest @table {
+  id: UUID!
+  event: Event!
+  ticketType: OrganiserGuestTicketType!
+  firstName: String!
+  lastName: String!
+  email: String!
+  dietaryRequirements: String!
+  # Allocation price and inclusions are captured so type edits cannot alter sold tickets.
+  priceMinor: Int!
+  includesSymposium: Boolean!
+  includesDinner: Boolean!
+  tokenHash: String! @unique
+  version: Int! @default(value: 1)
+  checkoutKey: String!
+  stripeSessionId: String
+  stripePaymentIntentId: String
+  paidAt: Timestamp
+  refundedAmountMinor: Int! @default(value: 0)
+  refundPendingMinor: Int! @default(value: 0)
+  cancelledAt: Timestamp
+  createdBy: String!
+  updatedBy: String!
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type OrganiserGuestAudit @table {
+  id: UUID! @default(expr: "uuidV4()")
+  guest: OrganiserGuest!
+  action: String!
+  actor: String!
+  occurredAt: Timestamp! @default(expr: "request.time")
+}

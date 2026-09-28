@@ -24,7 +24,10 @@ Use your Firebase project id in place of `<project-id>`.
    - `checkout.session.completed`
    - `checkout.session.expired`
    - `checkout.session.async_payment_failed`
+   - `checkout.session.async_payment_succeeded` (organiser guest payment confirmation)
    - `refund.created`
+   - `refund.updated` (organiser guest refund progress)
+   - `refund.failed` (organiser guest refund failures)
    - `charge.refunded`
    - `charge.dispute.created`
    - `charge.dispute.updated`

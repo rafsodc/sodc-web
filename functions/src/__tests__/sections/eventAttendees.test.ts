@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 
 vi.mock("../../rateLimiter", () => ({ enforceRateLimit: vi.fn() }));
 const eventQuery = vi.spyOn(sdk, "getAttendeeEventSection");
+const guestNamesQuery = vi.spyOn(sdk, "getPublicOrganiserGuestAttendance");
 const namesQuery = vi.spyOn(sdk, "getEventAttendeeNames");
 const sectionQuery = vi.spyOn(sdk, "getSectionById");
 const groupsQuery = vi.spyOn(sdk, "getUserAccessGroupsById");
@@ -29,6 +30,7 @@ function access(purposes = ["ACCESS"], statuses: string[] = []) {
 describe("minimal event attendees", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    guestNamesQuery.mockResolvedValue({ data: { organiserGuests: [] } });
     eventQuery.mockResolvedValue({ data: { event: { section: { id: "section" } } } });
     access();
     groupsQuery.mockResolvedValue({ data: { user: { userGroups: [{ userGroup: { id: "allowed" } }] } } } as never);
@@ -36,6 +38,10 @@ describe("minimal event attendees", () => {
     names([booking]);
   });
 
+  it("includes reserved organiser guests after member booking groups with only public fields", async () => {
+    guestNamesQuery.mockResolvedValue({ data: { organiserGuests: [{ firstName: "Guest", lastName: "Able", includesDinner: true, includesSymposium: false }] } });
+    expect(await getEventAttendees.run(request())).toEqual({ attendees: [memberAttendance, { firstName: "Guest", lastName: "Able", includesDinner: true, includesSymposium: false, audience: "GUEST" }] });
+  });
   it("allows an enabled section viewer without a booking and returns exactly names, member/guest audience and attendance flags", async () => {
     names([{ ...booking, booker: { ...member, email: "private", dietaryNote: "private" } }]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [memberAttendance] });

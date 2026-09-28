@@ -1,3 +1,4 @@
+import { handleOrganiserGuestStripeEvent } from "./organiserGuestPayments";
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
@@ -139,6 +140,10 @@ async function handleStripeWebhookRequest(args: {
     }
 
     const event = stripeClient.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
+    if (await handleOrganiserGuestStripeEvent(event, stripeClient)) {
+      res.status(200).send("Guest payment processed");
+      return;
+    }
     const supportedEventType = isSupportedStripeEventType(event.type);
     const routedDomain = classifyStripeWebhookDomain(event.type);
     if (routedDomain !== domain) {

@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getAttendeeEventSection, getEventAttendeeNames, type GetEventAttendeeNamesData } from "@dataconnect/admin-generated";
+import { getPublicOrganiserGuestAttendance, getAttendeeEventSection, getEventAttendeeNames, type GetEventAttendeeNamesData } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { requireSectionAccess } from "./sectionAccess";
@@ -51,6 +51,13 @@ export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (req
       group.sort((a, b) => Number(a.audience === "GUEST") - Number(b.audience === "GUEST") || compareNames(a, b));
       attendees.push(...group);
     }
+    const organiserGuests: AttendeeName[] = [];
+    for (let offset = 0; ; offset += 500) {
+      const { data } = await getPublicOrganiserGuestAttendance({ eventId, offset });
+      organiserGuests.push(...data.organiserGuests.map(guest => ({ firstName: guest.firstName, lastName: guest.lastName, includesSymposium: guest.includesSymposium, includesDinner: guest.includesDinner, audience: "GUEST" as const })));
+      if (data.organiserGuests.length < 500) break;
+    }
+    attendees.push(...organiserGuests.sort(compareNames));
     return { attendees };
   } catch (error) {
     handleFunctionError(error, "Unable to load attendees");

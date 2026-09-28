@@ -218,6 +218,17 @@ export interface AnnouncementSend_Key {
   __typename?: 'AnnouncementSend_Key';
 }
 
+export interface AttachOrganiserGuestCheckoutData {
+  organiserGuest_updateMany: number;
+}
+
+export interface AttachOrganiserGuestCheckoutVariables {
+  id: UUIDString;
+  checkoutKey: string;
+  tokenHash: string;
+  sessionId: string;
+}
+
 export interface BeginSectionFileDeletionData {
   sectionFile_updateMany: number;
 }
@@ -277,6 +288,17 @@ export interface CallableRateLimitBucket_Key {
   functionName: string;
   windowStart: TimestampString;
   __typename?: 'CallableRateLimitBucket_Key';
+}
+
+export interface CancelOrganiserGuestData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface CancelOrganiserGuestVariables {
+  id: UUIDString;
+  version: number;
+  actor: string;
 }
 
 export interface ChangeGovNotifyDeliveryModeData {
@@ -594,6 +616,43 @@ export interface CreateNotifyReplyToAddressVariables {
   changedBy: string;
   reason?: string | null;
   newValue: string;
+}
+
+export interface CreateOrganiserGuestData {
+  organiserGuest_insert: OrganiserGuest_Key;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface CreateOrganiserGuestTypeData {
+  organiserGuestTicketType_insert: OrganiserGuestTicketType_Key;
+}
+
+export interface CreateOrganiserGuestTypeVariables {
+  id: UUIDString;
+  eventId: UUIDString;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  priceMinor: number;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  actor: string;
+}
+
+export interface CreateOrganiserGuestVariables {
+  id: UUIDString;
+  eventId: UUIDString;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email: string;
+  dietaryRequirements: string;
+  priceMinor: number;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  tokenHash: string;
+  checkoutKey: string;
+  actor: string;
 }
 
 export interface CreatePaymentWebhookEventData {
@@ -1859,6 +1918,122 @@ export interface GetNotifyTemplateBindingsData {
   } & NotifyTemplateBinding_Key)[];
 }
 
+export interface GetOrganiserGuestByTokenData {
+  organiserGuests: ({
+    id: UUIDString;
+    firstName: string;
+    lastName: string;
+    email: string;
+    dietaryRequirements: string;
+    priceMinor: number;
+    includesSymposium: boolean;
+    includesDinner: boolean;
+    version: number;
+    checkoutKey: string;
+    stripeSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    paidAt?: TimestampString | null;
+    refundedAmountMinor: number;
+    refundPendingMinor: number;
+    cancelledAt?: TimestampString | null;
+    createdBy: string;
+    updatedAt: TimestampString;
+    ticketType: {
+      id: UUIDString;
+      title: string;
+    } & OrganiserGuestTicketType_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      bookingEndDateTime: TimestampString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+    } & Event_Key;
+    tokenHash: string;
+  } & OrganiserGuest_Key)[];
+}
+
+export interface GetOrganiserGuestByTokenVariables {
+  tokenHash: string;
+}
+
+export interface GetOrganiserGuestData {
+  organiserGuest?: {
+    id: UUIDString;
+    firstName: string;
+    lastName: string;
+    email: string;
+    dietaryRequirements: string;
+    priceMinor: number;
+    includesSymposium: boolean;
+    includesDinner: boolean;
+    version: number;
+    checkoutKey: string;
+    stripeSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    paidAt?: TimestampString | null;
+    refundedAmountMinor: number;
+    refundPendingMinor: number;
+    cancelledAt?: TimestampString | null;
+    createdBy: string;
+    updatedAt: TimestampString;
+    ticketType: {
+      id: UUIDString;
+      title: string;
+    } & OrganiserGuestTicketType_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      bookingEndDateTime: TimestampString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+    } & Event_Key;
+    tokenHash: string;
+  } & OrganiserGuest_Key;
+}
+
+export interface GetOrganiserGuestEventData {
+  event?: {
+    id: UUIDString;
+    title: string;
+    bookingEndDateTime: TimestampString;
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+  } & Event_Key;
+}
+
+export interface GetOrganiserGuestEventVariables {
+  eventId: UUIDString;
+}
+
+export interface GetOrganiserGuestTypeData {
+  organiserGuestTicketType?: {
+    id: UUIDString;
+    title: string;
+    description?: string | null;
+    sortOrder: number;
+    priceMinor: number;
+    includesSymposium: boolean;
+    includesDinner: boolean;
+    active: boolean;
+    version: number;
+    event: {
+      id: UUIDString;
+    } & Event_Key;
+  } & OrganiserGuestTicketType_Key;
+}
+
+export interface GetOrganiserGuestTypeVariables {
+  id: UUIDString;
+}
+
+export interface GetOrganiserGuestVariables {
+  id: UUIDString;
+}
+
 export interface GetPaymentReconciliationExceptionByOrderAndTypeData {
   paymentReconciliationExceptions: ({
     id: UUIDString;
@@ -1907,6 +2082,20 @@ export interface GetPotentialLostProfileData {
 
 export interface GetPotentialLostProfileVariables {
   id: string;
+}
+
+export interface GetPublicOrganiserGuestAttendanceData {
+  organiserGuests: ({
+    firstName: string;
+    lastName: string;
+    includesSymposium: boolean;
+    includesDinner: boolean;
+  })[];
+}
+
+export interface GetPublicOrganiserGuestAttendanceVariables {
+  eventId: UUIDString;
+  offset: number;
 }
 
 export interface GetRecentNotifyDeliveryReceiptsForUserData {
@@ -2735,6 +2924,65 @@ export interface ListOpenPaymentReconciliationExceptionsData {
   } & PaymentReconciliationException_Key)[];
 }
 
+export interface ListOrganiserGuestTypesData {
+  organiserGuestTicketTypes: ({
+    id: UUIDString;
+    title: string;
+    description?: string | null;
+    sortOrder: number;
+    priceMinor: number;
+    includesSymposium: boolean;
+    includesDinner: boolean;
+    active: boolean;
+    version: number;
+  } & OrganiserGuestTicketType_Key)[];
+}
+
+export interface ListOrganiserGuestTypesVariables {
+  eventId: UUIDString;
+  offset: number;
+}
+
+export interface ListOrganiserGuestsData {
+  organiserGuests: ({
+    id: UUIDString;
+    firstName: string;
+    lastName: string;
+    email: string;
+    dietaryRequirements: string;
+    priceMinor: number;
+    includesSymposium: boolean;
+    includesDinner: boolean;
+    version: number;
+    checkoutKey: string;
+    stripeSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    paidAt?: TimestampString | null;
+    refundedAmountMinor: number;
+    refundPendingMinor: number;
+    cancelledAt?: TimestampString | null;
+    createdBy: string;
+    updatedAt: TimestampString;
+    ticketType: {
+      id: UUIDString;
+      title: string;
+    } & OrganiserGuestTicketType_Key;
+    event: {
+      id: UUIDString;
+      title: string;
+      bookingEndDateTime: TimestampString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+    } & Event_Key;
+  } & OrganiserGuest_Key)[];
+}
+
+export interface ListOrganiserGuestsVariables {
+  eventId: UUIDString;
+  offset: number;
+}
+
 export interface ListPotentialLostProfilesData {
   users: ({
     id: string;
@@ -3017,6 +3265,30 @@ export interface MarkNotifyDeliveryReceiptProcessedVariables {
   processedAt: TimestampString;
 }
 
+export interface MarkOrganiserGuestPaidData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface MarkOrganiserGuestPaidVariables {
+  id: UUIDString;
+  sessionId: string;
+  paymentIntentId: string;
+}
+
+export interface MarkOrganiserGuestRefundedData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface MarkOrganiserGuestRefundedVariables {
+  id: UUIDString;
+  paymentIntentId: string;
+  refundedAmountMinor: number;
+  refundPendingMinor: number;
+  version: number;
+}
+
 export interface MarkSectionFileDeletedData {
   sectionFile_updateMany: number;
 }
@@ -3115,6 +3387,21 @@ export interface OptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface OrganiserGuestAudit_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuestAudit_Key';
+}
+
+export interface OrganiserGuestTicketType_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuestTicketType_Key';
+}
+
+export interface OrganiserGuest_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuest_Key';
+}
+
 export interface PaymentReconciliationException_Key {
   id: UUIDString;
   __typename?: 'PaymentReconciliationException_Key';
@@ -3128,6 +3415,26 @@ export interface PaymentWebhookEvent_Key {
 export interface PotentialLostReview_Key {
   id: UUIDString;
   __typename?: 'PotentialLostReview_Key';
+}
+
+export interface ReassignOrganiserGuestTicketData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface ReassignOrganiserGuestTicketVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email: string;
+  dietaryRequirements: string;
+  priceMinor: number;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  checkoutKey: string;
+  actor: string;
 }
 
 export interface RecordNotificationRecoveryFailureByIdData {
@@ -3218,6 +3525,16 @@ export interface RemoveUserFromUserGroupVariables {
   userGroupId: UUIDString;
 }
 
+export interface ResetOrganiserGuestCheckoutData {
+  organiserGuest_updateMany: number;
+}
+
+export interface ResetOrganiserGuestCheckoutVariables {
+  id: UUIDString;
+  version: number;
+  checkoutKey: string;
+}
+
 export interface ResolvePaymentReconciliationExceptionData {
   paymentReconciliationException_update?: PaymentReconciliationException_Key | null;
 }
@@ -3234,6 +3551,19 @@ export interface RevokeUserGroupFromSectionForPurposeData {
 export interface RevokeUserGroupFromSectionForPurposeVariables {
   sectionId: UUIDString;
   userGroupId: UUIDString;
+}
+
+export interface RotateOrganiserGuestLinkData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface RotateOrganiserGuestLinkVariables {
+  id: UUIDString;
+  version: number;
+  tokenHash: string;
+  checkoutKey: string;
+  actor: string;
 }
 
 export interface SearchSectionMemberCandidatesData {
@@ -3510,6 +3840,50 @@ export interface UpdateNotifyReplyToAvailabilityVariables {
   reason?: string | null;
   previousValue: string;
   newValue: string;
+}
+
+export interface UpdateOrganiserGuestDetailsData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface UpdateOrganiserGuestDetailsVariables {
+  id: UUIDString;
+  version: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  dietaryRequirements: string;
+  actor: string;
+}
+
+export interface UpdateOrganiserGuestDietaryData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface UpdateOrganiserGuestDietaryVariables {
+  id: UUIDString;
+  version: number;
+  tokenHash: string;
+  dietaryRequirements: string;
+}
+
+export interface UpdateOrganiserGuestTypeData {
+  organiserGuestTicketType_updateMany: number;
+}
+
+export interface UpdateOrganiserGuestTypeVariables {
+  id: UUIDString;
+  version: number;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  priceMinor: number;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  active: boolean;
+  actor: string;
 }
 
 export interface UpdateSectionData {
@@ -4362,6 +4736,101 @@ export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, 
 export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
 /** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to pass in custom DataConnect instances. */
 export function confirmPotentialLost(vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestEvent' Query. Allow users to execute without passing in DataConnect. */
+export function getOrganiserGuestEvent(dc: DataConnect, vars: GetOrganiserGuestEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestEventData>>;
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestEvent' Query. Allow users to pass in custom DataConnect instances. */
+export function getOrganiserGuestEvent(vars: GetOrganiserGuestEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestEventData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListOrganiserGuestTypes' Query. Allow users to execute without passing in DataConnect. */
+export function listOrganiserGuestTypes(dc: DataConnect, vars: ListOrganiserGuestTypesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOrganiserGuestTypesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListOrganiserGuestTypes' Query. Allow users to pass in custom DataConnect instances. */
+export function listOrganiserGuestTypes(vars: ListOrganiserGuestTypesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOrganiserGuestTypesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestType' Query. Allow users to execute without passing in DataConnect. */
+export function getOrganiserGuestType(dc: DataConnect, vars: GetOrganiserGuestTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestType' Query. Allow users to pass in custom DataConnect instances. */
+export function getOrganiserGuestType(vars: GetOrganiserGuestTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListOrganiserGuests' Query. Allow users to execute without passing in DataConnect. */
+export function listOrganiserGuests(dc: DataConnect, vars: ListOrganiserGuestsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOrganiserGuestsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListOrganiserGuests' Query. Allow users to pass in custom DataConnect instances. */
+export function listOrganiserGuests(vars: ListOrganiserGuestsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListOrganiserGuestsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuest' Query. Allow users to execute without passing in DataConnect. */
+export function getOrganiserGuest(dc: DataConnect, vars: GetOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestData>>;
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuest' Query. Allow users to pass in custom DataConnect instances. */
+export function getOrganiserGuest(vars: GetOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestByToken' Query. Allow users to execute without passing in DataConnect. */
+export function getOrganiserGuestByToken(dc: DataConnect, vars: GetOrganiserGuestByTokenVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestByTokenData>>;
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestByToken' Query. Allow users to pass in custom DataConnect instances. */
+export function getOrganiserGuestByToken(vars: GetOrganiserGuestByTokenVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestByTokenData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetPublicOrganiserGuestAttendance' Query. Allow users to execute without passing in DataConnect. */
+export function getPublicOrganiserGuestAttendance(dc: DataConnect, vars: GetPublicOrganiserGuestAttendanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPublicOrganiserGuestAttendanceData>>;
+/** Generated Node Admin SDK operation action function for the 'GetPublicOrganiserGuestAttendance' Query. Allow users to pass in custom DataConnect instances. */
+export function getPublicOrganiserGuestAttendance(vars: GetPublicOrganiserGuestAttendanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPublicOrganiserGuestAttendanceData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateOrganiserGuestType' Mutation. Allow users to execute without passing in DataConnect. */
+export function createOrganiserGuestType(dc: DataConnect, vars: CreateOrganiserGuestTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateOrganiserGuestTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateOrganiserGuestType' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createOrganiserGuestType(vars: CreateOrganiserGuestTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateOrganiserGuestTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestType' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateOrganiserGuestType(dc: DataConnect, vars: UpdateOrganiserGuestTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestType' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateOrganiserGuestType(vars: UpdateOrganiserGuestTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateOrganiserGuest' Mutation. Allow users to execute without passing in DataConnect. */
+export function createOrganiserGuest(dc: DataConnect, vars: CreateOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateOrganiserGuestData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateOrganiserGuest' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createOrganiserGuest(vars: CreateOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateOrganiserGuestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDetails' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateOrganiserGuestDetails(dc: DataConnect, vars: UpdateOrganiserGuestDetailsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestDetailsData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDetails' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateOrganiserGuestDetails(vars: UpdateOrganiserGuestDetailsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestDetailsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDietary' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateOrganiserGuestDietary(dc: DataConnect, vars: UpdateOrganiserGuestDietaryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestDietaryData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDietary' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateOrganiserGuestDietary(vars: UpdateOrganiserGuestDietaryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestDietaryData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RotateOrganiserGuestLink' Mutation. Allow users to execute without passing in DataConnect. */
+export function rotateOrganiserGuestLink(dc: DataConnect, vars: RotateOrganiserGuestLinkVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RotateOrganiserGuestLinkData>>;
+/** Generated Node Admin SDK operation action function for the 'RotateOrganiserGuestLink' Mutation. Allow users to pass in custom DataConnect instances. */
+export function rotateOrganiserGuestLink(vars: RotateOrganiserGuestLinkVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RotateOrganiserGuestLinkData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CancelOrganiserGuest' Mutation. Allow users to execute without passing in DataConnect. */
+export function cancelOrganiserGuest(dc: DataConnect, vars: CancelOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CancelOrganiserGuestData>>;
+/** Generated Node Admin SDK operation action function for the 'CancelOrganiserGuest' Mutation. Allow users to pass in custom DataConnect instances. */
+export function cancelOrganiserGuest(vars: CancelOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CancelOrganiserGuestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestCheckout' Mutation. Allow users to execute without passing in DataConnect. */
+export function attachOrganiserGuestCheckout(dc: DataConnect, vars: AttachOrganiserGuestCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AttachOrganiserGuestCheckoutData>>;
+/** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestCheckout' Mutation. Allow users to pass in custom DataConnect instances. */
+export function attachOrganiserGuestCheckout(vars: AttachOrganiserGuestCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AttachOrganiserGuestCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ResetOrganiserGuestCheckout' Mutation. Allow users to execute without passing in DataConnect. */
+export function resetOrganiserGuestCheckout(dc: DataConnect, vars: ResetOrganiserGuestCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ResetOrganiserGuestCheckoutData>>;
+/** Generated Node Admin SDK operation action function for the 'ResetOrganiserGuestCheckout' Mutation. Allow users to pass in custom DataConnect instances. */
+export function resetOrganiserGuestCheckout(vars: ResetOrganiserGuestCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ResetOrganiserGuestCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestPaid' Mutation. Allow users to execute without passing in DataConnect. */
+export function markOrganiserGuestPaid(dc: DataConnect, vars: MarkOrganiserGuestPaidVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestPaidData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestPaid' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markOrganiserGuestPaid(vars: MarkOrganiserGuestPaidVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestPaidData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestRefunded' Mutation. Allow users to execute without passing in DataConnect. */
+export function markOrganiserGuestRefunded(dc: DataConnect, vars: MarkOrganiserGuestRefundedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestRefundedData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestRefunded' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markOrganiserGuestRefunded(vars: MarkOrganiserGuestRefundedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestRefundedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ReassignOrganiserGuestTicket' Mutation. Allow users to execute without passing in DataConnect. */
+export function reassignOrganiserGuestTicket(dc: DataConnect, vars: ReassignOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReassignOrganiserGuestTicketData>>;
+/** Generated Node Admin SDK operation action function for the 'ReassignOrganiserGuestTicket' Mutation. Allow users to pass in custom DataConnect instances. */
+export function reassignOrganiserGuestTicket(vars: ReassignOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReassignOrganiserGuestTicketData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
 export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;
