@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  Archive as ArchiveIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -24,7 +25,7 @@ import {
 } from "@mui/icons-material";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
-import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
+import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL, ORGANISER_GUEST } from "../../../../shared/utils/ticketAudienceLabels";
 import type {
   EventBookingAdminRow,
   EventRow,
@@ -61,6 +62,7 @@ interface TicketAdminSurfaceProps {
   allEventBookings: EventBookingAdminRow[];
   ticketOrdersById: TicketOrdersById;
   attendeeTickets: EventAttendeeTicketRow[];
+  attendeeGuestsUnavailable?: boolean;
   moderatorNoteDraft: Record<string, string>;
   onModeratorNoteChange: (bookingId: string, value: string) => void;
   reviewingBookingId: string | null;
@@ -94,6 +96,7 @@ export function TicketAdminSurface({
   allEventBookings,
   ticketOrdersById,
   attendeeTickets,
+  attendeeGuestsUnavailable,
   moderatorNoteDraft,
   onModeratorNoteChange,
   reviewingBookingId,
@@ -143,7 +146,7 @@ export function TicketAdminSurface({
         />
       </AdminAccordion>
       <AdminAccordion title="Current attendee tickets">
-        <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} />
+        {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} />}
       </AdminAccordion>
       <AdminAccordion title="Booking audit activity">
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
@@ -236,7 +239,7 @@ function EventDetailsSection({
   );
 }
 
-function TicketTypesTable({
+export function TicketTypesTable({
   loading,
   ticketTypes,
   deletingTicketTypeId,
@@ -270,7 +273,7 @@ function TicketTypesTable({
         <TableBody>
           {ticketTypes.map((ticketType) => (
             <TableRow key={ticketType.id}>
-              <TableCell>{ticketType.title}</TableCell>
+              <TableCell>{ticketType.title}{ticketType.active === false && <Chip size="small" label="Archived" sx={{ ml: 1 }} />}</TableCell>
               <TableCell>{ticketType.description ?? "—"}</TableCell>
               <TableCell>{ticketType.price}</TableCell>
               <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
@@ -294,11 +297,11 @@ function TicketTypesTable({
                 <IconButton
                   size="small"
                   color="error"
-                  aria-label={`Delete ${ticketType.title}`}
-                  disabled={deletingTicketTypeId === ticketType.id}
+                  aria-label={`${ticketType.audience === ORGANISER_GUEST ? "Archive" : "Delete"} ${ticketType.title}`}
+                  disabled={deletingTicketTypeId === ticketType.id || ticketType.active === false}
                   onClick={() => onDelete(ticketType.id)}
                 >
-                  {deletingTicketTypeId === ticketType.id ? <CircularProgress size={16} /> : <DeleteIcon />}
+                  {deletingTicketTypeId === ticketType.id ? <CircularProgress size={16} /> : ticketType.audience === ORGANISER_GUEST ? <ArchiveIcon /> : <DeleteIcon />}
                 </IconButton>
               </TableCell>
             </TableRow>

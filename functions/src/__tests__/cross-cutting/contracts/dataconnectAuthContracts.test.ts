@@ -33,6 +33,18 @@ const EMAIL_VERIFIED_EXPR = "@auth(expr: \"auth.token.email_verified == true\")"
 const NO_ACCESS = "@auth(level: NO_ACCESS)";
 
 describe("Data Connect auth contracts", () => {
+  it("keeps every organiser guest operation behind server-side capability or moderation checks", () => {
+    const source = readApiFile("organiser-guests.gql");
+    const operations = source.split(/(?=^(?:query|mutation) )/m).filter(block => /^(?:query|mutation) /.test(block));
+    expect(operations.length).toBeGreaterThan(10);
+    for (const operation of operations) expect(operation).toContain(NO_ACCESS);
+    expect(source).not.toMatch(/organiserGuest(?:TicketType)?_delete/);
+    const dietary = source.slice(source.indexOf("mutation UpdateOrganiserGuestDietary"), source.indexOf("mutation RotateOrganiserGuestLink"));
+    expect(dietary).toContain("gt_expr: \"request.time\"");
+    expect(dietary).toContain("tokenHash: { eq: $tokenHash }");
+    expect(dietary).toContain("version: { eq: $version }");
+  });
+
   it("Phase A: critical booking/payment/admin operations keep strict auth", () => {
     const queries = readApiFile("queries.gql");
     const adminSdk = readApiFile("admin-mutations.gql");

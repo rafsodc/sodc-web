@@ -13,8 +13,6 @@ interface EventAttendeesProps {
 }
 
 export default function EventAttendees({ eventId, ticketTypes }: EventAttendeesProps) {
-  const showSymposium = ticketTypes.some((ticket) => ticket.includesSymposium);
-  const showDinner = ticketTypes.some((ticket) => ticket.includesDinner);
   const [page, setPage] = useState(1);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["eventAttendees", eventId, auth.currentUser?.uid],
@@ -23,6 +21,8 @@ export default function EventAttendees({ eventId, ticketTypes }: EventAttendeesP
     gcTime: 0,
   });
   const attendees = data?.attendees ?? [];
+  const showSymposium = [...ticketTypes, ...attendees].some(t => t.includesSymposium);
+  const showDinner = [...ticketTypes, ...attendees].some(t => t.includesDinner);
   const totalPages = Math.ceil(attendees.length / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(1, totalPages));
 

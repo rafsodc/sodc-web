@@ -32,6 +32,7 @@ import CookieBanner from "./shared/components/CookieBanner";
 import CookieSettingsDialog from "./shared/components/CookieSettingsDialog";
 
 // Lazy load route components for code splitting
+const GuestTicketPage = lazy(() => import("./features/guests/GuestTicketPage"));
 const AuthGate = lazy(() => import("./features/auth/components/AuthGate"));
 const Profile = lazy(() => import("./features/profile/components/Profile"));
 const ManageUsers = lazy(() => import("./features/admin/components/ManageUsers"));
@@ -116,7 +117,7 @@ function AppContent() {
   const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
   const checkoutReturn = isCheckoutReturnSearch(location.search);
   const authReturnTo = safeReturnTo(location.search);
-  const isPublicAuthAction = location.pathname === ROUTES.AUTH_ACTION;
+  const isPublicRoute = location.pathname === ROUTES.AUTH_ACTION || location.pathname === "/guest-ticket";
   const isAdmin = useAdminClaim(user);
   const { userData, loading: userDataLoading, refetch } = useUserData(user, isEnabled);
   const sessionRecovery = useSessionRecovery(user, { onRecovered: refetch });
@@ -155,7 +156,7 @@ function AppContent() {
       isEnabled &&
       userData &&
       !userDataLoading &&
-      !isPublicAuthAction &&
+      !isPublicRoute &&
       profileReviewCompletedForUid !== user.uid &&
       isProfileReviewDue(userData.profileReviewedAt),
   );
@@ -216,7 +217,7 @@ function AppContent() {
     );
   }
 
-  if (sessionRecovery.status !== "idle") {
+  if (sessionRecovery.status !== "idle" && !isPublicRoute) {
     const isRecovering = sessionRecovery.status === "recovering";
     const timedOut = sessionRecovery.failure === "request-timeout";
 
@@ -255,7 +256,7 @@ function AppContent() {
     );
   }
 
-  if (emailNotVerified && !isPublicAuthAction) {
+  if (emailNotVerified && !isPublicRoute) {
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -303,7 +304,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabledClaimResolved && !isPublicAuthAction) {
+  if (user && !isEnabledClaimResolved && !isPublicRoute) {
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -318,7 +319,7 @@ function AppContent() {
     user &&
     needsProfileCompletion &&
     location.pathname !== ROUTES.PROFILE_COMPLETION &&
-    !isPublicAuthAction
+    !isPublicRoute
   ) {
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
@@ -328,7 +329,7 @@ function AppContent() {
     );
   }
 
-  if (user && !isEnabled && !needsProfileCompletion && !isPublicAuthAction) {
+  if (user && !isEnabled && !needsProfileCompletion && !isPublicRoute) {
     const inactiveUserData =
       userData ||
       (membershipStatusForUnenabled
@@ -581,6 +582,7 @@ function AppContent() {
                     </Box>
                   }
                 />
+                <Route path="/guest-ticket" element={<GuestTicketPage />} />
                 <Route
                   path={ROUTES.AUTH_ACTION}
                   element={

@@ -142,3 +142,16 @@ Risk levels are relative to other authenticated callables in this application. â
 ## App Check relationship
 
 Per-user limits remain necessary after Firebase App Check is enabled under #345. App Check rejects requests that do not come from an attested app instance; it does not cap an authenticated user operating through a legitimate app instance. The controls are complementary.
+
+## Organiser guest capabilities
+
+| Callable | Risk | Protection |
+| --- | --- | --- |
+| `getOrganiserGuestList` | Private guest details | Enabled section moderator/admin; 60/5 minutes; no tokens returned |
+| `saveOrganiserGuestTicketType` | Ticket pricing | Enabled section moderator/admin; 60/hour; version check |
+| `manageOrganiserGuest` | Reservation and link changes | Enabled section moderator/admin; 120/hour; version checks and audit |
+| `getOrganiserGuestTicket` | Capability read | Random 256-bit token, stored as SHA-256; 120/5 minutes per guest; no email/internal IDs |
+| `updateOrganiserGuestDietary` | Capability write | Token plus version; database-enforced booking deadline; 30/hour per guest |
+| `createOrganiserGuestCheckout` | Stripe checkout | Token; 20/hour per guest; allocated price; Stripe idempotency and conditional session attachment |
+
+Guest tokens have no automatic expiry. Link replacement revokes the previous token. Tokens are carried in URL fragments and must not be logged or stored in analytics. Invalid tokens receive a neutral unavailable response.

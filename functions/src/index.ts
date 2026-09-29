@@ -29,3 +29,5 @@ if (!admin.apps.length) {
 }
 
 export * from "./potentialLost";
+
+export { getOrganiserGuestList, saveOrganiserGuestTicketType, manageOrganiserGuest, getOrganiserGuestTicket, updateOrganiserGuestDietary, createOrganiserGuestCheckout } from "./organiserGuests";
