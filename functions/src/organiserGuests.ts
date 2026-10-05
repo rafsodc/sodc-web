@@ -6,6 +6,7 @@ import {
   type CallableRequest,
 } from "firebase-functions/v2/https";
 import * as db from "@dataconnect/admin-generated";
+import { TicketAudience } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireEnabled, requireString, validateUUID } from "./helpers";
 import { requireSectionModerator } from "./sectionAccess";
@@ -50,20 +51,6 @@ function details(data: Record<string, unknown>) {
     ),
   };
 }
-function price(value: unknown): number {
-  if (
-    !Number.isSafeInteger(value) ||
-    Number(value) < 0 ||
-    Number(value) > 10000000
-  )
-    throw new HttpsError("invalid-argument", "Invalid price");
-  return Number(value);
-}
-function flag(value: unknown): boolean {
-  if (typeof value !== "boolean")
-    throw new HttpsError("invalid-argument", "Invalid ticket inclusion");
-  return value;
-}
 async function moderate(request: CallableRequest, eventId: string) {
   requireEnabled(request);
   const { data } = await db.getOrganiserGuestEvent({ eventId });
@@ -76,11 +63,20 @@ async function moderate(request: CallableRequest, eventId: string) {
   return data.event;
 }
 export async function loadOrganiserGuestTypes(eventId: string) {
-  const rows: db.ListOrganiserGuestTypesData["organiserGuestTicketTypes"] = [];
+  const rows: db.ListOrganiserGuestTypesData["ticketTypes"] = [];
   for (let offset = 0; ; offset += 500) {
     const { data } = await db.listOrganiserGuestTypes({ eventId, offset });
-    rows.push(...data.organiserGuestTicketTypes);
-    if (data.organiserGuestTicketTypes.length < 500) return rows.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+    rows.push(...data.ticketTypes);
+    if (data.ticketTypes.length < 500)
+      return rows
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title))
+        .map((ticket) => ({
+          id: ticket.id,
+          title: ticket.title,
+          priceMinor: Math.round(ticket.price * 100),
+          includesSymposium: ticket.includesSymposium,
+          includesDinner: ticket.includesDinner,
+        }));
   }
 }
 export function guestPaymentStatus(
@@ -102,14 +98,16 @@ export function guestPaymentStatus(
   return guest.priceMinor === 0 ? "FREE" : "UNPAID";
 }
 function project(guest: Omit<Guest, "tokenHash">) {
+  const ticketType = guest.standardTicketType ?? guest.ticketType;
+  if (!ticketType) throw new Error("Guest ticket type missing");
   return {
     id: guest.id,
     firstName: guest.firstName,
     lastName: guest.lastName,
     email: guest.email,
     dietaryRequirements: guest.dietaryRequirements,
-    ticketTypeId: guest.ticketType.id,
-    ticketTitle: guest.ticketType.title,
+    ticketTypeId: ticketType.id,
+    ticketTitle: ticketType.title,
     includesSymposium: guest.includesSymposium,
     includesDinner: guest.includesDinner,
     priceMinor: guest.priceMinor,
@@ -118,6 +116,22 @@ function project(guest: Omit<Guest, "tokenHash">) {
     paymentStatus: guestPaymentStatus(guest),
     refundedAmountMinor: guest.refundedAmountMinor,
   };
+}
+async function organiserTicketType(id: string, eventId: string) {
+  const ticket = (await db.getOrganiserGuestType({ id })).data.ticketType;
+  if (
+    !ticket ||
+    ticket.event.id !== eventId ||
+    ticket.audience !== TicketAudience.ORGANISER_GUEST
+  )
+    throw new HttpsError(
+      "failed-precondition",
+      "Choose an organiser/club guest ticket for this event",
+    );
+  const priceMinor = Math.round(ticket.price * 100);
+  if (!Number.isSafeInteger(priceMinor) || priceMinor < 0)
+    throw new HttpsError("failed-precondition", "Ticket price is invalid");
+  return { ...ticket, priceMinor };
 }
 async function guestById(id: string) {
   const { data } = await db.getOrganiserGuest({ id });
@@ -195,63 +209,6 @@ export const getOrganiserGuestList = onCall(
   },
 );
 
-export const saveOrganiserGuestTicketType = onCall(
-  { region: FUNCTIONS_REGION },
-  async (request) => {
-    try {
-      requireEnabled(request);
-      await enforceRateLimit("saveOrganiserGuestTicketType", request.auth!.uid);
-      const eventId = validateUUID(
-        requireString(request.data?.eventId, "eventId"),
-      );
-      await moderate(request, eventId);
-      const id = validateUUID(requireString(request.data?.id, "id"));
-      const input = {
-        id,
-        title: text(request.data.title, "title", 200),
-        description: text(request.data.description ?? "", "description", 4000, false) || null,
-        sortOrder: Number.isSafeInteger(request.data.sortOrder ?? 0) ? Number(request.data.sortOrder ?? 0) : 0,
-        priceMinor: price(request.data.priceMinor),
-        includesSymposium: flag(request.data.includesSymposium),
-        includesDinner: flag(request.data.includesDinner),
-        actor: request.auth!.uid,
-      };
-      const existing = (await db.getOrganiserGuestType({ id })).data
-        .organiserGuestTicketType;
-      if (existing) {
-        if (existing.event.id !== eventId)
-          throw new HttpsError("not-found", "Ticket type not found");
-        if (!request.data.version) {
-          if (
-            existing.title !== input.title ||
-            existing.description !== input.description ||
-            existing.sortOrder !== input.sortOrder ||
-            existing.priceMinor !== input.priceMinor ||
-            existing.includesDinner !== input.includesDinner ||
-            existing.includesSymposium !== input.includesSymposium
-          )
-            throw new HttpsError(
-              "already-exists",
-              "Ticket reference already used. Refresh the list.",
-            );
-        } else
-          await db.updateOrganiserGuestType({
-            ...input,
-            version: version(request.data.version),
-            active: flag(request.data.active),
-          });
-      } else {
-        if (request.data.version)
-          throw new HttpsError("not-found", "Ticket type not found");
-        await db.createOrganiserGuestType({ ...input, eventId });
-      }
-      return { success: true };
-    } catch (error) {
-      failure(error);
-    }
-  },
-);
-
 export const manageOrganiserGuest = onCall(
   { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
   async (request) => {
@@ -278,13 +235,7 @@ export const manageOrganiserGuest = onCall(
         const ticketTypeId = validateUUID(
           requireString(request.data.ticketTypeId, "ticketTypeId"),
         );
-        const ticket = (await db.getOrganiserGuestType({ id: ticketTypeId }))
-          .data.organiserGuestTicketType;
-        if (!ticket || ticket.event.id !== eventId || !ticket.active)
-          throw new HttpsError(
-            "failed-precondition",
-            "Choose an active organiser ticket for this event",
-          );
+        const ticket = await organiserTicketType(ticketTypeId, eventId);
         const token = randomBytes(32).toString("hex");
         await db.createOrganiserGuest({
           id,
@@ -310,11 +261,11 @@ export const manageOrganiserGuest = onCall(
       }
       if (request.data.action === "edit") {
         const input = { id, version: expectedVersion, ...details(request.data), actor };
-        if (request.data.ticketTypeId && request.data.ticketTypeId !== guest.ticketType.id) {
+        const currentTicketType = guest.standardTicketType ?? guest.ticketType;
+        if (request.data.ticketTypeId && request.data.ticketTypeId !== currentTicketType?.id) {
           if (guest.paidAt) throw new HttpsError("failed-precondition", "Paid tickets cannot be reassigned. Cancel and create a new reservation so payment history is retained.");
           const ticketTypeId = validateUUID(requireString(request.data.ticketTypeId, "ticketTypeId"));
-          const ticket = (await db.getOrganiserGuestType({ id: ticketTypeId })).data.organiserGuestTicketType;
-          if (!ticket || ticket.event.id !== eventId || !ticket.active) throw new HttpsError("failed-precondition", "Choose an active organiser ticket for this event");
+          const ticket = await organiserTicketType(ticketTypeId, eventId);
           await expireOpenCheckout(guest);
           await db.reassignOrganiserGuestTicket({ ...input, ticketTypeId, priceMinor: ticket.priceMinor, includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner, checkoutKey: randomUUID() });
         } else await db.updateOrganiserGuestDetails(input);
@@ -346,11 +297,13 @@ export const getOrganiserGuestTicket = onCall(
     try {
       const guest = await guestByToken(request.data?.token);
       await enforceRateLimit("getOrganiserGuestTicket", `guest:${guest.id}`);
+      const ticketType = guest.standardTicketType ?? guest.ticketType;
+      if (!ticketType) throw new Error("Guest ticket type missing");
       return {
         firstName: guest.firstName,
         lastName: guest.lastName,
         eventTitle: guest.event.title,
-        ticketTitle: guest.ticketType.title,
+        ticketTitle: ticketType.title,
         priceMinor: guest.priceMinor,
         includesDinner: guest.includesDinner,
         includesSymposium: guest.includesSymposium,

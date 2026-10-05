@@ -1,15 +1,11 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../config/firebase";
 export interface GuestType {
-  description?: string | null;
-  sortOrder?: number;
   id: string;
   title: string;
   priceMinor: number;
   includesSymposium: boolean;
   includesDinner: boolean;
-  active: boolean;
-  version: number;
 }
 export interface Guest {
   id: string;

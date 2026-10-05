@@ -129,6 +129,7 @@ export const SectionUserGroupPurpose = {
 export const TicketAudience = {
   MEMBER: "MEMBER",
   GUEST: "GUEST",
+  ORGANISER_GUEST: "ORGANISER_GUEST",
 }
 
 export const TicketOrderStatus = {
@@ -994,18 +995,6 @@ export function getPublicOrganiserGuestAttendance(dcOrVarsOrOptions, varsOrOptio
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeQuery('GetPublicOrganiserGuestAttendance', inputVars, inputOpts);
-}
-
-export function createOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateOrganiserGuestType', inputVars, inputOpts);
-}
-
-export function updateOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateOrganiserGuestType', inputVars, inputOpts);
 }
 
 export function createOrganiserGuest(dcOrVarsOrOptions, varsOrOptions, options) {

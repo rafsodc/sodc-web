@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
-import { MembershipStatus } from "@dataconnect/admin-generated";
+import { MembershipStatus, TicketAudience } from "@dataconnect/admin-generated";
 import {
   getSectionForUser,
   getSectionEventsForUser,
@@ -199,6 +199,37 @@ describe("getEventForUser", () => {
     const result = await callAs(getEventForUser, "member-1", false, { eventId });
 
     expect(result.event?.id).toBe(eventId);
+  });
+
+  it("does not expose organiser allocation ticket types on the standard booking page", async () => {
+    mockGetEventById.mockResolvedValue({
+      data: {
+        event: {
+          id: eventId,
+          section: { id: sectionId },
+          title: "Event",
+          ticketTypes: [
+            { id: "member", audience: TicketAudience.MEMBER },
+            { id: "organiser", audience: TicketAudience.ORGANISER_GUEST },
+          ],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getEventById>>);
+    mockSection([{ purposes: ["ACCESS"], userGroupId: accessGroupId }]);
+    mockGetUserAccessGroupsById.mockResolvedValue({
+      data: {
+        user: {
+          id: "member-1",
+          userGroups: [{ userGroup: { id: accessGroupId } }],
+        },
+      },
+    } as unknown as Awaited<ReturnType<typeof admin.getUserAccessGroupsById>>);
+
+    const result = await callAs(getEventForUser, "member-1", false, { eventId });
+
+    expect(result.event?.ticketTypes).toEqual([
+      expect.objectContaining({ id: "member" }),
+    ]);
   });
 });
 

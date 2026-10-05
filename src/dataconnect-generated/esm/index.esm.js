@@ -129,6 +129,7 @@ export const SectionUserGroupPurpose = {
 export const TicketAudience = {
   MEMBER: "MEMBER",
   GUEST: "GUEST",
+  ORGANISER_GUEST: "ORGANISER_GUEST",
 }
 
 export const TicketOrderStatus = {
@@ -1914,30 +1915,6 @@ export function getPublicOrganiserGuestAttendance(dcOrVars, varsOrOptions, optio
 
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getPublicOrganiserGuestAttendanceRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
-}
-
-export const createOrganiserGuestTypeRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'CreateOrganiserGuestType', inputVars);
-}
-createOrganiserGuestTypeRef.operationName = 'CreateOrganiserGuestType';
-
-export function createOrganiserGuestType(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(createOrganiserGuestTypeRef(dcInstance, inputVars));
-}
-
-export const updateOrganiserGuestTypeRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateOrganiserGuestType', inputVars);
-}
-updateOrganiserGuestTypeRef.operationName = 'UpdateOrganiserGuestType';
-
-export function updateOrganiserGuestType(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateOrganiserGuestTypeRef(dcInstance, inputVars));
 }
 
 export const createOrganiserGuestRef = (dcOrVars, vars) => {

@@ -189,8 +189,6 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*AdminDeleteBooking*](#admindeletebooking)
   - [*ResolvePaymentReconciliationException*](#resolvepaymentreconciliationexception)
   - [*ConfirmPotentialLost*](#confirmpotentiallost)
-  - [*CreateOrganiserGuestType*](#createorganiserguesttype)
-  - [*UpdateOrganiserGuestType*](#updateorganiserguesttype)
   - [*CreateOrganiserGuest*](#createorganiserguest)
   - [*UpdateOrganiserGuestDetails*](#updateorganiserguestdetails)
   - [*UpdateOrganiserGuestDietary*](#updateorganiserguestdietary)
@@ -6393,17 +6391,19 @@ To check the status of a Query, use the `UseQueryResult.status` field. You can a
 To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListOrganiserGuestTypes` Query is of type `ListOrganiserGuestTypesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface ListOrganiserGuestTypesData {
-  organiserGuestTicketTypes: ({
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
     sortOrder: number;
-    priceMinor: number;
+    price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    active: boolean;
-    version: number;
-  } & OrganiserGuestTicketType_Key)[];
+    userGroup: {
+      id: UUIDString;
+      name: string;
+    } & UserGroup_Key;
+  } & TicketType_Key)[];
 }
 ```
 
@@ -6453,7 +6453,7 @@ export default function ListOrganiserGuestTypesComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.organiserGuestTicketTypes);
+    console.log(query.data.ticketTypes);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -6486,20 +6486,23 @@ To check the status of a Query, use the `UseQueryResult.status` field. You can a
 To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetOrganiserGuestType` Query is of type `GetOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetOrganiserGuestTypeData {
-  organiserGuestTicketType?: {
+  ticketType?: {
     id: UUIDString;
     title: string;
     description?: string | null;
     sortOrder: number;
-    priceMinor: number;
+    price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    active: boolean;
-    version: number;
+    audience: TicketAudience;
+    userGroup: {
+      id: UUIDString;
+      name: string;
+    } & UserGroup_Key;
     event: {
       id: UUIDString;
     } & Event_Key;
-  } & OrganiserGuestTicketType_Key;
+  } & TicketType_Key;
 }
 ```
 
@@ -6548,7 +6551,7 @@ export default function GetOrganiserGuestTypeComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.organiserGuestTicketType);
+    console.log(query.data.ticketType);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -6601,10 +6604,14 @@ export interface ListOrganiserGuestsData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -6715,10 +6722,14 @@ export interface GetOrganiserGuestData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -6829,10 +6840,14 @@ export interface GetOrganiserGuestByTokenData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -17395,228 +17410,6 @@ export default function ConfirmPotentialLostComponent() {
   if (mutation.isSuccess) {
     console.log(mutation.data.user_updateMany);
     console.log(mutation.data.potentialLostReview_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## CreateOrganiserGuestType
-You can execute the `CreateOrganiserGuestType` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useCreateOrganiserGuestType(options?: useDataConnectMutationOptions<CreateOrganiserGuestTypeData, FirebaseError, CreateOrganiserGuestTypeVariables>): UseDataConnectMutationResult<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useCreateOrganiserGuestType(dc: DataConnect, options?: useDataConnectMutationOptions<CreateOrganiserGuestTypeData, FirebaseError, CreateOrganiserGuestTypeVariables>): UseDataConnectMutationResult<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-```
-
-### Variables
-The `CreateOrganiserGuestType` Mutation requires an argument of type `CreateOrganiserGuestTypeVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface CreateOrganiserGuestTypeVariables {
-  id: UUIDString;
-  eventId: UUIDString;
-  title: string;
-  description?: string | null;
-  sortOrder: number;
-  priceMinor: number;
-  includesSymposium: boolean;
-  includesDinner: boolean;
-  actor: string;
-}
-```
-### Return Type
-Recall that calling the `CreateOrganiserGuestType` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateOrganiserGuestType` Mutation is of type `CreateOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface CreateOrganiserGuestTypeData {
-  organiserGuestTicketType_insert: OrganiserGuestTicketType_Key;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `CreateOrganiserGuestType`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, CreateOrganiserGuestTypeVariables } from '@dataconnect/generated';
-import { useCreateOrganiserGuestType } from '@dataconnect/generated/react'
-
-export default function CreateOrganiserGuestTypeComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useCreateOrganiserGuestType();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useCreateOrganiserGuestType(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateOrganiserGuestType(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useCreateOrganiserGuestType(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useCreateOrganiserGuestType` Mutation requires an argument of type `CreateOrganiserGuestTypeVariables`:
-  const createOrganiserGuestTypeVars: CreateOrganiserGuestTypeVariables = {
-    id: ..., 
-    eventId: ..., 
-    title: ..., 
-    description: ..., // optional
-    sortOrder: ..., 
-    priceMinor: ..., 
-    includesSymposium: ..., 
-    includesDinner: ..., 
-    actor: ..., 
-  };
-  mutation.mutate(createOrganiserGuestTypeVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., eventId: ..., title: ..., description: ..., sortOrder: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., actor: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(createOrganiserGuestTypeVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.organiserGuestTicketType_insert);
-  }
-  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
-}
-```
-
-## UpdateOrganiserGuestType
-You can execute the `UpdateOrganiserGuestType` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
-```javascript
-useUpdateOrganiserGuestType(options?: useDataConnectMutationOptions<UpdateOrganiserGuestTypeData, FirebaseError, UpdateOrganiserGuestTypeVariables>): UseDataConnectMutationResult<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-```
-You can also pass in a `DataConnect` instance to the Mutation hook function.
-```javascript
-useUpdateOrganiserGuestType(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateOrganiserGuestTypeData, FirebaseError, UpdateOrganiserGuestTypeVariables>): UseDataConnectMutationResult<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-```
-
-### Variables
-The `UpdateOrganiserGuestType` Mutation requires an argument of type `UpdateOrganiserGuestTypeVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-
-```javascript
-export interface UpdateOrganiserGuestTypeVariables {
-  id: UUIDString;
-  version: number;
-  title: string;
-  description?: string | null;
-  sortOrder: number;
-  priceMinor: number;
-  includesSymposium: boolean;
-  includesDinner: boolean;
-  active: boolean;
-  actor: string;
-}
-```
-### Return Type
-Recall that calling the `UpdateOrganiserGuestType` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
-
-To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
-
-To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
-
-To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateOrganiserGuestType` Mutation is of type `UpdateOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
-```javascript
-export interface UpdateOrganiserGuestTypeData {
-  organiserGuestTicketType_updateMany: number;
-}
-```
-
-To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
-
-### Using `UpdateOrganiserGuestType`'s Mutation hook function
-
-```javascript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, UpdateOrganiserGuestTypeVariables } from '@dataconnect/generated';
-import { useUpdateOrganiserGuestType } from '@dataconnect/generated/react'
-
-export default function UpdateOrganiserGuestTypeComponent() {
-  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
-  const mutation = useUpdateOrganiserGuestType();
-
-  // You can also pass in a `DataConnect` instance to the Mutation hook function.
-  const dataConnect = getDataConnect(connectorConfig);
-  const mutation = useUpdateOrganiserGuestType(dataConnect);
-
-  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateOrganiserGuestType(options);
-
-  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
-  const dataConnect = getDataConnect(connectorConfig);
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  const mutation = useUpdateOrganiserGuestType(dataConnect, options);
-
-  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
-  // The `useUpdateOrganiserGuestType` Mutation requires an argument of type `UpdateOrganiserGuestTypeVariables`:
-  const updateOrganiserGuestTypeVars: UpdateOrganiserGuestTypeVariables = {
-    id: ..., 
-    version: ..., 
-    title: ..., 
-    description: ..., // optional
-    sortOrder: ..., 
-    priceMinor: ..., 
-    includesSymposium: ..., 
-    includesDinner: ..., 
-    active: ..., 
-    actor: ..., 
-  };
-  mutation.mutate(updateOrganiserGuestTypeVars);
-  // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., version: ..., title: ..., description: ..., sortOrder: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., active: ..., actor: ..., });
-
-  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
-  const options = {
-    onSuccess: () => { console.log('Mutation succeeded!'); }
-  };
-  mutation.mutate(updateOrganiserGuestTypeVars, options);
-
-  // Then, you can render your component dynamically based on the status of the Mutation.
-  if (mutation.isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (mutation.isError) {
-    return <div>Error: {mutation.error.message}</div>;
-  }
-
-  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
-  if (mutation.isSuccess) {
-    console.log(mutation.data.organiserGuestTicketType_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

@@ -182,8 +182,6 @@ This README will guide you through the process of using the generated JavaScript
   - [*AdminDeleteBooking*](#admindeletebooking)
   - [*ResolvePaymentReconciliationException*](#resolvepaymentreconciliationexception)
   - [*ConfirmPotentialLost*](#confirmpotentiallost)
-  - [*CreateOrganiserGuestType*](#createorganiserguesttype)
-  - [*UpdateOrganiserGuestType*](#updateorganiserguesttype)
   - [*CreateOrganiserGuest*](#createorganiserguest)
   - [*UpdateOrganiserGuestDetails*](#updateorganiserguestdetails)
   - [*UpdateOrganiserGuestDietary*](#updateorganiserguestdietary)
@@ -8112,17 +8110,19 @@ Recall that executing the `ListOrganiserGuestTypes` query returns a `QueryPromis
 The `data` property is an object of type `ListOrganiserGuestTypesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface ListOrganiserGuestTypesData {
-  organiserGuestTicketTypes: ({
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
     sortOrder: number;
-    priceMinor: number;
+    price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    active: boolean;
-    version: number;
-  } & OrganiserGuestTicketType_Key)[];
+    userGroup: {
+      id: UUIDString;
+      name: string;
+    } & UserGroup_Key;
+  } & TicketType_Key)[];
 }
 ```
 ### Using `ListOrganiserGuestTypes`'s action shortcut function
@@ -8147,12 +8147,12 @@ const { data } = await listOrganiserGuestTypes({ eventId: ..., offset: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await listOrganiserGuestTypes(dataConnect, listOrganiserGuestTypesVars);
 
-console.log(data.organiserGuestTicketTypes);
+console.log(data.ticketTypes);
 
 // Or, you can use the `Promise` API.
 listOrganiserGuestTypes(listOrganiserGuestTypesVars).then((response) => {
   const data = response.data;
-  console.log(data.organiserGuestTicketTypes);
+  console.log(data.ticketTypes);
 });
 ```
 
@@ -8181,12 +8181,12 @@ const ref = listOrganiserGuestTypesRef(dataConnect, listOrganiserGuestTypesVars)
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.organiserGuestTicketTypes);
+console.log(data.ticketTypes);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.organiserGuestTicketTypes);
+  console.log(data.ticketTypes);
 });
 ```
 
@@ -8233,20 +8233,23 @@ Recall that executing the `GetOrganiserGuestType` query returns a `QueryPromise`
 The `data` property is an object of type `GetOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetOrganiserGuestTypeData {
-  organiserGuestTicketType?: {
+  ticketType?: {
     id: UUIDString;
     title: string;
     description?: string | null;
     sortOrder: number;
-    priceMinor: number;
+    price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    active: boolean;
-    version: number;
+    audience: TicketAudience;
+    userGroup: {
+      id: UUIDString;
+      name: string;
+    } & UserGroup_Key;
     event: {
       id: UUIDString;
     } & Event_Key;
-  } & OrganiserGuestTicketType_Key;
+  } & TicketType_Key;
 }
 ```
 ### Using `GetOrganiserGuestType`'s action shortcut function
@@ -8270,12 +8273,12 @@ const { data } = await getOrganiserGuestType({ id: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getOrganiserGuestType(dataConnect, getOrganiserGuestTypeVars);
 
-console.log(data.organiserGuestTicketType);
+console.log(data.ticketType);
 
 // Or, you can use the `Promise` API.
 getOrganiserGuestType(getOrganiserGuestTypeVars).then((response) => {
   const data = response.data;
-  console.log(data.organiserGuestTicketType);
+  console.log(data.ticketType);
 });
 ```
 
@@ -8303,12 +8306,12 @@ const ref = getOrganiserGuestTypeRef(dataConnect, getOrganiserGuestTypeVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.organiserGuestTicketType);
+console.log(data.ticketType);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.organiserGuestTicketType);
+  console.log(data.ticketType);
 });
 ```
 
@@ -8375,10 +8378,14 @@ export interface ListOrganiserGuestsData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -8517,10 +8524,14 @@ export interface GetOrganiserGuestData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -8658,10 +8669,14 @@ export interface GetOrganiserGuestByTokenData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -21448,275 +21463,6 @@ executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.user_updateMany);
   console.log(data.potentialLostReview_insert);
-});
-```
-
-## CreateOrganiserGuestType
-You can execute the `CreateOrganiserGuestType` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-createOrganiserGuestType(vars: CreateOrganiserGuestTypeVariables): MutationPromise<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-
-interface CreateOrganiserGuestTypeRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateOrganiserGuestTypeVariables): MutationRef<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-}
-export const createOrganiserGuestTypeRef: CreateOrganiserGuestTypeRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-createOrganiserGuestType(dc: DataConnect, vars: CreateOrganiserGuestTypeVariables): MutationPromise<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-
-interface CreateOrganiserGuestTypeRef {
-  ...
-  (dc: DataConnect, vars: CreateOrganiserGuestTypeVariables): MutationRef<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-}
-export const createOrganiserGuestTypeRef: CreateOrganiserGuestTypeRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createOrganiserGuestTypeRef:
-```typescript
-const name = createOrganiserGuestTypeRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `CreateOrganiserGuestType` mutation requires an argument of type `CreateOrganiserGuestTypeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface CreateOrganiserGuestTypeVariables {
-  id: UUIDString;
-  eventId: UUIDString;
-  title: string;
-  description?: string | null;
-  sortOrder: number;
-  priceMinor: number;
-  includesSymposium: boolean;
-  includesDinner: boolean;
-  actor: string;
-}
-```
-### Return Type
-Recall that executing the `CreateOrganiserGuestType` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `CreateOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface CreateOrganiserGuestTypeData {
-  organiserGuestTicketType_insert: OrganiserGuestTicketType_Key;
-}
-```
-### Using `CreateOrganiserGuestType`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, createOrganiserGuestType, CreateOrganiserGuestTypeVariables } from '@dataconnect/generated';
-
-// The `CreateOrganiserGuestType` mutation requires an argument of type `CreateOrganiserGuestTypeVariables`:
-const createOrganiserGuestTypeVars: CreateOrganiserGuestTypeVariables = {
-  id: ..., 
-  eventId: ..., 
-  title: ..., 
-  description: ..., // optional
-  sortOrder: ..., 
-  priceMinor: ..., 
-  includesSymposium: ..., 
-  includesDinner: ..., 
-  actor: ..., 
-};
-
-// Call the `createOrganiserGuestType()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await createOrganiserGuestType(createOrganiserGuestTypeVars);
-// Variables can be defined inline as well.
-const { data } = await createOrganiserGuestType({ id: ..., eventId: ..., title: ..., description: ..., sortOrder: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., actor: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await createOrganiserGuestType(dataConnect, createOrganiserGuestTypeVars);
-
-console.log(data.organiserGuestTicketType_insert);
-
-// Or, you can use the `Promise` API.
-createOrganiserGuestType(createOrganiserGuestTypeVars).then((response) => {
-  const data = response.data;
-  console.log(data.organiserGuestTicketType_insert);
-});
-```
-
-### Using `CreateOrganiserGuestType`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, createOrganiserGuestTypeRef, CreateOrganiserGuestTypeVariables } from '@dataconnect/generated';
-
-// The `CreateOrganiserGuestType` mutation requires an argument of type `CreateOrganiserGuestTypeVariables`:
-const createOrganiserGuestTypeVars: CreateOrganiserGuestTypeVariables = {
-  id: ..., 
-  eventId: ..., 
-  title: ..., 
-  description: ..., // optional
-  sortOrder: ..., 
-  priceMinor: ..., 
-  includesSymposium: ..., 
-  includesDinner: ..., 
-  actor: ..., 
-};
-
-// Call the `createOrganiserGuestTypeRef()` function to get a reference to the mutation.
-const ref = createOrganiserGuestTypeRef(createOrganiserGuestTypeVars);
-// Variables can be defined inline as well.
-const ref = createOrganiserGuestTypeRef({ id: ..., eventId: ..., title: ..., description: ..., sortOrder: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., actor: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = createOrganiserGuestTypeRef(dataConnect, createOrganiserGuestTypeVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.organiserGuestTicketType_insert);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.organiserGuestTicketType_insert);
-});
-```
-
-## UpdateOrganiserGuestType
-You can execute the `UpdateOrganiserGuestType` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
-```typescript
-updateOrganiserGuestType(vars: UpdateOrganiserGuestTypeVariables): MutationPromise<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-
-interface UpdateOrganiserGuestTypeRef {
-  ...
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateOrganiserGuestTypeVariables): MutationRef<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-}
-export const updateOrganiserGuestTypeRef: UpdateOrganiserGuestTypeRef;
-```
-You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
-```typescript
-updateOrganiserGuestType(dc: DataConnect, vars: UpdateOrganiserGuestTypeVariables): MutationPromise<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-
-interface UpdateOrganiserGuestTypeRef {
-  ...
-  (dc: DataConnect, vars: UpdateOrganiserGuestTypeVariables): MutationRef<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-}
-export const updateOrganiserGuestTypeRef: UpdateOrganiserGuestTypeRef;
-```
-
-If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateOrganiserGuestTypeRef:
-```typescript
-const name = updateOrganiserGuestTypeRef.operationName;
-console.log(name);
-```
-
-### Variables
-The `UpdateOrganiserGuestType` mutation requires an argument of type `UpdateOrganiserGuestTypeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-
-```typescript
-export interface UpdateOrganiserGuestTypeVariables {
-  id: UUIDString;
-  version: number;
-  title: string;
-  description?: string | null;
-  sortOrder: number;
-  priceMinor: number;
-  includesSymposium: boolean;
-  includesDinner: boolean;
-  active: boolean;
-  actor: string;
-}
-```
-### Return Type
-Recall that executing the `UpdateOrganiserGuestType` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
-
-The `data` property is an object of type `UpdateOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
-```typescript
-export interface UpdateOrganiserGuestTypeData {
-  organiserGuestTicketType_updateMany: number;
-}
-```
-### Using `UpdateOrganiserGuestType`'s action shortcut function
-
-```typescript
-import { getDataConnect } from 'firebase/data-connect';
-import { connectorConfig, updateOrganiserGuestType, UpdateOrganiserGuestTypeVariables } from '@dataconnect/generated';
-
-// The `UpdateOrganiserGuestType` mutation requires an argument of type `UpdateOrganiserGuestTypeVariables`:
-const updateOrganiserGuestTypeVars: UpdateOrganiserGuestTypeVariables = {
-  id: ..., 
-  version: ..., 
-  title: ..., 
-  description: ..., // optional
-  sortOrder: ..., 
-  priceMinor: ..., 
-  includesSymposium: ..., 
-  includesDinner: ..., 
-  active: ..., 
-  actor: ..., 
-};
-
-// Call the `updateOrganiserGuestType()` function to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await updateOrganiserGuestType(updateOrganiserGuestTypeVars);
-// Variables can be defined inline as well.
-const { data } = await updateOrganiserGuestType({ id: ..., version: ..., title: ..., description: ..., sortOrder: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., active: ..., actor: ..., });
-
-// You can also pass in a `DataConnect` instance to the action shortcut function.
-const dataConnect = getDataConnect(connectorConfig);
-const { data } = await updateOrganiserGuestType(dataConnect, updateOrganiserGuestTypeVars);
-
-console.log(data.organiserGuestTicketType_updateMany);
-
-// Or, you can use the `Promise` API.
-updateOrganiserGuestType(updateOrganiserGuestTypeVars).then((response) => {
-  const data = response.data;
-  console.log(data.organiserGuestTicketType_updateMany);
-});
-```
-
-### Using `UpdateOrganiserGuestType`'s `MutationRef` function
-
-```typescript
-import { getDataConnect, executeMutation } from 'firebase/data-connect';
-import { connectorConfig, updateOrganiserGuestTypeRef, UpdateOrganiserGuestTypeVariables } from '@dataconnect/generated';
-
-// The `UpdateOrganiserGuestType` mutation requires an argument of type `UpdateOrganiserGuestTypeVariables`:
-const updateOrganiserGuestTypeVars: UpdateOrganiserGuestTypeVariables = {
-  id: ..., 
-  version: ..., 
-  title: ..., 
-  description: ..., // optional
-  sortOrder: ..., 
-  priceMinor: ..., 
-  includesSymposium: ..., 
-  includesDinner: ..., 
-  active: ..., 
-  actor: ..., 
-};
-
-// Call the `updateOrganiserGuestTypeRef()` function to get a reference to the mutation.
-const ref = updateOrganiserGuestTypeRef(updateOrganiserGuestTypeVars);
-// Variables can be defined inline as well.
-const ref = updateOrganiserGuestTypeRef({ id: ..., version: ..., title: ..., description: ..., sortOrder: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., active: ..., actor: ..., });
-
-// You can also pass in a `DataConnect` instance to the `MutationRef` function.
-const dataConnect = getDataConnect(connectorConfig);
-const ref = updateOrganiserGuestTypeRef(dataConnect, updateOrganiserGuestTypeVars);
-
-// Call `executeMutation()` on the reference to execute the mutation.
-// You can use the `await` keyword to wait for the promise to resolve.
-const { data } = await executeMutation(ref);
-
-console.log(data.organiserGuestTicketType_updateMany);
-
-// Or, you can use the `Promise` API.
-executeMutation(ref).then((response) => {
-  const data = response.data;
-  console.log(data.organiserGuestTicketType_updateMany);
 });
 ```
 

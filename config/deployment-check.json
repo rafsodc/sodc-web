@@ -104,7 +104,6 @@
     "retryAnnouncementPreparation",
     "reviewBookingRevision",
     "revokeAdmin",
-    "saveOrganiserGuestTicketType",
     "searchSectionMembers",
     "searchUsers",
     "sendNotifyReplyToVerificationTest",

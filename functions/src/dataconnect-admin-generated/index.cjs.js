@@ -147,6 +147,7 @@ exports.SectionUserGroupPurpose = SectionUserGroupPurpose;
 const TicketAudience = {
   MEMBER: "MEMBER",
   GUEST: "GUEST",
+  ORGANISER_GUEST: "ORGANISER_GUEST",
 }
 exports.TicketAudience = TicketAudience;
 
@@ -1158,20 +1159,6 @@ function getPublicOrganiserGuestAttendance(dcOrVarsOrOptions, varsOrOptions, opt
   return dcInstance.executeQuery('GetPublicOrganiserGuestAttendance', inputVars, inputOpts);
 }
 exports.getPublicOrganiserGuestAttendance = getPublicOrganiserGuestAttendance;
-
-function createOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('CreateOrganiserGuestType', inputVars, inputOpts);
-}
-exports.createOrganiserGuestType = createOrganiserGuestType;
-
-function updateOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateOrganiserGuestType', inputVars, inputOpts);
-}
-exports.updateOrganiserGuestType = updateOrganiserGuestType;
 
 function createOrganiserGuest(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

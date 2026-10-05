@@ -8,7 +8,6 @@ import {
   getOrganiserGuestTicket,
   guestPaymentStatus,
   manageOrganiserGuest,
-  saveOrganiserGuestTicketType,
   updateOrganiserGuestDietary,
 } from "../../organiserGuests";
 import { handleOrganiserGuestStripeEvent } from "../../organiserGuestPayments";
@@ -104,18 +103,17 @@ beforeEach(() => {
     data: { organiserGuests: [base] },
   } as never);
   vi.spyOn(db, "listOrganiserGuestTypes").mockResolvedValue({
-    data: { organiserGuestTicketTypes: [] },
+    data: { ticketTypes: [] },
   });
   typeQuery.mockResolvedValue({
     data: {
-      organiserGuestTicketType: {
+      ticketType: {
         ...base.ticketType,
         event: { id },
-        active: true,
-        priceMinor: 1000,
+        audience: db.TicketAudience.ORGANISER_GUEST,
+        price: 10,
         includesDinner: true,
         includesSymposium: false,
-        version: 1,
       },
     },
   });
@@ -248,7 +246,10 @@ describe("organiser guest capability and permissions", () => {
     getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
     typeQuery.mockResolvedValue({
       data: {
-        organiserGuestTicketType: { event: { id: other }, active: true },
+        ticketType: {
+          event: { id: other },
+          audience: db.TicketAudience.ORGANISER_GUEST,
+        },
       },
     } as never);
     await expect(
@@ -276,12 +277,23 @@ describe("organiser guest capability and permissions", () => {
     expect(create).not.toHaveBeenCalled();
     expect(cancel).not.toHaveBeenCalled();
   });
-  it("validates guest ticket prices", async () => {
+  it("rejects a standard member ticket for organiser allocation", async () => {
+    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    typeQuery.mockResolvedValue({
+      data: {
+        ticketType: {
+          event: { id },
+          audience: db.TicketAudience.MEMBER,
+          price: 10,
+        },
+      },
+    } as never);
     await expect(
-      saveOrganiserGuestTicketType.run(
-        request({ id, eventId: id, title: "Test", priceMinor: -1 }, true),
+      manageOrganiserGuest.run(
+        request({ ...base, eventId: id, ticketTypeId: id, action: "create" }, true),
       ),
-    ).rejects.toMatchObject({ code: "invalid-argument" });
+    ).rejects.toMatchObject({ code: "failed-precondition" });
+    expect(create).not.toHaveBeenCalled();
   });
 });
 describe("organiser ticket reassignment", () => {

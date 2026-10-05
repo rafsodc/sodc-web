@@ -1,4 +1,3 @@
-import OrganiserTicketTypesManager from "../OrganiserTicketTypesManager";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen, fireEvent, waitFor } from "../../../test-utils";
@@ -108,15 +107,6 @@ describe("organiser management and reports", () => {
     await screen.findByText(/Create an organiser\/club guest ticket in Ticket types/);
     expect(screen.queryByRole("button", { name: /add guest ticket type/i })).not.toBeInTheDocument();
     view.unmount();
-    render(<OrganiserTicketTypesManager eventId="event" />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Add ticket type" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Add ticket type" }));
-    expect(screen.getByRole("combobox", { name: "Ticket category" })).toHaveAttribute("aria-disabled", "true");
-    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Club guests" } });
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Dinner invitation" } });
-    fireEvent.change(screen.getByLabelText("Sort order"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(call).toHaveBeenCalledWith("saveOrganiserGuestTicketType", expect.objectContaining({ eventId: "event", title: "Club guests", description: "Dinner invitation", sortOrder: 2, priceMinor: 0 })));
   });
   it("keeps cancellation explicit and shows paid refund obligations", async () => {
     call.mockResolvedValue({

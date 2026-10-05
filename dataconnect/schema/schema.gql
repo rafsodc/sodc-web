@@ -23,6 +23,7 @@ enum MembershipStatus {
 enum TicketAudience {
   MEMBER
   GUEST
+  ORGANISER_GUEST
 }
 
 enum BookingStatus {
@@ -808,7 +809,8 @@ type PotentialLostReview @table {
   reviewedAt: Timestamp! @default(expr: "request.time")
 }
 
-# Separate from member-bookable TicketType: organiser allocation only.
+# Legacy organiser ticket types retained only so existing reservations remain readable.
+# New organiser tickets use TicketType with audience ORGANISER_GUEST.
 type OrganiserGuestTicketType @table {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
@@ -830,7 +832,10 @@ type OrganiserGuestTicketType @table {
 type OrganiserGuest @table {
   id: UUID!
   event: Event!
-  ticketType: OrganiserGuestTicketType!
+  # Legacy relation for reservations created before organiser tickets moved into TicketType.
+  ticketType: OrganiserGuestTicketType
+  # Standard ticket type used for every new organiser allocation.
+  standardTicketType: TicketType
   firstName: String!
   lastName: String!
   email: String!

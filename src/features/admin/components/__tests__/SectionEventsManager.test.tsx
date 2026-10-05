@@ -86,6 +86,8 @@ vi.mock("@dataconnect/generated", async () => {
     updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    deleteTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    listUserGroupsRef: vi.fn(() => ({ type: "query" })),
   };
 });
 
@@ -134,6 +136,9 @@ describe("SectionEventsManager", () => {
 
   it("creates an organiser/club guest type through the existing three-category editor", async () => {
     const user = userEvent.setup();
+    vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValueOnce({
+      data: { userGroups: [{ id: "group-1", name: "Invited guests" }] },
+    } as never);
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
     await user.click(screen.getByRole("button", { name: /add ticket type/i }));
@@ -141,26 +146,46 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("option", { name: "Member ticket" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Member’s guest ticket" })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "Organiser/club guest ticket" }));
-    expect(screen.queryByRole("combobox", { name: /access group/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Available for new allocations")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: /access group/i }));
+    await user.click(screen.getByRole("option", { name: "Invited guests" }));
     fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Club dinner" } });
     fireEvent.change(screen.getByLabelText(/^description/i), { target: { value: "Invited guests" } });
     fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "12.50" } });
     await user.click(screen.getByRole("checkbox", { name: "Dinner" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(guestCall).toHaveBeenCalledWith("saveOrganiserGuestTicketType", expect.objectContaining({ eventId: "ev-1", title: "Club dinner", description: "Invited guests", priceMinor: 1250, includesDinner: true, active: true })));
-    expect(generated.createTicketTypeRef).not.toHaveBeenCalled();
+    await waitFor(() => expect(generated.createTicketTypeRef).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventId: "ev-1",
+        userGroupId: "group-1",
+        audience: generated.TicketAudience.ORGANISER_GUEST,
+        title: "Club dinner",
+        description: "Invited guests",
+        price: 12.5,
+        includesDinner: true,
+      }),
+    ));
   });
 
-  it("shows organiser types in the existing ticket table and archives them without deleting history", async () => {
-    const type = { id: "org-type", title: "Club dinner", description: "Invitation", priceMinor: 2500, sortOrder: 1, version: 3, active: true, includesDinner: true, includesSymposium: false };
-    vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [type] });
+  it("shows and deletes organiser types through the standard ticket table", async () => {
+    const type = { id: "org-type", title: "Club dinner", description: "Invitation", price: 25, sortOrder: 1, audience: generated.TicketAudience.ORGANISER_GUEST, userGroup: { id: "group-1", name: "Invited guests", membershipStatuses: [] }, includesDinner: true, includesSymposium: false };
+    mockGetEventById({
+      data: { event: { id: "ev-1", title: "Event", maxGuestsWithoutModeratorApproval: 0, ticketTypes: [type] } },
+      isLoading: false,
+      isError: false,
+    });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
     expect(await screen.findByText("Organiser/club guest ticket")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Archive Club dinner" }));
-    await waitFor(() => expect(guestCall).toHaveBeenCalledWith("saveOrganiserGuestTicketType", expect.objectContaining({ id: "org-type", eventId: "ev-1", version: 3, active: false })));
+    expect(screen.getByText("Invited guests")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete Club dinner" }));
+    await waitFor(() => expect(generated.deleteTicketTypeRef).toHaveBeenCalledWith(
+      expect.anything(),
+      { id: "org-type" },
+    ));
     confirm.mockRestore();
   });
 

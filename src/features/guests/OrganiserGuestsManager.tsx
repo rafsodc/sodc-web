@@ -106,7 +106,7 @@ export default function OrganiserGuestsManager({
         </Alert>
       ) : (
         <>
-          {!data.ticketTypes.some((t) => t.active) && (
+          {data.ticketTypes.length === 0 && (
             <Alert severity="info">
               Create an organiser/club guest ticket in Ticket types before
               adding guests.
@@ -115,7 +115,7 @@ export default function OrganiserGuestsManager({
           <Button
             sx={{ my: 2 }}
             variant="contained"
-            disabled={busy || !data.ticketTypes.some((t) => t.active)}
+            disabled={busy || data.ticketTypes.length === 0}
             onClick={() =>
               setGuest({
                 id: crypto.randomUUID(),
@@ -123,7 +123,7 @@ export default function OrganiserGuestsManager({
                 lastName: "",
                 email: "",
                 dietaryRequirements: "",
-                ticketTypeId: data.ticketTypes.find((t) => t.active)?.id,
+                ticketTypeId: data.ticketTypes[0]?.id,
               })
             }
           >
@@ -301,9 +301,7 @@ export default function OrganiserGuestsManager({
                   setGuest({ ...guest, ticketTypeId: e.target.value })
                 }
               >
-                {data?.ticketTypes
-                  .filter((t) => t.active || t.id === guest?.ticketTypeId)
-                  .map((t) => (
+                {data?.ticketTypes.map((t) => (
                     <MenuItem key={t.id} value={t.id}>
                       {t.title} · {money(t.priceMinor)}
                     </MenuItem>
