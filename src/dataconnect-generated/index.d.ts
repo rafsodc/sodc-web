@@ -1970,7 +1970,7 @@ export interface GetOrganiserGuestByTokenVariables {
 }
 
 export interface GetOrganiserGuestData {
-  organiserGuest?: {
+  organiserGuests: ({
     id: UUIDString;
     firstName: string;
     lastName: string;
@@ -2006,7 +2006,7 @@ export interface GetOrganiserGuestData {
       } & Section_Key;
     } & Event_Key;
     tokenHash: string;
-  } & OrganiserGuest_Key;
+  } & OrganiserGuest_Key)[];
 }
 
 export interface GetOrganiserGuestEventData {

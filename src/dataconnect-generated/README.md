@@ -8504,7 +8504,7 @@ Recall that executing the `GetOrganiserGuest` query returns a `QueryPromise` tha
 The `data` property is an object of type `GetOrganiserGuestData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetOrganiserGuestData {
-  organiserGuest?: {
+  organiserGuests: ({
     id: UUIDString;
     firstName: string;
     lastName: string;
@@ -8540,7 +8540,7 @@ export interface GetOrganiserGuestData {
       } & Section_Key;
     } & Event_Key;
     tokenHash: string;
-  } & OrganiserGuest_Key;
+  } & OrganiserGuest_Key)[];
 }
 ```
 ### Using `GetOrganiserGuest`'s action shortcut function
@@ -8564,12 +8564,12 @@ const { data } = await getOrganiserGuest({ id: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getOrganiserGuest(dataConnect, getOrganiserGuestVars);
 
-console.log(data.organiserGuest);
+console.log(data.organiserGuests);
 
 // Or, you can use the `Promise` API.
 getOrganiserGuest(getOrganiserGuestVars).then((response) => {
   const data = response.data;
-  console.log(data.organiserGuest);
+  console.log(data.organiserGuests);
 });
 ```
 
@@ -8597,12 +8597,12 @@ const ref = getOrganiserGuestRef(dataConnect, getOrganiserGuestVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.organiserGuest);
+console.log(data.organiserGuests);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.organiserGuest);
+  console.log(data.organiserGuests);
 });
 ```
 

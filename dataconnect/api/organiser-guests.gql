@@ -90,7 +90,7 @@ query ListOrganiserGuests($eventId: UUID!, $offset: Int!)
   }
 }
 query GetOrganiserGuest($id: UUID!) @auth(level: NO_ACCESS) {
-  organiserGuest(id: $id) {
+  organiserGuests(where: { id: { eq: $id } }, limit: 1) {
     id
     firstName
     lastName

@@ -6701,7 +6701,7 @@ To check the status of a Query, use the `UseQueryResult.status` field. You can a
 To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetOrganiserGuest` Query is of type `GetOrganiserGuestData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetOrganiserGuestData {
-  organiserGuest?: {
+  organiserGuests: ({
     id: UUIDString;
     firstName: string;
     lastName: string;
@@ -6737,7 +6737,7 @@ export interface GetOrganiserGuestData {
       } & Section_Key;
     } & Event_Key;
     tokenHash: string;
-  } & OrganiserGuest_Key;
+  } & OrganiserGuest_Key)[];
 }
 ```
 
@@ -6786,7 +6786,7 @@ export default function GetOrganiserGuestComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.organiserGuest);
+    console.log(query.data.organiserGuests);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }

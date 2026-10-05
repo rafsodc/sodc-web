@@ -12,7 +12,7 @@ import { requireSectionModerator } from "./sectionAccess";
 import { enforceRateLimit } from "./rateLimiter";
 import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
 
-type Guest = NonNullable<db.GetOrganiserGuestData["organiserGuest"]>;
+type Guest = db.GetOrganiserGuestData["organiserGuests"][number];
 const hash = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 function text(
@@ -131,9 +131,10 @@ async function organiserTicketType(id: string, eventId: string) {
 }
 async function guestById(id: string) {
   const { data } = await db.getOrganiserGuest({ id });
-  if (!data.organiserGuest)
+  const guest = data.organiserGuests[0];
+  if (!guest)
     throw new HttpsError("not-found", "Guest not found");
-  return data.organiserGuest;
+  return guest;
 }
 export async function guestByToken(raw: unknown) {
   if (typeof raw !== "string" || !/^[a-f0-9]{64}$/.test(raw))
@@ -219,7 +220,7 @@ export const manageOrganiserGuest = onCall(
       const actor = request.auth!.uid;
       if (request.data.action === "create") {
         const existing = (await db.getOrganiserGuest({ id })).data
-          .organiserGuest;
+          .organiserGuests[0];
         if (existing) {
           if (existing.event.id !== eventId || existing.createdBy !== actor)
             throw new HttpsError(

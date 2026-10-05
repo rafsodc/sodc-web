@@ -94,7 +94,7 @@ beforeEach(() => {
     async () => ({ data: { organiserGuests: [guest] } }) as never,
   );
   getById.mockImplementation(
-    async () => ({ data: { organiserGuest: guest } }) as never,
+    async () => ({ data: { organiserGuests: [guest] } }) as never,
   );
   vi.spyOn(db, "getOrganiserGuestEvent").mockResolvedValue({
     data: { event: base.event },
@@ -224,7 +224,7 @@ describe("organiser guest capability and permissions", () => {
     expect(create).not.toHaveBeenCalled();
   });
   it("snapshots guest-only ticket pricing and stores only a hash of the returned token", async () => {
-    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    getById.mockResolvedValueOnce({ data: { organiserGuests: [] } });
     const result = await manageOrganiserGuest.run(
       request(
         { ...base, eventId: id, ticketTypeId: id, action: "create" },
@@ -241,7 +241,7 @@ describe("organiser guest capability and permissions", () => {
     );
   });
   it("allows an organiser guest to be created without an email address", async () => {
-    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    getById.mockResolvedValueOnce({ data: { organiserGuests: [] } });
     await manageOrganiserGuest.run(
       request(
         {
@@ -261,7 +261,7 @@ describe("organiser guest capability and permissions", () => {
     );
   });
   it("still rejects malformed non-empty guest email addresses", async () => {
-    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    getById.mockResolvedValueOnce({ data: { organiserGuests: [] } });
     await expect(
       manageOrganiserGuest.run(
         request(
@@ -279,7 +279,7 @@ describe("organiser guest capability and permissions", () => {
     expect(create).not.toHaveBeenCalled();
   });
   it("rejects another event's guest ticket", async () => {
-    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    getById.mockResolvedValueOnce({ data: { organiserGuests: [] } });
     typeQuery.mockResolvedValue({
       data: { ticketTypes: [] },
     } as never);
@@ -310,7 +310,7 @@ describe("organiser guest capability and permissions", () => {
     expect(cancel).not.toHaveBeenCalled();
   });
   it("rejects a standard member ticket for organiser allocation", async () => {
-    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    getById.mockResolvedValueOnce({ data: { organiserGuests: [] } });
     typeQuery.mockResolvedValue({
       data: { ticketTypes: [] },
     } as never);

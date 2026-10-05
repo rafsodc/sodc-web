@@ -45,6 +45,13 @@ describe("Data Connect auth contracts", () => {
     );
     expect(ticketLookup).toContain("eventId: { eq: $eventId }");
     expect(ticketLookup).toContain("audience: { eq: ORGANISER_GUEST }");
+    const guestLookup = extractOperationBlock(
+      source,
+      "query GetOrganiserGuest($id:",
+    );
+    expect(guestLookup).toContain(
+      "organiserGuests(where: { id: { eq: $id } }, limit: 1)",
+    );
     const dietary = source.slice(source.indexOf("mutation UpdateOrganiserGuestDietary"), source.indexOf("mutation RotateOrganiserGuestLink"));
     expect(dietary).toContain("gt_expr: \"request.time\"");
     expect(dietary).toContain("tokenHash: { eq: $tokenHash }");

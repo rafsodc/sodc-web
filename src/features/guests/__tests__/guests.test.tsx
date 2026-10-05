@@ -10,6 +10,7 @@ vi.mock("../api", async (original) => ({
   guestCall: vi.fn(),
 }));
 const call = vi.mocked(guestCall);
+const writeText = vi.fn();
 const ticket: GuestTicket = {
   firstName: "Alex",
   lastName: "Guest",
@@ -34,6 +35,11 @@ const guest: Guest = {
 };
 beforeEach(() => {
   call.mockReset();
+  writeText.mockReset();
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
 });
 describe("account-free guest ticket", () => {
   function show() {
@@ -101,6 +107,35 @@ describe("account-free guest ticket", () => {
   });
 });
 describe("organiser management and reports", () => {
+  it("copies a fresh guest link directly without opening a link dialog", async () => {
+    const list = {
+      event: { id: "event" },
+      ticketTypes: [],
+      guests: [guest],
+    };
+    call
+      .mockResolvedValueOnce(list)
+      .mockResolvedValueOnce({ link: "https://example.test/guest-ticket#new" })
+      .mockResolvedValueOnce(list);
+    writeText.mockResolvedValue(undefined);
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+    await waitFor(() =>
+      expect(call).toHaveBeenCalledWith("manageOrganiserGuest", {
+        eventId: "event",
+        action: "replace-link",
+        id: "guest",
+        version: 3,
+      }),
+    );
+    expect(writeText).toHaveBeenCalledWith(
+      "https://example.test/guest-ticket#new",
+    );
+    expect(screen.queryByRole("dialog", { name: "Copy guest link" })).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(/New guest link copied/),
+    ).toBeInTheDocument();
+  });
   it("allows a guest to be saved without an email address", async () => {
     call.mockResolvedValue({
       event: { id: "event" },

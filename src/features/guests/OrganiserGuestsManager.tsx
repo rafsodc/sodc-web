@@ -43,7 +43,6 @@ export default function OrganiserGuestsManager({
   });
   const [guest, setGuest] = useState<Partial<Guest> | null>(null);
   const [cancel, setCancel] = useState<Guest | null>(null);
-  const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,12 +55,26 @@ export default function OrganiserGuestsManager({
         ...input,
         eventId,
       });
-      if (result.link) setLink(result.link);
-      setSuccess(
-        input.action === "create" && !result.link
-          ? "Guest saved. Use Replace link to get a link to send."
-          : "Guest list saved.",
-      );
+      if (result.link) {
+        try {
+          await navigator.clipboard.writeText(result.link);
+          setSuccess(
+            input.action === "create"
+              ? "Guest saved and link copied."
+              : "New guest link copied. The previous link no longer works.",
+          );
+        } catch {
+          setError(
+            "The guest was saved, but the link could not be copied. Use Copy link to try again.",
+          );
+        }
+      } else {
+        setSuccess(
+          input.action === "create"
+            ? "Guest saved. Use Copy link to create a link to send."
+            : "Guest list saved.",
+        );
+      }
       setGuest(null);
       setCancel(null);
       await refetch();
@@ -211,7 +224,7 @@ export default function OrganiserGuestsManager({
                           })
                         }
                       >
-                        Replace link
+                        Copy link
                       </Button>
                       <Button
                         disabled={busy || g.cancelled}
@@ -226,41 +239,12 @@ export default function OrganiserGuestsManager({
             </Table>
           </TableContainer>
           <Typography variant="body2" sx={{ mt: 2 }}>
-            Replacing a link immediately revokes the previous link. Paid
-            cancellations retain their payment history and show any refund still
-            required.
+            Copy link creates a new personal link and immediately revokes the
+            previous one. Paid cancellations retain their payment history and
+            show any refund still required.
           </Typography>
         </>
       )}
-      <Dialog open={Boolean(link)} onClose={() => setLink("")} fullWidth>
-        <DialogTitle>Copy guest link</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Send this link to the guest yourself. It will only be shown here;
-            you can replace it later if needed.
-          </Typography>
-          <TextField
-            fullWidth
-            value={link}
-            slotProps={{ input: { readOnly: true } }}
-            onFocus={(e) => e.target.select()}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              void navigator.clipboard
-                .writeText(link)
-                .catch(() =>
-                  setError("Please select and copy the link manually."),
-                );
-            }}
-          >
-            Copy link
-          </Button>
-          <Button onClick={() => setLink("")}>Done</Button>
-        </DialogActions>
-      </Dialog>
       <Dialog
         open={Boolean(guest)}
         onClose={() => !busy && setGuest(null)}
