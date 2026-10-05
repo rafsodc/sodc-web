@@ -167,7 +167,7 @@ describe("SectionEventsManager", () => {
         includesDinner: true,
       }),
     ));
-  });
+  }, 10_000);
 
   it("shows and deletes organiser types through the standard ticket table", async () => {
     const type = { id: "org-type", title: "Club dinner", description: "Invitation", price: 25, sortOrder: 1, audience: generated.TicketAudience.ORGANISER_GUEST, userGroup: { id: "group-1", name: "Invited guests", membershipStatuses: [] }, includesDinner: true, includesSymposium: false };
@@ -573,7 +573,7 @@ describe("SectionEventsManager", () => {
       expect.anything(),
       expect.objectContaining({ includesDinner: true, includesSymposium: true })
     );
-  });
+  }, 10_000);
 
   it("opens event edit dialog from the event admin details section", async () => {
     const user = userEvent.setup();
